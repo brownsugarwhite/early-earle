@@ -285,6 +285,10 @@ const ECK_KREIS = 0.3;
 const KOERPER_AN = new URLSearchParams(location.search).get('koerper') !== '0';
 /** so weit (Anteil des Halbmessers der Form) darf eine Linie hinter der Haut liegen und gilt doch als auf ihr (wie `bias` der Studie) */
 const KOERPER_BIAS = 0.02;
+/** über diese Tiefe dahinter (Anteil des Halbmessers) verjüngt sich die Tinte einer Linie ins feine Grün */
+const KOERPER_BAND = 0.025;
+/** so weit (Anteil des Halbmessers) liegt die Hülle des Umrisses hinter der Haut: Sie zeigt sich nur am Rand und an tiefen Falten */
+const HUELLE_TIEFE = 0.06;
 let koerperNetz: unknown = null;
 let koerperNr = 0;
 let koerperVersion = -1;
@@ -2311,7 +2315,9 @@ function bild(dt: number): boolean {
       dunkelFuellen: vier > 0.999,
       // S20: der weiße Körper (eingerastet), Linien dürfen ein wenig hinter seiner Haut liegen
       koerper: linienKoerper(),
-      bias: (raum?.R ?? 0) * KOERPER_BIAS,
+      // die Verdeckung kommt mit dem Körper: Solange er noch blass ist, liegt alles vorn
+      bias: (raum?.R ?? 0) * (KOERPER_BIAS + 2 * (1 - koerperDeckung)),
+      band: (raum?.R ?? 1) * KOERPER_BAND,
     };
     szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
     if (zeigerGestalt.gleitet) aktiv = true;
@@ -2616,22 +2622,60 @@ function wandLinien(vp: Matrix4, m: Moment): void {
 
 /** Linien der eingerasteten Ansicht, auf der Blase: Seite = die gezeichnete Linie mit Punkten, Front und Top = Umriss */
 /** S20: liegt der weiße Körper in der Anzeige (eingerastet, auch beim Wenden)? */
+/**
+ * S20: ob der Körper in diesem Bild liegt und, auf einer Fahrt, wie deckend er ist (`direkt`, mit ihr verbunden): eingerastet (auch beim
+ * Wenden), auf dem Weg in eine eingerastete Ansicht oder aus ihr (mit `flach`), beim Auf- und Zuklappen (mit dem Stand) und in den
+ * offenen Vier Ansichten
+ */
+function koerperZustand(): { an: boolean; direkt: number | null } {
+  const aus = { an: false, direkt: null };
+  if (!KOERPER_AN || !werkGezeigt || zustand !== 'ruhe' || !werkHaut.netz || !raum || eckZug) return aus;
+  const f = faltJetzt;
+  if (vier < 1e-3) {
+    if (einzelUebergang) return aus;
+    if (blattModus()) return { an: true, direkt: null };
+    const zuBlatt = !!ansichtFahrt && (ansicht !== 'raum' || (ansichtFahrt.vonAnsicht !== undefined && ansichtFahrt.vonAnsicht !== 'raum'));
+    // erst im letzten Teil der Fahrt (vorher sieht die Kamera den Körper noch schräg, die Linien liegen schon auf dem Blatt)
+    if (zuBlatt && flach > 0.6) return { an: true, direkt: glatt((flach - 0.6) / 0.4) };
+    return aus;
+  }
+  if (!f) return aus;
+  if (f.e > 0.999 && !vierFahrt) return { an: true, direkt: null };
+  return { an: true, direkt: glatt(Math.min(1, f.e / 0.35)) };
+}
 function koerperAn(): boolean {
-  if (!KOERPER_AN || !werkGezeigt || zustand !== 'ruhe' || !werkHaut.netz || !raum || eckZug) return false;
-  // eingerastet (auch beim Wenden) oder die Vier Ansichten offen und in Ruhe
-  if (vier < 1e-3) return !einzelUebergang && blattModus();
-  return vier >= 0.999 && !vierFahrt && !!faltJetzt && faltJetzt.e > 0.999;
+  return koerperZustand().an;
 }
 
-/** S20: der Körper in diesem Bild: deckend, sobald die Ansicht ruht (weich), sonst gleich weg */
+/** S20: der Körper in diesem Bild: auf Fahrten mit ihnen verbunden; kommt er sonst neu (eine Ansicht ruht schon), blendet er weich ein */
 function koerperSchritt(dt: number): boolean {
-  if (!koerperAn()) {
+  const z = koerperZustand();
+  if (!z.an) {
     koerperDeckung = 0;
+    return false;
+  }
+  if (z.direkt !== null) {
+    koerperDeckung = z.direkt;
     return false;
   }
   if (koerperDeckung >= 1) return false;
   koerperDeckung = Math.min(1, koerperDeckung + dt / 0.25);
   return true;
+}
+
+/**
+ * S20: beim Auf- und Zuklappen der Körper auf einer Wand, die sich aufklappt: dieselbe Abbildung wie ihre Zeichnung (`faltPunkt`, für
+ * einen Ort ohne seine Tiefe längs der Achse affin), mit der Kamera des Aufklappens; Tiefe wie im Feld, nur im Viereck der Wand
+ */
+function wandAnsicht(n: FeldAchse, f: Falt, rand: number[]): { projektion: Float32Array; ansicht: Float32Array; schere: [number, number, number, number]; tiefeMax: number; rand: number[] } {
+  const q0 = faltPunkt(n, new Vector3(0, 0, 0), f);
+  const qx = faltPunkt(n, new Vector3(1, 0, 0), f).sub(q0);
+  const qy = faltPunkt(n, new Vector3(0, 1, 0), f).sub(q0);
+  const qz = faltPunkt(n, new Vector3(0, 0, 1), f).sub(q0);
+  const A = new Matrix4().set(qx.x, qy.x, qz.x, q0.x, qx.y, qy.y, qz.y, q0.y, qx.z, qy.z, qz.z, q0.z, 0, 0, 0, 1);
+  const P = new Matrix4().multiplyMatrices(f.vp, A);
+  const feld = feldAnsicht(n, f);
+  return { projektion: Float32Array.from(P.elements), ansicht: feld.ansicht, schere: [0, 0, Math.round(W * D), Math.round(H * D)], tiefeMax: feld.tiefeMax, rand };
 }
 
 /**
@@ -2731,8 +2775,21 @@ function linienKoerper(): LinienKoerper | null {
     index: N.index,
     projektion: Float32Array.from(new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse).elements),
     ansicht: Float32Array.from(c.matrixWorldInverse.elements),
-    // in den Vier Ansichten je flaches Feld mit seiner Abbildung
-    ...(vier >= 0.999 && f ? { ansichten: (['seite', 'front', 'top'] as const).map((n) => feldAnsicht(n, f)) } : {}),
+    // in den Vier Ansichten je flaches Feld mit seiner Abbildung, eingerastet die Kamera; immer mit eigener Tiefe (für die Hülle)
+    ansichten:
+      vier >= 0.999 && f
+        ? (['seite', 'front', 'top'] as const).map((n) => feldAnsicht(n, f))
+        : vier > 1e-3 && f
+        ? (['seite', 'front', 'top'] as const).map((n, i) => wandAnsicht(n, f, bereicheJetzt.slice(12 * i, 12 * i + 12)))
+        : [
+            {
+              projektion: Float32Array.from(new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse).elements),
+              ansicht: Float32Array.from(c.matrixWorldInverse.elements),
+              schere: [0, 0, Math.round(W * D), Math.round(H * D)],
+              tiefeMax: kam.abstand + 4 * raum!.L,
+            },
+          ],
+    huelleTiefe: raum!.R * HUELLE_TIEFE,
     schattierung: 0,
     umriss: linienWerte.umriss * D,
     geaendert: neu,
@@ -2979,7 +3036,12 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     if (achsen.has(achse)) {
       const mitteLage = [e.cx, e.cy, 0][achse]!;
       const st = Math.max(staerke[achse], Math.max(g6[2 * achse]!, g6[2 * achse + 1]!) * flach * flach);
-      if (st >= 0.01) liste.push(ebene(BLATT_DER_ACHSE[achse]!, wandLage + (mitteLage - wandLage) * pb, vp, st, bw.wandLinien + (1 - bw.wandLinien) * pb, pb < 0.5));
+      if (st >= 0.01) {
+        const fl = ebene(BLATT_DER_ACHSE[achse]!, wandLage + (mitteLage - wandLage) * pb, vp, st, bw.wandLinien + (1 - bw.wandLinien) * pb, pb < 0.5);
+        // S20: auf dem Weg in die eingerastete Ansicht und aus ihr entscheidet mit dem Körper die Anzeige, was verdeckt ist
+        if (koerperAn() && koerperDeckung > 0.001) fl.tiefe = tiefeDerKamera();
+        liste.push(fl);
+      }
       continue;
     }
     if (staerke[achse] < 0.01) continue;

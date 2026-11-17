@@ -17,7 +17,8 @@ const KACHEL = 32;
 const PRIM_BREITE = 2049;
 const LISTE_BREITE = 2048;
 /**
- * Floats je Kapsel (drei Texel): x0, y0, x1, y1 | r0, r1, Gruppe, Art | z0, z1, –, – (Gerätepunkte; z = Tiefe zum Betrachter).
+ * Floats je Kapsel (drei Texel): x0, y0, x1, y1 | r0, r1, Gruppe, Art | z0, z1, f0, f1 (Gerätepunkte; z = Tiefe zum Betrachter; f = halbe
+ * Breite hinter der Haut, Ozzy S20: ist sie da, wechselt die Schicht „nach Tiefe“ weich, die Tinte verjüngt sich ins Grün).
  * Art = Schicht (0 Tinte, 1 verdeckt, 2 nach Tiefe) + 4 · Form (0 Linie, hart; 1 Punkt, Tropfen, Hals, weich) + 8 · Bereich (Ozzy, S17:
  * 0 = überall, sonst die Nummer des Bereichs in `Szene.bereiche`, an dessen Rand die Kapsel abgeschnitten wird).
  */
@@ -49,11 +50,23 @@ export interface Koerper {
    * Ursprung unten links wie WebGL) und der größten Tiefe: Die Tiefe zum Betrachter wird dann selbst in den Tiefenpuffer geschrieben (so
    * gilt sie auch, wenn die Projektion nicht zur Ansicht passt). Fehlt: eine Ansicht mit `projektion` und `ansicht`.
    */
-  ansichten?: { projektion: Float32Array; ansicht: Float32Array; schere: [number, number, number, number]; tiefeMax: number }[];
+  ansichten?: {
+    projektion: Float32Array;
+    ansicht: Float32Array;
+    schere: [number, number, number, number];
+    tiefeMax: number;
+    /** nur in diesem konvexen Viereck (vier Kanten wie `Szene.bereiche`: Gerätepunkte, y nach unten, innen positiv) */
+    rand?: number[];
+  }[];
   /** Ozzy (S20): außerhalb des Körpers durchsichtig (darunter liegt die Seifenhaut); fehlt: überall Papier */
   durchsichtig?: boolean;
   /** Ozzy (S20): wie deckend Körper und Umriss sind (0 … 1; die Verdeckung der Linien gilt unabhängig davon); fehlt: 1 */
   deckung?: number;
+  /**
+   * Ozzy (S20): so weit (Tiefe) liegt die Hülle hinter der Haut, nur mit eigener Tiefe (`ansichten`): Sie schaut dann nur am Rand und an
+   * tiefen Falten hervor, nicht an flachen Knicken der Haut (dort zeigte sie sich stückweise als kurze Striche)
+   */
+  huelleTiefe?: number;
 }
 
 export interface Szene {
@@ -77,6 +90,8 @@ export interface Szene {
   /** der Körper im Raum (sonst durchsichtig) und wie weit eine Kapsel hinter der Haut liegen darf, ohne verdeckt zu sein */
   koerper?: Koerper | null;
   bias?: number;
+  /** Ozzy (S20): über diese Tiefe (hinter `bias`) geht eine Linie mit feiner Breite weich von Tinte in Grün über; fehlt: 1 */
+  band?: number;
   /**
    * Ozzy: die Rückseite als bis zu vier konvexe Flächen, je fünf Kanten (Gerätepunkte, y nach unten; Abstand x · p.x + y · p.y + z,
    * innen positiv; 20 Kanten zu drei Werten); dort tauschen Tinte und Papier. Fehlt: überall vorn.
@@ -114,6 +129,7 @@ uniform sampler2D uKoerperTiefe;
 uniform int uMitKoerper;
 uniform float uKoerperDeckung;
 uniform float uBias;
+uniform float uBand;
 uniform float uHoehe;
 uniform float uK0;
 uniform float uK1;
@@ -289,14 +305,27 @@ void main() {
       int schicht = art - 4 * (art / 4);
       vec2 ba = A.zw - A.xy;
       float f = clamp(dot(p - A.xy, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+      bool weich = false;
       if (schicht == 2) {
         vec4 C = texel(idx * 3 + 2);
         float z = mix(C.x, C.y, f);
-        schicht = z > tiefe + uBias ? 1 : 0;
+        if (C.z > 0.0 || C.w > 0.0) {
+          // Ozzy (S20): je weiter hinter der Haut, desto schmaler die Tinte und desto breiter das feine Grün (kein Flackern an der Grenze)
+          float h = clamp((z - tiefe - uBias) / max(uBand, 1e-6), 0.0, 1.0);
+          h = h * h * (3.0 - 2.0 * h);
+          float dA = kapsel(p, A.xy, A.zw, 0.0, 0.0);
+          float rt = mix(B.x, B.y, f) * (1.0 - h);
+          float rg = mix(C.z, C.w, f) * h;
+          if (dA - rt < gd.x) { gd.x = dA - rt; gw.x = rt; }
+          if (dA - rg < gd.y) { gd.y = dA - rg; gw.y = rg; }
+          weich = true;
+        } else schicht = z > tiefe + uBias ? 1 : 0;
       }
-      float w = mix(B.x, B.y, f);
-      if (schicht == 0) { if (d < gd.x) { gd.x = d; gw.x = w; } }
-      else { if (d < gd.y) { gd.y = d; gw.y = w; } }
+      if (!weich) {
+        float w = mix(B.x, B.y, f);
+        if (schicht == 0) { if (d < gd.x) { gd.x = d; gw.x = w; } }
+        else { if (d < gd.y) { gd.y = d; gw.y = w; } }
+      }
     }
   }
   if (gruppe >= 0) {
@@ -376,11 +405,20 @@ uniform float uHuelle;
 uniform float uSchattierung;
 uniform vec3 uTinte;
 uniform float uTiefeMax;
+uniform float uHuelleTiefe;
+uniform vec2 uViewport;
+uniform vec3 uRand[4];
+uniform int uRandAn;
 layout(location = 0) out vec4 farbe;
 layout(location = 1) out vec4 tiefe;
 void main() {
+  // Ozzy (S20): nur im Viereck der Ansicht (eine Wand, die sich aufklappt)
+  if (uRandAn == 1) {
+    vec2 q = vec2(gl_FragCoord.x, uViewport.y - gl_FragCoord.y);
+    for (int e = 0; e < 4; e++) if (uRand[e].x * q.x + uRand[e].y * q.y + uRand[e].z < 0.0) discard;
+  }
   // Ozzy (S20): die Tiefe zum Betrachter selbst in den Tiefenpuffer (mehrere Ansichten, Projektionen, die nicht zur Ansicht passen)
-  gl_FragDepth = uTiefeMax > 0.0 ? clamp(vTiefe / uTiefeMax, 0.0, 1.0) : gl_FragCoord.z;
+  gl_FragDepth = uTiefeMax > 0.0 ? clamp((vTiefe + (uHuelle > 0.0 ? uHuelleTiefe : 0.0)) / uTiefeMax, 0.0, 1.0) : gl_FragCoord.z;
   if (uHuelle > 0.0) {
     farbe = vec4(uTinte, 1.0);
   } else {
@@ -460,10 +498,10 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uKoerperDeckung', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uKoerperDeckung', 'uBand', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
-    for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte', 'uTiefeMax']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
+    for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte', 'uTiefeMax', 'uHuelleTiefe', 'uRand', 'uRandAn']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
     this.vaoQuad = gl.createVertexArray()!;
     gl.bindVertexArray(this.vaoQuad);
     const vb = gl.createBuffer();
@@ -607,6 +645,10 @@ export class FluessigeAnzeige {
       gl.uniformMatrix4fv(this.uniK.uProj!, false, a.projektion);
       gl.uniformMatrix4fv(this.uniK.uAnsicht!, false, a.ansicht);
       gl.uniform1f(this.uniK.uTiefeMax!, a.tiefeMax);
+      gl.uniform1f(this.uniK.uHuelleTiefe!, kd.huelleTiefe ?? 0);
+      const rand = 'rand' in a ? a.rand : undefined;
+      gl.uniform1i(this.uniK.uRandAn!, rand ? 1 : 0);
+      if (rand) gl.uniform3fv(this.uniK.uRand!, new Float32Array(rand.slice(0, 12)));
       // erst die Hülle (der Umriss), dann die Haut
       // die Hülle nur mit ihren Rückseiten: So liegt sie hinter der Haut und schaut nur am Rand (Umriss, Falten) hervor
       if (kd.umriss > 0) {
@@ -721,6 +763,7 @@ export class FluessigeAnzeige {
     gl.uniform1i(this.uni.uMitKoerper!, mit ? 1 : 0);
     gl.uniform1f(this.uni.uKoerperDeckung!, sz.koerper?.deckung ?? 1);
     gl.uniform1f(this.uni.uBias!, sz.bias ?? 0);
+    gl.uniform1f(this.uni.uBand!, sz.band ?? 1);
     gl.uniform1f(this.uni.uHoehe!, this.hoehe);
     gl.uniform1f(this.uni.uK0!, sz.k0);
     gl.uniform1f(this.uni.uK1!, sz.k1);

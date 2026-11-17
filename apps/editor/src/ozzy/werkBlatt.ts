@@ -759,8 +759,18 @@ export class WerkBlatt implements Raum {
         };
         hin = this.hinten(K, ort);
       }
-      // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt (die Tiefe des Orts); die Linie des Umrisses bleibt vorn
-      z[k] = tiefe ? (ort ? tiefe(ort) : 0) : hin ? HINTEN_Z : 0;
+      // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt (die Tiefe des Orts) und weich: Sie bekommt die volle Breite und die
+      // feine, die die Linie hinter der Haut hat; die Linie des Umrisses bleibt vorn
+      if (tiefe) {
+        z[k] = ort ? tiefe(ort) : 0;
+        // die Schicht nach der Tiefenkarte bleibt fürs Greifen (verdeckt nur im Röntgen); gezeichnet wird nach der Tiefe
+        P.schicht[k] = hin ? 1 : 0;
+        const fein = Math.min(P.halb[k]!, br.innen / 2);
+        const roent = Math.max(P.halb[k]!, br.innen * 0.9);
+        (P.fein ??= new Float32Array(P.n))[k] = fein + (roent - fein) * this.roentgenWert;
+        continue;
+      }
+      z[k] = hin ? HINTEN_Z : 0;
       P.schicht[k] = hin ? 1 : 0;
       if (hin) {
         // fein wie Verdecktes; im Röntgen so breit wie vorn, mindestens knapp das Doppelte der feinen Linie

@@ -322,7 +322,8 @@ Punkt an der Ecke der Kiste im Raum (Kreis als Haarlinie, die Kiste klappt mit d
 **S20 gebaut:** In den eingerasteten Ansichten und den drei Feldern liegt die Haut des Werks als weißer Körper in der Anzeige wie in der
 Studie (Umriss als Hülle, Verdecktes je Bildpunkt; `linienKoerper`, `feldAnsicht`, `Flaeche.tiefe`; in `fluessig.ts` durchsichtig, mehrere
 Ansichten, eigene Tiefe, Deckung). Probe `ozzy-linien-koerper-fenster.mjs`, Bilder `2026-11-17-linien-koerper*.png`; `?koerper=0` zum
-Vergleich. **Als Nächstes:** S21 Kanten gleiten statt auszublenden. Davor stand: S20 Linienansichten wie in der Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
+Vergleich. Nachgeschärft: Hülle hinter der Haut (keine kurzen Striche), weicher Übergang je Bildpunkt (Tinte verjüngt sich ins Grün,
+Breite aus derselben Tiefe), Körper auf den Wänden beim Aufklappen und mit der Fahrt beim Einrasten (Film `2026-11-17-linien-koerper-fahrt.mp4`). **Als Nächstes:** S21 Kanten gleiten statt auszublenden. Davor stand: S20 Linienansichten wie in der Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
 und S21 Kanten gleiten statt auszublenden. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
 gleitet bei ⌘Z.
 

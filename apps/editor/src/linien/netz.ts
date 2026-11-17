@@ -206,6 +206,11 @@ export interface LinienProben {
   stueckS: Float32Array;
   /** im Raum: Tiefe zum Betrachter je Probe */
   z?: Float32Array;
+  /**
+   * Ozzy (S20): die halbe Breite, die die Linie hinter der Haut hat (fein, grün). Ist sie da, entscheidet die Anzeige je Bildpunkt weich:
+   * Je weiter die Linie hinter der Haut liegt, desto schmaler wird ihre Tinte und desto breiter das Grün (statt hart zu wechseln).
+   */
+  fein?: Float32Array;
 }
 
 /** Bogenlänge eines Stücks über eine feine Tabelle; liefert t für gleichmäßige Schritte */

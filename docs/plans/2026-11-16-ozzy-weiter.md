@@ -510,6 +510,22 @@ Umriss entfällt). Die Proben zu S7, S10, S16, S17, S18/S19, zu den Ansichten, z
 Vier Ansichten vorher und nachher: [`2026-11-17-linien-koerper-vier.png`](../progress/ozzy/2026-11-17-linien-koerper-vier.png). Offen:
 an Linien, die fast genau auf der Haut verlaufen, entstehen vereinzelt kurze Striche (vorn und verdeckt wechseln je Bildpunkt); beim
 Aufklappen und Einrasten springt der Look am Ende (weich eingeblendet, nicht mitgeführt).
+*Nachgeschärft (17.11., Florian: „Erst S20 nachschärfen“):* (1) Die kurzen Striche kamen nicht von den Linien, sondern von der Hülle: An
+flachen Knicken der Haut (harte Kanten des Werks) schaute sie stückweise hervor. Sie liegt jetzt 6 % des Halbmessers hinter der Haut
+(`huelleTiefe`, eigene Tiefe auch eingerastet) und zeigt sich nur am Rand und an tiefen Falten. Bild
+[`2026-11-17-linien-koerper-kinn.png`](../progress/ozzy/2026-11-17-linien-koerper-kinn.png) (unter dem Kinn, links vorher, rechts nachher).
+(2) Die Breite folgt jetzt derselben Tiefe wie die Farbe: Mit dem Körper bekommt eine Linie ihre volle und ihre feine Breite
+(`LinienProben.fein`, in der Kapsel die Felder 10 und 11), die Anzeige entscheidet je Bildpunkt weich: Je weiter hinter der Haut (über
+2,5 % des Halbmessers), desto schmaler die Tinte und desto breiter das feine Grün; die Linie verjüngt sich ins Grün, statt zu wechseln. Die
+Schicht nach der Tiefenkarte bleibt fürs Greifen (ohne Röntgen nur Vorderes). (3) Der Körper geht mit den Fahrten: beim Auf- und Zuklappen
+liegt er auf den Wänden, die sich aufklappen (`wandAnsicht`: dieselbe Abbildung wie ihre Zeichnung, nur in ihrem Viereck), seine Deckung
+wächst mit dem Stand (ab 35 % ganz); beim Einrasten blendet er im letzten Teil der Fahrt ein (ab 60 %), beim Lösen umgekehrt; die
+Verdeckung kommt mit ihm (die Duldung ist groß, solange er blass ist), der alte Umriss blendet dabei aus. Probe
+`ozzy-linien-koerper-fenster.mjs` 1 bis 8 halten (an den Stellen der Striche keine Tinte; beim Aufklappen 24 Bilder mit Körper auf den
+Wänden, am Ende 0,0 % der Seite anders; Einrasten mit der Fahrt, voll mit ihrem Ende; Grün jetzt 1,26-fach, die Schwelle von 1,3 auf 1,2
+gesenkt, weil sich eine Linie knapp hinter der Haut erst verjüngt, bevor sie grün ist), dazu alle Proben von S7 bis S19, zum Bearbeiten
+und zum Röntgen; beide Studien laufen. Film [`2026-11-17-linien-koerper-fahrt.mp4`](../progress/ozzy/2026-11-17-linien-koerper-fahrt.mp4)
+(auf, zu, Front einrasten und lösen; echte Geschwindigkeit).
 
 **S21 Kanten gleiten statt auszublenden.** *Heute:* Dreht man den Raum über eine Wand hinweg, wird ihre Zeichnung samt den Kanten der Ecke
 gleichmäßig dünner bis zur Haarlinie (Stärke der Wand), die Punkte verschwinden auf einmal, auf der anderen Seite kommt alles ebenso

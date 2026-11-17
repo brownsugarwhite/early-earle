@@ -1970,7 +1970,7 @@ export class Verhalten {
     const R = (r: number): number => r * s * D;
     let n = 0;
     /** art 0: Linie (harte Vereinigung), 1: Punkt, Tropfen, Hals (weich); schicht 2: nach Tiefe (z0, z1) */
-    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0 = 0, z1 = 0, bereich = 0): void => {
+    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0 = 0, z1 = 0, bereich = 0, f0 = 0, f1 = 0): void => {
       if ((n + 1) * PRIM_FELDER > this.puffer.length) {
         const neu = new Float32Array(this.puffer.length * 2);
         neu.set(this.puffer);
@@ -1988,8 +1988,8 @@ export class Verhalten {
       b[o + 7] = schicht + 4 * art + 8 * bereich;
       b[o + 8] = z0;
       b[o + 9] = z1;
-      b[o + 10] = 0;
-      b[o + 11] = 0;
+      b[o + 10] = f0;
+      b[o + 11] = f1;
       n++;
     };
     let gruppe = 0;
@@ -2021,6 +2021,8 @@ export class Verhalten {
             P.z?.[k] ?? 0,
             P.z?.[k + 1] ?? 0,
             bl,
+            P.fein ? R(P.fein[k]!) : 0,
+            P.fein ? R(P.fein[k + 1]!) : 0,
           );
           etwas = true;
         }
