@@ -534,6 +534,21 @@ eine Zeichnung die Seite wechseln, gleitet sie durch den Raum zur anderen Wand, 
 Wegs am schmalsten) und am Ziel wieder voll; die drei Kanten der Ecke gleiten genauso zur neuen Ecke, die Punkte fließen mit. Beim
 Aufklappen gehen die Kanten der Wände und die Teiler durch Verjüngung und Verdickung ineinander über. *Probe:* zuerst ein Film (Raum um
 360° gedreht, Aufklappen), vorher und nachher; keine Linie wird blasser, nur schmaler und breiter.
+*Gebaut (17.11., Florian: „Ja, S21“):* `wandGleiten`: Jede Wand liegt stetig dort, wo sie gerade hin gleitet: Steht die Kamera weiter als
+0,2 (Anteil der Richtung) vor ihrer Ebene, bei ±L wie bisher; dreht die Kamera über die Ebene, fährt sie in einer weichen Kurve durch den
+Raum auf die andere Seite (auf der Kante als feiner Strich durch die Blase), ihre Linien und Punkte werden dabei schmaler (in der Mitte des
+Wegs ein Viertel) und am Ziel wieder voll. Die Ecke gleitet mit: Jede ihrer drei Kanten liegt in zwei Wänden, spannt über die ganze Kiste
+und ist so schmal wie die schmalere der beiden. Punkte auf einer gleitenden Wand schrumpfen mit (`Punkt.gross`, `Punkt.zeigen` in der
+Linien-Studie), statt unter halber Stärke zu verschwinden; gegriffen werden sie wie bisher erst ab halber Stärke. Das Aufklappen beginnt bei
+den Wänden, wo sie gerade sind. Beim Aufklappen werden die vier Kanten an der Ecke selbst zu den Armen der Teiler (sie sind es am Ende
+genau): ihre Breite geht stetig von der Kante im Raum in die des Teilers über; die durchgehenden Teiler, die bisher daneben aus dem Nichts
+wuchsen, gibt es dabei nicht mehr. Probe `ozzy-gleiten-fenster.mjs` 1 bis 5 halten (die Front gleitet in 12 Bildern von −L nach +L, größter
+Schritt 0,25 L statt 2 L in einem Bild; schmalste Breite 25 %; 42 Punkte der Front bleiben zu sehen; beim Aufklappen keine Linie außerhalb
+der Wände); die Proben zu S7, S10, S16 bis S20, zu den Ansichten, zum Bearbeiten, zum Röntgen und zum Lichtring halten. Filme
+[`2026-11-17-raum-gleiten-vorher-nachher.mp4`](../progress/ozzy/2026-11-17-raum-gleiten-vorher-nachher.mp4) (links vorher, rechts nachher:
+360° um die Hochachse, unter den Boden und zurück, Tab auf und zu; echte Geschwindigkeit) und
+[`2026-11-17-raum-gleiten.mp4`](../progress/ozzy/2026-11-17-raum-gleiten.mp4) groß; Bild der ersten Kreuzung
+[`2026-11-17-raum-gleiten-kreuzung.png`](../progress/ozzy/2026-11-17-raum-gleiten-kreuzung.png) (oben vorher, unten nachher).
 
 Reihenfolge: S17, S18 und S19 (mit dem Rückweg), dann S20 und S21.
 

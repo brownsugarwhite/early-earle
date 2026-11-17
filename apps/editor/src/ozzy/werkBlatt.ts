@@ -253,7 +253,16 @@ export class WerkBlatt implements Raum {
                 pi = punkte.length;
                 const q3 = m ? werk.spiegeln(q) : q;
                 const hin = this.hinten(karte, q3);
-                punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: hin, z: F.tiefe ? F.tiefe(q3) : hin ? HINTEN_Z : 0 });
+                // S21: auf einer Wand, die gleitet, schrumpft der Punkt mit ihr (gegriffen wird er weiter erst ab halber Stärke)
+                punkte.push({
+                  x,
+                  y,
+                  sichtbar: sichtbar && istSichtbar(p),
+                  verdeckt: hin,
+                  z: F.tiefe ? F.tiefe(q3) : hin ? HINTEN_Z : 0,
+                  zeigen: istSichtbar(p) && F.staerke > 0.02,
+                  gross: Math.min(1, F.staerke),
+                });
                 pSchl.push(`${fl}|${k}`);
                 anker.push({ fl, m: sm, werk: [], zuSehen: istSichtbar(p) });
                 schluessel.set(k, pi);
