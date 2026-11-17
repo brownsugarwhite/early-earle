@@ -362,6 +362,73 @@ Verdecktes, mit Spiegelbild; ein Tropfen läuft herum, auf dem Spiegelbild gegen
 168 Proben, folgt dem Zeiger, der neue Loop liegt höchstens 0,11 px neben dem Ring. Bild
 [`2026-11-17-lichtring.png`](../progress/ozzy/2026-11-17-lichtring.png) (Vier Ansichten: Front, Top und Raum zeigen den Ring).
 
+**Rückmeldung vom 17.11. (Florian, wörtlich):** „dreimal tippen würde ic erstmal weglassen. pose kommt zur maulsitzung. du hast gute
+arbeit geleistet. Eines hätte ich noch gern. in der viereransicht soll man auch die ansichten zoomen und bewegen können, momentan kann ich
+das nicht. auch mit wenden wie bei der vollansicht. Um die vier ansichten zu verknüpfen, hätte ich gerbenden schnittpunkt der vier
+ansichten auch bei der einzelansicht an der jeweiligen ecke eingeblendet. daran kann ic die anderen ansichten ins bild ziehen um smooth in
+dieviereransicht zu gleiten. In der projektionsansichr soll auch die ecke einen punkt haben. Wenn ich an diesem ziehe soll es smooth an
+die bewegung gekoppelt zur viereransicht aufklappen. es wird dann eine haarlinie eingezeichnet, die anzeigt ab wann die ansicht komplett
+zur viereransicht aufgeklappt ist. Bei doppelklick auf den punkt wechselt es von alleine zur letzt gewählten proportion der vier ansichten.
+Wenn ich ziehe kann i ch quasi auch gleich bestimmen welches der felder am größten wird. Außerdem ist der übergang zur viereransicht bei
+schwarzem hintergrund nicht schön und die ansichten drehen sich nicht schön. lässt sich das beheben?“
+Damit fallen weg: dreimal Tippen (S12) und „Pose ohne Regler“ (gehört zur Maul-Sitzung). Neu sind S16 bis S19, in seiner Reihenfolge,
+die Behebung zuerst. Alle vier hängen an einem Ding: **der Kreuzung der Vier Ansichten** (dem Tropfen, an dem die Teiler sich kreuzen).
+Im Raum ist sie die Ecke der Kiste, in einer Einzelansicht die Ecke des Bilds, in den Vier Ansichten der Tropfen.
+
+**S16 Aufklappen von hinten.** *Befund* (Film: „strange bird“ von hinten, um 150° gedreht, dann Tab und zurück): (1) Das Schwarz der
+Rückseite ist im ersten Bild nach Tab ganz weg und kommt im letzten Bild des Rückwegs auf einmal zurück (`hintenRechnen` gibt ab
+`vier` > 0,02 nichts mehr). (2) Die Kamera dreht beim Aufklappen in einem Zug von der Lage im Raum auf die Seite, von hinten um 110° bis
+150°. Dabei stehen die Wände nacheinander auf der Kante (ihre Zeichnungen werden zu Strichen), und weil von hinten die Wand der Front rechts
+liegt, wandert ihr Scharnier quer über die Seite nach links. Dasselbe von unten (der Boden ist dann oben) und schon von vorn links. Nur von
+vorn rechts oben (dort liegt die Hausansicht) liegen die Wände so, wie die Kiste aufklappt.
+*Behebung:* (1) Steht die Kamera nicht auf dieser Seite der Kiste, dreht sich zuerst der Raum, auf dem kürzesten Weg und wie beim Drehen von
+Hand, bis die Wände so liegen (sie wechseln dabei weich wie beim Drehen, die Kante des Schwarz wandert aus dem Bild). Kurz bevor die
+Drehung endet, klappt die Kiste auf wie bisher. Zurück klappt sie in diese Lage zu, nicht wieder nach hinten. (2) Das Schwarz wird beim
+Aufklappen mit der Kamera des Aufklappens gerechnet, „vorn“ dreht dabei von der Hausansicht zur Seite: Die Kante wandert aus dem Bild,
+statt zu springen. Am Werk nichts.
+*Probe* (`ozzy-auffalten-hinten-fenster.mjs`): von hinten und von unten je Tab hin und zurück, Bild für Bild: (1) Das Schwarz ändert sich
+je Bild um höchstens 15 % der Fläche (kein Sprung), am Ende ist es weg. (2) Wenn die Kiste aufzuklappen beginnt, steht die Kamera vorn
+rechts oben. (3) Beim Aufklappen ein Gipfel der Geschwindigkeit je Bezugspunkt (wie die Probe zu S10). (4) Zurück kein Schwarz. Dazu hält
+die Probe zu S10 von vorn (dort dreht nichts vorher). Film vorher und nachher.
+
+**S17 Zoomen, Schwenken und Wenden in den Vier Ansichten.** *Vorschlag: gekoppelt wie eine technische Zeichnung.* Seite, Front und Top
+teilen einen Maßstab und eine Mitte im Raum (die Seite zeigt x und y um sie, die Front z und y, der Top x und z). Zoomt man in einem Feld,
+bleibt dort liegen, was unter dem Zeiger liegt, und die beiden anderen folgen so, dass Zeilen und Spalten weiter zueinander passen (die
+Ordnungslinien bleiben gerade). Schwenken in der Seite verschiebt x und y, in der Front z und y, im Top x und z. Das Feld des Raums zoomt und
+schwenkt für sich; Ziehen ins Leere dreht dort wie bisher. Jedes Feld schneidet ab, was über seinen Rand ragt. Bedienung wie in der
+Vollansicht: Mausrad oder Kneifen zoomt (in den Vier Ansichten zum Zeiger hin), auf dem iPad zwei Finger zoomen und schwenken, am Mac
+schwenkt Leertaste + Ziehen (wie in Illustrator; dann auch in der Vollansicht); „Einpassen“ (Pos1) setzt zurück. Zoom und Mitte bleiben
+beim Wechsel in den Raum und zurück erhalten; Auf- und Zuklappen landen genau im gezoomten Bild. Wenden wie in der Vollansicht: ⇧ + Ziehen in
+einem Feld dreht es mit der harten Kante (die Kante bleibt in ihrem Feld), ⇧ + Doppelklick wendet ganz; ein gewendetes Feld zeigt die
+Gegenseite, die Felder bleiben, wo sie sind. *Anders möglich:* jedes Feld zoomt und schwenkt für sich (dann passen die Ansichten nicht mehr
+zueinander, bis „Einpassen“). *Probe:* in der Seite zum Kopf hin zoomen: der Punkt unter dem Zeiger bleibt (höchstens 1 px), die
+Ordnungslinie eines gezogenen Punkts bleibt gerade (höchstens 1 px); schwenken in jedem Feld; die Front wenden; Tab zurück und wieder hin;
+Bild.
+
+**S18 Der Tropfen an der Ecke einer Einzelansicht.** In der eingerasteten Seite, Front und Top sitzt der Tropfen der Kreuzung an der Ecke
+des Bilds, an der in den Vier Ansichten ihre Kreuzung liegt: Seite unten links, Front unten rechts (der Ansichts-Tropfen rückt dafür nach
+oben), Top oben links (unter „Ozzy“). Zieht man ihn ins Bild, folgt die Kreuzung dem Zeiger: Die Teiler kommen als Haarlinien mit, die
+anderen drei Ansichten gleiten von den Rändern herein, die eigene Ansicht wird zu ihrem Feld; Maßstab und Lage gleiten dabei von der
+Einzelansicht zu den Vier Ansichten. Eine Haarlinie zeigt, ab wo es ganz die Vier Ansichten sind: der Rand des Bereichs, in dem die
+Kreuzung liegen darf (18 % bis 82 % des Bilds). Loslassen davor gleitet zurück in die Einzelansicht, dahinter bleiben die Vier Ansichten
+mit der Kreuzung dort. Doppelklick auf den Tropfen: wie Tab, mit den zuletzt gewählten Proportionen. Eine gewendete Einzelansicht bleibt im
+Feld gewendet (S17). *Probe:* in der Seite den Tropfen von unten links zur Mitte ziehen: nichts springt (höchstens 2 px je Bild), Front,
+Top und Raum gleiten herein; vor der Haarlinie losgelassen gleitet es zurück, dahinter liegt die Kreuzung unter dem Zeiger; Doppelklick;
+Film.
+
+**S19 Der Punkt an der Ecke im Raum.** Im Raum sitzt an der Ecke, an der die drei Wände zusammenstoßen, ein Punkt: der Tropfen der
+Kreuzung, solange die Kiste zu ist. Zieht man an ihm, klappt die Kiste auf, gekoppelt an den Zug. Der Punkt bleibt unter dem Zeiger und wird
+zur Kreuzung der Teiler; wo man ihn hinzieht, liegt am Ende die Kreuzung (so bestimmt man gleich, welches Feld am größten wird). Beim
+Ziehen erscheint eine Haarlinie: ein Kreis um die Ecke, auf ihm ist die Kiste ganz aufgeklappt. Loslassen davor klappt weich wieder zu,
+dahinter bleiben die Vier Ansichten. Doppelklick auf den Punkt klappt von selbst auf, mit den zuletzt gewählten Proportionen. Von hinten oder
+von unten liegt die Ecke der Wände nicht dort, wo die Kiste aufklappt: Dort zeigt der Raum den Punkt nicht, Tab klappt auf wie in S16.
+*Probe:* Ecke ziehen: der Punkt bleibt unter dem Zeiger (höchstens 2 px), die Haarlinie erscheint, auf ihr ist die Kiste ganz offen;
+Loslassen davor und dahinter; die Proportionen danach entsprechen dem Loslassen; Doppelklick; Film.
+
+*Vorschlag zum Rückweg (offen):* In den Vier Ansichten den Tropfen in eine Ecke ziehen, dann füllt die Ansicht dieser Ecke das Bild
+(Seite unten links, Front unten rechts, Top oben links; oben rechts der Raum, die Kiste klappt dabei zu). Das wäre der umgekehrte Weg von
+S18 und S19, mit derselben Haarlinie.
+
 
 ## 5. Ideen für mehr liquid drop
 
