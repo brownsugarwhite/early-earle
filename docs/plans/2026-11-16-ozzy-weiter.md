@@ -390,6 +390,16 @@ statt zu springen. Am Werk nichts.
 je Bild um höchstens 15 % der Fläche (kein Sprung), am Ende ist es weg. (2) Wenn die Kiste aufzuklappen beginnt, steht die Kamera vorn
 rechts oben. (3) Beim Aufklappen ein Gipfel der Geschwindigkeit je Bezugspunkt (wie die Probe zu S10). (4) Zurück kein Schwarz. Dazu hält
 die Probe zu S10 von vorn (dort dreht nichts vorher). Film vorher und nachher.
+*Gebaut (17.11.):* `vorDreh` (die Drehung von Hand, als Fahrt), `vorderseiteZiel` (die nächste Lage, in der die Kamera 0,07 vor allen drei
+Wänden steht), `vierWarten` (aufgeklappt wird, sobald sie 0,01 davor steht: Die alte Wand ist dann ausgeblendet; so überlappen Drehen und
+Aufklappen um drei bis vier Bilder), `hintenRechnen` mit der Kamera des Aufklappens. Wer selbst dreht, bricht ab. Die Drehung dauert je
+nach Winkel 0,25 bis 0,55 s (bei 114° 0,46 s), dazu das Aufklappen wie bisher (0,6 s). Probe `ozzy-auffalten-hinten-fenster.mjs` 1 bis 6
+halten: von hinten (Schwarz vorher 98 % der Fläche) größte Änderung des Schwarz je Bild 7 %, von unten 10 %, das Aufklappen beginnt erst
+vorn rechts oben, nach dem Drehen ein Gipfel je Punkt, zurück ohne Schwarz; die Probe zu S10 hält. Zwischen Drehen und Aufklappen wird es kurz
+langsamer (die Drehung bremst, das Aufklappen beginnt, Tiefpunkt rund 2 px je Bild gegen 13 und 10 px davor und danach): Es bleiben zwei
+Bewegungen. Ganz ohne das ginge es nur, wenn der Raum ein Stück über die Seite hinaus dreht und zurückschwingt, während die Kiste aufklappt.
+Film [`2026-11-17-vier-hinten-vorher-nachher.mp4`](../progress/ozzy/2026-11-17-vier-hinten-vorher-nachher.mp4) (links vorher, rechts
+nachher, zweifach langsamer), dazu [`2026-11-17-vier-hinten.mp4`](../progress/ozzy/2026-11-17-vier-hinten.mp4) groß.
 
 **S17 Zoomen, Schwenken und Wenden in den Vier Ansichten.** *Vorschlag: gekoppelt wie eine technische Zeichnung.* Seite, Front und Top
 teilen einen Maßstab und eine Mitte im Raum (die Seite zeigt x und y um sie, die Front z und y, der Top x und z). Zoomt man in einem Feld,

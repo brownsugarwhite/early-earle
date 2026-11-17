@@ -1,4 +1,4 @@
-# Übergabe: Ozzy (Stand 16.11.2026, mittags)
+# Übergabe: Ozzy (Stand 17.11.2026)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“). Plan mit seinem
 Auftrag wörtlich, Bestandsaufnahme, acht Grundsätzen und acht Phasen: [`docs/plans/2026-11-16-ozzy.md`](../../plans/2026-11-16-ozzy.md).
@@ -300,9 +300,19 @@ der Ansichts-Tropfen unten rechts (`ansichtsTropfen.ts`; Drehen von Hand in `dre
 gewinnt), die Haut wird durchsichtiger, das Grün kräftiger, verdeckte Linien breiter. Probe `ozzy-roentgen-fenster.mjs`.
 
 **S15 Lichtring:** P im Leeren quer über die Form zeigt vor ↩, wo der Loop rundum laufen wird (`werkBlatt.lichtring`, gerechnet mit
-`loopAusSchnitt` wie ↩, nur gelesen; `lichtringZeichnen`). Probe `ozzy-lichtring-fenster.mjs`. Offen in Ozzy danach: dreimal tippen,
-Kneifen zum Auffalten, Würfel mit ebenen Flächen, Pose ohne Regler, Haut gleitet bei ⌘Z. `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
-stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
+`loopAusSchnitt` wie ↩, nur gelesen; `lichtringZeichnen`). Probe `ozzy-lichtring-fenster.mjs`. `?fluss=0` schaltet alle Bewegungen der
+Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“ stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
+
+**Rückmeldung vom 17.11. (wörtlich im Plan „weiter“):** dreimal Tippen fällt weg, „Pose ohne Regler“ gehört zur Maul-Sitzung; neu sind
+S16 bis S19 (Plan). **S16 gebaut** (Aufklappen von hinten): Steht die Kamera nicht vorn rechts oben (dort liegen die Wände so, wie die
+Kiste aufklappt), dreht Tab erst den Raum dorthin (`vorDreh`, Ziel `vorderseiteZiel`, das Aufklappen wartet in `vierWarten`, bis die
+Kamera `VORN_AB` vor allen drei Wänden steht); das Schwarz wird beim Auf- und Zuklappen mit der Kamera des Aufklappens gerechnet, „vorn“
+dreht dabei zur Seite (`hintenRechnen`). Selbst drehen bricht das Warten ab. Probe `ozzy-auffalten-hinten-fenster.mjs` (von hinten, von
+unten), die Probe zu S10 hält von vorn. Film [`2026-11-17-vier-hinten-vorher-nachher.mp4`](../../progress/ozzy/2026-11-17-vier-hinten-vorher-nachher.mp4)
+(links vorher, rechts nachher, zweifach langsamer). Zwischen Drehen und Aufklappen wird es kurz langsamer (zwei Bewegungen). **Geplant,
+Freigabe offen:** S17 Zoomen, Schwenken und Wenden in den Vier Ansichten (Vorschlag gekoppelt wie eine technische Zeichnung), S18 der
+Tropfen an der Ecke einer Einzelansicht, S19 der Punkt an der Ecke im Raum. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19
+auf), Würfel mit ebenen Flächen, Haut gleitet bei ⌘Z.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,

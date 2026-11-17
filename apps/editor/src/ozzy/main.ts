@@ -20,7 +20,7 @@
 // muss zuerst geladen werden: die Schalter des Werks in der Adresse
 import './adresse';
 import { MAUL_WINKEL_MAX, eckenAuto, istEcke } from '@ee/shape/dicht';
-import { Color, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
+import { type Camera, Color, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
 import { FASSUNGEN, type Fassung, Haut, type HautWerte } from '../anfang/haut';
@@ -197,6 +197,18 @@ const kamFalt = new Kamera();
 let vier = 0;
 let vierZiel = 0;
 let vierFahrt: { von: number; t: number } | null = null;
+/**
+ * S16: Die Kiste klappt nur auf, wenn die Kamera vorn rechts oben steht (dort liegen die Front links, der Boden unten, die Seite hinten).
+ * Steht sie woanders, dreht der Raum vorher dorthin (`vorDreh`, Gier und Neigung von Hand), und das Aufklappen wartet (`vierWartet`).
+ */
+let vorDreh: { t: number; dauer: number; g0: number; n0: number; g1: number; n1: number } | null = null;
+let vierWartet = false;
+/**
+ * so weit (Anteil der Richtung) steht die Kamera vor jeder der drei Wände, sobald die Kiste aufklappt (`VORN_AB`: knapp vor der Ebene,
+ * die alte Wand ist dann ausgeblendet), und am Ende der Drehung davor (`VORN_ZIEL`: so klappt sie auf, während die Drehung ausklingt)
+ */
+const VORN_AB = 0.01;
+const VORN_ZIEL = 0.07;
 /** Lage des Teilers: Florians Abweichung von der Lage aus den Maßen der Form (Anteile) und die Feder dorthin */
 const teiler = { bx: 0, by: 0, fx: 0.5, fy: 0.5, zug: false, ueber: 0 };
 
@@ -861,6 +873,8 @@ function ablassen(): void {
   vierZiel = 0;
   vier = 0;
   vierFahrt = null;
+  vorDreh = null;
+  vierWartet = false;
   zustand = 'ab';
   // wurde die Form im Raum geändert, wird ihre Linie die Zeichnung, und die Blase entsteht neu aus ihr
   werkAufsBlatt();
@@ -895,6 +909,8 @@ function nochEinmal(): void {
   vier = 0;
   vierZiel = 0;
   vierFahrt = null;
+  vorDreh = null;
+  vierWartet = false;
   zustand = 'auf';
   T = 0;
   anstossen();
@@ -927,6 +943,8 @@ function neu(): void {
   vier = 0;
   vierZiel = 0;
   vierFahrt = null;
+  vorDreh = null;
+  vierWartet = false;
   film = 0;
   leiste.lage(false);
   leiste.zeichnenErlaubt(true);
@@ -1270,9 +1288,71 @@ function faltKanten(f: Falt, k0: number, rt: number): [number, number] {
 function vierUmschalten(an?: boolean): void {
   if (zustand !== 'ruhe') return;
   vierZiel = (an ?? vierZiel < 0.5) ? 1 : 0;
-  vierFahrt = { von: vier, t: 0 };
   if (vierZiel > 0.5 && ansicht !== 'raum') ansichtSetzen('raum');
+  vierWartet = false;
+  if (vierZiel > 0.5 && vier < 1e-3) {
+    // S16: von hinten, unten oder links erst auf die Vorderseite der Kiste drehen (wie von Hand); aufgeklappt wird, sobald sie dort ist
+    schwung = null;
+    const ziel = ansichtFahrt ? null : vorderseiteZiel();
+    if (ziel) {
+      const [G, N] = gesamtWinkel(nutzer.gier, nutzer.neigung);
+      const [G1, N1] = gesamtWinkel(ziel[0], ziel[1]);
+      const winkel = richtung(G, N).angleTo(richtung(G1, N1));
+      // so lang wie eine Fahrt in eine Ansicht bei 120°, kürzer bei weniger
+      const dauer = Math.min(0.92, Math.max(0.42, (0.8 * winkel) / ((2 * Math.PI) / 3))) * bw.fahrt;
+      vorDreh = { t: 0, dauer, g0: nutzer.gier, n0: nutzer.neigung, g1: ziel[0], n1: ziel[1] };
+    }
+    vierWartet = true;
+    vierFahrt = null;
+    vierWarten();
+  } else {
+    vorDreh = null;
+    vierFahrt = { von: vier, t: 0 };
+  }
   anstossen();
+}
+
+/** Gier und Neigung der Kamera (rad) aus denen von Hand */
+function gesamtWinkel(gierHand: number, neigungHand: number): [number, number] {
+  return [(werte.gier * Math.PI) / 180 + gierHand, (werte.neigung * Math.PI) / 180 + neigungHand];
+}
+
+/** S16: steht die Kamera vorn rechts oben, vor allen drei Wänden der Kiste (mit `ab` Abstand zu ihren Ebenen)? */
+function vorKiste(gierHand: number, neigungHand: number, ab = VORN_AB): boolean {
+  const [G, N] = gesamtWinkel(gierHand, neigungHand);
+  const d = richtung(G, N);
+  return d.x >= ab && d.y >= ab && d.z >= ab;
+}
+
+/**
+ * S16: wohin der Raum vor dem Aufklappen dreht (Gier und Neigung von Hand), oder null, wenn die Kamera schon vor der Kiste steht: die
+ * nächste Lage vorn rechts oben, `VORN_ZIEL` vor den Wänden.
+ */
+function vorderseiteZiel(): [number, number] | null {
+  if (vorKiste(nutzer.gier, nutzer.neigung)) return null;
+  const [G, N] = gesamtWinkel(nutzer.gier, nutzer.neigung);
+  const ab = VORN_ZIEL;
+  const n = Math.min(1.2, Math.max(N, Math.asin(ab)));
+  const c = Math.cos(n);
+  const lo = Math.asin(Math.min(1, ab / c));
+  const hi = Math.acos(Math.min(1, ab / c));
+  const g0 = winkelZu(0, G);
+  let g = g0;
+  if (g0 < lo || g0 > hi) g = Math.abs(winkelZu(g0, lo) - g0) <= Math.abs(winkelZu(g0, hi) - g0) ? lo : hi;
+  return [nutzer.gier + (winkelZu(G, g) - G), nutzer.neigung + (n - N)];
+}
+
+/** S16: wartet das Aufklappen und steht die Kamera vor der Kiste (oder dreht nichts mehr): jetzt aufklappen */
+function vierWarten(): void {
+  if (!vierWartet) return;
+  if (vierZiel < 0.5 || zustand !== 'ruhe') {
+    vierWartet = false;
+    return;
+  }
+  if (vorKiste(nutzer.gier, nutzer.neigung) || (!vorDreh && !ansichtFahrt)) {
+    vierWartet = false;
+    vierFahrt = { von: vier, t: 0 };
+  }
 }
 
 // ---------- Bild ----------
@@ -1435,6 +1515,17 @@ function bild(dt: number): boolean {
     if (t >= 1) ansichtFahrt = null;
     aktiv = true;
   }
+  // S16: vor dem Aufklappen auf die Vorderseite der Kiste drehen (wie von Hand: die Wände wechseln weich, die Kante wandert aus dem Bild)
+  if (vorDreh) {
+    vorDreh.t += dt / Math.max(0.05, vorDreh.dauer);
+    const t = Math.min(1, vorDreh.t);
+    const e = t * t * t * (t * (t * 6 - 15) + 10);
+    nutzer.gier = vorDreh.g0 + (vorDreh.g1 - vorDreh.g0) * e;
+    nutzer.neigung = vorDreh.n0 + (vorDreh.n1 - vorDreh.n0) * e;
+    if (t >= 1) vorDreh = null;
+    aktiv = true;
+  }
+  vierWarten();
   if (zustand !== 'ruhe' && zustand !== 'auf' && flach > 0) flach = 0;
   if (vierFahrt) {
     vierFahrt.t += dt / Math.max(0.05, bw.fahrt);
@@ -2595,9 +2686,8 @@ function heimJetzt(): Vector3 {
  * Die Kante der Blaupause (wie `sigmaWerte` in `/editor`): eine Gerade im Bild, senkrecht zur Projektion von „vorn“, im Abstand
  * A · cos · 1,5 · Halbmesser / sin von der Mitte der Form; bei 90° geht sie durch die Mitte. Als Kante einer Fläche (innen = hinten).
  */
-function kanteMitHeim(heim: Vector3, vp: Matrix4): number[] {
+function kanteMitHeim(heim: Vector3, vp: Matrix4, c: Camera = kam.aktiv): number[] {
   const e = raum!;
-  const c = kam.aktiv;
   const vor = new Vector3();
   c.getWorldDirection(vor);
   const re = new Vector3().setFromMatrixColumn(c.matrixWorld, 0).normalize();
@@ -2616,11 +2706,15 @@ function kanteMitHeim(heim: Vector3, vp: Matrix4): number[] {
   return [-nx / len, -ny / len, -Math.max(-1e7, Math.min(1e7, (s0 - nx * mx - ny * my) / len))];
 }
 
-/** die Rückseite in diesem Bild: die Kante gegen „vorn“ (eingerastet die Ansicht, im Raum die Hausansicht, bei Fahrten gedreht) */
+/**
+ * die Rückseite in diesem Bild: die Kante gegen „vorn“ (eingerastet die Ansicht, im Raum die Hausansicht, bei Fahrten gedreht). S16: Beim
+ * Auf- und Zuklappen mit der Kamera des Aufklappens, „vorn“ dreht dabei von der Hausansicht zur Seite: Die Kante wandert aus dem Bild.
+ */
 function hintenRechnen(): Hinten | null {
   const e = raum;
-  if (!e || zustand === 'blatt' || vier > 0.02) return null;
-  const k = kanteMitHeim(heimJetzt(), vpJetzt());
+  const f = faltJetzt;
+  if (!e || zustand === 'blatt' || (vier > 1e-3 && (!f || f.e > 0.999))) return null;
+  const k = f ? kanteMitHeim(kugelMitte(heimJetzt(), VORN.seite, f.e), f.vp, kamFalt.aktiv) : kanteMitHeim(heimJetzt(), vpJetzt());
   const h: Hinten = { kanten: [...k, 0, 0, 1e6, 0, 0, 1e6, 0, 0, 1e6, 0, 0, 1e6], zahl: 1 };
   // nur, wenn sie ins Bild reicht (eine Halbebene: dann an einer Ecke)
   const wd = W * D;
@@ -2834,6 +2928,14 @@ let letzteZeit = 0;
 /** Drehen von Hand beginnen (Ziehen ins Leere, ein Finger, der Ansichts-Tropfen): Zeiger bei (x, y), CSS-Pixel */
 function drehenBeginnen(x: number, y: number, t: number): void {
   schwung = null;
+  // S16: wer während der Drehung vor dem Aufklappen selbst dreht, bricht das Aufklappen ab
+  if (vorDreh || vierWartet) {
+    vorDreh = null;
+    if (vierWartet) {
+      vierWartet = false;
+      vierZiel = 0;
+    }
+  }
   drehen = { x, y, gier: nutzer.gier, neigung: nutzer.neigung, vg: 0, vn: 0, t, lx: x, ly: y };
 }
 
@@ -4184,7 +4286,7 @@ const haken = {
     return b;
   },
   /** Blick: Ansicht, gewendet, wie flach, Gier und Neigung von Hand (rad), Maßstab (Bildpunkte je Pixel der Welt), Schwung */
-  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: kanteMitte, kanteSichtbar, rueckseite: rueckseite(ansicht), hinten: hintenJetzt?.zahl ?? 0, blatt: blattModus(), zoom: nutzer.zoom, schwenk: [nutzer.schwenkX, nutzer.schwenkY], stift: stiftGesehen, finger: finger.size, geste: geste !== null }),
+  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: kanteMitte, kanteSichtbar, rueckseite: rueckseite(ansicht), hinten: hintenJetzt?.zahl ?? 0, blatt: blattModus(), zoom: nutzer.zoom, schwenk: [nutzer.schwenkX, nutzer.schwenkY], stift: stiftGesehen, finger: finger.size, geste: geste !== null, vorKiste: vorKiste(nutzer.gier, nutzer.neigung), vorDreh: vorDreh !== null, vierWartet }),
   /** wie dunkel die Rückseite an einem Punkt (CSS) ist, und die Mitte der fernen Wand einer Achse im Bild (CSS) */
   dunkelBei: (x: number, y: number) => hintenBei(hintenJetzt, x * D, y * D),
   wandMitte: (achse: 0 | 1 | 2) => {
