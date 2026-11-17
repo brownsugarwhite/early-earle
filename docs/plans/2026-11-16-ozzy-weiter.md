@@ -527,7 +527,7 @@ gesenkt, weil sich eine Linie knapp hinter der Haut erst verjüngt, bevor sie gr
 und zum Röntgen; beide Studien laufen. Film [`2026-11-17-linien-koerper-fahrt.mp4`](../progress/ozzy/2026-11-17-linien-koerper-fahrt.mp4)
 (auf, zu, Front einrasten und lösen; echte Geschwindigkeit).
 
-**S21 Kanten gleiten statt auszublenden.** *Heute:* Dreht man den Raum über eine Wand hinweg, wird ihre Zeichnung samt den Kanten der Ecke
+**S21 Kanten gleiten statt auszublenden (am 17.11. ganz wieder entfernt, siehe unten).** *Heute:* Dreht man den Raum über eine Wand hinweg, wird ihre Zeichnung samt den Kanten der Ecke
 gleichmäßig dünner bis zur Haarlinie (Stärke der Wand), die Punkte verschwinden auf einmal, auf der anderen Seite kommt alles ebenso
 zurück. Beim Aufklappen verschwinden die Wände des Raums im ersten Bild, die Felder übernehmen. *Vorschlag:* Keine Linie blendet aus. Muss
 eine Zeichnung die Seite wechseln, gleitet sie durch den Raum zur anderen Wand, unterwegs verjüngt (an den Enden zuerst, in der Mitte des
@@ -562,6 +562,14 @@ bis S20, zu den Ansichten und zum Bearbeiten halten. Film
 [`2026-11-17-raum-gleiten-waende.mp4`](../progress/ozzy/2026-11-17-raum-gleiten-waende.mp4) (links die erste Fassung, rechts jetzt), Bild
 [`2026-11-17-raum-gleiten-waende.png`](../progress/ozzy/2026-11-17-raum-gleiten-waende.png) (die erste Kreuzung, oben die erste Fassung,
 unten jetzt); [`2026-11-17-raum-gleiten.mp4`](../progress/ozzy/2026-11-17-raum-gleiten.mp4) zeigt jetzt den neuen Stand.
+*Entfernt (17.11., Florian: „mach das mit dem gleiten bitte komplett wieder raus. Ich glaube da haben wir uns missverstanden.“):* Beide
+Fassungen sind ganz heraus. Der Code (`main.ts`, `werkBlatt.ts`, `netz.ts`, `verhalten.ts`) steht wieder Zeichen für Zeichen auf dem Stand
+vor S21 (`68ebfc41`): Dreht man über eine Wand, wird ihre Zeichnung samt den Kanten der Ecke dünner bis zur Haarlinie, die Punkte
+verschwinden unter halber Stärke; beim Aufklappen vergehen die Kanten der Ecke, die Teiler wachsen. Die Probe `ozzy-gleiten-fenster.mjs`
+ist gelöscht; das Filmskript `scripts/ozzy/raum-dreh-film.mjs` bleibt (es zeigt jeden Stand). Die Proben zu S16, S18/S19 und S20 halten.
+Film danach: [`2026-11-17-raum-ohne-gleiten.mp4`](../progress/ozzy/2026-11-17-raum-ohne-gleiten.mp4). Die Filme und Bilder der beiden
+Fassungen bleiben als Nachweis, was nicht gemeint war. Was er mit „an ihre Stelle gleiten“ gemeint hat, ist offen: nicht neu bauen, bevor
+er es beschrieben hat.
 
 Reihenfolge: S17, S18 und S19 (mit dem Rückweg), dann S20 und S21.
 

@@ -2033,9 +2033,9 @@ export class Verhalten {
     const alsTropfen = new Set<number>();
     for (const t of this.tropfen) if (t.ziel.art === 'punkt') alsTropfen.add(t.ziel.pi);
     this.netz.punkte.forEach((p, pi) => {
-      if ((!p.sichtbar && !p.zeigen) || alsTropfen.has(pi)) return;
-      // gewählt: ein Tropfen, ein wenig größer (Ozzy, S21: dazu seine Größe)
-      const r = w.punktRadius * (1 + 0.6 * (this.auswahlF.get(pi)?.x ?? 0)) * (p.gross ?? 1);
+      if (!p.sichtbar || alsTropfen.has(pi)) return;
+      // gewählt: ein Tropfen, ein wenig größer
+      const r = w.punktRadius * (1 + 0.6 * (this.auswahlF.get(pi)?.x ?? 0));
       push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(r), R(r), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0, this.raum?.bereich?.('punkt', pi) ?? 0);
     });
     // Tropfen mit Hals

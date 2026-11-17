@@ -1,4 +1,4 @@
-// Film: der Raum gedreht (S21 im Plan „wie es weitergeht“, 17.11.2026), an „strange bird“ (NAME), in echter Geschwindigkeit (60 Bilder je
+// Film: der Raum gedreht (gebaut für S21 im Plan „wie es weitergeht“, das am 17.11.2026 wieder entfernt wurde; zeigt jeden Stand), an „strange bird“ (NAME), in echter Geschwindigkeit (60 Bilder je
 // Sekunde, Bild für Bild gerechnet): einmal um 360° um die Hochachse, dann unter den Boden und zurück, dann Tab auf und zu.
 // Aufruf aus apps/editor, Ozzy auf 5205: node scripts/ozzy/raum-dreh-film.mjs <ziel.mp4> [zusatz der Adresse]
 import { chromium } from '@playwright/test';

@@ -323,11 +323,12 @@ Punkt an der Ecke der Kiste im Raum (Kreis als Haarlinie, die Kiste klappt mit d
 Studie (Umriss als Hülle, Verdecktes je Bildpunkt; `linienKoerper`, `feldAnsicht`, `Flaeche.tiefe`; in `fluessig.ts` durchsichtig, mehrere
 Ansichten, eigene Tiefe, Deckung). Probe `ozzy-linien-koerper-fenster.mjs`, Bilder `2026-11-17-linien-koerper*.png`; `?koerper=0` zum
 Vergleich. Nachgeschärft: Hülle hinter der Haut (keine kurzen Striche), weicher Übergang je Bildpunkt (Tinte verjüngt sich ins Grün,
-Breite aus derselben Tiefe), Körper auf den Wänden beim Aufklappen und mit der Fahrt beim Einrasten (Film `2026-11-17-linien-koerper-fahrt.mp4`). **S21 gebaut:** Beim Drehen bleiben die Zeichnungen an ihren Wänden (schmaler bis nichts, dann auf der anderen Wand wieder voll; Florian:
-„die linien sollen immer an den wänden bleiben“, die erste Fassung fuhr durch die Form), die Kanten der Ecke gleiten an den Wänden entlang
-(`wandGleiten`, `gleitEcke`), Punkte schrumpfen statt zu verschwinden; beim Aufklappen werden die Kanten an der Ecke zu den Teilern (keine zweiten
-Linien mehr). Probe `ozzy-gleiten-fenster.mjs`, Filme `2026-11-17-raum-gleiten*.mp4`. Davor stand: S20 Linienansichten wie in der Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
-und S21 Kanten gleiten statt auszublenden. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
+Breite aus derselben Tiefe), Körper auf den Wänden beim Aufklappen und mit der Fahrt beim Einrasten (Film `2026-11-17-linien-koerper-fahrt.mp4`). **S21 (Kanten gleiten) ganz wieder entfernt** (Florian, 17.11.: „mach das mit dem
+gleiten bitte komplett wieder raus. Ich glaube da haben wir uns missverstanden.“): Zwei Fassungen trafen es nicht (die Wände fuhren durch
+die Form; dann blieben die Zeichnungen an den Wänden und nur die Eckkanten glitten). Der Code steht wieder auf dem Stand vor S21
+(`68ebfc41`), die Probe ist gelöscht, die Filme `2026-11-17-raum-gleiten*.mp4` bleiben als Nachweis; Stand danach
+`2026-11-17-raum-ohne-gleiten.mp4`. Nicht neu bauen, bevor er beschrieben hat, was er meinte. Seine Bilder zu S20:
+`docs/look/ozzy/2026-11-17-florian-linien-*.png`. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
 gleitet bei ⌘Z.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

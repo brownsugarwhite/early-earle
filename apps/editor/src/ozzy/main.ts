@@ -1228,8 +1228,7 @@ function eckTropfenOrt(): [number, number] | null {
   if (ansicht !== 'raum') return flach >= 0.999 ? eckeVon(ansicht) : null;
   // im Raum nur von vorn rechts oben (S16): dort liegen die Wände so, wie die Kiste aufklappt
   if (flach > 1e-3 || !vorKiste(nutzer.gier, nutzer.neigung)) return null;
-  // S21: dort, wo die Kanten die Ecke gerade zeigen
-  const P = projizieren(gleitEcke(), vpJetzt());
+  const P = projizieren(new Vector3(e.cx - e.L, e.cy - e.L, -e.L), vpJetzt());
   return [P[0] / D, P[1] / D];
 }
 
@@ -1279,7 +1278,8 @@ function einzelZiel(): { cx: number; cy: number; s: number } {
 
 /** die Ecke der Kiste im Raum, wie sie ohne Vier Ansichten im Bild läge (CSS-Pixel) */
 function raumEcke(): [number, number] {
-  const q = gleitEcke().applyMatrix4(new Matrix4().multiplyMatrices(projRaum, kam.aktiv.matrixWorldInverse));
+  const e = raum!;
+  const q = new Vector3(e.cx - e.L, e.cy - e.L, -e.L).applyMatrix4(new Matrix4().multiplyMatrices(projRaum, kam.aktiv.matrixWorldInverse));
   return [((q.x + 1) / 2) * W, ((1 - q.y) / 2) * H];
 }
 
@@ -1574,18 +1574,7 @@ type Falt = {
   kT: number;
   uF: number;
   uT: number;
-  /** S21: von der Ecke an den Wänden (±L) zur Ecke, wie ihre Kanten im Raum gerade geglitten sind; vergeht im ersten Drittel */
-  eckeVersatz: Vector3;
 };
-
-/** S21: der Versatz der Kanten an der Ecke beim Stand `e` (ohne die Richtung der Kante, `achse`; −1: ganz) */
-function eckeVersatzBei(f: Falt, e: number, achse = -1): Vector3 {
-  const v = f.eckeVersatz.clone().multiplyScalar(1 - glatt(Math.min(1, e / 0.3)));
-  if (achse === 0) v.x = 0;
-  else if (achse === 1) v.y = 0;
-  else if (achse === 2) v.z = 0;
-  return v;
-}
 let faltJetzt: Falt | null = null;
 
 /**
@@ -1630,13 +1619,9 @@ function faltRechnen(): Falt | null {
     const yh = e.cy + sw[1] * e.L;
     const xhF = e.cx + (F.tx - mxS) / s4;
     const yhF = e.cy - (F.ty - myS) / s4;
-    // S21: im Raum zeigen die Kanten die Ecke dort, wohin sie an den Wänden geglitten ist
-    const versatz = gleitEcke()
-      .sub(new Vector3(xh, yh, sw[2] * e.L))
-      .multiplyScalar(1 - glatt(Math.min(1, v / 0.3)));
-    const ecke = new Vector3(xh + (xhF - xh) * v, yh + (yhF - yh) * v, sw[2] * e.L)
-      .add(versatz)
-      .applyMatrix4(new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse));
+    const ecke = new Vector3(xh + (xhF - xh) * v, yh + (yhF - yh) * v, sw[2] * e.L).applyMatrix4(
+      new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse),
+    );
     ox = (2 * faltAnker[0]) / W - 1 - ecke.x;
     oy = 1 - (2 * faltAnker[1]) / H - ecke.y;
   }
@@ -1659,7 +1644,6 @@ function faltRechnen(): Falt | null {
     kT: 0,
     uF: 0,
     uT: 0,
-    eckeVersatz: gleitEcke().sub(new Vector3(e.cx + sw[0] * e.L, e.cy + sw[1] * e.L, sw[2] * e.L)),
   };
   // Die Mitte der Zeichnungen der Front und des Bodens gleitet im Bild auf gerader Bahn gleichmäßig an ihren Platz (ohne das liefe sie
   // erst nach außen und dann zurück, weil die Wand beim Aufklappen größer wird und sich dreht): Dafür gleitet sie auf ihrer Wand etwas
@@ -1824,53 +1808,44 @@ function faltKanten(f: Falt, k0: number, rt: number): [number, number] {
   const t = f.e;
   const { xa, xb, ya, yb, rF, rT } = faltRahmen(f);
   const haar = (linienWerte.innen / 2) * D * Math.sin(Math.PI * t);
-  // S21: Die Kanten an der Ecke werden beim Aufklappen selbst zu den Armen der Teiler (ihre Länge wächst mit den Wänden): Ihre Breite geht
-  // stetig von der Kante im Raum in die des Teilers über, nichts blendet aus oder kommt daneben neu dazu
-  const teilerBreite = (linienWerte.innen / 2) * D;
-  const ecke0 = 0.14 * D * k0;
-  const ecke = ecke0 + (teilerBreite - ecke0) * glatt(t);
+  const ecke = 0.14 * D * k0 * (1 - t);
   const g = K.neueGruppe();
-  // S21: Die Kanten an der Ecke beginnen dort, wohin sie im Raum an den Wänden geglitten sind (`achse`: ihre Richtung, längs der sie nicht
-  // verschoben werden)
-  const strich = (a: Vector3, b: Vector3, anEcke: boolean, achse = -1): void => {
-    const r = anEcke ? ecke : haar;
+  const strich = (a: Vector3, b: Vector3, anEcke: boolean): void => {
+    const r = haar + (anEcke ? ecke : 0);
     if (r < 0.004 * D) return;
-    const v = anEcke ? eckeVersatzBei(f, t, achse) : new Vector3();
-    const [ax, ay] = projizieren(a.clone().add(v), f.vp);
-    const [bx, by] = projizieren(b.clone().add(v), f.vp);
+    const [ax, ay] = projizieren(a, f.vp);
+    const [bx, by] = projizieren(b, f.vp);
     K.push(ax, ay, bx, by, r, r, g, 0, false);
   };
   const z = f.zh;
   // die Seite: Kanten zur Front (x der Front) und zum Boden (y des Bodens) gehören zur Ecke
-  strich(new Vector3(xa, ya, z), new Vector3(xa, yb, z), sw[0] < 0, 1);
-  strich(new Vector3(xb, ya, z), new Vector3(xb, yb, z), sw[0] > 0, 1);
-  strich(new Vector3(xa, ya, z), new Vector3(xb, ya, z), sw[1] < 0, 0);
-  strich(new Vector3(xa, yb, z), new Vector3(xb, yb, z), sw[1] > 0, 0);
+  strich(new Vector3(xa, ya, z), new Vector3(xa, yb, z), sw[0] < 0);
+  strich(new Vector3(xb, ya, z), new Vector3(xb, yb, z), sw[0] > 0);
+  strich(new Vector3(xa, ya, z), new Vector3(xb, ya, z), sw[1] < 0);
+  strich(new Vector3(xa, yb, z), new Vector3(xb, yb, z), sw[1] > 0);
   // die Front: ihre Kante mit der Seite, mit dem Boden, die beiden anderen
-  strich(aufWand('front', 0, ya, f), aufWand('front', 0, yb, f), true, 1);
-  strich(aufWand('front', 0, ya, f), aufWand('front', rF, ya, f), sw[1] < 0, 2);
-  strich(aufWand('front', 0, yb, f), aufWand('front', rF, yb, f), sw[1] > 0, 2);
+  strich(aufWand('front', 0, ya, f), aufWand('front', 0, yb, f), true);
+  strich(aufWand('front', 0, ya, f), aufWand('front', rF, ya, f), sw[1] < 0);
+  strich(aufWand('front', 0, yb, f), aufWand('front', rF, yb, f), sw[1] > 0);
   strich(aufWand('front', rF, ya, f), aufWand('front', rF, yb, f), false);
   // der Boden
-  strich(aufWand('top', 0, xa, f), aufWand('top', 0, xb, f), true, 0);
-  strich(aufWand('top', 0, xa, f), aufWand('top', rT, xa, f), sw[0] < 0, 2);
-  strich(aufWand('top', 0, xb, f), aufWand('top', rT, xb, f), sw[0] > 0, 2);
+  strich(aufWand('top', 0, xa, f), aufWand('top', 0, xb, f), true);
+  strich(aufWand('top', 0, xa, f), aufWand('top', rT, xa, f), sw[0] < 0);
+  strich(aufWand('top', 0, xb, f), aufWand('top', rT, xb, f), sw[0] > 0);
   strich(aufWand('top', rT, xa, f), aufWand('top', rT, xb, f), false);
   // die Teiler: Geraden durch die beiden Kanten im Bild, senkrecht bis oben und unten, waagrecht bis links und rechts
-  const vF = eckeVersatzBei(f, t, 1);
-  const vT = eckeVersatzBei(f, t, 0);
-  const [ax, ay] = projizieren(aufWand('front', 0, ya, f).add(vF), f.vp);
-  const [bx, by] = projizieren(aufWand('front', 0, yb, f).add(vF), f.vp);
-  const [cx, cy] = projizieren(aufWand('top', 0, xa, f).add(vT), f.vp);
-  const [dx, dy] = projizieren(aufWand('top', 0, xb, f).add(vT), f.vp);
+  const [ax, ay] = projizieren(aufWand('front', 0, ya, f), f.vp);
+  const [bx, by] = projizieren(aufWand('front', 0, yb, f), f.vp);
+  const [cx, cy] = projizieren(aufWand('top', 0, xa, f), f.vp);
+  const [dx, dy] = projizieren(aufWand('top', 0, xb, f), f.vp);
   const rand = bw.vierRand * D;
   const oben = (document.body.classList.contains('bild') ? bw.vierRand : 64) * D;
   const mx = Math.abs(by - ay) > 1e-6 ? (bx - ax) / (by - ay) : 0;
   const my = Math.abs(dx - cx) > 1e-6 ? (dy - cy) / (dx - cx) : 0;
-  // S21: keine durchgehenden Teiler neben den Kanten (sie wären eine zweite Linie, die aus dem Nichts kommt)
-  void rt;
-  void oben;
-  void rand;
+  if (rt > 0.004 * D) {
+    K.push(ax + mx * (oben - ay), oben, ax + mx * (H * D - rand - ay), H * D - rand, rt, rt, g, 0, false);
+    K.push(rand, cy + my * (rand - cx), W * D - rand, cy + my * (W * D - rand - cx), rt, rt, g, 0, false);
+  }
   // Kreuzung: x = ax + mx (y − ay), y = cy + my (x − cx)
   const kx = (ax + mx * (cy - my * cx - ay)) / (1 - mx * my);
   return [kx, cy + my * (kx - cx)];
@@ -2538,65 +2513,15 @@ function zeigerGestaltSchritt(z: Szene['zeiger'], dt: number): NonNullable<Szene
 }
 
 /** sichtbare Wand je Achse (Vorzeichen) und ihre Stärke */
-/**
- * S21 (Florian, 17.11.: „Können die kanten im raum statt auszufaden auch durch verjüngung und verdickung an ihre stelle gleiten?“; dann:
- * „das durch das modell durchfahren gefällt mir nicht. die linien sollen immer an den wänden bleiben“): Dreht die Kamera über die Ebene
- * einer Wand, bleibt ihre Zeichnung an ihrer Wand und wird schmaler, bis nichts mehr von ihr da ist; genau dann wechselt sie auf die andere
- * Wand und wird dort wieder voll (`wandLage`, `wandBreite`). Die Kanten der Ecke gleiten dabei an den Wänden entlang (hinten und am Boden,
- * nie durch die Form) zur neuen Ecke, unterwegs schmaler (`lage`, `breite`). Ganz an ihrem Platz ist alles, sobald die Kamera `GLEIT_AB`
- * (Anteil der Richtung) vor der Ebene steht.
- */
-const GLEIT_AB = 0.2;
-const GLEIT_SCHMAL = 0.25;
-function wandGleiten(): {
-  lage: [number, number, number];
-  breite: [number, number, number];
-  wandLage: [number, number, number];
-  wandBreite: [number, number, number];
-} {
-  const e = raum!;
-  const d = kam.aktiv.position.clone().sub(new Vector3(e.cx, e.cy, 0)).normalize();
-  const dd = [d.x, d.y, d.z];
-  const mitte = [e.cx, e.cy, 0];
-  const lage: [number, number, number] = [0, 0, 0];
-  const breite: [number, number, number] = [1, 1, 1];
-  const wandLage: [number, number, number] = [0, 0, 0];
-  const wandBreite: [number, number, number] = [1, 1, 1];
-  for (const a of [0, 1, 2] as const) {
-    const u = Math.max(-1, Math.min(1, dd[a]! / GLEIT_AB));
-    const t = Math.abs(u);
-    const glatt3 = t * t * (3 - 2 * t);
-    // die Ecke: auf der abgewandten Seite (−1 … 1, stetig, am Platz ohne Ruck)
-    lage[a] = mitte[a]! - ((3 * u - u * u * u) / 2) * e.L;
-    breite[a] = GLEIT_SCHMAL + (1 - GLEIT_SCHMAL) * glatt3;
-    // die Zeichnung: immer an der abgewandten Wand, beim Wechsel ohne Breite
-    wandLage[a] = mitte[a]! + (dd[a]! >= 0 ? -1 : 1) * e.L;
-    wandBreite[a] = glatt3;
-  }
-  return { lage, breite, wandLage, wandBreite };
-}
-
-/** S21: die Ecke der Kiste, wie ihre Kanten sie gerade zeigen (an den Wänden entlang geglitten) */
-function gleitEcke(): Vector3 {
-  const g = wandGleiten().lage;
-  return new Vector3(g[0], g[1], g[2]);
-}
-
-function waendeJetzt(
-  m: Moment,
-  wieImRaum = false,
-): { s: [number, number, number]; staerke: [number, number, number]; lage: [number, number, number]; kante: [number, number, number]; ecke: [number, number, number] } {
+function waendeJetzt(m: Moment, wieImRaum = false): { s: [number, number, number]; staerke: [number, number, number] } {
   const g6 = wandGewichte();
   const r = raumSicht();
   const s: [number, number, number] = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
   const zeit = [m.waende, m.waende, m.schatten];
   // S10: beim Auffalten zeigen die Felder die Zeichnungen der Wände, von Anfang an (`wieImRaum`: die Stärke ohne die Vier Ansichten)
   const weg = wieImRaum || vier <= 1e-3 ? 1 : 0;
-  // S21: Die Stärke ist die Breite der Zeichnung an ihrer Wand (sie wird schmaler, sie blendet nicht aus)
-  const G = wandGleiten();
-  const staerke = [0, 1, 2].map((a) => G.wandBreite[a]! * r * zeit[a]! * weg) as [number, number, number];
-  const kante = [0, 1, 2].map((a) => G.breite[a]! * r * zeit[a]! * weg) as [number, number, number];
-  return { s, staerke, lage: G.wandLage, kante, ecke: G.lage };
+  const staerke = [0, 1, 2].map((a) => Math.max(g6[2 * a]!, g6[2 * a + 1]!) * r * zeit[a]! * weg) as [number, number, number];
+  return { s, staerke };
 }
 
 /**
@@ -2606,7 +2531,7 @@ function waendeJetzt(
 function wandLinien(vp: Matrix4, m: Moment): void {
   const k = koerper!;
   const e = raum!;
-  const { s, staerke, lage: lagen, kante: kantenStaerke, ecke: eckLage } = waendeJetzt(m);
+  const { s, staerke } = waendeJetzt(m);
   const r0 = (linienWerte.umriss / 2) * D * bw.wandLinien;
   const mitte = [e.cx, e.cy, 0];
   // der Rahmen (die gezeichnete Linie) auf dem Weg zur Rückwand; dort wird er zur Zeichnung der Seite
@@ -2633,9 +2558,7 @@ function wandLinien(vp: Matrix4, m: Moment): void {
     if (werkGezeigt && achse === 2 && mitteDa()) continue;
     const w = achse * 2 + (s[achse] > 0 ? 1 : 0);
     const ueber = wandSicht[w]!;
-    // S21: wo die Wand gerade ist (sie gleitet beim Drehen über ihre Ebene auf die andere Seite)
-    const lage = lagen[achse];
-    void mitte;
+    const lage = mitte[achse]! + s[achse] * e.L;
     const legen = (x: number, y: number, z: number): [number, number] => {
       const q = new Vector3(x, y, z);
       if (achse === 0) q.x = lage;
@@ -2671,24 +2594,18 @@ function wandLinien(vp: Matrix4, m: Moment): void {
       }
     }
   }
-  // Kanten der fernen Ecke: drei feinste Haarlinien vom Eckpunkt aus. S21: Die Ecke gleitet mit den Wänden; jede Kante liegt in zwei
-  // Wänden, spannt über die ganze Kiste und ist so schmal wie die schmalere der beiden auf ihrem Weg
-  const c = new Vector3(eckLage[0], eckLage[1], eckLage[2]);
-  const kantenListe: [Vector3, Vector3, number][] = [
-    [c.clone().setX(e.cx - e.L), c.clone().setX(e.cx + e.L), Math.min(kantenStaerke[1], kantenStaerke[2])],
-    [c.clone().setY(e.cy - e.L), c.clone().setY(e.cy + e.L), Math.min(kantenStaerke[0], kantenStaerke[2])],
-    [c.clone().setZ(-e.L), c.clone().setZ(e.L), Math.min(kantenStaerke[0], kantenStaerke[1])],
-  ];
-  for (const [a0, b, st] of kantenListe) {
-    const kanten = werte.kanten * st * raumSicht();
-    if (kanten <= 0.01) continue;
+  // Kanten der fernen Ecke: drei feinste Haarlinien vom Eckpunkt aus
+  const kanten = werte.kanten * Math.min(staerke[0], staerke[1], staerke[2]) * raumSicht();
+  if (kanten > 0.01) {
+    const c = new Vector3(e.cx + s[0] * e.L, e.cy + s[1] * e.L, s[2] * e.L);
+    const enden = [c.clone().setX(e.cx - s[0] * e.L), c.clone().setY(e.cy - s[1] * e.L), c.clone().setZ(-s[2] * e.L)];
     const g = K.neueGruppe();
     const r = 0.14 * D * kanten;
     const cam = kam.aktiv;
-    {
+    for (const b of enden) {
       let vorher: [number, number] | null = null;
       for (let j = 0; j <= 32; j++) {
-        const q = a0.clone().lerp(b, j / 32);
+        const q = c.clone().lerp(b, j / 32);
         const vorKamera = q.clone().applyMatrix4(cam.matrixWorldInverse).z < -cam.near * 1.01;
         const cc = q.clone().applyMatrix4(vp);
         if (!vorKamera || Math.abs(cc.x) > 3 || Math.abs(cc.y) > 3) {
@@ -3068,9 +2985,10 @@ function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, brei
 
 /** ein flaches Feld der Vier Ansichten; beim Auf- und Zuklappen auf seiner Wand, die sich aufklappt (wie `felderLinien`) */
 function feldFlaeche(n: FeldAchse, f: Falt, st0: number[]): Flaeche {
+  const e = raum!;
   const { F, s4, sw } = f;
   const achse = ACHSE_VON[n];
-  const lage = [f.xh, f.yh, f.zh][achse]!;
+  const lage = [e.cx, e.cy, 0][achse]! + sw[achse] * e.L;
   const r = F[n];
   // auf dem Weg von der Wand ins Feld so stark und breit wie an der Wand, am Ende wie im Feld
   const t = f.e;
@@ -3108,14 +3026,13 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
   const liste: Flaeche[] = [];
   // Wände (wie `wandLinien`): die drei abgewandten, mit ihrer Stärke. Die Wand der Ansicht, in die es einrastet (oder aus der es kommt),
   // wird zum Blatt: Ihre Zeichnung wandert zur Mitte der Form und wird so stark wie das Blatt (nichts wird überblendet oder doppelt gezeigt)
-  const { staerke, lage: lagen } = waendeJetzt(m);
+  const { s, staerke } = waendeJetzt(m);
   const blatt = blattModus();
   const achsen = blatt ? new Set<number>() : blattAchsen();
   const pb = glatt(flach);
   const g6 = wandGewichte();
   for (const achse of [0, 1, 2] as const) {
-    // S21: wo die Wand gerade ist (sie gleitet beim Drehen über ihre Ebene auf die andere Seite)
-    const wandLage = lagen[achse];
+    const wandLage = [e.cx, e.cy, 0][achse]! + s[achse] * e.L;
     if (achsen.has(achse)) {
       const mitteLage = [e.cx, e.cy, 0][achse]!;
       const st = Math.max(staerke[achse], Math.max(g6[2 * achse]!, g6[2 * achse + 1]!) * flach * flach);
@@ -5310,43 +5227,6 @@ const haken = {
   },
   /** S17: die Felder der Vier Ansichten (CSS-Pixel) und Zoom und Verschiebung je Feld */
   felderJetzt: () => (raum ? felder() : null),
-  /** S21: wo die Wände gerade sind und wie breit ihre Linien (Gleiten), wie viele Punkte auf der Wand einer Achse gezeichnet werden, wie
-   * viele Kapseln fast so lang wie das Bild hoch sind (durchgehende Linien) */
-  gleiten: () => (raum ? { ...wandGleiten(), L: raum.L, cx: raum.cx, cy: raum.cy } : null),
-  /** S21: die Ecke der Kiste im Bild, wie sie im Raum (ohne Vier Ansichten) läge, und wo der Tropfen der Kreuzung beim Aufklappen ist */
-  eckeImRaum: () => (raum ? raumEcke() : null),
-  wandPunkte: (a: Flaeche['a']) =>
-    werkBlatt.netz.punkte.filter((p, pi) => {
-      const F = werkBlatt.flaechen[werkBlatt.anker[pi]?.fl ?? -1];
-      return !!F && F.a === a && F.bereich === undefined && (p.sichtbar || !!p.zeigen);
-    }).length,
-  langeKapseln: () => {
-    // offen: von Rand zu Rand des Bereichs der Vier Ansichten (die Teiler); beim Auf- und Zuklappen: Linien, die außerhalb aller Wände
-    // liegen (so liefen die Teiler bis zum 17.11. quer durchs Bild), höchstens 3 Gerätepunkte daneben gilt als auf einer Wand
-    const B = vierFlaeche();
-    const f = faltJetzt;
-    const imFalt = !!f && f.e < 0.999 && bereicheJetzt.length >= 36;
-    const aufWand = (x: number, y: number): boolean => {
-      for (let w = 0; w < 3; w++) {
-        let drin = true;
-        for (let k = 0; k < 4; k++) {
-          const q = (w * 4 + k) * 3;
-          if (bereicheJetzt[q]! * x + bereicheJetzt[q + 1]! * y + bereicheJetzt[q + 2]! < -3) drin = false;
-        }
-        if (drin) return true;
-      }
-      return false;
-    };
-    let n = 0;
-    for (let i = 0; i < K.n; i++) {
-      const o = i * 12;
-      const [x0, y0, x1, y1] = [K.puffer[o]!, K.puffer[o + 1]!, K.puffer[o + 2]!, K.puffer[o + 3]!];
-      if (imFalt) {
-        if (!aufWand(x0, y0) && !aufWand(x1, y1) && !aufWand((x0 + x1) / 2, (y0 + y1) / 2)) n++;
-      } else if (Math.abs(x1 - x0) >= 0.95 * (B.x1 - B.x0) * D || Math.abs(y1 - y0) >= 0.95 * (B.y1 - B.y0) * D) n++;
-    }
-    return n;
-  },
   /** S20: der weiße Körper: an, wie deckend, in wie vielen Ansichten; Zeit des letzten Bilds (Rechnen, ms) */
   koerper: () => {
     const k = linienKoerper();

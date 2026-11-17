@@ -16,12 +16,6 @@ export interface Punkt {
   verdeckt: boolean;
   /** im Raum: Tiefe zum Betrachter (die Anzeige entscheidet je Bildpunkt, ob der Punkt verdeckt ist) */
   z?: number;
-  /**
-   * Ozzy (S21): Größe des Punkts (Anteil; fehlt: 1). Mit `zeigen` wird er auch gezeichnet, wenn er nicht `sichtbar` (greifbar) ist: Auf einer
-   * Wand, die gerade gleitet, schrumpft er, statt zu verschwinden.
-   */
-  gross?: number;
-  zeigen?: boolean;
 }
 
 export interface Stueck {
