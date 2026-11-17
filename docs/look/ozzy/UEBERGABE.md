@@ -280,7 +280,8 @@ Finger nichts an der Form; zwei Finger zoomen zu den Fingern hin, schwenken (neu
 `kameraSetzen`, vergeht in den Vier Ansichten, „Einpassen“/Pos1 setzt zurück) und drehen verdreht um die Hochachse (wie ein Teller).
 Die Weiche hört in der Fangphase am Fenster zu (`finger`, `geste`, `stiftGesehen`), Safaris eigene Gesten sind abgeschaltet. Knöpfe für
 die Tasten (`#tasten`, nur mit Berührung, lösen die Taste selbst aus). Probe `ozzy-ipad-fenster.mjs`; `?info=1` zeigt Finger und Zeiger.
-Offen: sein Urteil am Gerät; dafür muss der Server im WLAN erreichbar sein (seine Entscheidung). Nebenbei: Der Schalter „Linie an der Spiegelkante“
+Florian: „Ja, im WLAN“ → der Eintrag `ozzy` startet Vite mit `--host`; am iPad `http://<Adresse des Macs im WLAN>:5205/ozzy.html` (mit
+der Adresse, nicht dem Namen `….local`: den lässt Vite nicht zu). Offen: sein Urteil am Gerät. Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

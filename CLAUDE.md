@@ -42,7 +42,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
 
 ## Wo was läuft
 
-- **Eine Linie: Zweig `claude/ozzy` (seit 16.11.)**, Arbeitsbaum `.claude/worktrees/ozzy`, Port 5205, Eintrag `ozzy`. Hier wird
+- **Eine Linie: Zweig `claude/ozzy` (seit 16.11.)**, Arbeitsbaum `.claude/worktrees/ozzy`, Port 5205 (im WLAN erreichbar, fürs iPad), Eintrag `ozzy`. Hier wird
   gebaut, auch am Kern. `claude/editor-grundlayout` (Hauptordner) wird per Fast-Forward nachgezogen. `main` steht auf dem 08.10.
   und bleibt unberührt.
 - **`.claude/worktrees/form-alt`** (Zweig `claude/form-spiegel`, Port 5194, Eintrag `kurven-alt`): **Florians altes Fenster**
