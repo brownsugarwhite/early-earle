@@ -314,6 +314,13 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
   alte Bewegung schob ihn am Ende ein Stück zur Seite); „Fressen“ (`fressenQuellen`, fliegt als Tropfen von dort, wo „Maul“ hing, an
   seinen Platz und wird zur Tafel). Film [`2026-11-17-menue.mp4`](../progress/ozzy/2026-11-17-menue.mp4) (zweifach langsamer; für das
   Maul im Film die Linie erst mit K hart gemacht). Probe Sichern hält.
+- **2, Regler als Tropfen:** *Gebaut:* `reglerTropfen.ts` (eine Feder je Regler, solange er sich bewegt, in kleinen Schritten gerechnet;
+  setzt `--dehn-x`, `--dehn-y`), CSS mit `@property` (der Knopf wächst beim Darüberfahren weich und dehnt sich beim Ziehen in Zugrichtung,
+  schmaler dabei). Die Regler von „Fressen“ haben jetzt denselben Faden und Tropfen. Gemessen (schnell hin und her, echte Zeit): bis 1,69
+  gedehnt, losgelassen schwingt er bis 0,75 nach, am Ende rund. Film [`2026-11-17-regler.mp4`](../progress/ozzy/2026-11-17-regler.mp4).
+- **9, Ordnungslinien:** *Gebaut:* `ordnungslinien()` in `main.ts`: solange Punkte gezogen werden (höchstens zwölf), in den Vier
+  Ansichten feine Fäden von der Seite waagrecht zur Front und senkrecht zum Top, im Raum vom Punkt auf der Haut zu seinen Bildern an den
+  Wänden; grün und fein wie Verdecktes. Film [`2026-11-17-ordnung.mp4`](../progress/ozzy/2026-11-17-ordnung.mp4).
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 

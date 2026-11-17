@@ -240,7 +240,11 @@ body.wende-an #hinweis {
 }
 .fressen input[type='range'] {
   width: 100%;
-  accent-color: var(--tinte);
+  height: 12px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .fressen .zahl {
   text-align: right;
@@ -431,33 +435,61 @@ body.info #info {
   -webkit-appearance: none;
   appearance: none;
 }
-#regler input[type='range']::-webkit-slider-runnable-track {
+/* S13 (liquid drop, Idee 2): Regler als Tropfen auf einem Faden. Der Knopf wächst beim Darüberfahren (`--gross`, weich) und dehnt sich beim
+   Ziehen in Zugrichtung (`--dehn-x`, `--dehn-y`, gesetzt von `reglerTropfen.ts`), losgelassen schwingt er nach. Auch die Regler von „Fressen“. */
+@property --gross {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+@property --dehn-x {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+@property --dehn-y {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+#regler input[type='range'],
+.fressen input[type='range'] {
+  transition: --gross 260ms var(--feder);
+}
+#regler input[type='range']:hover,
+#regler input[type='range']:active,
+.fressen input[type='range']:hover,
+.fressen input[type='range']:active {
+  --gross: 1.7;
+}
+#regler input[type='range']::-webkit-slider-runnable-track,
+.fressen input[type='range']::-webkit-slider-runnable-track {
   height: 0.5px;
   background: var(--tinte);
 }
-#regler input[type='range']::-webkit-slider-thumb {
+#regler input[type='range']::-webkit-slider-thumb,
+.fressen input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 7px;
   height: 7px;
   margin-top: -3.25px;
   border-radius: 50%;
   background: var(--tinte);
-  transition: transform 260ms var(--feder);
+  transform: scale(calc(var(--gross) * var(--dehn-x)), calc(var(--gross) * var(--dehn-y)));
 }
-#regler input[type='range']:hover::-webkit-slider-thumb,
-#regler input[type='range']:active::-webkit-slider-thumb {
-  transform: scale(1.7);
-}
-#regler input[type='range']::-moz-range-track {
+#regler input[type='range']::-moz-range-track,
+.fressen input[type='range']::-moz-range-track {
   height: 0.5px;
   background: var(--tinte);
 }
-#regler input[type='range']::-moz-range-thumb {
+#regler input[type='range']::-moz-range-thumb,
+.fressen input[type='range']::-moz-range-thumb {
   width: 7px;
   height: 7px;
   border: 0;
   border-radius: 50%;
   background: var(--tinte);
+  transform: scale(calc(var(--gross) * var(--dehn-x)), calc(var(--gross) * var(--dehn-y)));
 }
 .laden-liste {
   display: flex;

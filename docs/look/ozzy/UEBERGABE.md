@@ -291,7 +291,9 @@ Idee 7 gebaut: Meldungen tropfen und verdunsten (`hinweisSetzen`, CSS); Idee 5 g
 `tuscheFliessen`, nur die Breiten der Anzeige); Filme `scripts/ozzy/meldung-film.mjs`, `tusche-film.mjs` (mit Messung). Nächste Ideen:
 Idee 4 gebaut: neue Kreuzungen verschmelzen (`kreuzungenNeu`, `verschmelzenTropfen`; `werkBlatt.neueForm` beim Laden). Idee 1 gebaut:
 Menü, „Maul“ und „Fressen“ als Tropfen (`reglerZeigen` mit `reglerOffen`, `fressenQuellen`; Proben prüfen `#marke[aria-expanded]` statt
-`#regler[hidden]`, das Menü schließt sich einen Augenblick lang). Offen: 2 (Regler als Tropfen), 9 (Ordnungslinien), 10 (Ansichts-Tropfen). `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+`#regler[hidden]`, das Menü schließt sich einen Augenblick lang). Idee 2 gebaut: Regler als Tropfen (`reglerTropfen.ts`, CSS `@property`;
+Feder in Teilschritten, sonst wird sie bei ruckelnden Bildern unstet). Idee 9 gebaut: Ordnungslinien (`ordnungslinien()`). Offen: 10
+(Ansichts-Tropfen in der Ecke). `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

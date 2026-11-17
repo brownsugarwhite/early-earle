@@ -36,6 +36,7 @@ import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
 import { Leiste } from './leiste';
+import { reglerDehnung, reglerTropfen } from './reglerTropfen';
 import { type Bereich, type ReglerZeile, feinreglerBauen, werteLesen } from './regler';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -2218,6 +2219,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     K.uebernehmen(sz);
     // S13 (4): Tropfen, die zu neuen Kreuzungen fließen und dort verschmelzen
     for (const t of werkBlatt.verschmelzenTropfen(linienWerte.punktRadius * linienWerte.tropfen)) K.punkt(t.x * D, t.y * D, t.r * D);
+    ordnungslinien();
     // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
     return { zeiger: strichWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv };
   }
@@ -2231,6 +2233,49 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     if (A.zuSehen) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
   });
   return { zeiger: undefined, aktiv: werkBlatt.fliesst };
+}
+
+/**
+ * S13 (liquid drop, Idee 9): Ordnungslinien als feine Fäden, solange Punkte gezogen werden. In den Vier Ansichten von der Seite zur Front
+ * (waagrecht) und zum Top (senkrecht), wie in einer technischen Zeichnung; im Raum vom Punkt zu seinem Bild auf jeder Wand. Grün und fein
+ * wie Verdecktes, so sind sie keine Linien der Form.
+ */
+function ordnungslinien(): void {
+  const z = werk.zug;
+  if (!z || z.griff || zustand !== 'ruhe') return;
+  const gewaehlt = werk.G.auswahl.filter((w) => w.i >= 0).slice(0, 12);
+  if (!gewaehlt.length) return;
+  const imRaum = vier < 0.5 && ansicht === 'raum' && flach < 0.1;
+  if (vier < 0.5 && !imRaum) return;
+  const r = (linienWerte.innen / 2) * D * 0.8;
+  const g = K.neueGruppe();
+  const vp = vpJetzt();
+  for (const w of gewaehlt) {
+    // die Bilder des Punkts auf den Flächen (ohne Spiegelbild), je Blatt
+    const orte = new Map<Flaeche['a'], { x: number; y: number }>();
+    werkBlatt.anker.forEach((A, pi) => {
+      if (A.m || !A.werk.some((q) => q.id === w.l && q.i === w.i)) return;
+      const F = werkBlatt.flaechen[A.fl];
+      const p = werkBlatt.netz.punkte[pi];
+      if (F && p && !orte.has(F.a)) orte.set(F.a, { x: p.x, y: p.y });
+    });
+    if (!imRaum) {
+      const s = orte.get('seite');
+      for (const a of ['front', 'top'] as const) {
+        const o = orte.get(a);
+        if (s && o) K.push(s.x * D, s.y * D, o.x * D, o.y * D, r, r, g, 1, false);
+      }
+      continue;
+    }
+    // im Raum: vom Punkt auf der Haut (wie er gerade gezogen wird) zu jeder Wand
+    const q = werk.alsAnzeige(() => {
+      const p = werk.loops[werk.loopNr(w.l)]?.punkte[w.i];
+      return p ? { ...(werk.zug && !werk.zug.griff ? p.cur : p.ref) } : null;
+    });
+    if (!q) continue;
+    const [px, py] = projizieren(werkInWelt(q), vp);
+    for (const o of orte.values()) K.push(px, py, o.x * D, o.y * D, r, r, g, 1, false);
+  }
 }
 
 // ---------- Pinsel an der Blase (Phase 6) ----------
@@ -3653,6 +3698,9 @@ function sichernKurz(): void {
   else sichernOeffnen();
 }
 
+// S13 (liquid drop, Idee 2): Regler als Tropfen auf einem Faden
+reglerTropfen();
+
 const fassungKnoepfe = $<HTMLSpanElement>('fassungen');
 FASSUNGEN.forEach((name, i) => {
   const b = document.createElement('button');
@@ -4081,6 +4129,11 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** S13 (2): wie weit der Knopf eines Reglers (CSS-Auswahl) gerade gedehnt ist (1 = rund) */
+  reglerDehnung: (auswahl: string): number => {
+    const el = document.querySelector(auswahl);
+    return el instanceof HTMLInputElement ? reglerDehnung(el) : 1;
+  },
   /** S13 (4): wie viele Tropfen gerade zu neuen Kreuzungen fließen */
   verschmelzen: (): number => werkBlatt.verschmelzenTropfen(1).length,
   /** S13 (5): Bogenlänge und halbe Breite je Probe einer Linie (Loop-Kennung) auf der Fläche mit diesem Blatt, nicht gespiegelt (CSS-Pixel) */
