@@ -572,6 +572,28 @@ export class GlattPlan {
   }
 
   /**
+   * Ein stetiger Wert je Rechenpunkt auf die feinen Punkte gebracht (Ozzy: Lage im Muster und Dehnung der Seifenhaut): Ein neuer
+   * Punkt bekommt das Mittel der Enden seiner Kante, der Wert läuft also über jedes Dreieck gleichmäßig. (`weiterreichen` kopiert
+   * stattdessen ein Ende; für die Seifenhaut gab das Stufen, die ihre Dünnschichtfarbe als Scherben zeigte, 17.11.) `ziel`: ein Feld
+   * der richtigen Länge wird wiederverwendet.
+   */
+  mischen(stufen: number, werte: ArrayLike<number>, ziel?: Float32Array): Float32Array {
+    this.sichern(Math.max(1, stufen));
+    const N = this.punkte(stufen);
+    const aus = ziel && ziel.length === N ? ziel : new Float32Array(N);
+    const n0 = this.st[0]!.n;
+    for (let v = 0; v < n0; v++) aus[v] = werte[v]!;
+    for (let s = 0; s < stufen; s++) {
+      const S = this.st[s]!;
+      const A = S.K.a;
+      const B = S.K.b;
+      const n = S.n;
+      for (let i = 0; i < A.length; i++) aus[n + i] = 0.5 * (aus[A[i]!]! + aus[B[i]!]!);
+    }
+    return aus;
+  }
+
+  /**
    * Lagen und Normalen der feinen Punkte (`stufen` = 0: der Rechenpunkte selbst, nur mit den ruhigen Normalen). `lagen`: 3 je Rechenpunkt; `pfade`: 12 je Linienkante in der Reihenfolge von `linien`
    * (Kontrollpunkte von `a` nach `b`); `ruhe`: die Normalen als beruhigtes Feld, so viele Durchgänge (−1: Normalen der gewöhnlich
    * unterteilten Fläche). Die Felder im Ergebnis gehören dem Plan und werden beim nächsten Aufruf mit derselben Zahl an Stufen

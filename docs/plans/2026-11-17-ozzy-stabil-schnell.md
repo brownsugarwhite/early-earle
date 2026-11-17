@@ -131,6 +131,24 @@ wo die Haut gestreckt wird.
   Normalen daneben; du entscheidest, ob es das braucht.
 - Probe: Vergleichsbilder in Ruhe, nach einem Zug mit Netzwechsel, beim Aufblasen, nach ⌘Z; das Maß „Sprünge der Haut“. **Dein Auge.**
 
+**Gebaut (17.11. nachts), dein Urteil steht aus.** Bild:
+[`2026-11-17-a2-seifenhaut-gebaut.png`](../progress/ozzy/2026-11-17-a2-seifenhaut-gebaut.png) (links vorher, Mitte gebaut in Ruhe,
+rechts gebaut nach einem Zug; „strange bird“, gleiche Ansicht).
+- Verfeinern der Anzeige: `GlattPlan.mischen` (Mittel der Kantenenden) statt Kopie eines Endes.
+- Netzwechsel: `uebernehmen` in `werkHaut.ts` nimmt Muster und Dehnung vom nächsten Ort auf dem Netz davor (aus dem Dreieck dort,
+  zwischen seinen Ecken gemischt; Suche über ein Gitter), nicht mehr vom nächsten Punkt.
+- Übergabe von der Blase: Das Muster ist dieselbe Funktion der Lage wie auf der Blase (ihr Bezug in Einheiten des Werks), die
+  Dehnung kommt je Rechenpunkt mit der Zuordnung der Übergabe. Während die Haut in die Form schnalzt, läuft die Dehnung der Blase
+  auf 1: Die Farben kommen an, wenn die Form ankommt. (Gegen die Fläche gemessen zeigte sie den Unterschied zwischen dem Kissen der
+  Blase und der Form; nach dem Laden von „strange bird“ war das ein fleckiges Muster, das bis zu neun Sekunden nachklang.)
+- Die Dehnung klingt nach einer Änderung ganz aus und endet genau bei 1 (höchstens neun Sekunden lang kommen dafür noch Bilder);
+  sie wird nur so weit geführt, wie die Farbe sie zeigt (0,5 bis 6,5).
+- **Gemessen** (`ozzy-messen`, „strange bird“): Sprünge der Haut 0 in allen Abläufen; am 16.11. je einer beim Netzwechsel nach dem
+  Zug und nach dem Pinsel (99 % der Bildpunkte bis 16 bzw. 20 von 255 anders). Alle 22 Proben halten.
+- Nicht nötig war das Glätten der Dehnung über die Nachbarn: Nach einem Zug ist sie von selbst weich.
+- **Offen:** das Vergleichsbild zu den Spiegelungen (rund gemischte Normalen). Und, für C1: An einem dünnen Schwanz (Fisch aus sieben
+  Punkten) ist die Haut selbst zerknittert; das ist die Form aus der Rechnung, nicht die Anzeige.
+
 **A3. Seifenhaut billig bei gleichem Bild (mittel).** Du siehst: nichts anderes, nur pünktliche Bilder.
 - Das Rauschen der Dicke entsteht einmal je Bild in einer kleinen Textur statt viermal je Bildpunkt (gemessen: bis 9 ms).
 - Das Zeichenziel bekommt 8 Bit je Kanal in der Farbkodierung, die im Licht mischt, statt 16 Bit (gemessen: 3 ms; die Kantenglättung

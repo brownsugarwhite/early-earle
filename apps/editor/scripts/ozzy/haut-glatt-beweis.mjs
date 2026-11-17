@@ -1,7 +1,8 @@
 // Beweisbild „Seifenhaut glatt“ (17.11.2026, Plan „Ozzy stabil und schnell“, Block A): gleiche Ansicht, vorher (wie gebaut) und
 // nachher. Nachher heißt nur: Muster und Dehnung werden stetig weitergereicht statt vom nächsten Punkt kopiert (ein Flicken an
 // `GlattPlan.weiterreichen` für diesen Lauf und der vorhandene Schalter `?uebergabeMuster=0`). Im Arbeitsbaum ändert sich nichts.
-// Einmaliger Beweis: Ist Block A gebaut, passt der Flicken nicht mehr (das Skript meldet es).
+// Einmaliger Beweis. Seit dem 17.11. nachts ist A2 gebaut (`GlattPlan.mischen`, `uebernehmen` über Dreiecke, Übergabe von der Blase
+// stetig): Beide Läufe zeigen jetzt dasselbe; das Bild „vorher“ liegt in docs/progress/ozzy/2026-11-17-seifenhaut-glatt-vorher-nachher.png.
 // Aufruf aus apps/editor, Ozzy auf 5205: node scripts/ozzy/haut-glatt-beweis.mjs <ordner> ; schreibt hautbeweis-vorher.png und -nachher.png
 import { auf } from '../pruefen/ozzy-teile.mjs';
 

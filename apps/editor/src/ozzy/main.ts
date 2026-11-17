@@ -845,6 +845,27 @@ function uebergabeLagen(w: number): Float64Array {
 }
 
 /**
+ * Für die Übergabe von der Blase: der Bezug ihres Musters in Einheiten des Werks (das Muster der Blase ist die Lage ihrer flachen Haut
+ * im Blatt, um ihre Mitte, geteilt durch ihren Halbmesser) und ihre Dehnung an der Stelle jedes Rechenpunkts des Werks, mit derselben
+ * Zuordnung wie die Lagen der Übergabe (drei Punkte der Blase und ihre Gewichte): beides stetig über die Haut.
+ */
+function uebergabeMuster(): { bezug: { cx: number; cy: number; r: number }; dehnung: Float32Array } {
+  const h = werk.haut;
+  const k = koerper!;
+  if (!uebergabe || uebergabe.koerper !== k || uebergabe.haut !== h) uebergabe = uebergabeAnlegen(k, h);
+  const u = uebergabe;
+  const dehnung = new Float32Array(h.n);
+  for (let q = 0; q < h.n; q++) {
+    let de = 0;
+    for (let j = 0; j < 3; j++) de += u.gew[3 * q + j]! * k.dehnung[u.idx[3 * q + j]!]!;
+    dehnung[q] = de;
+  }
+  const F = k.flach;
+  const f = werkHaut.f;
+  return { bezug: { cx: (F.cx - werkHaut.mitte.x) * f, cy: (F.cy - werkHaut.mitte.y) * f, r: (F.radius || 1) * f }, dehnung };
+}
+
+/**
  * Das Werk im Bild: sein Bildtakt (Züge, Nachlauf, was der Hintergrund bringt), dann seine Haut für die Seifenhaut. Ab dem Abriss zeigt
  * die Seifenhaut die Haut des Werks; bis die Blase in der Form ist, liegen ihre Rechenpunkte zwischen der Blase und der Form des Werks,
  * mit der Feder der Blase (`rund` von 1 nach 0, mit Überschwingen). Zurück: Ist noch etwas in Bewegung?
@@ -875,20 +896,26 @@ function werkBild(dt: number, m: Moment | null): boolean {
     if (!uebergabeStart) {
       uebergabeStart = { T, w0: roh };
       // Muster und Dehnung der Haut des Werks von der Blase (Vorder- und Rückseite), damit die Seifenhaut an der Übergabe nicht wechselt
-      if (koerper && params.get('uebergabeMuster') !== '0') werkHaut.vonBlase(koerper.pos, koerper.blatt, koerper.dehnung, 2 * koerper.flach.n);
+      if (koerper && params.get('uebergabeMuster') !== '0') {
+        const mu = uebergabeMuster();
+        werkHaut.vonBlase(mu.bezug, mu.dehnung);
+      }
     }
     const { w0, T: Th } = uebergabeStart;
     w = w0 < 0.8 ? (roh - w0) / (1 - w0) : glatt(Math.min(1, Math.abs(T - Th) / 0.4));
   }
   const jetzt = performance.now();
-  if (schnalz || werkNeu || werkVoll || !werkGezeigt || jetzt - werkZuletzt < 2500) {
+  // nach der letzten Änderung klingt die Dehnung aus (2,5 s sicher; seit A2 so lange, bis sie weg ist, höchstens 9 s: vorher blieb
+  // rund ein Fünftel für immer in den Farben stehen)
+  const klingt = (): boolean => jetzt - werkZuletzt < 2500 || (werkHaut.dehnungRest > 0 && jetzt - werkZuletzt < 9000);
+  if (schnalz || werkNeu || werkVoll || !werkGezeigt || klingt()) {
     const voll = werkVoll;
     werkVoll = false;
     if (werkNeu || !werkGezeigt) werkZuletzt = jetzt;
     werkNeu = false;
     // in der Pose die Haut, wie sie zu sehen ist (die Knochen drehen sie; wie `hautZeigen` im Prüffenster)
     const th = performance.now();
-    werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6));
+    werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6, w));
     mess.teile[1] = performance.now() - th;
     if (werkHaut.nurDehnung) haut.dehnungErneuern();
     else haut.blaseErsetzen(werkHaut.netz);
@@ -905,7 +932,7 @@ function werkBild(dt: number, m: Moment | null): boolean {
       werkForm.ohneLinie = true;
       werkForm.zurueck = werk.zurueck.length;
     }
-    aktiv = aktiv || schnalz || jetzt - werkZuletzt < 2500;
+    aktiv = aktiv || schnalz || klingt();
   }
   return aktiv;
 }
@@ -5416,6 +5443,8 @@ const haken = {
     const PR = werkBlatt.proben[li];
     return PR ? { s: Array.from(PR.s.subarray(0, PR.n)), halb: Array.from(PR.halb.subarray(0, PR.n)), stueckS: Array.from(PR.stueckS), laenge: PR.laenge } : null;
   },
+  /** A2: Dehnung und Muster der Seifenhaut je Punkt der Anzeige (für Proben) */
+  seifenhaut: () => werkHaut.musterStand(),
   /** S11: Ist der Stand des Werks so, dass er gesichert werden kann (die Prüfung der Ablage), und welche Punkte der Haut keinen Spiegelpartner haben */
   standPruefen: () => {
     const h = werk.haut;

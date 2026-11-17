@@ -14,6 +14,11 @@ import * as werk from '../form/werk';
 const UMRISS_MS = 50;
 /** Glätten der Normalen der Anzeige (wie `GLATT_RUHE` im Prüffenster, Standard 3) */
 const GLATT_RUHE = 3;
+/** unter dieser Abweichung von 1 gilt die Dehnung als ausgeklungen (die Farbe der Seifenhaut ändert sich darunter nicht mehr sichtbar) */
+const DEHNUNG_AUS = 0.01;
+/** der Bereich der Dehnung, den die Seifenhaut als Farbe zeigt (ihr Shader begrenzt auf 0,55 bis 6) */
+const DEHNUNG_AB = 0.5;
+const DEHNUNG_BIS = 6.5;
 
 type Plan = {
   index: Uint32Array;
@@ -32,79 +37,169 @@ type Plan = {
   dehnung: Float32Array;
 };
 
-/** woher Muster und Dehnung kommen: Lagen (Werk) mit Lage im Blatt und Dehnung je Punkt (ein alter Plan oder die Blase) */
-type Quelle = { lagen: Float64Array; blattX: Float32Array; blattY: Float32Array; dehnung: Float32Array };
+/** woher Muster und Dehnung beim Netzwechsel kommen: das Netz der Anzeige davor (Lagen im Werk, Dreiecke) mit beidem je Punkt */
+type Quelle = { lagen: Float64Array; index: Uint32Array; blattX: Float32Array; blattY: Float32Array; dehnung: Float32Array };
 
-/** jeder Punkt des Plans nimmt Muster und Dehnung vom nächsten Punkt der Quelle (der Bezug der Dehnung folgt daraus; Fläche vorher rechnen) */
+/**
+ * Jeder Punkt des Plans nimmt Muster und Dehnung von der Stelle der Quelle, die ihm am nächsten liegt: aus dem Dreieck dort, zwischen
+ * dessen Ecken gemischt. So bleiben beide stetig. (Bis zum 17.11. vom nächsten Punkt: Das gab Stufen, und die Dünnschichtfarbe der
+ * Seifenhaut zeigte jede Stufe als Scherbe.) Der Bezug der Dehnung folgt daraus; die Fläche vorher rechnen.
+ */
 function uebernehmen(p: Plan, q: Quelle): void {
   const L = p.lagen;
   const N = p.quelle.length;
-  const naechster = naechsteSuche(q.lagen);
+  const suche = dreieckSuche(q.lagen, q.index);
+  const T = TREFFER;
   for (let d = 0; d < N; d++) {
-    const o = naechster(L[3 * d]!, L[3 * d + 1]!, L[3 * d + 2]!);
-    p.blattX[d] = q.blattX[o]!;
-    p.blattY[d] = q.blattY[o]!;
-    const de = Math.max(0.05, q.dehnung[o]!);
+    suche(L[3 * d]!, L[3 * d + 1]!, L[3 * d + 2]!);
+    p.blattX[d] = T.wa * q.blattX[T.a]! + T.wb * q.blattX[T.b]! + T.wc * q.blattX[T.c]!;
+    p.blattY[d] = T.wa * q.blattY[T.a]! + T.wb * q.blattY[T.b]! + T.wc * q.blattY[T.c]!;
+    const de = Math.max(0.05, T.wa * q.dehnung[T.a]! + T.wb * q.dehnung[T.b]! + T.wc * q.dehnung[T.c]!);
     p.bezug[d] = p.flaeche[d]! / de;
     p.dehnung[d] = de;
   }
 }
 
-/**
- * Nächster Punkt einer Punktwolke (je drei Zahlen), über ein Gitter: Zelle so groß wie der mittlere Abstand, gesucht in wachsenden
- * Schalen. Für das Weiterreichen beim Netzwechsel (einmal je Wechsel, nicht je Bild).
- */
-function naechsteSuche(Q: Float64Array): (x: number, y: number, z: number) => number {
-  const n = Q.length / 3;
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let z0 = Infinity;
-  let x1 = -Infinity;
-  let y1 = -Infinity;
-  let z1 = -Infinity;
-  for (let i = 0; i < n; i++) {
-    x0 = Math.min(x0, Q[3 * i]!);
-    x1 = Math.max(x1, Q[3 * i]!);
-    y0 = Math.min(y0, Q[3 * i + 1]!);
-    y1 = Math.max(y1, Q[3 * i + 1]!);
-    z0 = Math.min(z0, Q[3 * i + 2]!);
-    z1 = Math.max(z1, Q[3 * i + 2]!);
-  }
-  const flaeche = 2 * ((x1 - x0) * (y1 - y0) + (y1 - y0) * (z1 - z0) + (x1 - x0) * (z1 - z0));
-  const h = Math.max(1e-6, Math.sqrt(Math.max(flaeche, 1e-9) / Math.max(1, n)) * 1.5);
-  const zelle = (v: number, a: number): number => Math.floor((v - a) / h);
-  const gitter = new Map<number, number[]>();
-  const schl = (i: number, j: number, k: number): number => (i * 73856093) ^ (j * 19349663) ^ (k * 83492791);
-  for (let i = 0; i < n; i++) {
-    const s = schl(zelle(Q[3 * i]!, x0), zelle(Q[3 * i + 1]!, y0), zelle(Q[3 * i + 2]!, z0));
-    const l = gitter.get(s);
-    if (l) l.push(i);
-    else gitter.set(s, [i]);
-  }
-  return (x, y, z) => {
-    const ci = zelle(x, x0);
-    const cj = zelle(y, y0);
-    const ck = zelle(z, z0);
-    let best = 0;
-    let bd = Infinity;
-    for (let r = 1; r <= 6; r++) {
-      for (let i = ci - r; i <= ci + r; i++)
-        for (let j = cj - r; j <= cj + r; j++)
-          for (let k = ck - r; k <= ck + r; k++) {
-            const l = gitter.get(schl(i, j, k));
-            if (!l) continue;
-            for (const q of l) {
-              const d = (Q[3 * q]! - x) ** 2 + (Q[3 * q + 1]! - y) ** 2 + (Q[3 * q + 2]! - z) ** 2;
-              if (d < bd) {
-                bd = d;
-                best = q;
+/** der nächste Ort auf einem Netz: die Ecken seines Dreiecks, ihre Gewichte, der Abstand im Quadrat (von `dreieckSuche` überschrieben) */
+const TREFFER = { a: 0, b: 0, c: 0, wa: 1, wb: 0, wc: 0, d2: Infinity };
+
+/** Der nächste Ort auf dem Dreieck (ia, ib, ic) zum Punkt (Ericson, Real-Time Collision Detection, 5.1.5); nach `TREFFER`, wenn näher */
+function dreieckPruefen(Q: Float64Array, ia: number, ib: number, ic: number, px: number, py: number, pz: number): void {
+  const ax = Q[3 * ia]!;
+  const ay = Q[3 * ia + 1]!;
+  const az = Q[3 * ia + 2]!;
+  const abx = Q[3 * ib]! - ax;
+  const aby = Q[3 * ib + 1]! - ay;
+  const abz = Q[3 * ib + 2]! - az;
+  const acx = Q[3 * ic]! - ax;
+  const acy = Q[3 * ic + 1]! - ay;
+  const acz = Q[3 * ic + 2]! - az;
+  const apx = px - ax;
+  const apy = py - ay;
+  const apz = pz - az;
+  const d1 = abx * apx + aby * apy + abz * apz;
+  const d2 = acx * apx + acy * apy + acz * apz;
+  let wb = 0;
+  let wc = 0;
+  if (!(d1 <= 0 && d2 <= 0)) {
+    const d3 = d1 - (abx * abx + aby * aby + abz * abz);
+    const d4 = d2 - (acx * abx + acy * aby + acz * abz);
+    if (d3 >= 0 && d4 <= d3) wb = 1;
+    else {
+      const vc = d1 * d4 - d3 * d2;
+      if (vc <= 0 && d1 >= 0 && d3 <= 0) wb = d1 / (d1 - d3);
+      else {
+        const d5 = d1 - (abx * acx + aby * acy + abz * acz);
+        const d6 = d2 - (acx * acx + acy * acy + acz * acz);
+        if (d6 >= 0 && d5 <= d6) wc = 1;
+        else {
+          const vb = d5 * d2 - d1 * d6;
+          if (vb <= 0 && d2 >= 0 && d6 <= 0) wc = d2 / (d2 - d6);
+          else {
+            const va = d3 * d6 - d5 * d4;
+            if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
+              wc = (d4 - d3) / (d4 - d3 + (d5 - d6));
+              wb = 1 - wc;
+            } else {
+              const den = va + vb + vc;
+              // (ein Dreieck ohne Fläche: seine erste Ecke)
+              if (Math.abs(den) > 1e-300) {
+                wb = vb / den;
+                wc = vc / den;
               }
             }
           }
-      // gefunden und die nächste Schale kann nichts Näheres bringen
-      if (bd < (r * h) ** 2) break;
+        }
+      }
     }
-    return best;
+  }
+  if (!(wb >= 0 && wc >= 0 && wb + wc <= 1 + 1e-9)) {
+    wb = 0;
+    wc = 0;
+  }
+  const dx = apx - wb * abx - wc * acx;
+  const dy = apy - wb * aby - wc * acy;
+  const dz = apz - wb * abz - wc * acz;
+  const dd = dx * dx + dy * dy + dz * dz;
+  if (dd < TREFFER.d2) {
+    TREFFER.d2 = dd;
+    TREFFER.a = ia;
+    TREFFER.b = ib;
+    TREFFER.c = ic;
+    TREFFER.wa = 1 - wb - wc;
+    TREFFER.wb = wb;
+    TREFFER.wc = wc;
+  }
+}
+
+/**
+ * Der nächste Ort auf einem Dreiecksnetz, über ein Gitter (Zelle: die anderthalbfache mittlere Kante; jedes Dreieck steht in allen
+ * Zellen, die sein Kasten berührt). Gesucht wird in wachsenden Schalen um die Zelle des Punkts, bis nichts Näheres mehr außerhalb
+ * liegen kann: Liegt der Punkt fast auf dem Netz (der gewöhnliche Fall beim Netzwechsel), genügt meist die eigene Zelle. Für das
+ * Weiterreichen beim Netzwechsel (einmal je Wechsel, nicht je Bild). Das Ergebnis steht in `TREFFER`.
+ */
+function dreieckSuche(Q: Float64Array, I: Uint32Array): (x: number, y: number, z: number) => void {
+  const T = I.length / 3;
+  let summe = 0;
+  let zahl = 0;
+  for (let t = 0; t < T; t += Math.max(1, Math.floor(T / 2000))) {
+    const a = 3 * I[3 * t]!;
+    const b = 3 * I[3 * t + 1]!;
+    summe += Math.hypot(Q[a]! - Q[b]!, Q[a + 1]! - Q[b + 1]!, Q[a + 2]! - Q[b + 2]!);
+    zahl++;
+  }
+  const h = Math.max(1e-6, (1.5 * summe) / Math.max(1, zahl));
+  const schl = (i: number, j: number, k: number): number => Math.imul(i, 73856093) ^ Math.imul(j, 19349663) ^ Math.imul(k, 83492791);
+  const gitter = new Map<number, number[]>();
+  for (let t = 0; t < T; t++) {
+    const a = 3 * I[3 * t]!;
+    const b = 3 * I[3 * t + 1]!;
+    const c = 3 * I[3 * t + 2]!;
+    const i0 = Math.floor(Math.min(Q[a]!, Q[b]!, Q[c]!) / h);
+    const i1 = Math.floor(Math.max(Q[a]!, Q[b]!, Q[c]!) / h);
+    const j0 = Math.floor(Math.min(Q[a + 1]!, Q[b + 1]!, Q[c + 1]!) / h);
+    const j1 = Math.floor(Math.max(Q[a + 1]!, Q[b + 1]!, Q[c + 1]!) / h);
+    const k0 = Math.floor(Math.min(Q[a + 2]!, Q[b + 2]!, Q[c + 2]!) / h);
+    const k1 = Math.floor(Math.max(Q[a + 2]!, Q[b + 2]!, Q[c + 2]!) / h);
+    // (ein entartet großes Dreieck steht nicht in Hunderten Zellen: Es bleibt dem Durchgang über alle)
+    if ((i1 - i0 + 1) * (j1 - j0 + 1) * (k1 - k0 + 1) > 64) continue;
+    for (let i = i0; i <= i1; i++)
+      for (let j = j0; j <= j1; j++)
+        for (let k = k0; k <= k1; k++) {
+          const s = schl(i, j, k);
+          const l = gitter.get(s);
+          if (l) l.push(t);
+          else gitter.set(s, [t]);
+        }
+  }
+  const marke = new Uint32Array(T);
+  let lauf = 0;
+  return (x, y, z) => {
+    lauf++;
+    TREFFER.d2 = Infinity;
+    const ci = Math.floor(x / h);
+    const cj = Math.floor(y / h);
+    const ck = Math.floor(z / h);
+    // so weit ist nach der eigenen Zelle in jede Richtung sicher gesucht
+    const rand = Math.min(x - ci * h, (ci + 1) * h - x, y - cj * h, (cj + 1) * h - y, z - ck * h, (ck + 1) * h - z);
+    for (let r = 0; r <= 6; r++) {
+      for (let i = ci - r; i <= ci + r; i++)
+        for (let j = cj - r; j <= cj + r; j++)
+          for (let k = ck - r; k <= ck + r; k++) {
+            if (r > 0 && Math.max(Math.abs(i - ci), Math.abs(j - cj), Math.abs(k - ck)) !== r) continue;
+            const l = gitter.get(schl(i, j, k));
+            if (!l) continue;
+            for (const t of l) {
+              if (marke[t] === lauf) continue;
+              marke[t] = lauf;
+              dreieckPruefen(Q, I[3 * t]!, I[3 * t + 1]!, I[3 * t + 2]!, x, y, z);
+            }
+          }
+      const sicher = Math.max(0, rand) + r * h;
+      if (TREFFER.d2 <= sicher * sicher) return;
+    }
+    // weit weg vom Netz (oder nur entartete Dreiecke in der Nähe): alle
+    for (let t = 0; t < T; t++) if (marke[t] !== lauf) dreieckPruefen(Q, I[3 * t]!, I[3 * t + 1]!, I[3 * t + 2]!, x, y, z);
   };
 }
 
@@ -136,7 +231,19 @@ export class WerkHaut {
   /** Bezug der Muster für diese Form (Mitte und Halbmesser im Blatt), fest, solange es dieselbe Form ist */
   private blattBezug: { cx: number; cy: number; r: number } | null = null;
   /** beim nächsten Rechnen: Muster und Dehnung von der Blase der Studie übernehmen (die Übergabe beim Aufblasen) */
-  private blase: Quelle | null = null;
+  private blase: { bezug: { cx: number; cy: number; r: number }; dehnung: Float32Array } | null = null;
+  /**
+   * Während der Übergabe von der Blase: ihre Dehnung je Punkt der Anzeige beim Übernehmen. Solange die Haut von der Blase in die Form
+   * schnalzt, läuft die Dehnung von diesem Wert auf 1 (die Farben kommen an, wenn die Form ankommt); erst danach zeigt sie wieder, wie
+   * sich die Fläche ändert. (Gegen die Fläche gemessen, zeigte sie beim Schnalzen den Unterschied zwischen Blase und Form: bei einer
+   * geladenen Form ein fleckiges Muster, das sekundenlang nachklang.)
+   */
+  private uebergabeDe: Float32Array | null = null;
+  /** so weit ist die Dehnung noch von 1 entfernt (größter Betrag über die Rechenpunkte); 0: ausgeklungen */
+  dehnungRest = 0;
+  /** Arbeitsfelder für Muster je feinem Punkt (wiederverwendet) */
+  private mischX: Float32Array | undefined;
+  private mischY: Float32Array | undefined;
   private kanten: { index: Uint32Array; liste: Int32Array } | null = null;
 
   /** Neues Netz im Werk (nach `geometrieNeu`): Der Plan wird beim nächsten Rechnen neu angelegt */
@@ -147,23 +254,14 @@ export class WerkHaut {
   }
 
   /**
-   * Die Übergabe von der Blase (S2): Beim nächsten Rechnen nimmt jeder Punkt der Anzeige Muster und Dehnung vom nächsten Punkt der
-   * Blase (ihre Lagen in der Welt, hier ins Werk umgerechnet), damit die Seifenhaut an der Übergabe gleich aussieht.
+   * Die Übergabe von der Blase (S2): Beim nächsten Rechnen bekommt die Haut das Muster und die Dehnung der Blase, damit die Seifenhaut
+   * an der Übergabe gleich aussieht. Das Muster der Blase ist die Lage ihrer flachen Haut im Blatt (um `cx`, `cy`, geteilt durch `r`;
+   * hier in Einheiten des Werks): Jeder Punkt der Form bekommt dieselbe Funktion seiner eigenen Lage, das ist überall stetig. Die
+   * Dehnung kommt je Rechenpunkt (Ozzy mischt sie mit der Zuordnung der Übergabe aus den drei Punkten der Blase dort). Bis zum 17.11.
+   * nahm jeder Punkt beides vom nächsten Punkt der Blase: Bei einer geladenen Form, die anders liegt als ihre Blase, gab das Scherben.
    */
-  vonBlase(pos: ArrayLike<number>, blatt: ArrayLike<number>, dehnung: ArrayLike<number>, anzahl: number): void {
-    const lagen = new Float64Array(3 * anzahl);
-    const blattX = new Float32Array(anzahl);
-    const blattY = new Float32Array(anzahl);
-    const de = new Float32Array(anzahl);
-    for (let i = 0; i < anzahl; i++) {
-      lagen[3 * i] = (pos[3 * i]! - this.mitte.x) * this.f;
-      lagen[3 * i + 1] = (pos[3 * i + 1]! - this.mitte.y) * this.f;
-      lagen[3 * i + 2] = pos[3 * i + 2]! * this.f;
-      blattX[i] = blatt[2 * i]!;
-      blattY[i] = blatt[2 * i + 1]!;
-      de[i] = dehnung[i]!;
-    }
-    this.blase = { lagen, blattX, blattY, dehnung: de };
+  vonBlase(bezug: { cx: number; cy: number; r: number }, dehnung: Float32Array): void {
+    this.blase = { bezug, dehnung };
   }
 
   /** eine neue Form (aus der Silhouette, geladen, neu): Muster und Dehnung beginnen von vorn */
@@ -316,9 +414,10 @@ export class WerkHaut {
   /**
    * Die glatte Anzeige rechnen und ins Netz der Seifenhaut legen. `vorgabe`: Lagen der Rechenpunkte (3 je Punkt der Haut des Werks)
    * statt der Haut, wie sie ist (die Übergabe von der Blase). `voll`: die Stufen der Ruhe. `dt`, `beruhigen`: Der Bezug der Dehnung
-   * folgt der Fläche mit dieser Zeitkonstante (s; 0: gar nicht). Zurück: Ist das Netz neu (andere Zahl der Punkte)?
+   * folgt der Fläche mit dieser Zeitkonstante (s; 0: gar nicht). `angekommen`: mit `vorgabe`, wie weit die Haut von der Blase in der
+   * Form ist (0 … 1): Die Dehnung der Blase läuft damit auf 1. Zurück: Ist das Netz neu (andere Zahl der Punkte)?
    */
-  rechnen(vorgabe: Float64Array | null, voll: boolean, dt = 0, beruhigen = 0): boolean {
+  rechnen(vorgabe: Float64Array | null, voll: boolean, dt = 0, beruhigen = 0, angekommen = 1): boolean {
     const I = werk.anzeigeIndex;
     if (!this.p || this.p.index !== I || this.p.quelle !== werk.anzeigeQuelle || this.p.kenn !== kennJetzt()) this.p = this.anlegen(I);
     const g = this.p;
@@ -327,10 +426,27 @@ export class WerkHaut {
     const L = g.lagen;
     // die Übergabe von der Blase: Muster und Dehnung an derselben Stelle wie auf der Blase
     if (this.blase) {
-      this.flaecheRechnen(g);
-      uebernehmen(g, this.blase);
+      const B = this.blase;
       this.blase = null;
-      this.letzte = null;
+      if (B.dehnung.length === werk.haut.n) {
+        this.blattBezug = B.bezug;
+        const { cx, cy, r } = B.bezug;
+        // die Lage im Muster aus der Lage in der Form (nicht aus der Lage auf der Blase, die `vorgabe` jetzt gibt)
+        const P = werk.haut.pos;
+        this.flaecheRechnen(g);
+        const de0 = new Float32Array(g.quelle.length);
+        for (let d = 0; d < g.quelle.length; d++) {
+          const q = g.quelle[d]!;
+          g.blattX[d] = (P[3 * q]! - cx) / r;
+          g.blattY[d] = (P[3 * q + 1]! - cy) / r;
+          const de = Math.min(DEHNUNG_BIS, Math.max(DEHNUNG_AB, B.dehnung[q]!));
+          de0[d] = de;
+          g.bezug[d] = g.flaeche[d]! / de;
+          g.dehnung[d] = de;
+        }
+        this.uebergabeDe = de0;
+        this.letzte = null;
+      }
     }
     // Liegt die Haut genau wie beim letzten Mal, klingt nur die Dehnung nach (S3: vorher jedes Bild die ganze glatte Anzeige neu, rund
     // 5 ms, 2,5 s lang nach jedem Handgriff): kein neues Glätten, kein neuer Umriss, nur die Dehnung
@@ -343,15 +459,8 @@ export class WerkHaut {
           break;
         }
       if (gleich) {
-        const k = dt > 0 && beruhigen > 0 ? 1 - Math.exp(-dt / beruhigen) : 0;
-        for (let d = 0; d < g.flaeche.length; d++) {
-          if (k > 0) g.bezug[d] = g.bezug[d]! + (g.flaeche[d]! - g.bezug[d]!) * k;
-          g.dehnung[d] = g.flaeche[d]! / Math.max(1e-9, g.bezug[d]!);
-        }
-        const de = g.plan.weiterreichen(this.stufen, g.dehnung);
-        const z = this.netz;
-        const n = z.pos.length / 3;
-        for (let i = 0; i < n; i++) z.dehnung[i] = de[i]!;
+        this.dehnungFolgen(g, dt, beruhigen, true);
+        g.plan.mischen(this.stufen, g.dehnung, this.netz.dehnung);
         this.nurDehnung = true;
         this.ms = performance.now() - t0;
         return false;
@@ -396,10 +505,21 @@ export class WerkHaut {
     const index = g.plan.index(stufen);
     // Dehnung je Punkt der Anzeige (der Bezug folgt langsam), weitergereicht in die feinen Punkte
     this.flaecheRechnen(g);
-    const k = dt > 0 && beruhigen > 0 ? 1 - Math.exp(-dt / beruhigen) : 0;
-    for (let d = 0; d < g.flaeche.length; d++) {
-      if (k > 0) g.bezug[d] = g.bezug[d]! + (g.flaeche[d]! - g.bezug[d]!) * k;
-      g.dehnung[d] = g.flaeche[d]! / Math.max(1e-9, g.bezug[d]!);
+    const de0 = this.uebergabeDe;
+    if (vorgabe && de0 && de0.length === g.dehnung.length) {
+      // die Übergabe von der Blase: ihre Dehnung läuft auf 1, während die Haut in die Form schnalzt; der Bezug geht mit
+      const a = Math.min(1, Math.max(0, angekommen));
+      let rest = 0;
+      for (let d = 0; d < de0.length; d++) {
+        const de = 1 + (de0[d]! - 1) * (1 - a);
+        g.dehnung[d] = de;
+        g.bezug[d] = g.flaeche[d]! / de;
+        rest = Math.max(rest, Math.abs(de - 1));
+      }
+      this.dehnungRest = rest;
+    } else {
+      if (!vorgabe) this.uebergabeDe = null;
+      this.dehnungFolgen(g, dt, beruhigen, false);
     }
     const n = fein.pos.length / 3;
     let neu = false;
@@ -420,9 +540,10 @@ export class WerkHaut {
     const f = this.f;
     let zMax = 1e-6;
     for (let v = 0; v < n; v++) zMax = Math.max(zMax, Math.abs(fein.pos[3 * v + 2]!));
-    const bx = g.plan.weiterreichen(stufen, g.blattX);
-    const by = g.plan.weiterreichen(stufen, g.blattY);
-    const de = g.plan.weiterreichen(stufen, g.dehnung);
+    // Muster und Dehnung stetig auf die feinen Punkte (A2, 17.11.: vorher kopierte jeder neue Punkt ein Ende seiner Kante)
+    const bx = (this.mischX = g.plan.mischen(stufen, g.blattX, this.mischX));
+    const by = (this.mischY = g.plan.mischen(stufen, g.blattY, this.mischY));
+    g.plan.mischen(stufen, g.dehnung, z.dehnung);
     for (let v = 0; v < n; v++) {
       const wz = fein.pos[3 * v + 2]!;
       z.pos[3 * v] = fein.pos[3 * v]! / f + this.mitte.x;
@@ -432,7 +553,6 @@ export class WerkHaut {
       z.seite[v] = wz >= 0 ? 1 : -1;
       z.blatt[2 * v] = bx[v]!;
       z.blatt[2 * v + 1] = by[v]!;
-      z.dehnung[v] = de[v]!;
     }
     z.normal.set(fein.nor);
     this.stufen = stufen;
@@ -448,6 +568,60 @@ export class WerkHaut {
       }
     } else this.letzte = null;
     return neu;
+  }
+
+  /**
+   * Dehnung je Punkt der Anzeige: Fläche gegen ihren Bezug; der Bezug folgt der Fläche mit der Zeitkonstante `beruhigen` (s; 0: gar
+   * nicht). `ausklingen`: Steht die Haut und ist die Dehnung fast weg, endet sie genau bei 1 (dann braucht es kein Bild mehr).
+   */
+  private dehnungFolgen(g: Plan, dt: number, beruhigen: number, ausklingen: boolean): void {
+    const k = dt > 0 && beruhigen > 0 ? 1 - Math.exp(-dt / beruhigen) : 0;
+    let rest = 0;
+    for (let d = 0; d < g.flaeche.length; d++) {
+      if (k > 0) g.bezug[d] = g.bezug[d]! + (g.flaeche[d]! - g.bezug[d]!) * k;
+      let de = g.flaeche[d]! / Math.max(1e-9, g.bezug[d]!);
+      // nur so weit geführt, wie die Farbe sie zeigt: Was darüber hinausginge, sähe man nicht, es klänge aber noch lange nach
+      if (de < DEHNUNG_AB) {
+        de = DEHNUNG_AB;
+        g.bezug[d] = g.flaeche[d]! / de;
+      } else if (de > DEHNUNG_BIS) {
+        de = DEHNUNG_BIS;
+        g.bezug[d] = g.flaeche[d]! / de;
+      }
+      g.dehnung[d] = de;
+      const r = Math.abs(de - 1);
+      if (r > rest) rest = r;
+    }
+    if (ausklingen && rest < DEHNUNG_AUS) {
+      g.bezug.set(g.flaeche);
+      g.dehnung.fill(1);
+      rest = 0;
+    }
+    this.dehnungRest = rest;
+  }
+
+  /** Für Proben: Dehnung und Muster je Punkt der Anzeige (Spannweiten; wie viele Punkte mehr als 5 % gedehnt oder gestaucht sind) */
+  musterStand(): { punkte: number; deMin: number; deMax: number; gedehnt: number; rest: number; blatt: [number, number, number, number] } | null {
+    const g = this.p;
+    if (!g) return null;
+    let deMin = Infinity;
+    let deMax = -Infinity;
+    let gedehnt = 0;
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (let d = 0; d < g.dehnung.length; d++) {
+      const de = g.dehnung[d]!;
+      deMin = Math.min(deMin, de);
+      deMax = Math.max(deMax, de);
+      if (Math.abs(de - 1) > 0.05) gedehnt++;
+      x0 = Math.min(x0, g.blattX[d]!);
+      x1 = Math.max(x1, g.blattX[d]!);
+      y0 = Math.min(y0, g.blattY[d]!);
+      y1 = Math.max(y1, g.blattY[d]!);
+    }
+    return { punkte: g.dehnung.length, deMin, deMax, gedehnt, rest: this.dehnungRest, blatt: [x0, x1, y0, y1] };
   }
 
   /** Lassen sich in der Ruhe mehr Stufen zeigen? */
