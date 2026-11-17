@@ -321,6 +321,14 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
 - **9, Ordnungslinien:** *Gebaut:* `ordnungslinien()` in `main.ts`: solange Punkte gezogen werden (höchstens zwölf), in den Vier
   Ansichten feine Fäden von der Seite waagrecht zur Front und senkrecht zum Top, im Raum vom Punkt auf der Haut zu seinen Bildern an den
   Wänden; grün und fein wie Verdecktes. Film [`2026-11-17-ordnung.mp4`](../progress/ozzy/2026-11-17-ordnung.mp4).
+- **10, Ansichts-Tropfen** (Florian: „Ja, Entwurf zeigen“). *Entwurf*, Bild
+  [`2026-11-17-ansichts-tropfen-entwurf.png`](../progress/ozzy/2026-11-17-ansichts-tropfen-entwurf.png): unten rechts, 88 px, ein runder
+  Tropfen (Papier, Haarlinie) mit einem Achsenkreuz. S, F, T sind gefüllte Tropfen mit Buchstaben, die Gegenseiten leere Tropfen; was zum
+  Betrachter zeigt, ist Tinte, was abgewandt ist, grün und fein wie Verdecktes. Er dreht sich mit der Kamera (rastet eine Ansicht ein,
+  fließt ihr Tropfen in die Mitte). Über einem Tropfen quillt er auf, ein Schild sagt, wohin er führt („Front · 3“, „von hinten · ⇧3“).
+  Ziehen an ihm dreht wie Ziehen ins Leere, Tippen auf einen Tropfen rastet dort ein, ⇧ und Tippen die Gegenseite, Tippen in die Mitte
+  führt zurück in den Raum. In den Vier Ansichten zeigt er den Raum. Nur Anzeige und Bedienung, am Werk nichts. Sein Urteil zum Entwurf
+  steht aus.
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 
