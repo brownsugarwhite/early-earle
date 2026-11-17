@@ -1552,22 +1552,47 @@ function feldMassstab(F0: ReturnType<typeof felder>): number {
   return f * Math.min(F.seite.w / X, F.seite.h / Y, F.front.w / Z, F.front.h / Y, F.top.w / X, F.top.h / Z);
 }
 
-/** Punkt der Welt in einem flachen Feld (Gerätepunkte): Seite (x, y), Front (z, y), Top (x, −z); Mitte des Felds = Mitte der Form */
-function imFeld(n: FeldAchse, p: Vector3, F: ReturnType<typeof felder>, s: number): [number, number] {
+/**
+ * B2 (17.11.): die eine Abbildung eines flachen Felds der Vier Ansichten, für Linien, Körper und Tiefe. Das Feld schaut längs seiner
+ * Achse auf die Mitte der Form (rechts, oben, zum Betrachter: Seite x, y, z; Front −z, y, x; Top x, −z, y), mit Zoom und Verschiebung
+ * des Felds (S17; S18: auf dem Weg zur Einzelansicht zu deren Abbildung hin). Gewendet (`feldWende`, S17b) dreht sich die Form räumlich
+ * um die Hochachse (Seite, Front) oder die Querachse (Top) durch ihre Mitte, wie unter der Kamera der einzelnen Ansicht: Was vorn
+ * liegt, geht mit der Maus. Bis zum 17.11. wurde nur gestaucht (die Tiefe zählte nicht: ein flaches Blatt).
+ * Bild (CSS-Pixel): x = mx + sz · r · (p − m), y = my − sz · o · (p − m); zum Betrachter hin: v · (p − m).
+ */
+type FeldAbbildung = { mx: number; my: number; sz: number; r: Vector3; o: Vector3; v: Vector3; m: Vector3 };
+function feldAbbildung(n: FeldAchse, F: ReturnType<typeof felder>, s: number): FeldAbbildung {
   const e = raum!;
-  const r = F[n];
-  // S17: mit Zoom und Verschiebung des Felds (S18: auf dem Weg zur Einzelansicht zu deren Abbildung hin)
+  const q = F[n];
   const b = blickIn(n, F, s);
-  const mx = r.x + r.w / 2 + b.x;
-  const my = r.y + r.h / 2 + b.y;
-  const sz = s * b.zoom;
-  const [u, v, uc, vc] = n === 'seite' ? [p.x, p.y, e.cx, e.cy] : n === 'front' ? [-p.z, p.y, 0, e.cy] : [p.x, -p.z, e.cx, 0];
-  // S17b: gewendet (Seite und Front um die Hochachse, der Top um die Querachse)
-  const c = Math.cos(feldWende[n].phi);
-  return [(mx + (u - uc) * sz * (n === 'top' ? 1 : c)) * D, (my - (v - vc) * sz * (n === 'top' ? c : 1)) * D];
+  const phi = feldWende[n].phi;
+  const c = Math.cos(phi);
+  const sn = Math.sin(phi);
+  const R = n === 'front' ? new Vector3(0, 0, -1) : new Vector3(1, 0, 0);
+  const O = n === 'top' ? new Vector3(0, 0, -1) : new Vector3(0, 1, 0);
+  const V = n === 'seite' ? new Vector3(0, 0, 1) : n === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, 1, 0);
+  const oben = n === 'top';
+  return {
+    mx: q.x + q.w / 2 + b.x,
+    my: q.y + q.h / 2 + b.y,
+    sz: s * b.zoom,
+    r: oben ? R : R.clone().multiplyScalar(c).addScaledVector(V, sn),
+    o: oben ? O.clone().multiplyScalar(c).addScaledVector(V, -sn) : O,
+    v: oben ? V.clone().multiplyScalar(c).addScaledVector(O, sn) : V.clone().multiplyScalar(c).addScaledVector(R, -sn),
+    m: new Vector3(e.cx, e.cy, 0),
+  };
 }
 
-/** im Feld (CSS) → Welt in der Ebene der Ansicht */
+/** Punkt der Welt in einem flachen Feld (Gerätepunkte), mit `feldAbbildung` */
+function imFeld(n: FeldAchse, p: Vector3, F: ReturnType<typeof felder>, s: number): [number, number] {
+  const A = feldAbbildung(n, F, s);
+  const dx = p.x - A.m.x;
+  const dy = p.y - A.m.y;
+  const dz = p.z - A.m.z;
+  return [(A.mx + A.sz * (A.r.x * dx + A.r.y * dy + A.r.z * dz)) * D, (A.my - A.sz * (A.o.x * dx + A.o.y * dy + A.o.z * dz)) * D];
+}
+
+/** im Feld (CSS) → Welt in der Ebene der Ansicht (durch die Mitte der Form; gilt, solange das Feld nicht gerade wendet) */
 function ausFeld(n: FeldAchse, x: number, y: number, F: ReturnType<typeof felder>, s: number): [number, number] {
   const e = raum!;
   const r = F[n];
@@ -2899,37 +2924,26 @@ function wandAnsicht(n: FeldAchse, f: Falt, rand: number[]): { projektion: Float
 const FELD_TIEFE = 4;
 function feldAnsicht(n: FeldAchse, f: Falt): { projektion: Float32Array; ansicht: Float32Array; schere: [number, number, number, number]; tiefeMax: number } {
   const e = raum!;
-  const F = f.F;
-  const r = F[n];
-  const b = blickIn(n, F, f.s4);
-  const sz = f.s4 * b.zoom;
-  const c = Math.cos(feldWende[n].phi);
-  const cu = n === 'top' ? 1 : c;
-  const cv = n === 'top' ? c : 1;
-  const [uc, vc] = n === 'seite' ? [e.cx, e.cy] : n === 'front' ? [0, e.cy] : [e.cx, 0];
-  const mx = r.x + r.w / 2 + b.x;
-  const my = r.y + r.h / 2 + b.y;
-  // NDC: x = Ax + Kx · u, y = Ay + Ky · v
-  const Kx = (2 * sz * cu) / W;
-  const Ax = (2 * (mx - uc * sz * cu)) / W - 1;
-  const Ky = (2 * sz * cv) / H;
-  const Ay = 1 - (2 * (my + vc * sz * cv)) / H;
-  // u und v als Zeile über (x, y, z): Seite (x, y), Front (−z, y), Top (x, −z)
-  const ux = n === 'front' ? [0, 0, -1] : [1, 0, 0];
-  const vy = n === 'top' ? [0, 0, -1] : [0, 1, 0];
-  const L = e.L;
-  const vorn = c >= 0 ? 1 : -1;
-  const achse = n === 'front' ? 0 : n === 'top' ? 1 : 2;
-  const tz = [0, 0, 0];
-  tz[achse] = vorn;
-  const Z0 = FELD_TIEFE * L;
+  const r = f.F[n];
+  // B2: aus der einen Abbildung des Felds (gewendet: räumlich gedreht)
+  const A = feldAbbildung(n, f.F, f.s4);
+  const kx = (2 * A.sz) / W;
+  const ky = (2 * A.sz) / H;
+  const Z0 = FELD_TIEFE * e.L;
+  // NDC: x = 2 · (mx + sz · r · (p − m)) / W − 1, y = 1 − 2 · (my − sz · o · (p − m)) / H; nach hinten wächst z
   const P = new Matrix4().set(
-    Kx * ux[0]!, Kx * ux[1]!, Kx * ux[2]!, Ax,
-    Ky * vy[0]!, Ky * vy[1]!, Ky * vy[2]!, Ay,
-    -tz[0]! / Z0, -tz[1]! / Z0, -tz[2]! / Z0, 0,
+    kx * A.r.x, kx * A.r.y, kx * A.r.z, (2 * A.mx) / W - 1 - kx * A.r.dot(A.m),
+    ky * A.o.x, ky * A.o.y, ky * A.o.z, 1 - (2 * A.my) / H - ky * A.o.dot(A.m),
+    -A.v.x / Z0, -A.v.y / Z0, -A.v.z / Z0, A.v.dot(A.m) / Z0,
     0, 0, 0, 1,
   );
-  const V = new Matrix4().set(1, 0, 0, 0, 0, 1, 0, 0, tz[0]!, tz[1]!, tz[2]!, -Z0, 0, 0, 0, 1);
+  // die Ansicht: rechts, oben, zum Betrachter; die Tiefe zum Betrachter ist Z0 − v · (p − m)
+  const V = new Matrix4().set(
+    A.r.x, A.r.y, A.r.z, -A.r.dot(A.m),
+    A.o.x, A.o.y, A.o.z, -A.o.dot(A.m),
+    A.v.x, A.v.y, A.v.z, -A.v.dot(A.m) - Z0,
+    0, 0, 0, 1,
+  );
   return {
     projektion: Float32Array.from(P.elements),
     ansicht: Float32Array.from(V.elements),
@@ -2939,16 +2953,13 @@ function feldAnsicht(n: FeldAchse, f: Falt): { projektion: Float32Array; ansicht
 }
 
 /** S20: die Tiefe eines Orts des Werks zum Betrachter eines Felds (wie `feldAnsicht` sie in die Anzeige schreibt) */
-function tiefeImFeld(n: FeldAchse): (p: { x: number; y: number; z: number }) => number {
-  const vorn = Math.cos(feldWende[n].phi) >= 0 ? 1 : -1;
+function tiefeImFeld(A: FeldAbbildung): (p: { x: number; y: number; z: number }) => number {
   const Z0 = FELD_TIEFE * raum!.L;
   const f = werkHaut.f;
-  const mx = werkHaut.mitte.x;
-  const my = werkHaut.mitte.y;
-  return (p) => {
-    const w = n === 'front' ? p.x / f + mx : n === 'top' ? p.y / f + my : p.z / f;
-    return Z0 - vorn * w;
-  };
+  const mx = werkHaut.mitte.x - A.m.x;
+  const my = werkHaut.mitte.y - A.m.y;
+  const { x: vx, y: vy, z: vz } = A.v;
+  return (p) => Z0 - (vx * (p.x / f + mx) + vy * (p.y / f + my) + vz * (p.z / f - A.m.z));
 }
 
 /** S20: Umlaufsinn der Dreiecke der glatten Haut von außen (an der Normale ihrer ersten Dreiecke gemessen) */
@@ -3159,10 +3170,17 @@ function weltInBlatt(a: Flaeche['a'], p: Vector3): [number, number] {
 const ACHSE_VON: Record<Flaeche['a'], 0 | 1 | 2> = { front: 0, top: 1, seite: 2 };
 const BLATT_DER_ACHSE: Flaeche['a'][] = ['front', 'top', 'seite'];
 
-/** eine Ebene quer zur Achse des Blatts (Wand oder eingerastete Ansicht), wie die Kamera sie sieht; `wand`: nur ihr Viereck zählt */
-function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, breite: number, wand: boolean): Flaeche {
+/**
+ * eine Ebene quer zur Achse des Blatts (Wand oder eingerastete Ansicht), wie die Kamera sie sieht; `wand`: nur ihr Viereck zählt.
+ * `raeumlich` (B2): Die Kamera schaut nicht längs der Achse (die Ansicht wendet sich): Die Linien liegen an ihrem Ort im Raum, nicht in
+ * der Ebene (dort drehten sie sich wie ein flaches Blatt im Körper).
+ */
+function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, breite: number, wand: boolean, raeumlich = false): Flaeche {
   const achse = ACHSE_VON[a];
   const e = raum!;
+  // Tiefe im Werk (längs der Achse) → Welt
+  const tf = 1 / werkHaut.f;
+  const t0 = a === 'seite' ? 0 : a === 'front' ? werkHaut.mitte.x : werkHaut.mitte.y;
   const her = (x: number, y: number): [number, number] | null => {
     const { o, d } = kam.strahl(x, y, W, H);
     const dd = achse === 0 ? d.x : achse === 1 ? d.y : d.z;
@@ -3185,11 +3203,12 @@ function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, brei
       const p = blattInWelt(a, XY[0], XY[1], lage);
       return Math.abs(p.x - e.cx) <= e.L && Math.abs(p.y - e.cy) <= e.L && Math.abs(p.z) <= e.L;
     },
-    hin: (X, Y) => {
-      const [x, y] = projizieren(blattInWelt(a, X, Y, lage), vp);
+    hin: (X, Y, T) => {
+      const [x, y] = projizieren(blattInWelt(a, X, Y, raeumlich && T !== undefined ? T * tf + t0 : lage), vp);
       return [x / D, y / D];
     },
     her,
+    ...(raeumlich ? { raeumlich: true } : {}),
   };
 }
 
@@ -3203,6 +3222,15 @@ function feldFlaeche(n: FeldAchse, f: Falt, st0: number[]): Flaeche {
   // auf dem Weg von der Wand ins Feld so stark und breit wie an der Wand, am Ende wie im Feld
   const t = f.e;
   const st = st0[achse]!;
+  // B2: die eine Abbildung des Felds, einmal je Bild; `hin` rechnet damit ohne Zwischenobjekte (es läuft für jede Probe jeder Linie).
+  // Blatt → Welt, von der Mitte der Form aus: Seite (X, −Y, T), Front (T, −Y, X), Top (X, T, Y), je durch das Maß des Werks
+  const A = feldAbbildung(n, F, s4);
+  const wf = 1 / werkHaut.f;
+  const ox = werkHaut.mitte.x - A.m.x;
+  const oy = werkHaut.mitte.y - A.m.y;
+  const { x: rx, y: ry, z: rz } = A.r;
+  const { x: qx, y: qy, z: qz } = A.o;
+  const raeumlich = t > 0.999 && Math.abs(Math.sin(feldWende[n].phi)) > 1e-4;
   return {
     a: n,
     staerke: st + (1 - st) * t,
@@ -3212,12 +3240,29 @@ function feldFlaeche(n: FeldAchse, f: Falt, st0: number[]): Flaeche {
     vorn: (Math.cos(feldWende[n].phi) >= 0 ? 1 : -1) * (-sw[achse] || 1),
     bereich: BEREICH_VON[n],
     // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt, was verdeckt ist
-    ...(koerperAn() && koerperDeckung > 0.001 ? { tiefe: tiefeImFeld(n) } : {}),
+    ...(koerperAn() && koerperDeckung > 0.001 ? { tiefe: tiefeImFeld(A) } : {}),
+    ...(raeumlich ? { raeumlich: true } : {}),
     enthaelt: (x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h,
-    hin: (X, Y) => {
+    hin: (X, Y, T) => {
       if (t > 0.999) {
-        const [fx, fy] = imFeld(n, blattInWelt(n, X, Y, 0), F, s4);
-        return [fx / D, fy / D];
+        // ohne Tiefe: in der Ebene durch die Mitte der Form
+        let dx: number;
+        let dy: number;
+        let dz: number;
+        if (n === 'seite') {
+          dx = X * wf + ox;
+          dy = -Y * wf + oy;
+          dz = T === undefined ? 0 : T * wf - A.m.z;
+        } else if (n === 'front') {
+          dx = T === undefined ? 0 : T * wf + ox;
+          dy = -Y * wf + oy;
+          dz = X * wf - A.m.z;
+        } else {
+          dx = X * wf + ox;
+          dy = T === undefined ? 0 : T * wf + oy;
+          dz = Y * wf - A.m.z;
+        }
+        return [A.mx + A.sz * (rx * dx + ry * dy + rz * dz), A.my - A.sz * (qx * dx + qy * dy + qz * dz)];
       }
       const [ux, uy] = projizieren(faltPunkt(n, blattInWelt(n, X, Y, lage), f), f.vp);
       return [ux / D, uy / D];
@@ -3264,7 +3309,9 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(VORN[ansicht])) - 0.97) / 0.025));
     const st = flach * flach * t * t * (3 - 2 * t);
     if (st >= 0.01) {
-      const fl = ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false);
+      // B2: Schaut die Kamera nicht längs der Achse (die Ansicht wendet sich), liegen die Linien an ihrem Ort im Raum
+      const schief = Math.abs(blick.dot(VORN[ansicht])) < 1 - 1e-7;
+      const fl = ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false, schief);
       // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt, was verdeckt ist
       if (koerperAn() && koerperDeckung > 0.001) fl.tiefe = tiefeDerKamera();
       liste.push(fl);

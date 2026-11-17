@@ -15,13 +15,15 @@ Fassung mit allen Messwerten und Zwischenständen liegt im Archiv:
 wörtlich, Befunde, sechs Etappen; **was gebaut ist, steht dort je Schritt unter „Gebaut“**). Der Spiegel-Schalter ruht, bis er ihn
 genauer beschreibt. **Stand (17.11., 21 Uhr): Etappe A ist gebaut bis auf zwei kleine Reste** (A4: das Gedrehte in der Pose merken, der
 Weichzeichner; A2: Vergleichsbild zu den Spiegelungen), **dazu B1** (Greifen sofort beim Drücken; der Zeiger des Systems als Schalter
-`?zeiger=system` mit Film [`2026-11-17-zeiger-system.mp4`](../../progress/ozzy/2026-11-17-zeiger-system.mp4), sein Urteil steht aus). Gemessen an „strange bird“: Grafikkarte je Bild im Raum 15,8 → 6,0 ms, Vier
+`?zeiger=system` mit Film [`2026-11-17-zeiger-system.mp4`](../../progress/ozzy/2026-11-17-zeiger-system.mp4), sein Urteil steht aus)
+**und der erste Teil von B2** (Wenden räumlich in den Feldern und in der einzelnen Ansicht; von hinten zeigt die Seite die zugewandte
+Hälfte; Film [`2026-11-17-feld-wenden-raeumlich.mp4`](../../progress/ozzy/2026-11-17-feld-wenden-raeumlich.mp4), sein Urteil steht aus). Gemessen an „strange bird“: Grafikkarte je Bild im Raum 15,8 → 6,0 ms, Vier
 Ansichten 16,8 → 10,3 ms, eingerastet 9,7 → 4,3 ms, nah herangezoomt 21,1 → 12,6 ms; Zug 18,8 / 26,4 → 10,7 / 17,1 ms je Bild; keine
 Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
 [`2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md) (vorher),
 [`2026-11-17-messen-nach-a.md`](../../progress/ozzy/2026-11-17-messen-nach-a.md) (nach A). Sein Urteil zur Seifenhaut steht aus.
-Nächster Schritt: Etappe B ab B2 (eine Abbildung je Fläche, Wenden räumlich in den Feldern). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
-ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 23 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
+Nächster Schritt: der Rest von B2 (Linien nur neu aufbauen, wenn sich etwas ändert; der weiße Körper an den Wänden), dann B3. Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 24 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 
 ## 1. Einstieg

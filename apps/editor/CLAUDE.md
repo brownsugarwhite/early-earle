@@ -26,7 +26,11 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   (`HautWerte.leer`), und ihr teures Ziel ist nur so groß wie der Kasten der Form im Bild (`HautWerte.ausschnitt`, `hautAusschnitt`
   in `main.ts`; wer etwas Neues in die Zeichenfläche der Haut zeichnet, das außerhalb dieses Kastens liegt, muss ihn erweitern). **B1 (17.11.):** Beim Drücken bestimmt `Verhalten.zielJetzt()` das Ziel für genau diesen Ort
   (vor `druecken`; bis dahin griff nur, was seit dem Bild davor am Zeiger hing). `?zeiger=system`: Der Zeiger des Systems vertritt den
-  gezeichneten, solange dieser auf der Hand läge (`zeigerSystemSchritt` in `main.ts`; Probe `ozzy-zeiger-fenster.mjs`). Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
+  gezeichneten, solange dieser auf der Hand läge (`zeigerSystemSchritt` in `main.ts`; Probe `ozzy-zeiger-fenster.mjs`).
+  **B2 (17.11.):** Eine Fläche bildet mit Tiefe ab (`Flaeche.hin(X, Y, T?)`), solange sie `raeumlich` ist (nicht längs ihrer Achse
+  gesehen: ein Feld oder eine Ansicht wendet sich); dann stehen auch in der Seite beide Hälften im Netz (seine Struktur wechselt). In
+  Ruhe zeigt die Seite die Hälfte, die zum Betrachter zeigt (`F.vorn`). Für die Felder ist `feldAbbildung` (`main.ts`) die eine
+  Abbildung für Linien, Körper und Tiefe; wer dort etwas Neues zeichnet, nimmt sie (Probe `ozzy-wenden-raum-fenster.mjs`). Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
   (gemeinsame Teile und „Flicken“ für Versuche ohne Eingriff in den Arbeitsbaum: `ozzy-teile.mjs`).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.

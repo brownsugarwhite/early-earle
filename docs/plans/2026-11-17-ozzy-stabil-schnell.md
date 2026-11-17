@@ -241,6 +241,28 @@ mit seinen Linien räumlich, parallel und genau wie in der einzelnen Ansicht; ü
 - Der weiße Körper liegt auch auf den Wänden des Raums (ein Weg für Verdecktes statt zwei); zuerst als Vergleichsbild.
 - Probe: Film „Feld wenden“ vorher und nachher; Messblatt (Linien bauen unter 0,3 ms); alle Proben.
 
+**Gebaut (17.11., 21 Uhr 15), erster Teil: Wenden räumlich. Dein Urteil steht aus.**
+- **Du siehst:** ⇧ + Ziehen in einem Feld der Vier Ansichten dreht Körper und Linien räumlich; bis dahin wurde die Zeichnung gestaucht
+  wie ein Blatt. In der einzelnen Ansicht drehte sich der Körper schon räumlich, die Linien aber lagen flach in der Mittelebene: Jetzt
+  liegen sie beim Wenden an ihrem Ort auf der Form. Film (oben vorher, für den Lauf nachgestellt; unten jetzt):
+  [`2026-11-17-feld-wenden-raeumlich.mp4`](../progress/ozzy/2026-11-17-feld-wenden-raeumlich.mp4), Standbild
+  [`2026-11-17-feld-wenden-raeumlich.png`](../progress/ozzy/2026-11-17-feld-wenden-raeumlich.png).
+- **Dabei gefunden und behoben:** Von hinten gesehen (gewendet) zeigte die Seite die abgewandte Hälfte der Form. Ihre Punkte und
+  Linien galten als verdeckt (blass) und waren ohne Röntgen nicht zu greifen. Jetzt zeigt die Seite in Ruhe die Hälfte, die zum
+  Betrachter zeigt. Gegenprobe am Punkt der Flanke von hinten: vorher „nichts“ am Zeiger, jetzt der Punkt.
+- **Während des Wendens** sind die Linien der abgewandten Flanke als Verdecktes zu sehen (fein, blass), wie in Front und Top immer.
+- **Technik:** `feldAbbildung` in `main.ts` ist die eine Abbildung eines Felds (Bild und Tiefe): für Linien (`imFeld`,
+  `feldFlaeche.hin`), Körper (`feldAnsicht`) und Verdecktes (`tiefeImFeld`); gewendet eine Drehung um die Mitte der Form statt einer
+  Stauchung. `Flaeche.hin(X, Y, T?)` nimmt die Tiefe, `Flaeche.raeumlich` sagt, dass sie zählt (die Fläche wird gerade nicht längs
+  ihrer Achse gesehen); dann gibt `werkBlatt.bauen` die Tiefe jedes Punkts und jeder Kurve mit, und die Seite zeigt beide Hälften.
+  `ebene(…, raeumlich)` dasselbe für die einzelne Ansicht. In Ruhe bleibt jede Abbildung, wie sie war.
+- **Probe** `apps/editor/scripts/pruefen/ozzy-wenden-raum-fenster.mjs`: Feld und einzelne Ansicht um 45° gewendet und gehalten: Die
+  Punkte der Mitte rücken um cos 45° zusammen, der Punkt der Flanke und sein Spiegelbild liegen 0,00 Punkte neben der Rechnung der
+  räumlichen Drehung (139 und 59 Punkte auseinander; flach wären es 0); losgelassen ist alles wieder, wo es war. Alle 24 Proben halten.
+- **Gemessen, noch nicht verbessert:** Linien bauen je Bild im Raum 1,8 ms, in den Vier Ansichten 2,6 ms (von 3,3 und 4,8 ms Rechnen).
+- **Offen aus B2:** Linien nur neu aufbauen, wenn sich etwas geändert hat; der weiße Körper auch an den Wänden des Raums
+  (Vergleichsbild zuerst); Wand und Kistennetz auf dieselbe Art Abbildung (dort ändert sich nichts Sichtbares).
+
 **B3. Wireframe im Raum (klein bis mittel; Bild zuerst).** Vorschlag: eine Taste und ein Tropfen schalten im Raum zwischen Seifenhaut
 und Netz. Das Netz ist das dichte Netz der Rechnung (das, was wirklich gerechnet wird), als Haarlinien auf der gewölbten Fläche, vorn
 in Tinte, hinten fein und grün wie Verdecktes; die Linien und Punkte bleiben darüber greifbar. Ich zeige zwei Bilder (Netz allein,

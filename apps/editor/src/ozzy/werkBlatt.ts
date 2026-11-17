@@ -25,8 +25,16 @@ type V3 = { x: number; y: number; z: number };
 /** Eine Fläche, auf der die Linien des Werks liegen: das Blatt ihrer Achse und wie es auf den Bildschirm kommt (CSS-Pixel) */
 export interface Flaeche {
   a: Ansicht;
-  /** Blatt (Einheiten des Werks, wie `werk.imBlatt`) → Bildschirm */
-  hin(X: number, Y: number): [number, number];
+  /**
+   * Blatt (Einheiten des Werks, wie `werk.imBlatt`) → Bildschirm. `T`: die Tiefe des Orts längs der Achse des Blatts (Einheiten des
+   * Werks: Seite z, Front x, Top y); fehlt sie, liegt der Ort in der Ebene der Fläche. Sie zählt nur, wo die Fläche `raeumlich` ist.
+   */
+  hin(X: number, Y: number, T?: number): [number, number];
+  /**
+   * B2 (17.11.): Die Fläche wird gerade nicht längs ihrer Achse gesehen (ein Feld oder eine Ansicht, die sich wendet): Dann liegen die
+   * Linien räumlich an ihrem Ort (`hin` mit Tiefe), und auch die Seite zeigt beide Hälften der Form.
+   */
+  raeumlich?: boolean;
   /** Bildschirm → Blatt; null, wo es die Fläche nicht trifft */
   her(x: number, y: number): [number, number] | null;
   /** 0 … 1: Linien werden mit ihr dünner; unter der Hälfte sind Punkte nicht zu sehen und nicht zu greifen */
@@ -220,10 +228,22 @@ export class WerkBlatt implements Raum {
         const sichtbar = F.staerke >= 0.5;
         const schluessel = new Map<string, number>();
         const karte = F.vorn ? this.karteFuer(a, F.vorn) : null;
+        // B2: räumlich (die Fläche wendet sich) geht die Tiefe jedes Orts mit in die Abbildung
+        const raeumlich = !!F.raeumlich;
+        const tief = (v: V3): number => (a === 'seite' ? v.z : a === 'front' ? v.x : v.y);
         L.forEach((l, li) => {
           const P = l.punkte;
-          for (const m of a !== 'seite' && l.art !== 'mitte' ? [false, true] : [false]) {
-            const blatt = (v: V3): [number, number] => werk.imBlatt(a, m ? werk.spiegeln(v) : v);
+          // In der Seite liegen beide Hälften im Blatt aufeinander: in Ruhe nur eine, und zwar die, die zum Betrachter zeigt (von hinten
+          // die gespiegelte, sonst läge alles hinter der Haut); räumlich beide
+          for (const m of (a !== 'seite' || raeumlich) && l.art !== 'mitte' ? [false, true] : [false]) {
+            const gespiegelt = m || (a === 'seite' && !raeumlich && l.art !== 'mitte' && (F.vorn ?? 1) < 0);
+            const zeigen = (v: V3): V3 => (gespiegelt ? werk.spiegeln(v) : v);
+            const blatt = (v: V3): [number, number] => werk.imBlatt(a, zeigen(v));
+            const aufBild = (v: V3): [number, number] => {
+              const w = zeigen(v);
+              const [X, Y] = werk.imBlatt(a, w);
+              return raeumlich ? F.hin(X, Y, tief(w)) : F.hin(X, Y);
+            };
             // ohne Pfad (noch keine Griffe): nur zu sehen, durch die Proben
             if (!werk.exakt(l) || !hatGriffe(l) || P.length < 2 || !P.every((p) => p.ein && p.aus)) {
               const Lg = lagen[li];
@@ -233,7 +253,7 @@ export class WerkBlatt implements Raum {
               const n = Lg.length / 3;
               for (let j = 0; j <= (l.art === 'ring' ? n - 1 : n); j++) {
                 const q = j % n;
-                const [x, y] = F.hin(...blatt({ x: Lg[3 * q]!, y: Lg[3 * q + 1]!, z: Lg[3 * q + 2]! }));
+                const [x, y] = aufBild({ x: Lg[3 * q]!, y: Lg[3 * q + 1]!, z: Lg[3 * q + 2]! });
                 xs.push(x);
                 ys.push(y);
               }
@@ -249,9 +269,9 @@ export class WerkBlatt implements Raum {
               const k = `${p.kreuzung !== undefined ? `k${p.kreuzung}` : `${l.id}.${i}`}|${sm ? 1 : 0}`;
               let pi = schluessel.get(k);
               if (pi === undefined) {
-                const [x, y] = F.hin(...blatt(q));
+                const [x, y] = aufBild(q);
                 pi = punkte.length;
-                const q3 = m ? werk.spiegeln(q) : q;
+                const q3 = zeigen(q);
                 const hin = this.hinten(karte, q3);
                 punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: hin, z: F.tiefe ? F.tiefe(q3) : hin ? HINTEN_Z : 0 });
                 pSchl.push(`${fl}|${k}`);
@@ -269,29 +289,33 @@ export class WerkBlatt implements Raum {
             const stuecke: Stueck[] = [];
             const kontroll: number[][] = [];
             const k3: V3[][] = [];
-            const zeigen = (v: V3): V3 => (m ? werk.spiegeln(v) : v);
+            const tiefen: number[][] | undefined = raeumlich ? [] : undefined;
             const hart = (p: LoopPunkt): boolean => p.kante ?? l.kante ?? false;
             for (let i = 0; i < (zu ? n : n - 1); i++) {
               const j = (i + 1) % n;
               const A = ort(P[i]!);
               const E = ort(P[j]!);
+              const A1 = plus(A, neu?.[i]?.aus ?? P[i]!.aus!);
+              const E1 = plus(E, neu?.[j]?.ein ?? P[j]!.ein!);
               const b0 = blatt(A);
-              const b1 = blatt(plus(A, neu?.[i]?.aus ?? P[i]!.aus!));
-              const b2 = blatt(plus(E, neu?.[j]?.ein ?? P[j]!.ein!));
+              const b1 = blatt(A1);
+              const b2 = blatt(E1);
               const b3 = blatt(E);
-              const s0 = F.hin(...b0);
-              const s1 = F.hin(...b1);
-              const s2 = F.hin(...b2);
-              const s3 = F.hin(...b3);
+              const s0 = aufBild(A);
+              const s1 = aufBild(A1);
+              const s2 = aufBild(E1);
+              const s3 = aufBild(E);
               const art: Art = hart(P[i]!) || hart(P[j]!) ? 'kante' : l.art === 'mitte' && a === 'seite' ? 'umriss' : 'innen';
               stuecke.push({ g1x: s1[0] - s0[0], g1y: s1[1] - s0[1], g2x: s2[0] - s3[0], g2y: s2[1] - s3[1], art });
               kontroll.push([...b0, ...b1, ...b2, ...b3]);
-              k3.push([zeigen(A), zeigen(plus(A, neu?.[i]?.aus ?? P[i]!.aus!)), zeigen(plus(E, neu?.[j]?.ein ?? P[j]!.ein!)), zeigen(E)]);
+              const c3 = [zeigen(A), zeigen(A1), zeigen(E1), zeigen(E)];
+              k3.push(c3);
+              tiefen?.push(c3.map(tief));
             }
             linien.push({ zu, punkte: idx, stuecke, knick: P.map((_, i) => werk.eckeGezeigt(li, i)) });
             lSchl.push(`${fl}|${l.id}|${m ? 1 : 0}`);
             infos.push({ fl, id: l.id, m });
-            const PR = this.abtasten(F, kontroll, stuecke, br);
+            const PR = this.abtasten(F, kontroll, stuecke, br, tiefen);
             this.verdeckteProben(PR, k3, stuecke, karte, br, F.tiefe);
             proben.push(PR);
           }
@@ -358,7 +382,7 @@ export class WerkBlatt implements Raum {
     this.linien = infos;
     this.roh = roh;
     this.flaechen = flaechen;
-    this.struktur = `${flaechen.map((f) => f.a).join(',')}|${werk.loops.map((l) => `${l.id}.${l.punkte.length}.${werk.exakt(l) && hatGriffe(l) ? 1 : 0}`).join(',')}`;
+    this.struktur = `${flaechen.map((f) => `${f.a}${f.raeumlich ? '*' : ''}`).join(',')}|${werk.loops.map((l) => `${l.id}.${l.punkte.length}.${werk.exakt(l) && hatGriffe(l) ? 1 : 0}`).join(',')}`;
   }
 
   // ---------- S13 (6): ⌘Z fließt zurück ----------
@@ -782,8 +806,11 @@ export class WerkBlatt implements Raum {
     P.z = z;
   }
 
-  /** Proben einer Linie wie `linieAbtasten` der Studie, aber auf der Fläche: im Blatt abgetastet, dann abgebildet */
-  private abtasten(F: Flaeche, kontroll: number[][], stuecke: Stueck[], br: Breiten): LinienProben {
+  /**
+   * Proben einer Linie wie `linieAbtasten` der Studie, aber auf der Fläche: im Blatt abgetastet, dann abgebildet. `tiefen` (B2, nur auf
+   * einer räumlichen Fläche): je Stück die Tiefe seiner vier Kontrollpunkte; die Tiefe längs des Stücks ist dieselbe Kurve.
+   */
+  private abtasten(F: Flaeche, kontroll: number[][], stuecke: Stueck[], br: Breiten, tiefen?: number[][]): LinienProben {
     const m = stuecke.length;
     const xs: number[] = [];
     const ys: number[] = [];
@@ -796,11 +823,12 @@ export class WerkBlatt implements Raum {
     let py = 0;
     for (let si = 0; si < m; si++) {
       const k = kontroll[si]!;
+      const kt = tiefen?.[si];
       // Länge auf dem Bildschirm grob aus dem Kontrollpolygon: etwa alle 2,5 Bildschirmpunkte eine Probe
       let grob = 0;
-      let [qx, qy] = F.hin(k[0]!, k[1]!);
+      let [qx, qy] = F.hin(k[0]!, k[1]!, kt?.[0]);
       for (let c = 1; c < 4; c++) {
-        const [rx, ry] = F.hin(k[2 * c]!, k[2 * c + 1]!);
+        const [rx, ry] = F.hin(k[2 * c]!, k[2 * c + 1]!, kt?.[c]);
         grob += Math.hypot(rx - qx, ry - qy);
         qx = rx;
         qy = ry;
@@ -808,7 +836,8 @@ export class WerkBlatt implements Raum {
       const anzahl = Math.max(2, Math.min(160, Math.ceil(grob / 2.5)));
       for (let j = si === 0 ? 0 : 1; j <= anzahl; j++) {
         const t = j / anzahl;
-        const [x, y] = F.hin(...bez(k, t));
+        const u = 1 - t;
+        const [x, y] = F.hin(...bez(k, t), kt ? u * u * u * kt[0]! + 3 * u * u * t * kt[1]! + 3 * u * t * t * kt[2]! + t * t * t * kt[3]! : undefined);
         if (xs.length) s += Math.hypot(x - px, y - py);
         px = x;
         py = y;
