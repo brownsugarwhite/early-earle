@@ -2034,6 +2034,39 @@ function umrissJetzt(achse: 0 | 1 | 2): Float32Array {
   return werkGezeigt ? werkHaut.umriss(achse, werkBeschaeftigt()) : koerper!.umriss(achse);
 }
 
+/**
+ * A3: der Kasten der Haut des Werks im Bild (Gerätepunkte, Ursprung oben links), wenn von der Seifenhaut nur sie zu sehen ist (Ruhe,
+ * kein Rahmen, kein Schlauch; nicht in der Pose, dort drehen die Knochen die Haut aus ihrem Kasten). Die Seifenhaut legt ihr teures
+ * Ziel dann nur so groß an. null: das ganze Bild.
+ */
+function hautAusschnitt(m: Moment | null): { x: number; y: number; b: number; h: number } | null {
+  if (zustand !== 'ruhe' || !werkGezeigt || !m || 1 - m.schatten > 1e-3 || werk.grund !== null) return null;
+  const { rx, ry, tiefe } = werkHaut.masse();
+  const vp = vpJetzt();
+  const mx = werkHaut.mitte.x;
+  const my = werkHaut.mitte.y;
+  // die gewölbte Anzeige reicht ein wenig über die Rechenpunkte hinaus
+  const k = 1.05;
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  const v = new Vector4();
+  for (let e = 0; e < 8; e++) {
+    v.set(mx + (e & 1 ? k : -k) * rx, my + (e & 2 ? k : -k) * ry, (e & 4 ? k : -k) * tiefe, 1).applyMatrix4(vp);
+    // eine Ecke hinter der Kamera: kein verlässlicher Kasten
+    if (!(v.w > 1e-6)) return null;
+    const x = (v.x / v.w / 2 + 0.5) * W * D;
+    const y = (0.5 - v.y / v.w / 2) * H * D;
+    x0 = Math.min(x0, x);
+    x1 = Math.max(x1, x);
+    y0 = Math.min(y0, y);
+    y1 = Math.max(y1, y);
+  }
+  const rand = 8 * D + 0.03 * Math.max(x1 - x0, y1 - y0);
+  return { x: x0 - rand, y: y0 - rand, b: x1 - x0 + 2 * rand, h: y1 - y0 + 2 * rand };
+}
+
 /** ein Bild; true: es bewegt sich noch etwas */
 function bild(dt: number): boolean {
   const t0 = performance.now();
@@ -2285,6 +2318,7 @@ function bild(dt: number): boolean {
     schnitt: schnittJetzt,
     // eingerastet: Das Blatt hat die Blase ganz weggeschnitten und der Rahmen ist weg: nur der Grund
     leer: schnittGanz && zustand === 'ruhe' && vier < 1e-3 && !!m && 1 - m.schatten < 1e-3,
+    ausschnitt: hautAusschnitt(m),
   };
   const tz = performance.now();
   haut.zeichnen(kam.aktiv, w, []);

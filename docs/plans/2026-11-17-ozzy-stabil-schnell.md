@@ -173,9 +173,15 @@ rechts gebaut nach einem Zug; „strange bird“, gleiche Ansicht).
 - **Nicht gebaut: das Zeichenziel mit 8 Bit.** Beim Nachrechnen zeigte sich: Damit die hellen Spiegelungen nicht abgeschnitten
   werden, müsste das Bild halb so hell gespeichert werden; nahe Weiß (und die Seifenhaut ist fast überall nahe Weiß) wären die
   Stufen dann gröber als die des Bildschirms. Das Risiko für „immer super glatt“ ist mir zu groß.
-- **Offen, mein Vorschlag (das Bild bleibt genau gleich):** das teure Ziel nur so groß anlegen wie die Blase im Bild. Die
-  Kantenglättung kostet heute 3,2 bis 4,9 ms je Bild, weil ihr Ziel das ganze Fenster deckt; die Blase füllt im Raum rund ein
-  Sechzehntel davon. Erwartung: Raum rund 6,5 ms, Vier Ansichten rund 10,5 ms, nah wenig Gewinn. Als nächster Schritt.
+- **Gebaut am 18.11. (Florian: „Erst A3“): das teure Ziel nur so groß wie die Blase im Bild.** Ozzy gibt der Seifenhaut den Kasten
+  der Form im Bild (`hautAusschnitt`); sie zeichnet die Blase in ein Ziel dieser Größe (`Haut.ausschnittFuer`, auf 128 Gerätepunkte
+  gerastert) und den Grund darum herum direkt. Nicht in der Pose, nicht beim Aufblasen, und nicht, wenn der Kasten mehr als sechs
+  Zehntel des Bilds deckt. **Gemessen:** Raum 9,5 → **6,0 ms**, Vier Ansichten 15,1 → **10,3 ms**, eingerastet 4,3 ms, nah
+  herangezoomt unverändert 12,6 ms. **Bild gleich:** 70 bis 101 dB gegen das Ziel über das ganze Bild; mehr als eine Stufe von 255
+  weichen höchstens 13 von 5,2 Millionen Bildpunkten ab. Alle 22 Proben halten.
+- **Stand von A3 damit:** Raum 15,8 → 6,0 ms (Ziel 8: erreicht), Vier Ansichten 16,8 → 10,3 ms, eingerastet 9,7 → 4,3 ms, nah
+  21,1 → 12,6 ms (Ziel 10: nicht erreicht; dort deckt die Blase das Bild, und die Zahl der Dreiecke begrenzt die Stufen: Das löst
+  erst E1).
 
 **A4. Kleinigkeiten (klein).** Fenstermaße nicht bei jedem Mausereignis abfragen; der Strahl gegen die Haut einmal je Bild statt je
 Mausbewegung; in der Pose das Gedrehte merken, statt es zwölfmal je Bild neu zu drehen; Weichzeichner hinter Leiste und Menü nur, wo

@@ -13,13 +13,13 @@ Fassung mit allen Messwerten und Zwischenständen liegt im Archiv:
 **Wie es weitergeht (17.11. nachts):** Der Plan „Ozzy stabil und schnell“ ist freigegeben (Florian: „Du kannst loslegen.“):
 [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md) (seine Klarstellungen und Antworten
 wörtlich, Befunde, sechs Etappen; **was gebaut ist, steht dort je Schritt unter „Gebaut“**). Der Spiegel-Schalter ruht, bis er ihn
-genauer beschreibt. **Stand: Etappe A ist gebaut bis auf drei Reste** (A3: das Ziel der Kantenglättung nur so groß wie die Blase;
-A4: das Gedrehte in der Pose merken, der Weichzeichner; A2: Vergleichsbild zu den Spiegelungen). Gemessen an „strange bird“:
-Grafikkarte je Bild im Raum 15,8 → 9,5 ms, nah 21,1 → 12,8 ms, eingerastet 9,7 → 3,9 ms; Zug 18,8 / 26,4 → 10,9 / 16,9 ms je Bild;
-keine Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
+genauer beschreibt. **Stand (18.11.): Etappe A ist gebaut bis auf zwei kleine Reste** (A4: das Gedrehte in der Pose merken, der
+Weichzeichner; A2: Vergleichsbild zu den Spiegelungen). Gemessen an „strange bird“: Grafikkarte je Bild im Raum 15,8 → 6,0 ms, Vier
+Ansichten 16,8 → 10,3 ms, eingerastet 9,7 → 4,3 ms, nah herangezoomt 21,1 → 12,6 ms; Zug 18,8 / 26,4 → 10,7 / 17,1 ms je Bild; keine
+Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
 [`2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md) (vorher),
 [`2026-11-17-messen-nach-a.md`](../../progress/ozzy/2026-11-17-messen-nach-a.md) (nach A). Sein Urteil zur Seifenhaut steht aus.
-Nächste Schritte: der Rest von A3, dann Etappe B (zuerst der Zeiger-Film). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+Nächster Schritt: Etappe B, zuerst der Zeiger-Film. Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
 ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 22 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 

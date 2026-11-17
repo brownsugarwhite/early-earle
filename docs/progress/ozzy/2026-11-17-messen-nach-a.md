@@ -3,14 +3,16 @@
 Plan: [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md), Etappe A. Grundlinie:
 [`2026-11-17-messen-karte-zug-p.md`](2026-11-17-messen-karte-zug-p.md). Gleiche Werkzeuge, gleicher Testbrowser (1440 × 900, doppelte
 Dichte, „strange bird“), je ein Lauf. Gebaut sind A0, A1, A2, A3 (Fluss als Textur, Stufen nach der Größe im Bild, kein teures Ziel
-ohne sichtbare Blase) und aus A4 zwei Punkte. Offen aus A3: das Ziel der Kantenglättung.
+ohne sichtbare Blase, und seit dem 18.11.: das Ziel der Kantenglättung nur so groß wie die Blase im Bild) und aus A4 zwei Punkte.
 
 ## Grafikkarte je Bild (Rechnen / mit Grafikkarte, ms)
 
 | | Raum | Raum nah (Zoom 2,9) | eingerastet Seite | Vier Ansichten |
 | --- | --- | --- | --- | --- |
 | vorher | 2,3 / 15,8 | 3,1 / 21,1 | 1,1 / 9,7 | 4,0 / 16,8 |
-| **nach A** | 2,0 / **9,5** | 3,1 / **12,8** | 0,9 / **3,9** | 3,9 / 15,1 |
+| nach A, noch mit dem Ziel über das ganze Bild (17.11.) | 2,0 / 9,5 | 3,1 / 12,8 | 0,9 / 3,9 | 3,9 / 15,1 |
+| **nach A, Ziel nur so groß wie die Blase (18.11.)** | 2,2 / **6,0** | 3,2 / **12,6** | 1,2 / **4,3** | 3,9 / **10,3** |
+| dasselbe ohne Seifenhaut (Versuch) | 1,7 / 3,9 | 3,2 / 5,9 | 1,0 / 3,5 | 3,8 / 7,9 |
 | nach A, ohne Kantenglättung (Versuch) | 2,1 / 6,3 | 3,1 / 8,7 | 1,0 / 4,0 | 3,8 / 10,2 |
 | nach A, zweifach statt vierfach (Versuch) | 1,8 / 8,8 | 3,1 / 10,6 | 1,0 / 4,2 | 4,0 / 12,8 |
 | nach A, 8 statt 16 Bit (Versuch) | 1,8 / 7,4 | 3,1 / 10,2 | 1,0 / 4,2 | 3,9 / 12,5 |
@@ -20,9 +22,18 @@ Schritt für Schritt (Raum / nah, mit stehender Zeit der Seifenhaut, Zoom nah 2,
 10,7 / 11,4 · dazu Stufen nach der Größe im Bild 9,7 / 11,5. Bild gegen vorher: Raum 61 dB (eine Stufe statt zwei), nah 76 dB (nur
 die Textur): nicht zu sehen.
 
-**Was bleibt:** Die Seifenhaut kostet noch rund 5,4 ms im Raum und 7 ms nah und in den Vier Ansichten; davon ist die Kantenglättung
-(vierfach, 16 Bit je Kanal, über das ganze Bild) 3,2 bis 4,9 ms. Die Linien kosten in den Vier Ansichten rund 6 ms (drei weiße
-Körper), sonst rund 2,5 ms.
+Die vier Zeilen „Versuch“ darunter stammen vom 17.11. (Ziel über das ganze Bild).
+
+**Das Ziel nur so groß wie die Blase (18.11.):** Die Seifenhaut zeichnet in ein Ziel, das nur den Kasten der Form im Bild deckt (auf
+128 Gerätepunkte gerastert; es wächst sofort und schrumpft erst nach einer Weile), darum herum den Grund direkt. Deckte der Kasten
+mehr als sechs Zehntel des Bilds (nah herangezoomt), bleibt es beim ganzen Bild. **Bild gegen das ganze Ziel** (vier Ansichten bei
+stehender Zeit, 5,2 Millionen Bildpunkte je Bild): Raum 101 dB, etwas näher 99 dB, Vier Ansichten 91 dB, Raum von hinten mit der
+Rückseite im Bild 70 dB. Mehr als eine Stufe von 255 weichen ab: 13 Bildpunkte (von hinten) und 3 (Vier Ansichten), einzelne
+Randpunkte der Blase. Um eine Stufe weichen im Dunkel der Rückseite rund 1 % der Bildpunkte ab (das Rauschen gegen Stufen rundet dort
+ohne den Umweg über 16 Bit minimal anders). Mitten in einer Drehung („teat firefish“, vier Stellungen): 70 bis 78 dB.
+
+**Was bleibt:** Die Seifenhaut kostet im Raum und in den Vier Ansichten noch rund 2 ms, nah herangezoomt rund 6,7 ms (dort deckt sie
+das Bild, das Ziel bleibt groß). Die Linien kosten in den Vier Ansichten rund 6 ms (drei weiße Körper), sonst 2,5 bis 4 ms.
 
 ## Stufen der Anzeige beim Zoomen („strange bird“)
 

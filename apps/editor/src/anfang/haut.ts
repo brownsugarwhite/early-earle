@@ -129,6 +129,11 @@ const HINTEN_GLSL = /* glsl */ `
 uniform vec3 uHinten[${HINTEN_KANTEN}];
 uniform int uHintenZahl;
 uniform float uKanteHoehe;
+uniform float uKanteLinks;
+// der Ort dieses Bildpunkts im ganzen Bild (Gerätepunkte, y nach unten), auch wenn nur ein Ausschnitt gezeichnet wird
+vec2 bildOrt() {
+  return vec2(gl_FragCoord.x + uKanteLinks, uKanteHoehe - gl_FragCoord.y);
+}
 float hintenBei(vec2 p) {
   float h = 0.0;
   for (int k = 0; k < 4; k++) {
@@ -199,6 +204,8 @@ varying float vHoehe;
 varying float vSeite;
 varying vec2 vBlatt;
 varying float vDehnung;
+// A3: nur ein Ausschnitt des Bilds wird gezeichnet (Maßstab und Versatz im Bildraum; das ganze Bild: 1, 1, 0, 0)
+uniform vec4 uAusschnitt;
 void main() {
   vec4 w = modelMatrix * vec4(position, 1.0);
   vPos = w.xyz;
@@ -209,6 +216,7 @@ void main() {
   vDehnung = aDehnung;
   vSicht = aSicht;
   gl_Position = projectionMatrix * viewMatrix * w;
+  gl_Position.xy = gl_Position.xy * uAusschnitt.xy + uAusschnitt.zw * gl_Position.w;
 }
 `;
 
@@ -248,7 +256,7 @@ ${HINTEN_GLSL}
 // Nacht hier: ganz (Nacht der Studie) oder auf einer Fläche der Rückseite (Ozzy: Wenden, Wände von hinten)
 float nachtHier() {
   if (uNacht == 1) return 1.0;
-  return hintenBei(vec2(gl_FragCoord.x, uKanteHoehe - gl_FragCoord.y));
+  return hintenBei(bildOrt());
 }
 
 ${RAUSCH_GLSL}
@@ -466,9 +474,27 @@ precision highp float;
 uniform vec3 uFarbe;
 ${HINTEN_GLSL}
 void main() {
-  float h = hintenBei(vec2(gl_FragCoord.x, uKanteHoehe - gl_FragCoord.y));
+  float h = hintenBei(bildOrt());
   if (h <= 0.0) discard;
   gl_FragColor = vec4(uFarbe, h);
+}
+`;
+
+// Der Grund allein, gleich fürs Bild kodiert (Papier und Rückseite gemischt wie im Ziel der Seifenhaut, dann wie `ENDE_FRAGMENT`):
+// wo von der Haut nichts zu sehen ist (A3: um den Ausschnitt der Blase herum, oder das ganze Bild)
+const GRUND_FRAGMENT = /* glsl */ `
+precision highp float;
+uniform vec3 uPapier;
+uniform vec3 uFarbe;
+${HINTEN_GLSL}
+float ein(float c) {
+  return c <= 0.0031308 ? 12.92 * c : 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+}
+void main() {
+  vec3 c = mix(uPapier, uFarbe, hintenBei(bildOrt()));
+  c = vec3(ein(clamp(c.r, 0.0, 1.0)), ein(clamp(c.g, 0.0, 1.0)), ein(clamp(c.b, 0.0, 1.0)));
+  float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+  gl_FragColor = vec4(c + n / 255.0, 1.0);
 }
 `;
 
@@ -515,6 +541,13 @@ export interface HautWerte {
    * nur der Grund (Papier und Rückseite), direkt ins Bild, ohne das Ziel der Seifenhaut (gemessen: 6,5 ms je Bild für nichts).
    */
   leer?: boolean;
+  /**
+   * Ozzy (A3): Die Haut ist in diesem Bild nur in diesem Kasten zu sehen (Gerätepunkte, Ursprung oben links; der Kasten ihrer Punkte
+   * mit etwas Rand). Dann wird das Ziel der Seifenhaut (vierfache Kantenglättung, 16 Bit je Kanal) nur so groß angelegt und darum
+   * herum der Grund direkt gezeichnet: Das Bild ist dasselbe, das Löschen und Zusammenführen des Ziels kostet nur noch seinen Anteil
+   * am Bild (gemessen im ganzen Bild: 3 bis 5 ms). Fehlt: das ganze Bild.
+   */
+  ausschnitt?: { x: number; y: number; b: number; h: number } | null;
 }
 
 export const PAPIER = new Color('#ffffff');
@@ -522,7 +555,7 @@ const KEIN_SCHNITT: [number, number, number, number] = [0, 0, 0, -1];
 function keineKanten(): Vector3[] {
   return Array.from({ length: HINTEN_KANTEN }, () => new Vector3(0, 0, 1e6));
 }
-function hintenSetzen(u: Record<string, { value: unknown }>, h: HautWerte['dunkel'], hoehe: number): void {
+function hintenSetzen(u: Record<string, { value: unknown }>, h: HautWerte['dunkel'], hoehe: number, links = 0): void {
   const a = u.uHinten!.value as Vector3[];
   for (let i = 0; i < HINTEN_KANTEN; i++) {
     if (h && i * 3 + 2 < h.kanten.length) a[i]!.set(h.kanten[i * 3]!, h.kanten[i * 3 + 1]!, h.kanten[i * 3 + 2]!);
@@ -530,6 +563,7 @@ function hintenSetzen(u: Record<string, { value: unknown }>, h: HautWerte['dunke
   }
   u.uHintenZahl!.value = h ? Math.min(4, h.zahl) : 0;
   u.uKanteHoehe!.value = hoehe;
+  u.uKanteLinks!.value = links;
 }
 /** Nacht: tiefes Blau */
 export const NACHT = new Color('#121a28');
@@ -572,6 +606,14 @@ export class Haut {
   readonly schatten = new WandSchatten();
   /** A3: der Fluss der Dicke als Textur (einmal je Bild; neu nur, wenn sich Zeit oder Wind geändert haben) */
   private rausch: { ziel: WebGLRenderTarget; szene: Scene; material: ShaderMaterial; zeit: number; wx: number; wy: number };
+  /** A3: der Grund allein, fürs Bild kodiert (um den Ausschnitt herum, oder wenn von der Haut nichts zu sehen ist) */
+  private grundBild: { szene: Scene; material: ShaderMaterial };
+  /**
+   * A3: das Ziel für einen Ausschnitt (wie `ziel`, nur so groß wie die Blase im Bild). Seine Größe wächst sofort und schrumpft erst,
+   * wenn es eine Weile deutlich kleiner reicht (`zuGross` zählt die Bilder), damit es nicht bei jeder Drehung neu angelegt wird.
+   */
+  private zielKlein: WebGLRenderTarget;
+  private klein = { b: 0, h: 0, zuGross: 0 };
 
   constructor(renderer: WebGLRenderer) {
     this.renderer = renderer;
@@ -582,6 +624,7 @@ export class Haut {
     t.needsUpdate = true;
     this.tafel = t;
     this.ziel = new WebGLRenderTarget(4, 4, { type: HalfFloatType, samples: 4, depthBuffer: true });
+    this.zielKlein = new WebGLRenderTarget(4, 4, { type: HalfFloatType, samples: 4, depthBuffer: true });
     const material = new ShaderMaterial({
       vertexShader: ENDE_VERTEX,
       fragmentShader: ENDE_FRAGMENT,
@@ -599,7 +642,7 @@ export class Haut {
     const grundMaterial = new ShaderMaterial({
       vertexShader: ENDE_VERTEX,
       fragmentShader: HINTEN_FRAGMENT,
-      uniforms: { uHinten: { value: keineKanten() }, uHintenZahl: { value: 0 }, uKanteHoehe: { value: 1 }, uFarbe: { value: new Color(0, 0, 0) } },
+      uniforms: { uHinten: { value: keineKanten() }, uHintenZahl: { value: 0 }, uKanteHoehe: { value: 1 }, uKanteLinks: { value: 0 }, uFarbe: { value: new Color(0, 0, 0) } },
       depthTest: false,
       depthWrite: false,
       transparent: true,
@@ -607,6 +650,24 @@ export class Haut {
     const sg = new Scene();
     sg.add(new Mesh(quad, grundMaterial));
     this.hintenGrund = { szene: sg, material: grundMaterial };
+    const grundBildMaterial = new ShaderMaterial({
+      vertexShader: ENDE_VERTEX,
+      fragmentShader: GRUND_FRAGMENT,
+      uniforms: {
+        uHinten: { value: keineKanten() },
+        uHintenZahl: { value: 0 },
+        uKanteHoehe: { value: 1 },
+        uKanteLinks: { value: 0 },
+        uPapier: { value: new Color(1, 1, 1) },
+        uFarbe: { value: new Color(0, 0, 0) },
+      },
+      depthTest: false,
+      depthWrite: false,
+      blending: NoBlending,
+    });
+    const sgb = new Scene();
+    sgb.add(new Mesh(quad, grundBildMaterial));
+    this.grundBild = { szene: sgb, material: grundBildMaterial };
     const rauschMaterial = new ShaderMaterial({
       vertexShader: ENDE_VERTEX,
       fragmentShader: RAUSCH_FRAGMENT,
@@ -645,6 +706,8 @@ export class Haut {
           uHinten: { value: keineKanten() },
           uHintenZahl: { value: 0 },
           uKanteHoehe: { value: 1 },
+          uKanteLinks: { value: 0 },
+          uAusschnitt: { value: new Vector4(1, 1, 0, 0) },
           uSchnitt: { value: new Vector4(0, 0, 0, -1) },
           uPass: { value: 0 },
           uAnteil: { value: 1 },
@@ -783,6 +846,7 @@ export class Haut {
     r.setRenderTarget(null);
     r.compile(this.ende.szene, this.ende.kamera);
     r.compile(this.rausch.szene, this.ende.kamera);
+    r.compile(this.grundBild.szene, this.ende.kamera);
     this.netze.forEach((n, i) => (n.visible = sichtbar[i]!));
   }
 
@@ -834,12 +898,20 @@ export class Haut {
   zeichnen(kamera: Camera, w: HautWerte, felder: { kamera: Camera; x: number; y: number; b: number; h: number }[] = []): void {
     const r = this.renderer;
     const durch = DURCHSICHTIG[w.fassung]!;
+    // A3: nur der Ausschnitt mit der Blase geht durch das teure Ziel (nicht mit Feldern, nicht wenn er fast das ganze Bild deckt)
+    const A = !w.leer && !felder.length && w.ausschnitt ? this.ausschnittFuer(w.ausschnitt) : null;
+    const B = this.ziel.width;
+    const H0 = this.ziel.height;
+    const kanteHoehe = A ? A.y + A.h : H0;
+    const kanteLinks = A ? A.x : 0;
     const setzen = (m: ShaderMaterial, anteil: number): void => {
       const u = m.uniforms;
       u.uZeit!.value = w.zeit;
       u.uFassung!.value = w.fassung;
       u.uNacht!.value = w.nacht ? 1 : 0;
-      hintenSetzen(u, w.dunkel, this.ziel.height);
+      hintenSetzen(u, w.dunkel, kanteHoehe, kanteLinks);
+      if (A) (u.uAusschnitt!.value as Vector4).set(B / A.b, H0 / A.h, (B - 2 * A.x) / A.b - 1, 1 - (H0 - 2 * A.y) / A.h);
+      else (u.uAusschnitt!.value as Vector4).set(1, 1, 0, 0);
       const sn = w.schnitt ?? KEIN_SCHNITT;
       (u.uSchnitt!.value as Vector4).set(sn[0], sn[1], sn[2], sn[3]);
       u.uDeckung!.value = w.deckung;
@@ -883,30 +955,30 @@ export class Haut {
     else this.schatten.gruppe.visible = false;
     this.schatten.gruppe.visible = !!w.wuerfel;
     const grund = (w.nacht ? NACHT : (w.papier ?? PAPIER)).clone();
-    if (w.leer) {
-      // nur der Grund: Papier, und auf den Flächen der Rückseite ihre Farbe (hier schon für den Bildschirm kodiert)
+    const dunkelAn = !!w.dunkel && w.dunkel.zahl > 0 && !w.nacht;
+    /** der Grund allein über das ganze Bild (Papier und Rückseite), fürs Bild kodiert wie im letzten Durchgang */
+    const grundZeichnen = (): void => {
+      const u = this.grundBild.material.uniforms;
+      hintenSetzen(u, dunkelAn ? w.dunkel : null, H0, 0);
+      (u.uPapier!.value as Color).copy(grund);
+      (u.uFarbe!.value as Color).copy(w.kanteFarbe ?? NACHT);
       r.setRenderTarget(null);
-      r.setClearColor(grund, 1);
-      r.clear(true, true, false);
-      if (w.dunkel && w.dunkel.zahl > 0 && !w.nacht) {
-        const u = this.hintenGrund.material.uniforms;
-        hintenSetzen(u, w.dunkel, this.ziel.height);
-        (u.uFarbe!.value as Color).copy(w.kanteFarbe ?? NACHT).convertLinearToSRGB();
-        const auto = r.autoClear;
-        r.autoClear = false;
-        r.render(this.hintenGrund.szene, this.ende.kamera);
-        r.autoClear = auto;
-      }
+      r.render(this.grundBild.szene, this.ende.kamera);
+    };
+    if (w.leer) {
+      // von der Haut ist nichts zu sehen: nur der Grund
+      grundZeichnen();
       return;
     }
-    r.setRenderTarget(this.ziel);
+    const ziel = A ? this.zielKlein : this.ziel;
+    r.setRenderTarget(ziel);
     r.setClearColor(grund, 1);
     r.clear(true, true, false);
     const autoLoeschen = r.autoClear;
-    if (w.dunkel && w.dunkel.zahl > 0 && !w.nacht) {
+    if (dunkelAn) {
       // auf den Flächen der Rückseite der andere Grund (vor der Haut: Sie spiegelt und lässt durch wie überall); danach nicht mehr löschen
       const u = this.hintenGrund.material.uniforms;
-      hintenSetzen(u, w.dunkel, this.ziel.height);
+      hintenSetzen(u, w.dunkel, kanteHoehe, kanteLinks);
       (u.uFarbe!.value as Color).copy(w.kanteFarbe ?? NACHT);
       r.autoClear = false;
       r.render(this.hintenGrund.szene, this.ende.kamera);
@@ -936,7 +1008,56 @@ export class Haut {
       this.netze.forEach((n, i) => (n.visible = sichtbar[i]!));
       this.schatten.gruppe.visible = wandSichtbar;
     }
-    r.setRenderTarget(null);
+    this.ende.material.uniforms.uBild!.value = ziel.texture;
+    if (!A) {
+      r.setRenderTarget(null);
+      r.render(this.ende.szene, this.ende.kamera);
+      return;
+    }
+    // erst der Grund über das ganze Bild, dann der Ausschnitt mit der Haut an seinen Platz (Bildpunkt auf Bildpunkt)
+    grundZeichnen();
+    const pr = r.getPixelRatio();
+    r.setViewport(A.x / pr, (H0 - A.y - A.h) / pr, A.b / pr, A.h / pr);
+    r.autoClear = false;
     r.render(this.ende.szene, this.ende.kamera);
+    r.autoClear = autoLoeschen;
+    r.setViewport(0, 0, B / pr, H0 / pr);
+  }
+
+  /**
+   * Der Ausschnitt, der durch das kleine Ziel geht: der Kasten der Haut, aufs Bild begrenzt und auf das Raster der Zielgröße gebracht
+   * (Gerätepunkte, ganze Zahlen). null: lohnt nicht (er deckte mehr als sechs Zehntel des Bilds), dann das ganze Bild wie bisher.
+   */
+  private ausschnittFuer(a: { x: number; y: number; b: number; h: number }): { x: number; y: number; b: number; h: number } | null {
+    const B = this.ziel.width;
+    const H = this.ziel.height;
+    const x0 = Math.max(0, Math.floor(a.x));
+    const y0 = Math.max(0, Math.floor(a.y));
+    const x1 = Math.min(B, Math.ceil(a.x + a.b));
+    const y1 = Math.min(H, Math.ceil(a.y + a.h));
+    const RASTER = 128;
+    const b = Math.min(B, Math.max(RASTER, Math.ceil(Math.max(1, x1 - x0) / RASTER) * RASTER));
+    const h = Math.min(H, Math.max(RASTER, Math.ceil(Math.max(1, y1 - y0) / RASTER) * RASTER));
+    const K = this.klein;
+    if (b > K.b || h > K.h) {
+      K.b = Math.max(K.b, b);
+      K.h = Math.max(K.h, h);
+      K.zuGross = 0;
+    } else if (b <= K.b - 2 * RASTER || h <= K.h - 2 * RASTER) {
+      // deutlich zu groß: erst nach einer Weile kleiner anlegen (ein Schwenk hin und zurück soll nichts neu anlegen)
+      if (++K.zuGross > 45) {
+        K.b = b;
+        K.h = h;
+        K.zuGross = 0;
+      }
+    } else K.zuGross = 0;
+    K.b = Math.min(K.b, B);
+    K.h = Math.min(K.h, H);
+    if (K.b * K.h > 0.6 * B * H) return null;
+    if (this.zielKlein.width !== K.b || this.zielKlein.height !== K.h) this.zielKlein.setSize(K.b, K.h);
+    // der Kasten der Haut in der Mitte des Ausschnitts, der Ausschnitt ganz im Bild
+    const x = Math.max(0, Math.min(B - K.b, Math.round((x0 + x1) / 2 - K.b / 2)));
+    const y = Math.max(0, Math.min(H - K.h, Math.round((y0 + y1) / 2 - K.h / 2)));
+    return { x, y, b: K.b, h: K.h };
   }
 }
