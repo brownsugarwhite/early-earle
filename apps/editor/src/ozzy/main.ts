@@ -568,6 +568,7 @@ function werkFormAnlegen(): void {
   }));
   const t0 = performance.now();
   werkHaut.neueForm();
+  werkBlatt.neueForm();
   const text = werk.neuAusUmriss(anker);
   werk.anzeige.allesZeigen();
   stat.werkMs = performance.now() - t0;
@@ -590,6 +591,7 @@ const LADEN_GROESSE = 0.25;
 async function formLaden(name: string): Promise<string> {
   neu();
   werkHaut.neueForm();
+  werkBlatt.neueForm();
   const text = await werk.wesenLaden(name);
   if (!text.startsWith('geladen')) return text;
   werk.anzeige.allesZeigen();
@@ -900,6 +902,7 @@ function nochEinmal(): void {
 function neu(): void {
   if (bearbeiten.stift) bearbeiten.stiftSchalten(false);
   werkHaut.neueForm();
+  werkBlatt.neueForm();
   zustand = 'blatt';
   T = 0;
   blatt.leeren();
@@ -2213,6 +2216,8 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     const aktiv = bearbeiten.schritt(dt) || !!raumStrich || !!raumAufzug || werkBlatt.fliesst;
     const sz = bearbeiten.szene(bearbeitenAnsicht);
     K.uebernehmen(sz);
+    // S13 (4): Tropfen, die zu neuen Kreuzungen fließen und dort verschmelzen
+    for (const t of werkBlatt.verschmelzenTropfen(linienWerte.punktRadius * linienWerte.tropfen)) K.punkt(t.x * D, t.y * D, t.r * D);
     // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
     return { zeiger: strichWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv };
   }
@@ -4026,6 +4031,8 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** S13 (4): wie viele Tropfen gerade zu neuen Kreuzungen fließen */
+  verschmelzen: (): number => werkBlatt.verschmelzenTropfen(1).length,
   /** S13 (5): Bogenlänge und halbe Breite je Probe einer Linie (Loop-Kennung) auf der Fläche mit diesem Blatt, nicht gespiegelt (CSS-Pixel) */
   linienBreite: (id: number, a: Flaeche['a']) => {
     const li = werkBlatt.linien.findIndex((I) => I.id === id && !I.m && werkBlatt.flaechen[I.fl]?.a === a);

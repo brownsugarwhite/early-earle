@@ -122,6 +122,10 @@ function tuscheBei(st: number[], t: number): number | null {
   return st[2 * n - 1]!;
 }
 
+/** S13 (liquid drop, Idee 4): so lange (s) fließen die Tropfen zu einer neuen Kreuzung und verschmelzen; so weit her kommen sie (px) */
+const VERSCHMELZEN_DAUER = new URLSearchParams(location.search).get('fluss') === '0' ? 0 : 0.5;
+const VERSCHMELZEN_WEG = 24;
+
 const glatt =(a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -143,6 +147,9 @@ export class WerkBlatt implements Raum {
   private fluss: { t0: number; punkte: Map<string, [number, number]>; linien: Map<string, FlussLinie> } | null = null;
   /** S13 (5): die Breiten vor K je Linie und wo die Tusche herkommt (Bogenlänge, CSS-Pixel), Anfang auf der Uhr der Anzeige */
   private tusche: { t0: number; linien: Map<string, TuscheLinie> } | null = null;
+  /** S13 (4): Kreuzungen, die es schon gab (nur neue verschmelzen; null: noch keine Form gesehen), und die laufenden Verschmelzungen */
+  private bekannteKreuzungen: Set<number> | null = null;
+  private verschmelzen: { id: number; t0: number }[] = [];
   private uhr = 0;
   private punktSchl: string[] = [];
   private linienSchl: string[] = [];
@@ -332,6 +339,7 @@ export class WerkBlatt implements Raum {
     }
     this.fliessen(punkte, linien, proben, pSchl, lSchl);
     this.tuscheFliessen(proben, lSchl);
+    this.kreuzungenNeu();
     this.punktSchl = pSchl;
     this.linienSchl = lSchl;
     this.netz = { punkte, linien };
@@ -377,9 +385,89 @@ export class WerkBlatt implements Raum {
     this.fluss = { t0: this.uhr, punkte, linien };
   }
 
-  /** gleitet die Anzeige gerade oder fließt Tusche (dann braucht sie Bilder) */
+  /** gleitet die Anzeige gerade, fließt Tusche oder verschmilzt eine Kreuzung (dann braucht sie Bilder) */
   get fliesst(): boolean {
-    return this.fluss !== null || this.tusche !== null;
+    return this.fluss !== null || this.tusche !== null || this.verschmelzen.length > 0;
+  }
+
+  /** eine neue Form (geladen, aus der Silhouette, neu): Ihre Kreuzungen gelten als bekannt, keine verschmilzt */
+  neueForm(): void {
+    this.bekannteKreuzungen = null;
+    this.verschmelzen = [];
+  }
+
+  /** S13 (4): Kreuzungen, die das Werk neu angelegt hat, beginnen zu verschmelzen (bei sehr vielen auf einmal nicht: dann ist es Laden) */
+  private kreuzungenNeu(): void {
+    const jetzt = new Set<number>();
+    for (const l of werk.loops) for (const p of l.punkte) if (p.kreuzung !== undefined) jetzt.add(p.kreuzung);
+    const B = this.bekannteKreuzungen;
+    if (B) {
+      const neu = [...jetzt].filter((k) => !B.has(k));
+      if (neu.length <= 24) for (const id of neu) this.verschmelzen.push({ id, t0: this.uhr });
+      for (const k of jetzt) B.add(k);
+    } else this.bekannteKreuzungen = jetzt;
+    this.verschmelzen = this.verschmelzen.filter((v) => this.uhr - v.t0 < VERSCHMELZEN_DAUER);
+  }
+
+  /**
+   * S13 (4): die Tropfen dieses Bilds (CSS-Pixel, Halbmesser): Auf jeder Linie durch eine neue Kreuzung fließt einer zu ihr hin; kommen
+   * sie an, quillt der Punkt kurz auf. Die flüssige Anzeige lässt sie ineinanderfließen.
+   */
+  verschmelzenTropfen(r0: number): { x: number; y: number; r: number }[] {
+    const aus: { x: number; y: number; r: number }[] = [];
+    for (const v of this.verschmelzen) {
+      const u = Math.min(1, Math.max(0, (this.uhr - v.t0) / Math.max(1e-6, VERSCHMELZEN_DAUER)));
+      const g = glatt(0, 1, Math.min(1, u / 0.8));
+      const quell = Math.sin(Math.PI * glatt(0, 1, (u - 0.55) / 0.45));
+      const marke = `|k${v.id}|`;
+      this.punktSchl.forEach((k, pi) => {
+        const P = this.netz.punkte[pi];
+        if (!k.includes(marke) || !P?.sichtbar) return;
+        this.netz.linien.forEach((L, li) => {
+          const PR = this.proben[li];
+          if (!L.punkte.includes(pi) || !PR || PR.n < 3) return;
+          // die Probe am Punkt, dann auf der Linie so weit, wie der Tropfen noch weg ist
+          let j0 = 0;
+          let best = Infinity;
+          for (let j = 0; j < PR.n; j++) {
+            const d = (PR.x[j]! - P.x) ** 2 + (PR.y[j]! - P.y) ** 2;
+            if (d < best) {
+              best = d;
+              j0 = j;
+            }
+          }
+          const rund = L.zu;
+          const richtung = !rund && j0 >= PR.n - 2 ? -1 : 1;
+          let rest = VERSCHMELZEN_WEG * (1 - g);
+          let j = j0;
+          let x = PR.x[j0]!;
+          let y = PR.y[j0]!;
+          for (let schritt = 0; schritt < PR.n && rest > 0; schritt++) {
+            let k2 = j + richtung;
+            if (k2 < 0 || k2 >= PR.n) {
+              if (!rund) break;
+              k2 = (k2 + PR.n) % PR.n;
+            }
+            const dx = PR.x[k2]! - x;
+            const dy = PR.y[k2]! - y;
+            const d = Math.hypot(dx, dy);
+            if (d >= rest) {
+              x += (dx * rest) / Math.max(1e-9, d);
+              y += (dy * rest) / Math.max(1e-9, d);
+              rest = 0;
+              break;
+            }
+            rest -= d;
+            x = PR.x[k2]!;
+            y = PR.y[k2]!;
+            j = k2;
+          }
+          aus.push({ x, y, r: r0 * (1 - 0.35 * g) * (u < 0.98 ? 1 : 0) });
+        });
+        aus.push({ x: P.x, y: P.y, r: r0 * 0.9 * quell });
+      });
+    }
+    return aus.filter((t) => t.r > 0.05);
   }
 
   /** S13 (5): vor K die Breiten aller Linien merken und, je gewählter Linie, die Stellen, von denen die Tusche fließt */

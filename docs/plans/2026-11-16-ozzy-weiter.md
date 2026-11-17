@@ -300,6 +300,15 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
   0,12 s ist die Linie nahe am Punkt ganz dick, an den fernen Enden noch nicht; beim Ausschalten umgekehrt. Filme
   [vorher](../progress/ozzy/2026-11-17-tusche-vorher.mp4) und [nachher](../progress/ozzy/2026-11-17-tusche.mp4). An einem einzelnen Punkt
   ist die Strecke kurz (die Kante reicht bis zu den Nachbarpunkten); an einer ganzen gewählten Linie fließt es von allen Punkten aus.
+- **4, Kreuzungen verschmelzen** (Florian, 17.11.: „ok, mach weiter“): Legt das Werk eine neue Kreuzung an (P, L, Freihand, Formen),
+  fließen auf ihren beiden Linien zwei Tropfen zu ihr hin und verschmelzen dort, der Punkt quillt dabei kurz auf (etwa 0,5 s). Nur
+  Kreuzungen, die neu entstehen; beim Laden und nach ⌘Z nicht. Nur die Anzeige. *Probe:* Film: eine Gerade mit P quer über die Form.
+  *Gebaut:* `werkBlatt.kreuzungenNeu` (Kennungen der Kreuzungen im Werk; neue, höchstens 24 auf einmal, beginnen zu verschmelzen),
+  `verschmelzenTropfen` (je Linie ein Tropfen, der 24 px auf ihr zur Kreuzung fließt, der Punkt quillt beim Ankommen auf; die flüssige
+  Anzeige lässt sie ineinanderfließen). Film [`2026-11-17-kreuzung.mp4`](../progress/ozzy/2026-11-17-kreuzung.mp4) (dreifach langsamer):
+  9 neue Kreuzungen, 27 Tropfen zugleich. Probe zu S8 hält.
+- **1, Menüs als Tropfen:** Das Menü wächst als Tropfen aus dem Wort „Ozzy“ und fließt beim Schließen dorthin zurück; der Knopf
+  „Maul“ quillt aus der gewählten Linie, „Fressen“ aus dem Knopf „Maul“. *Probe:* Film (Menü auf und zu, Maul und Fressen).
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 
