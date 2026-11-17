@@ -294,7 +294,11 @@ Menü, „Maul“ und „Fressen“ als Tropfen (`reglerZeigen` mit `reglerOffen
 `#regler[hidden]`, das Menü schließt sich einen Augenblick lang). Idee 2 gebaut: Regler als Tropfen (`reglerTropfen.ts`, CSS `@property`;
 Feder in Teilschritten, sonst wird sie bei ruckelnden Bildern unstet). Idee 9 gebaut: Ordnungslinien (`ordnungslinien()`). Idee 10 gebaut:
 der Ansichts-Tropfen unten rechts (`ansichtsTropfen.ts`; Drehen von Hand in `drehenBeginnen`/`drehenZiehen`/`drehenLos`); Probe
-`ozzy-ansichts-tropfen-fenster.mjs`. Damit ist S13 durch; Florians Urteil zu allen zehn steht aus. `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+`ozzy-ansichts-tropfen-fenster.mjs`. Damit ist S13 durch; Florians Urteil zu allen zehn steht aus.
+
+**S14 Röntgen:** ⌥ halten (iPad: Knopf „Röntgen“) macht Verdecktes greifbar (`Raum.roentgen` in `verhalten.ts`, `kandidat`: das Nähere
+gewinnt), die Haut wird durchsichtiger, das Grün kräftiger, verdeckte Linien breiter. Probe `ozzy-roentgen-fenster.mjs`. Offen danach: der
+Lichtring. `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

@@ -1490,6 +1490,12 @@ function bild(dt: number): boolean {
   letzteDrehung = { gier: gierJetzt, neigung: neigungJetzt };
   hauch.staerke += (hauch.ziel - hauch.staerke) * (1 - Math.exp(-dt / 0.18));
   // in der Pose tönt sich das Papier (E8)
+  // S14: Röntgen (⌥ gehalten oder der Knopf auf dem iPad), weich
+  const roentgenZiel = (altGehalten || roentgenFest) && zustand === 'ruhe' && werkGezeigt ? 1 : 0;
+  roentgen += (roentgenZiel - roentgen) * (1 - Math.exp(-dt / 0.1));
+  if (Math.abs(roentgenZiel - roentgen) > 0.005) aktiv = true;
+  else roentgen = roentgenZiel;
+  werkBlatt.roentgenWert = roentgen;
   const tonZiel = werk.grund !== null && zustand === 'ruhe' ? 1 : 0;
   poseTon += (tonZiel - poseTon) * (1 - Math.exp(-dt / 0.22));
   if (Math.abs(tonZiel - poseTon) > 1e-3) aktiv = true;
@@ -1514,7 +1520,7 @@ function bild(dt: number): boolean {
     rahmen: m ? 1 - m.schatten : film,
     schatten: 0,
     schlauch: !!m && m.lage.seitRiss < 0.1,
-    deckung: (zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * glatt(T / 1.4)) * (1 - weg),
+    deckung: (zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * glatt(T / 1.4)) * (1 - weg) * (1 - 0.7 * roentgen),
     hauch: hauch.pos,
     hauchStaerke: hauch.staerke,
     hauchRadius: werkGezeigt ? pinselRadius / werkHaut.f : Math.max(24, (F?.radius ?? 200) * 0.2),
@@ -1600,7 +1606,7 @@ function bild(dt: number): boolean {
       k1: linienWerte.weich * D,
       felder: K.felder,
       tinte: TINTE,
-      gruen: GRUEN,
+      gruen: roentgen > 0 ? (GRUEN.map((g, i) => g + (GRUEN_ROENTGEN[i]! - g) * roentgen) as [number, number, number]) : GRUEN,
       dunkel: hintenJetzt,
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
     };
@@ -1616,7 +1622,9 @@ function bild(dt: number): boolean {
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
   const h =
-    zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
+    zustand === 'ruhe' && werkGezeigt && roentgen > 0.5
+      ? 'Röntgen: auch Punkte und Linien hinter der Form greifen · ⌥ loslassen: zurück'
+      : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · V oder L: zurück'
       : zustand === 'blatt'
       ? blatt.geschlossen && !blatt.zeichnet
@@ -1627,7 +1635,7 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
@@ -1638,7 +1646,7 @@ function bild(dt: number): boolean {
             : werkGezeigt
               ? bearbeiten.stift
                 ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
@@ -1662,6 +1670,8 @@ function bild(dt: number): boolean {
 
 const TINTE: [number, number, number] = [0x1f / 255, 0x1a / 255, 0x17 / 255];
 const GRUEN: [number, number, number] = [0xb9 / 255, 0xd1 / 255, 0xb4 / 255];
+/** S14: das Grün des Verdeckten im Röntgen (kräftiger, es ist jetzt greifbar) */
+const GRUEN_ROENTGEN: [number, number, number] = [0x5e / 255, 0x8f / 255, 0x57 / 255];
 const ZEIGER_WINKEL = [(32 * Math.PI) / 180, (80 * Math.PI) / 180];
 
 /** der Zeiger der Linien-Studie: Dreieck, Spitze oben links */
@@ -3358,6 +3368,10 @@ function muell(): void {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (e.altKey !== altGehalten) {
+    altGehalten = e.altKey;
+    anstossen();
+  }
   // ⌘S auch, wenn ein Regler den Fokus hat (sonst sichert der Browser die Seite); im Feld „Sichern“ gilt das Feld
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && e.target !== sichernName) {
     e.preventDefault();
@@ -3482,6 +3496,10 @@ window.addEventListener('keydown', (e) => {
   anstossen();
 });
 window.addEventListener('keyup', (e) => {
+  if (e.altKey !== altGehalten) {
+    altGehalten = e.altKey;
+    anstossen();
+  }
   blatt.alt = e.altKey;
   blatt.umschalt = e.shiftKey;
   bearbeiten.alt = e.altKey;
@@ -3503,10 +3521,28 @@ function tasteSenden(key: string, meta: boolean): void {
 // ohne Fokus auf dem Knopf (sonst löste eine Taste der Tastatur ihn danach noch einmal aus)
 tasten.addEventListener('pointerdown', (e) => e.preventDefault());
 tasten.addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('button[data-roentgen]')) {
+    roentgenFest = !roentgenFest;
+    roentgenKnopf?.setAttribute('aria-pressed', String(roentgenFest));
+    anstossen();
+    return;
+  }
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-taste]');
   if (b?.dataset.taste) tasteSenden(b.dataset.taste, b.dataset.meta === '1');
 });
 let tastenStandVorher = '';
+/**
+ * S14, Röntgen (Florian: „Röntgen zuerst“): Solange ⌥ gehalten wird (auf dem iPad: der Knopf „Röntgen“), greift man auch, was hinter
+ * der Form liegt; die Haut wird durchsichtiger, die grünen Linien bekommen ihre volle Breite zurück. Weich (0 … 1).
+ */
+let altGehalten = false;
+let roentgenFest = false;
+let roentgen = 0;
+const roentgenKnopf = tasten.querySelector<HTMLButtonElement>('button[data-roentgen]');
+window.addEventListener('blur', () => {
+  altGehalten = false;
+  anstossen();
+});
 /** die Ansicht, in der Ozzy steht, als gedrückter Knopf */
 function tastenStand(): void {
   const jetzt = zustand === 'blatt' ? '' : vierZiel > 0.5 ? 'vier' : ansicht;
@@ -3985,7 +4021,7 @@ const haken = {
     for (const P of werkBlatt.proben) for (let k = 0; k < P.n; k++) if (P.schicht[k] === 1) hinten++; else vorn++;
     return [hinten, vorn];
   },
-  netzPunkte: () => werkBlatt.netz.punkte.map((p, i) => ({ x: p.x, y: p.y, sichtbar: p.sichtbar, a: werkBlatt.flaechen[werkBlatt.anker[i]?.fl ?? -1]?.a ?? null, w: (werkBlatt.anker[i]?.werk ?? []).map((v) => `${v.id}.${v.i}`) })),
+  netzPunkte: () => werkBlatt.netz.punkte.map((p, i) => ({ x: p.x, y: p.y, sichtbar: p.sichtbar, verdeckt: p.verdeckt, a: werkBlatt.flaechen[werkBlatt.anker[i]?.fl ?? -1]?.a ?? null, w: (werkBlatt.anker[i]?.werk ?? []).map((v) => `${v.id}.${v.i}`) })),
   bearbeiten: () => ({
     an: bearbeitenAn,
     flaechen: werkBlatt.flaechen.map((f) => f.a),
@@ -4167,6 +4203,8 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** S14: Röntgen jetzt (0 … 1) und ob Verdecktes greifbar ist */
+  roentgen: () => ({ wert: roentgen, greifbar: werkBlatt.roentgen(), fest: roentgenFest }),
   /** S13 (10): der Ansichts-Tropfen: zu sehen, seine Tropfen im Fenster (CSS-Pixel) mit Tiefe zur Kamera, was das Schild sagt */
   ansichtsTropfen: () => ansichtsTropfen.stand(),
   /** S13 (2): wie weit der Knopf eines Reglers (CSS-Auswahl) gerade gedehnt ist (1 = rund) */

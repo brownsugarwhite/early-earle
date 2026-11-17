@@ -336,6 +336,20 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 
+**S14 Röntgen** (Florian, 17.11.: „Röntgen zuerst“; aus dem Konzept der Ecke: „⌥ halten macht Linien hinter der Form greifbar“). Solange ⌥
+gehalten wird, greift man auch, was hinter der Form liegt (Punkte und Linien, die S7 grün zeigt): wählen, ziehen, löschen, Kante. Dazu sieht
+man es besser: Die Haut wird durchsichtiger, die grünen Linien bekommen ihre volle Breite zurück (sie bleiben grün). Loslassen von ⌥ beendet
+es; ein Zug, der begonnen hat, läuft weiter. Auf dem iPad (ohne ⌥) ein Knopf „Röntgen“ unten, der es an- und ausschaltet. Am Werk nichts;
+in der Bedienung der Linien-Studie nur: im Raum greift sie Verdecktes, wenn Ozzy es sagt (`Raum.roentgen`). *Probe:* ein Punkt hinter der
+Form in der eingerasteten Seite: ohne ⌥ nicht zu greifen, mit ⌥ wird er gezogen; ⌘Z; der Knopf auf dem iPad; Bild vorher/nachher.
+*Gebaut:* In der Bedienung der Linien-Studie (`kandidat`) gewinnt im Röntgen das Nähere, ein Punkt leicht vor einer Linie (eine Nadel direkt
+unter dem Zeiger bleibt vorn, ⌥ knickt sie weiter). In Ozzy: `roentgen` (⌥ gehalten oder Knopf, weich), `werkBlatt.roentgenWert`; die Haut
+zu etwa 70 % durchsichtiger, das Grün des Verdeckten kräftiger (`#5e8f57`), verdeckte Linien knapp doppelt so breit; Hinweis „Röntgen …“,
+in den Hinweisen „⌥ Röntgen“. Probe `ozzy-roentgen-fenster.mjs` 1 bis 5 halten (mit ⌥ wird der Punkt dahinter 89 Einheiten gezogen);
+Probe zu den Richtungen (⌥ knickt beim Drehen) hält. Bild [`2026-11-17-roentgen.png`](../progress/ozzy/2026-11-17-roentgen.png) (oben Raum,
+unten Front; links ohne, rechts mit ⌥).
+
+
 ## 5. Ideen für mehr liquid drop
 
 Alles in derselben flüssigen Anzeige, die Linien und Punkte schon zeichnet (weiches Vereinigen, Federn):

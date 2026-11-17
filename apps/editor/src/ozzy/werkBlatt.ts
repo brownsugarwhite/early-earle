@@ -681,6 +681,12 @@ export class WerkBlatt implements Raum {
   }
 
   /** Proben hinter der Haut: grün und fein (Schicht 1, im Shader hinter jeder Tiefe); der Umriss bleibt immer vorn */
+  /** S14, Röntgen (0 … 1, weich): Verdecktes ist greifbar (ab der Hälfte) und bekommt seine volle Breite zurück */
+  roentgenWert = 0;
+  roentgen(): boolean {
+    return this.roentgenWert > 0.5;
+  }
+
   private verdeckteProben(P: LinienProben, k3: V3[][], stuecke: Stueck[], K: Karte | null, br: Breiten): void {
     if (!K) return;
     const z = P.z ?? new Float32Array(P.n);
@@ -704,7 +710,12 @@ export class WerkBlatt implements Raum {
       }
       z[k] = hin ? HINTEN_Z : 0;
       P.schicht[k] = hin ? 1 : 0;
-      if (hin) P.halb[k] = Math.min(P.halb[k]!, br.innen / 2);
+      if (hin) {
+        // fein wie Verdecktes; im Röntgen so breit wie vorn, mindestens knapp das Doppelte der feinen Linie
+        const fein = Math.min(P.halb[k]!, br.innen / 2);
+        const roent = Math.max(P.halb[k]!, br.innen * 0.9);
+        P.halb[k] = fein + (roent - fein) * this.roentgenWert;
+      }
     }
     P.z = z;
   }

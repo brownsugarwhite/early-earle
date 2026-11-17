@@ -166,6 +166,8 @@ export interface Raum extends Dreher, StiftWerk {
   gleiche?(pi: number): number[];
   /** so weit darf etwas hinter der Haut liegen und gilt doch als auf ihr (Tiefe, Bildschirmpunkte der Anzeige) */
   bias(): number;
+  /** Ozzy (S14, Röntgen): solange das gilt, greift man im Raum auch Verdecktes (Punkte und Linien hinter der Form) */
+  roentgen?(): boolean;
 }
 
 /**
@@ -1109,7 +1111,15 @@ export class Verhalten {
       return null;
     };
     // im Raum greift man nur, was man sieht
-    return suche(0) ?? (this.raum ? null : suche(1));
+    const vorn = suche(0);
+    if (!this.raum) return vorn ?? suche(1);
+    if (!this.raum.roentgen?.()) return vorn;
+    // Ozzy, Röntgen: auch, was dahinter liegt; das Nähere gewinnt, ein Punkt leicht vor einer Linie (eine Nadel direkt unter dem Zeiger
+    // bleibt vorn, ⌥ knickt sie weiter)
+    const hinten = suche(1);
+    if (!vorn || !hinten) return vorn ?? hinten;
+    const bonus = (k: { ziel: Ziel; d: number }): number => (k.ziel.art === 'punkt' ? 0.5 * fp : 0);
+    return hinten.d - bonus(hinten) < vorn.d - bonus(vorn) ? hinten : vorn;
   }
 
   private gleichesZiel(a: Ziel, b: Ziel): boolean {
