@@ -401,19 +401,20 @@ Bewegungen. Ganz ohne das ginge es nur, wenn der Raum ein Stück über die Seite
 Film [`2026-11-17-vier-hinten-vorher-nachher.mp4`](../progress/ozzy/2026-11-17-vier-hinten-vorher-nachher.mp4) (links vorher, rechts
 nachher, zweifach langsamer), dazu [`2026-11-17-vier-hinten.mp4`](../progress/ozzy/2026-11-17-vier-hinten.mp4) groß.
 
-**S17 Zoomen, Schwenken und Wenden in den Vier Ansichten.** *Vorschlag: gekoppelt wie eine technische Zeichnung.* Seite, Front und Top
-teilen einen Maßstab und eine Mitte im Raum (die Seite zeigt x und y um sie, die Front z und y, der Top x und z). Zoomt man in einem Feld,
-bleibt dort liegen, was unter dem Zeiger liegt, und die beiden anderen folgen so, dass Zeilen und Spalten weiter zueinander passen (die
-Ordnungslinien bleiben gerade). Schwenken in der Seite verschiebt x und y, in der Front z und y, im Top x und z. Das Feld des Raums zoomt und
-schwenkt für sich; Ziehen ins Leere dreht dort wie bisher. Jedes Feld schneidet ab, was über seinen Rand ragt. Bedienung wie in der
-Vollansicht: Mausrad oder Kneifen zoomt (in den Vier Ansichten zum Zeiger hin), auf dem iPad zwei Finger zoomen und schwenken, am Mac
-schwenkt Leertaste + Ziehen (wie in Illustrator; dann auch in der Vollansicht); „Einpassen“ (Pos1) setzt zurück. Zoom und Mitte bleiben
-beim Wechsel in den Raum und zurück erhalten; Auf- und Zuklappen landen genau im gezoomten Bild. Wenden wie in der Vollansicht: ⇧ + Ziehen in
-einem Feld dreht es mit der harten Kante (die Kante bleibt in ihrem Feld), ⇧ + Doppelklick wendet ganz; ein gewendetes Feld zeigt die
-Gegenseite, die Felder bleiben, wo sie sind. *Anders möglich:* jedes Feld zoomt und schwenkt für sich (dann passen die Ansichten nicht mehr
-zueinander, bis „Einpassen“). *Probe:* in der Seite zum Kopf hin zoomen: der Punkt unter dem Zeiger bleibt (höchstens 1 px), die
-Ordnungslinie eines gezogenen Punkts bleibt gerade (höchstens 1 px); schwenken in jedem Feld; die Front wenden; Tab zurück und wieder hin;
-Bild.
+**S17 Zoomen, Schwenken und Wenden in den Vier Ansichten.** *Entschieden (Florian, 17.11.): „Jedes Feld für sich“* (statt gekoppelt wie
+eine technische Zeichnung). Jedes der vier Felder hat seinen eigenen Zoom und seine eigene Verschiebung. Zoomt man in einem Feld, bleibt
+dort liegen, was unter dem Zeiger liegt; die anderen Felder bleiben, wie sie sind (die Ordnungslinien zwischen den Feldern laufen dann
+schräg, bis „Einpassen“). Im Feld des Raums zoomt und schwenkt die Blase in ihrem Feld; Ziehen ins Leere dreht dort wie bisher. Jedes Feld
+schneidet ab, was über seinen Rand ragt. Bedienung wie in der Vollansicht: Mausrad oder Kneifen zoomt (in den Vier Ansichten zum Zeiger
+hin), auf dem iPad zwei Finger zoomen und schwenken im Feld, wo sie liegen; am Mac schwenkt Leertaste + Ziehen (wie in Illustrator; dann
+auch in der Vollansicht); „Einpassen“ (Pos1) setzt alle Felder zurück. Zoom und Verschiebung bleiben beim Wechsel in den Raum und zurück
+erhalten; Auf- und Zuklappen landen genau im gezoomten Feld (die Zeichnung gleitet und wächst dabei auf ihrer Wand, die Wand schneidet ab).
+Wenden wie in der Vollansicht: ⇧ + Ziehen in einem Feld dreht es mit der harten Kante (die Kante bleibt in ihrem Feld), ⇧ + Doppelklick
+wendet ganz; ein gewendetes Feld zeigt die Gegenseite, die Felder bleiben, wo sie sind; beim Zuklappen drehen gewendete Felder zurück.
+In zwei Teilen: **S17a** Zoomen und Schwenken je Feld, mit Schnitt am Rand und Landen beim Aufklappen; **S17b** Wenden je Feld.
+*Probe:* in der Seite zum Kopf hin zoomen: der Punkt unter dem Zeiger bleibt (höchstens 1 px), Front, Top und Raum bleiben unverändert;
+schwenken in jedem Feld; nichts ragt über einen Feldrand; Tab zurück und wieder hin: am Ende genau das gezoomte Feld (höchstens 1 px), kein
+Sprung unterwegs; ein Punkt im gezoomten Feld lässt sich greifen und ziehen; die Front wenden; Bild.
 
 **S18 Der Tropfen an der Ecke einer Einzelansicht.** In der eingerasteten Seite, Front und Top sitzt der Tropfen der Kreuzung an der Ecke
 des Bilds, an der in den Vier Ansichten ihre Kreuzung liegt: Seite unten links, Front unten rechts (der Ansichts-Tropfen rückt dafür nach
