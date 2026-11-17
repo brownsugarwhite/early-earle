@@ -265,6 +265,20 @@ zeichnet langsam und die Seifenhaut blass (Grenze des Simulators); Schweben und 
 Gerät.
 
 **S13 liquid drop weiter** (Florian wählt aus Abschnitt 5).
+*Begonnen (Florian, 17.11.: „S13 liquid drop“).* Reihenfolge nach dem, was beim Arbeiten am meisten zu sehen ist: erst 6 (⌘Z fließt
+zurück) und 8 (Zeiger in Form des Werkzeugs), dann 7 (Meldungen tropfen), 5 (Kante wie Tusche), 4 (Kreuzungen verschmelzen), 1
+(Menüs als Tropfen), 2 (Regler als Tropfen), 9 (Ordnungslinien), 10 (Ansichts-Tropfen). Die 3 (Lasso als Faden) ist seit S5 drin.
+Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
+- **6, ⌘Z fließt zurück:** Das Werk springt wie bisher in den Stand davor; nur die Anzeige gleitet: Linien, Punkte und Griffe auf
+  allen Flächen gehen in etwa 0,2 s von ihrer Lage vor ⌘Z in die neue (je Stück einer Linie an derselben Stelle, so bleiben die Linien
+  an ihren Punkten). Was es danach nicht mehr gibt, verschwindet, was neu ist, ist gleich da. Die Haut springt zuerst wie bisher (sie
+  gleiten zu lassen, ist ein eigener Schritt, wenn er es will). *Probe:* Film vorher/nachher (gleiche Ansicht, strange bird, ein Punkt
+  gezogen, dann ⌘Z); Messung: im ersten Bild nach ⌘Z ist der Punkt noch nahe der alten Lage, nach 0,25 s genau in der neuen, dazwischen
+  ein Gipfel der Geschwindigkeit.
+  *Gebaut:* `werkBlatt.rueckfluss` merkt die Anzeige vor ⌘Z, `fliessen` gleitet 0,22 s (gleich los, sanft am Ziel). Gemessen im Film
+  (dreifach langsamer, Punkt 60 px gezogen): im ersten Bild nach ⌘Z 7 % des Wegs, nach 0,25 s genau angekommen, ein Gipfel. Filme
+  [vorher](../progress/ozzy/2026-11-17-zurueck-vorher.mp4) (`?fluss=0`, springt in einem Bild) und
+  [nachher](../progress/ozzy/2026-11-17-zurueck-fliesst.mp4); die Linien bleiben dabei an ihren Punkten.
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 

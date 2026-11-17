@@ -281,7 +281,11 @@ Finger nichts an der Form; zwei Finger zoomen zu den Fingern hin, schwenken (neu
 Die Weiche hört in der Fangphase am Fenster zu (`finger`, `geste`, `stiftGesehen`), Safaris eigene Gesten sind abgeschaltet. Knöpfe für
 die Tasten (`#tasten`, nur mit Berührung, lösen die Taste selbst aus). Probe `ozzy-ipad-fenster.mjs`; `?info=1` zeigt Finger und Zeiger.
 Florian: „Ja, im WLAN“ → der Eintrag `ozzy` startet Vite mit `--host`; am iPad `http://<Adresse des Macs im WLAN>:5205/ozzy.html` (mit
-der Adresse, nicht dem Namen `….local`: den lässt Vite nicht zu). Offen: sein Urteil am Gerät. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+der Adresse, nicht dem Namen `….local`: den lässt Vite nicht zu). Offen: sein Urteil am Gerät.
+
+**S13 (liquid drop, begonnen 17.11.):** Reihenfolge im Plan. Idee 6 gebaut: ⌘Z fließt zurück (`werkBlatt.rueckfluss`/`fliessen`, nur
+Anzeige, 0,22 s; `?fluss=0` aus); Film `scripts/ozzy/zurueck-film.mjs` mit Messung, Filme `2026-11-17-zurueck-*.mp4`. Die Haut springt
+dabei noch (eigener Schritt, wenn er es will). Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

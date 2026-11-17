@@ -2019,7 +2019,7 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
  */
 function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger'] | undefined; aktiv: boolean } {
   const { flaechen, stabil } = flaechenJetzt(vp, m);
-  werkBlatt.bauen(flaechen);
+  werkBlatt.bauen(flaechen, uhr);
   bearbeitenAn = stabil;
   // P in der Leiste, sobald das Werk bedient wird
   if (bearbeitenAn !== pErlaubt) {
@@ -2094,7 +2094,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     bearbeiten.auswahl = werkBlatt.auswahlAbgleichen(bearbeiten.auswahl);
     bearbeitenAnsicht.dpr = D;
     bearbeiten.setzeAnsicht(bearbeitenAnsicht);
-    const aktiv = bearbeiten.schritt(dt) || !!raumStrich || !!raumAufzug;
+    const aktiv = bearbeiten.schritt(dt) || !!raumStrich || !!raumAufzug || werkBlatt.fliesst;
     const sz = bearbeiten.szene(bearbeitenAnsicht);
     K.uebernehmen(sz);
     // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
@@ -2109,7 +2109,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     const F = flaechen[A.fl]!;
     if (A.zuSehen) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
   });
-  return { zeiger: undefined, aktiv: false };
+  return { zeiger: undefined, aktiv: werkBlatt.fliesst };
 }
 
 // ---------- Pinsel an der Blase (Phase 6) ----------
@@ -3198,9 +3198,12 @@ window.addEventListener('keydown', (e) => {
       // über das Verhalten (es räumt Tropfen und Auswahl auf), das im Werk zurückgeht
       if (bearbeiten.rueckgaengig()) anstossen();
     } else if (zustand === 'ruhe' && werkForm && !werk.zug && werk.zurueck.length > werkForm.zurueck) {
-      // im Raum: ein Schritt im Werk zurück (nicht hinter die Form aus der Silhouette)
+      // im Raum: ein Schritt im Werk zurück (nicht hinter die Form aus der Silhouette); die Anzeige gleitet (S13)
       const s = werk.zurueck.pop();
-      if (s) werk.wiederherstellen(s);
+      if (s) {
+        werkBlatt.rueckfluss();
+        werk.wiederherstellen(s);
+      }
       werk.anzeige.allesZeigen();
       anstossen();
     }

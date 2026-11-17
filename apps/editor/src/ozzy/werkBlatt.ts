@@ -77,6 +77,29 @@ const plus = (p: V3, v: V3): V3 => ({ x: p.x + v.x, y: p.y + v.y, z: p.z + v.z }
 type Kipp = { h0: V3; ebene: V3; n: V3; L: number; b0: number; w: [number, number]; sx: number; sy: number; k: number };
 /** die Tiefe einer Fläche (gezeigte Lage): senkrecht zu ihrem Blatt */
 const TIEFE: Record<Ansicht, V3> = { seite: { x: 0, y: 0, z: 1 }, front: { x: 1, y: 0, z: 0 }, top: { x: 0, y: 1, z: 0 } };
+/**
+ * S13 (liquid drop, Idee 6): ⌘Z fließt zurück. Das Werk springt in den Stand davor; die Anzeige gleitet in dieser Zeit (s) von ihrer Lage
+ * vor ⌘Z in die neue: Punkte nach ihrem Schlüssel, Linien je Stück an derselben Stelle (so bleiben sie an ihren Punkten), Griffe mit.
+ * `?fluss=0` schaltet es ab (für den Film vorher).
+ */
+const FLUSS_DAUER = new URLSearchParams(location.search).get('fluss') === '0' ? 0 : 0.22;
+type FlussStueck = { t: number[]; x: number[]; y: number[] };
+type FlussLinie = { stuecke: FlussStueck[]; g: number[] };
+/** die Lage auf einem gemerkten Stück an der Stelle t (0 … 1) */
+function flussBei(st: FlussStueck, t: number): [number, number] | null {
+  const T = st.t;
+  const n = T.length;
+  if (!n) return null;
+  if (t <= T[0]!) return [st.x[0]!, st.y[0]!];
+  for (let i = 1; i < n; i++) {
+    if (t <= T[i]!) {
+      const a = (t - T[i - 1]!) / Math.max(1e-9, T[i]! - T[i - 1]!);
+      return [st.x[i - 1]! + (st.x[i]! - st.x[i - 1]!) * a, st.y[i - 1]! + (st.y[i]! - st.y[i - 1]!) * a];
+    }
+  }
+  return [st.x[n - 1]!, st.y[n - 1]!];
+}
+
 const glatt =(a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -94,6 +117,11 @@ export class WerkBlatt implements Raum {
   netz: Netz = { punkte: [], linien: [] };
   proben: LinienProben[] = [];
   roh: RoheLinie[] = [];
+  /** S13 (6): die Anzeige vor ⌘Z und wann (Uhr der Anzeige); Schlüssel der Punkte und Linien des zuletzt gebauten Netzes */
+  private fluss: { t0: number; punkte: Map<string, [number, number]>; linien: Map<string, FlussLinie> } | null = null;
+  private uhr = 0;
+  private punktSchl: string[] = [];
+  private linienSchl: string[] = [];
   flaechen: Flaeche[] = [];
   anker: AnkerInfo[] = [];
   linien: LinienInfo[] = [];
@@ -132,7 +160,10 @@ export class WerkBlatt implements Raum {
   // ---------- Aufbau ----------
 
   /** Netz und Proben aller Linien des Werks auf diesen Flächen (Bildschirm, CSS-Pixel) */
-  bauen(flaechen: Flaeche[]): void {
+  bauen(flaechen: Flaeche[], jetzt?: number): void {
+    if (jetzt !== undefined) this.uhr = jetzt;
+    const pSchl: string[] = [];
+    const lSchl: string[] = [];
     const punkte: Punkt[] = [];
     const linien: Linie[] = [];
     const proben: LinienProben[] = [];
@@ -182,6 +213,7 @@ export class WerkBlatt implements Raum {
                 pi = punkte.length;
                 const hin = this.hinten(karte, m ? werk.spiegeln(q) : q);
                 punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: hin, z: hin ? HINTEN_Z : 0 });
+                pSchl.push(`${fl}|${k}`);
                 anker.push({ fl, m: sm, werk: [], zuSehen: istSichtbar(p) });
                 schluessel.set(k, pi);
               } else if (istSichtbar(p)) {
@@ -216,6 +248,7 @@ export class WerkBlatt implements Raum {
               k3.push([zeigen(A), zeigen(plus(A, neu?.[i]?.aus ?? P[i]!.aus!)), zeigen(plus(E, neu?.[j]?.ein ?? P[j]!.ein!)), zeigen(E)]);
             }
             linien.push({ zu, punkte: idx, stuecke, knick: P.map((_, i) => werk.eckeGezeigt(li, i)) });
+            lSchl.push(`${fl}|${l.id}|${m ? 1 : 0}`);
             infos.push({ fl, id: l.id, m });
             const PR = this.abtasten(F, kontroll, stuecke, br);
             this.verdeckteProben(PR, k3, stuecke, karte, br);
@@ -248,6 +281,7 @@ export class WerkBlatt implements Raum {
         const [x, y] = FE.hin(k.X, k.Y);
         idx.push(punkte.length);
         punkte.push({ x, y, sichtbar: true, verdeckt: false, z: 0 });
+        pSchl.push('');
         anker.push({ fl: E.fl, m: false, werk: [], zuSehen: true });
         blattAnker.push(k);
       }
@@ -267,10 +301,14 @@ export class WerkBlatt implements Raum {
         }
         this.entNetz.li = linien.length;
         linien.push({ zu: false, punkte: idx, stuecke });
+        lSchl.push('');
         infos.push({ fl: E.fl, id: -1, m: false });
         proben.push(this.abtasten(FE, kontroll, stuecke, br));
       }
     }
+    this.fliessen(punkte, linien, proben, pSchl, lSchl);
+    this.punktSchl = pSchl;
+    this.linienSchl = lSchl;
     this.netz = { punkte, linien };
     this.proben = proben;
     this.anker = anker;
@@ -278,6 +316,82 @@ export class WerkBlatt implements Raum {
     this.roh = roh;
     this.flaechen = flaechen;
     this.struktur = `${flaechen.map((f) => f.a).join(',')}|${werk.loops.map((l) => `${l.id}.${l.punkte.length}.${werk.exakt(l) && hatGriffe(l) ? 1 : 0}`).join(',')}`;
+  }
+
+  // ---------- S13 (6): ⌘Z fließt zurück ----------
+
+  /** Merkt die Anzeige von jetzt (auch mitten in einem Gleiten); die nächsten Bilder gleiten von ihr in den neuen Stand */
+  rueckfluss(): void {
+    const N = this.netz;
+    const punkte = new Map<string, [number, number]>();
+    N.punkte.forEach((p, i) => {
+      const k = this.punktSchl[i];
+      if (k) punkte.set(k, [p.x, p.y]);
+    });
+    const linien = new Map<string, FlussLinie>();
+    this.proben.forEach((PR, li) => {
+      const k = this.linienSchl[li];
+      const L = N.linien[li];
+      if (!k || !L) return;
+      const stuecke: FlussStueck[] = L.stuecke.map(() => ({ t: [], x: [], y: [] }));
+      for (let j = 0; j < PR.n; j++) {
+        const st = stuecke[PR.si[j]!];
+        if (!st) continue;
+        // ein Stück beginnt am Ende des vorigen (die Probe dort gehört zum vorigen)
+        if (!st.t.length && j > 0) {
+          st.t.push(0);
+          st.x.push(PR.x[j - 1]!);
+          st.y.push(PR.y[j - 1]!);
+        }
+        st.t.push(PR.t[j]!);
+        st.x.push(PR.x[j]!);
+        st.y.push(PR.y[j]!);
+      }
+      linien.set(k, { stuecke, g: L.stuecke.flatMap((g) => [g.g1x, g.g1y, g.g2x, g.g2y]) });
+    });
+    this.fluss = { t0: this.uhr, punkte, linien };
+  }
+
+  /** gleitet die Anzeige gerade (dann braucht sie Bilder) */
+  get fliesst(): boolean {
+    return this.fluss !== null;
+  }
+
+  /** das Gleiten in diesem Bild: von der gemerkten Lage in die neue, gleich los und sanft am Ziel */
+  private fliessen(punkte: Punkt[], linien: Linie[], proben: LinienProben[], pSchl: string[], lSchl: string[]): void {
+    const f = this.fluss;
+    if (!f) return;
+    const u = (this.uhr - f.t0) / FLUSS_DAUER;
+    if (!(u >= 0 && u < 1)) {
+      this.fluss = null;
+      return;
+    }
+    const e = 1 - Math.pow(1 - u, 3);
+    const w = 1 - e;
+    punkte.forEach((p, i) => {
+      const a = pSchl[i] ? f.punkte.get(pSchl[i]!) : undefined;
+      if (!a) return;
+      p.x = a[0] * w + p.x * e;
+      p.y = a[1] * w + p.y * e;
+    });
+    proben.forEach((PR, li) => {
+      const a = lSchl[li] ? f.linien.get(lSchl[li]!) : undefined;
+      const L = linien[li];
+      if (!a || !L || a.stuecke.length !== L.stuecke.length) return;
+      for (let j = 0; j < PR.n; j++) {
+        const st = a.stuecke[PR.si[j]!];
+        const q = st ? flussBei(st, PR.t[j]!) : null;
+        if (!q) continue;
+        PR.x[j] = q[0] * w + PR.x[j]! * e;
+        PR.y[j] = q[1] * w + PR.y[j]! * e;
+      }
+      L.stuecke.forEach((g, si) => {
+        g.g1x = a.g[4 * si]! * w + g.g1x * e;
+        g.g1y = a.g[4 * si + 1]! * w + g.g1y * e;
+        g.g2x = a.g[4 * si + 2]! * w + g.g2x * e;
+        g.g2y = a.g[4 * si + 3]! * w + g.g2y * e;
+      });
+    });
   }
 
   // ---------- S7: Verdecktes grün ----------
@@ -693,6 +807,7 @@ export class WerkBlatt implements Raum {
     if (werk.zug || werk.zurueck.length <= this.zurueckBis()) return false;
     const s = werk.zurueck.pop();
     if (!s) return false;
+    this.rueckfluss();
     werk.wiederherstellen(s);
     werk.anzeige.allesZeigen();
     this.geaendert();
