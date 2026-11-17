@@ -100,6 +100,28 @@ function flussBei(st: FlussStueck, t: number): [number, number] | null {
   return [st.x[n - 1]!, st.y[n - 1]!];
 }
 
+/**
+ * S13 (liquid drop, Idee 5): Kante wie Tusche. K macht die Linie vom gewählten Punkt aus dicker, als liefe Tusche in sie hinein (so lange,
+ * bis es an ihren Enden ist, s); „Kante aus“ zieht sie zum Punkt zurück. Nur die Breite der Anzeige; das Werk rechnet wie bisher.
+ * `?fluss=0` schaltet es ab (wie das Gleiten nach ⌘Z).
+ */
+const TUSCHE_DAUER = new URLSearchParams(location.search).get('fluss') === '0' ? 0 : 0.45;
+/** je Stück die Breiten vor K an ihren Stellen (t, halb im Wechsel); die Punkte, von denen die Tusche kommt (−1: alle) */
+type TuscheLinie = { stuecke: number[][]; punkte: number[] };
+/** die Breite auf einem gemerkten Stück an der Stelle t */
+function tuscheBei(st: number[], t: number): number | null {
+  const n = st.length >> 1;
+  if (!n) return null;
+  if (t <= st[0]!) return st[1]!;
+  for (let i = 1; i < n; i++) {
+    if (t <= st[2 * i]!) {
+      const a = (t - st[2 * i - 2]!) / Math.max(1e-9, st[2 * i]! - st[2 * i - 2]!);
+      return st[2 * i - 1]! + (st[2 * i + 1]! - st[2 * i - 1]!) * a;
+    }
+  }
+  return st[2 * n - 1]!;
+}
+
 const glatt =(a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -119,6 +141,8 @@ export class WerkBlatt implements Raum {
   roh: RoheLinie[] = [];
   /** S13 (6): die Anzeige vor ⌘Z und wann (Uhr der Anzeige); Schlüssel der Punkte und Linien des zuletzt gebauten Netzes */
   private fluss: { t0: number; punkte: Map<string, [number, number]>; linien: Map<string, FlussLinie> } | null = null;
+  /** S13 (5): die Breiten vor K je Linie und wo die Tusche herkommt (Bogenlänge, CSS-Pixel), Anfang auf der Uhr der Anzeige */
+  private tusche: { t0: number; linien: Map<string, TuscheLinie> } | null = null;
   private uhr = 0;
   private punktSchl: string[] = [];
   private linienSchl: string[] = [];
@@ -307,6 +331,7 @@ export class WerkBlatt implements Raum {
       }
     }
     this.fliessen(punkte, linien, proben, pSchl, lSchl);
+    this.tuscheFliessen(proben, lSchl);
     this.punktSchl = pSchl;
     this.linienSchl = lSchl;
     this.netz = { punkte, linien };
@@ -352,9 +377,84 @@ export class WerkBlatt implements Raum {
     this.fluss = { t0: this.uhr, punkte, linien };
   }
 
-  /** gleitet die Anzeige gerade (dann braucht sie Bilder) */
+  /** gleitet die Anzeige gerade oder fließt Tusche (dann braucht sie Bilder) */
   get fliesst(): boolean {
-    return this.fluss !== null;
+    return this.fluss !== null || this.tusche !== null;
+  }
+
+  /** S13 (5): vor K die Breiten aller Linien merken und, je gewählter Linie, die Stellen, von denen die Tusche fließt */
+  tuscheMerken(auswahl: readonly werk.Wahl[]): void {
+    const linien = new Map<string, TuscheLinie>();
+    this.proben.forEach((PR, li) => {
+      const k = this.linienSchl[li];
+      const I = this.linien[li];
+      if (!k || !I) return;
+      const punkte = auswahl.filter((w) => w.l === I.id).map((w) => w.i);
+      if (!punkte.length) return;
+      // je Stück die Breiten an ihren Stellen (ein Stück beginnt am Ende des vorigen)
+      const stuecke: number[][] = Array.from({ length: PR.stueckS.length - 1 }, () => []);
+      for (let j = 0; j < PR.n; j++) {
+        const st = stuecke[PR.si[j]!];
+        if (!st) continue;
+        if (!st.length && j > 0) st.push(0, PR.halb[j - 1]!);
+        st.push(PR.t[j]!, PR.halb[j]!);
+      }
+      linien.set(k, { stuecke, punkte });
+    });
+    this.tusche = linien.size ? { t0: this.uhr, linien } : null;
+  }
+
+  /** die Breiten in diesem Bild: Dicker wird es von den Stellen der Tusche aus, dünner zieht es sich zu ihnen zurück */
+  private tuscheFliessen(proben: LinienProben[], lSchl: string[]): void {
+    const T = this.tusche;
+    if (!T) return;
+    const u = (this.uhr - T.t0) / TUSCHE_DAUER;
+    if (!(u >= 0 && u < 1)) {
+      this.tusche = null;
+      return;
+    }
+    // wie Tusche: schnell los, dann langsamer
+    const e = 1 - (1 - u) * (1 - u);
+    proben.forEach((PR, li) => {
+      const a = lSchl[li] ? T.linien.get(lSchl[li]!) : undefined;
+      if (!a || a.stuecke.length !== PR.stueckS.length - 1) return;
+      const L = PR.laenge;
+      const zu = PR.stueckS.length > 1 && Math.hypot(PR.x[0]! - PR.x[PR.n - 1]!, PR.y[0]! - PR.y[PR.n - 1]!) < 1e-3;
+      // die Stellen der Tusche: die gewählten Punkte, wo sie jetzt auf der Linie liegen
+      const ursprung = a.punkte.includes(-1) ? Array.from(PR.stueckS) : a.punkte.map((i) => PR.stueckS[Math.min(i, PR.stueckS.length - 1)] ?? 0);
+      const abstand = (s: number): number => {
+        let d = Infinity;
+        for (const o of ursprung) {
+          const g = Math.abs(s - o);
+          d = Math.min(d, zu ? Math.min(g, L - g) : g);
+        }
+        return d;
+      };
+      // nur, wo sich die Breite ändert: so weit läuft die Tusche (die Front ist ein Fünftel davon weich)
+      const alte: (number | null)[] = [];
+      const ab: number[] = [];
+      let weit = 0;
+      for (let j = 0; j < PR.n; j++) {
+        const st = a.stuecke[PR.si[j]!];
+        const alt = st ? tuscheBei(st, PR.t[j]!) : null;
+        alte.push(alt);
+        const d = abstand(PR.s[j]!);
+        ab.push(d);
+        if (alt !== null && Math.abs(PR.halb[j]! - alt) >= 1e-4) weit = Math.max(weit, d);
+      }
+      const weich = Math.max(2, 0.2 * weit);
+      const vor = e * (weit + weich) - weich / 2;
+      const rueck = (1 - e) * (weit + weich) - weich / 2;
+      for (let j = 0; j < PR.n; j++) {
+        const alt = alte[j];
+        if (alt === null || alt === undefined) continue;
+        const neu = PR.halb[j]!;
+        if (Math.abs(neu - alt) < 1e-4) continue;
+        const d = ab[j]!;
+        const g = neu > alt ? glatt(0, 1, (vor - d) / weich + 0.5) : 1 - glatt(0, 1, (rueck - d) / weich + 0.5);
+        PR.halb[j] = alt + (neu - alt) * g;
+      }
+    });
   }
 
   /** das Gleiten in diesem Bild: von der gemerkten Lage in die neue, gleich los und sanft am Ziel */

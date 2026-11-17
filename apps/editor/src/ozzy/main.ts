@@ -1638,9 +1638,10 @@ function bild(dt: number): boolean {
   if (werk.G.meldung !== meldung.text) meldung = { text: werk.G.meldung, seit: performance.now() };
   // S12: mit Stift und Fingern gibt es die Tasten nicht, die der Hinweis nennt: dort nur die Meldungen (und „↩ aufblasen“ auf dem Blatt)
   const ohneTasten = zustand !== 'blatt' && (document.body.classList.contains('beruehrung') || GROB.matches);
-  const hm = meldung.text && zustand === 'ruhe' && performance.now() - meldung.seit < MELDUNG_MS ? meldung.text : ohneTasten ? '' : h;
+  const istMeldung = !!meldung.text && zustand === 'ruhe' && performance.now() - meldung.seit < MELDUNG_MS;
+  const hm = istMeldung ? meldung.text : ohneTasten ? '' : h;
   if (meldung.text && performance.now() - meldung.seit < MELDUNG_MS) aktiv = true;
-  if (hinweis.textContent !== hm) hinweis.textContent = hm;
+  if (hinweisSetzen(hm, istMeldung)) aktiv = true;
   stat.bildMs = performance.now() - t0;
   if (mess.an) {
     const t = performance.now();
@@ -3377,7 +3378,12 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
   else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt) {
     // Kante an den gewählten Punkten oder Linien an und aus (im Werk)
-    if (werk.G.auswahl.length && !werk.zug) werk.kanteSetzen();
+    if (werk.G.auswahl.length && !werk.zug) {
+      // S13 (5): die Tusche fließt vom Gewählten aus, und ändert die Kante die Lage der Linie (Ecken), gleitet sie wie nach ⌘Z
+      werkBlatt.tuscheMerken(werk.G.auswahl);
+      werkBlatt.rueckfluss();
+      werk.kanteSetzen();
+    }
   } else if (k === ' ') {
     e.preventDefault();
     nochEinmal();
@@ -3685,6 +3691,49 @@ const GROB = matchMedia('(any-pointer: coarse)');
 const MELDUNG_MS = 5000;
 let meldung = { text: '', seit: 0 };
 
+/**
+ * S13 (liquid drop, Idee 7): Meldungen tropfen von oben in die Hinweiszeile (gestreckt im Fallen, kurz gestaucht beim Landen) und
+ * verdunsten am Ende; danach kommt der Hinweis leise zurück. Die Bewegung macht CSS (`#hinweis.tropfen`, `.verdunsten`, `.leise`), die
+ * Zeit des Verdunstens zählt die Uhr der Anzeige. Zurück: ob die Zeile noch Bilder braucht.
+ */
+let hinweisArt: 'hinweis' | 'meldung' | 'verdunsten' = 'hinweis';
+let hinweisMeldung = '';
+let verdunstenBis = 0;
+const VERDUNSTEN_S = 0.65;
+function hinweisSetzen(text: string, istMeldung: boolean): boolean {
+  if (istMeldung) {
+    if (hinweisArt !== 'meldung' || hinweisMeldung !== text) {
+      hinweisArt = 'meldung';
+      hinweisMeldung = text;
+      hinweis.textContent = text;
+      hinweisBewegen('tropfen');
+    }
+    return false;
+  }
+  if (hinweisArt === 'meldung') {
+    hinweisArt = 'verdunsten';
+    verdunstenBis = uhr + VERDUNSTEN_S;
+    hinweisBewegen('verdunsten');
+    return true;
+  }
+  if (hinweisArt === 'verdunsten') {
+    if (uhr < verdunstenBis) return true;
+    hinweisArt = 'hinweis';
+    hinweis.textContent = text;
+    hinweisBewegen(text ? 'leise' : null);
+    return false;
+  }
+  if (hinweis.textContent !== text) hinweis.textContent = text;
+  return false;
+}
+function hinweisBewegen(art: 'tropfen' | 'verdunsten' | 'leise' | null): void {
+  hinweis.classList.remove('tropfen', 'verdunsten', 'leise');
+  if (!art) return;
+  // neu anstoßen, auch wenn dieselbe Bewegung schon lief
+  void hinweis.offsetWidth;
+  hinweis.classList.add(art);
+}
+
 /** der gewählte Ring, an dem ein Maul entstehen kann (offen, nicht hängend), wie ihn `maulAnlegen` im Werk nimmt */
 function maulRing(): (typeof werk.loops)[number] | null {
   for (const w of werk.G.auswahl) {
@@ -3977,6 +4026,12 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** S13 (5): Bogenlänge und halbe Breite je Probe einer Linie (Loop-Kennung) auf der Fläche mit diesem Blatt, nicht gespiegelt (CSS-Pixel) */
+  linienBreite: (id: number, a: Flaeche['a']) => {
+    const li = werkBlatt.linien.findIndex((I) => I.id === id && !I.m && werkBlatt.flaechen[I.fl]?.a === a);
+    const PR = werkBlatt.proben[li];
+    return PR ? { s: Array.from(PR.s.subarray(0, PR.n)), halb: Array.from(PR.halb.subarray(0, PR.n)), stueckS: Array.from(PR.stueckS), laenge: PR.laenge } : null;
+  },
   /** S11: Ist der Stand des Werks so, dass er gesichert werden kann (die Prüfung der Ablage), und welche Punkte der Haut keinen Spiegelpartner haben */
   standPruefen: () => {
     const h = werk.haut;
@@ -4092,6 +4147,9 @@ const haken = {
       meldung: werk.G.meldung,
       /** S11: unter diesem Namen wurde die Form geladen oder zuletzt gesichert ('' = noch keiner) */
       name: werk.G.ablageName,
+      /** S13: gleitet die Anzeige (⌘Z) oder fließt Tusche (K) */
+      fliesst: werkBlatt.fliesst,
+      auswahl: werk.G.auswahl.map((w) => `${w.l}.${w.i}`).join(' '),
     };
   },
   /** Punkt i der Linie der Seite (wie gezeigt: aus dem Werk oder dem Blatt) im Bild (CSS): eingerastet, im Feld oder an der Wand */

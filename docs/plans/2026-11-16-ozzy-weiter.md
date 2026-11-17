@@ -285,6 +285,21 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
   Umriss aus 64 Punkten statt des Dreiecks (`zeigerUmriss`, nur in Ozzy; die Studien bleiben beim Dreieck). Bild
   [`2026-11-17-zeiger.png`](../progress/ozzy/2026-11-17-zeiger.png), Film [`2026-11-17-zeiger.mp4`](../progress/ozzy/2026-11-17-zeiger.mp4)
   (zweifach langsamer); Proben Lasso und iPad halten.
+- **7, Meldungen tropfen** (Florian, 17.11.: „Ja, weiter“): Eine neue Meldung fällt als Tropfen von oben in die Hinweiszeile (gestreckt im
+  Fallen, kurz gestaucht beim Landen) und verdunstet am Ende (wird weich, steigt ein wenig und vergeht); danach kommt der Hinweis leise
+  zurück. Nur die Hinweiszeile (Text), am Werk nichts. *Probe:* Film einer Meldung (Sichern), Kommen und Gehen.
+  *Gebaut:* `hinweisSetzen` mit CSS-Bewegungen (`#hinweis.tropfen`, `.verdunsten`, `.leise`), das Verdunsten zählt die Uhr der Anzeige.
+  Film [`2026-11-17-meldung.mp4`](../progress/ozzy/2026-11-17-meldung.mp4) (zweifach langsamer, Ausschnitt um die Hinweiszeile).
+- **5, Kante wie Tusche:** K macht die Linie vom gewählten Punkt aus dicker, als liefe Tusche in sie hinein (etwa 0,45 s bis an ihre
+  Enden); „Kante aus“ zieht sie zum Punkt zurück. Ist eine ganze Linie gewählt, fließt es von allen ihren Punkten aus. Ändert die Kante
+  die Lage der Linie (Ecken), gleitet sie dabei wie nach ⌘Z. Nur die Anzeige der Linien; die Haut rechnet das Werk wie bisher.
+  *Probe:* Film vorher/nachher (K an einem Punkt, dann wieder aus), gemessen: die Breite am Punkt ist zuerst dick, am fernen Ende
+  zuletzt.
+  *Gebaut:* `werkBlatt.tuscheMerken`/`tuscheFliessen` (die alten Breiten je Stück und Stelle; die Front läuft nur über den Teil, dessen
+  Breite sich ändert, schnell los, dann langsamer; `?fluss=0` aus). Gemessen (strange bird, Punkt der Seite, dreifach langsamer): nach
+  0,12 s ist die Linie nahe am Punkt ganz dick, an den fernen Enden noch nicht; beim Ausschalten umgekehrt. Filme
+  [vorher](../progress/ozzy/2026-11-17-tusche-vorher.mp4) und [nachher](../progress/ozzy/2026-11-17-tusche.mp4). An einem einzelnen Punkt
+  ist die Strecke kurz (die Kante reicht bis zu den Nachbarpunkten); an einer ganzen gewählten Linie fließt es von allen Punkten aus.
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 
