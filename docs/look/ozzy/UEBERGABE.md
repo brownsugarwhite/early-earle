@@ -22,10 +22,12 @@ Ansichten 16,8 → 10,3 ms, eingerastet 9,7 → 4,3 ms, nah herangezoomt 21,1 �
 Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
 [`2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md) (vorher),
 [`2026-11-17-messen-nach-a.md`](../../progress/ozzy/2026-11-17-messen-nach-a.md) (nach A). Sein Urteil zur Seifenhaut steht aus.
-Die Linien werden nur noch neu aufgebaut, wenn sich etwas ändert (Linien je Bild im Raum 1,7 → 0,6 ms). Für B3 (Netz im Raum) liegen
-zwei Bilder zur Wahl vor (`?netz=1` allein, `?netz=2` über blasser Seifenhaut; im Plan verlinkt): seine Wahl steht aus, danach Taste
-und Tropfen. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
-ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 24 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
+Die Linien werden nur noch neu aufgebaut, wenn sich etwas ändert (Linien je Bild im Raum 1,7 → 0,6 ms). B3 ist geklärt und gebaut: Florian
+meinte das **Kurvennetz auf der Form im Raum** („genau wie in den Projektionsflächen, aber im Raum“), nicht das Dreiecksnetz. Taste W
+schaltet im Raum zwischen Seifenhaut und Kurvennetz (weißer Körper mit Umriss, Linien und Punkte auf der Form, zu greifen wie auf den
+Flächen; Film `docs/progress/ozzy/2026-11-17-kurvennetz-im-raum.mp4`); sein Urteil steht aus, es fehlen noch P auf der Form und ein
+Knopf. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 25 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 
 ## 1. Einstieg
@@ -135,8 +137,8 @@ und Pose (4990), Test-Haken `window.__ozzy` (5171, 49 Einträge).
   ohne Spiegelbild (S11, „Ja, lockern“). Der Schnitt `kurven.ts` → `werk.ts` ist wiederholbar (`scripts/werk-schnitt/schnitt.mjs`).
 
 **Schalter in der Adresse:** `?form=<Name>` lädt eine gesicherte Form; `?zeiger=system` der Zeiger des Systems in der Form des Werkzeugs
-(B1, zum Vergleich; ohne ihn wird der Zeiger immer gezeichnet); `?netz=1|2` das Rechennetz im Raum, allein oder über blasser
-Seifenhaut (B3, Vorschlag); `?info=1` zeigt Takt, Finger und Zeiger; `?bild=1` ohne Bedienung;
+(B1, zum Vergleich; ohne ihn wird der Zeiger immer gezeichnet); `?raumnetz=1` beginnt im Raum mit dem Kurvennetz (wie Taste W);
+`?netz=1|2` Prüfhilfe: das Dreiecksnetz der Rechnung im Raum; `?info=1` zeigt Takt, Finger und Zeiger; `?bild=1` ohne Bedienung;
 `?film=1` ohne Bedienung mit Zeiger; `?fassung=<n>` Fassung der Seifenhaut; `?ohneLinie=0|1` Linie an der Spiegelkante für Proben (sonst
 das Menü, im Browser gemerkt); `?koerper=0` ohne weißen Körper (Vergleich S20); `?fluss=0` ohne die Bewegungen der Anzeige aus S13;
 `?uebergabeMuster=0` Muster an der Übergabe wie vor S2 (Vergleich). `gewichte=geometrie` und `behalten=0` setzt `adresse.ts` selbst.

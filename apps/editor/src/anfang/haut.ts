@@ -550,6 +550,8 @@ export interface HautWerte {
    * Seifenhaut; fehlt oder 0: nur die Seifenhaut
    */
   netz?: 0 | 1 | 2;
+  /** Ozzy, B3: Die Seifenhaut der Blase wird nicht gezeichnet (der weiße Körper der Linien deckt sie ganz); Wände und Schatten bleiben */
+  blaseAus?: boolean;
   /**
    * Ozzy (A3): Die Haut ist in diesem Bild nur in diesem Kasten zu sehen (Gerätepunkte, Ursprung oben links; der Kasten ihrer Punkte
    * mit etwas Rand). Dann wird das Ziel der Seifenhaut (vierfache Kantenglättung, 16 Bit je Kanal) nur so groß angelegt und darum
@@ -1024,7 +1026,7 @@ void main() {
       const m = mesh.material as ShaderMaterial;
       const i = this.mats.indexOf(m);
       const j = this.matsRahmen.indexOf(m);
-      if (i >= 0) mesh.visible = netzArt === 1 ? false : durch ? i < 4 : i === 4;
+      if (i >= 0) mesh.visible = netzArt === 1 || w.blaseAus ? false : durch ? i < 4 : i === 4;
       else if (j >= 0) mesh.visible = j < 4 && w.rahmen > 1e-3 && (mesh.geometry !== this.geoSchlauch || w.schlauch);
       k++;
     }

@@ -48,8 +48,16 @@ const mitZeigerImBild = params.get('film') === '1';
 // B1 (17.11., zum Vergleich): ?zeiger=system: der Zeiger des Systems in der Form des Werkzeugs, solange der gezeichnete genau auf der
 // Hand läge (`zeigerSystemSchritt`); ohne den Schalter wie bisher (immer gezeichnet)
 const zeigerVomSystem = params.get('zeiger') === 'system';
-// B3 (17.11., Vorschlag zum Vergleich): ?netz=1: im Raum das Rechennetz allein, ?netz=2: über blasser Seifenhaut
+// Prüfhilfe (17.11.): ?netz=1: im Raum das Rechennetz (Dreiecke) allein, ?netz=2: über blasser Seifenhaut. Das war zuerst als Florians
+// „Wireframe im Raum“ missverstanden; er meinte das Kurvennetz (`raumNetz`, Taste W)
 const netzArt = (params.get('netz') === '1' ? 1 : params.get('netz') === '2' ? 2 : 0) as 0 | 1 | 2;
+/**
+ * B3 (Florian, 17.11.: „das Kurvennetz genau wie in den Projektionsflächen, aber im Raum“): die Ansicht „Kurvennetz“ im Raum (Taste W,
+ * `?raumnetz=1`): der weiße Körper mit Umriss statt der Seifenhaut, die Linien und Punkte des Werks auf der Form, zu greifen wie auf
+ * den Flächen; die Zeichnungen an den Wänden treten dabei zurück. `raumNetzDeckung`: wie weit sie gerade eingeblendet ist (0 … 1).
+ */
+let raumNetz = params.get('raumnetz') === '1';
+let raumNetzDeckung = 0;
 const mitInfo = params.get('info') === '1';
 if (mitInfo) document.body.classList.add('info');
 
@@ -2206,6 +2214,7 @@ function bild(dt: number): boolean {
   // S18, S19: die Fahrt nach dem Loslassen des Tropfens an der Ecke; sein Anflug
   if (eckZugSchritt(dt)) aktiv = true;
   // S20: der weiße Körper blendet ein, sobald eine flache Ansicht ruht
+  if (raumNetzSchritt(dt)) aktiv = true;
   if (koerperSchritt(dt)) aktiv = true;
   {
     const P = eckTropfenOrt();
@@ -2352,6 +2361,7 @@ function bild(dt: number): boolean {
     // eingerastet: Das Blatt hat die Blase ganz weggeschnitten und der Rahmen ist weg: nur der Grund
     leer: schnittGanz && zustand === 'ruhe' && vier < 1e-3 && !!m && 1 - m.schatten < 1e-3,
     netz: werkGezeigt ? netzArt : 0,
+    blaseAus: raumNetzDeckung >= 0.999,
     ausschnitt: hautAusschnitt(m),
   };
   const tz = performance.now();
@@ -2469,7 +2479,9 @@ function bild(dt: number): boolean {
             ? werkGezeigt
               ? bearbeiten.stift
                 ? 'P an den Wänden: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen · auf Punkt oder Linie: Abzweigung · Esc'
-                : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · Punkt an der Ecke ziehen: aufklappen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · 1 3 7 Ansichten · Tab vier'
+                : raumNetzDeckung > 0.5
+                  ? 'Punkte, Linien und Richtungen auf der Form ziehen · daneben an der Form: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · W Seifenhaut · 1 3 7 Ansichten · Tab vier'
+                  : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · Punkt an der Ecke ziehen: aufklappen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · W Kurvennetz · 1 3 7 Ansichten · Tab vier'
               : 'ziehen: drehen · an der Blase ziehen · Punkte an der Wand der Seite ziehen · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
             : werkGezeigt
               ? bearbeiten.stift
@@ -2797,7 +2809,8 @@ function wandLinien(vp: Matrix4, m: Moment): void {
     for (const a of F.anker) K.punkt(xs[a]!, ys[a]!, linienWerte.punktRadius * D * m.linie);
   }
   for (const achse of [0, 1, 2] as const) {
-    const st = staerke[achse];
+    // B3: mit dem Kurvennetz auf der Form treten die Zeichnungen an den Wänden zurück (sie lägen sonst über dem weißen Körper)
+    const st = staerke[achse] * (1 - raumNetzDeckung);
     if (st < 0.01) continue;
     // mit dem Werk zeichnet `werkLinien` alle Linien; hier bleibt in Front und Top der Umriss der Haut
     if (werkGezeigt && achse === 2 && mitteDa()) continue;
@@ -2848,17 +2861,19 @@ function wandLinien(vp: Matrix4, m: Moment): void {
     const r = 0.14 * D * kanten;
     const cam = kam.aktiv;
     for (const b of enden) {
-      let vorher: [number, number] | null = null;
+      let vorher: [number, number, number] | null = null;
       for (let j = 0; j <= 32; j++) {
         const q = c.clone().lerp(b, j / 32);
-        const vorKamera = q.clone().applyMatrix4(cam.matrixWorldInverse).z < -cam.near * 1.01;
+        const zk = q.clone().applyMatrix4(cam.matrixWorldInverse).z;
+        const vorKamera = zk < -cam.near * 1.01;
         const cc = q.clone().applyMatrix4(vp);
         if (!vorKamera || Math.abs(cc.x) > 3 || Math.abs(cc.y) > 3) {
           vorher = null;
           continue;
         }
-        const pp: [number, number] = [(cc.x * 0.5 + 0.5) * W * D, (0.5 - cc.y * 0.5) * H * D];
-        if (vorher) K.push(vorher[0], vorher[1], pp[0], pp[1], r, r, g, 0, false);
+        const pp: [number, number, number] = [(cc.x * 0.5 + 0.5) * W * D, (0.5 - cc.y * 0.5) * H * D, -zk];
+        // B3: mit Tiefe: Hinter dem weißen Körper (Kurvennetz im Raum) verschwinden sie, statt über ihm zu liegen
+        if (vorher) K.push(vorher[0], vorher[1], pp[0], pp[1], r, r, g, 2, false, vorher[2], pp[2], 1e-4, 1e-4);
         vorher = pp;
       }
     }
@@ -2882,6 +2897,8 @@ function koerperZustand(): { an: boolean; direkt: number | null } {
     const zuBlatt = !!ansichtFahrt && (ansicht !== 'raum' || (ansichtFahrt.vonAnsicht !== undefined && ansichtFahrt.vonAnsicht !== 'raum'));
     // erst im letzten Teil der Fahrt (vorher sieht die Kamera den Körper noch schräg, die Linien liegen schon auf dem Blatt)
     if (zuBlatt && flach > 0.6) return { an: true, direkt: glatt((flach - 0.6) / 0.4) };
+    // B3: das Kurvennetz im Raum liegt auf dem weißen Körper
+    if (raumNetzDeckung > 1e-3) return { an: true, direkt: raumNetzDeckung };
     return aus;
   }
   if (!f) return aus;
@@ -2890,6 +2907,26 @@ function koerperZustand(): { an: boolean; direkt: number | null } {
 }
 function koerperAn(): boolean {
   return koerperZustand().an;
+}
+
+/** B3: gilt die Ansicht „Kurvennetz“ gerade (im ruhenden Raum; auf Fahrten, in Ansichten und beim Aufklappen nicht) */
+function raumNetzGilt(): boolean {
+  return raumNetz && KOERPER_AN && zustand === 'ruhe' && werkGezeigt && ansicht === 'raum' && !ansichtFahrt && !vorDreh && !eckZug && vier < 1e-3 && flach < 1e-3;
+}
+/** B3: die Ansicht blendet weich ein und aus (0,2 s); true, solange sie sich ändert */
+function raumNetzSchritt(dt: number): boolean {
+  const ziel = raumNetzGilt() ? 1 : 0;
+  if (raumNetzDeckung === ziel) return false;
+  const d = Math.max(0, dt) / 0.2;
+  raumNetzDeckung = ziel > raumNetzDeckung ? Math.min(1, raumNetzDeckung + d) : Math.max(0, raumNetzDeckung - d);
+  return true;
+}
+/** B3: das Blatt, in dem im Raum gezogen wird: das der Achse, die dem Blick am nächsten liegt (wie beim Pinsel) */
+function raumBlatt(): Flaeche['a'] {
+  const blick = new Vector3();
+  kam.aktiv.getWorldDirection(blick);
+  const ax = Math.abs(blick.x) >= Math.abs(blick.y) && Math.abs(blick.x) >= Math.abs(blick.z) ? 0 : Math.abs(blick.y) >= Math.abs(blick.z) ? 1 : 2;
+  return BLATT_DER_ACHSE[ax]!;
 }
 
 /** S20: der Körper in diesem Bild: auf Fahrten mit ihnen verbunden; kommt er sonst neu (eine Ansicht ruht schon), blendet er weich ein */
@@ -3187,12 +3224,14 @@ function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, brei
   // Tiefe im Werk (längs der Achse) → Welt
   const tf = 1 / werkHaut.f;
   const t0 = a === 'seite' ? 0 : a === 'front' ? werkHaut.mitte.x : werkHaut.mitte.y;
-  const her = (x: number, y: number): [number, number] | null => {
+  const her = (x: number, y: number, T?: number): [number, number] | null => {
     const { o, d } = kam.strahl(x, y, W, H);
     const dd = achse === 0 ? d.x : achse === 1 ? d.y : d.z;
     const oo = achse === 0 ? o.x : achse === 1 ? o.y : o.z;
     if (Math.abs(dd) < 1e-9) return null;
-    return weltInBlatt(a, o.clone().addScaledVector(d, (lage - oo) / dd));
+    // räumlich: in der Ebene der Tiefe des gegriffenen Orts (er bleibt unter dem Zeiger)
+    const ebeneBei = raeumlich && T !== undefined ? T * tf + t0 : lage;
+    return weltInBlatt(a, o.clone().addScaledVector(d, (ebeneBei - oo) / dd));
   };
   // S7: zum Betrachter zeigt die Seite der Achse, auf der die Kamera steht (eine Wand liegt immer auf der anderen)
   const kp = kam.aktiv.position;
@@ -3287,7 +3326,9 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
   const liste: Flaeche[] = [];
   // Wände (wie `wandLinien`): die drei abgewandten, mit ihrer Stärke. Die Wand der Ansicht, in die es einrastet (oder aus der es kommt),
   // wird zum Blatt: Ihre Zeichnung wandert zur Mitte der Form und wird so stark wie das Blatt (nichts wird überblendet oder doppelt gezeigt)
-  const { s, staerke } = waendeJetzt(m);
+  const { s, staerke: staerkeWand } = waendeJetzt(m);
+  // B3: mit dem Kurvennetz auf der Form treten die Zeichnungen an den Wänden zurück (die Wände selbst bleiben)
+  const staerke = staerkeWand.map((v) => v * (1 - raumNetzDeckung)) as [number, number, number];
   const blatt = blattModus();
   const achsen = blatt ? new Set<number>() : blattAchsen();
   const pb = glatt(flach);
@@ -3307,6 +3348,15 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     }
     if (staerke[achse] < 0.01) continue;
     liste.push(ebene(BLATT_DER_ACHSE[achse]!, wandLage, vp, staerke[achse], bw.wandLinien, true));
+  }
+  // B3: das Kurvennetz auf der Form im Raum: eine räumliche Fläche (jede Linie an ihrem Ort, beide Hälften), gezogen wird im Blatt der
+  // Achse, die dem Blick am nächsten liegt. Gezeichnet wird mit P hier noch nicht (`enthaelt`)
+  if (raumNetzDeckung > 0.01 && vier < 1e-3) {
+    const a = raumBlatt();
+    const fl = ebene(a, a === 'seite' ? 0 : a === 'front' ? e.cx : e.cy, vp, raumNetzDeckung, 1, false, true);
+    fl.tiefe = tiefeDerKamera();
+    fl.enthaelt = () => false;
+    liste.push(fl);
   }
   // eingerastet (wie `linienDerAnsicht`): auf der Ebene durch die Mitte der Form
   if (blatt && ansicht !== 'raum' && !einzelUebergang) {
@@ -4896,6 +4946,11 @@ window.addEventListener('keydown', (e) => {
     pinselRadius = Math.max(10, Math.min(600, pinselRadius * (k === ']' ? 1.2 : 1 / 1.2)));
   } else if ((k === 'p' || k === 'P') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(!bearbeiten.stift);
   else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('auswahl');
+  else if ((k === 'w' || k === 'W') && zustand === 'ruhe' && werkGezeigt && !e.metaKey && !e.ctrlKey) {
+    // B3: im Raum zwischen Seifenhaut und Kurvennetz wechseln
+    raumNetz = !raumNetz;
+    werk.G.meldung = raumNetz ? 'Kurvennetz im Raum: Linien und Punkte auf der Form · W: zurück zur Seifenhaut' : '';
+  }
   else if ((k === 'l' || k === 'L') && zustand === 'ruhe' && werkGezeigt && !e.metaKey && !e.ctrlKey) werkzeugImRaum(raumWerkzeug === 'lasso' ? 'auswahl' : 'lasso');
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
@@ -5496,6 +5551,14 @@ const haken = {
     beschaeftigt: werkBeschaeftigt(),
     meldung: werk.G.meldung,
   }),
+  /** B3: die Ansicht „Kurvennetz“ im Raum: gewählt, wie weit eingeblendet, in welchem Blatt gezogen wird; `an` schaltet sie */
+  raumNetz: (an?: boolean) => {
+    if (an !== undefined) {
+      raumNetz = an;
+      anstossen();
+    }
+    return { an: raumNetz, deckung: raumNetzDeckung, blatt: raum ? raumBlatt() : null };
+  },
   /** B1: der Zeiger jetzt: Zeigt ihn das System (und mit welchem Bild), hat ihn das letzte Bild gezeichnet, seine Form */
   zeiger: () => ({ system: zeigerSystem.an, bild: zeigerSystem.wert, gezeichnet: zeigerGezeichnet, art: zustand === 'blatt' ? 'pfeil' : zeigerArtJetzt(), tempo: zeigerSystem.tempo }),
   /** wo ein Punkt des Werks (Loop-Kennung, Nummer) auf den Flächen mit diesem Blatt liegt (CSS-Pixel), ohne und mit Spiegelbild */

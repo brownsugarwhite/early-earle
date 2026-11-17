@@ -32,7 +32,10 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   Ruhe zeigt die Seite die Hälfte, die zum Betrachter zeigt (`F.vorn`). Für die Felder ist `feldAbbildung` (`main.ts`) die eine
   Abbildung für Linien, Körper und Tiefe; wer dort etwas Neues zeichnet, nimmt sie (Probe `ozzy-wenden-raum-fenster.mjs`).
   `werkBlatt.bauen` baut nur, wenn sich seine Zeile ändert (`signatur`): **Wer `bauen` etwas Neues lesen lässt, trägt es dort ein**,
-  sonst bleiben die Linien stehen. Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
+  sonst bleiben die Linien stehen. **B3 (17.11.):** Taste W zeigt im Raum das Kurvennetz auf der Form (weißer Körper, eine räumliche
+  Fläche im Blatt der Achse, die dem Blick am nächsten liegt; `raumNetz` in `main.ts`). Auf einer räumlichen Fläche rechnet
+  `Flaeche.her(x, y, T)` in der Tiefe des gegriffenen Orts: Wer dort etwas Neues greifen lässt, gibt die Tiefe mit. Florian meint mit
+  „Netz“ und „Wireframe“ das Kurvennetz, nie die Dreiecke (`?netz=1|2` ist nur eine Prüfhilfe). Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
   (gemeinsame Teile und „Flicken“ für Versuche ohne Eingriff in den Arbeitsbaum: `ozzy-teile.mjs`).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.

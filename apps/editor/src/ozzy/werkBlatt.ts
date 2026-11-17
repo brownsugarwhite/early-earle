@@ -35,8 +35,11 @@ export interface Flaeche {
    * Linien räumlich an ihrem Ort (`hin` mit Tiefe), und auch die Seite zeigt beide Hälften der Form.
    */
   raeumlich?: boolean;
-  /** Bildschirm → Blatt; null, wo es die Fläche nicht trifft */
-  her(x: number, y: number): [number, number] | null;
+  /**
+   * Bildschirm → Blatt; null, wo es die Fläche nicht trifft. `T` (nur auf einer räumlichen Fläche): in der Ebene dieser Tiefe (so
+   * bleibt ein gezogener Punkt, der nicht in der Ebene der Fläche liegt, unter dem Zeiger)
+   */
+  her(x: number, y: number, T?: number): [number, number] | null;
   /** 0 … 1: Linien werden mit ihr dünner; unter der Hälfte sind Punkte nicht zu sehen und nicht zu greifen */
   staerke: number;
   /** Breite der Linien mal diesem Maß (Wände) */
@@ -177,9 +180,11 @@ export class WerkBlatt implements Raum {
   struktur = '';
   private dreher: Dreher2D;
   /** Zug an einem Punkt, einer Linie oder mehreren Punkten: Fläche, Spiegelbild, Stelle beim Drücken (Bildschirm), schon im Werk? */
-  private zg: { fl: number; m: boolean; sx: number; sy: number; los: boolean } | null = null;
+  private zg: { fl: number; m: boolean; sx: number; sy: number; los: boolean; T?: number | undefined } | null = null;
+  /** B3: je Linie des Netzes die Tiefen ihrer Kontrollpunkte (nur auf räumlichen Flächen), für die Tiefe einer gegriffenen Stelle */
+  private tiefenJeLinie: (number[][] | undefined)[] = [];
   /** Drehen einer Richtung: Linie und Stelle im Netz, Punkt und Seite im Werk, Spitze des Griffs im Blatt beim Drücken */
-  private dz: { li: number; k: number; pi: number; seite: 'ein' | 'aus'; fl: number; m: boolean; id: number; i: number; X0: number; Y0: number; los: boolean; knick?: boolean; zurueck0?: number; gekippt?: boolean; kipp?: Kipp | null } | null = null;
+  private dz: { li: number; k: number; pi: number; seite: 'ein' | 'aus'; fl: number; m: boolean; id: number; i: number; X0: number; Y0: number; los: boolean; knick?: boolean; zurueck0?: number; gekippt?: boolean; kipp?: Kipp | null; T?: number } | null = null;
   /** ein Klick ohne Zug: Die Studie ruft danach `rueckgaengig`, das hier nichts tun darf */
   private klickRueck = false;
   private gezeigteAuswahl = new Set<number>();
@@ -246,6 +251,7 @@ export class WerkBlatt implements Raum {
     const proben: LinienProben[] = [];
     const anker: AnkerInfo[] = [];
     const infos: LinienInfo[] = [];
+    const tiefenJeLinie: (number[][] | undefined)[] = [];
     const roh: RoheLinie[] = [];
     const br = this.breiten();
     werk.alsAnzeige(() => {
@@ -344,6 +350,7 @@ export class WerkBlatt implements Raum {
             linien.push({ zu, punkte: idx, stuecke, knick: P.map((_, i) => werk.eckeGezeigt(li, i)) });
             lSchl.push(`${fl}|${l.id}|${m ? 1 : 0}`);
             infos.push({ fl, id: l.id, m });
+            tiefenJeLinie.push(tiefen);
             const PR = this.abtasten(F, kontroll, stuecke, br, tiefen);
             this.verdeckteProben(PR, k3, stuecke, karte, br, F.tiefe);
             proben.push(PR);
@@ -409,6 +416,7 @@ export class WerkBlatt implements Raum {
     this.proben = proben;
     this.anker = anker;
     this.linien = infos;
+    this.tiefenJeLinie = tiefenJeLinie;
     this.roh = roh;
     this.flaechen = flaechen;
     // gilt weiter, solange die Zeile dieselbe bleibt; nicht, wenn noch etwas fließt oder eine Linie ohne Pfad nur abgelesen wird
@@ -971,6 +979,30 @@ export class WerkBlatt implements Raum {
     return aus;
   }
 
+  /** B3: die Tiefe eines Orts des Werks längs der Achse eines Blatts, wie gezeigt (am Spiegelbild gespiegelt) */
+  private tiefeVon(a: Ansicht, v: V3, m: boolean): number {
+    const w = m ? werk.spiegeln(v) : v;
+    return a === 'seite' ? w.z : a === 'front' ? w.x : w.y;
+  }
+  /** B3: die Tiefe des Ankers `pi` auf seiner Fläche, wenn sie räumlich ist (sonst undefined: Die Ebene der Fläche gilt) */
+  private ankerTiefe(pi: number): number | undefined {
+    const A = this.anker[pi];
+    const F = A ? this.flaechen[A.fl] : undefined;
+    const w = A?.werk[0];
+    if (!A || !F?.raeumlich || !w) return undefined;
+    return werk.alsAnzeige(() => {
+      const q = werk.loops[werk.loopNr(w.id)]?.punkte[w.i];
+      return q ? this.tiefeVon(F.a, werk.zug && !werk.zug.griff ? q.cur : q.ref, A.m) : undefined;
+    });
+  }
+  /** B3: die Tiefe der Stelle (Stück si, Parameter t) einer Linie auf einer räumlichen Fläche */
+  private stellenTiefe(li: number, si: number, t: number): number | undefined {
+    const k = this.tiefenJeLinie[li]?.[si];
+    if (!k) return undefined;
+    const u = 1 - t;
+    return u * u * u * k[0]! + 3 * u * u * t * k[1]! + 3 * u * t * t * k[2]! + t * t * t * k[3]!;
+  }
+
   ziehenBeginnen(ziel: Ziel): void {
     this.klickRueck = false;
     this.zg = null;
@@ -979,14 +1011,14 @@ export class WerkBlatt implements Raum {
       const p = this.netz.punkte[ziel.pi];
       if (!A || !p || !A.werk.length) return;
       werk.G.auswahl = this.werkPunkte([ziel.pi]);
-      this.zg = { fl: A.fl, m: A.m, sx: p.x, sy: p.y, los: false };
+      this.zg = { fl: A.fl, m: A.m, sx: p.x, sy: p.y, los: false, T: this.ankerTiefe(ziel.pi) };
     } else if (ziel.art === 'linie') {
       // eine Linie greifen: der ganze Loop geht mit (wie im Prüffenster)
       const I = this.linien[ziel.li];
       const st = this.stelle(ziel);
       if (!I || !st) return;
       werk.G.auswahl = [{ l: I.id, i: -1 }];
-      this.zg = { fl: I.fl, m: I.m, sx: st[0], sy: st[1], los: false };
+      this.zg = { fl: I.fl, m: I.m, sx: st[0], sy: st[1], los: false, T: this.stellenTiefe(ziel.li, ziel.si, ziel.t) };
     }
     this.geaendert();
   }
@@ -999,14 +1031,14 @@ export class WerkBlatt implements Raum {
     if (!F) return;
     const a = F.a;
     if (!z.los) {
-      const XY0 = F.her(z.sx, z.sy);
+      const XY0 = F.her(z.sx, z.sy, z.T);
       if (!XY0) return;
       z.los = true;
       werk.G.maus = { a, X: XY0[0], Y: XY0[1] };
       if (werk.griffWartet()) werk.G.gegriffen = { a, X: XY0[0], Y: XY0[1], m: z.m, griff: null, seit: performance.now() };
       else werk.zugStarten(null, a, XY0[0], XY0[1], z.m);
     }
-    const XY = F.her(z.sx + dx, z.sy + dy);
+    const XY = F.her(z.sx + dx, z.sy + dy, z.T);
     if (!XY) return;
     werk.G.maus = { a, X: XY[0], Y: XY[1] };
     if (werk.zug && !werk.zug.modal && werk.zug.ansicht === a) werk.zugBewegen(XY[0], XY[1]);
@@ -1067,7 +1099,7 @@ export class WerkBlatt implements Raum {
     const q = this.netz.punkte[best];
     if (!A || !q) return;
     werk.G.auswahl = this.werkPunkte(pis);
-    this.zg = { fl: A.fl, m: A.m, sx: q.x, sy: q.y, los: false };
+    this.zg = { fl: A.fl, m: A.m, sx: q.x, sy: q.y, los: false, T: this.ankerTiefe(best) };
     this.geaendert();
   }
 
@@ -1141,7 +1173,7 @@ export class WerkBlatt implements Raum {
     const F = I ? this.flaechen[I.fl] : undefined;
     const st = this.stelle({ art: 'linie', li, si, t, s: 0 });
     if (!I || !F || !st) return null;
-    const XY = F.her(st[0], st[1]);
+    const XY = F.her(st[0], st[1], this.stellenTiefe(li, si, t));
     const l = werk.loops[werk.loopNr(I.id)];
     if (!XY || !l) return null;
     const r = werk.punktAufLinie(F.a, l, XY[0], XY[1], I.m);
@@ -1168,14 +1200,15 @@ export class WerkBlatt implements Raum {
     if (this.alt() && !werk.eckeGezeigt(li, z.k)) werk.eckeUmschalten(I.id, z.k);
     const g = z.seite === 'ein' ? p.ein : p.aus;
     if (!g) return null;
-    const [X0, Y0] = werk.alsAnzeige(() => {
+    const [X0, Y0, T0] = werk.alsAnzeige(() => {
       const q = werk.loops[li]!.punkte[z.k]!;
       const h = (z.seite === 'ein' ? q.ein : q.aus) ?? g;
       const tip = plus(q.ref, h);
-      return werk.imBlatt(F.a, I.m ? werk.spiegeln(tip) : tip);
+      return [...werk.imBlatt(F.a, I.m ? werk.spiegeln(tip) : tip), this.tiefeVon(F.a, tip, I.m)] as [number, number, number];
     });
     werk.G.auswahl = [{ l: I.id, i: z.k }];
-    this.dz = { li: z.li, k: z.k, pi: z.pi, seite: z.seite, fl: I.fl, m: I.m, id: I.id, i: z.k, X0, Y0, los: false, zurueck0: werk.zurueck.length };
+    // B3: auf einer räumlichen Fläche wird in der Ebene der Spitze gedreht (ihre Tiefe bleibt beim Drehen im Blatt)
+    this.dz = { li: z.li, k: z.k, pi: z.pi, seite: z.seite, fl: I.fl, m: I.m, id: I.id, i: z.k, X0, Y0, los: false, zurueck0: werk.zurueck.length, ...(F.raeumlich ? { T: T0 } : {}) };
     this.geaendert();
     return spitze;
   }
@@ -1308,7 +1341,7 @@ export class WerkBlatt implements Raum {
     if (!F || !l || !P) return;
     const g = armGriff(l, d.k, d.seite);
     if (!g) return;
-    const XY = F.her(P.x + g[0], P.y + g[1]);
+    const XY = F.her(P.x + g[0], P.y + g[1], d.T);
     if (!XY) return;
     if (!d.los) {
       d.los = true;

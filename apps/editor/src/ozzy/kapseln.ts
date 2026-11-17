@@ -49,7 +49,11 @@ export class Kapseln {
   }
 
   /** eine Kapsel; `weich`: Punkt, Tropfen oder Hals (weich vereinigt), sonst ein Stück Linie (hart) */
-  push(x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, weich: boolean, z0 = 0, z1 = 0): void {
+  /**
+   * `schicht` 2: nach der Tiefe gegen den Körper (`z0`, `z1` zum Betrachter); `v0`, `v1`: so breit ist die Linie dort, wo sie hinter dem
+   * Körper liegt (fein und grün); mit einem Hauch (> 0, etwa 1e-4) verschwindet sie hinter ihm, statt durchzuscheinen
+   */
+  push(x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, weich: boolean, z0 = 0, z1 = 0, v0 = 0, v1 = 0): void {
     if (!(r0 > 0.001 || r1 > 0.001)) return;
     this.platz(1);
     const o = this.n * PRIM_FELDER;
@@ -64,8 +68,8 @@ export class Kapseln {
     b[o + 7] = schicht + 4 * (weich ? 1 : 0) + 8 * this.bereich;
     b[o + 8] = z0;
     b[o + 9] = z1;
-    b[o + 10] = 0;
-    b[o + 11] = 0;
+    b[o + 10] = v0;
+    b[o + 11] = v1;
     this.n++;
   }
 

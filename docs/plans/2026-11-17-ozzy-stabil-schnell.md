@@ -284,14 +284,28 @@ und Netz. Das Netz ist das dichte Netz der Rechnung (das, was wirklich gerechnet
 in Tinte, hinten fein und grün wie Verdecktes; die Linien und Punkte bleiben darüber greifbar. Ich zeige zwei Bilder (Netz allein,
 Netz über blasser Seifenhaut), du wählst.
 
-**Die zwei Bilder (17.11., 21 Uhr 30), deine Wahl steht aus.** Links die Seifenhaut wie heute, dann **1: das Netz allein**, dann
-**2: das Netz über blasser Seifenhaut**: [`2026-11-17-netz-im-raum-vorschlag.png`](../progress/ozzy/2026-11-17-netz-im-raum-vorschlag.png);
-herangezoomt (links 1, rechts 2): [`2026-11-17-netz-im-raum-nah.png`](../progress/ozzy/2026-11-17-netz-im-raum-nah.png). Es sind
-echte Bilder aus Ozzy, hinter einem Schalter der Adresse: `?netz=1` und `?netz=2` (ohne ihn ändert sich nichts). Gezeigt wird das
-Rechennetz (7 437 Punkte an „strange bird“), jede Kante über ihre Mittelpunkte auf der glatten Fläche; die Linien teilen sich die
-Lagen mit der Haut und gehen beim Ziehen von selbst mit. Stellen: `GlattPlan.netzKanten`, `werkHaut.netzKanten`, `Haut.netzZeigen`,
-`HautWerte.netz`. **Noch nicht gebaut:** Taste und Tropfen zum Umschalten, das Verhalten in den Vier Ansichten (dort steht das Netz
-heute nur im Feld des Raums), die Rückseite beim Wenden.
+**Geklärt am 17.11. um 22 Uhr (Florian): „Das Netz im Raum hast du falsch verstanden. Ich meinte damit das Kurvennetz genau wie in
+den Projektionsflächen, aber im Raum.“** Der Vorschlag oben (das Dreiecksnetz der Rechnung) war also nicht gemeint. Er bleibt nur als
+Prüfhilfe hinter `?netz=1` und `?netz=2` (für die umgeschlagenen Dreiecke in Etappe C), ohne Taste und ohne Knopf.
+
+**Gebaut (17.11., 22 Uhr 15): die Ansicht „Kurvennetz“ im Raum, Taste W. Dein Urteil steht aus.**
+- **Du siehst:** W wechselt im Raum von der Seifenhaut zum weißen Körper mit Umriss, die Linien und Punkte liegen auf der Form, wie
+  auf den Projektionsflächen (vorn in Tinte, was hinter der Form liegt, fein und grün); beim Drehen gehen sie räumlich mit. W noch
+  einmal: zurück zur Seifenhaut. Film: [`2026-11-17-kurvennetz-im-raum.mp4`](../progress/ozzy/2026-11-17-kurvennetz-im-raum.mp4),
+  Bild: [`2026-11-17-kurvennetz-im-raum.png`](../progress/ozzy/2026-11-17-kurvennetz-im-raum.png).
+- **Greifen:** Punkte und Linien auf der Form hängen am Zeiger und lassen sich ziehen wie auf den Flächen, auch die der gespiegelten
+  Hälfte. Gezogen wird im Blatt der Achse, die dem Blick am nächsten liegt (wie beim Pinsel), in der Tiefe des gegriffenen Punkts: Er
+  bleibt genau unter dem Zeiger, seine Tiefe ändert sich nicht. Daneben auf der Form gilt weiter der Pinsel, ins Leere gezogen dreht es.
+- **Die Zeichnungen an den Wänden** treten in dieser Ansicht zurück (sie lägen sonst über dem weißen Körper); die Kanten der Kiste
+  bleiben und verschwinden hinter der Form.
+- **Technik:** eine räumliche Fläche wie beim Wenden (B2): `raumNetz`, `raumNetzGilt`, `raumBlatt` in `main.ts`;
+  `Flaeche.her(x, y, T?)` rechnet in der Ebene der Tiefe des gegriffenen Orts (`ankerTiefe`, `stellenTiefe` in `werkBlatt.ts`);
+  `HautWerte.blaseAus`; die Kanten der Kiste haben eine Tiefe (`Kapseln.push` mit `v0`, `v1`).
+- **Noch nicht gebaut:** mit P auf der Form zeichnen; ein Knopf (Tropfen) zum Umschalten; das Feld des Raums in den Vier Ansichten;
+  auf der Fahrt in eine Ansicht blendet das Kurvennetz aus und die Seifenhaut übernimmt. Das Drehen von Richtungen rechnet schon mit
+  der Tiefe, geprüft ist bisher nur das Ziehen von Punkten.
+- **Probe** `apps/editor/scripts/pruefen/ozzy-raum-netz-fenster.mjs` (einschalten, ein Punkt der Flanke bleibt beim Ziehen 0,00 Punkte
+  unter dem Zeiger, Pinsel und Drehen, ausschalten). Alle 25 Proben halten.
 
 **B4. Die kleinen Stolpersteine (klein, je einer).**
 - Hinweiszeile: nur, was unter dem Zeiger mit dem Werkzeug gerade möglich ist (höchstens drei Angaben), der Rest hinter „?“.
