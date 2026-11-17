@@ -1,13 +1,16 @@
 // Ozzy, S21 im Plan „wie es weitergeht“ (17.11.2026): Kanten gleiten statt auszublenden, an „strange bird“ (NAME). Der Raum wird Bild für
 // Bild um die Hochachse gedreht (je Bild rund 2°), über die Ebene der Front hinweg; dann Tab.
-// Kriterien:
-//   1  Die Wand der Front gleitet stetig auf die andere Seite: kein Sprung (höchstens 0,5 L je Bild, vorher 2 L in einem Bild), der Weg
-//      dauert mindestens 6 Bilder; vor und nach dem Weg liegt sie genau bei ±L.
-//   2  Keine Linie wird blasser, nur schmaler: Die Breite der Front fällt nie unter 25 % und ist vor und nach dem Weg voll.
-//   3  Die Punkte der Front bleiben zu sehen (sie schrumpfen mit der Wand, statt zu verschwinden).
-//   4  Beim Aufklappen keine zweiten Linien neben den Kanten (keine Linie außerhalb aller Wände, so liefen die alten Teiler quer durchs
-//      Bild); offen die beiden Teiler.
-//   5  Keine Fehler in der Konsole.
+// Kriterien (Florian, 17.11. nach dem ersten Stand: „die linien sollen immer an den wänden bleiben“):
+//   1  Die Zeichnung der Front bleibt immer an einer Wand (in jedem Bild bei ±L) und wechselt die Seite nur, wenn sie ganz schmal ist
+//      (Breite höchstens 0,05 beim Wechsel).
+//   2  Die Kanten der Ecke gleiten stetig an den Wänden entlang zur neuen Ecke (kein Sprung: höchstens 0,5 L je Bild; nie außerhalb der
+//      Kiste), unterwegs schmaler, aber nie unter 25 %.
+//   3  Keine Linie wird blasser, nur schmaler: Vor und nach dem Weg ist alles voll.
+//   4  Die Punkte der Front schrumpfen mit ihr, statt zu verschwinden: vorher und nachher gleich viele, unterwegs gezeichnet, solange die
+//      Zeichnung mehr als 5 % breit ist.
+//   5  Beim Aufklappen keine zweiten Linien neben den Kanten (keine Linie außerhalb aller Wände); die Kreuzung beginnt an der Ecke, wo
+//      die Kanten im Raum gerade sind (höchstens 2 px); offen die beiden Teiler.
+//   6  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] node scripts/pruefen/ozzy-gleiten-fenster.mjs
 import { chromium } from '@playwright/test';
 
@@ -44,24 +47,26 @@ for (let k = 0; k < 36; k++) {
   await s.mouse.move(x, 790);
   await s.evaluate(() => window.__ozzy.bild(1 / 60));
   const g = await O('gleiten');
-  verlauf.push({ lage: g.lage[0], breite: g.breite[0], punkte: await O('wandPunkte', 'front') });
+  verlauf.push({ wand: g.wandLage[0] - g.cx, wandBreite: g.wandBreite[0], ecke: g.lage[0] - g.cx, kante: g.breite[0], punkte: await O('wandPunkte', 'front') });
 }
 await s.mouse.up();
-let sprung = 0;
-for (let i = 1; i < verlauf.length; i++) sprung = Math.max(sprung, Math.abs(verlauf[i].lage - verlauf[i - 1].lage));
-const unterwegs = verlauf.filter((v) => Math.abs(Math.abs(v.lage - verlauf[0].lage + (verlauf[0].lage > 0 ? 0 : 0)) ) > 0 && Math.abs(Math.abs(v.lage) - L) > 1e-6 && Math.abs(v.lage) < L - 1e-6).length;
 const vorn = verlauf[0];
 const hinten = verlauf[verlauf.length - 1];
-const seitenGetauscht = Math.sign(vorn.lage) !== Math.sign(hinten.lage);
-ok(
-  '1 die Front gleitet stetig auf die andere Seite',
-  seitenGetauscht && sprung <= 0.5 * L && unterwegs >= 6 && Math.abs(Math.abs(vorn.lage) - L) < 1e-6 && Math.abs(Math.abs(hinten.lage) - L) < 1e-6,
-  `größter Schritt ${z2(sprung / L)} L, ${unterwegs} Bilder unterwegs, vorher ${z2(vorn.lage / L)} L, nachher ${z2(hinten.lage / L)} L`,
-);
-const minBreite = Math.min(...verlauf.map((v) => v.breite));
-ok('2 nur schmaler, nie blasser', minBreite >= 0.25 - 1e-6 && vorn.breite === 1 && hinten.breite === 1, `schmalste Breite ${z2(minBreite)}, vorher ${z2(vorn.breite)}, nachher ${z2(hinten.breite)}`);
-const minPunkte = Math.min(...verlauf.map((v) => v.punkte));
-ok('3 die Punkte der Front bleiben zu sehen', vorn.punkte > 0 && minPunkte >= Math.min(vorn.punkte, hinten.punkte) * 0.5, `vorher ${vorn.punkte}, unterwegs mindestens ${minPunkte}, nachher ${hinten.punkte}`);
+let anWand = true;
+let wechselBreite = 0;
+for (let i = 0; i < verlauf.length; i++) {
+  if (Math.abs(Math.abs(verlauf[i].wand) - L) > 1e-6) anWand = false;
+  if (i > 0 && Math.sign(verlauf[i].wand) !== Math.sign(verlauf[i - 1].wand)) wechselBreite = Math.max(wechselBreite, verlauf[i].wandBreite, verlauf[i - 1].wandBreite);
+}
+ok('1 die Zeichnung bleibt an einer Wand', anWand && Math.sign(vorn.wand) !== Math.sign(hinten.wand) && wechselBreite <= 0.05, `immer bei ±L: ${anWand}, Breite beim Wechsel ${z2(wechselBreite)}`);
+let sprung = 0;
+for (let i = 1; i < verlauf.length; i++) sprung = Math.max(sprung, Math.abs(verlauf[i].ecke - verlauf[i - 1].ecke));
+const drin = verlauf.every((v) => Math.abs(v.ecke) <= L + 1e-6);
+const minKante = Math.min(...verlauf.map((v) => v.kante));
+ok('2 die Kanten gleiten an den Wänden entlang', sprung <= 0.5 * L && drin && minKante >= 0.25 - 1e-6 && Math.sign(vorn.ecke) !== Math.sign(hinten.ecke), `größter Schritt ${z2(sprung / L)} L, in der Kiste: ${drin}, schmalste Kante ${z2(minKante)}`);
+ok('3 nur schmaler, nie blasser', vorn.wandBreite === 1 && hinten.wandBreite === 1 && vorn.kante === 1 && hinten.kante === 1, `vorher ${z2(vorn.wandBreite)}, nachher ${z2(hinten.wandBreite)}`);
+const breit = verlauf.filter((v) => v.wandBreite > 0.05);
+ok('4 die Punkte schrumpfen mit', vorn.punkte > 0 && vorn.punkte === hinten.punkte && breit.every((v) => v.punkte === vorn.punkte), `vorher ${vorn.punkte}, nachher ${hinten.punkte}, unterwegs (breiter als 5 %) mindestens ${Math.min(...breit.map((v) => v.punkte))}`);
 
 // 4: Aufklappen
 await s.evaluate(() => window.__ozzy.film(false));
@@ -71,9 +76,15 @@ await s.evaluate(() => window.__ozzy.film(true));
 await s.keyboard.press('Tab');
 let langWaehrend = 0;
 let bilderWaehrend = 0;
+let anfang = null;
 for (let i = 0; i < 120; i++) {
   await s.evaluate(() => window.__ozzy.bild(1 / 60));
   const b = await O('blick');
+  if (!anfang && b.vier > 1e-3) {
+    const e = await O('eck');
+    const r = await O('eckeImRaum');
+    if (e.bild && r) anfang = Math.hypot(e.bild[0] - r[0], e.bild[1] - r[1]);
+  }
   // gezählt, solange die Wände klappen (der geglättete Stand unter 0,999; darüber zeichnet Ozzy die Felder mit ihren Teilern)
   const stand = (await O('faltPunkte'))?.e ?? 0;
   if (b.vier > 0.02 && stand < 0.999) {
@@ -84,7 +95,7 @@ for (let i = 0; i < 120; i++) {
 }
 await s.evaluate(() => window.__ozzy.bild(1 / 60));
 const langOffen = await O('langeKapseln');
-ok('4 Aufklappen ohne zweite Linien', bilderWaehrend > 5 && langWaehrend === 0 && langOffen >= 1, `${bilderWaehrend} Bilder: höchstens ${langWaehrend} Linien außerhalb der Wände, offen ${langOffen} Teiler`);
-ok('5 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
+ok('5 Aufklappen ohne zweite Linien, von der Ecke aus', bilderWaehrend > 5 && langWaehrend === 0 && langOffen >= 1 && anfang !== null && anfang <= 2, `${bilderWaehrend} Bilder: höchstens ${langWaehrend} Linien außerhalb der Wände, offen ${langOffen} Teiler; Kreuzung am Anfang ${anfang === null ? '–' : z2(anfang)} px neben der Ecke im Raum`);
+ok('6 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
 await browser.close();

@@ -549,6 +549,19 @@ der Wände); die Proben zu S7, S10, S16 bis S20, zu den Ansichten, zum Bearbeite
 360° um die Hochachse, unter den Boden und zurück, Tab auf und zu; echte Geschwindigkeit) und
 [`2026-11-17-raum-gleiten.mp4`](../progress/ozzy/2026-11-17-raum-gleiten.mp4) groß; Bild der ersten Kreuzung
 [`2026-11-17-raum-gleiten-kreuzung.png`](../progress/ozzy/2026-11-17-raum-gleiten-kreuzung.png) (oben vorher, unten nachher).
+*Geändert (17.11., Florian: „sehr cool, aber das durch das modell durchfahre gefällt mir nicht. die linien sollen immer an den wänden
+bleiben. wann kam das dazu?“ — es kam mit der ersten Fassung von S21, `658bf44c`):* Die Zeichnung einer Wand bleibt jetzt an ihrer Wand
+(`wandLage` immer ±L): Sie wird schmaler, bis nichts mehr von ihr da ist, wechselt genau dann auf die andere Wand und wird dort wieder voll
+(`wandBreite`, die Punkte schrumpfen mit). Nur die Kanten der Ecke gleiten weiter, und zwar an den Wänden entlang (hinten und am Boden, nie
+durch die Form), unterwegs schmaler, nie unter einem Viertel. Das Aufklappen beginnt wieder bei den Wänden an ihrem Platz; die Kanten an
+der Ecke und die Kreuzung kommen von der Ecke, wohin sie im Raum geglitten ist (`eckeVersatz`, vergeht im ersten Drittel), der Punkt an
+der Ecke (S19) sitzt dort. Die Wände des Raums und die eingerasteten Ansichten bleiben sonst, wie sie waren. Probe
+`ozzy-gleiten-fenster.mjs` neu, 1 bis 6 halten (an der Wand: Breite beim Wechsel 0,04; Kanten größter Schritt 0,25 L, schmalste 25 %; 42
+Punkte bleiben, solange die Zeichnung breiter als 5 % ist; die Kreuzung beginnt 0,05 px neben der Ecke im Raum); die Proben zu S10, S16
+bis S20, zu den Ansichten und zum Bearbeiten halten. Film
+[`2026-11-17-raum-gleiten-waende.mp4`](../progress/ozzy/2026-11-17-raum-gleiten-waende.mp4) (links die erste Fassung, rechts jetzt), Bild
+[`2026-11-17-raum-gleiten-waende.png`](../progress/ozzy/2026-11-17-raum-gleiten-waende.png) (die erste Kreuzung, oben die erste Fassung,
+unten jetzt); [`2026-11-17-raum-gleiten.mp4`](../progress/ozzy/2026-11-17-raum-gleiten.mp4) zeigt jetzt den neuen Stand.
 
 Reihenfolge: S17, S18 und S19 (mit dem Rückweg), dann S20 und S21.
 
