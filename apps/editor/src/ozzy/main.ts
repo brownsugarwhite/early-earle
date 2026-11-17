@@ -410,6 +410,8 @@ const werkBlatt = new WerkBlatt(
     anstossen();
   },
 );
+// B4 (17.11.): nach ⌘Z (und K) fließt die Haut mit den Linien zurück
+werkBlatt.mitRueckfluss = () => werkHaut.rueckfluss();
 const bearbeiten = new Verhalten({ punkte: [], linien: [] }, linienWerte);
 bearbeiten.raum = werkBlatt;
 bearbeiten.werk = werkBlatt;
@@ -5955,6 +5957,15 @@ const haken = {
       return { max, nichtEndlich };
     };
     return { haut: g(werk.haut.pos), anzeige: werkHaut.netz ? g(werkHaut.netz.pos) : null, quelle: werk.anzeigeQuelle.length, hautN: werk.haut.n };
+  },
+  /** B4: die gezeigte Haut als Zahl (Summe ihrer Lagen, Welt) und ob sie nach ⌘Z gerade zurückfließt: für die Probe des Rückflusses */
+  hautStand: (mitProben = false) => {
+    const P = werkHaut.netz?.pos;
+    let summe = 0;
+    if (P) for (let i = 0; i < P.length; i++) summe += Math.abs(P[i]!);
+    const proben: number[] = [];
+    if (P && mitProben) for (let v = 0; 3 * v + 2 < P.length; v += 23) proben.push(P[3 * v]!, P[3 * v + 1]!, P[3 * v + 2]!);
+    return { summe, fliesst: werkHaut.fliesst, version: werkHaut.version, punkte: P ? P.length / 3 : 0, proben };
   },
   /**
    * Übergabe prüfen: Wie weit liegen die Punkte der Haut des Werks (fein, höchstens `n` davon) neben der Blase, wenn die Rechenpunkte

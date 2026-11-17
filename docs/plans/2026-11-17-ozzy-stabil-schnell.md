@@ -340,8 +340,21 @@ Klick landet knapp neben ihrem Feld (bis 28 Punkte), zählt er zur Linie und lie
 und eine Meldung sagt, warum; Esc bricht wie bisher ab. Vorher drehte so ein Klick die Ansicht und schloss die Vier Ansichten, die
 angefangene Linie ließ sich nicht fortsetzen. Stellen: `werkBlatt.ortFrei`, `entwurfOffen`, `ENTWURF_RAND`; `main.ts` beim Drücken.
 Probe `ozzy-p-daneben-fenster.mjs` (mit `ALT=1` das alte Verhalten zum Vergleich: Dort schließen sich die Vier Ansichten).
-**Offen aus B4:** Hinweiszeile; Esc (Florian, 17.11.: nicht jetzt); ⌘Z, bei dem die Haut mit zurückfließt; Enden eines Rings in
-Front und Top löschen; Klick an einer Kreuzung und der Tropfen „Maul“; ↩ an der Silhouette; Drehen und Aufklappen als eine Bewegung;
+
+**Gebaut aus B4 (17.11., 23 Uhr 15): Nach ⌘Z fließt die Haut mit den Linien zurück.** Du siehst: ⌘Z nimmt einen Zug zurück, Linien
+und Haut gleiten zusammen an ihren Ort (0,22 s). Vorher glitten nur die Linien, die Haut sprang sofort. Vergleichsbild (oben vorher,
+unten jetzt; das Bild vor ⌘Z, dann 1, 3, 6 und 14 Bilder danach):
+[`2026-11-17-zurueck-haut-fliesst.png`](../progress/ozzy/2026-11-17-zurueck-haut-fliesst.png). Gemessen in der Probe: Im ersten Bild
+nach ⌘Z liegt die Haut noch 38 Bildpunkte vom Ziel (Zug 60), dann 30, 23, 17, 12, 8, 5, 3 … und ist nach 11 Bildern da; kein Schritt
+zurück. **Technik:** `werkHaut.rueckfluss` merkt die gezeigte Haut, `flussStart` bestimmt, wo jeder Punkt beginnt (als Höhenfeld
+über der Haut von jetzt), geblendet werden die Punkte der Rechnung, die glatte Fläche wird wie immer daraus gerechnet. Das war nötig,
+weil die Netze vor und nach ⌘Z keine gemeinsamen Nummern haben (schon ein kleiner Zug verdichtet und ordnet neu; zwei einfachere
+Fassungen griffen deshalb nicht oder begannen am falschen Ort). Auch nach K (Kante) fließt die Haut so. Probe
+`ozzy-zurueck-haut-fenster.mjs`. Alle 27 Proben halten. **Grenze:** Die Spitze eines sehr schmalen Zugs beginnt etwas runder, als
+sie war (im Bild: Umriss und Linie liegen im ersten Bild an der Spitze knapp auseinander).
+
+**Offen aus B4:** Hinweiszeile; Esc (Florian, 17.11.: nicht jetzt); Enden eines Rings in Front und Top löschen; Klick an einer
+Kreuzung und der Tropfen „Maul“ (gehört zur Sitzung für das Maul); ↩ an der Silhouette; Drehen und Aufklappen als eine Bewegung;
 Meldungen, die mit ihrem Anlass verschwinden.
 
 ### Etappe C: Werkzeuge mit dem Kern

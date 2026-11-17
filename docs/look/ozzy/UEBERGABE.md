@@ -28,8 +28,8 @@ schaltet im Raum zwischen Seifenhaut und Kurvennetz (weißer Körper mit Umriss,
 Flächen; Film `docs/progress/ozzy/2026-11-17-kurvennetz-im-raum.mp4`). Sein Urteil (17.11.): „Ist erstmal ok so“, er sieht noch
 Unterschiede zur Studie (`raum.html`): **für den Feinschliff notiert**, mit Vergleichsbild und Liste im Plan unter B3. Es fehlen noch
 P auf der Form und das Feld des Raums in den Vier Ansichten. Aus B4 gebaut: Ein Entwurf mit P gehört seiner Fläche (ein Klick knapp
-neben dem Feld zählt dazu, statt die Vier Ansichten zu schließen). Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
-ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 26 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
+neben dem Feld zählt dazu, statt die Vier Ansichten zu schließen); nach ⌘Z fließt die Haut mit den Linien zurück. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 27 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 
 ## 1. Einstieg
@@ -209,7 +209,7 @@ S21 Gleiten der Wände und Kanten (beide Fassungen; „Ich glaube da haben wir u
 **In Ozzy, klein:**
 - Die Enden eines Rings lassen sich in Front und Top nicht löschen (in der Seite schon; die Studie lässt geteilte Punkte stehen).
 - Ein Klick auf einen Punkt an einer Kreuzung wählt den Punkt der anderen Linie; dann erscheint der Tropfen „Maul“ nicht.
-- ⌘Z: Die Linien fließen zurück, die Haut springt noch.
+- ⌘Z: behoben am 17.11. (B4): Die Haut fließt mit den Linien zurück (`werkHaut.rueckfluss`).
 - ↩ an der Silhouette hält 110 bis 220 ms an (`neuAusUmriss`); besser schon rechnen, sobald die Silhouette geschlossen ist und ruht.
 - Der Würfel bläst wie ein Kissen auf (Beweis „Quader“ offen).
 - S16: Drehen und Aufklappen sind zwei Bewegungen mit einer kurzen Delle dazwischen.

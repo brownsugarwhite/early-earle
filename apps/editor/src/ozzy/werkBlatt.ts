@@ -104,7 +104,7 @@ const TIEFE: Record<Ansicht, V3> = { seite: { x: 0, y: 0, z: 1 }, front: { x: 1,
  * vor ⌘Z in die neue: Punkte nach ihrem Schlüssel, Linien je Stück an derselben Stelle (so bleiben sie an ihren Punkten), Griffe mit.
  * `?fluss=0` schaltet es ab (für den Film vorher).
  */
-const FLUSS_DAUER = new URLSearchParams(location.search).get('fluss') === '0' ? 0 : 0.22;
+export const FLUSS_DAUER = new URLSearchParams(location.search).get('fluss') === '0' ? 0 : 0.22;
 type FlussStueck = { t: number[]; x: number[]; y: number[] };
 type FlussLinie = { stuecke: FlussStueck[]; g: number[] };
 /** die Lage auf einem gemerkten Stück an der Stelle t (0 … 1) */
@@ -428,8 +428,12 @@ export class WerkBlatt implements Raum {
 
   // ---------- S13 (6): ⌘Z fließt zurück ----------
 
+  /** B4 (17.11.): was mit den Linien zurückfließen soll (Ozzy: die Haut, `werkHaut.rueckfluss`) */
+  mitRueckfluss: (() => void) | null = null;
+
   /** Merkt die Anzeige von jetzt (auch mitten in einem Gleiten); die nächsten Bilder gleiten von ihr in den neuen Stand */
   rueckfluss(): void {
+    this.mitRueckfluss?.();
     const N = this.netz;
     const punkte = new Map<string, [number, number]>();
     N.punkte.forEach((p, i) => {

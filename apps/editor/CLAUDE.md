@@ -35,7 +35,9 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   sonst bleiben die Linien stehen. **B3 (17.11.):** Taste W zeigt im Raum das Kurvennetz auf der Form (weißer Körper, eine räumliche
   Fläche im Blatt der Achse, die dem Blick am nächsten liegt; `raumNetz` in `main.ts`). Auf einer räumlichen Fläche rechnet
   `Flaeche.her(x, y, T)` in der Tiefe des gegriffenen Orts: Wer dort etwas Neues greifen lässt, gibt die Tiefe mit. Florian meint mit
-  „Netz“ und „Wireframe“ das Kurvennetz, nie die Dreiecke (`?netz=1|2` ist nur eine Prüfhilfe). Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
+  „Netz“ und „Wireframe“ das Kurvennetz, nie die Dreiecke (`?netz=1|2` ist nur eine Prüfhilfe). **B4 (17.11.):** Nach ⌘Z fließt
+  auch die Haut zurück (`werkHaut.rueckfluss`, über `werkBlatt.mitRueckfluss`). Merke: Das Netz vor und nach einem Zug hat keine
+  gemeinsamen Nummern (verdichten ordnet neu); wer zwei Stände Punkt für Punkt vergleicht, braucht eine Zuordnung über die Fläche. Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
   (gemeinsame Teile und „Flicken“ für Versuche ohne Eingriff in den Arbeitsbaum: `ozzy-teile.mjs`).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.

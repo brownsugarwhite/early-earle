@@ -8,6 +8,7 @@
 import { kanteBei } from '@ee/shape/dicht';
 import type { HautNetz } from '../anfang/haut';
 import { GlattPlan, type LinienKante } from '../form/glattPlan';
+import { FLUSS_DAUER } from './werkBlatt';
 import * as werk from '../form/werk';
 
 /** so oft (ms) wird der Umriss höchstens neu gerechnet, während sich die Haut bewegt (S3); das letzte Bild bekommt den genauen */
@@ -316,6 +317,94 @@ export class WerkHaut {
     return kanten;
   }
 
+  /**
+   * B4: die Haut vor ⌘Z: die gezeigten Lagen ihrer Punkte (`lagen`, je Punkt der Anzeige); für das Netz danach: wo jeder seiner
+   * Punkte beginnt (`start`, einmal je Netz bestimmt, `flussStart`); wie lange sie schon fließt (s)
+   */
+  private fluss: { lagen: Float64Array; start: Float64Array | null; plan: Plan | null; t: number } | null = null;
+  /**
+   * B4 (17.11.): ⌘Z fließt zurück, auch die Haut (bis dahin sprang sie, während die Linien glitten): merkt die gezeigte Haut von jetzt
+   * (auch mitten im Fließen); in den nächsten Bildern gleitet jeder Punkt von seinem Ort davor an seinen neuen, so lange und so wie
+   * die Linien (`werkBlatt.rueckfluss`). Geblendet werden die Punkte der Rechnung, die glatte Fläche wird wie immer daraus gerechnet:
+   * So fließt sie auch, wenn ⌘Z das Netz ändert (schon ein kleiner Zug verdichtet es).
+   */
+  rueckfluss(): void {
+    const g = this.p;
+    if (!g || !this.netz || !(FLUSS_DAUER > 0)) {
+      this.fluss = null;
+      return;
+    }
+    this.fluss = { lagen: Float64Array.from(g.lagen), start: null, plan: null, t: 0 };
+  }
+  /**
+   * B4: wo jeder Punkt des Netzes von jetzt (`g`, Lagen `L`) beginnt, damit die Haut aussieht wie vorher. Die Netze davor und danach
+   * haben keine gemeinsamen Nummern (schon ein kleiner Zug verdichtet und ordnet neu; gemessen: Punkte gleicher Nummer liegen im Mittel
+   * ein Fünftel der Form auseinander). Deshalb als Höhenfeld über der Haut von jetzt: Jeder Punkt der Haut von vorher sucht den
+   * nächsten Ort auf der Haut von jetzt und gibt seinen Abstand dorthin an die Ecken des Dreiecks dort; Punkte ohne Treffer nehmen
+   * das Mittel ihrer Nachbarn, zweimal geglättet. (Umgekehrt, vom Netz von jetzt aus den nächsten Ort auf der Haut von vorher zu
+   * suchen, trifft eine herausgezogene Spitze nicht: Die Haut begann dann schon fast am Ziel, mit welligem Rand.)
+   */
+  private flussStart(F: NonNullable<WerkHaut['fluss']>, g: Plan, L: Float64Array): Float64Array {
+    const N = g.quelle.length;
+    const I = g.plan.index(0);
+    const summe = new Float64Array(3 * N);
+    const gew = new Float64Array(N);
+    const suche = dreieckSuche(L, I);
+    const T = TREFFER;
+    const A = F.lagen;
+    for (let o = 0; o + 2 < A.length; o += 3) {
+      suche(A[o]!, A[o + 1]!, A[o + 2]!);
+      for (const [v, w] of [[T.a, T.wa], [T.b, T.wb], [T.c, T.wc]] as const) {
+        if (!(w > 1e-9)) continue;
+        for (let x = 0; x < 3; x++) summe[3 * v + x] = summe[3 * v + x]! + w * (A[o + x]! - (T.wa * L[3 * T.a + x]! + T.wb * L[3 * T.b + x]! + T.wc * L[3 * T.c + x]!));
+        gew[v] = gew[v]! + w;
+      }
+    }
+    const feld = new Float64Array(3 * N);
+    const da = new Uint8Array(N);
+    for (let v = 0; v < N; v++) {
+      if (!(gew[v]! > 1e-6)) continue;
+      da[v] = 1;
+      for (let x = 0; x < 3; x++) feld[3 * v + x] = summe[3 * v + x]! / gew[v]!;
+    }
+    // Punkte ohne Treffer: das Mittel ihrer Nachbarn, die schon einen Wert haben (höchstens acht Runden nach außen)
+    const nach = new Float64Array(3 * N);
+    const zahl = new Float64Array(N);
+    const runde = (nur: boolean, anteil: number): boolean => {
+      nach.fill(0);
+      zahl.fill(0);
+      for (let t = 0; t + 2 < I.length; t += 3) {
+        for (let k = 0; k < 3; k++) {
+          const a = I[t + k]!;
+          const b = I[t + ((k + 1) % 3)]!;
+          for (const [u, v] of [[a, b], [b, a]] as const) {
+            if (!da[u] || (nur && da[v])) continue;
+            for (let x = 0; x < 3; x++) nach[3 * v + x] = nach[3 * v + x]! + feld[3 * u + x]!;
+            zahl[v] = zahl[v]! + 1;
+          }
+        }
+      }
+      let neu = false;
+      for (let v = 0; v < N; v++) {
+        if (!(zahl[v]! > 0) || (nur && da[v])) continue;
+        for (let x = 0; x < 3; x++) feld[3 * v + x] = feld[3 * v + x]! * (1 - anteil) + (nach[3 * v + x]! / zahl[v]!) * anteil;
+        if (!da[v]) neu = true;
+      }
+      if (nur) for (let v = 0; v < N; v++) if (zahl[v]! > 0) da[v] = 1;
+      return neu;
+    };
+    for (let k = 0; k < 8 && runde(true, 1); k++);
+    runde(false, 0.5);
+    runde(false, 0.5);
+    const st = new Float64Array(L.length);
+    for (let i = 0; i < L.length; i++) st[i] = L[i]! + feld[i]!;
+    return st;
+  }
+  /** B4: fließt die Haut gerade zurück */
+  get fliesst(): boolean {
+    return this.fluss !== null;
+  }
+
   /** eine neue Form (aus der Silhouette, geladen, neu): Muster und Dehnung beginnen von vorn */
   neueForm(): void {
     this.blattBezug = null;
@@ -502,10 +591,28 @@ export class WerkHaut {
         this.letzte = null;
       }
     }
+    // B4: nach ⌘Z fließt die Haut zurück: Jeder Punkt beginnt an der Stelle der Haut von vorher, die ihm am nächsten liegt
+    const F = this.fluss;
+    if (F && vorgabe) this.fluss = null;
+    else if (F) {
+      if (F.plan !== g || !F.start || F.start.length !== L.length) {
+        F.start = this.flussStart(F, g, L);
+        F.plan = g;
+      }
+      F.t += Math.max(0, dt);
+      const u = F.t / FLUSS_DAUER;
+      if (!(u < 1)) this.fluss = null;
+      else {
+        const w = Math.pow(1 - u, 3);
+        const st = F.start;
+        for (let i = 0; i < L.length; i++) L[i] = L[i]! + (st[i]! - L[i]!) * w;
+      }
+    }
     // Liegt die Haut genau wie beim letzten Mal, klingt nur die Dehnung nach (S3: vorher jedes Bild die ganze glatte Anzeige neu, rund
     // 5 ms, 2,5 s lang nach jedem Handgriff): kein neues Glätten, kein neuer Umriss, nur die Dehnung
     const v = this.letzte;
-    if (!vorgabe && this.netz && v && v.plan === g && v.voll === voll && v.lagen.length === L.length && this.stufenFuer(g, voll) === this.stufen) {
+    // (nicht, solange die Haut nach ⌘Z zurückfließt: Dann ändert sich die gezeigte Lage in jedem Bild)
+    if (!vorgabe && !this.fluss && this.netz && v && v.plan === g && v.voll === voll && v.lagen.length === L.length && this.stufenFuer(g, voll) === this.stufen) {
       let gleich = true;
       for (let i = 0; i < L.length; i++)
         if (L[i] !== v.lagen[i]) {
