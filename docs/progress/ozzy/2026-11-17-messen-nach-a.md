@@ -3,15 +3,15 @@
 Plan: [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md), Etappe A. Grundlinie:
 [`2026-11-17-messen-karte-zug-p.md`](2026-11-17-messen-karte-zug-p.md). Gleiche Werkzeuge, gleicher Testbrowser (1440 × 900, doppelte
 Dichte, „strange bird“), je ein Lauf. Gebaut sind A0, A1, A2, A3 (Fluss als Textur, Stufen nach der Größe im Bild, kein teures Ziel
-ohne sichtbare Blase, und seit dem 18.11.: das Ziel der Kantenglättung nur so groß wie die Blase im Bild) und aus A4 zwei Punkte.
+ohne sichtbare Blase, und seit 20 Uhr: das Ziel der Kantenglättung nur so groß wie die Blase im Bild) und aus A4 zwei Punkte.
 
 ## Grafikkarte je Bild (Rechnen / mit Grafikkarte, ms)
 
 | | Raum | Raum nah (Zoom 2,9) | eingerastet Seite | Vier Ansichten |
 | --- | --- | --- | --- | --- |
 | vorher | 2,3 / 15,8 | 3,1 / 21,1 | 1,1 / 9,7 | 4,0 / 16,8 |
-| nach A, noch mit dem Ziel über das ganze Bild (17.11.) | 2,0 / 9,5 | 3,1 / 12,8 | 0,9 / 3,9 | 3,9 / 15,1 |
-| **nach A, Ziel nur so groß wie die Blase (18.11.)** | 2,2 / **6,0** | 3,2 / **12,6** | 1,2 / **4,3** | 3,9 / **10,3** |
+| nach A, noch mit dem Ziel über das ganze Bild (19 Uhr) | 2,0 / 9,5 | 3,1 / 12,8 | 0,9 / 3,9 | 3,9 / 15,1 |
+| **nach A, Ziel nur so groß wie die Blase (20 Uhr)** | 2,2 / **6,0** | 3,2 / **12,6** | 1,2 / **4,3** | 3,9 / **10,3** |
 | dasselbe ohne Seifenhaut (Versuch) | 1,7 / 3,9 | 3,2 / 5,9 | 1,0 / 3,5 | 3,8 / 7,9 |
 | nach A, ohne Kantenglättung (Versuch) | 2,1 / 6,3 | 3,1 / 8,7 | 1,0 / 4,0 | 3,8 / 10,2 |
 | nach A, zweifach statt vierfach (Versuch) | 1,8 / 8,8 | 3,1 / 10,6 | 1,0 / 4,2 | 4,0 / 12,8 |
@@ -22,9 +22,9 @@ Schritt für Schritt (Raum / nah, mit stehender Zeit der Seifenhaut, Zoom nah 2,
 10,7 / 11,4 · dazu Stufen nach der Größe im Bild 9,7 / 11,5. Bild gegen vorher: Raum 61 dB (eine Stufe statt zwei), nah 76 dB (nur
 die Textur): nicht zu sehen.
 
-Die vier Zeilen „Versuch“ darunter stammen vom 17.11. (Ziel über das ganze Bild).
+Die vier Zeilen „Versuch“ darunter stammen vom Stand um 19 Uhr (Ziel über das ganze Bild).
 
-**Das Ziel nur so groß wie die Blase (18.11.):** Die Seifenhaut zeichnet in ein Ziel, das nur den Kasten der Form im Bild deckt (auf
+**Das Ziel nur so groß wie die Blase (17.11., 20 Uhr):** Die Seifenhaut zeichnet in ein Ziel, das nur den Kasten der Form im Bild deckt (auf
 128 Gerätepunkte gerastert; es wächst sofort und schrumpft erst nach einer Weile), darum herum den Grund direkt. Deckte der Kasten
 mehr als sechs Zehntel des Bilds (nah herangezoomt), bleibt es beim ganzen Bild. **Bild gegen das ganze Ziel** (vier Ansichten bei
 stehender Zeit, 5,2 Millionen Bildpunkte je Bild): Raum 101 dB, etwas näher 99 dB, Vier Ansichten 91 dB, Raum von hinten mit der

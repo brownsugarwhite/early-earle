@@ -173,7 +173,7 @@ rechts gebaut nach einem Zug; „strange bird“, gleiche Ansicht).
 - **Nicht gebaut: das Zeichenziel mit 8 Bit.** Beim Nachrechnen zeigte sich: Damit die hellen Spiegelungen nicht abgeschnitten
   werden, müsste das Bild halb so hell gespeichert werden; nahe Weiß (und die Seifenhaut ist fast überall nahe Weiß) wären die
   Stufen dann gröber als die des Bildschirms. Das Risiko für „immer super glatt“ ist mir zu groß.
-- **Gebaut am 18.11. (Florian: „Erst A3“): das teure Ziel nur so groß wie die Blase im Bild.** Ozzy gibt der Seifenhaut den Kasten
+- **Gebaut am 17.11. um 20 Uhr (Florian: „Erst A3“): das teure Ziel nur so groß wie die Blase im Bild.** Ozzy gibt der Seifenhaut den Kasten
   der Form im Bild (`hautAusschnitt`); sie zeichnet die Blase in ein Ziel dieser Größe (`Haut.ausschnittFuer`, auf 128 Gerätepunkte
   gerastert) und den Grund darum herum direkt. Nicht in der Pose, nicht beim Aufblasen, und nicht, wenn der Kasten mehr als sechs
   Zehntel des Bilds deckt. **Gemessen:** Raum 9,5 → **6,0 ms**, Vier Ansichten 15,1 → **10,3 ms**, eingerastet 4,3 ms, nah
