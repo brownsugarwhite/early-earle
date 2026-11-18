@@ -484,6 +484,19 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   kein Zug, nicht in der Pose); rechnet der Hintergrund noch, steht sein Auftrag wieder im Stand des Objekts. (6) `typeof werkForm`
   in einem Typ ist an der Stelle auf `null` verengt: den Typ ausschreiben. Probe: `ozzy-objekte-fenster.mjs`. Offenes: Plan,
   Abschnitt 10 („Was an Etappe 3 offen bleibt“).
+- **Naht zwischen zwei Objekten (Beweis im Kern, 18.11.; noch nicht in Ozzy gebaut):** `scripts/pruefen/form-naht.ts` und
+  `form-naht-teile.ts` (aus `packages/shape`: `[ART=abziehen] [BLATT=<pfad>] [STREIFEN=15,30] [BEGLEIT=15] npx vite-node
+  ../../apps/editor/scripts/pruefen/form-naht.ts`; Bild: `html-shot.mjs --jpg`). Den Schnitt zweier Netze rechnet `manifold-3d`
+  (nur `devDependencies` von `apps/editor`; `pnpm add` schreibt `package.json` um: danach zurücksetzen und die eine Zeile von Hand
+  eintragen). Merke: (1) Jedes Dreieck bekommt seine eigene `faceID`, sonst legt die Bibliothek Dreiecke zusammen; alte Punkte
+  werden über ihre Lage in einfacher Genauigkeit wiedergefunden und behalten ihre genaue Lage, neu sind nur die Punkte der Naht.
+  (2) Eine Linie, die in die andere Form läuft, wird an der Naht geschnitten: Pfad teilen am Punkt, der dem Nahtpunkt am nächsten
+  liegt (`stueckNaechstes`, `stueckTeilen`), die Stelle `s` des neuen Punkts aus dem Parameter im Stück (dann behalten alle Proben
+  ihre Stelle), das Stück draußen ist ein `ring` mit `haengt: [true, true]`; die Kreuzungen zweier Formen vorher getrennt zählen.
+  (3) Die Schnittkurve hinterlässt sehr kurze Kanten: `nadelnZusammenlegen`, dann verdichten, bevor gerechnet wird. (4) Die Dauer
+  einer Rechnung nie aus `heute().weg` lesen (nur der letzte Abschnitt): die Haut vorher und nachher über `flaechenAbstand`
+  vergleichen. (5) K an der Naht rundet die ganze Form mit (weiche Linie = überall glatt); Begleitlinien halten sie nicht; außen
+  festhalten (Halte-Loop wie `maulFormen`) hält, zeigt aber den Rand des Streifens. Zahlen: Plan, Abschnitt 10, Beweis 2.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

@@ -177,26 +177,47 @@ export async function verbinden(a: Haut, b: Haut, art: 'vereinen' | 'abziehen' =
   return { haut, quelle, alt, neuVonA, neuVonB, triQuelle, triAlt, naehte, inhalt, ms: performance.now() - t0 };
 }
 
-/** eine Haut verschoben und gleichmäßig skaliert (um den Ursprung), als neue Haut derselben Art */
-export function hautVersetzt(h: Haut, k: number, d: { x: number; y: number; z: number }): Haut {
+/** um die x-Achse gedreht (Grad) */
+const gedreht = (p: { x: number; y: number; z: number }, grad: number): { x: number; y: number; z: number } => {
+  const c = Math.cos((grad * Math.PI) / 180);
+  const sn = Math.sin((grad * Math.PI) / 180);
+  return { x: p.x, y: p.y * c - p.z * sn, z: p.y * sn + p.z * c };
+};
+
+/** eine Haut um die x-Achse gedreht (`drehX`, Grad), gleichmäßig skaliert (um den Ursprung) und verschoben, als neue Haut derselben Art */
+export function hautVersetzt(h: Haut, k: number, d: { x: number; y: number; z: number }, drehX = 0): Haut {
   const pos = Float64Array.from(h.pos);
   for (let v = 0; v < h.n; v++) {
-    pos[3 * v] = pos[3 * v]! * k + d.x;
-    pos[3 * v + 1] = pos[3 * v + 1]! * k + d.y;
-    pos[3 * v + 2] = pos[3 * v + 2]! * k + d.z;
+    const q = gedreht({ x: pos[3 * v]!, y: pos[3 * v + 1]!, z: pos[3 * v + 2]! }, drehX);
+    pos[3 * v] = q.x * k + d.x;
+    pos[3 * v + 1] = q.y * k + d.y;
+    pos[3 * v + 2] = q.z * k + d.z;
   }
   return { ...h, pos };
 }
 
 /** eine Linie wie `hautVersetzt` (Lagen, Griffe, Stellen längs der Linie); ihre Kreuzungen bekommen `kreuzungPlus` dazu (zwei Formen zählen ihre Kreuzungen jede für sich) */
-export function loopVersetzt(l: Loop, k: number, d: { x: number; y: number; z: number }, kreuzungPlus = 0): Loop {
-  const ort = (p: V3): V3 => ({ x: p.x * k + d.x, y: p.y * k + d.y, z: p.z * k + d.z });
-  const griff = (g: V3): V3 => ({ x: g.x * k, y: g.y * k, z: g.z * k });
+export function loopVersetzt(l: Loop, k: number, d: { x: number; y: number; z: number }, kreuzungPlus = 0, drehX = 0): Loop {
+  const ort = (p: V3): V3 => {
+    const q = gedreht(p, drehX);
+    return { x: q.x * k + d.x, y: q.y * k + d.y, z: q.z * k + d.z };
+  };
+  const griff = (g: V3): V3 => {
+    const q = gedreht(g, drehX);
+    return { x: q.x * k, y: q.y * k, z: q.z * k };
+  };
+  const ruhe = Float64Array.from(l.ruhe);
+  for (let j = 0; j < ruhe.length; j += 3) {
+    const q = ort({ x: ruhe[j]!, y: ruhe[j + 1]!, z: ruhe[j + 2]! });
+    ruhe[j] = q.x;
+    ruhe[j + 1] = q.y;
+    ruhe[j + 2] = q.z;
+  }
   return {
     ...l,
     s: Float64Array.from(l.s, (x) => x * k),
     laenge: l.laenge * k,
-    ruhe: Float64Array.from(l.ruhe, (x, i) => x * k + (i % 3 === 0 ? d.x : i % 3 === 1 ? d.y : d.z)),
+    ruhe,
     punkte: l.punkte.map((p) => {
       const q: LoopPunkt = { ...p, s: p.s * k, ref: ort(p.ref), cur: ort(p.cur) };
       if (p.ein) q.ein = griff(p.ein);

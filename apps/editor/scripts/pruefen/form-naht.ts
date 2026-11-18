@@ -23,11 +23,15 @@ import {
   hautLagen,
   istEckeVonSelbst,
   kantenKnicken,
+  kreuzungenZwischen,
+  loopAusVorhang,
   mittlereKante,
   pfadAbweichung,
   pfadLagen,
   pfadParameter,
+  punktEinfuegen,
 } from '../../../../packages/shape/src/dicht/loops';
+import { loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
 import { nadelnZusammenlegen } from '../../../../packages/shape/src/dicht/verdichten';
 import { flaechenAbstand } from './flaechenabstand';
 import { type BlattBild, type BlattLinie, blattSchreiben } from './form-direkt-blatt';
@@ -60,11 +64,15 @@ function freieKugel(): { h: Haut; loops: Loop[] } {
 
 const A = freieKugel();
 const B0 = freieKugel();
-// B: kleiner, seitlich und quer zur Spiegelebene versetzt (die Formen überlappen sich um rund ein Drittel von B)
+// B: kleiner, seitlich und quer zur Spiegelebene versetzt (die Formen überlappen sich um rund ein Drittel von B).
+// `BEGLEIT=<Abstand>` (Stufe 4, Begleitlinien): B liegt dann längs x neben A und ist um x gedreht; so liegt die Naht in einer Ebene
+// x = fest, und die Begleitlinien sind Schnitte mit Ebenen daneben.
+const BEGLEIT = Number(process.env.BEGLEIT ?? 0);
 const K = 0.6;
-const D = { x: 170, y: 50, z: 30 };
-const hB = hautVersetzt(B0.h, K, D);
-const loopsB = B0.loops.map((l) => loopVersetzt(l, K, D, 1000));
+const D = BEGLEIT > 0 ? { x: 180, y: 0, z: 0 } : { x: 170, y: 50, z: 30 };
+const DREH = BEGLEIT > 0 ? 35 : 0;
+const hB = hautVersetzt(B0.h, K, D, DREH);
+const loopsB = B0.loops.map((l) => loopVersetzt(l, K, D, 1000, DREH));
 
 console.log(`A: ${A.h.n} Punkte, ${A.h.tri.length / 3} Dreiecke, Kante ${z1(mittlereKante(A.h))} · B: ${hB.n} Punkte, Kante ${z1(mittlereKante(hB))} · ${ART}`);
 const r = await verbinden(A.h, hB, ART);
@@ -149,7 +157,7 @@ const offen = loops.filter((l) => l.art === 'ring');
 const naht0 = loops.find(istNaht)!;
 ok(
   '2a die Linien: geschnittene enden an der Naht, die Naht hat dort Punkte',
-  L2.geschnitten === 4 && offen.length === 4 && offen.every((l) => l.haengt?.[0] && l.haengt[1] && hatPfad(l)) && L2.kreuzungen === 8 && naht0.punkte.filter((p) => p.kreuzung !== undefined).length === 8 && hatPfad(naht0),
+  L2.geschnitten >= 3 && offen.length === L2.geschnitten && offen.every((l) => l.haengt?.[0] && l.haengt[1] && hatPfad(l)) && L2.kreuzungen === 2 * L2.geschnitten && naht0.punkte.filter((p) => p.kreuzung !== undefined).length === L2.kreuzungen && hatPfad(naht0),
   `${loops.length} Linien: ${loops.filter((l) => l.art === 'paar' && !istNaht(l)).length} ungeschnitten, ${L2.geschnitten} geschnitten in ${offen.length} offene Stücke, ${L2.weg} ganz weg, 1 Naht mit ${naht0.punkte.length} Punkten (${L2.kreuzungen} Enden von Linien); neue Enden höchstens ${z2(L2.neben)} neben ihrem Punkt der Naht`,
 );
 const abw0 = Math.max(...loops.map((l) => pfadAbweichung(l)));
@@ -218,8 +226,108 @@ function neben(hh: Haut, vor: Haut, nahtVor: readonly number[], ab: number): { m
   return { max, breit, bewegt, fern };
 }
 
+// ---------- Stufe 4 (`BEGLEIT=<Abstand>`): K an der Naht mit zwei Begleitlinien, je eine auf jeder Form im Abstand von der Naht ----------
+if (BEGLEIT > 0) {
+  const nahtX = (): number => {
+    const n = nahtJetzt();
+    let x = 0;
+    for (let j = 0; j < n.ruhe.length; j += 3) x += n.ruhe[j]! / (n.ruhe.length / 3);
+    return x;
+  };
+  const x0 = nahtX();
+  let naechsteId = 900;
+  let naechsteK = 9000;
+  const tol = 0.25 * mittlereKante(haut);
+  const begleit: number[] = [];
+  for (const x of [x0 - BEGLEIT, x0 + BEGLEIT]) {
+    const l = loopAusVorhang(haut, 'seite', [[x, 400], [x, -400]], naechsteId++, 4);
+    if (!l) {
+      ok('4 Begleitlinie', false, `kein Schnitt bei x = ${z1(x)}`);
+      process.exit(1);
+    }
+    const e = loopEinsetzen(haut, [...loops, l], loops.length);
+    if (!e) {
+      ok('4 Begleitlinie', false, `ließ sich bei x = ${z1(x)} nicht einsetzen`);
+      process.exit(1);
+    }
+    haut = e.haut;
+    loops = e.loops;
+    const neuL = loops[loops.length - 1]!;
+    // Kreuzungen mit den vorhandenen Linien: ein gemeinsamer Punkt, dort, wo die vorhandene Linie auf ihrem Pfad geteilt wird
+    for (const o of loops) {
+      if (o === neuL) continue;
+      for (const f of kreuzungenZwischen(o, o.ruhe, neuL, neuL.ruhe, tol)) {
+        const k = naechsteK++;
+        const po = punktEinfuegen(o, f.sa, k, hatPfad(o));
+        const pn = punktEinfuegen(neuL, f.sb, k);
+        pn.ref = { ...po.ref };
+        pn.cur = { ...po.ref };
+      }
+    }
+    griffeAnlegen(neuL, neuL.ruhe, true, 0.25 * mk);
+    begleit.push(neuL.id);
+  }
+  eckenAuto(loops);
+  for (const l of loops) if (hatPfad(l)) pfadParameter(l);
+  // Bezug: mit Begleitlinien, die Naht noch eine Kante
+  const b1 = heute(haut, loops, pfade(loops), 20, 300);
+  legen(haut, loops);
+  {
+    const v = nachVerdichten(haut, loops, mk);
+    haut = v.h;
+    loops = v.loops;
+  }
+  const b2 = heute(haut, loops, pfade(loops), 0, 300);
+  legen(haut, loops);
+  const bezug = kopie(haut);
+  const nahtBezug = nahtJetzt().proben.map((p) => p.ecken[0]);
+  const knickB = randKnick(haut, nahtBezug);
+  console.log(`     mit Begleitlinien (Abstand ${BEGLEIT}), Naht mit Kante: ${b1.runden + b2.runden} Runden${b1.steht && b2.steht ? '' : ' (steht nicht)'}, umgeschlagen ${falten(haut).umgeklappt}, Knick an der Naht ${z1(knickB.mittel)}°; ${loops.length} Linien`);
+  bilder.push({ name: `mit Begleitlinien im Abstand ${BEGLEIT} (Naht: Kante)`, h: kopie(haut), loops: [], fertig: { linien: loops.map((l) => linieBild(haut, l)), punkte: punkteBild(loops) }, notiz: `${loops.length} Linien, davon 2 Begleitlinien` });
+  // K an der Naht
+  const vorher = new Set(loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
+  const naht = nahtJetzt();
+  naht.kante = false;
+  for (const p of naht.punkte) delete p.kante;
+  eckenAuto(loops);
+  let text = '';
+  let gut = false;
+  try {
+    kantenKnicken(loops, vorher);
+    const r1 = heute(haut, loops, pfade(loops), 30, 300);
+    legen(haut, loops);
+    const v = nachVerdichten(haut, loops, mk);
+    haut = v.h;
+    loops = v.loops;
+    const r2 = heute(haut, loops, pfade(loops), 0, 300);
+    legen(haut, loops);
+    const f4 = falten(haut);
+    const k4 = randKnick(haut, nahtJetzt().proben.map((p) => p.ecken[0]));
+    const abw4 = Math.max(...loops.map((l) => pfadAbweichung(l)));
+    // wie weit die Haut neben der kantigen liegt: überall, und außerhalb des Streifens (weiter als der doppelte Abstand von der Naht)
+    const pk = (x: Haut): [number, number, number][] => Array.from({ length: x.n }, (_, i) => [x.pos[3 * i]!, x.pos[3 * i + 1]!, x.pos[3 * i + 2]!]);
+    const P = pk(haut);
+    const dd = flaechenAbstand(P, pk(bezug), Array.from({ length: bezug.tri.length / 3 }, (_, t) => [bezug.tri[3 * t]!, bezug.tri[3 * t + 1]!, bezug.tri[3 * t + 2]!]), 30);
+    let max = 0;
+    let aussen = 0;
+    let fern = 0;
+    for (let i = 0; i < P.length; i++) {
+      const ab = Math.abs(P[i]![0] - x0);
+      max = Math.max(max, dd[i]!);
+      if (ab > 2 * BEGLEIT) aussen = Math.max(aussen, dd[i]!);
+      if (ab > 100) fern = Math.max(fern, dd[i]!);
+    }
+    gut = r1.steht && r2.steht && f4.umgeklappt === 0 && k4.mittel < 0.5 * knickB.mittel && aussen <= 0.5 && abw4 <= 0.5;
+    text = `${r1.runden + r2.runden} Runden${r1.steht && r2.steht ? '' : ' (steht nicht)'}; umgeschlagen ${f4.umgeklappt}; Knick quer über die Naht im Mittel ${z1(k4.mittel)}° (mit Kante ${z1(knickB.mittel)}°), größter ${z1(k4.max)}°; die Haut liegt im Streifen bis ${z1(max)} neben der kantigen, außerhalb des doppelten Abstands (${2 * BEGLEIT}) bis ${z2(aussen)}, weiter als 100 Einheiten bis ${z2(fern)}; Linien höchstens ${z2(abw4)} neben ihren Pfaden`;
+  } catch (e) {
+    text = `hält nicht: ${(e as Error).message}`;
+  }
+  ok(`4 K an der Naht mit Begleitlinien (Abstand ${BEGLEIT}): Die Rundung bleibt im Streifen`, gut, text);
+  bilder.push({ name: `K an der Naht mit Begleitlinien (Abstand ${BEGLEIT})`, h: kopie(haut), loops: [], fertig: { linien: loops.map((l) => linieBild(haut, l)), punkte: punkteBild(loops) }, notiz: text });
+}
+
 // ---------- Stufe 2d: die Naht ist eine Linie wie jede andere: ein Punkt der Naht gezogen, beide Formen folgen ----------
-{
+if (BEGLEIT === 0) {
   const hz = kopie(haut);
   const lz = loopsKopie(loops);
   const naht = lz.find(istNaht)!;
@@ -261,8 +369,88 @@ function neben(hh: Haut, vor: Haut, nahtVor: readonly number[], ab: number): { m
   bilder.push({ name: 'ein Punkt der Naht gezogen (Kante an)', h: hz, loops: [], fertig: { linien: lz.map((l) => linieBild(hz, l)), punkte: punkteBild(lz) }, notiz: text });
 }
 
+// ---------- Stufe 3b: K an der Naht, die Haut außerhalb eines Streifens um die Naht bleibt an ihrem Ort ----------
+// (`STREIFEN=<halbe Breite>,…`; der Baustein des Kerns dafür ist der Loop ohne Kette, der je Punkt seinen Ort hält, wie beim Formen
+// des Mauls: `halteLoop` in `maulFormen.ts`)
+for (const BREIT of BEGLEIT === 0 ? (process.env.STREIFEN ?? '15,30').split(',').map(Number).filter((x) => x > 0) : []) {
+  const hz = kopie(haut);
+  let lz = loopsKopie(loops);
+  let hh = hz;
+  const nahtVon = (ls: readonly Loop[]): Loop => ls.find(istNaht)!;
+  const nahtVor = nahtVon(lz).proben.map((p) => p.ecken[0]);
+  /** der Loop, der alles außerhalb des Streifens hält (Punkte auf Linien tragen schon eine Bindung) */
+  const halter = (x: Haut, ls: readonly Loop[]): Loop | null => {
+    const N = nahtVon(ls).proben.map((p) => p.ecken[0]);
+    const aufLinie = new Uint8Array(x.n);
+    for (const l of ls) for (const q of l.proben) for (const v of q.ecken) aufLinie[v] = 1;
+    const um: number[][] = Array.from({ length: x.n }, () => []);
+    for (let f = 0; f < x.tri.length / 3; f++) for (let e = 0; e < 3; e++) um[x.tri[3 * f + e]!]!.push(f);
+    const fern: number[] = [];
+    for (let v = 0; v < x.n; v++) {
+      if (aufLinie[v] || !um[v]!.length) continue;
+      let d = Infinity;
+      for (const w of N) d = Math.min(d, Math.hypot(x.pos[3 * v]! - x.pos[3 * w]!, x.pos[3 * v + 1]! - x.pos[3 * w + 1]!, x.pos[3 * v + 2]! - x.pos[3 * w + 2]!));
+      if (d > BREIT) fern.push(v);
+    }
+    if (!fern.length) return null;
+    const proben = fern.map((v) => {
+      const f = um[v]![0]!;
+      const andere = [x.tri[3 * f]!, x.tri[3 * f + 1]!, x.tri[3 * f + 2]!].filter((y) => y !== v);
+      return { ecken: [v, andere[0]!, andere[1]!] as [number, number, number], b: [1, 0, 0] as [number, number, number] };
+    });
+    const ruhe = new Float64Array(3 * fern.length);
+    fern.forEach((v, i) => ruhe.set([x.pos[3 * v]!, x.pos[3 * v + 1]!, x.pos[3 * v + 2]!], 3 * i));
+    return { id: -1000, art: 'paar', proben, s: Float64Array.from(proben, (_, i) => i), laenge: Math.max(1, proben.length), ruhe, punkte: [] };
+  };
+  const mitHalt = (x: Haut, ls: Loop[], schritte: number): { runden: number; steht: boolean; gehalten: number } => {
+    const halt = halter(x, ls);
+    const alle = halt ? [...ls, halt] : ls;
+    const lagen = halt ? [...pfade(ls), Float64Array.from(halt.ruhe)] : pfade(ls);
+    const e = heute(x, alle, lagen, schritte, 300);
+    legen(x, ls);
+    return { runden: e.runden, steht: e.steht, gehalten: halt ? halt.proben.length : 0 };
+  };
+  const vorher = new Set(lz.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
+  const naht = nahtVon(lz);
+  naht.kante = false;
+  for (const p of naht.punkte) delete p.kante;
+  eckenAuto(lz);
+  let text = '';
+  let gut = false;
+  try {
+    kantenKnicken(lz, vorher);
+    const r1 = mitHalt(hh, lz, 30);
+    const v = nachVerdichten(hh, lz, mk);
+    hh = v.h;
+    lz = v.loops;
+    const r2 = mitHalt(hh, lz, 0);
+    const f5 = falten(hh);
+    const k5 = randKnick(hh, nahtVon(lz).proben.map((p) => p.ecken[0]));
+    const abw5 = Math.max(...lz.map((l) => pfadAbweichung(l)));
+    // wie weit die Haut neben der kantigen liegt: im Streifen, und außerhalb (dort ist sie gehalten)
+    const pk = (x: Haut): [number, number, number][] => Array.from({ length: x.n }, (_, i) => [x.pos[3 * i]!, x.pos[3 * i + 1]!, x.pos[3 * i + 2]!]);
+    const P = pk(hh);
+    const dd = flaechenAbstand(P, pk(haut), Array.from({ length: haut.tri.length / 3 }, (_, t) => [haut.tri[3 * t]!, haut.tri[3 * t + 1]!, haut.tri[3 * t + 2]!]), 30);
+    const N = nahtVor.map((w) => [haut.pos[3 * w]!, haut.pos[3 * w + 1]!, haut.pos[3 * w + 2]!]);
+    let innen = 0;
+    let aussen = 0;
+    for (let i = 0; i < P.length; i++) {
+      let zurNaht = Infinity;
+      for (const q of N) zurNaht = Math.min(zurNaht, Math.hypot(P[i]![0] - q[0]!, P[i]![1] - q[1]!, P[i]![2] - q[2]!));
+      if (zurNaht > 1.25 * BREIT) aussen = Math.max(aussen, dd[i]!);
+      else innen = Math.max(innen, dd[i]!);
+    }
+    gut = r1.steht && r2.steht && f5.umgeklappt === 0 && k5.mittel < 0.5 * knick2.mittel && aussen <= 0.5 && abw5 <= 0.5;
+    text = `${r1.gehalten} von ${hz.n} Punkten gehalten; ${r1.runden + r2.runden} Runden${r1.steht && r2.steht ? '' : ' (steht nicht)'}; umgeschlagen ${f5.umgeklappt}; Knick quer über die Naht im Mittel ${z1(k5.mittel)}° (mit Kante ${z1(knick2.mittel)}°), größter ${z1(k5.max)}°; die Haut liegt im Streifen bis ${z1(innen)} neben der kantigen, außerhalb bis ${z2(aussen)}; Linien höchstens ${z2(abw5)} neben ihren Pfaden`;
+  } catch (e) {
+    text = `hält nicht: ${(e as Error).message}`;
+  }
+  ok(`3b K an der Naht, außerhalb von ${BREIT} um die Naht bleibt die Haut stehen`, gut, text);
+  bilder.push({ name: `K an der Naht, Rundung nur im Streifen ±${BREIT}`, h: hh, loops: [], fertig: { linien: lz.map((l) => linieBild(hh, l)), punkte: punkteBild(lz) }, notiz: text });
+}
+
 // ---------- Stufe 3: K an der Naht (Kante aus) ----------
-{
+if (BEGLEIT === 0) {
   const hautKante = kopie(haut);
   const nahtKante = nahtJetzt().proben.map((p) => p.ecken[0]);
   const vorher = new Set(loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
