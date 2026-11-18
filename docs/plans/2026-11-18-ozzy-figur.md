@@ -242,3 +242,29 @@ D in drei Schritten, jeder mit seiner Probe:
 
 Stand: D1 gebaut (Übergabe, Abschnitt „Etappe D, erster Teil“). Offen für ihn: der Weg vom Sitzen ins Liegen (das Hinterbein
 schwenkt durch die Senkrechte).
+
+### 12a. Nachtrag: Haltungen frei ineinander, physikalisch stimmig (Florian, 18.11. nachts)
+
+Florian: „er soll beides können. alle posen müssen smooth ineinanderlaufen. das system muss sehr stabil und robust sein.“ – „Die
+beine dürfen auch nicht durch den boden drehen. Es muss immer smooth sein und immer physikalisch korrekt. Aus dem stehen kann er
+einfach alle viere von sich strecken und auf den bauch rutschen. beim hinsetzen erst das hintere bein krümmen und dann nach vorne
+rausstrecken.“ – „vom sitzen ins liegen soll sich das hintere bein zur kamera in einer fake 3d drehung nach hinten drehen.“
+
+Aufbau (ersetzt die feste Kette Stehen → Sitzen → Liegen):
+
+1. **Haltungsraum mit Gewichten:** jede Haltung ein Gewicht (Summe 1); Knochen, Lage, Korrekturform und Kopfversatz werden danach
+   gemischt. An jeder Vorlage exakt; jede Mischung hat genau eine Bedeutung (Winkel je Haltung zwischen −180° und 180°).
+2. **Bodenregel:** Ozzy ruht immer mit seinem tiefsten Punkt auf dem Boden (nichts sinkt ein, nichts schwebt); an den Vorlagen
+   ändert sie nichts.
+3. **Beine mit Richtung im Raum:** Jedes Bein zeigt von der Hüfte zum Fuß in eine Richtung im Raum. Liegen die Richtungen zweier
+   Haltungen gegeneinander (Hinterbein im Sitzen nach vorn, im Liegen nach hinten), führt die Mischung über die Richtung zur Kamera:
+   Das Bein wird kurz und rund (von vorn gesehen) und geht hinten wieder auf, statt durch den Boden zu drehen.
+4. **Bein mit Rückgrat (D2):** Das Bein folgt einer Kurve von der Hüfte zur Sohle; die Sohle bleibt flach, solange der Fuß steht,
+   das Bein krümmt sich, wenn die Hüfte sinkt.
+5. **Übergänge als Wege durch den Haltungsraum:** Hinsetzen über eine Hocke (Hinterbeine krümmen, Hinterteil sinkt), dann streckt
+   sich das Hinterbein nach vorn; direkt Hinlegen: alle viere von sich, auf den Bauch rutschen (Pfoten gleiten auf dem Boden);
+   Sitzen → Liegen: Hinterbein dreht zur Kamera nach hinten. Rückwege umgekehrt.
+6. **Steuerung:** Knöpfe Stehen, Sitzen, Liegen; Gewichte folgen gedämpften Federn (kein Ruck, jederzeit umlenkbar).
+
+Proben: an allen Vorlagen exakt; kein Teil je unter dem Boden; jeder Übergang ohne Sprung (Schritt je Bild begrenzt); zufällige
+Mischungen und Kopfwinkel ohne Fehler; Malreihenfolge ohne sichtbares Springen.
