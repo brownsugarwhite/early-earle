@@ -574,6 +574,40 @@ function netzeVereinen(netze: readonly HautNetz[]): HautNetz {
   return z;
 }
 
+/**
+ * Das Netz aller Objekte in einem (das aktive vorn, dahinter die ruhenden): für alles, was die Haut des Werks als ein Netz zeigt (die
+ * festen Materialien, Jelly, Grün, der weiße Körper der Linienansichten). Mit einem Objekt ist es dessen Netz selbst. Ändert sich nur
+ * das aktive, wird sein Teil überschrieben; neu angelegt wird nur, wenn sich die Größen oder die Reihe der ruhenden ändern.
+ */
+let alleNetz: { aktiv: HautNetz; version: number; schl: string; netz: HautNetz } | null = null;
+function zeigeNetzAlle(): HautNetz | null {
+  const a = werkHaut.zeigeNetz;
+  const r = ruheNetzGemerkt.netz;
+  if (!a || !ruhende.length || !r) return a;
+  const schl = ruheNetzGemerkt.schl;
+  let g = alleNetz;
+  const passt = g !== null && g.schl === schl && g.netz.pos.length === a.pos.length + r.pos.length && g.netz.index.length === a.index.length + r.index.length;
+  if (!g || !passt) {
+    g = { aktiv: a, version: -1, schl, netz: netzeVereinen([a, r]) };
+    alleNetz = g;
+  }
+  if (g.version !== werkHaut.version || g.aktiv !== a) {
+    g.version = werkHaut.version;
+    g.aktiv = a;
+    const z = g.netz;
+    z.pos.set(a.pos);
+    z.normal.set(a.normal);
+    z.index.set(a.index);
+    z.hoehe.set(a.hoehe);
+    z.blatt.set(a.blatt);
+    z.sicht.set(a.sicht);
+    // (nur das aktive Objekt schneidet die Anzeige an der Spiegelebene, und nur an ihm klingt eine Dehnung)
+    z.seite.set(a.seite);
+    z.dehnung.set(a.dehnung);
+  }
+  return g.netz;
+}
+
 /** die ruhenden Objekte der Seifenhaut geben (nur, wenn sich ihre Reihe geändert hat) */
 function ruheZeigen(): void {
   const schl = ruhende.map((r) => `${r.id}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}`).join('|');
@@ -2988,7 +3022,7 @@ function bild(dt: number): boolean {
   const tz = performance.now();
   // ein festes Material statt der Seifenhaut (Florian, 18.11.): Die Seifenhaut zeichnet nur ihren Grund (Papier, dunkle Rückseite),
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
-  const zeigN = werkHaut.zeigeNetz;
+  const zeigN = zeigeNetzAlle();
   if (material !== null && werkGezeigt && zustand === 'ruhe' && zeigN && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
     // beim Einrasten blenden die Materialien auf eigener Fläche aus, während sich das Blatt durch die Form schiebt (ihre Renderer
@@ -3709,7 +3743,7 @@ function wicklungVon(N: { pos: Float32Array; normal: Float32Array; index: Uint32
 /** S20: der weiße Körper für die Anzeige (die glatte Haut des Werks), eingerastet mit der Kamera; sonst null */
 function linienKoerper(): LinienKoerper | null {
   if (!koerperAn() || koerperDeckung <= 0.001) return null;
-  const N = werkHaut.zeigeNetz!;
+  const N = zeigeNetzAlle()!;
   if (N !== koerperNetz) {
     koerperNetz = N;
     koerperNr++;
