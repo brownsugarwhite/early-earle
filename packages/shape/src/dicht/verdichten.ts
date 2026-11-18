@@ -120,7 +120,12 @@ export function verdichten(
   let gekappt = false;
   const pos: number[] = Array.from(h.pos);
   const tri: number[] = Array.from(h.tri);
-  const spiegel: number[] = Array.from(h.spiegel);
+  // Eine freie Haut (18.11., `frei.ts`: kein Punkt hat ein Spiegelbild) wird behandelt, als wäre jeder Punkt sein eigenes Spiegelbild:
+  // Jede Kante ist dann „ihr eigenes Spiegelbild“ und wird für sich geteilt, zusammengelegt und gedreht. Was daran für die Mittelebene
+  // gilt (z = 0, Kanten der Mitte nie drehen), gilt für sie nicht (`frei`). Bis dahin blieb ein freies Netz, wie es war (jede Kante
+  // ohne Spiegelbild wurde übergangen, jeder Punkt ohne Spiegelbild blieb beim Zusammenlegen fest).
+  const frei = hautFrei(h);
+  const spiegel: number[] = frei ? Array.from({ length: h.n }, (_, v) => v) : Array.from(h.spiegel);
   const verborgen: number[] | null = opt.verborgen ? Array.from(opt.verborgen) : null;
   const lage = (v: number): V3 => ({ x: pos[3 * v]!, y: pos[3 * v + 1]!, z: pos[3 * v + 2]! });
   const laengeVon = (a: number, b: number) => Math.hypot(pos[3 * a]! - pos[3 * b]!, pos[3 * a + 1]! - pos[3 * b + 1]!, pos[3 * a + 2]! - pos[3 * b + 2]!);
@@ -555,7 +560,7 @@ export function verdichten(
         const q = aufLoop(dort.li, dort.j, stelle);
         m = { ...q, z: -q.z };
       } else m = inFlaeche(a, b, nor);
-      if (selbst) m.z = 0;
+      if (selbst && !frei) m.z = 0;
       const v = teilen(a, b, m);
       if (hier) inKette(hier.li, hier.j, v, stelle);
       if (selbst) {
@@ -1244,7 +1249,7 @@ export function verdichten(
           for (const [anteil, laengs] of [[1, 1], [0.6, 1], [0.3, 1], [1, 0], [0.6, 0]] as const) {
             const x = pos[3 * v]! + anteil * (gx - laengs * dn * n.x);
             const y = pos[3 * v + 1]! + anteil * (gy - laengs * dn * n.y);
-            const z = sv === v ? 0 : pos[3 * v + 2]! + anteil * (gz - laengs * dn * n.z);
+            const z = sv === v && !frei ? 0 : pos[3 * v + 2]! + anteil * (gz - laengs * dn * n.z);
             // ein Punkt neben der Mitte bleibt auf seiner Seite und rückt nicht an die Ebene heran: Sonst träfe er dort sein Spiegelbild
             // (zwei Punkte an einem Ort), oder die Hälften lägen über Kreuz
             if (sv !== v && !(z * pos[3 * v + 2]! > 0 && Math.abs(z) >= 0.5 * Math.abs(pos[3 * v + 2]!))) continue;
@@ -1291,6 +1296,11 @@ export function verdichten(
       const sb = spiegel[b]!;
       if (sa < 0 || sb < 0) continue;
       const selbst = schluessel(sa, sb) === k;
+      if (frei) {
+        // eine freie Haut: jede Kante für sich, wie sonst ein Paar
+        if (besser(a, b, f.c, f.d) && drehen(a, b, f, true)) diesmal++;
+        continue;
+      }
       if (selbst) {
         // Die Kante ist ihr eigenes Spiegelbild. Die Punkte der Mittelebene bilden eine geschlossene Kette von Kanten; über sie läuft
         // der Loop der Mitte (`loopEinsetzen`). Eine Kante in der Mittelebene wird deshalb nie gedreht. (Bis zum 11.11. wurde sie es,
@@ -1347,7 +1357,7 @@ export function verdichten(
       const dn = d.x * nor[3 * v]! + d.y * nor[3 * v + 1]! + d.z * nor[3 * v + 2]!;
       neuPos[3 * v] = pos[3 * v]! + d.x - dn * nor[3 * v]!;
       neuPos[3 * v + 1] = pos[3 * v + 1]! + d.y - dn * nor[3 * v + 1]!;
-      neuPos[3 * v + 2] = spiegel[v] === v ? 0 : pos[3 * v + 2]! + d.z - dn * nor[3 * v + 2]!;
+      neuPos[3 * v + 2] = spiegel[v] === v && !frei ? 0 : pos[3 * v + 2]! + d.z - dn * nor[3 * v + 2]!;
       const sv = spiegel[v]!;
       if (sv !== v) {
         neuPos[3 * sv] = neuPos[3 * v]!;
@@ -1391,7 +1401,8 @@ export function verdichten(
   // dichter an der Mittelebene, als `hautAus` rundet, hielt es beide für denselben Ort; einer wurde sein eigenes Spiegelbild, der
   // andere verlor seines beim nächsten Mal ganz (gemessen an „maul handgemacht test“: ein Punkt bei z = −0,0012, sein Partner bei 0).
   // Wo die Paarung der Rechnung nicht sauber ist (kein Partner, oder er zeigt nicht zurück), bleibt, was die Lagen sagen.
-  for (let v = 0; v < nGesamt; v++) {
+  // (eine freie Haut bleibt frei: Die Paarung „jeder mit sich selbst“ galt nur für diese Rechnung)
+  for (let v = 0; v < nGesamt && !frei; v++) {
     const w = neuNr[v]!;
     if (w < 0) continue;
     const sv = spiegel[v]!;

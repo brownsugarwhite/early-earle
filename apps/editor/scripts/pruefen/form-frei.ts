@@ -116,14 +116,35 @@ ok('einseitig: die andere Seite bleibt (die Form ist nicht mehr spiegelgleich)',
 ok('einseitig: nichts umgeschlagen, kommt zur Ruhe', fa.umgeklappt === 0 && r1.weg < 0.05, `${JSON.stringify(fa)}, ${r1.runden} Runden am Ende, letzter Weg ${z2(r1.weg)}, ${z1(r1.ms)} ms`);
 
 // ---------- verdichten: das Netz räumt auf, ohne Paare ----------
-// (feiner als nötig bestellt, damit es etwas zu teilen gibt)
-const v = verdichten(h, loops, 0.8 * mk, { kurz: 0.3 * mk, genau: mk / 40 });
-if (!v) ok('verdichten: nichts zu tun', true);
+// derselbe Punkt noch einmal 110 hinaus: Die Haut dort ist jetzt gedehnt, ihre Kanten sind lang
+const weit = loops.map((l) => l.punkte.map((p): V3 => (Math.hypot(p.ref.x - w.p.x, p.ref.y - w.p.y, p.ref.z - (w.p.z + 40)) < 1e-6 ? { ...p.ref, z: p.ref.z + 110 } : p.ref)));
+const lagenWeit = loops.map((l, i) => pfadLagen(l, weit[i]) ?? Float64Array.from(l.ruhe));
+loops.forEach((l, i) =>
+  l.punkte.forEach((p, j) => {
+    p.cur = { ...weit[i]![j]! };
+  }),
+);
+rechnen(h, loops, lagenWeit, 30, 400);
+const laengste = (x: Haut): number => {
+  let m = 0;
+  for (let t = 0; t < x.tri.length; t += 3)
+    for (let e = 0; e < 3; e++) {
+      const a = 3 * x.tri[t + e]!;
+      const b = 3 * x.tri[t + ((e + 1) % 3)]!;
+      m = Math.max(m, Math.hypot(x.pos[a]! - x.pos[b]!, x.pos[a + 1]! - x.pos[b + 1]!, x.pos[a + 2]! - x.pos[b + 2]!));
+    }
+  return m;
+};
+console.log(`     nach dem weiten Zug: längste Kante ${z1(laengste(h))} (mittlere beim Anfang ${z1(mk)}); ${JSON.stringify(falten(h))}`);
+const v = verdichten(h, loops, 1.75 * mk, { kurz: 0.5 * mk, genau: mk / 40, genauHaut: true, genauFlaeche: mk / 16 });
+if (!v) ok('verdichten: das Netz wird feiner, wo die Haut gedehnt ist', false, 'nichts geschehen');
 else {
-  ok('verdichten: kein Punkt hat danach ein Spiegelbild', v.haut.spiegel.every((s) => s < 0), `${h.n} → ${v.haut.n} Punkte, ${v.neu} neu, ${v.gelegt} gelegt`);
-  ok('verdichten: die Loops bleiben geschlossene Ketten', v.loops.every((l, i) => l.art === 'paar' && l.punkte.length === loops[i]!.punkte.length), v.loops.map((l) => `${l.proben.length} Proben`).join(', '));
-  const r2 = rechnen(v.haut, v.loops, pfade(v.loops), 1, 60);
-  ok('verdichten: danach steht die Haut', r2.weg < 0.05 && falten(v.haut).umgeklappt === 0, `${r2.runden} Runden, ${JSON.stringify(falten(v.haut))}`);
+  ok('verdichten: das Netz wird feiner, wo die Haut gedehnt ist', v.neu > 0 && laengste(v.haut) <= 1.75 * mk + 1e-6, `${h.n} → ${v.haut.n} Punkte, ${v.neu} neu, ${v.gelegt} gelegt, ${v.gedreht} gedreht; längste Kante ${z1(laengste(v.haut))}`);
+  ok('verdichten: kein Punkt hat danach ein Spiegelbild', v.haut.spiegel.every((x) => x < 0));
+  ok('verdichten: die Loops bleiben geschlossene Ketten mit ihren Punkten', v.loops.every((l, i) => l.art === 'paar' && l.punkte.length === loops[i]!.punkte.length), v.loops.map((l) => `${l.proben.length} Proben`).join(', '));
+  const r2 = rechnen(v.haut, v.loops, pfade(v.loops), 1, 200);
+  const f2 = falten(v.haut);
+  ok('verdichten: danach steht die Haut, nichts umgeschlagen', r2.weg < 0.05 && f2.umgeklappt === 0, `${r2.runden} Runden, ${JSON.stringify(f2)}`);
 }
 console.log(schlecht ? `${schlecht} Punkte FEHLEN` : 'alles gut');
 process.exit(schlecht ? 1 : 0);
