@@ -81,6 +81,14 @@ export type HautOptionen = {
   maxNormalen?: boolean;
   /** `false`: ohne die Vorsicht bei Unruhe (`VORSICHT_…`), wie bis zum 10.11. (zum Vergleichen) */
   vorsicht?: boolean;
+  /** `false`: ohne die Schrittweite (`SCHRITT_MAX`), wie bis zum 17.11. (zum Vergleichen) */
+  schritt?: boolean;
+  /**
+   * Die Kanten in der Mittelebene werden in der intrinsischen Triangulierung nie geklappt (`festGefaltet`). Fehlt die Angabe: auf
+   * der Hälfte gerechnet ja, über die ganze Haut nein (wie bis zum 17.11.). `true` über die ganze Haut gibt dieselbe Rechnung wie
+   * auf der Hälfte (zum Vergleichen), `false` auf der Hälfte die bis zum 17.11.
+   */
+  mitteFest?: boolean;
   /**
    * Normalfluss (`FOLGEN_GENAU`; nur nach der Geometrie, nie mit `richtung`). Fehlt die Angabe, rechnet der Löser so nur, wenn eine
    * Linie nur auf der Haut liegt (nicht ins Netz eingesetzt); `true` / `false` erzwingen es (zum Vergleichen).
@@ -354,6 +362,31 @@ const VORSICHT_AUFHOLEN = 0.3;
 const VORSICHT_RUNDEN = 5;
 
 /**
+ * Schrittweite (C1, 18.11.2026): So weit wandert ein Punkt in einer Runde durch die Korrektur der Krümmung höchstens, in
+ * Kantenlängen an ihm. Wäre es bei einem Punkt mehr, wird die Korrektur dieser Runde für alle Punkte im selben Maß kleiner
+ * aufgetragen. Das Ziel der Rechnung ändert das nicht (dort ist die Korrektur null), nur den Weg dorthin.
+ *
+ * Anlass: An einer Form mit nur einer Linie, frisch aus der Silhouette (Probe „werk“: ein Fisch), ist die Haut an der flachen
+ * Schwanzflosse halb so dick wie eine Kante lang. Die Krümmung, die die Linie dort am Rand misst (Radius ein Bruchteil der Dicke),
+ * wird über die flachen Flanken verteilt; ihre Korrektur verlangt in einer Runde rund 300 Einheiten Weg von einem Punkt, dessen
+ * Kanten 3,6 lang sind. Gemessen je Runde: 9 · 13 · 311 · 43 · 10 · 92 … 844 … 84 386 Einheiten; die Vorsicht bei Unruhe halbiert
+ * dann bis 1/16, das reicht bei weitem nicht (nötig wäre 1/300). Das Setzen nach dem Anlegen wurde verworfen, das Aufräumen brach
+ * ab oder lief nur zufällig durch, und ein neuer Löser lief beim ersten Zug davon (deshalb `ANLAUF_RUNDEN` im Fenster).
+ *
+ * Die Grenze von einer Kantenlänge liegt zwischen beidem: An Florians drei Formen wandert ein Punkt durch die Korrektur bei Zügen
+ * um 40 Einheiten höchstens 0,35 Kantenlängen je Runde (meist unter 0,11), bei Zügen um 120 höchstens 1,4; beim Davonlaufen sind es
+ * 100 bis 1000. Gewöhnliche Züge berührt sie nicht.
+ *
+ * Kosten: Geprüft wird nur, wenn sich in der Runde überhaupt ein Punkt weiter als die Grenze bewegt hat (meist folgt er dann nur
+ * einer Linie); erst dann wird der Anteil der Korrektur an der Bewegung für sich gelöst (dieselbe Zerlegung, ein zweiter Durchgang).
+ *
+ * Gemessen und verworfen: die Korrektur je Punkt an seiner Stelle begrenzen (die gemeinsame Lösung trägt sie über die ganze dünne
+ * Stelle zusammen: 40 bis 80 Einheiten je Runde); den Weg je Punkt für sich kürzen (nichts schießt mehr hinaus, aber der Körper
+ * pumpt: Rauminhalt 2,7 → 1,7 → 5,5 Millionen in 100 Runden, denn eine Linie allein legt die Dicke nicht fest).
+ */
+const SCHRITT_MAX = 1;
+
+/**
  * Normalfluss (Versuch 11.11.): so genau müssen die Linien auf ihren Zielen liegen (in mittleren Kantenlängen), damit eine Runde ihnen
  * nicht noch einmal folgt (eine Rechengenauigkeit, keine Schwelle des Verhaltens: Jede Folgerunde verkleinert den Rest auf einen Bruchteil)
  */
@@ -429,6 +462,13 @@ export class HautAusKurven {
   private ruhigste = Infinity;
   private ruhigsteLagen: Float64Array | null = null;
   private wachstum = 0;
+  /** die Kanten in der Mittelebene bleiben in der intrinsischen Triangulierung (`festGefaltet`) */
+  private mitteFest = false;
+  private festMitMitte: ((a: number, b: number) => boolean) | null = null;
+  /** Schrittweite (`SCHRITT_MAX`): an?; die Korrektur je Punkt in dieser Runde; zum Messen: gebremste Runden, kleinster Anteil */
+  private readonly mitSchritt: boolean;
+  private korrJe: Float64Array | null = null;
+  readonly schrittweite = { gebremst: 0, kleinster: 1 };
   /** der Löser kommt hier nicht zur Ruhe und rechnet nicht weiter, bis sich die Ziele bewegen (`VORSICHT_RUNDEN`) */
   stehtFest = false;
   /** Normalfluss (`HautOptionen.normalfluss`): an?; Punkte, die eine Bindung allein hält (Linienpunkte); Korrektur je Punkt der Runde */
@@ -508,6 +548,7 @@ export class HautAusKurven {
     // Rechnung auf der Hälfte: nur über die ganze Haut, und nur, wenn jeder Punkt sein Spiegelbild hat
     const falte = geo && opt.halb && !opt.richtung && !opt.wurst && bereich === null ? faltungAnlegen(h, frei, nr) : null;
     this.falte = falte;
+    this.mitteFest = geo && (opt.mitteFest ?? falte !== null);
     this.struktur = geo ? strukturSchluessel(h, bereich, bind, gewicht, kanten, ketten, !!opt.richtung, falte !== null) : '';
     // eine Vorlage gilt nur für dieselbe Struktur (Netz, Bindungen, Kanten, Quellen); sonst wird wie ohne sie zerlegt
     const passt = geo && opt.vorlage && (opt.vorlage.struktur === undefined || opt.vorlage.struktur === this.struktur) ? opt.vorlage : null;
@@ -515,6 +556,7 @@ export class HautAusKurven {
     const vorlage = passt && (falte ? !!passt.sysZ : !passt.sysZ) ? passt : null;
     this.vorlageGenutzt = vorlage !== null;
     this.mitVorsicht = geo && opt.vorsicht !== false;
+    this.mitSchritt = geo && opt.schritt !== false;
     this.gebunden = new Uint8Array(n);
     // liegt eine Linie nur auf der Haut (eine ihrer Proben ist kein Punkt des Netzes)?
     let lose = false;
@@ -700,7 +742,7 @@ export class HautAusKurven {
     if (gewichte === 'geometrie') {
       // Krümmung beim Anlegen nach der Geometrie (für den Rand des Bereichs), der Vorkonditionierer gleich mit zerlegt (über die ganze
       // Haut gemerkt wie die anderen Systeme; das Fenster rechnet ihn in der Ruhe vor)
-      this.ruhe = { ...ruhe, ...this.messenIntrinsisch(intrinsischeGewichte(h, this.fest), ruhe.nor) };
+      this.ruhe = { ...ruhe, ...this.messenIntrinsisch(intrinsischeGewichte(h, this.festGefaltet()), ruhe.nor) };
       this.cDiag = new Float64Array(0);
       this.sysC = null;
       if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFalte ? this.cFalte.n : this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
@@ -1663,7 +1705,7 @@ export class HautAusKurven {
       let c: Float64Array;
       let seiten: Seiten | null = null;
       if (this.art === 'geometrie') {
-        const ig = intrinsischeGewichte(h, this.fest);
+        const ig = intrinsischeGewichte(h, this.festGefaltet());
         geo = this.messenIntrinsisch(ig, m.nor);
         const t2 = jetzt();
         seiten = this.richtung ? this.seitenMessen(this.richtung, m.nor, m.kap) : null;
@@ -1699,6 +1741,8 @@ export class HautAusKurven {
       }
       const folgen = !fluss || this.bindungenOffen(ziele) > FOLGEN_GENAU * this.mk;
       const rhs = folgen ? new Float64Array(3 * nf) : null;
+      // Schrittweite: die Korrektur je Punkt merken (ohne Normalfluss; dort wird sie ohnehin für sich gelöst)
+      const schritt = geo !== null && !fluss && this.mitSchritt ? (this.korrJe ??= new Float64Array(h.n)) : null;
       for (const i of this.zeilen) {
         const nb = h.nachbarn[i]!;
         const g = this.gew[i]!;
@@ -1711,6 +1755,7 @@ export class HautAusKurven {
           this.beta![i] = b;
           this.dVorher![i] = d;
           const kr = this.anteil * b * d;
+          if (schritt) schritt[i] = kr;
           if (korr) {
             korr[i] = kr;
             k = m.kante2[i]! * m.kap[i]!;
@@ -1838,6 +1883,7 @@ export class HautAusKurven {
       const tl = jetzt();
       if (rhs && !korr) {
         const x = this.lagen(rhs, 3);
+        if (schritt && geo) this.schrittBegrenzen(x, schritt, geo.kante2, m.nor);
         for (let u = 0; u < nf; u++) {
           const v = this.frei[u]!;
           P[3 * v] = x[3 * u]!;
@@ -1877,7 +1923,7 @@ export class HautAusKurven {
         // folgt die Haut in dieser Runde auch den Linien, beides in einem Durchgang (sechs Spalten, die Zerlegung einmal gelesen)
         let uu: Float64Array | null = null;
         let ab = 0;
-        let schritt = 3;
+        let breite = 3;
         if (rhs) {
           this.folgeRunden++;
           let x: Float64Array;
@@ -1894,7 +1940,7 @@ export class HautAusKurven {
             x = this.lagen(beide, 6);
             uu = x;
             ab = 3;
-            schritt = 6;
+            breite = 6;
           } else x = this.lagen(rhs, 3);
           const k = irgend ? 6 : 3;
           for (let u = 0; u < nf; u++) {
@@ -1904,16 +1950,35 @@ export class HautAusKurven {
             P[3 * v + 2] = x[k * u + 2]!;
           }
         } else if (irgend) uu = this.lagen(rv, 3);
-        if (uu)
+        if (uu) {
+          // Schrittweite (`SCHRITT_MAX`): der Auftrag längs der Normale, für alle Punkte im selben Maß kleiner, wenn einer zu weit ginge
+          let t = 1;
+          if (this.mitSchritt && geo) {
+            let rel2 = 0;
+            for (let u = 0; u < nf; u++) {
+              const v = this.frei[u]!;
+              if (this.gebunden[v]) continue;
+              const q = breite * u + ab;
+              const a = uu[q]! * m.nor[3 * v]! + uu[q + 1]! * m.nor[3 * v + 1]! + uu[q + 2]! * m.nor[3 * v + 2]!;
+              const w = (a * a) / (geo.kante2[v]! || this.mk * this.mk);
+              if (w > rel2) rel2 = w;
+            }
+            if (rel2 > SCHRITT_MAX * SCHRITT_MAX) {
+              t = SCHRITT_MAX / Math.sqrt(rel2);
+              this.schrittweite.gebremst++;
+              if (t < this.schrittweite.kleinster) this.schrittweite.kleinster = t;
+            }
+          }
           for (let u = 0; u < nf; u++) {
             const v = this.frei[u]!;
             if (this.gebunden[v]) continue;
-            const q = schritt * u + ab;
-            const a = uu[q]! * m.nor[3 * v]! + uu[q + 1]! * m.nor[3 * v + 1]! + uu[q + 2]! * m.nor[3 * v + 2]!;
+            const q = breite * u + ab;
+            const a = t * (uu[q]! * m.nor[3 * v]! + uu[q + 1]! * m.nor[3 * v + 1]! + uu[q + 2]! * m.nor[3 * v + 2]!);
             P[3 * v] = P[3 * v]! + a * m.nor[3 * v]!;
             P[3 * v + 1] = P[3 * v + 1]! + a * m.nor[3 * v + 1]!;
             P[3 * v + 2] = P[3 * v + 2]! + a * m.nor[3 * v + 2]!;
           }
+        }
       }
       this.zeiten.loesen += jetzt() - tl;
       this.zeiten.runden++;
@@ -1940,6 +2005,99 @@ export class HautAusKurven {
       // eine zurückgenommene Runde zählt nicht: gleich noch einmal, mit dem halben Schritt (höchstens viermal je Löser)
       if (this.mitVorsicht && this.vorsichtPruefen(ziele)) it--;
     }
+  }
+
+  /**
+   * Schrittweite (`SCHRITT_MAX`): `x` sind die neuen Lagen der freien Punkte (3 je Unbekannter) aus einer Runde, in deren rechter Seite
+   * die Korrektur der Krümmung `korr` (je Punkt, längs `nor`) schon steckt. Hat sich kein Punkt weiter als die Grenze bewegt, bleibt
+   * `x`. Sonst wird der Anteil der Korrektur an der Bewegung für sich gelöst (die Rechnung ist linear: dieselbe Matrix, nur die Zeilen
+   * der Korrektur); geht er bei einem Punkt über die Grenze, wird er in `x` für alle Punkte im selben Maß verkleinert.
+   */
+  private schrittBegrenzen(x: Float64Array, korr: Float64Array, kante2: Float64Array, nor: Float64Array): void {
+    const h = this.h;
+    const P = h.pos;
+    const nr = this.nr;
+    const nf = this.frei.length;
+    const max2 = SCHRITT_MAX * SCHRITT_MAX;
+    const mk2 = this.mk * this.mk;
+    let weit = false;
+    for (let u = 0; u < nf && !weit; u++) {
+      const v = this.frei[u]!;
+      const dx = x[3 * u]! - P[3 * v]!;
+      const dy = x[3 * u + 1]! - P[3 * v + 1]!;
+      const dz = x[3 * u + 2]! - P[3 * v + 2]!;
+      // (nicht endlich vergleicht immer falsch: gilt als zu weit)
+      if (!(dx * dx + dy * dy + dz * dz <= max2 * (kante2[v]! || mk2))) weit = true;
+    }
+    if (!weit) return;
+    const rv = new Float64Array(3 * nf);
+    for (const i of this.zeilen) {
+      const r = korr[i]!;
+      if (r === 0) continue;
+      const dx = r * nor[3 * i]!;
+      const dy = r * nor[3 * i + 1]!;
+      const dz = r * nor[3 * i + 2]!;
+      const u = nr[i]!;
+      if (u >= 0) {
+        rv[3 * u] = rv[3 * u]! + dx;
+        rv[3 * u + 1] = rv[3 * u + 1]! + dy;
+        rv[3 * u + 2] = rv[3 * u + 2]! + dz;
+      }
+      const nb = h.nachbarn[i]!;
+      const g = this.gew[i]!;
+      for (let kk = 0; kk < nb.length; kk++) {
+        const w = nr[nb[kk]!]!;
+        if (w < 0) continue;
+        rv[3 * w] = rv[3 * w]! - g[kk]! * dx;
+        rv[3 * w + 1] = rv[3 * w + 1]! - g[kk]! * dy;
+        rv[3 * w + 2] = rv[3 * w + 2]! - g[kk]! * dz;
+      }
+    }
+    const uu = this.lagen(rv, 3);
+    let rel2 = 0;
+    for (let u = 0; u < nf; u++) {
+      const w = (uu[3 * u]! * uu[3 * u]! + uu[3 * u + 1]! * uu[3 * u + 1]! + uu[3 * u + 2]! * uu[3 * u + 2]!) / (kante2[this.frei[u]!]! || mk2);
+      if (w > rel2 || w !== w) rel2 = w;
+    }
+    // (die Korrektur selbst nicht endlich: ganz ohne sie)
+    if (!(rel2 > max2) && rel2 === rel2) return;
+    const t = rel2 === rel2 && Number.isFinite(rel2) ? SCHRITT_MAX / Math.sqrt(rel2) : 0;
+    this.schrittweite.gebremst++;
+    if (t < this.schrittweite.kleinster) this.schrittweite.kleinster = t;
+    for (let q = 0; q < x.length; q++) {
+      const a = uu[q]!;
+      // (ein nicht endlicher Anteil: Der Punkt bleibt, wo er war)
+      x[q] = a === a && Number.isFinite(a) ? x[q]! - (1 - t) * a : P[3 * this.frei[(q / 3) | 0]! + (q % 3)]!;
+    }
+  }
+
+  /**
+   * Welche Kanten in der intrinsischen Triangulierung nie geklappt werden: die harter Linien (`fest`) und, auf der Hälfte gerechnet,
+   * die Kanten in der Mittelebene (C1, 18.11.2026; `HautOptionen.mitteFest`).
+   *
+   * Anlass: Wo die Haut an der Mittelebene dünn ist (der Winkel gegenüber einer Kante der Mittelebene ist stumpf), klappt die
+   * Triangulierung diese Kante: Die neue läuft quer über die Ebene von einem Punkt zu seinem Spiegelbild. Danach hängen die
+   * nächsten Klappungen beider Seiten aneinander, und weil nacheinander geklappt wird, kommt für die zwei Seiten Verschiedenes
+   * heraus. Die Rechnung auf der Hälfte nimmt die Krümmung aber von einer Seite für beide: An der anderen passt sie nicht zu dem,
+   * was dort gemessen wird, und die Haut kommt nie zur Ruhe. Gemessen an einer frischen Form aus der Silhouette (ein Fisch mit
+   * flacher Schwanzflosse, nur die Linie der Mitte): verteilte Krümmung eines Punkts −0,026, seines Spiegelbilds +0,015; das
+   * Aufräumen nach dem Anlegen lief zum Ballon (Rauminhalt 2,7 → 19,6 Millionen) oder brach ab, über die ganze Haut gerechnet kam
+   * es zur Ruhe (2,69 → 2,71). Mit festen Kanten der Mitte ist jede Hälfte für sich trianguliert, beide gleich: auf der Hälfte
+   * 2,69 → 2,69, jedes Setzen kommt zur Ruhe. Das war der Grund, warum ein neuer Löser an einer Form mit nur einer Linie
+   * „empfindlich anlief“.
+   *
+   * An Florians Formen ändert das die Lagen nahe der Mitte um höchstens 0,8 Einheiten (nach zwölf Runden: „maul handgemacht test“
+   * 0,82, „strange bird“ 0,50, „teat firefish“ 0,42; im Mittel unter 0,01). Es ist zugleich der erste Teil von „Gewichte und
+   * Vermessen auf der Hälfte“ (Plan, D1): Dort ist die Mittelebene der Rand des Netzes.
+   */
+  private festGefaltet(): ((a: number, b: number) => boolean) | null {
+    if (!this.mitteFest) return this.fest;
+    if (!this.festMitMitte) {
+      const sp = this.h.spiegel;
+      const alt = this.fest;
+      this.festMitMitte = (a, b) => (sp[a] === a && sp[b] === b) || (alt ? alt(a, b) : false);
+    }
+    return this.festMitMitte;
   }
 
   /** wie weit die Bindungen (Linien) höchstens neben ihren Zielen liegen */

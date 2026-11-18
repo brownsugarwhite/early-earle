@@ -28,7 +28,7 @@ import { GRUNDWERTE as BLASE_GRUNDWERTE, REGLER as BLASE_REGLER, type Werte as B
 import { FluessigeAnzeige, type Koerper as LinienKoerper, type Szene, ZEIGER_PUNKTE } from '../linien/fluessig';
 import { REGLER as LINIEN_REGLER } from '../linien/regler';
 import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Ansicht as LinienAnsicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
-import { auskunft, packen, pruefen } from '../form/ablage';
+import { auskunft, packen, pruefen, zusammen } from '../form/ablage';
 import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
@@ -5796,6 +5796,56 @@ const haken = {
   /** A2: Dehnung und Muster der Seifenhaut je Punkt der Anzeige (für Proben) */
   seifenhaut: () => werkHaut.musterStand(),
   /** S11: Ist der Stand des Werks so, dass er gesichert werden kann (die Prüfung der Ablage), und welche Punkte der Haut keinen Spiegelpartner haben */
+  /** C1: der Stand des Werks als Datei (Base64), für Kernproben mit einem Stand aus dem Fenster */
+  standGepackt: (): string => {
+    const B = zusammen(packen(werk.standJetzt()));
+    let t = '';
+    for (let i = 0; i < B.length; i += 0x8000) t += String.fromCharCode(...B.subarray(i, i + 0x8000));
+    return btoa(t);
+  },
+  /**
+   * C1: die umgeschlagenen Dreiecke der Haut einzeln (wie `werk.umgeschlageneZahl` gezählt): Mitte, Fläche, kürzeste und längste Kante,
+   * wie viele ihrer Ecken auf der Mittelebene liegen, die Fläche im Verhältnis zur mittleren Dreiecksfläche
+   */
+  umgeschlagen: () => {
+    const h = werk.haut;
+    const P = h.pos;
+    const t = h.tri;
+    const vn = new Float64Array(P.length);
+    const fn = new Float64Array(t.length);
+    let flaecheSumme = 0;
+    for (let i = 0; i < t.length; i += 3) {
+      const [a, b, c] = [3 * t[i]!, 3 * t[i + 1]!, 3 * t[i + 2]!];
+      const [ux, uy, uz] = [P[b]! - P[a]!, P[b + 1]! - P[a + 1]!, P[b + 2]! - P[a + 2]!];
+      const [vx, vy, vz] = [P[c]! - P[a]!, P[c + 1]! - P[a + 1]!, P[c + 2]! - P[a + 2]!];
+      const f = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+      flaecheSumme += 0.5 * Math.hypot(f[0]!, f[1]!, f[2]!);
+      for (let x = 0; x < 3; x++) {
+        fn[i + x] = f[x]!;
+        for (const v of [a, b, c]) vn[v + x] = vn[v + x]! + f[x]!;
+      }
+    }
+    const mittel = flaecheSumme / Math.max(1, t.length / 3);
+    const aus: { mitte: number[]; flaeche: number; kurz: number; lang: number; aufMitte: number; ecken: number[] }[] = [];
+    for (let i = 0; i < t.length; i += 3) {
+      const e = [t[i]!, t[i + 1]!, t[i + 2]!];
+      const [a, b, c] = e.map((v) => 3 * v) as [number, number, number];
+      let dot = 0;
+      for (let x = 0; x < 3; x++) dot += fn[i + x]! * (vn[a + x]! + vn[b + x]! + vn[c + x]!);
+      if (!(dot < 0)) continue;
+      const kante = (p: number, q: number): number => Math.hypot(P[p]! - P[q]!, P[p + 1]! - P[q + 1]!, P[p + 2]! - P[q + 2]!);
+      const k = [kante(a, b), kante(b, c), kante(c, a)];
+      aus.push({
+        mitte: [0, 1, 2].map((x) => (P[a + x]! + P[b + x]! + P[c + x]!) / 3),
+        flaeche: (0.5 * Math.hypot(fn[i]!, fn[i + 1]!, fn[i + 2]!)) / mittel,
+        kurz: Math.min(...k),
+        lang: Math.max(...k),
+        aufMitte: e.filter((v) => Math.abs(P[3 * v + 2]!) < 1e-6).length,
+        ecken: e,
+      });
+    }
+    return { zahl: aus.length, dreiecke: t.length / 3, mittel, liste: aus.slice(0, 40) };
+  },
   standPruefen: () => {
     const h = werk.haut;
     const ohne: number[] = [];

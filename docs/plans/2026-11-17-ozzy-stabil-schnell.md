@@ -374,6 +374,74 @@ Umgeschlagene Dreiecke nach gewöhnlichen Zügen an der Mitte und an dünnen Spi
 (eine Kernprobe mit dem Zug von heute), beheben, als Zählung in die Proben. Punkte ohne Spiegelbild: den Fall vom 16.11. nachstellen,
 Ursache im Verdichten beheben, Zählung in die Proben. Kriterium: nach den neun Zügen des Messblatts (`ozzy-zuege-zaehlen`) an keiner Form mehr umgeschlagene Dreiecke als davor.
 
+**Gebaut (18.11., nachts; Kern und Fenster).** Was du siehst: Eine neue Form aus der Silhouette steht nach dem Anlegen sauber da und
+bleibt beim ersten Griff ruhig; an deinen drei Formen ändert sich im Bild nichts (die Linien liegen, wo sie lagen), im Netz liegen
+nach einem Zug weniger Dreiecke verkehrt herum als vorher, an „maul handgemacht test“ keines mehr (die Form bringt 8 am Mundwinkel
+mit). Im Einzelnen:
+
+- **Warum ein neuer Löser „empfindlich anlief“ (Ursache gefunden und behoben).** An einer Form frisch aus der Silhouette (nur die
+  Linie der Mitte; nachgestellt am Fisch der Probe „werk“) lief die Haut beim Setzen davon: je Runde 9 · 13 · 311 · 43 · 10 · 92 …
+  844 … 84 386 Einheiten. Das Setzen nach dem Anlegen wurde verworfen, das Aufräumen brach ab oder lief nur durch, weil ein
+  falsch gepaarter Punkt (siehe unten) die Rechnung still auf die ganze Haut umschaltete; danach hatte die Form 21 umgeschlagene
+  Dreiecke und einen Punkt ohne Spiegelbild. Zwei Ursachen, beide im Löser (`ausKurven.ts`):
+  1. **Die Rechnung auf der Hälfte setzt gleiche Gewichte für beide Seiten voraus, bekam sie aber nicht.** Wo die Haut an der
+     Mittelebene dünn ist, klappt die intrinsische Triangulierung eine Kante der Mittelebene; die neue läuft quer über die Ebene, und
+     danach kommt für die zwei Seiten Verschiedenes heraus (verteilte Krümmung eines Punkts −0,026, seines Spiegelbilds +0,015). Die
+     Hälfte nahm die Werte einer Seite für beide: Die Haut kam nie zur Ruhe und blähte sich auf (Rauminhalt 2,7 → 19,6 Millionen),
+     während dieselbe Form über die ganze Haut gerechnet stand. Jetzt bleiben auf der Hälfte die Kanten der Mittelebene fest
+     (`festGefaltet`, Option `mitteFest`); jede Hälfte ist für sich trianguliert, beide gleich. Das ist zugleich der erste Teil von
+     D1 („Gewichte und Vermessen auf der Hälfte“).
+  2. **Ein Schritt der Korrektur war nicht begrenzt.** An der flachen Schwanzflosse (halb so dick wie eine Kante lang) verlangte
+     die Korrektur der Krümmung von einem Punkt 300 Einheiten Weg in einer Runde. Jetzt die **Schrittweite** (`SCHRITT_MAX`): Kein
+     Punkt wandert durch die Korrektur in einer Runde weiter als eine Kantenlänge; wäre es mehr, wird sie für alle Punkte im
+     selben Maß kleiner aufgetragen. Das Ziel der Rechnung ändert das nicht, nur den Weg. An deinen Formen greift sie bei
+     gewöhnlichen Zügen nie (gemessen: höchstens 0,35 Kantenlängen je Runde bei Zügen um 40 Einheiten, 1,4 bei 120; beim Davonlaufen
+     100 bis 1000) und kostet dann nichts (ein zweiter Durchgang nur in Runden, in denen ein Punkt weiter als eine Kante wandert).
+  Mit beidem: Das Aufräumen der frischen Form kommt in jedem Schritt zur Ruhe (Rauminhalt 2,69 → 2,69 Millionen, nichts umgeschlagen,
+  keine Meldung). Die Probe „werk“ hält 3 von 3. **Der Anlauf von 16 Runden (A1) ist damit wieder heraus:** Ohne ihn hält dieselbe
+  Probe 6 von 6 (vor A1 lief sie 5 von 6 davon); die ersten Bilder eines Zugs bleiben jetzt im Bildtakt. An deinen Formen ändert die
+  erste Korrektur die Lagen nahe der Mitte um höchstens 0,8 Einheiten (nach zwölf Runden „maul handgemacht test“ 0,82, „strange bird“
+  0,50, „teat firefish“ 0,42; im Mittel unter 0,01); ganz und halb gerechnet stimmen dort wieder bis 0,003 überein.
+- **Punkte ohne Spiegelbild (Ursache gefunden und behoben).** Nachgestellt an „maul handgemacht test“ (3 von 6 Läufen) und an der
+  frischen Form (jedes Mal): Liegt ein Punktpaar dichter an der Mittelebene, als die Haut beim Neuaufbau ihre Lagen rundet
+  (0,0005), hielt `hautAus` beide für denselben Ort; einer wurde sein eigenes Spiegelbild, der andere verlor seines beim nächsten
+  Mal ganz (gemessen: ein Punkt bei z = −0,0012, sein Partner bei 0). `verdichten` übernimmt jetzt die Paarung, mit der es rechnet.
+  In keiner der Proben seither ein Punkt ohne Spiegelbild.
+- **Umgeschlagene Dreiecke.** Sie entstehen im Zug (die Rechnung schiebt Punkte auch längs der Fläche; an schmalen Dreiecken wandert
+  eine Ecke über die Kante gegenüber) und blieben beim Aufräumen stehen. `verdichten` richtet sie jetzt auf (Kante drehen; wo zwei
+  schmale Dreiecke über Kreuz liegen, rückt die Ecke längs der Fläche; eine kurze Kante darf zusammenfallen, wenn sich ein
+  umgeschlagenes Dreieck dabei aufrichtet), spiegelgleich; die Normalen harter Punkte zählen als Bezug nicht (an einer Kante ist die
+  Falte gewollt); ein Punkt neben der Mitte bleibt auf seiner Seite. Das Aufräumen richtet zum Schluss noch einmal auf, was das
+  letzte Setzen umgeschlagen hat. Im Zug wird dafür kein Netz eingewechselt.
+- **Zahlen (Fenster).** Die neun Züge des Messblatts (30 Bildpunkte an der Wand, die ersten drei Punkte der Mitte), umgeschlagen
+  nach Zug 1 · 2 · 3: „maul handgemacht test“ 8 beim Laden → vorher 12 · 14 · 10 und 24 · 10 · 10, jetzt 2 · 0 · 0; „teat firefish“
+  vorher 0 · 0 · 4, jetzt 0 · 0 · 2; „strange bird“ vorher 0 · 14 · 8, jetzt 0 · 4 · 2. **Dabei zeigte sich, dass die Zählung selbst
+  schief maß:** Bei vier dieser neun Züge kreuzt sich danach eine Linie selbst (30 Bildpunkte an der Wand sind rund 150 Einheiten;
+  zweimal hing eine Richtung am Zeiger, kein Punkt). Dann räumt das Werk mit Absicht nicht auf (deine Regel vom 11.11.), die Haut ist
+  dort gefaltet, bis die Linie wieder frei liegt. Diese Züge sind keine gewöhnlichen.
+- **Probe statt Zählung:** `ozzy-zuege-fenster.mjs` (ersetzt `ozzy-zuege-zaehlen`): je Form drei Züge an Punkten der Mitte, über die
+  Linie verteilt, 12 Bildpunkte; nach keinem Zug ein Punkt ohne Spiegelbild, nach keinem gewerteten Zug mehr umgeschlagene Dreiecke
+  als beim Laden; ein Zug mit gekreuzter Linie wird genannt und nicht gewertet. Hält an allen drei Formen (zwei der neun Züge
+  kreuzen eine Linie). Im Kern: `form-umgeschlagen.ts` (gesicherte Stände), `form-aufraeumen.ts` (das Aufräumen des Fensters ohne
+  Fenster, Schritt für Schritt), Tests `verdichten.test.ts` (Aufrichten, Paar an der Mitte), `eineLinie.test.ts` (der Stand des
+  Fischs aus dem Fenster als Vorlage: wie bis zum 17.11. läuft er auf 8 898 davon, jetzt bleibt er bei 171), `vorsicht.test.ts`.
+  Alle 28 Fenster-Proben halten, 181 Tests des Kerns, 25 des Fensters. Tempo im Zug unverändert (Werk 5,9 gegen 5,7 ms an
+  „strange bird“, 9,0 gegen 9,1 ms an „maul handgemacht test“, je im selben Lauf mit und ohne die Korrekturen gemessen).
+- **Offen, in der Liste für den Feinschliff:**
+  - **Eine Spitze ohne Dicke.** Zieht man einen einzelnen Punkt der Mitte weit hinaus (30 Bildpunkte an der Wand, rund 150 Einheiten;
+    Bild [`2026-11-18-spitze-ohne-dicke.png`](../progress/ozzy/2026-11-18-spitze-ohne-dicke.png), „teat firefish“), entsteht eine
+    Klinge: Nichts gibt ihr Dicke, die zwei Seiten der Haut liegen aufeinander. Dort kommt die Rechnung nicht zur Ruhe, und es
+    bleiben umgeschlagene Dreiecke (vorher 46, jetzt 12). Das ist keine Sache des Netzes, sondern der Form: Eine Linie allein sagt
+    nicht, wie dick etwas ist.
+  - **Der Zug mit dem Einfluss O und der Zeitpunkt des Einwechselns.** Ursache geklärt, nicht gebaut: Beim Einwechseln des
+    feineren Netzes wird der Zug vom verformten Stand neu gestartet (`zugStarten`), und der Einfluss wird dabei neu vermessen (Abstand
+    jedes Punkts zur gezogenen Stelle, wie sie dann liegen, nicht wie beim Greifen). Unabhängig würde er, wenn der neu gestartete
+    Zug die Gewichte vom ersten Greifen behielte (je Punkt nach seiner Nummer, je Probe nach ihrer Stelle auf der Linie beim
+    Greifen). Das greift tief in den Zug ein; der Unterschied liegt bei 1,4 Einheiten auf 119.
+  - Die Rechnung über die ganze Haut (nur noch Rückfall, wenn ein Punkt kein Spiegelbild hat, oder mit `?halb=0`) klappt die Kanten
+    der Mittelebene weiter; an der Spitze einer flachen Flosse bleibt ein fast flächenloses Dreieck mit riesigem Gewicht (112 gegen
+    sonst 0,2 bis 3), das die Schrittweite auffängt.
+
 **C2. P überall gleich, gebogen rundum (mittel bis groß; kleiner Beweis im Kern zuerst).** Du siehst, in Seite, Front und Top, vorn
 und gewendet, eingerastet, im Feld und an der Wand dasselbe:
 - **Quer über die Form** (Anfang und Ende im Leeren), gerade oder gebogen, mit beliebig vielen Punkten: ein Loop rundum, „über die

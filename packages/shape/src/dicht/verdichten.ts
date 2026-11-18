@@ -46,6 +46,8 @@ export type Verdichtet = {
   gedreht: number;
   /** flache Dreiecke, die durch Drehen ihrer langen Kante aufgelöst wurden */
   geloest: number;
+  /** umgeschlagene Dreiecke, die durch Drehen einer Kante wieder richtig herum liegen (C1) */
+  aufgerichtet: number;
   verborgen: Uint8Array | null;
   alt: Int32Array;
   /** das Teilen hat vor der Grenze `hoechstens` aufgehört: Es blieben Kanten, die zu lang sind */
@@ -101,6 +103,8 @@ export function verdichten(
     genauFlaeche?: number;
     /** kein Dreieck flach werden lassen und vorhandene flache auflösen (Standard an; `false`: wie bis zum 10.11.) */
     flachSchutz?: boolean;
+    /** umgeschlagene Dreiecke auflösen (Standard an; `false`: wie bis zum 17.11.) */
+    aufrichten?: boolean;
     /** zusammengelegt werden nur Kanten mit einem Ende auf einer Linie (nach dem Einsetzen eines Loops) */
     nurKetten?: boolean;
     /**
@@ -582,6 +586,8 @@ export function verdichten(
     // mit Genauigkeit: Normalen vor dem Zusammenlegen (die Lagen ändern sich dabei nicht), Punkte in Falten
     const norK = genau !== undefined && opt.genauHaut === true ? punktNormalen() : null;
     const falteK = norK ? gefaltet(norK) : null;
+    // C1: Normalen der Ecken, an denen sich zeigt, ob ein Dreieck verkehrt herum liegt (es darf sich beim Zusammenlegen aufrichten)
+    const norU = opt.aufrichten !== false ? (norK ?? punktNormalen()) : null;
     const umT: number[][] = Array.from({ length: nGesamt }, () => []);
     for (let t = 0; t < tri.length / 3; t++) for (let e = 0; e < 3; e++) umT[tri[3 * t + e]!]!.push(t);
     // je Punkt die Ketten, auf denen er liegt: li (gespeicherte Hälfte) oder −1 − li (ihr Spiegelbild)
@@ -705,7 +711,27 @@ export function verdichten(
         const ac = { x: C.x - A.x, y: C.y - A.y, z: C.z - A.z };
         const n1 = { x: ab.y * ac.z - ab.z * ac.y, y: ab.z * ac.x - ab.x * ac.z, z: ab.x * ac.y - ab.y * ac.x };
         const l1 = Math.hypot(n1.x, n1.y, n1.z);
-        if (!(l1 > 1e-12) || (n0.x * n1.x + n0.y * n1.y + n0.z * n1.z) / l1 < 0.5) return false;
+        if (!(l1 > 1e-12)) return false;
+        if ((n0.x * n1.x + n0.y * n1.y + n0.z * n1.z) / l1 < 0.5) {
+          // C1 (17.11.): Ein Dreieck, das verkehrt herum lag (gegen die Normalen seiner Ecken), darf sich aufrichten. Bis dahin galt
+          // das als Kippen, und die kurzen Kanten umgeschlagener Dreiecke blieben deshalb stehen
+          if (!norU) return false;
+          let rx = 0;
+          let ry = 0;
+          let rz = 0;
+          for (const w of e) {
+            // (an einer Kante ist die Falte gewollt: Ihre Punkte sagen nichts darüber, wie herum die Fläche liegt)
+            if (hart.has(w)) continue;
+            rx += norU[3 * w]!;
+            ry += norU[3 * w + 1]!;
+            rz += norU[3 * w + 2]!;
+          }
+          const lr = Math.hypot(rx, ry, rz);
+          if (!(lr > 0)) return false;
+          const vorher = (n0.x * rx + n0.y * ry + n0.z * rz) / lr;
+          const nachher = (n1.x * rx + n1.y * ry + n1.z * rz) / (l1 * lr);
+          if (!(vorher < 0 && nachher > 0.5)) return false;
+        }
         // kein Dreieck flach werden lassen (siehe Kopf der Datei): Ein Punkt neben einer Linie, der in einen ihrer Punkte fiele, spannte
         // sonst drei aufeinanderfolgende Punkte der Linie als Dreieck auf. Was schon flach ist, darf bleiben, wie es ist (Nadeln fallen
         // weiter zusammen).
@@ -987,7 +1013,271 @@ export function verdichten(
       if (diesmal === 0) break;
     }
   }
-  if (neu === 0 && gelegt === 0 && geloest === 0) return null;
+  /**
+   * Umgeschlagene Dreiecke aufrichten (C1, 17.11.2026). Im Zug schiebt die Rechnung Punkte auch längs der Fläche; wo die Haut dabei
+   * gestaucht wird, wandert die Ecke eines schmalen Dreiecks über die Kante gegenüber, und das Dreieck liegt verkehrt herum (seine
+   * Normale zeigt gegen die seiner Ecken). Gemessen nach gewöhnlichen Zügen an Florians Formen: 2 bis 18 je Zug, immer als Spiegelpaar,
+   * an den Flanken neben dem Zug, nicht an der Mitte; Fläche 0,07 bis 0,35 der mittleren, kleinster Winkel über `FLACH` (das Auflösen
+   * flacher Dreiecke sah sie deshalb nicht). Sie blieben beim Aufräumen stehen. Hier wird die Kante gedreht, über die die Ecke
+   * gewandert ist: Die zwei neuen Dreiecke füllen dieselbe Fläche ohne Überlappung. Gewählt wird unter den drei Kanten die, nach deren
+   * Drehen beide Dreiecke richtig herum liegen (gegen die Normalen ihrer Ecken) und am wenigsten schmal sind; nie eine Kante einer
+   * Linie; spiegelgleich mit ihrem Spiegelbild. Die Normalen harter Punkte (Kanten) zählen dabei nicht: An einer Kante ist die Falte
+   * gewollt (die Wand einer Maultasche liegt steil gegen die Haut außen), ihre Punkte sagen nichts darüber, wie herum eine Fläche
+   * liegt. Ein Dreieck zwischen drei harten Punkten wird deshalb nicht beurteilt.
+   */
+  let aufgerichtet = 0;
+  if (opt.aufrichten !== false) {
+    const lebt = (t: number): boolean => !(totT && totT[t]);
+    const nP = pos.length / 3;
+    const kreuz = (P: V3, Q: V3, R: V3): V3 => {
+      const pq = { x: Q.x - P.x, y: Q.y - P.y, z: Q.z - P.z };
+      const pr = { x: R.x - P.x, y: R.y - P.y, z: R.z - P.z };
+      return { x: pq.y * pr.z - pq.z * pr.y, y: pq.z * pr.x - pq.x * pr.z, z: pq.x * pr.y - pq.y * pr.x };
+    };
+    const aufLinie = new Set<number>();
+    ketten.forEach((k) =>
+      k?.forEach((v) => {
+        aufLinie.add(v);
+        if (spiegel[v]! >= 0) aufLinie.add(spiegel[v]!);
+      }),
+    );
+    /** Normalen der Ecken (Summe der Flächennormalen) und die Dreiecke, die gegen sie liegen */
+    const lageJetzt = (): { vn: Float64Array; verkehrt: number[] } => {
+      const nT = tri.length / 3;
+      const vn = new Float64Array(3 * nP);
+      const fn: (V3 | undefined)[] = new Array<V3 | undefined>(nT);
+      for (let t = 0; t < nT; t++) {
+        if (!lebt(t)) continue;
+        const f = flaechenNormale(t);
+        fn[t] = f;
+        for (let e = 0; e < 3; e++) {
+          const v = 3 * tri[3 * t + e]!;
+          vn[v] = vn[v]! + f.x;
+          vn[v + 1] = vn[v + 1]! + f.y;
+          vn[v + 2] = vn[v + 2]! + f.z;
+        }
+      }
+      const verkehrt: number[] = [];
+      for (let t = 0; t < nT; t++) {
+        const f = fn[t];
+        if (!f) continue;
+        let d = 0;
+        for (let e = 0; e < 3; e++) {
+          if (hart.has(tri[3 * t + e]!)) continue;
+          const v = 3 * tri[3 * t + e]!;
+          d += f.x * vn[v]! + f.y * vn[v + 1]! + f.z * vn[v + 2]!;
+        }
+        if (d < 0) verkehrt.push(t);
+      }
+      return { vn, verkehrt };
+    };
+    /** erste Stufe: Kanten drehen; zurück, wie viele Dreiecke gedreht wurden */
+    const drehRunde = (vn: Float64Array, verkehrt: readonly number[]): number => {
+      /** Darf die Kante (a, b) gedreht werden, um ein umgeschlagenes Dreieck aufzurichten? Dann die Angaben und der kleinste Winkel danach */
+      const richtbar = (a: number, b: number): { f: { t1: number; t2: number; c: number; d: number }; w: number } | null => {
+        const f = drehbar(a, b);
+        if (!f) return null;
+        const e = [tri[3 * f.t1]!, tri[3 * f.t1 + 1]!, tri[3 * f.t1 + 2]!];
+        const ic = e.indexOf(f.c);
+        const x = e[(ic + 1) % 3]!;
+        const y = e[(ic + 2) % 3]!;
+        const N1 = [lage(x), lage(f.d), lage(f.c)] as const;
+        const N2 = [lage(y), lage(f.c), lage(f.d)] as const;
+        let bx = 0;
+        let by = 0;
+        let bz = 0;
+        for (const v of [x, y, f.c, f.d]) {
+          if (hart.has(v)) continue;
+          bx += vn[3 * v]!;
+          by += vn[3 * v + 1]!;
+          bz += vn[3 * v + 2]!;
+        }
+        if (!(Math.hypot(bx, by, bz) > 0)) return null;
+        const bezug = norm({ x: bx, y: by, z: bz });
+        for (const [P, Q, R] of [N1, N2]) {
+          const n = norm(kreuz(P, Q, R));
+          if (n.x * bezug.x + n.y * bezug.y + n.z * bezug.z < 0.2) return null;
+        }
+        const w = Math.min(kleinsterWinkel(...N1), kleinsterWinkel(...N2));
+        return w < 1 ? null : { f, w };
+      };
+      const beruehrt = new Set<number>();
+      let diesmal = 0;
+      for (const t of verkehrt) {
+        if (beruehrt.has(t)) continue;
+        const e3 = [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!];
+        let best: { a: number; b: number; f: { t1: number; t2: number; c: number; d: number }; w: number } | null = null;
+        for (let k = 0; k < 3; k++) {
+          const a = e3[k]!;
+          const b = e3[(k + 1) % 3]!;
+          const r = richtbar(a, b);
+          if (r && !beruehrt.has(r.f.t1) && !beruehrt.has(r.f.t2) && (!best || r.w > best.w)) best = { a, b, f: r.f, w: r.w };
+        }
+        if (!best) continue;
+        const { a, b, f } = best;
+        const sa = spiegel[a]!;
+        const sb = spiegel[b]!;
+        if (sa < 0 || sb < 0) continue;
+        if (schluessel(sa, sb) === schluessel(a, b)) {
+          // die Kante ist ihr eigenes Spiegelbild: nur, wenn sie quer über der Mitte liegt (wie beim Auflösen flacher Dreiecke)
+          if (!(spiegel[f.c] === f.c && spiegel[f.d] === f.d)) continue;
+          if (drehen(a, b, f, false)) {
+            diesmal++;
+            beruehrt.add(f.t1).add(f.t2);
+          }
+          continue;
+        }
+        const g = richtbar(sa, sb)?.f;
+        const gegen = g && ((g.c === spiegel[f.c] && g.d === spiegel[f.d]) || (g.c === spiegel[f.d] && g.d === spiegel[f.c]));
+        if (!g || !gegen || g.t1 === f.t1 || g.t1 === f.t2 || g.t2 === f.t1 || g.t2 === f.t2) continue;
+        if (beruehrt.has(g.t1) || beruehrt.has(g.t2) || schluessel(g.c, g.d) === schluessel(f.c, f.d)) continue;
+        if (!drehen(a, b, f, false)) continue;
+        if (!drehen(sa, sb, g, false)) continue;
+        diesmal += 2;
+        beruehrt.add(f.t1).add(f.t2).add(g.t1).add(g.t2);
+      }
+      return diesmal;
+    };
+    /**
+     * zweite Stufe, für das, was sich durch Drehen nicht aufrichten lässt (zwei schmale Dreiecke liegen über Kreuz: Nach jedem Drehen
+     * läge wieder eines verkehrt): Die Ecke mit dem größten Winkel (sie ist über ihre Kante gewandert) rückt längs der Fläche zur Mitte
+     * ihrer Nachbarn, so weit, dass um sie herum weniger Dreiecke verkehrt liegen als vorher (sonst bleibt sie). Punkte einer Linie
+     * bleiben (dann die Ecke mit dem nächstkleineren Winkel); spiegelgleich. Zurück: wie viele Ecken gerückt sind.
+     */
+    const rueckRunde = (vn: Float64Array, verkehrt: readonly number[]): number => {
+      const ring = new Map<number, { nb: number[]; ts: number[] }>();
+      const ringVon = (v: number): { nb: number[]; ts: number[] } => {
+        let r = ring.get(v);
+        if (!r) {
+          const nb: number[] = [];
+          const ts = new Set<number>();
+          for (const [k, l] of kanten) {
+            const a = Math.floor(k / KEY);
+            const b = k % KEY;
+            if (a !== v && b !== v) continue;
+            nb.push(a === v ? b : a);
+            for (const t of l) ts.add(t);
+          }
+          r = { nb, ts: [...ts] };
+          ring.set(v, r);
+        }
+        return r;
+      };
+      /**
+       * wie viele Dreiecke um v verkehrt lägen, wenn v bei (x, y, z) läge: gezählt wie überall (Normale gegen die Normalen der Ecken),
+       * die Normalen der Ecken dafür um das berichtigt, was sich an den Dreiecken um v ändert
+       */
+      const schlecht = (v: number, ts: readonly number[], x: number, y: number, z: number): number => {
+        const alt = ts.map((t) => flaechenNormale(t));
+        const neu = ts.map((t) => {
+          const P = [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!].map((w) => (w === v ? { x, y, z } : lage(w)));
+          return kreuz(P[0]!, P[1]!, P[2]!);
+        });
+        const dn = new Map<number, V3>();
+        ts.forEach((t, i) => {
+          for (let e = 0; e < 3; e++) {
+            const w = tri[3 * t + e]!;
+            const d = dn.get(w) ?? { x: 0, y: 0, z: 0 };
+            d.x += neu[i]!.x - alt[i]!.x;
+            d.y += neu[i]!.y - alt[i]!.y;
+            d.z += neu[i]!.z - alt[i]!.z;
+            dn.set(w, d);
+          }
+        });
+        let zahl = 0;
+        ts.forEach((t, i) => {
+          let sx = 0;
+          let sy = 0;
+          let sz = 0;
+          let frei = 0;
+          for (let e = 0; e < 3; e++) {
+            const w = tri[3 * t + e]!;
+            if (hart.has(w)) continue;
+            frei++;
+            const d = dn.get(w)!;
+            sx += vn[3 * w]! + d.x;
+            sy += vn[3 * w + 1]! + d.y;
+            sz += vn[3 * w + 2]! + d.z;
+          }
+          const f = neu[i]!;
+          if (frei && f.x * sx + f.y * sy + f.z * sz <= 0) zahl++;
+        });
+        return zahl;
+      };
+      const bewegt = new Set<number>();
+      let diesmal = 0;
+      for (const t of verkehrt) {
+        const e3 = [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!];
+        // die Ecken nach ihrem Winkel, der größte zuerst
+        const winkel = e3.map((v, k) => {
+          const m = lage(v);
+          const p = lage(e3[(k + 1) % 3]!);
+          const q = lage(e3[(k + 2) % 3]!);
+          const u = { x: p.x - m.x, y: p.y - m.y, z: p.z - m.z };
+          const w = { x: q.x - m.x, y: q.y - m.y, z: q.z - m.z };
+          const l = Math.hypot(u.x, u.y, u.z) * Math.hypot(w.x, w.y, w.z);
+          return { v, c: l > 0 ? (u.x * w.x + u.y * w.y + u.z * w.z) / l : 1 };
+        });
+        winkel.sort((p, q) => p.c - q.c);
+        for (const { v } of winkel) {
+          const sv = spiegel[v]!;
+          if (aufLinie.has(v) || bewegt.has(v) || sv < 0) continue;
+          const { nb, ts } = ringVon(v);
+          if (!nb.length || nb.some((w) => bewegt.has(w))) continue;
+          const n = norm({ x: vn[3 * v]!, y: vn[3 * v + 1]!, z: vn[3 * v + 2]! });
+          let cx = 0;
+          let cy = 0;
+          let cz = 0;
+          for (const w of nb) {
+            cx += pos[3 * w]! / nb.length;
+            cy += pos[3 * w + 1]! / nb.length;
+            cz += pos[3 * w + 2]! / nb.length;
+          }
+          // längs der Fläche (ohne den Anteil längs der Normale der Ecke); an einer Kante oder Spitze, wo die Normale nichts sagt, auch
+          // geradewegs zur Mitte
+          const gx = cx - pos[3 * v]!;
+          const gy = cy - pos[3 * v + 1]!;
+          const gz = cz - pos[3 * v + 2]!;
+          const dn = gx * n.x + gy * n.y + gz * n.z;
+          const vorher = schlecht(v, ts, pos[3 * v]!, pos[3 * v + 1]!, pos[3 * v + 2]!);
+          let gut = false;
+          for (const [anteil, laengs] of [[1, 1], [0.6, 1], [0.3, 1], [1, 0], [0.6, 0]] as const) {
+            const x = pos[3 * v]! + anteil * (gx - laengs * dn * n.x);
+            const y = pos[3 * v + 1]! + anteil * (gy - laengs * dn * n.y);
+            const z = sv === v ? 0 : pos[3 * v + 2]! + anteil * (gz - laengs * dn * n.z);
+            // ein Punkt neben der Mitte bleibt auf seiner Seite und rückt nicht an die Ebene heran: Sonst träfe er dort sein Spiegelbild
+            // (zwei Punkte an einem Ort), oder die Hälften lägen über Kreuz
+            if (sv !== v && !(z * pos[3 * v + 2]! > 0 && Math.abs(z) >= 0.5 * Math.abs(pos[3 * v + 2]!))) continue;
+            if (schlecht(v, ts, x, y, z) >= vorher) continue;
+            pos[3 * v] = x;
+            pos[3 * v + 1] = y;
+            pos[3 * v + 2] = z;
+            if (sv !== v) {
+              pos[3 * sv] = x;
+              pos[3 * sv + 1] = y;
+              pos[3 * sv + 2] = -z;
+            }
+            gut = true;
+            break;
+          }
+          if (!gut) continue;
+          bewegt.add(v).add(sv);
+          diesmal++;
+          break;
+        }
+      }
+      return diesmal;
+    };
+    for (let runde = 0; runde < 6; runde++) {
+      const L = lageJetzt();
+      if (!L.verkehrt.length) break;
+      let diesmal = drehRunde(L.vn, L.verkehrt);
+      if (!diesmal) diesmal = rueckRunde(L.vn, L.verkehrt);
+      aufgerichtet += diesmal;
+      if (!diesmal) break;
+    }
+  }
+  if (neu === 0 && gelegt === 0 && geloest === 0 && aufgerichtet === 0) return null;
 
   let gedreht = 0;
   for (let runde = 0; runde < (opt.drehen === false ? 0 : 3); runde++) {
@@ -1097,6 +1387,16 @@ export function verdichten(
     return neuNr[w]!;
   };
   const haut = hautAus(pos2, tri2);
+  // Die Spiegelpartner aus der Paarung, mit der hier gerechnet wurde, nicht neu aus gerundeten Lagen (C1, 17.11.): Liegt ein Paar
+  // dichter an der Mittelebene, als `hautAus` rundet, hielt es beide für denselben Ort; einer wurde sein eigenes Spiegelbild, der
+  // andere verlor seines beim nächsten Mal ganz (gemessen an „maul handgemacht test“: ein Punkt bei z = −0,0012, sein Partner bei 0).
+  // Wo die Paarung der Rechnung nicht sauber ist (kein Partner, oder er zeigt nicht zurück), bleibt, was die Lagen sagen.
+  for (let v = 0; v < nGesamt; v++) {
+    const w = neuNr[v]!;
+    if (w < 0) continue;
+    const sv = spiegel[v]!;
+    if (sv >= 0 && !tot[sv] && spiegel[sv] === v) haut.spiegel[w] = neuNr[sv]!;
+  }
   const neueLoops = loops.map((l, li) => {
     const k = ketten[li];
     if (!k) {
@@ -1119,7 +1419,7 @@ export function verdichten(
       punkte: l.punkte.map((p) => ({ ...p })),
     };
   });
-  return { haut, loops: neueLoops, neu, gelegt, gedreht, geloest, verborgen: verborgen2 ? Uint8Array.from(verborgen2) : null, alt, gekappt };
+  return { haut, loops: neueLoops, neu, gelegt, gedreht, geloest, aufgerichtet, verborgen: verborgen2 ? Uint8Array.from(verborgen2) : null, alt, gekappt };
 }
 
 /**
@@ -1130,5 +1430,5 @@ export function verdichten(
  * auf), ohne Teilen, Drehen und Entspannen; die Form ändert sich nur um diese kurzen Stücke. Null, wenn nichts zu tun ist.
  */
 export function nadelnZusammenlegen(h: Haut, loops: readonly Loop[], mk: number, verborgen: Uint8Array | null = null): Verdichtet | null {
-  return verdichten(h, loops, Infinity, { kurz: 0.22 * mk, nurKetten: true, drehen: false, entspannen: false, verborgen });
+  return verdichten(h, loops, Infinity, { kurz: 0.22 * mk, nurKetten: true, drehen: false, entspannen: false, aufrichten: false, verborgen });
 }

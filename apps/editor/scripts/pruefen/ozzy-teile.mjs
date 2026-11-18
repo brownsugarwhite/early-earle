@@ -8,17 +8,10 @@ export const BASIS = process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html';
 export const GPU_ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'];
 
 /**
- * Eine Seite öffnen. `form`: gesicherte Form laden; `dichte`: Pixeldichte; `extra`: weitere Schalter der Adresse;
- * `flicken`: { '<Muster der Adresse des Moduls>': [[suchen, ersetzen], …] } für diesen Lauf.
+ * Flicken für eine Seite anlegen (vor dem Laden): { '<Muster der Adresse des Moduls>': [[suchen, ersetzen], …] }. Ohne Angabe gilt die
+ * Umgebungsvariable FLICKEN (JSON). Passt ein Flicken nicht auf den Text, den der Server schickt, steht das in `fehler`.
  */
-export async function auf({ form = '', dichte = 2, b = 1440, h = 900, extra = '', flicken = {} } = {}) {
-  const browser = await chromium.launch({ args: GPU_ARGS });
-  const s = await browser.newPage({ viewport: { width: b, height: h }, deviceScaleFactor: dichte });
-  const fehler = [];
-  s.on('pageerror', (e) => fehler.push(String(e)));
-  s.on('console', (m) => {
-    if (m.type() === 'error') fehler.push(m.text());
-  });
+export async function flickenAnlegen(s, flicken = process.env.FLICKEN ? JSON.parse(process.env.FLICKEN) : {}, fehler = []) {
   for (const [muster, liste] of Object.entries(flicken)) {
     await s.route(muster, async (route) => {
       const r = await route.fetch();
@@ -30,6 +23,22 @@ export async function auf({ form = '', dichte = 2, b = 1440, h = 900, extra = ''
       await route.fulfill({ response: r, body: t });
     });
   }
+}
+
+/**
+ * Eine Seite öffnen. `form`: gesicherte Form laden; `dichte`: Pixeldichte; `extra`: weitere Schalter der Adresse;
+ * `flicken`: { '<Muster der Adresse des Moduls>': [[suchen, ersetzen], …] } für diesen Lauf (auch für Module, die der Hintergrund
+ * lädt). Ohne Angabe gilt die Umgebungsvariable FLICKEN (JSON): So läuft jede Probe unverändert gegen eine geflickte Fassung.
+ */
+export async function auf({ form = '', dichte = 2, b = 1440, h = 900, extra = '', flicken = process.env.FLICKEN ? JSON.parse(process.env.FLICKEN) : {} } = {}) {
+  const browser = await chromium.launch({ args: GPU_ARGS });
+  const s = await browser.newPage({ viewport: { width: b, height: h }, deviceScaleFactor: dichte });
+  const fehler = [];
+  s.on('pageerror', (e) => fehler.push(String(e)));
+  s.on('console', (m) => {
+    if (m.type() === 'error') fehler.push(m.text());
+  });
+  await flickenAnlegen(s, flicken, fehler);
   const q = [form ? `form=${encodeURIComponent(form)}` : '', extra].filter(Boolean).join('&');
   await s.goto(`${BASIS}${q ? `?${q}` : ''}`);
   await s.waitForFunction(() => !!window.__ozzy);

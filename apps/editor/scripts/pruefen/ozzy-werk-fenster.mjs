@@ -10,8 +10,9 @@
 //      im Werk; ⌘Z bringt ihn genau zurück.
 //   5  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 node scripts/pruefen/ozzy-werk-fenster.mjs [ordner für Bilder]
-//   OZZY_URL (Standard http://localhost:5205/ozzy.html)
+//   OZZY_URL (Standard http://localhost:5205/ozzy.html); FLICKEN (JSON) wie in `ozzy-teile.mjs`
 import { chromium } from '@playwright/test';
+import { flickenAnlegen } from './ozzy-teile.mjs';
 
 const ordner = process.argv[2] ?? '';
 const basis = process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html';
@@ -22,6 +23,7 @@ seite.on('console', (m) => {
   if (m.type() === 'error') fehler.push(m.text());
 });
 seite.on('pageerror', (e) => fehler.push(String(e)));
+await flickenAnlegen(seite, undefined, fehler);
 await seite.goto(`${basis}?bild=1&ohneLinie=0`);
 await seite.waitForFunction(() => !!window.__ozzy);
 await seite.evaluate(() => document.fonts.ready);

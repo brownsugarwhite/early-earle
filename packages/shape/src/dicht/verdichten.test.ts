@@ -287,3 +287,118 @@ describe('Netz verdichtet sich selbst', () => {
     expect(ohneSpiegelDreieck(r.haut)).toBe(0);
   });
 });
+
+describe('Aufrichten und Spiegelpaare (C1, 17.11.2026)', () => {
+  /** umgeschlagene Dreiecke: Normale gegen die Normalen der Ecken (wie das Fenster zählt) */
+  const umgeschlagen = (h: Haut): number => {
+    const P = h.pos;
+    const vn = new Float64Array(P.length);
+    const fn = new Float64Array(h.tri.length);
+    for (let i = 0; i < h.tri.length; i += 3) {
+      const [a, b, c] = [3 * h.tri[i]!, 3 * h.tri[i + 1]!, 3 * h.tri[i + 2]!];
+      const u = [P[b]! - P[a]!, P[b + 1]! - P[a + 1]!, P[b + 2]! - P[a + 2]!];
+      const w = [P[c]! - P[a]!, P[c + 1]! - P[a + 1]!, P[c + 2]! - P[a + 2]!];
+      const f = [u[1]! * w[2]! - u[2]! * w[1]!, u[2]! * w[0]! - u[0]! * w[2]!, u[0]! * w[1]! - u[1]! * w[0]!];
+      for (let x = 0; x < 3; x++) {
+        fn[i + x] = f[x]!;
+        for (const v of [a, b, c]) vn[v + x] = vn[v + x]! + f[x]!;
+      }
+    }
+    let z = 0;
+    for (let i = 0; i < h.tri.length; i += 3) {
+      let d = 0;
+      for (let x = 0; x < 3; x++) d += fn[i + x]! * (vn[3 * h.tri[i]! + x]! + vn[3 * h.tri[i + 1]! + x]! + vn[3 * h.tri[i + 2]! + x]!);
+      if (d < 0) z++;
+    }
+    return z;
+  };
+  /** jeder Punkt hat ein Spiegelbild, und dessen Spiegelbild ist er selbst */
+  const paarungFehler = (h: Haut): number => {
+    let n = 0;
+    for (let v = 0; v < h.n; v++) if (!(h.spiegel[v]! >= 0 && h.spiegel[h.spiegel[v]!] === v)) n++;
+    return n;
+  };
+  const offeneKanten = (h: Haut): number => {
+    const k = new Map<number, number>();
+    for (let i = 0; i < h.tri.length; i += 3)
+      for (let e = 0; e < 3; e++) {
+        const a = h.tri[i + e]!;
+        const b = h.tri[i + ((e + 1) % 3)]!;
+        const s = a < b ? a * 4194304 + b : b * 4194304 + a;
+        k.set(s, (k.get(s) ?? 0) + 1);
+      }
+    let offen = 0;
+    for (const n of k.values()) if (n !== 2) offen++;
+    return offen;
+  };
+
+  it('ein Punkt, der über die Kante gegenüber gewandert ist: Das umgeschlagene Dreieck wird aufgerichtet, spiegelgleich', () => {
+    const h = kugel();
+    // ein Punkt an der Flanke (fern der Mitte und der Pole), über die Mitte einer Kante seines Rings hinausgeschoben
+    let v = -1;
+    for (let i = 0; i < h.n && v < 0; i++) {
+      const [x, y, z] = [h.pos[3 * i]!, h.pos[3 * i + 1]!, h.pos[3 * i + 2]!];
+      if (z > 60 && z < 100 && x > 0 && Math.abs(y) < 60 && h.nachbarn[i]!.length === 6) v = i;
+    }
+    expect(v).toBeGreaterThanOrEqual(0);
+    const sv = h.spiegel[v]!;
+    const [a, b] = (() => {
+      for (let i = 0; i < h.tri.length; i += 3) {
+        const e = [h.tri[i]!, h.tri[i + 1]!, h.tri[i + 2]!];
+        if (e.includes(v)) return e.filter((w) => w !== v) as [number, number];
+      }
+      return [-1, -1] as [number, number];
+    })();
+    const pos = Float64Array.from(h.pos);
+    for (let x = 0; x < 3; x++) {
+      const m = 0.5 * (h.pos[3 * a + x]! + h.pos[3 * b + x]!);
+      pos[3 * v + x] = h.pos[3 * v + x]! + 1.5 * (m - h.pos[3 * v + x]!);
+      pos[3 * sv + x] = (x === 2 ? -1 : 1) * pos[3 * v + x]!;
+    }
+    const verschoben: Haut = { ...h, pos };
+    const vorher = umgeschlagen(verschoben);
+    // ohne Aufrichten (wie bis zum 17.11.) bleiben sie stehen
+    const ohne = verdichten(verschoben, [], Infinity, { drehen: false, entspannen: false, aufrichten: false });
+    const nachOhne = ohne ? umgeschlagen(ohne.haut) : vorher;
+    const r = verdichten(verschoben, [], Infinity, { drehen: false, entspannen: false })!;
+    log(`Aufrichten: umgeschlagen ${vorher} → ohne Aufrichten ${nachOhne}, mit ${umgeschlagen(r.haut)}, aufgerichtet ${r.aufgerichtet}, Punkte ${h.n} → ${r.haut.n}`);
+    expect(vorher).toBeGreaterThanOrEqual(2);
+    expect(nachOhne).toBeGreaterThanOrEqual(2);
+    expect(r.aufgerichtet).toBeGreaterThan(0);
+    expect(umgeschlagen(r.haut)).toBe(0);
+    expect(r.haut.n).toBe(h.n);
+    expect(offeneKanten(r.haut)).toBe(0);
+    expect(paarungFehler(r.haut)).toBe(0);
+    expect(ohneSpiegelDreieck(r.haut)).toBe(0);
+  });
+
+  it('ein Paar dichter an der Mittelebene, als die Lagen gerundet werden, bleibt ein Paar', () => {
+    const h = kugel();
+    // das Paar, das der Mittelebene am nächsten liegt, bis auf 0,0003 an sie heran
+    let v = -1;
+    for (let i = 0; i < h.n; i++) {
+      const z = h.pos[3 * i + 2]!;
+      if (z > 1e-6 && h.spiegel[i]! >= 0 && (v < 0 || z < h.pos[3 * v + 2]!)) v = i;
+    }
+    const sv = h.spiegel[v]!;
+    const pos = Float64Array.from(h.pos);
+    pos[3 * v + 2] = 0.0003;
+    pos[3 * sv + 2] = -0.0003;
+    // über gerundete Lagen gelesen, hält die Haut beide für denselben Ort (das war der Fehler)
+    const gerundet = hautAus(pos, h.tri);
+    expect(paarungFehler(gerundet)).toBeGreaterThan(0);
+    // das Verdichten behält die Paarung, mit der es rechnet (hier teilt es einige zu lange Kanten)
+    const eng: Haut = { ...h, pos };
+    const laengen = kantenLaengen(eng).sort((p, q) => p - q);
+    const r = verdichten(eng, [], laengen[Math.floor(0.98 * laengen.length)]!, { drehen: false, entspannen: false })!;
+    log(`Paar an der Mitte: Punkte ${h.n} → ${r.haut.n}, neu ${r.neu}`);
+    expect(r.neu).toBeGreaterThan(0);
+    expect(paarungFehler(r.haut)).toBe(0);
+    const w = r.alt.indexOf(v);
+    const sw = r.alt.indexOf(sv);
+    expect(w).toBeGreaterThanOrEqual(0);
+    expect(r.haut.spiegel[w]).toBe(sw);
+    expect(r.haut.spiegel[sw]).toBe(w);
+    expect(offeneKanten(r.haut)).toBe(0);
+  });
+});

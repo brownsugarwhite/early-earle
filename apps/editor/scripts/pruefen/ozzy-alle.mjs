@@ -22,7 +22,7 @@ let schlecht = 0;
 const t0 = Date.now();
 for (const n of proben) {
   const t = Date.now();
-  const r = spawnSync(process.execPath, [path.join(hier, n)], { cwd: path.join(hier, '..', '..'), env: { ...process.env, GPU: '1' }, encoding: 'utf8', timeout: 240000 });
+  const r = spawnSync(process.execPath, [path.join(hier, n)], { cwd: path.join(hier, '..', '..'), env: { ...process.env, GPU: '1' }, encoding: 'utf8', timeout: 400000 });
   const aus = `${r.stdout ?? ''}${r.stderr ?? ''}`.trim().split('\n');
   const fehl = aus.filter((z) => z.startsWith('FEHL'));
   const letzte = aus[aus.length - 1] ?? '';

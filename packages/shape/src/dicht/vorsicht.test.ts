@@ -88,6 +88,8 @@ function ziehen(z: LoopZug, h: Haut, loops: Loop[], weit: number, schritte: numb
   return max;
 }
 
+const log = (...a: unknown[]) => (globalThis as unknown as { console: { log: (...x: unknown[]) => void } }).console.log(...a);
+
 describe('Vorsicht bei Unruhe', () => {
   afterEach(() => {
     daempfungSetzen(1);
@@ -109,9 +111,18 @@ describe('Vorsicht bei Unruhe', () => {
     const gut = ziehen(new LoopZug(a.h, a.loops, null, true, 'kurven', 'geometrie'), a.h, a.loops, 40, 4, 50);
     expect(gut).toBeLessThan(200);
     const b = kugelMitLoops();
-    const ohne = ziehen(new LoopZug(b.h, b.loops, null, true, 'kurven', 'geometrie', { vorsicht: false }), b.h, b.loops, 40, 4, 50, 40, ueberschiessen);
+    // (seit dem 18.11. auch ohne die Schrittweite: Sie allein hält denselben Überschuss schon auf, siehe unten)
+    const ohne = ziehen(new LoopZug(b.h, b.loops, null, true, 'kurven', 'geometrie', { vorsicht: false, schritt: false }), b.h, b.loops, 40, 4, 50, 40, ueberschiessen);
     zurueck();
     expect(ohne > 1000 || Number.isNaN(ohne)).toBe(true);
+    // die Schrittweite allein (C1, 18.11.): Kein Punkt wandert durch die Korrektur weiter als eine Kantenlänge je Runde; derselbe
+    // erzwungene Überschuss läuft nicht davon
+    const s = kugelMitLoops();
+    const nurSchritt = ziehen(new LoopZug(s.h, s.loops, null, true, 'kurven', 'geometrie', { vorsicht: false }), s.h, s.loops, 40, 4, 50, 40, ueberschiessen);
+    zurueck();
+    log(`Überschuss ohne Vorsicht, mit Schrittweite: größte Koordinate ${nurSchritt.toFixed(1)} (gewöhnlich ${gut.toFixed(1)})`);
+    // gemessen: 189,7 wie beim gewöhnlichen Schritt
+    expect(nurSchritt).toBeLessThan(200);
     const c = kugelMitLoops();
     const zc = new LoopZug(c.h, c.loops, null, true, 'kurven', 'geometrie');
     const mit = ziehen(zc, c.h, c.loops, 40, 4, 50, 40, ueberschiessen);

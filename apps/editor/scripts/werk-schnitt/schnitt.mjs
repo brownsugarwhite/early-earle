@@ -14,8 +14,7 @@
 //      beim Griff `griffImRaum ? { ...griffImRaum } : inWelt(…)` statt `inWelt(…)`.
 //      Dazu (17.11., Plan „Ozzy stabil und schnell“, A1): `bildRestGemeldet` und `bildRestMelden` nach `bildGerechnetMs`, und in der
 //      letzten Zeile von `bildRechnen` `bildRestGemeldet ?? performance.now() - bildT0 - bildGerechnetMs` statt der Messung allein.
-//      Dazu der Anlauf eines neuen Lösers: `ANLAUF_RUNDEN`, `loeserRunden` und in `zugRechnen` das Zählen der Runden je Löser; der
-//      Bildtakt gilt dort erst ab `ANLAUF_RUNDEN` Runden.
+//      (Der Anlauf eines neuen Lösers, `ANLAUF_RUNDEN`, ist seit dem 18.11. wieder heraus: Die Ursache ist im Kern behoben, Plan C1.)
 // Geprüft am 16.11.: Aus `kurven.ts` von 179dfa4a (mit Schritt 1) entstehen genau `werk.ts` und `kurven.ts` von 5039cead.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';

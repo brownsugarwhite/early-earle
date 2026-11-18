@@ -331,9 +331,28 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - Kern-Bilder (`blattSchreiben`) sind flach schattiert und übertreiben jede Unruhe; ob etwas ruhig aussieht, im Fenster ansehen
   (Unruhe messen: `form-kante-winkel.ts`, Knick zwischen Nachbardreiecken; Florians Modelle liegen gesichert bei 5,6° bis 6,3°,
   nach jedem Neurechnen bei rund 7°).
-- **Ein neuer Löser braucht Anlauf** (17.11.): In seinen ersten Runden bewegt er die Haut weit (Form mit nur einer Linie: 1,65
-  Einheiten je Runde, ab etwa der sechsten 0,04). Bekommt er dort je Bild nur eine oder zwei Runden, während die Maus weiterzieht,
-  läuft die Haut davon. Deshalb gilt der Bildtakt erst nach `ANLAUF_RUNDEN` (16) Runden eines Lösers; die Ursache ist nicht behoben.
+- **Warum ein neuer Löser „empfindlich anlief“** (18.11., C1; der Anlauf von 16 Runden ist wieder heraus): An dünnen Stellen an der
+  Mittelebene klappte die intrinsische Triangulierung Kanten der Mittelebene, die zwei Seiten bekamen verschiedene Gewichte, und die
+  Rechnung auf der Hälfte (die eine Seite für beide nimmt) kam nie zur Ruhe; dazu war ein Schritt der Korrektur nicht begrenzt
+  (300 Einheiten für einen Punkt mit Kanten von 3,6). Behoben in `ausKurven.ts`: `festGefaltet` (auf der Hälfte bleiben die Kanten
+  der Mittelebene fest) und `SCHRITT_MAX` (kein Punkt wandert durch die Korrektur weiter als eine Kantenlänge je Runde). Wer die
+  Hälfte ändert: Alles, was je Punkt gemessen oder gewichtet wird, muss für beide Seiten gleich herauskommen. **Eine Linie allein
+  legt die Dicke nicht fest:** Eine Klinge (ein einzelner Punkt der Mitte weit hinausgezogen) kommt nicht zur Ruhe und behält
+  umgeschlagene Dreiecke; das ist eine Frage an Florian (Feinschliff), kein Netzfehler.
+- **Aufräumen im Kern nachstellen** (18.11.): `npx vite-node ../../apps/editor/scripts/pruefen/form-aufraeumen.ts <stand>` aus
+  `packages/shape` rechnet den Auftrag des Fensters Schritt für Schritt (Sekunden statt Minuten); den Stand liefert Ozzy über den
+  Haken `standGepackt` (Base64 einer `.wesen`-Datei), die umgeschlagenen Dreiecke einzeln `__ozzy.umgeschlagen()`. Ein Modul für
+  einen Lauf ändern, auch im Hintergrund: `FLICKEN='{"**/datei.ts*":[["suchen","ersetzen"]]}'` vor jeder Probe mit `ozzy-teile.mjs`.
+- **Zählungen zuerst prüfen** (18.11.): Vier der neun Züge des Messblatts ließen eine Linie sich selbst kreuzen (dann räumt das Werk
+  mit Absicht nicht auf), zwei griffen eine Richtung statt eines Punkts. Die Probe `ozzy-zuege-fenster.mjs` greift nur Punkte und
+  wertet Züge mit gekreuzter Linie nicht. 30 Bildpunkte an der Wand sind rund 150 Einheiten.
+- **`verdichten` übernimmt die Spiegelpaare, mit denen es rechnet** (18.11.), statt sie aus gerundeten Lagen neu zu lesen: Ein Paar
+  dichter als 0,0005 an der Mittelebene verlor sonst seine Paarung (der eine wurde sein eigenes Spiegelbild, der andere stand danach
+  ohne da, und die Rechnung schaltete still auf die ganze Haut um). Wer sonst `hautAus` auf einen Stand mit solchen Paaren ruft, hat
+  dieselbe Falle.
+- **Umgeschlagene Dreiecke richtet `verdichten` auf** (18.11., `aufrichten`, Standard an; `nadelnZusammenlegen` ohne): Kante drehen,
+  Ecke längs der Fläche rücken, kurze Kante zusammenlegen. Harte Punkte zählen als Bezug nicht (an einer Kante ist die Falte
+  gewollt). Im Zug wechselt `verfeinern` dafür allein kein Netz ein; das Aufräumen richtet zum Schluss noch einmal auf.
 - **Ein Zug mit dem Einfluss O hängt davon ab, wann das Verfeinern eingewechselt wird** (17.11.): Das Einwechseln setzt den Zug mit
   neuen Gewichten auf; mitten in der Bewegung gibt das andere Lagen der Nachbarpunkte als danach (an „teat firefish“ 1,4 Einheiten
   bei einem Zug um 119). Proben, die Ozzy mit dem Prüffenster vergleichen, ziehen rasch und halten dann, bis das Verfeinern da ist

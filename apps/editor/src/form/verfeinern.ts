@@ -99,8 +99,10 @@ export function verfeinern(a: VerfeinerAuftrag): VerfeinerErgebnis {
   const h = hautAusFlach(a.haut);
   const v = verdichten(h, a.loops, a.maxKante, a.opt);
   const t1 = uhr();
-  // gekappt: Die Haut ist im Zug so weit gedehnt, dass das Netz auf das Vierfache wüchse; so läuft sie nur davon (dann verfällt es)
-  if (!v || v.gekappt) return { id: a.id, leer: true, ms: [t1 - t0] };
+  // gekappt: Die Haut ist im Zug so weit gedehnt, dass das Netz auf das Vierfache wüchse; so läuft sie nur davon (dann verfällt es).
+  // Nur aufgerichtet (C1), sonst nichts geteilt oder zusammengelegt: Dafür wird im Zug kein Netz eingewechselt (wie bis zum 17.11.;
+  // jedes Einwechseln setzt den Zug neu auf). Das Aufräumen nach dem Zug richtet auf.
+  if (!v || v.gekappt || (v.neu === 0 && v.gelegt === 0 && v.geloest === 0)) return { id: a.id, leer: true, ms: [t1 - t0] };
   const einbettung = einbetten(h, v.haut.pos, { nachbarn: v.haut.nachbarn, alt: v.alt });
   const t2 = uhr();
   const auftrag = new LoopZug(v.haut, v.loops, null, a.kruemmung, 'kurven', a.gewichte, { nurZeilen: true, ...a.loeserOpt }).auftrag;
@@ -293,9 +295,11 @@ export function innerhalb(pos: Float64Array, grenze: number): boolean {
  * letzten Netzes. `zwischen`: bekommt den Stand nach der Vorstufe; seine Felder dürfen dem Auftrag danach entzogen sein (der Worker
  * übergibt sie ohne Kopie), der Auftrag rührt sie nicht mehr an.
  */
-export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => void): AufraeumErgebnis {
+export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => void, spur?: (schritt: string, h: Haut) => void): AufraeumErgebnis {
   const ms = [0, 0, 0, 0];
   let h = hautAusFlach(a.haut);
+  // `spur` (nur für Proben im Kern, `form-aufraeumen.ts`): nach jedem Schritt ein Wort dazu und die Haut, wie sie dann ist
+  spur?.('Anfang', h);
   let loops = a.loops;
   let alt: Int32Array | null = null;
   let neu = 0;
@@ -304,9 +308,9 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
   let runden = 0;
   let unruhe = 0;
   let verborgen = a.opt.verborgen ?? null;
-  const verdichte = (opt: VerdichtenOptionen): boolean => {
+  const verdichte = (opt: VerdichtenOptionen, maxKante = a.maxKante): boolean => {
     const t = uhr();
-    const v = a.verdichten ? verdichten(h, loops, a.maxKante, { ...opt, verborgen }) : null;
+    const v = a.verdichten ? verdichten(h, loops, maxKante, { ...opt, verborgen }) : null;
     ms[0] = ms[0]! + uhr() - t;
     if (!v) return false;
     // die Zuordnung zum Netz vom Auftrag: über alle Durchgänge verkettet (gebliebene Punkte stehen in jedem vorn)
@@ -317,6 +321,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     neu += v.neu;
     gelegt += v.gelegt;
     durchgaenge++;
+    spur?.(`verdichten (neu ${v.neu}, gelegt ${v.gelegt}, gelöst ${v.geloest}, aufgerichtet ${v.aufgerichtet}, gedreht ${v.gedreht})`, h);
     return true;
   };
   /** die Zerlegung für das Netz von jetzt (null: nicht nach der Geometrie, dort zerlegt der Löser selbst) */
@@ -364,6 +369,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
       }
     }
     if (endlich) loops.forEach((l, li) => festlegen(h, l, !a.exakt[li]));
+    spur?.(`setzen (bis Runde ${runden}${steht ? ', steht' : ', steht nicht'}${endlich ? '' : ', nicht endlich'})`, h);
     unruhe += z.unruhe.stufen + (z.unruhe.fest ? 1 : 0);
     ms[3] = ms[3]! + uhr() - t;
     return { steht, endlich };
@@ -416,6 +422,11 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
       z = zerlege();
     }
   }
+  // Zum Schluss (C1, 18.11.): Was das letzte Setzen umgeschlagen hat, wird aufgerichtet (eine Kante gedreht oder ein Punkt längs der
+  // Fläche gerückt, sonst nichts geteilt oder zusammengelegt); die Zerlegung muss danach zum neuen Netz passen. Gemessen an einer
+  // frischen Form aus der Silhouette: vier winzige Dreiecke am stumpfen Ende einer Flosse (Kanten um 1, Fläche unter 1 % der
+  // mittleren), die das Netz dort nach der Krümmung so fein teilt; ein Punkt rückt dabei um weniger als eine solche Kante.
+  if (verdichtet && !abgebrochen && verdichte({ verborgen, drehen: false, entspannen: false }, Infinity)) z = zerlege();
   // die Haut ist beim Aufräumen nicht endlich geblieben: Es gilt der Stand davor (ohne Zerlegung; die passte zum verworfenen Netz)
   if (abgebrochen) return { art: 'aufraeumen', id: a.id, vorstufe, abgebrochen, geaendert: false, haut: null, loops: null, alt: null, neu: 0, gelegt: 0, durchgaenge, runden, gewStart: null, gewWert: null, daten: [], struktur: '', ms, unruhe };
   const geaendert = verdichtet || gesetzt;

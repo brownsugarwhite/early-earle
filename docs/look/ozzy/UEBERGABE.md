@@ -30,7 +30,7 @@ Unterschiede zur Studie (`raum.html`): **für den Feinschliff notiert**, mit Ver
 P auf der Form und das Feld des Raums in den Vier Ansichten. Aus B4 gebaut: Ein Entwurf mit P gehört seiner Fläche (ein Klick knapp
 neben dem Feld zählt dazu, statt die Vier Ansichten zu schließen); nach ⌘Z fließt die Haut mit den Linien zurück. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
 ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 27 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
-`ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
+`ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs` (gemeinsame Teile in `ozzy-teile.mjs`; die Zählung der Züge ist seit dem 18.11. die Probe `ozzy-zuege-fenster.mjs`).
 
 ## 1. Einstieg
 
