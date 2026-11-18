@@ -4,11 +4,13 @@
 // bedienbar sein und möglichst rund … Ich möchte auch objekte voneinander subtrahieren können, sodass eine saubere kante entsteht.“
 //
 // Zwei freie Kugeln mit je drei Linien: A (Halbmesser 150, im Ursprung) und B (Halbmesser 90, seitlich versetzt, auch quer zur
-// Spiegelebene). Der Schnitt der beiden Netze kommt von der Bibliothek Manifold (`form-naht-teile.ts`).
+// Spiegelebene). Verbunden wird mit dem Baustein von Ozzy (`src/form/naht.ts`: der Schnitt der Netze kommt von der Bibliothek
+// Manifold, die Linien werden an der Naht geschnitten); diese Probe misst, was dabei herauskommt.
 //
 // Stufe 1 (die Haut): Die verbundene Haut ist geschlossen, die Naht ist eine geschlossene Kette, nichts ist umgeschlagen, der
 //   Rauminhalt stimmt (A + B − Überschneidung), die Punkte beider Formen außerhalb der anderen liegen genau, wo sie lagen.
-// Stufe 2 (die Linien): steht in `form-naht-linien.ts` (wird hier aufgerufen, sobald Stufe 1 hält).
+// Stufe 2 (die Linien): geschnitten an der Naht, die Rechnung von heute kommt zur Ruhe, ein Punkt der Naht lässt sich ziehen.
+// Stufe 3 und 4: K an der Naht (wie heute, im Streifen `STREIFEN=15,30`, mit Begleitlinien `BEGLEIT=<Abstand>`).
 // Aufruf aus packages/shape: [BLATT=<pfad ohne Endung>] [ART=abziehen] npx vite-node ../../apps/editor/scripts/pruefen/form-naht.ts
 import { spiegelAnwenden } from '../../../../packages/shape/src/dicht/frei';
 import type { Haut } from '../../../../packages/shape/src/dicht/kurven';
@@ -37,7 +39,8 @@ import { flaechenAbstand } from './flaechenabstand';
 import { type BlattBild, type BlattLinie, blattSchreiben } from './form-direkt-blatt';
 import { nachVerdichten } from './form-direkt-faelle';
 import { heute, kopie, loopsKopie, randKnick } from './form-donut-teile';
-import { hautVersetzt, linienVerbinden, loopVersetzt, verbinden } from './form-naht-teile';
+import { objekteVerbinden } from '../../src/form/naht';
+import { hautVersetzt, loopVersetzt } from './form-naht-teile';
 
 const z1 = (x: number): string => x.toFixed(1).replace('.', ',');
 const z2 = (x: number): string => x.toFixed(2).replace('.', ',');
@@ -72,15 +75,35 @@ const K = 0.6;
 const D = BEGLEIT > 0 ? { x: 180, y: 0, z: 0 } : { x: 170, y: 50, z: 30 };
 const DREH = BEGLEIT > 0 ? 35 : 0;
 const hB = hautVersetzt(B0.h, K, D, DREH);
-const loopsB = B0.loops.map((l) => loopVersetzt(l, K, D, 1000, DREH));
+const loopsB = B0.loops.map((l) => loopVersetzt(l, K, D, 0, DREH));
 
 console.log(`A: ${A.h.n} Punkte, ${A.h.tri.length / 3} Dreiecke, Kante ${z1(mittlereKante(A.h))} · B: ${hB.n} Punkte, Kante ${z1(mittlereKante(hB))} · ${ART}`);
-const r = await verbinden(A.h, hB, ART);
-if ('fehler' in r) {
-  console.log(`FEHL verbinden: ${r.fehler}`);
+const E = await objekteVerbinden({ haut: A.h, loops: A.loops, spiegelbild: false }, { haut: hB, loops: loopsB, spiegelbild: false }, ART, { naechsteId: 1000, naechsteKreuzung: 5000 });
+if ('fehler' in E) {
+  console.log(`FEHL verbinden: ${E.fehler}`);
   process.exit(1);
 }
-const h = r.haut;
+const h = E.haut;
+const istNaht = (l: Loop): boolean => E.naehte.includes(l.id);
+/** der Rauminhalt eines geschlossenen Netzes */
+const inhaltVon = (hh: Haut): number => {
+  let s = 0;
+  for (let t = 0; t < hh.tri.length; t += 3) {
+    const [a, b, c] = [hh.tri[t]!, hh.tri[t + 1]!, hh.tri[t + 2]!].map((v) => [hh.pos[3 * v]!, hh.pos[3 * v + 1]!, hh.pos[3 * v + 2]!]) as [number[], number[], number[]];
+    s += a[0]! * (b[1]! * c[2]! - b[2]! * c[1]!) + a[1]! * (b[2]! * c[0]! - b[0]! * c[2]!) + a[2]! * (b[0]! * c[1]! - b[1]! * c[0]!);
+  }
+  return s / 6;
+};
+// woher jeder Punkt der neuen Haut kommt (0: von A, 1: von B, 2: neu), über seine genaue Lage
+const ort = (hh: Haut, v: number): string => `${hh.pos[3 * v]},${hh.pos[3 * v + 1]},${hh.pos[3 * v + 2]}`;
+const orteA = new Set(Array.from({ length: A.h.n }, (_, v) => ort(A.h, v)));
+const orteB = new Set(Array.from({ length: hB.n }, (_, v) => ort(hB, v)));
+const r = {
+  quelle: Uint8Array.from({ length: h.n }, (_, v) => (orteA.has(ort(h, v)) ? 0 : orteB.has(ort(h, v)) ? 1 : 2)),
+  naehte: E.loops.filter(istNaht).map((l) => l.proben.map((p) => p.ecken[0])),
+  inhalt: { a: inhaltVon(A.h), b: inhaltVon(hB), aus: inhaltVon(h) },
+  ms: E.ms,
+};
 // ---------- Stufe 1 ----------
 const neu = Array.from(r.quelle).filter((q) => q === 2).length;
 const vonA = Array.from(r.quelle).filter((q) => q === 0).length;
@@ -139,20 +162,10 @@ const legen = (hh: Haut, ls: readonly Loop[]): void => {
 const linieBild = (hh: Haut, l: Loop): BlattLinie => ({ p: Array.from(hautLagen(hh, l)), zu: l.art !== 'ring', hart: l.kante ? 1 : 0 });
 const punkteBild = (ls: readonly Loop[]): number[][] => ls.flatMap((l) => l.punkte.filter((p) => !p.vonSelbst).map((p) => [p.ref.x, p.ref.y, p.ref.z]));
 const bilder: BlattBild[] = [];
-const L2 = linienVerbinden(r, A.h, A.loops, hB, loopsB, { naechsteId: 1, naechsteKreuzung: 5000 });
-if ('fehler' in L2) {
-  console.log(`FEHL die Linien: ${L2.fehler}`);
-  process.exit(1);
-}
+const L2 = { geschnitten: E.geschnitten, weg: E.weg, kreuzungen: E.enden, neben: E.neben };
 let haut = h;
-let loops = L2.loops;
+let loops = E.loops;
 const mk = mittlereKante(haut);
-const istNaht = (l: Loop): boolean => L2.naehte.includes(l.id);
-// die Naht bekommt ihre Griffe aus ihrer Kette (Punkte dazu nur, wo ihr Pfad sonst weiter als ein Viertel einer Kante daneben läge)
-for (const l of loops) if (istNaht(l)) griffeAnlegen(l, l.ruhe, true, 0.25 * mk);
-eckenAuto(loops);
-// jede Probe an ihre Stelle auf dem Pfad ihrer Linie
-for (const l of loops) if (hatPfad(l)) pfadParameter(l);
 const offen = loops.filter((l) => l.art === 'ring');
 const naht0 = loops.find(istNaht)!;
 ok(
