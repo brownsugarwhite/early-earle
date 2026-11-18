@@ -42,7 +42,15 @@ export type WesenStand = {
   /** wann und unter welcher Adresse (Schalter) gesichert, zur Auskunft */
   zeit: string;
   quelle: string;
+  /**
+   * Ozzy (18.11.2026): der Spiegel dieser Form, ihr Maß im Raum und die weiteren Objekte der Szene. Fehlt in älteren Dateien und in
+   * denen des Prüffensters (dann: ein Objekt, Spiegel mit Clipping). Das Prüffenster liest davon nichts: Es lädt diese Form allein.
+   */
+  ozzy?: OzzySzene;
 };
+/** ein Objekt in Ozzy: seine Kennung, sein Spiegel (`werk.G.clipping`, `werk.G.spiegelbild`) und sein Maß im Raum (Ort = Werk / f + mitte) */
+export type OzzyObjekt = { id: number; spiegel: { clipping: boolean; spiegelbild: boolean }; mass: { f: number; mitte: { x: number; y: number } } };
+export type OzzySzene = OzzyObjekt & { objekte: (OzzyObjekt & { stand: WesenStand })[] };
 
 const KENNUNG = 'EEKW1\n';
 const ARTEN = {

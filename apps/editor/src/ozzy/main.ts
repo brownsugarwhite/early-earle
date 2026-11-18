@@ -28,7 +28,7 @@ import { GRUNDWERTE as BLASE_GRUNDWERTE, REGLER as BLASE_REGLER, type Werte as B
 import { FluessigeAnzeige, type Koerper as LinienKoerper, type Szene, ZEIGER_PUNKTE } from '../linien/fluessig';
 import { REGLER as LINIEN_REGLER } from '../linien/regler';
 import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Ansicht as LinienAnsicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
-import { auskunft, packen, pruefen, zusammen } from '../form/ablage';
+import { type OzzyObjekt, type OzzySzene, type WesenStand, auskunft, packen, pruefen, zusammen } from '../form/ablage';
 import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
@@ -554,13 +554,35 @@ const nahtMarken: NahtMarke[] = [];
  * Reihe nach (rascher, die Kamera bleibt dabei im Raum). `erste`: die Kennung der größten, sie ist am Ende das aktive Objekt;
  * `imRaum`: Die erste steht schon, jetzt folgen die anderen; `zahl`: so viele Formen sind es zusammen.
  */
-let reihe: { warten: ReturnType<Blatt['netzKopie']>[]; erste: number; imRaum: boolean; zahl: number } | null = null;
+let reihe: { warten: (ReturnType<Blatt['netzKopie']> | Geladen)[]; erste: number; imRaum: boolean; zahl: number; geladen?: string } | null = null;
+/** ein Objekt einer geladenen Szene, das noch aufs Aufblasen wartet: sein Stand, seine Kennung, sein Spiegel und sein Maß im Raum */
+type Geladen = OzzyObjekt & { stand: WesenStand; name: string };
+const istGeladen = (x: ReturnType<Blatt['netzKopie']> | Geladen): x is Geladen => 'stand' in x;
+/** der Kasten eines Stands im Raum (aus seiner Haut und seinem Maß) */
+function standKasten(st: WesenStand, mass: OzzyObjekt['mass']): { cx: number; cy: number; rx: number; ry: number; tiefe: number } {
+  const P = st.haut.pos;
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  let z = 0;
+  for (let i = 0; i < P.length; i += 3) {
+    x0 = Math.min(x0, P[i]!);
+    x1 = Math.max(x1, P[i]!);
+    y0 = Math.min(y0, P[i + 1]!);
+    y1 = Math.max(y1, P[i + 1]!);
+    z = Math.max(z, Math.abs(P[i + 2]!));
+  }
+  const f = mass.f;
+  return { cx: (x0 + x1) / 2 / f + mass.mitte.x, cy: (y0 + y1) / 2 / f + mass.mitte.y, rx: (x1 - x0) / 2 / f, ry: (y1 - y0) / 2 / f, tiefe: z / f };
+}
 /** so viel rascher blasen die folgenden Formen einer Reihe auf */
 const REIHE_TEMPO = 2.5;
 /** die Kästen der Formen, die in der Reihe noch warten, im Raum (die Tiefe geschätzt: eine runde Form ist so dick wie schmal) */
 function reiheKaesten(): { cx: number; cy: number; rx: number; ry: number; tiefe: number }[] {
   if (!reihe) return [];
   return reihe.warten.flatMap((n) => {
+    if (istGeladen(n)) return [standKasten(n.stand, n.mass)];
     const k = Blatt.kasten(n);
     if (!k) return [];
     const rx = (k.x1 - k.x0) / 2;
@@ -649,7 +671,7 @@ let ruheSicht = 1;
 const RUHE_AUF_DEM_BLATT = 0.38;
 /** das Netz aller ruhenden Objekte, wie die Seifenhaut es zeigt (neu, wenn sich ihre Reihe ändert) */
 let ruheNetzGemerkt: { schl: string; netz: HautNetz | null } = { schl: '', netz: null };
-const objektName = (): string => werk.G.ablageName || (ruhende.length || aktivId > 1 ? `Form ${aktivId}` : 'Form');
+const objektName = (): string => (ruhende.length ? `Form ${aktivId}` : werk.G.ablageName || (aktivId > 1 ? `Form ${aktivId}` : 'Form'));
 
 /** mehrere Netze der Seifenhaut zu einem (die Lagen liegen alle im Raum) */
 function netzeVereinen(netze: readonly HautNetz[]): HautNetz {
@@ -1579,12 +1601,45 @@ const LADEN_GROESSE = 0.25;
  * Solange die Zeichnung nicht geändert wird, bleibt die geladene Form mit allen Linien, auch nach Luftablassen und Aufblasen.
  */
 async function formLaden(name: string): Promise<string> {
+  const st = await werk.wesenHolen(name);
+  if (typeof st === 'string') return st;
   neu();
+  // die Objekte der Datei: das gesicherte aktive (der Stand selbst) und die weiteren (`ozzy.objekte`); eine ältere Datei hat eins
+  const sz: OzzySzene | undefined = st.ozzy;
+  const haupt: Geladen = { id: sz?.id ?? 1, spiegel: sz?.spiegel ?? { clipping: true, spiegelbild: true }, mass: sz?.mass ?? { f: 1, mitte: { x: 0, y: 0 } }, stand: st, name };
+  const weitere: Geladen[] = (sz?.objekte ?? []).filter((o) => pruefen(o.stand) === null).map((o) => ({ id: o.id, spiegel: o.spiegel, mass: o.mass, stand: o.stand, name }));
+  const alle = [...weitere, haupt];
+  // die Szene mittig und in der gewohnten Größe aufs Blatt (ohne gesichertes Maß: die Form allein, wie bisher)
+  const kaesten = alle.map((o) => standKasten(o.stand, o.mass));
+  const x0 = Math.min(...kaesten.map((k) => k.cx - k.rx));
+  const x1 = Math.max(...kaesten.map((k) => k.cx + k.rx));
+  const y0 = Math.min(...kaesten.map((k) => k.cy - k.ry));
+  const y1 = Math.max(...kaesten.map((k) => k.cy + k.ry));
+  const q = (LADEN_GROESSE * Math.min(W, H)) / Math.max((x1 - x0) / 2, (y1 - y0) / 2, 1e-6);
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  for (const o of alle) o.mass = { f: o.mass.f / q, mitte: { x: (o.mass.mitte.x - cx) * q, y: (o.mass.mitte.y - cy) * q } };
+  objektZaehler = Math.max(...alle.map((o) => o.id));
+  const erstes = alle.shift()!;
+  if (alle.length) reihe = { warten: alle, erste: haupt.id, imRaum: false, zahl: alle.length + 1, geladen: name };
+  const text = standAufsBlatt(erstes);
+  return `geladen: „${name}“ (${auskunft(st)}${weitere.length ? `, dazu ${weitere.length} weitere${weitere.length === 1 ? 's Objekt' : ' Objekte'}` : ''})${text}`;
+}
+
+/**
+ * Ein geladenes Objekt wird das aktive und bläst auf: Das Werk übernimmt seinen Stand, seine Linie der Mitte kommt als Zeichnung aufs
+ * Blatt (ohne Linie der Mitte: eine Ellipse um seine Seite), an seinem Ort und in seiner Größe (`mass`). Zurück: der Text des Werks.
+ */
+function standAufsBlatt(o: Geladen): string {
   werkHaut.neueForm();
   werkBlatt.neueForm();
   spiegelGrundstellung();
-  const text = await werk.wesenLaden(name);
-  if (!text.startsWith('geladen')) return text;
+  aktivId = o.id;
+  const text = werk.wesenUebernehmen(o.stand, o.name);
+  // (der Schritt, den das Übernehmen angelegt hat, führte zur Form des vorigen Objekts zurück: Jedes Objekt beginnt mit leerem Rückweg)
+  werk.zurueck.length = 0;
+  werk.G.clipping = o.spiegel.clipping;
+  werk.G.spiegelbild = o.spiegel.spiegelbild;
   werk.anzeige.allesZeigen();
   const P = werk.haut.pos;
   let x0 = Infinity;
@@ -1597,9 +1652,9 @@ async function formLaden(name: string): Promise<string> {
     y0 = Math.min(y0, P[i + 1]!);
     y1 = Math.max(y1, P[i + 1]!);
   }
-  const f = Math.max((x1 - x0) / 2, (y1 - y0) / 2, 1e-6) / (LADEN_GROESSE * Math.min(W, H));
+  const f = o.mass.f;
   werkHaut.f = f;
-  werkHaut.mitte = { x: -(x0 + x1) / 2 / f, y: -(y0 + y1) / 2 / f };
+  werkHaut.mitte = { ...o.mass.mitte };
   const bx = (x: number): number => W / 2 + x / f + werkHaut.mitte.x;
   const by = (y: number): number => H / 2 - (y / f + werkHaut.mitte.y);
   const m = mitteLinie();
@@ -1612,8 +1667,8 @@ async function formLaden(name: string): Promise<string> {
     const rx = (x1 - x0) / 2 / f;
     const ry = (y1 - y0) / 2 / f;
     const k = 0.5523;
-    const cx = W / 2;
-    const cy = H / 2;
+    const cx = bx((x0 + x1) / 2);
+    const cy = by((y0 + y1) / 2);
     A = [
       { x: cx + rx, y: cy, ein: [0, k * ry], aus: [0, -k * ry] },
       { x: cx, y: cy - ry, ein: [k * rx, 0], aus: [-k * rx, 0] },
@@ -1625,7 +1680,7 @@ async function formLaden(name: string): Promise<string> {
   blatt.silhouetteErsetzen(A, ecken);
   silhouette = blatt.silhouette();
   netzBauen();
-  werkForm = { stand: blatt.stand, zurueck: werk.zurueck.length, geladen: name };
+  werkForm = { stand: blatt.stand, zurueck: werk.zurueck.length, geladen: o.name };
   pinselNachForm();
   uebergabe = null;
   werkNeu = true;
@@ -2015,7 +2070,7 @@ function reiheSchritt(): boolean {
   if (!R.warten.length) {
     reihe = null;
     objektAktivieren(R.erste);
-    werk.G.meldung = `${R.zahl} Formen aufgeblasen · V wählt eine Form (Klick), das Plus fügt weitere hinzu`;
+    werk.G.meldung = R.geladen !== undefined ? `geladen: „${R.geladen}“ mit ${R.zahl} Objekten` : `${R.zahl} Formen aufgeblasen · V wählt eine Form (Klick), das Plus fügt weitere hinzu`;
     anstossen();
     return false;
   }
@@ -2026,6 +2081,10 @@ function reiheSchritt(): boolean {
   werkHaut = new WerkHaut();
   ruheZeigen();
   neu(true);
+  if (istGeladen(n)) {
+    standAufsBlatt(n);
+    return true;
+  }
   aktivId = ++objektZaehler;
   blatt.netzSetzen(n);
   aufblasen();
@@ -6628,8 +6687,11 @@ async function formSichern(name: string): Promise<string> {
   for (const t0 = performance.now(); rechnet() && performance.now() - t0 < 5000; ) await new Promise((weiter) => setTimeout(weiter, 30));
   if (werk.zug) return 'Sichern: bitte erst den Zug beenden';
   const st = werk.standJetzt();
+  // Ozzy: der Spiegel dieser Form, ihr Maß im Raum und die weiteren Objekte der Szene (jedes mit seinem Stand)
+  const weitere = ruhende.map((r) => ({ id: r.id, spiegel: { clipping: r.stand.clipping, spiegelbild: r.stand.spiegelbild }, mass: { f: r.haut.f, mitte: { ...r.haut.mitte } }, stand: werk.standAus(r.stand.stand) }));
+  st.ozzy = { id: aktivId, spiegel: { clipping: werk.G.clipping, spiegelbild: werk.G.spiegelbild }, mass: { f: werkHaut.f, mitte: { ...werkHaut.mitte } }, objekte: weitere };
   // ein Stand, der nicht in Ordnung ist, überschriebe sonst eine gute Datei (und ließe sich nicht wieder laden)
-  const mangel = pruefen(st);
+  const mangel = pruefen(st) ?? weitere.map((o) => pruefen(o.stand)).find((x) => x !== null) ?? null;
   if (mangel) return `Sichern geht so nicht: ${mangel} · ⌘Z führt zu einem Stand davor`;
   const datei = new Blob(packen(st) as BlobPart[], { type: 'application/octet-stream' });
   let antwort: Response | null = null;
@@ -6640,7 +6702,9 @@ async function formSichern(name: string): Promise<string> {
   }
   if (!antwort?.ok) return antwort ? `Sichern fehlgeschlagen (${antwort.status} ${await antwort.text().catch(() => '')})` : 'Sichern: Ablage nicht erreichbar';
   werk.G.ablageName = name;
-  return `gesichert: „${name}“ (${auskunft(st)}, ${(datei.size / 1e6).toFixed(1)} MB)`;
+  // (die Szene hat einen Namen: Auch die ruhenden Objekte tragen ihn, ⌘S sichert dann von jedem aus dieselbe Datei)
+  for (const r of ruhende) r.stand.name = name;
+  return `gesichert: „${name}“ (${auskunft(st)}${weitere.length ? `, dazu ${weitere.length} weitere${weitere.length === 1 ? 's Objekt' : ' Objekte'}` : ''}, ${(datei.size / 1e6).toFixed(1)} MB)`;
 }
 
 // Sichern (S11, Florian: „Sichern unter einem Namen, Überschreiben nur nach Frage; ⌘S“): im Menü ein Name und ein Knopf. Einen Namen, den
@@ -7042,6 +7106,8 @@ const haken = {
   tastenZug: () => (tastenZug && werk.zug ? werk.zug.modal : null),
   /** eine gesicherte Form laden (wie Menü → Laden); zurück: die Meldung des Werks */
   laden: (name: string): Promise<string> => formLaden(name),
+  /** die Szene (alle Objekte) unter einem Namen in die Ablage sichern, wie ⌘S */
+  sichern: (name: string): Promise<string> => formSichern(name),
   /** Bearbeiten über das Werk: ob das Verhalten die Flächen hat, Netz, Flächen, Auswahl (Anker und im Werk) */
   /** die Punkte, wie das Verhalten sie sieht (CSS-Pixel), für die Probe des Lassos */
   /** S7: Proben der Linien hinter der Haut (grün) und davor, über alle Flächen */

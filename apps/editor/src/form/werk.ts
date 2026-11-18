@@ -5566,6 +5566,22 @@ export function standJetzt(): WesenStand {
     quelle: `${location.pathname.split('/').pop() ?? ''}${location.search}`,
   };
 }
+/** der Stand eines ruhenden Objekts (sein Schnappschuss) für die Datei, wie `standJetzt` für das aktive */
+export function standAus(s: Schnappschuss): WesenStand {
+  return {
+    mk: s.mk,
+    haut: hautFlach({ ...s.haut, pos: s.pos }),
+    loops: s.loops,
+    ids: [s.ids[0], s.ids[1]],
+    maul: s.maul ? { id: s.maul.id } : null,
+    pose: { kiefer: s.pose.kiefer, schaedel: s.pose.schaedel, delta: s.pose.delta, linien: s.pose.linien ?? null, inRuhe: true },
+    grund: s.grund ? { haut: hautFlach({ ...s.grund.haut, pos: s.grund.pos }), loops: s.grund.loops } : null,
+    ruhe: s.ruhe ? { setzen: s.ruhe.setzen, nurInRuhe: s.ruhe.nurInRuhe, verdichten: s.ruhe.verdichten, ziele: s.ruhe.ziele } : null,
+    sicht: null,
+    zeit: new Date().toISOString(),
+    quelle: `${location.pathname.split('/').pop() ?? ''}${location.search}`,
+  };
+}
 /** die Startform dieser Sitzung (für „Neu“) */
 export const START_STAND: WesenStand = { ...standJetzt(), loops: [] };
 
@@ -5810,6 +5826,16 @@ export function wesenUebernehmen(st: WesenStand, name: string): string {
   const netzText = standAnwenden(st);
   G.ablageName = name;
   return netzText;
+}
+/** eine Datei der Ablage holen und entpacken, ohne sie zu übernehmen (Ozzy: eine Szene mit mehreren Objekten); sonst der Grund als Text */
+export async function wesenHolen(name: string): Promise<WesenStand | string> {
+  try {
+    const r = await fetch(ABLAGE + encodeURIComponent(name));
+    if (!r.ok) return `Laden fehlgeschlagen: „${name}“ (${r.status})`;
+    return entpacken(await r.arrayBuffer());
+  } catch (e) {
+    return `Laden fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`;
+  }
 }
 export async function wesenLaden(name: string): Promise<string> {
   const r = await fetch(ABLAGE + encodeURIComponent(name));

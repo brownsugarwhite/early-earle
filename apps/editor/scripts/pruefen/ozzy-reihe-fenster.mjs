@@ -6,9 +6,17 @@
 //   3  Der Raum steht vom ersten Objekt an (er richtet sich nach allen): Die Kamera bleibt, während die anderen aufblasen.
 //   4  Luft ablassen am aktiven Objekt zeigt nur seine Zeichnung; ↩ bläst dieselbe Form wieder auf, die anderen bleiben.
 //   5  Mit dem Plus: zwei Linien auf dem neuen Blatt werden zwei weitere Objekte.
+//   5b Sichern, neu, laden: Die Datei trägt die ganze Szene (alle Objekte mit Lage, Größe, Spiegel; dasselbe Objekt ist aktiv).
 //   6  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: OZZY_URL=http://localhost:5211/ozzy.html node scripts/pruefen/ozzy-reihe-fenster.mjs [ordner für Bilder]
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { auf, z1 } from './ozzy-teile.mjs';
+
+/** die Probe sichert ihre Szene unter diesem Namen in die Ablage und räumt die Datei wieder weg */
+const PROBE = 'ozzy-probe-szene';
+const dateiProbe = `${fileURLToPath(new URL('../../../../wesen/', import.meta.url))}${PROBE}.eewesen`;
+if (fs.existsSync(dateiProbe)) fs.unlinkSync(dateiProbe);
 
 const ordner = process.argv[2] ?? '';
 let schlecht = 0;
@@ -100,6 +108,38 @@ const o5 = await O('objekte');
 await bild('reihe-4-fuenf');
 const ids5 = [o5.aktiv, ...o5.ruhende.map((r) => r.id)].sort((a, b) => a - b);
 ok('5 das Plus mit zwei Linien: zwei weitere Objekte', ids5.join(',') === '1,2,3,4,5' && o5.aktiv === 4, `Objekte ${ids5.join(', ')}, aktiv ${o5.aktiv}`);
+
+
+// ---------- 5b sichern und laden: die ganze Szene ----------
+await O('spiegelSetzen', 'aus');
+await fertig();
+const lage = (o) => {
+  const alleO = [{ id: o.aktiv, kasten: o.kasten }, ...o.ruhende.map((r) => ({ id: r.id, kasten: r.kasten }))].sort((a, b) => a.id - b.id);
+  const k1 = alleO[0].kasten;
+  // Lage und Größe jedes Objekts gemessen am ersten (die Szene wird beim Laden als Ganzes neu aufs Blatt gelegt)
+  return alleO.map((a) => ({ id: a.id, x: (a.kasten.cx - k1.cx) / k1.rx, y: (a.kasten.cy - k1.cy) / k1.rx, r: a.kasten.rx / k1.rx, t: a.kasten.tiefe / k1.rx }));
+};
+const vor = lage(await O('objekte'));
+const textS = await O('sichern', PROBE);
+await O('neu');
+await s.waitForTimeout(500);
+const textL = await O('laden', PROBE);
+await fertig();
+const o5b = await O('objekte');
+const nach = lage(o5b);
+const sp5b = await O('spiegel');
+let weit5 = 0;
+vor.forEach((a, i) => {
+  const b = nach[i];
+  weit5 = Math.max(weit5, b ? Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.r - b.r) + Math.abs(a.t - b.t) : 9);
+});
+await bild('reihe-5-geladen');
+ok(
+  '5b sichern, neu, laden: dieselben Objekte am selben Ort, dasselbe ist aktiv, sein Spiegel ist „aus“',
+  textS.startsWith('gesichert') && /4 weitere Objekte/.test(textS) && textL.startsWith('geladen') && nach.length === 5 && nach.map((a) => a.id).join(',') === '1,2,3,4,5' && o5b.aktiv === 4 && sp5b.zustand === 'aus' && weit5 < 0.03,
+  `„${textS}“ · „${textL}“ · Objekte ${nach.map((a) => a.id).join(', ')}, aktiv ${o5b.aktiv}, Spiegel ${sp5b.zustand}; größter Unterschied in Lage und Größe (in Halbmessern der ersten Form) ${weit5.toFixed(3)}`,
+);
+if (fs.existsSync(dateiProbe)) fs.unlinkSync(dateiProbe);
 
 ok('6 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
