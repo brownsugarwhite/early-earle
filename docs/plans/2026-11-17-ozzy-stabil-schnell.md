@@ -617,6 +617,29 @@ nicht mehr geben). Alte gesicherte Formen werden beim Laden zur Hälfte. Probe j
 bis 0,1), Zeiten im Kern, Bilder im Fenster; dazu eine größere Prüfform (ein Körper mit vier angesetzten Teilen), damit die Reserve
 sichtbar wird.
 
+**Gebaut, Teil 1 (18.11., nachts; nur der Kern): Gewichte nach der Geometrie und Vermessen auf der Hälfte.** Was du merkst: nichts
+an der Form (dieselbe Haut bis auf Rundung), im Zug rechnet das Werk kürzer. Am „teat firefish“ 8,0 → 6,2 ms je Bild, am „strange
+bird“ 5,9 → 5,1 ms (Fenster, `ozzy-zug-messen.mjs`, derselbe Lauf mit und ohne die Änderung); an „maul handgemacht test“ unverändert
+(8,6 und 8,8 ms).
+
+- **Was gebaut ist:** Seit C1 bleiben auf der Hälfte die Kanten der Mittelebene in der intrinsischen Triangulierung fest; jede
+  Hälfte ist dann für sich trianguliert, beide gleich. Jetzt wird nur noch eine Hälfte trianguliert (`intrinsischeGewichteHalb`,
+  die Hälfte des Netzes je Dreiecksliste einmal bestimmt, `halbNetzVon`), und Krümmungsmaß, Normalen und Vermessen rechnen nur an
+  den Punkten der Hälfte (`messenIntrinsisch`, `vermessen` und `hautNormalenHalb` mit der Hälfte); das Spiegelbild bekommt dieselben
+  Werte gespiegelt. `HautOptionen.gewichteGanz` rechnet zum Vergleichen wie bis zum 18.11.
+- **Gleiche Form** (Kern, `form-halb.ts`, derselbe Zug mit beiden Rechnungen, 60 Runden): Die Häute liegen höchstens 5 · 10⁻¹²
+  („test_kaputt“), 1 · 10⁻¹⁰ („strange bird“) und 6 · 10⁻¹⁰ („teat firefish“) Einheiten auseinander.
+- **Zeiten im Kern** (eine Runde, ms): „test_kaputt“ 1,12 → 0,88; „strange bird“ 5,48 → 4,47; „teat firefish“ 8,41 → 6,65: rund 80 %.
+  Gegen die Rechnung über die ganze Haut ist eine Runde jetzt bei 58 bis 61 % (vorher 73 bis 76 %; erwartet waren 50 bis 60 %).
+  Anteile einer Runde jetzt: Lagen lösen 36 %, Gewichte 25 %, Krümmung verteilen 13 %, Vermessen 8 %, Rest 17 %.
+- **Keine Hälfte, dann wie bisher über die ganze Haut:** ein Punkt ohne Spiegelbild, eine Kante oder ein Dreieck quer über die
+  Mittelebene, ein verkehrt herum gespeichertes Dreieck (zwei Dreiecke durchlaufen eine Kante im selben Sinn; so steht es im Fisch
+  der C1-Probe an der Spitze der Flosse: Dort hängt die Triangulierung an der Reihenfolge der Dreiecke, die Hälfte gäbe anderes
+  als die ganze Haut).
+- **Geprüft:** Tests `halbNetz.test.ts` (Hälfte, die drei Fälle ohne Hälfte, Gewichte, Vermessen, Löser); 190 Tests des Kerns, 25
+  des Fensters, alle 30 Fenster-Proben, im Prüffenster die Donut-Probe und der Zug (`form-halten-probe.mjs`: Rechnen je Bild am
+  „teat firefish“ 5,9 ms).
+
 **D2. Der Spiegel-Schalter: ruht** (Florian, 17.11. nachts: „Lassen wir das mit dem mirror modifier fürs erste. müssen wir noch
 genauer definieren.“). Nicht bauen, bevor er die Stellungen beschrieben hat. Der Entwurf, wie er zur Freigabe vorlag (mittel; Beweis
 im Kern zuerst): ein Tropfen in der Leiste mit drei Stellungen, reihum:

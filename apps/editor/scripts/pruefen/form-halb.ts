@@ -5,7 +5,8 @@
 //   - wie weit die beiden Häute am Ende auseinander liegen (sie sollen dieselbe Form sein)
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-halb.ts
 //   NAME="teat firefish,strange bird,test_kaputt" (gesicherte Formen, wie das Fenster sie lädt)   ZUG="0,40,0"   SCHRITTE=20   ENDE=20
-//   MAL=3 (so oft, die schnellste Zeit zählt)   NUR=ganz|halb (nur eine der beiden Rechnungen)
+//   MAL=3 (so oft, die schnellste Zeit zählt)   NUR=ganz|halb (nur eine der beiden Rechnungen)   ALT=0 (ohne den Vergleich mit den
+//   Gewichten über die ganze Haut, D1)
 import type { Haut } from '../../../../packages/shape/src/dicht/kurven';
 import { falten } from '../../../../packages/shape/src/dicht/kurvenFaelle';
 import { type Loop, LoopZug, istSichtbar, pfadLagen } from '../../../../packages/shape/src/dicht/loops';
@@ -25,7 +26,7 @@ const jetzt = (): number => performance.now();
 type Lauf = { zerlegen: number; runde: number; anteile: string; pos: Float64Array; runden: number };
 
 /** der Zug: der höchste sichtbare Punkt um ZUG, in Schritten, dann Runden am Ende */
-function lauf(h0: Haut, loops0: readonly Loop[], halb: boolean): Lauf {
+function lauf(h0: Haut, loops0: readonly Loop[], halb: boolean, gewichteGanz = false): Lauf {
   let best: Lauf | null = null;
   for (let mal = 0; mal < MAL; mal++) {
     const h: Haut = { ...h0, pos: Float64Array.from(h0.pos) };
@@ -38,7 +39,7 @@ function lauf(h0: Haut, loops0: readonly Loop[], halb: boolean): Lauf {
     );
     const w = wahl!;
     const t0 = jetzt();
-    const z = new LoopZug(h, loops, null, true, 'kurven', 'geometrie', { halb });
+    const z = new LoopZug(h, loops, null, true, 'kurven', 'geometrie', gewichteGanz ? { halb, gewichteGanz } : { halb });
     const zerlegen = jetzt() - t0;
     // die Linien auf ihren Pfaden, der gewählte Punkt (an einer Kreuzung alle seine Punkte) verschoben
     const ziel = loops.map((l) => {
@@ -75,6 +76,13 @@ for (const name of NAMEN) {
   if (ganz) console.log(`   ganz: Zerlegen ${z1(ganz.zerlegen)} ms, Runde ${z2(ganz.runde)} ms (${ganz.anteile})`);
   const halb = NUR === 'ganz' ? null : lauf(h, loops, true);
   if (halb) console.log(`   halb: Zerlegen ${z1(halb.zerlegen)} ms, Runde ${z2(halb.runde)} ms (${halb.anteile})`);
+  // D1 (18.11.): auf der Hälfte gelöst, aber Gewichte und Krümmungsmaß noch über die ganze Haut (wie bis zum 18.11.)
+  const alt = NUR === 'ganz' || process.env.ALT === '0' ? null : lauf(h, loops, true, true);
+  if (alt && halb) {
+    let weit = 0;
+    for (let i = 0; i < alt.pos.length; i += 3) weit = Math.max(weit, Math.hypot(alt.pos[i]! - halb.pos[i]!, alt.pos[i + 1]! - halb.pos[i + 1]!, alt.pos[i + 2]! - halb.pos[i + 2]!));
+    console.log(`   halb, Gewichte über die ganze Haut (bis 18.11.): Runde ${z2(alt.runde)} ms (${alt.anteile}); die Runde jetzt ${Math.round((100 * halb.runde) / alt.runde)} % davon; die Häute liegen höchstens ${weit.toExponential(1)} auseinander`);
+  }
   if (ganz && halb) {
     let weit = 0;
     let summe = 0;

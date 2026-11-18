@@ -44,7 +44,7 @@
 
 import type { NormalSystem, NormalZeile } from '../loeser/normalSystem';
 import { normalSystemZerlegt } from '../loeser/zerlegung';
-import { type IntrinsischeGewichte, intrinsischeGewichte } from './intrinsisch';
+import { type HalbNetz, type IntrinsischeGewichte, halbNetzVon, intrinsischeGewichte, intrinsischeGewichteHalb } from './intrinsisch';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, type Vermessung, gewichteAus, hautNormalenMax, laengenGewichte, vermessen } from './kurven';
 import { Wurstfeld } from './wurst';
@@ -89,6 +89,11 @@ export type HautOptionen = {
    * auf der Hälfte (zum Vergleichen), `false` auf der Hälfte die bis zum 17.11.
    */
   mitteFest?: boolean;
+  /**
+   * `true`: Die Gewichte nach der Geometrie und das Maß der Krümmung werden über die ganze Haut gerechnet, auch wenn auf der Hälfte
+   * gelöst wird (wie bis zum 18.11.; zum Vergleichen). Fehlt die Angabe, rechnet beides auf der Hälfte, wo auf ihr gelöst wird.
+   */
+  gewichteGanz?: boolean;
   /**
    * Normalfluss (`FOLGEN_GENAU`; nur nach der Geometrie, nie mit `richtung`). Fehlt die Angabe, rechnet der Löser so nur, wenn eine
    * Linie nur auf der Haut liegt (nicht ins Netz eingesetzt); `true` / `false` erzwingen es (zum Vergleichen).
@@ -465,6 +470,8 @@ export class HautAusKurven {
   /** die Kanten in der Mittelebene bleiben in der intrinsischen Triangulierung (`festGefaltet`) */
   private mitteFest = false;
   private festMitMitte: ((a: number, b: number) => boolean) | null = null;
+  /** D1: die Hälfte des Netzes, auf der die Gewichte nach der Geometrie gerechnet werden (null: über die ganze Haut) */
+  private halbNetz: HalbNetz | null = null;
   /** Schrittweite (`SCHRITT_MAX`): an?; die Korrektur je Punkt in dieser Runde; zum Messen: gebremste Runden, kleinster Anteil */
   private readonly mitSchritt: boolean;
   private korrJe: Float64Array | null = null;
@@ -549,6 +556,7 @@ export class HautAusKurven {
     const falte = geo && opt.halb && !opt.richtung && !opt.wurst && bereich === null ? faltungAnlegen(h, frei, nr) : null;
     this.falte = falte;
     this.mitteFest = geo && (opt.mitteFest ?? falte !== null);
+    this.halbNetz = falte !== null && this.mitteFest && !opt.gewichteGanz ? halbNetzVon(h) : null;
     this.struktur = geo ? strukturSchluessel(h, bereich, bind, gewicht, kanten, ketten, !!opt.richtung, falte !== null) : '';
     // eine Vorlage gilt nur für dieselbe Struktur (Netz, Bindungen, Kanten, Quellen); sonst wird wie ohne sie zerlegt
     const passt = geo && opt.vorlage && (opt.vorlage.struktur === undefined || opt.vorlage.struktur === this.struktur) ? opt.vorlage : null;
@@ -742,7 +750,7 @@ export class HautAusKurven {
     if (gewichte === 'geometrie') {
       // Krümmung beim Anlegen nach der Geometrie (für den Rand des Bereichs), der Vorkonditionierer gleich mit zerlegt (über die ganze
       // Haut gemerkt wie die anderen Systeme; das Fenster rechnet ihn in der Ruhe vor)
-      this.ruhe = { ...ruhe, ...this.messenIntrinsisch(intrinsischeGewichte(h, this.festGefaltet()), ruhe.nor) };
+      this.ruhe = { ...ruhe, ...this.messenIntrinsisch(this.gewichteJetzt(), ruhe.nor) };
       this.cDiag = new Float64Array(0);
       this.sysC = null;
       if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFalte ? this.cFalte.n : this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
@@ -1195,13 +1203,28 @@ export class HautAusKurven {
     return this.cFalte ? gefaltet(zeilen, this.cFalte.sym, null) : zeilen;
   }
 
-  /** Krümmung je Punkt auf der intrinsischen Delaunay-Triangulierung (wie `vermessen`: Normalanteil durch das mittlere Kantenquadrat) */
+  /**
+   * Die Gewichte nach der Geometrie für die Lage von jetzt: auf der Hälfte gerechnet, wo auf ihr gelöst wird (D1; die Kanten der
+   * Mittelebene sind dort der Rand), sonst über die ganze Haut
+   */
+  private gewichteJetzt(): IntrinsischeGewichte {
+    return this.halbNetz ? intrinsischeGewichteHalb(this.h, this.halbNetz, this.fest) : intrinsischeGewichte(this.h, this.festGefaltet());
+  }
+
+  /**
+   * Krümmung je Punkt auf der intrinsischen Delaunay-Triangulierung (wie `vermessen`: Normalanteil durch das mittlere Kantenquadrat).
+   * Auf der Hälfte (D1): gemessen an den Punkten der Hälfte, das Spiegelbild bekommt denselben Wert.
+   */
   private messenIntrinsisch(ig: IntrinsischeGewichte, nor: Float64Array): { kap: Float64Array; kante2: Float64Array } {
     const h = this.h;
     const P = h.pos;
     const kap = new Float64Array(h.n);
     const kante2 = new Float64Array(h.n).fill(1e-9);
-    for (let v = 0; v < h.n; v++) {
+    const H = this.halbNetz;
+    const sp = h.spiegel;
+    const zahl = H ? H.punkte.length : h.n;
+    for (let q = 0; q < zahl; q++) {
+      const v = H ? H.punkte[q]! : q;
       let s = 0;
       let mx = 0;
       let my = 0;
@@ -1219,6 +1242,11 @@ export class HautAusKurven {
       if (!(s > 1e-12)) continue;
       kante2[v] = Math.max(e2 / s, 1e-9);
       kap[v] = (mx * nor[3 * v]! + my * nor[3 * v + 1]! + mz * nor[3 * v + 2]!) / s / kante2[v]!;
+      if (H) {
+        const w = sp[v]!;
+        kante2[w] = kante2[v]!;
+        kap[w] = kap[v]!;
+      }
     }
     return { kap, kante2 };
   }
@@ -1698,14 +1726,14 @@ export class HautAusKurven {
       }
       // mit Richtung an den Linien: Normalen nach Max (sonst misst das Maß im Inneren die Krümmung zu flach, und die genaue Messung an
       // den Linien passt nicht dazu: die Haut bläht sich auf)
-      const m = vermessen(h, this.gew, this.maxNormalen || (this.richtung && MESSREIHE.maxNormalen) ? hautNormalenMax(h) : undefined);
+      const m = vermessen(h, this.gew, this.maxNormalen || (this.richtung && MESSREIHE.maxNormalen) ? hautNormalenMax(h) : undefined, this.halbNetz);
       const t1 = jetzt();
       // nach der Geometrie: gemessen und verteilt auf der intrinsischen Triangulierung der Lage, wie sie jetzt ist
       let geo: { kap: Float64Array; kante2: Float64Array } | null = null;
       let c: Float64Array;
       let seiten: Seiten | null = null;
       if (this.art === 'geometrie') {
-        const ig = intrinsischeGewichte(h, this.festGefaltet());
+        const ig = this.gewichteJetzt();
         geo = this.messenIntrinsisch(ig, m.nor);
         const t2 = jetzt();
         seiten = this.richtung ? this.seitenMessen(this.richtung, m.nor, m.kap) : null;

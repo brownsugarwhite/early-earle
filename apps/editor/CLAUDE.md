@@ -363,6 +363,13 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   deren Punkt: Dort liegt der neue Loop bis einen halben Bildpunkt neben dem Strich. (4) `aufraeumen` richtet zum Schluss auch auf,
   wenn nur gesetzt wurde (`AufraeumAuftrag.aufrichten`); `aufrichtenJetzt` gleich nach dem Schnitt. Proben:
   `ozzy-p-schnitt-fenster.mjs`, `ozzy-p-ueberall-fenster.mjs` (zwölf Lagen, 160 s), Kern `form-vorhang.ts`, Test `vorhang.test.ts`.
+- **Gewichte und Vermessen auf der Hälfte (D1, Teil 1, 18.11.):** `intrinsisch.ts` (`halbNetzVon`, `intrinsischeGewichteHalb`),
+  `vermessen(…, halb)`, `hautNormalenHalb`. Merke: (1) Spiegeln kehrt den Umlaufsinn um: Das Spiegelbild der Halbkante a→b ist
+  b′→a′ (ihr Eintrag steht bei b′). (2) Verglichen wird mit `HautOptionen.gewichteGanz` (Kern `form-halb.ts`, Test
+  `halbNetz.test.ts`); welche Kante geklappt ist, darf sich unterscheiden, wo vier Punkte auf einem Kreis liegen (Gewicht null):
+  Verglichen wird, was der Löser liest (Summe der Gewichte je Nachbar). (3) Ein Netz mit einem verkehrt herum gespeicherten Dreieck
+  hat keine Hälfte (dann wie bisher über die ganze Haut); der Fisch der C1-Probe ist so eins. (4) Die Rechnung setzt genau
+  spiegelgleiche Lagen voraus, wie die Faltung des Lösers.
 - **Felder (C4, 18.11.):** `src/ozzy/werkFelder.ts`. Ein Feld ist die Haut zwischen Linien; gewählt ist es eine Auswahl von Punkten
   des Werks (`werk.G.auswahl`: die sichtbaren Punkte auf seinem Rand) plus die Tönung. Merke: (1) Es hängt an einer Saat (Ort tief im
   Feld) und wird nach jedem Netzwechsel von dort neu gefüllt; es bleibt nur, solange alle Punkte seines Rands gewählt sind

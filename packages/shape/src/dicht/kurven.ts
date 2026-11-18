@@ -768,14 +768,19 @@ export class HautLoeser {
  * Je Punkt der Laplace (Punkt − Mittel der Nachbarn): sein Anteil längs der Normale ist Krümmung · Kantenlänge², der Rest liegt
  * in der Fläche und sagt nur, wie die Punkte verteilt sind (beim Netz aus Surface Nets ist er viel größer).
  */
-export function vermessen(h: Haut, gew: readonly Float64Array[], normalen?: Float64Array): Vermessung {
+export function vermessen(h: Haut, gew: readonly Float64Array[], normalen?: Float64Array, halb?: { V: Int32Array; punkte: Int32Array } | null): Vermessung {
   const n = h.n;
   const P = h.pos;
-  const nor = normalen ?? hautNormalen(h);
+  // `halb` (D1, 18.11.; die Hälfte eines spiegelgleichen Netzes, `halbNetzVon`): gemessen wird an den Punkten der Hälfte, das
+  // Spiegelbild bekommt dieselben Werte gespiegelt
+  const nor = normalen ?? (halb ? hautNormalenHalb(h, halb) : hautNormalen(h));
   const kap = new Float64Array(n);
   const kante2 = new Float64Array(n);
   const tang = new Float64Array(3 * n);
-  for (let i = 0; i < n; i++) {
+  const sp = h.spiegel;
+  const zahl = halb ? halb.punkte.length : n;
+  for (let q = 0; q < zahl; q++) {
+    const i = halb ? halb.punkte[q]! : q;
     const nb = h.nachbarn[i]!;
     const g = gew[i]!;
     let sx = 0;
@@ -803,8 +808,68 @@ export function vermessen(h: Haut, gew: readonly Float64Array[], normalen?: Floa
     tang[3 * i] = lx - k * nor[3 * i]!;
     tang[3 * i + 1] = ly - k * nor[3 * i + 1]!;
     tang[3 * i + 2] = lz - k * nor[3 * i + 2]!;
+    if (halb) {
+      const w = sp[i]!;
+      if (w !== i) {
+        kante2[w] = kante2[i]!;
+        kap[w] = kap[i]!;
+        tang[3 * w] = tang[3 * i]!;
+        tang[3 * w + 1] = tang[3 * i + 1]!;
+        tang[3 * w + 2] = -tang[3 * i + 2]!;
+      }
+    }
   }
   return { nor, kap, kante2, tang };
+}
+
+/**
+ * Wie `hautNormalen`, auf der Hälfte gerechnet (D1, 18.11.2026): die Dreiecke der Hälfte (`V`, 3 je Dreieck), ihre Punkte (`punkte`);
+ * ein Punkt der Mittelebene sieht nur die Dreiecke seiner einen Seite, seine Normale liegt in der Ebene; das Spiegelbild jedes
+ * anderen Punkts bekommt die gespiegelte Normale.
+ */
+export function hautNormalenHalb(h: Haut, halb: { V: Int32Array; punkte: Int32Array }): Float64Array {
+  const nor = new Float64Array(3 * h.n);
+  const p = h.pos;
+  const V = halb.V;
+  const sp = h.spiegel;
+  for (let t = 0; t < V.length; t += 3) {
+    const a = V[t]!;
+    const b = V[t + 1]!;
+    const c = V[t + 2]!;
+    const abx = p[3 * b]! - p[3 * a]!;
+    const aby = p[3 * b + 1]! - p[3 * a + 1]!;
+    const abz = p[3 * b + 2]! - p[3 * a + 2]!;
+    const acx = p[3 * c]! - p[3 * a]!;
+    const acy = p[3 * c + 1]! - p[3 * a + 1]!;
+    const acz = p[3 * c + 2]! - p[3 * a + 2]!;
+    const fx = aby * acz - abz * acy;
+    const fy = abz * acx - abx * acz;
+    const fz = abx * acy - aby * acx;
+    nor[3 * a] = nor[3 * a]! + fx;
+    nor[3 * a + 1] = nor[3 * a + 1]! + fy;
+    nor[3 * a + 2] = nor[3 * a + 2]! + fz;
+    nor[3 * b] = nor[3 * b]! + fx;
+    nor[3 * b + 1] = nor[3 * b + 1]! + fy;
+    nor[3 * b + 2] = nor[3 * b + 2]! + fz;
+    nor[3 * c] = nor[3 * c]! + fx;
+    nor[3 * c + 1] = nor[3 * c + 1]! + fy;
+    nor[3 * c + 2] = nor[3 * c + 2]! + fz;
+  }
+  for (let q = 0; q < halb.punkte.length; q++) {
+    const v = halb.punkte[q]!;
+    const w = sp[v]!;
+    if (w === v) nor[3 * v + 2] = 0;
+    const l = Math.hypot(nor[3 * v]!, nor[3 * v + 1]!, nor[3 * v + 2]!) || 1;
+    nor[3 * v] = nor[3 * v]! / l;
+    nor[3 * v + 1] = nor[3 * v + 1]! / l;
+    nor[3 * v + 2] = nor[3 * v + 2]! / l;
+    if (w !== v) {
+      nor[3 * w] = nor[3 * v]!;
+      nor[3 * w + 1] = nor[3 * v + 1]!;
+      nor[3 * w + 2] = -nor[3 * v + 2]!;
+    }
+  }
+  return nor;
 }
 
 /** Schlüssel einer Kante (a, b) für Kantengewichte */
