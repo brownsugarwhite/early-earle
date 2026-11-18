@@ -67,6 +67,12 @@ export interface Szene {
   fluessig: Fluessig;
   verdecker: Verdecker[];
   ohrspalt: Ohrspalt | null;
+  /**
+   * Weiche Malreihenfolge (Haltungswechsel): deckung[c][b] = Anteil, zu dem das schwarze Teil b über dem weißen c liegt. Fehlt sie,
+   * gilt die Reihenfolge der Liste. Bei einem Anteil zwischen 0 und 1 deckt b das Weiß nur, wo es tiefer als (1 − Anteil)·R in b
+   * liegt: Das Schwarz schiebt sich im Wechsel von innen über das Weiß, statt umzuklappen.
+   */
+  deckung?: number[][] | null;
 }
 /** Figur-Einheiten → Bildpunkte des Zeichenpuffers: px = (x − x0)·massstab */
 export interface Ansicht {
@@ -78,6 +84,8 @@ export interface Ansicht {
 export type Diagnose = 0 | 1 | 2;
 
 export const MAX_TEILE = 24;
+/** höchstens so viele weiße Teile mit weicher Malreihenfolge */
+const MAX_WEISS = 8;
 const NT = 6;
 
 const KOPF = '#version 300 es\nprecision highp float;\nprecision highp int;\n';
@@ -162,6 +170,7 @@ export class FigurRenderer {
         uniform float kBohneBein, kBohneSchwanz, kBohneKopf, kKopfOhr, kOhrOhr, kKopfNase, kKlemme;
         uniform int verdeckerZahl; uniform vec4 verdeckerA[4]; uniform vec2 verdeckerB[4];
         uniform int spaltNah, spaltFern; uniform float spaltBreite, spaltAuslauf; uniform int diagnose;
+        uniform int weichOrdnung; uniform int weissNr[${MAX_TEILE}]; uniform vec4 anteil[${(MAX_WEISS * MAX_TEILE) / 4}];
         out vec4 farbe;
         float smin(float a, float b, float k){ if (k < 1e-4) return min(a, b); float h = max(k - abs(a - b), 0.0) / k; return min(a, b) - h * h * k * 0.25; }
         float smax(float a, float b, float k){ return -smin(-a, -b, k); }
@@ -205,12 +214,19 @@ export class FigurRenderer {
             float w = d[c]; int t = traeger[c];
             if (t >= 0) w = smax(w, d[t] + rand[c], kKlemme);
             if (rv > 0.05) w = smax(w, sil + rv, min(kKlemme, rv));
+            // weiche Malreihenfolge (Haltungswechsel): Schwarz deckt nach seinem Anteil, von innen nach außen; nur gerechnet, wo das
+            // Weiß überhaupt liegt (sonst trägt es nichts bei, auch nicht zum Verschmelzen des Barts)
+            float uc = ueber[c];
+            if (weichOrdnung == 1 && w < 0.5 + kWeiss) { int wi = weissNr[c]; if (wi >= 0) { uc = 1e5;
+              for (int b = 0; b < ${MAX_TEILE}; b++) { if (b >= anzahl) break; if (gruppe[b] < 0) continue;
+                int j = wi * ${MAX_TEILE} + b; float a = anteil[j / 4][j - (j / 4) * 4];
+                if (a > 0.0) uc = min(uc, d[b] + (1.0 - a) * R); } } }
             // Beinfenster: das Schwarz darüber (Haarspitzen, Rand der Maske) zieht sich weich hinein, statt hart abzuschneiden
-            float cw = weichKanal[c] == 1 && kWeissSchwarz > 0.0 ? deck(smax(w, -ueber[c], kWeissSchwarz)) : deck(w) * (1.0 - deck(ueber[c]));
+            float cw = weichKanal[c] == 1 && kWeissSchwarz > 0.0 ? deck(smax(w, -uc, kWeissSchwarz)) : deck(w) * (1.0 - deck(uc));
             int hi = hinter[c]; if (hi >= 0) cw *= 1.0 - deck(d[hi] + hinterTiefe[c]);
             weiss = max(weiss, cw);
             // Bart, wie er nach der Malreihenfolge sichtbar ist (das später gezeichnete Schwarz als Abstand abgezogen)
-            if (weissGruppe[c] == 1) { wBart = min(wBart, max(w, -ueber[c])); ueberBart = min(ueberBart, ueber[c]); } }
+            if (weissGruppe[c] == 1) { wBart = min(wBart, max(w, -uc)); ueberBart = min(ueberBart, uc); } }
           // Bart und Vorderbeinfenster verschmelzen wie Tropfen, sobald sie sich nahekommen (Florian, 18.11.). Das Fenster schiebt
           // sich dafür bis 0,3 k unter Kopf, Ohren und Nase (schmale Haarspitzen und der Rand der Maske trennen dann nicht mehr);
           // sonst gilt die Malreihenfolge. Einfache weiche Vereinigung ohne Kantenrichtung: deren Ableitungen rauschen an Knicken.
@@ -555,6 +571,24 @@ export class FigurRenderer {
     gl.uniform1f(this.ort(this.pBild, 'spaltBreite'), (sp?.breite ?? 0) * s);
     gl.uniform1f(this.ort(this.pBild, 'spaltAuslauf'), Math.max(1e-3, (sp?.auslauf ?? 1) * s));
     gl.uniform1i(this.ort(this.pBild, 'diagnose'), diagnose);
+    // weiche Malreihenfolge: Anteile je weißem Teil (höchstens MAX_WEISS) und schwarzem Teil
+    const nr = new Int32Array(MAX_TEILE).fill(-1);
+    const anteil = new Float32Array(MAX_WEISS * MAX_TEILE);
+    let weichOrdnung = 0;
+    if (szene.deckung) {
+      let k = 0;
+      teile.forEach((t, c) => {
+        const zeile = szene.deckung![c];
+        if (!t.weiss || !zeile?.length || k >= MAX_WEISS) return;
+        nr[c] = k;
+        zeile.forEach((a, b) => (anteil[k * MAX_TEILE + b] = teile[b] && !teile[b]!.weiss ? a : 0));
+        k++;
+      });
+      weichOrdnung = k > 0 ? 1 : 0;
+    }
+    gl.uniform1i(this.ort(this.pBild, 'weichOrdnung'), weichOrdnung);
+    gl.uniform1iv(this.ort(this.pBild, 'weissNr'), nr);
+    gl.uniform4fv(this.ort(this.pBild, 'anteil'), anteil);
     this.attr(this.pBild, 'a', this.bufQuad, 2, 0, 0, 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     if (zeit && abfrage) {

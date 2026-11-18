@@ -268,3 +268,8 @@ Aufbau (ersetzt die feste Kette Stehen → Sitzen → Liegen):
 
 Proben: an allen Vorlagen exakt; kein Teil je unter dem Boden; jeder Übergang ohne Sprung (Schritt je Bild begrenzt); zufällige
 Mischungen und Kopfwinkel ohne Fehler; Malreihenfolge ohne sichtbares Springen.
+
+**Stand (18.11. nachts): 1 bis 6 gebaut**, Proben bestanden (Einzelheiten in `docs/look/ozzy-figur/UEBERGABE.md`, Etappe D, zweiter
+Teil). Dazu gekommen, weil die Proben es verlangten: Knochenkette (Beine, Schwanz, Kopf hängen an der Bohne; was steht, bleibt
+stehen), fehlende Teile ziehen sich ins Bein zurück, weiche Malreihenfolge (Schwarz schiebt sich von innen über Weiß, statt beim
+Wechsel der führenden Haltung umzuklappen). Florians Urteil steht aus.

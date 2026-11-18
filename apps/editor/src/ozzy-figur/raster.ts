@@ -9,7 +9,7 @@ import type { Fluessig, RenderTeil, Szene, Verdecker } from './renderer';
 import { gruppeVon, weissGruppeVon } from './szenen';
 import { type AnsichtName, type FigurAnsicht, type FigurDaten, type TeilName, teilVon } from './vorlagen/import';
 import { ZWISCHEN } from './vorlagen/zwischen';
-import { Haltungen } from './haltung';
+import { type Gewichte, gewichteAus, HALTUNGEN, Haltungen } from './haltung';
 
 // ---- Interpolation ------------------------------------------------------------------------------------------------------
 
@@ -142,14 +142,18 @@ export interface Lage {
   psi: number;
   /** Kopf zur Kamera: 0 vorn, 45, 90 Profil */
   theta: number;
-  /** Haltung in der Seite (nur mit ψ = 90): 0 Stehen, 1 Sitzen, 2 Liegen */
+  /** Haltung in der Seite (nur mit ψ = 90) als Kette: 0 Stehen, 1 Sitzen, 2 Liegen */
   haltung?: number;
+  /** Haltung in der Seite als Gewichte (geht vor `haltung`) */
+  posen?: Gewichte;
 }
 export interface RasterRegeln {
   /** Verdecken auf der abgewandten Kopfseite zwischen den Schlüsseln (0 = aus) */
   verdecken: number;
 }
 
+/** Rand der Fenster in ihrem Bein während eines Haltungswechsels (Figur-Einheiten) */
+const FENSTER_RAND_WECHSEL = 3;
 const KOERPER: TeilName[] = ['bohne', 'beinRV', 'beinRH', 'beinLV', 'beinLH', 'keilV', 'keilH', 'fensterRV', 'fensterRH', 'fensterLV', 'schwanz', 'schwanzW'];
 const KOPF: TeilName[] = ['ohrB', 'ohrSpalt', 'ohrA', 'kopfB', 'kopfA', 'bartA', 'bartB', 'nase'];
 const BEINE: TeilName[] = ['beinRV', 'beinRH', 'beinLV', 'beinLH'];
@@ -301,6 +305,20 @@ export class FigurRaster {
     const nurKoerper = new Map([...stehVorn].filter(([n]) => KOERPER.includes(n)));
     const nurKopf = (m: Map<TeilName, Form>): Map<TeilName, Form> => new Map([...m].filter(([n]) => KOPF.includes(n)));
     this.haltungen = new Haltungen(d, nurKoerper, { vorn: nurKopf(stehVorn), profil: nurKopf(stehProfil) });
+    // tiefster Punkt jeder Haltung (vorn, Profil) ohne Bodenregel: Bezug der Regel, damit sie an den Vorlagen nichts ändert
+    for (const [reihe, theta] of [['vorn', 0], ['profil', 90]] as const)
+      this.haltungen.boden[reihe] = HALTUNGEN.map((x, i) => (i === 0 ? 0 : FigurRaster.tiefster(this.teile({ psi: 90, theta, posen: { [x.name]: 1 } }, true, true))));
+  }
+
+  /** tiefster Punkt (größtes y) der schwarzen Teile */
+  static tiefster(liste: { weiss: boolean; form: Form }[]): number {
+    let tief = -Infinity;
+    for (const t of liste) {
+      if (t.weiss) continue;
+      const pts = abflachen(t.form, (q) => q, 1);
+      for (let k = 1; k < pts.length; k += 2) tief = Math.max(tief, pts[k]!);
+    }
+    return tief;
   }
 
   /** Spitzen je Kopfteil (Index), die zwischen 45° und 90° im Rahmen ihrer Nachbarn geführt werden */
@@ -429,7 +447,12 @@ export class FigurRaster {
   }
 
   /** alle Teile in Körperkoordinaten an einer Lage, in Malreihenfolge */
-  teile(lage: Lage, mitBohnenenden = true): { name: TeilName; weiss: boolean; form: Form; rand?: number }[] {
+  teile(
+    lage: Lage,
+    mitBohnenenden = true,
+    ohneBoden = false,
+    aus?: { deckung?: number[][] | null },
+  ): { name: TeilName; weiss: boolean; form: Form; rand?: number }[] {
     const psi = Math.max(0, Math.min(90, lage.psi));
     const theta = Math.max(0, Math.min(90, lage.theta));
     const koerper = new Map<TeilName, Form>();
@@ -444,19 +467,20 @@ export class FigurRaster {
       }
     }
     // Haltung (Sitzen, Liegen): Körper aus den Knochen der Haltungen (nur in der Seite)
-    const h = this.haltungen ? Math.max(0, Math.min(2, lage.haltung ?? 0)) : 0;
-    if (h > 1e-6) {
-      for (const [n, f] of this.haltungen!.koerper(h, theta)) koerper.set(n, f);
+    const g: Gewichte | null = !this.haltungen ? null : (lage.posen ?? (lage.haltung ? gewichteAus(lage.haltung) : null));
+    const pose = !!g && !Haltungen.stehtNur(g);
+    if (pose) {
+      for (const [n, f] of this.haltungen!.koerper(g!, theta)) koerper.set(n, f);
       FigurRaster.weissHinterSchwarz(koerper, 'schwanzW', 'bohne');
     } else if (mitBohnenenden) this.bohnenendenSetzen(koerper, psi);
     const hals = this.halsBei(psi);
     const vx = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.x), theta);
     const vy = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.y), theta);
     const kopf = new Map<TeilName, Form>();
-    const dk: Punkt = h > 1e-6 ? this.haltungen!.kopfVersatz(h, theta) : [0, 0];
+    const dk: Punkt = pose ? this.haltungen!.kopfVersatz(g!, theta) : [0, 0];
     for (const [n, keys] of this.kopf) {
       const f = verschieben(this.spitzenFuehren(n, formAusSchluesseln(keys, theta), theta), hals[0] + vx + dk[0], hals[1] + vy + dk[1]);
-      kopf.set(n, h > 1e-6 ? this.haltungen!.kopfKorrektur(n, f, h, theta) : f);
+      kopf.set(n, pose ? this.haltungen!.kopfKorrektur(n, f, g!, theta) : f);
     }
     // Malreihenfolge (an den Schlüsseln wie in Florians Dateien): Ohren, Bohne, Beine von fern nach nah, Keile, Schwanz (sein Weiß
     // liegt vorn hinter der Bohne und tritt bis 45° weich davor), Fenster, Kopfmasken, Bart, Nase. Das Fenster links vorn liegt vorn über der Haarspitze von Maske B, das rechts vorn in der
@@ -472,14 +496,30 @@ export class FigurRaster {
     reihe.push('kopfA');
     if (psi > 67.5) reihe.push('fensterRV');
     reihe.push('bartA', 'bartB', 'nase');
-    const malen = h >= 0.5 ? this.haltungen!.reihe(h, theta, reihe) : reihe;
-    return malen.map((n) => {
+    const malen = pose ? this.haltungen!.reihe(g!, theta, reihe) : reihe.slice();
+    // Sohlen (Beine, die zur Kamera zeigen) direkt nach ihrem Bein
+    for (const n of BEINE) {
+      const sohle = ('sohle' + n.slice(4)) as TeilName;
+      if (koerper.has(sohle)) malen.splice(malen.indexOf(n) + 1, 0, sohle);
+    }
+    const liste = malen.map((n) => {
       const form = koerper.get(n) ?? kopf.get(n)!;
       const t: { name: TeilName; weiss: boolean; form: Form; rand?: number } = { name: n, weiss: n.startsWith('fenster') || n === 'schwanzW' || n === 'ohrSpalt' || n.startsWith('bart'), form };
       const kl = this.klemme.get(n);
       if (kl) t.rand = pchip(kl.map((x) => x.w), kl.map((x) => x.rand), psi);
+      // während eines Haltungswechsels bleiben die Fenster mit einem kleinen Rand in ihrem Bein (gekrümmte Beine), an den Vorlagen wie gezeichnet
+      if (pose && n.startsWith('fenster') && t.rand !== undefined) t.rand += (FENSTER_RAND_WECHSEL - t.rand) * (1 - Haltungen.groesstes(g!));
       return t;
     });
+    // weiche Malreihenfolge zwischen den Haltungen (der Renderer deckt nach Anteilen, statt beim Wechsel der führenden umzuklappen)
+    if (aus) aus.deckung = pose ? this.haltungen!.deckung(g!, theta, liste, reihe) : null;
+    // Bodenregel in den Haltungen: Ozzy ruht mit seinem tiefsten Punkt auf dem Boden (nichts sinkt ein, nichts schwebt); an Florians
+    // Vorlagen liegt der tiefste Punkt schon auf dem Boden
+    if (pose && !ohneBoden) {
+      const tief = FigurRaster.tiefster(liste) - this.haltungen!.bodenBei(g!, theta);
+      if (Number.isFinite(tief) && Math.abs(tief) > 1e-9) for (const t of liste) t.form = verschieben(t.form, 0, -tief);
+    }
+    return liste;
   }
 
   /**
@@ -540,8 +580,9 @@ export class FigurRaster {
   /** die Vorlage, die an dieser Lage genau getroffen werden soll (Körperkoordinaten), sonst null */
   vorlage(lage: Lage): { ansicht: AnsichtName; formen: Form[] } | null {
     const nahe = (a: number, b: number): boolean => Math.abs(a - b) < 0.6;
-    if (this.haltungen && (lage.haltung ?? 0) > 0.5 && nahe(lage.psi, 90)) {
-      const n = this.haltungen.vorlageBei(lage.haltung!, lage.theta);
+    const g = lage.posen ?? (lage.haltung ? gewichteAus(lage.haltung) : null);
+    if (this.haltungen && g && !Haltungen.stehtNur(g) && nahe(lage.psi, 90)) {
+      const n = this.haltungen.vorlageBei(g, lage.theta);
       if (!n) return null;
       const u = this.ursprung(n);
       return { ansicht: n, formen: this.ansichten[n].teile.map((x) => verschieben(x.form, -u[0], -u[1])) };
@@ -564,7 +605,8 @@ export class FigurRaster {
 
   /** Szene für den Renderer */
   szene(lage: Lage, fl: Fluessig, regeln: RasterRegeln = { verdecken: 0 }, mitBohnenenden = true): Szene {
-    const liste = this.teile(lage, mitBohnenenden);
+    const aus: { deckung?: number[][] | null } = {};
+    const liste = this.teile(lage, mitBohnenenden, false, aus);
     const index = new Map(liste.map((t, i) => [t.name, i]));
     const teile: RenderTeil[] = liste.map((t) => {
       const r: RenderTeil = { name: t.name, weiss: t.weiss, gruppe: gruppeVon(t.name), form: t.form };
@@ -589,6 +631,6 @@ export class FigurRaster {
       const masken = liste.filter((t) => t.name === 'kopfA' || t.name === 'kopfB').flatMap((t) => t.form);
       verdecker.push({ mitte: schwerpunkt(masken), richtung: [1, 0], radius: 130, staerke: st });
     }
-    return { teile, fluessig: fl, verdecker, ohrspalt: null };
+    return { teile, fluessig: fl, verdecker, ohrspalt: null, deckung: aus.deckung ?? null };
   }
 }

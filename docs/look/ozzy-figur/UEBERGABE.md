@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 18.11.2026 nachts, A, B und C gebaut, D begonnen: Haltungen)
+# Übergabe: Ozzy-Figur (Stand 18.11.2026 nachts: A, B, C gebaut; D: Haltungen frei und weich ineinander, Steuerung per Knopf)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -12,8 +12,8 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5213 --strictPort --host
 ```
 
 Aus dem Wurzelordner des Arbeitsbaums; Eintrag `ozzy-figur` in `.claude/launch.json`. Seite `http://localhost:5213/ozzy-figur.html`
-(mit `--host` auch vom iPhone im selben Netz über die Adresse des Macs). Schalter: `?szene=logo|profil|front|back|viertel|lieg1|lieg2|sitz1|sitz2|drehen|kopf|koerper`,
-`&t=0…1` (Drehwinkel 0–90°), `&modus=exakt`, `&vorlage=1` (Florians Vorlage rot darüber).
+(mit `--host` auch vom iPhone im selben Netz über die Adresse des Macs). Schalter: `?szene=steuern|logo|profil|front|back|viertel|lieg1|lieg2|sitz1|sitz2|drehen|kopf|koerper|hinsetzen|hinlegen|umlegen|haltung|haltungP`,
+`&t=0…1` (Drehwinkel 0–90° bzw. Weg der Haltung), `&modus=exakt`, `&vorlage=1` (Florians Vorlage rot darüber).
 
 ## Was steht
 
@@ -201,7 +201,64 @@ Florian: „Erst weiter mit D“ (die ferne Wange zwischen 0° und 45° wartet).
 - **Noch nicht:** Haltung zusammen mit Körperdrehung (ψ ≠ 90), D2 (Beine mit zwei Knochen für den Gang), D3 (Strecken, Ducken,
   Ausdruck).
 
+## Etappe D, zweiter Teil: Haltungen frei und weich ineinander, Steuerung (18.11. nachts)
+
+Florian: „er soll beides können. alle posen müssen smooth ineinanderlaufen. das system muss sehr stabil und robust sein.“ – „Die
+beine dürfen auch nicht durch den boden drehen. Es muss immer smooth sein und immer physikalisch korrekt. Aus dem stehen kann er
+einfach alle viere von sich strecken und auf den bauch rutschen. beim hinsetzen erst das hintere bein krümmen und dann nach vorne
+rausstrecken.“ – „vom sitzen ins liegen soll sich das hintere bein zur kamera in einer fake 3d drehung nach hinten drehen.“ Plan:
+Abschnitt 12a. Ersetzt aus dem ersten Teil: die feste Kette, das Zusammenziehen fehlender Teile auf den Drehpunkt und den harten
+Wechsel der Malreihenfolge; die offene Frage zum Knien ist mit der Drehung zur Kamera beantwortet.
+
+- **Raum aus Gewichten** (`haltung.ts`): Stehen, Hocke, Sitzen, Liegen. Jede Mischung (Summe 1) hat genau eine Gestalt, an den
+  Vorlagen genau seine Zeichnung. Die **Hocke** ist gebaut: 40 % auf dem Weg zum Sitzen, die Hinterpfoten bleiben stehen, die
+  Hinterbeine krümmen sich. Wege (`weg`): Hinsetzen und Aufstehen über die Hocke, Stehen ↔ Liegen und Sitzen ↔ Liegen direkt.
+- **Beine mit Rückgrat** (Hermite-Kurve Hüfte → Fuß, Richtung an Hüfte und Sohle). Die Richtung wird als Einheitsvektor gemischt:
+  Bis gut 98° dreht das Bein in der Bildebene (Spreizen beim Hinlegen). Heben sich die Richtungen auf (Hinterbein im Sitzen vorn, im
+  Liegen hinten), zeigt es zur Kamera und wird kurz. Sein Weiß verschwindet (unter 0,45 der Länge ganz), die Seitenansicht läuft
+  auch quer in eine runde Sohle ein (Mitte der Fußkappe, wächst mit 1 − kurz²). So dreht sich das Hinterbein zur Kamera nach hinten.
+- **Boden:** Kein Fuß geht unter den Boden (Grenze nach Dicke und Neigung der Sohle; an den Vorlagen so tief, wie er gezeichnet
+  ist). Der tiefste Punkt liegt in jeder Mischung auf dem gemischten Boden der Vorlagen.
+- **Knochenkette:** Beine, Schwanz und Kopf hängen an der Bohne (gemischt in ihrem Knochen, mit ihr gedreht), damit sich zwischen
+  zwei Vorlagen keine Hüfte vom Körper löst. Was in den gemischten Haltungen an derselben Stelle steht (Vorderpfoten, Schulter beim
+  Hinsetzen), bleibt dort (Streuung unter 4 Einheiten): Die Vorderpfoten wandern beim Hinsetzen 0,02.
+- **Fehlende Teile** (Keile zwischen den Beinen) ziehen sich auf den ersten 30 % des Wegs auf die Achse ihres Beins zurück. Vorher
+  wanderte der hintere Keil zur Hüfte, quer durchs Weiß des Beins.
+- **Weiche Malreihenfolge** (`Haltungen.deckung`, Renderer `deckung`): Jedes schwarze Teil deckt ein weißes nach dem Anteil der
+  Haltungen, in denen es darüber liegt. Dazwischen schiebt es sich von innen über das Weiß (Kinn über das Pfotenfenster beim
+  Umlegen), statt beim Wechsel der führenden Haltung umzuklappen. Gerechnet wird nur, wo Weiß liegt; so bleibt es bei rund 3 ms je
+  Bild wie an den Vorlagen.
+- **Steuerung** (`steuerung.ts`, Szene „Ozzy steuern“, `?szene=steuern`): Knöpfe Stehen, Sitzen, Liegen (Tasten 1, 2, 3), Regler
+  Kopf (0–90°) und Tempo. Ein Leitpunkt fährt den Weg ab (weich an und ab, ohne an der Hocke anzuhalten); die Gewichte folgen ihm an
+  einer kritisch gedämpften Feder. Ein Knopf mitten im Wechsel geht von dort weiter, wo Ozzy gerade ist, und behält den Schwung,
+  soweit er in die neue Richtung zeigt. Am Ziel rastet er genau ein (Vorlage exakt). Prüfhaken `steuern`, `steuerKopf`,
+  `steuerSchritt`, `steuerZustand`.
+- **Szenen zum Prüfen:** „Hinsetzen“ (über die Hocke), „Hinlegen (direkt)“, „Vom Sitzen hinlegen“, dazu die Ketten „Sitzen, dann
+  Liegen“ (vorn und im Profil).
+- **Prüfungen:** `haltung.test.ts`: Vorlagen Anker für Anker; 150 zufällige Mischungen mit Kopfwinkel endlich und auf dem Boden;
+  sechs Wechsel bei Kopf 0°, 45° und 90° stetig (kein Anker springt mehr als 6 je 1/200 des Wegs); weiche Reihenfolge nur zwischen den
+  Vorlagen; Vorderpfoten stehen. `steuerung.test.ts`: Hinsetzen über die Hocke und genau am Ziel; alle Wechsel, Unterbrechungen und
+  300 zufällige Klicks ohne Sprung (höchstens 0,023 Gewicht je Bild) und ohne Ruck. Proben (`proben.mjs`): A, B1, B2, C1 bestanden
+  wie bisher, neu **D2** (kein Bildsprung an Anfang, Ende, Hocke und Wechsel der führenden Haltung: überall 0 Bildpunkte). Tempo im
+  Wechsel 2,8–3,1 ms (Chrome), 3 ms (WebKit). Bilder `docs/progress/ozzy-figur/2026-11-18-d-*`.
+- **Kleine Reste (sein Auge entscheidet):** Beim Umlegen schließt sich der Spalt zwischen Kinn und fernem Vorderbein von außen; ein
+  kleines Weiß bleibt kurz eingeschlossen und schrumpft wie eine Luftblase (um 30–40 % des Wegs). Das Weiß des Hinterbeins wird beim
+  Wegdrehen und Wiederkommen kurz zum Punkt (um 30 % und 70 %).
+- **Noch nicht:** Haltung zusammen mit Körperdrehung (ψ ≠ 90), D2 (Gang), D3 (Strecken, Ducken, Ausdruck).
+
 ## Fallen
+
+- Teile, die in einer Haltung fehlen, nie zu einem fernen Punkt ziehen (sie wandern sichtbar durch anderes): dort zurückziehen, wo
+  sie verdeckt sind, und früh im Weg.
+- Gelenke in der Welt mischen, wenn sie stehen bleiben, sonst im Knochen der Bohne: Eine Hüfte, die geradlinig zwischen zwei
+  Vorlagen wandert, während sich die Bohne dreht, löst sich vom Körper; eine Schulter, die mit der Bohne dreht, obwohl das Bein
+  steht, rutscht.
+- Ein flach gezeichnetes Bein, das durch die Kamera dreht, dreht sich in der Bildebene um 180° (wie ein Blatt): quer einlaufen
+  lassen, die Sohle trägt die Form. Eine Wurzel in der Größe (√(1 − kurz²)) schießt am Anfang aus dem Fuß.
+- Die Felder sind nur bis R (Band um die Kanten) genau, innen gesättigt: Die weiche Deckung wirkt nur in diesem Band.
+- Proben im Fenster: Das erste Bild der Seite zeichnet über das erste Prüfbild (zwei Bilder abwarten). Umklappende Bildpunkte
+  (|Δ| > 128) zählen bei winzigen Schritten nur Sprünge, stetige Bewegung bleibt bei 0.
+
 
 - Seine Vorlagen haben verschieden große Zeichenflächen: Haltungen über anatomische Bezüge zueinander legen (Vorderpfote,
   Hinterteil), nie über die Bohnenmitte (die verformt sich).

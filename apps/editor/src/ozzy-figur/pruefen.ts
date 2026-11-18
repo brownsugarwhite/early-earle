@@ -2,12 +2,16 @@
 // apps/editor/scripts/ozzy-figur/proben.mjs. Jede Messung zeichnet selbst und liest das Bild sofort (preserveDrawingBuffer).
 import { abflachen, type Form, type Punkt } from './form';
 import { type Ansicht, type Diagnose, EXAKT, type FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
+import type { HaltungName } from './haltung';
+import type { HaltungsSteuerung } from './steuerung';
 import { REGELN, type Regeln } from './szenen';
 import { drehLage, type Drehung, rasterVon } from './szenen';
 import { type AnsichtName, type FigurDaten } from './vorlagen/import';
 
-type SzenenName = AnsichtName | Drehung;
+type SzenenName = AnsichtName | Drehung | 'steuern';
 export interface PruefKontext {
+  /** Steuerung der Haltungen (Szene „steuern“) */
+  steuerung: HaltungsSteuerung;
   daten: FigurDaten;
   renderer: FigurRenderer;
   svgTexte: Record<string, string>;
@@ -70,6 +74,21 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     daten: k.daten,
     zeigen,
     bild: (): string => r.canvas.toDataURL('image/png'),
+    /** umklappende Bildpunkte zwischen zwei Stellen einer Szene (flüssig): Bei winzigem Schritt bleibt nur ein Sprung groß */
+    sprung(name: SzenenName, t0: number, t1: number, w = 600, h = 600): number {
+      zeigen(name, t0, true, 0, w, h);
+      const a = lesen().px;
+      zeigen(name, t1, true, 0, w, h);
+      const b = lesen().px;
+      let n = 0;
+      for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i]! - b[i]!) > 128) n++;
+      return n;
+    },
+    /** Steuerung der Haltungen: Ziel setzen, Kopfwinkel, Zeit weiter (Sekunden), Zustand */
+    steuern: (ziel: HaltungName): void => k.steuerung.setzen(ziel),
+    steuerKopf: (w: number): void => k.steuerung.kopfZiel(w),
+    steuerSchritt: (dt: number): void => k.steuerung.schritt(dt),
+    steuerZustand: () => ({ gewichte: k.steuerung.gewichte(), kopf: k.steuerung.kopfWinkel, ruht: k.steuerung.ruht, ziel: k.steuerung.ziel }),
     /** Teile einer Drehung (Körperkoordinaten, Malreihenfolge) für Prüfbilder ohne Grafikkarte */
     rasterTeile: (art: Drehung, t: number) => rasterVon(k.daten).teile(drehLage(art, t)).map((x) => ({ name: x.name, weiss: x.weiss, form: x.form })),
     /** Ausschnitt des letzten Bilds in Figur-Einheiten, vergrößert */

@@ -2,6 +2,7 @@
 // (Etappe C, raster.ts): „Ozzy dreht sich“ (Körper und Kopf zusammen: Front → 3/4 → Profil), „Kopf dreht“ (Seite, Kopf vorn → Profil),
 // „Körper dreht“ (Kopf schaut zu uns, Körper vorn → Seite).
 import type { Form } from './form';
+import { weg, wegGewichte } from './haltung';
 import { FigurRaster, type Lage } from './raster';
 import type { Fluessig, Gruppe, RenderTeil, Szene } from './renderer';
 import type { AnsichtName, FigurDaten, TeilName } from './vorlagen/import';
@@ -19,7 +20,7 @@ export const REGELN: Regeln = { verdecken: 0, bohnenenden: true };
 
 export function gruppeVon(name: TeilName): Gruppe {
   if (name === 'bohne') return 'bohne';
-  if (name.startsWith('bein') || name.startsWith('keil')) return 'bein';
+  if (name.startsWith('bein') || name.startsWith('keil') || name.startsWith('sohle')) return 'bein';
   if (name === 'schwanz') return 'schwanz';
   if (name === 'kopfA' || name === 'kopfB') return 'kopf';
   if (name === 'ohrA') return 'ohrA';
@@ -62,14 +63,20 @@ export function vorlageSzene(d: FigurDaten, a: AnsichtName, fl: Fluessig): Szene
   return { teile: renderTeile(d.ansichten[a].teile), fluessig: fl, verdecker: [], ohrspalt: null };
 }
 
-export type Drehung = 'drehen' | 'kopf' | 'koerper' | 'haltung' | 'haltungP';
-/** Lage einer Drehung bei t = 0 … 1 (Haltung: 0 Stehen, 0,5 Sitzen, 1 Liegen; Kopf vorn bzw. im Profil) */
+export type Drehung = 'drehen' | 'kopf' | 'koerper' | 'haltung' | 'haltungP' | 'hinsetzen' | 'hinlegen' | 'umlegen';
+/**
+ * Lage einer Drehung bei t = 0 … 1. Haltungen: „haltung“/„haltungP“ die Kette Stehen (0) – Sitzen (0,5) – Liegen (1), Kopf vorn bzw.
+ * im Profil; „hinsetzen“ Stehen → Hocke → Sitzen, „hinlegen“ Stehen → Liegen direkt (alle viere von sich), „umlegen“ Sitzen → Liegen
+ */
 export function drehLage(art: Drehung, t: number): Lage {
   const w = t * 90;
   if (art === 'drehen') return { psi: w, theta: w };
   if (art === 'kopf') return { psi: 90, theta: w };
   if (art === 'haltung') return { psi: 90, theta: 0, haltung: 2 * t };
   if (art === 'haltungP') return { psi: 90, theta: 90, haltung: 2 * t };
+  if (art === 'hinsetzen') return { psi: 90, theta: 0, posen: wegGewichte(weg('stehen', 'sitzen'), t) };
+  if (art === 'hinlegen') return { psi: 90, theta: 0, posen: { stehen: 1 - t, liegen: t } };
+  if (art === 'umlegen') return { psi: 90, theta: 0, posen: { sitzen: 1 - t, liegen: t } };
   return { psi: w, theta: 0 };
 }
 

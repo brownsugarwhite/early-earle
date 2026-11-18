@@ -11,8 +11,11 @@ import sitz1Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_sit01.svg?r
 import sitz2Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_st02.svg?raw';
 import viertelSvg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_viertel.svg?raw';
 import { abflachen, type Form } from './form';
+import { HALTUNGEN, type HaltungName } from './haltung';
 import { pruefhakenAnlegen } from './pruefen';
+import type { Lage } from './raster';
 import { type Ansicht, type Diagnose, EXAKT, FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
+import { HaltungsSteuerung } from './steuerung';
 import { drehLage, drehSzene, type Drehung, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
 import { ANSICHTEN, type AnsichtName, importieren } from './vorlagen/import';
 
@@ -29,9 +32,11 @@ export const SVG_TEXTE: Record<string, string> = {
 };
 const daten = importieren(SVG_TEXTE);
 
-export type SzenenName = AnsichtName | Drehung;
-const istDrehung = (n: SzenenName): n is Drehung => n === 'drehen' || n === 'kopf' || n === 'koerper' || n === 'haltung' || n === 'haltungP';
+/** „steuern“: Ozzy per Knopf (Stehen, Sitzen, Liegen) und Kopfwinkel, weich ineinander (steuerung.ts) */
+export type SzenenName = AnsichtName | Drehung | 'steuern';
+const istDrehung = (n: SzenenName): n is Drehung => ['drehen', 'kopf', 'koerper', 'haltung', 'haltungP', 'hinsetzen', 'hinlegen', 'umlegen'].includes(n);
 const SZENEN: { name: SzenenName; titel: string }[] = [
+  { name: 'steuern', titel: 'Ozzy steuern' },
   { name: 'logo', titel: 'Logo' },
   { name: 'profil', titel: 'Profil' },
   { name: 'front', titel: 'Front' },
@@ -44,25 +49,41 @@ const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'drehen', titel: 'Ozzy dreht sich' },
   { name: 'kopf', titel: 'Kopf dreht' },
   { name: 'koerper', titel: 'Körper dreht' },
-  { name: 'haltung', titel: 'Hinsetzen, Hinlegen' },
-  { name: 'haltungP', titel: 'Hinsetzen, Kopf im Profil' },
+  { name: 'hinsetzen', titel: 'Hinsetzen' },
+  { name: 'hinlegen', titel: 'Hinlegen (direkt)' },
+  { name: 'umlegen', titel: 'Vom Sitzen hinlegen' },
+  { name: 'haltung', titel: 'Sitzen, dann Liegen' },
+  { name: 'haltungP', titel: 'Sitzen, dann Liegen (Profil)' },
 ];
 
+const steuerung = new HaltungsSteuerung('stehen');
+const steuerLage = (): Lage => ({ psi: 90, theta: steuerung.kopfWinkel, posen: steuerung.gewichte() });
+
 export function szeneBauen(name: SzenenName, t: number, fl: Fluessig, regeln: Regeln = REGELN): Szene {
+  if (name === 'steuern') return rasterVon(daten).szene(steuerLage(), fl, { verdecken: regeln.verdecken }, regeln.bohnenenden);
   if (istDrehung(name)) return drehSzene(daten, name, t, fl, regeln);
   return vorlageSzene(daten, name, fl);
 }
 
 /** Florians Vorlage an der Stelle der Szene (Drehungen: nur an den Schlüsselwinkeln), für die rote Linie darüber */
 export function vorlageFuer(name: SzenenName, t: number): Form[] | null {
+  if (name === 'steuern') return rasterVon(daten).vorlage(steuerLage())?.formen ?? null;
   if (!istDrehung(name)) return daten.ansichten[name].teile.map((x) => x.form);
   return rasterVon(daten).vorlage(drehLage(name, t))?.formen ?? null;
 }
 
-/** fester Rahmen je Szene (Vereinigung über beide Enden), damit beim Drehen nichts springt */
+/** fester Rahmen je Szene (Vereinigung über beide Enden bzw. alle Haltungen mit Kopf vorn und im Profil), damit nichts springt */
+const rahmenSpeicher = new Map<SzenenName, [number, number, number, number]>();
 export function rahmen(name: SzenenName): [number, number, number, number] {
-  const ks = (istDrehung(name) ? [0, 0.5, 1] : [0]).map((t) => szenenKasten(szeneBauen(name, t, EXAKT)));
-  return [Math.min(...ks.map((k) => k[0])), Math.min(...ks.map((k) => k[1])), Math.max(...ks.map((k) => k[2])), Math.max(...ks.map((k) => k[3]))];
+  const fertig = rahmenSpeicher.get(name);
+  if (fertig) return fertig;
+  const ks =
+    name === 'steuern'
+      ? HALTUNGEN.flatMap((h) => [0, 90].map((theta) => szenenKasten(rasterVon(daten).szene({ psi: 90, theta, posen: { [h.name]: 1 } }, EXAKT))))
+      : (istDrehung(name) ? [0, 0.5, 1] : [0]).map((t) => szenenKasten(szeneBauen(name, t, EXAKT)));
+  const k: [number, number, number, number] = [Math.min(...ks.map((x) => x[0])), Math.min(...ks.map((x) => x[1])), Math.max(...ks.map((x) => x[2])), Math.max(...ks.map((x) => x[3]))];
+  rahmenSpeicher.set(name, k);
+  return k;
 }
 
 export function einpassen(name: SzenenName, w: number, h: number, oben: number, rand: number): Ansicht {
@@ -96,9 +117,18 @@ function aufbauen(): void {
   const knoepfe = SZENEN.map((s) => `<button type="button" class="knopf" data-szene="${s.name}">${s.titel}</button>`).join('');
   const regler = (id: string, titel: string, max: number, wert: number, schritt = 0.5): string =>
     `<label class="regler"><span>${titel}</span><input type="range" id="${id}" min="0" max="${max}" step="${schritt}" value="${wert}"><output for="${id}">${wert}</output></label>`;
+  const haltungKnoepfe = (['stehen', 'sitzen', 'liegen'] as HaltungName[])
+    .map((h, i) => `<button type="button" class="knopf" data-haltung="${h}" title="Taste ${i + 1}">${h[0]!.toUpperCase() + h.slice(1)}</button>`)
+    .join('');
   leiste.innerHTML = `
     <h2>Ansicht</h2>
     <div class="knoepfe" id="szenen">${knoepfe}</div>
+    <div id="steuern">
+      <div class="knoepfe">${haltungKnoepfe}</div>
+      ${regler('kopfwinkel', 'Kopf', 90, 0, 1)}
+      ${regler('steuerTempo', 'Tempo', 3, steuerung.tempo.tempo, 0.1)}
+      <p class="hinweis">Aus dem Stehen ins Liegen streckt er alle viere von sich; aus dem Sitzen dreht sich das Hinterbein zur Kamera nach hinten. Hinsetzen über die Hocke. Jeder Knopf wirkt auch mitten im Wechsel (Tasten 1, 2, 3).</p>
+    </div>
     <div id="drehen">
       <label class="regler"><span>Winkel</span><input type="range" id="winkel" min="0" max="90" step="0.5" value="${zustand.t * 90}"><output for="winkel"></output></label>
       <div class="knoepfe"><button type="button" class="knopf" id="spielen">Drehen ▶</button></div>
@@ -134,6 +164,28 @@ function aufbauen(): void {
       neu();
     }),
   );
+  const haltungSetzen = (h: HaltungName): void => {
+    zustand.szene = 'steuern';
+    steuerung.setzen(h);
+    neu();
+  };
+  leiste.querySelectorAll<HTMLButtonElement>('[data-haltung]').forEach((b) => b.addEventListener('click', () => haltungSetzen(b.dataset.haltung as HaltungName)));
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
+    const h = ({ '1': 'stehen', '2': 'sitzen', '3': 'liegen' } as Record<string, HaltungName>)[e.key];
+    if (h) haltungSetzen(h);
+  });
+  const kopfwinkel = document.getElementById('kopfwinkel') as HTMLInputElement;
+  kopfwinkel.addEventListener('input', () => {
+    steuerung.kopfZiel(Number(kopfwinkel.value));
+    neu();
+  });
+  const steuerTempo = document.getElementById('steuerTempo') as HTMLInputElement;
+  steuerTempo.min = '0.4';
+  steuerTempo.addEventListener('input', () => {
+    steuerung.tempo.tempo = Number(steuerTempo.value);
+    neu();
+  });
   const winkel = document.getElementById('winkel') as HTMLInputElement;
   winkel.addEventListener('input', () => {
     zustand.t = Number(winkel.value) / 90;
@@ -192,9 +244,12 @@ function aufbauen(): void {
 
 function anzeigen(): void {
   leiste.querySelectorAll<HTMLButtonElement>('[data-szene]').forEach((b) => b.classList.toggle('an', b.dataset.szene === zustand.szene));
+  leiste.querySelectorAll<HTMLButtonElement>('[data-haltung]').forEach((b) => b.classList.toggle('an', b.dataset.haltung === steuerung.ziel));
   const dreht = istDrehung(zustand.szene);
+  const steuert = zustand.szene === 'steuern';
+  document.getElementById('steuern')!.style.display = steuert ? '' : 'none';
   document.getElementById('drehen')!.style.display = dreht ? '' : 'none';
-  document.getElementById('regelRegler')!.style.display = dreht ? '' : 'none';
+  document.getElementById('regelRegler')!.style.display = dreht || steuert ? '' : 'none';
   document.getElementById('fluessigRegler')!.style.opacity = zustand.fluessig ? '1' : '0.4';
   document.getElementById('exakt')!.classList.toggle('an', !zustand.fluessig);
   document.getElementById('fluessig')!.classList.toggle('an', zustand.fluessig);
@@ -202,7 +257,7 @@ function anzeigen(): void {
   (document.getElementById('winkel') as HTMLInputElement).value = String(zustand.t * 90);
   leiste.querySelectorAll('output').forEach((o) => {
     const el = document.getElementById(o.htmlFor.value) as HTMLInputElement | null;
-    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : `${Math.round(zustand.t * 90)}°`) : el.value;
+    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : ['hinsetzen', 'hinlegen', 'umlegen'].includes(zustand.szene) ? `${Math.round(zustand.t * 100)} %` : `${Math.round(zustand.t * 90)}°`) : el.id === 'kopfwinkel' ? `${el.value}°` : el.value;
   });
 }
 
@@ -257,6 +312,8 @@ function tempoZeigen(jetzt: number): void {
 
 let wartet = false;
 let tStart = 0;
+/** Zeit des letzten Bilds der Steuerung (0 = ruht) */
+let steuerZeit = 0;
 function neu(): void {
   anzeigen();
   if (!wartet) {
@@ -272,9 +329,16 @@ function bild(jetzt: number): void {
     zustand.t = u < 1 ? u : 2 - u;
     anzeigen();
   } else tStart = 0;
+  // Steuerung: je Bild um die vergangene Zeit weiter (nach einer Pause höchstens ein Bild)
+  const steuert = zustand.szene === 'steuern' && !steuerung.ruht;
+  if (steuert) {
+    steuerung.schritt(steuerZeit ? Math.min(0.1, (jetzt - steuerZeit) / 1000) : 1 / 60);
+    steuerZeit = jetzt;
+    if (steuerung.ruht) anzeigen();
+  } else steuerZeit = 0;
   zeichnen();
   tempoZeigen(jetzt);
-  if (zustand.laeuft || zustand.dauer) {
+  if (zustand.laeuft || zustand.dauer || (steuert && !steuerung.ruht)) {
     wartet = true;
     requestAnimationFrame(bild);
   } else {
@@ -287,4 +351,4 @@ function bild(jetzt: number): void {
 aufbauen();
 window.addEventListener('resize', neu);
 neu();
-pruefhakenAnlegen({ daten, renderer, svgTexte: SVG_TEXTE, szeneBauen, vorlageFuer, einpassen, ansichtsDateien: Object.fromEntries(Object.entries(ANSICHTEN).map(([k, v]) => [k, v.datei])) });
+pruefhakenAnlegen({ daten, renderer, svgTexte: SVG_TEXTE, szeneBauen, vorlageFuer, einpassen, steuerung, ansichtsDateien: Object.fromEntries(Object.entries(ANSICHTEN).map(([k, v]) => [k, v.datei])) });

@@ -8,7 +8,9 @@ import { svgLesen } from './svg';
 export type AnsichtName = 'front' | 'back' | 'logo' | 'profil' | 'viertel' | 'lieg1' | 'lieg2' | 'sitz1' | 'sitz2';
 export type TeilName =
   | 'ohrA' | 'ohrB' | 'ohrSpalt' | 'kopfA' | 'kopfB' | 'bartA' | 'bartB' | 'nase' | 'bohne' | 'schwanz' | 'schwanzW'
-  | 'beinRV' | 'beinRH' | 'beinLV' | 'beinLH' | 'fensterRV' | 'fensterRH' | 'fensterLV' | 'fensterLH' | 'keilV' | 'keilH';
+  | 'beinRV' | 'beinRH' | 'beinLV' | 'beinLH' | 'fensterRV' | 'fensterRH' | 'fensterLV' | 'fensterLH' | 'keilV' | 'keilH'
+  // gebaut, nicht gezeichnet: das runde Ende eines Beins, das zur Kamera zeigt (Haltungen)
+  | 'sohleRV' | 'sohleRH' | 'sohleLV' | 'sohleLH';
 
 /** A ist das im Frontbild linke Teil (Ozzys rechte Seite), B sein Spiegelpartner. Beine: R/L = Ozzys rechts/links, V/H = vorn/hinten */
 export const PARTNER: Partial<Record<TeilName, TeilName>> = {
