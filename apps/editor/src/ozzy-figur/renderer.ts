@@ -25,6 +25,10 @@ export interface RenderTeil {
   traeger?: number;
   /** Weiß: Mindestrand im Träger (Figur-Einheiten); negativ = Klemme liegt so weit draußen, dass sie nicht wirkt */
   rand?: number;
+  /** Weiß: liegt hinter diesem schwarzen Teil (Index), auch wenn es später gezeichnet wird; so kann es weich davor treten */
+  hinter?: number;
+  /** wie tief das verdeckende Teil zählt (Figur-Einheiten): 0 = genau sein Umriss deckt, größer = es deckt nur noch tiefer innen */
+  hinterTiefe?: number;
 }
 /** Verdecken auf der abgewandten Seite: Rand wächst zur fernen Seite hin (Figur-Einheiten) */
 export interface Verdecker {
@@ -148,6 +152,7 @@ export class FigurRenderer {
       KOPF + 'in vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }',
       KOPF + LESEN +
         `uniform sampler2D tAussen; uniform int anzahl; uniform int gruppe[${MAX_TEILE}]; uniform int traeger[${MAX_TEILE}]; uniform float rand[${MAX_TEILE}];
+        uniform int hinter[${MAX_TEILE}]; uniform float hinterTiefe[${MAX_TEILE}];
         uniform float kBohneBein, kBohneSchwanz, kBohneKopf, kKopfOhr, kOhrOhr, kKopfNase, kKlemme;
         uniform int verdeckerZahl; uniform vec4 verdeckerA[4]; uniform vec2 verdeckerB[4];
         uniform int spaltNah, spaltFern; uniform float spaltBreite, spaltAuslauf; uniform int diagnose;
@@ -181,7 +186,9 @@ export class FigurRenderer {
             float w = d[c]; int t = traeger[c];
             if (t >= 0) w = smax(w, d[t] + rand[c], kKlemme);
             if (rv > 0.05) w = smax(w, sil + rv, min(kKlemme, rv));
-            weiss = max(weiss, deck(w) * (1.0 - deck(ueber[c]))); }
+            float cw = deck(w) * (1.0 - deck(ueber[c]));
+            int hi = hinter[c]; if (hi >= 0) cw *= 1.0 - deck(d[hi] + hinterTiefe[c]);
+            weiss = max(weiss, cw); }
           float spalt = 0.0;
           // Ohrspalt wie Florians Keil im Profil: weißer Streifen an der Kante des nahen Ohrs, nur im fernen Ohr; am Umriss des fernen
           // Ohrs am breitesten (dort offen zum Hintergrund), nach innen spitz auslaufend
@@ -448,6 +455,16 @@ export class FigurRenderer {
     gl.uniform1iv(this.ort(this.pBild, 'gruppe'), gr);
     gl.uniform1iv(this.ort(this.pBild, 'traeger'), tr);
     gl.uniform1fv(this.ort(this.pBild, 'rand'), ra);
+    const hi = new Int32Array(MAX_TEILE).fill(-1);
+    const ht = new Float32Array(MAX_TEILE);
+    teile.forEach((t, ch) => {
+      if (t.weiss && t.hinter !== undefined) {
+        hi[ch] = t.hinter;
+        ht[ch] = (t.hinterTiefe ?? 0) * s;
+      }
+    });
+    gl.uniform1iv(this.ort(this.pBild, 'hinter'), hi);
+    gl.uniform1fv(this.ort(this.pBild, 'hinterTiefe'), ht);
     gl.uniform1f(this.ort(this.pBild, 'kBohneBein'), fl.bohneBein * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneSchwanz'), fl.bohneSchwanz * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneKopf'), fl.bohneKopf * s);

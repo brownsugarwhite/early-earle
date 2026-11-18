@@ -238,3 +238,69 @@ export function groessterAbstand(a: Form, b: Form): number {
     for (const w of ['p', 'i', 'o'] as const) m = Math.max(m, Math.hypot(a[k]![w][0] - b[k]![w][0], a[k]![w][1] - b[k]![w][1]));
   return m;
 }
+
+/** Fläche mit Vorzeichen (über die Anker; zeigt die Laufrichtung) */
+export function flaeche(f: Form): number {
+  let a = 0;
+  for (let k = 0; k < f.length; k++) {
+    const p = f[k]!.p;
+    const q = f[(k + 1) % f.length]!.p;
+    a += p[0] * q[1] - q[0] * p[1];
+  }
+  return a / 2;
+}
+
+/** dieselbe Kurve, andersherum durchlaufen (Griffe tauschen ihre Rolle) */
+export function umkehren(f: Form): Form {
+  const n = f.length;
+  // Anker 0 bleibt Anker 0, dann rückwärts
+  return f.map((_, k) => {
+    const a = f[(n - k) % n]!;
+    return { p: [a.p[0], a.p[1]], i: [a.o[0], a.o[1]], o: [a.i[0], a.i[1]] };
+  });
+}
+
+/** Anker zyklisch weiterzählen: neuer Anker k = alter Anker (k + s) */
+export function ankerDrehen(f: Form, s: number): Form {
+  const n = f.length;
+  return f.map((_, k) => ankerKopie(f[(k + s + n) % n]!));
+}
+
+/**
+ * mittlerer Abstand der Anker nach Normierung (Schwerpunkt, mittlerer Radius) für jede zyklische Verschiebung; mit `mitDrehung` nach
+ * bester Drehung (nur wenn die Haltung wechselt: ein liegendes Bein ist das stehende, gedreht). Ohne Drehung bleibt eine fast
+ * symmetrische Form (Fenster) eindeutig.
+ */
+export function verschiebungsKosten(ref: Form, f: Form, mitDrehung = false): number[] {
+  const norm = (g: Form): Punkt[] => {
+    const c = schwerpunkt(g);
+    let r = 0;
+    for (const a of g) r += (a.p[0] - c[0]) ** 2 + (a.p[1] - c[1]) ** 2;
+    r = Math.sqrt(r / g.length) || 1;
+    return g.map((a) => [(a.p[0] - c[0]) / r, (a.p[1] - c[1]) / r]);
+  };
+  const a = norm(ref);
+  const b = norm(f);
+  const n = a.length;
+  const kosten: number[] = [];
+  for (let s = 0; s < n; s++) {
+    // beste Drehung von b auf a (Procrustes)
+    let sxx = 0;
+    let sxy = 0;
+    for (let j = 0; j < n; j++) {
+      const q = b[(j + s) % n]!;
+      sxx += q[0] * a[j]![0] + q[1] * a[j]![1];
+      sxy += q[0] * a[j]![1] - q[1] * a[j]![0];
+    }
+    const th = mitDrehung ? Math.atan2(sxy, sxx) : 0;
+    const co = Math.cos(th);
+    const si = Math.sin(th);
+    let c = 0;
+    for (let j = 0; j < n; j++) {
+      const q = b[(j + s) % n]!;
+      c += Math.hypot(a[j]![0] - (co * q[0] - si * q[1]), a[j]![1] - (si * q[0] + co * q[1]));
+    }
+    kosten.push(c / n);
+  }
+  return kosten;
+}

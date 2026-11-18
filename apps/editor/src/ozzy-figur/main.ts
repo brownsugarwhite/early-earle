@@ -7,11 +7,14 @@ import lieg1Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_laydown01.s
 import lieg2Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_laydown02.svg?raw';
 import logoSvg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_stand01_logo.svg?raw';
 import profilSvg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_stand02.svg?raw';
-import { abflachen, type Form, kasten, verschieben } from './form';
+import sitz1Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_sit01.svg?raw';
+import sitz2Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_st02.svg?raw';
+import viertelSvg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_viertel.svg?raw';
+import { abflachen, type Form } from './form';
 import { pruefhakenAnlegen } from './pruefen';
 import { type Ansicht, type Diagnose, EXAKT, FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
-import { koerperDrehung, kopfDrehung, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
-import { ANSICHTEN, type AnsichtName, importieren, teilVon } from './vorlagen/import';
+import { drehLage, drehSzene, type Drehung, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
+import { ANSICHTEN, type AnsichtName, importieren } from './vorlagen/import';
 
 export const SVG_TEXTE: Record<string, string> = {
   'ozzy_front.svg': frontSvg,
@@ -20,53 +23,44 @@ export const SVG_TEXTE: Record<string, string> = {
   'ozzy_stand02.svg': profilSvg,
   'ozzy_laydown01.svg': lieg1Svg,
   'ozzy_laydown02.svg': lieg2Svg,
+  'ozzy_viertel.svg': viertelSvg,
+  'ozzy_sit01.svg': sitz1Svg,
+  'ozzy_st02.svg': sitz2Svg,
 };
 const daten = importieren(SVG_TEXTE);
 
-export type SzenenName = AnsichtName | 'kopf' | 'koerper';
+export type SzenenName = AnsichtName | Drehung;
+const istDrehung = (n: SzenenName): n is Drehung => n === 'drehen' || n === 'kopf' || n === 'koerper';
 const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'logo', titel: 'Logo' },
   { name: 'profil', titel: 'Profil' },
   { name: 'front', titel: 'Front' },
   { name: 'back', titel: 'Rücken' },
+  { name: 'viertel', titel: '3/4' },
   { name: 'lieg1', titel: 'Liegen 1' },
   { name: 'lieg2', titel: 'Liegen 2' },
+  { name: 'sitz1', titel: 'Sitzen 1' },
+  { name: 'sitz2', titel: 'Sitzen 2' },
+  { name: 'drehen', titel: 'Ozzy dreht sich' },
   { name: 'kopf', titel: 'Kopf dreht' },
   { name: 'koerper', titel: 'Körper dreht' },
 ];
 
 export function szeneBauen(name: SzenenName, t: number, fl: Fluessig, regeln: Regeln = REGELN): Szene {
-  if (name === 'kopf') return kopfDrehung(daten, t, fl, regeln);
-  if (name === 'koerper') return koerperDrehung(daten, t, fl);
+  if (istDrehung(name)) return drehSzene(daten, name, t, fl, regeln);
   return vorlageSzene(daten, name, fl);
 }
 
-/** Florians Vorlage an der Stelle der Szene (nur an den Enden einer Drehung), für die rote Linie darüber */
+/** Florians Vorlage an der Stelle der Szene (Drehungen: nur an den Schlüsselwinkeln), für die rote Linie darüber */
 export function vorlageFuer(name: SzenenName, t: number): Form[] | null {
-  const a = daten.ansichten;
-  if (name !== 'kopf' && name !== 'koerper') return a[name].teile.map((x) => x.form);
-  if (name === 'kopf') {
-    if (t < 0.01) return a.logo.teile.map((x) => x.form);
-    if (t > 0.99) {
-      const kl = kasten(teilVon(a.logo, 'bohne')!.form);
-      const kp = kasten(teilVon(a.profil, 'bohne')!.form);
-      return a.profil.teile.map((x) => verschieben(x.form, kl[0] - kp[0], kl[1] - kp[1]));
-    }
-    return null;
-  }
-  if (t > 0.99) return a.logo.teile.map((x) => x.form);
-  if (t < 0.01) {
-    const kf = kasten(teilVon(a.front, 'bohne')!.form);
-    const kl = kasten(teilVon(a.logo, 'bohne')!.form);
-    return a.front.teile.map((x) => verschieben(x.form, (kl[0] + kl[2]) / 2 - (kf[0] + kf[2]) / 2, a.logo.boden - a.front.boden));
-  }
-  return null;
+  if (!istDrehung(name)) return daten.ansichten[name].teile.map((x) => x.form);
+  return rasterVon(daten).vorlage(drehLage(name, t))?.formen ?? null;
 }
 
 /** fester Rahmen je Szene (Vereinigung über beide Enden), damit beim Drehen nichts springt */
 export function rahmen(name: SzenenName): [number, number, number, number] {
-  const ks = [szenenKasten(szeneBauen(name, 0, EXAKT)), szenenKasten(szeneBauen(name, 1, EXAKT))];
-  return [Math.min(ks[0]![0], ks[1]![0]), Math.min(ks[0]![1], ks[1]![1]), Math.max(ks[0]![2], ks[1]![2]), Math.max(ks[0]![3], ks[1]![3])];
+  const ks = (istDrehung(name) ? [0, 0.5, 1] : [0]).map((t) => szenenKasten(szeneBauen(name, t, EXAKT)));
+  return [Math.min(...ks.map((k) => k[0])), Math.min(...ks.map((k) => k[1])), Math.max(...ks.map((k) => k[2])), Math.max(...ks.map((k) => k[3]))];
 }
 
 export function einpassen(name: SzenenName, w: number, h: number, oben: number, rand: number): Ansicht {
@@ -119,9 +113,8 @@ function aufbauen(): void {
       ${regler('klemme', 'Klemme weich', 12, zustand.fl.klemme)}
     </div>
     <div id="regelRegler">
-      ${regler('verdecken', 'Verdecken', 40, zustand.regeln.verdecken)}
-      ${regler('spaltBreite', 'Ohrspalt breit', 20, zustand.regeln.spaltBreite)}
-      ${regler('spaltAuslauf', 'Ohrspalt Auslauf', 60, zustand.regeln.spaltAuslauf)}
+      ${regler('verdecken', 'Verdecken', 30, zustand.regeln.verdecken)}
+      <label class="schalter"><input type="checkbox" id="bohnenenden" ${zustand.regeln.bohnenenden ? 'checked' : ''}> Bohnenenden an den Beinen</label>
     </div>
     <h2>Prüfen</h2>
     <label class="schalter"><input type="checkbox" id="vorlage" ${zustand.vorlage ? 'checked' : ''}> Vorlage rot darüber</label>
@@ -162,10 +155,15 @@ function aufbauen(): void {
       neu();
     });
   }
-  for (const k of ['verdecken', 'spaltBreite', 'spaltAuslauf'] as const) {
-    const el = document.getElementById(k) as HTMLInputElement;
+  {
+    const el = document.getElementById('verdecken') as HTMLInputElement;
     el.addEventListener('input', () => {
-      zustand.regeln[k] = Number(el.value);
+      zustand.regeln.verdecken = Number(el.value);
+      neu();
+    });
+    const b = document.getElementById('bohnenenden') as HTMLInputElement;
+    b.addEventListener('change', () => {
+      zustand.regeln.bohnenenden = b.checked;
       neu();
     });
   }
@@ -190,9 +188,9 @@ function aufbauen(): void {
 
 function anzeigen(): void {
   leiste.querySelectorAll<HTMLButtonElement>('[data-szene]').forEach((b) => b.classList.toggle('an', b.dataset.szene === zustand.szene));
-  const dreht = zustand.szene === 'kopf' || zustand.szene === 'koerper';
+  const dreht = istDrehung(zustand.szene);
   document.getElementById('drehen')!.style.display = dreht ? '' : 'none';
-  document.getElementById('regelRegler')!.style.display = zustand.szene === 'kopf' ? '' : 'none';
+  document.getElementById('regelRegler')!.style.display = dreht ? '' : 'none';
   document.getElementById('fluessigRegler')!.style.opacity = zustand.fluessig ? '1' : '0.4';
   document.getElementById('exakt')!.classList.toggle('an', !zustand.fluessig);
   document.getElementById('fluessig')!.classList.toggle('an', zustand.fluessig);

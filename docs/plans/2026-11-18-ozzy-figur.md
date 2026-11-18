@@ -205,3 +205,10 @@ dann D und E, dann F. Jede Etappe wird committet und gepusht; die Übergabe steh
   Profil-Schlüssels und morpht mit; der automatische Spalt bleibt Rückfall für Ohren, die die Physik bewegt.
 - **Offen vor C:** Florians Messung auf dem iPhone und sein Blick auf die Stärken je Paar (Übergabe, Abschnitt „Offen“).
 
+## 9. Etappe C, erster Teil (Nachtrag 18.11. abends)
+
+Florians Rückmeldung zur Drehung und seine neuen Vorlagen (3/4, zweimal Sitzen) stehen in der Übergabe. Gebaut: Schlüsselformen-
+Raster für Körper (0°/45°/90°) und Kopf (0°/45°/90°) aus seinen Dateien, Bohnenenden an den äußeren Beinkanten, Fenster und Schwanz
+mit verdeckten Schlüsseln, weiches „Dahinter“ im Renderer. Probe C1 (neu): An jedem Schlüsselwinkel trifft das Raster seine Vorlage
+genau (bestanden, 0,000–0,001 %). Noch nicht gebaut: 90° → 180° (Rückseite), Nicken, Posen (Etappe D).
+

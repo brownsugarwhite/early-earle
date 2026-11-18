@@ -25,7 +25,7 @@ describe('Ozzy-Figur: Import', () => {
   });
 
   it('gleicht nur das ferne Vorderbein der Seitenansichten aus, formtreu', () => {
-    expect(daten.abgleiche.map((g) => `${g.teil}@${g.ansicht}`).sort()).toEqual(['beinLV@lieg1', 'beinLV@lieg2', 'beinLV@logo', 'beinLV@profil']);
+    expect(daten.abgleiche.map((g) => `${g.teil}@${g.ansicht}`).sort()).toEqual(['beinLV@lieg1', 'beinLV@lieg2', 'beinLV@logo', 'beinLV@profil', 'beinLV@sitz1', 'beinLV@sitz2', 'keilH@logo', 'keilH@profil']);
     // Form unverändert: dieselbe Kurve wie direkt aus der Datei
     const roh = svgLesen(texte['ozzy_stand01_logo.svg']!).teile[4]!.form;
     const neu = teilVon(daten.ansichten.logo, 'beinLV')!.form;

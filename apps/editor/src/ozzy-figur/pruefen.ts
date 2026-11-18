@@ -1,11 +1,12 @@
 // Ozzy-Figur: Prüfhaken für die Proben der Etappen A und B (window.__ozzyFigur), aufgerufen von
 // apps/editor/scripts/ozzy-figur/proben.mjs. Jede Messung zeichnet selbst und liest das Bild sofort (preserveDrawingBuffer).
-import { abflachen, type Form, kasten, type Punkt } from './form';
+import { abflachen, type Form, type Punkt } from './form';
 import { type Ansicht, type Diagnose, EXAKT, type FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
 import type { Regeln } from './szenen';
-import { type AnsichtName, type FigurDaten, teilVon } from './vorlagen/import';
+import { koerperUrsprung } from './raster';
+import { type AnsichtName, type FigurDaten } from './vorlagen/import';
 
-type SzenenName = AnsichtName | 'kopf' | 'koerper';
+type SzenenName = AnsichtName | 'drehen' | 'kopf' | 'koerper';
 export interface PruefKontext {
   daten: FigurDaten;
   renderer: FigurRenderer;
@@ -81,10 +82,12 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     },
 
     /** A: exakter Modus gegen Florians SVG (gleicher Rahmen, gleiche Größe) */
-    async vergleichVorlage(ansicht: AnsichtName, w = 1000, h = 1000) {
-      const a = zeigen(ansicht, 0, false, 0, w, h);
+    async vergleichVorlage(ansicht: AnsichtName, w = 1000, h = 1000, drehung?: { szene: SzenenName; t: number }) {
+      const a = drehung ? zeigen(drehung.szene, drehung.t, false, 0, w, h) : zeigen(ansicht, 0, false, 0, w, h);
       const { px } = lesen();
-      const ref = await svgBild(k.svgTexte[k.ansichtsDateien[ansicht]!]!, a, w, h);
+      // Drehungen liegen in Körperkoordinaten: die Vorlage um ihren Ursprung verschieben
+      const u = drehung ? koerperUrsprung(k.daten.ansichten[ansicht]) : [0, 0];
+      const ref = await svgBild(k.svgTexte[k.ansichtsDateien[ansicht]!]!, { massstab: a.massstab, x0: a.x0 + u[0]!, y0: a.y0 + u[1]! }, w, h);
       const diff = new Uint8ClampedArray(w * h * 4);
       let nurNeu = 0;
       let nurVorlage = 0;
@@ -203,84 +206,6 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
         if (diagnose === 2 && px[i + 2]! > 200 && px[i]! < 60) n++;
       }
       return n;
-    },
-
-    /** B: Ohrspalt im Profil: Breite längs seiner Achse (12 Abschnitte) und Deckung mit Florians Keil */
-    spalt(w = 1000, h = 1000, regeln?: Regeln) {
-      r.groesse(w, h);
-      const a = k.einpassen('kopf', w, h, 0, Math.round(w * 0.03));
-      r.zeichne(k.szeneBauen('kopf', 1, FLUESSIG, regeln), a, 2);
-      const { px } = lesen();
-      const pts: Punkt[] = [];
-      const maske = new Uint8Array(w * h);
-      for (let y = 0; y < h; y++)
-        for (let x = 0; x < w; x++) {
-          const i = (y * w + x) * 4;
-          if (px[i + 2]! > 200 && px[i]! < 60) {
-            pts.push([x, y]);
-            maske[y * w + x] = 1;
-          }
-        }
-      // sichtbarer Teil von Florians Keil: im Keil und im fernen Ohr, und in seiner exakten Vorlage weiß (das nahe Ohr deckt den Rest)
-      const kl = kasten(teilVon(k.daten.ansichten.logo, 'bohne')!.form);
-      const kp = kasten(teilVon(k.daten.ansichten.profil, 'bohne')!.form);
-      const cv = document.createElement('canvas');
-      cv.width = w;
-      cv.height = h;
-      const c = cv.getContext('2d')!;
-      const flaeche = (f: Form): void => {
-        const v = abflachen(f, (q) => [(q[0] + kl[0] - kp[0] - a.x0) * a.massstab, (q[1] + kl[1] - kp[1] - a.y0) * a.massstab], 3);
-        c.beginPath();
-        for (let i = 0; i < v.length; i += 2) (i ? c.lineTo : c.moveTo).call(c, v[i]!, v[i + 1]!);
-        c.closePath();
-        c.fill();
-      };
-      flaeche(teilVon(k.daten.ansichten.profil, 'ohrSpalt')!.form);
-      c.globalCompositeOperation = 'destination-in';
-      flaeche(teilVon(k.daten.ansichten.profil, 'ohrB')!.form);
-      const keilMaske = c.getImageData(0, 0, w, h).data;
-      r.zeichne(k.szeneBauen('profil', 0, EXAKT), a, 0);
-      const vorlage = lesen().px;
-      const ref = new Uint8Array(w * h * 4);
-      for (let i = 0; i < w * h; i++) ref[i * 4 + 3] = keilMaske[i * 4 + 3]! > 127 && vorlage[i * 4]! > 127 ? 255 : 0;
-      let schnitt = 0;
-      let vereint = 0;
-      let refZahl = 0;
-      for (let i = 0; i < w * h; i++) {
-        const b = ref[i * 4 + 3]! > 127 ? 1 : 0;
-        refZahl += b;
-        if (b && maske[i]) schnitt++;
-        if (b || maske[i]) vereint++;
-      }
-      // Hauptachse
-      let mx = 0, my = 0;
-      for (const p of pts) {
-        mx += p[0];
-        my += p[1];
-      }
-      mx /= pts.length || 1;
-      my /= pts.length || 1;
-      let sxx = 0, sxy = 0, syy = 0;
-      for (const p of pts) {
-        sxx += (p[0] - mx) ** 2;
-        sxy += (p[0] - mx) * (p[1] - my);
-        syy += (p[1] - my) ** 2;
-      }
-      const th = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-      const ax: Punkt = [Math.cos(th), Math.sin(th)];
-      const proj = pts.map((p) => (p[0] - mx) * ax[0] + (p[1] - my) * ax[1]);
-      const lo = Math.min(...proj), hi = Math.max(...proj);
-      const n = 12;
-      const breiten = new Array<number>(n).fill(0);
-      for (const s of proj) breiten[Math.min(n - 1, Math.floor(((s - lo) / (hi - lo || 1)) * n))]! += 1;
-      const abschnitt = (hi - lo) / n || 1;
-      return {
-        bildpunkte: pts.length,
-        laenge: (hi - lo) / a.massstab,
-        breiten: breiten.map((b) => Math.round((b / abschnitt / a.massstab) * 10) / 10),
-        deckung: vereint ? schnitt / vereint : 0,
-        keilBildpunkte: refZahl,
-      };
     },
 
     /** B: Tempo je Bild (Szene bauen, zeichnen, auf die Grafikkarte warten) */
