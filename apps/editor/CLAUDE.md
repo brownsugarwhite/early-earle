@@ -484,19 +484,32 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   kein Zug, nicht in der Pose); rechnet der Hintergrund noch, steht sein Auftrag wieder im Stand des Objekts. (6) `typeof werkForm`
   in einem Typ ist an der Stelle auf `null` verengt: den Typ ausschreiben. Probe: `ozzy-objekte-fenster.mjs`. Offenes: Plan,
   Abschnitt 10 („Was an Etappe 3 offen bleibt“).
-- **Naht zwischen zwei Objekten (Beweis im Kern, 18.11.; noch nicht in Ozzy gebaut):** `scripts/pruefen/form-naht.ts` und
-  `form-naht-teile.ts` (aus `packages/shape`: `[ART=abziehen] [BLATT=<pfad>] [STREIFEN=15,30] [BEGLEIT=15] npx vite-node
-  ../../apps/editor/scripts/pruefen/form-naht.ts`; Bild: `html-shot.mjs --jpg`). Den Schnitt zweier Netze rechnet `manifold-3d`
-  (nur `devDependencies` von `apps/editor`; `pnpm add` schreibt `package.json` um: danach zurücksetzen und die eine Zeile von Hand
-  eintragen). Merke: (1) Jedes Dreieck bekommt seine eigene `faceID`, sonst legt die Bibliothek Dreiecke zusammen; alte Punkte
-  werden über ihre Lage in einfacher Genauigkeit wiedergefunden und behalten ihre genaue Lage, neu sind nur die Punkte der Naht.
-  (2) Eine Linie, die in die andere Form läuft, wird an der Naht geschnitten: Pfad teilen am Punkt, der dem Nahtpunkt am nächsten
-  liegt (`stueckNaechstes`, `stueckTeilen`), die Stelle `s` des neuen Punkts aus dem Parameter im Stück (dann behalten alle Proben
-  ihre Stelle), das Stück draußen ist ein `ring` mit `haengt: [true, true]`; die Kreuzungen zweier Formen vorher getrennt zählen.
-  (3) Die Schnittkurve hinterlässt sehr kurze Kanten: `nadelnZusammenlegen`, dann verdichten, bevor gerechnet wird. (4) Wie weit
-  eine Rechnung die Haut bewegt hat, nie aus `heute().weg` lesen (das zählt nur den letzten Abschnitt; so stand erst 0,7 statt 22,5
-  im Bericht): die Haut vorher und nachher über `flaechenAbstand` vergleichen. (5) K an der Naht rundet die ganze Form mit (weiche Linie = überall glatt); Begleitlinien halten sie nicht; außen
-  festhalten (Halte-Loop wie `maulFormen`) hält, zeigt aber den Rand des Streifens. Zahlen: Plan, Abschnitt 10, Beweis 2.
+- **Naht zwischen zwei Objekten (Etappe 4, 18.11.; erste Fassung in Ozzy):** der Baustein `src/form/naht.ts`
+  (`objekteVerbinden`, wartefrei `objekteVerbindenMit` nach `manifoldLaden`; Tests `naht.test.ts`), im Werk `objektVerbinden`
+  (ein Schritt für ⌘Z), in `main.ts` `nahtPartner`, `objekteVerbindenJetzt`, `nahtMarken`/`nahtNachZurueck` (⌘Z gibt das
+  aufgenommene Objekt wieder heraus), in der Leiste zwei Knöpfe (`nahtZeigen`). Proben: `ozzy-naht-fenster.mjs` (`LINIE=1`: mit
+  Linien der Mitte), im Kern `form-naht.ts` (aus `packages/shape`: `[ART=abziehen] [BLATT=<pfad>] [STREIFEN=15,30] [BEGLEIT=15] npx
+  vite-node ../../apps/editor/scripts/pruefen/form-naht.ts`; sie misst am Baustein). Den Schnitt zweier Netze rechnet `manifold-3d`
+  (`pnpm add` schreibt `package.json` um: danach zurücksetzen und die eine Zeile von Hand eintragen). Merke: (1) Jedes Dreieck
+  bekommt seine eigene `faceID`, sonst legt die Bibliothek Dreiecke zusammen; alte Punkte werden über ihre Lage in einfacher
+  Genauigkeit wiedergefunden und behalten ihre genaue Lage, neu sind nur die Punkte der Naht. (2) Eine Linie, die in die andere Form
+  läuft, wird an der Naht geschnitten: Pfad teilen am Punkt, der dem Nahtpunkt am nächsten liegt (`stueckNaechstes`,
+  `stueckTeilen`), die Stelle `s` des neuen Punkts aus dem Parameter im Stück (dann behalten alle Proben ihre Stelle); das Stück
+  draußen ist ein `ring`, der am geschnittenen Ende hängt (`haengt`); die Kreuzungen der zweiten Form zählen neu. (3) Gespiegelte
+  Formen: Die Hälfte z ≥ 0 des Schnitts wird behalten und gespiegelt, die Paare stehen dabei fest (`{ ...hautAus(pos, tri, true),
+  spiegel }`, nie aus gerundeten Lagen lesen: Ein Punkt der Naht dicht an der Ebene fände sich selbst). Die Naht ist dann ein Ring
+  von der Ebene zur Ebene, eine Linie der Mitte wird ein offenes Stück in der Ebene, das an den Enden der Naht hängt. (4) Der
+  Spiegel folgt einer Regel: Das Bild bleibt (gespiegelt + gespiegelt oder + freies Teil mit Spiegelbild: gespiegelt; gespiegelt +
+  Teil ohne Spiegel: Die Form wird frei, `aFrei`; zwei freie mit ungleichem Spiegel: Fehler). (5) Das Teil kommt im Maß des Objekts,
+  das bleibt (`hautImMass`, `loopImMass`: k = f / f des Teils, d = Unterschied der Mitten mal f). (6) Die Schnittkurve hinterlässt
+  sehr kurze Kanten: `nadelnWeg`, dann setzen (`hautNeuRechnen`). (7) Die Bibliothek wird erst beim ersten Verbinden geladen
+  (`import('manifold-3d')`, ihre WASM-Datei über `?url`): Nach dem Warten prüfen, ob das Werk noch dieselbe Haut hat und ruht.
+  (8) `netzGewachsen` erwartet die gebliebenen Punkte vorn; die Zuordnung des Schnitts ist nicht so geordnet, darum nur ohne Pose
+  und ohne Maul. (9) Wie weit eine Rechnung die Haut bewegt hat, nie aus `heute().weg` lesen (nur der letzte Abschnitt): die Haut
+  vorher und nachher über `flaechenAbstand` vergleichen. (10) **K an der Naht:** weich wie jede Linie (Florian: „Wie Seifenblasen“).
+  Mit eigenen Linien an den Formen hält es (die Formen gehen stark mit); an Formen ohne eigene Linien läuft die Rechnung
+  auseinander, das Werk behält die Form („Hier ließ sich das Netz nicht aufräumen“). Begleitlinien halten nicht, außen festhalten
+  (Halte-Loop) zeigt den Rand des Streifens. Zahlen und Offenes: Plan, Abschnitt 10.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

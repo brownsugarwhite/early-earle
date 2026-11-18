@@ -4,10 +4,12 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Stand 18.11., 17:40 Uhr: Etappe 0, 1 und 2 (2a und 2b) sind gebaut, von Etappe 3 die erste Scheibe** (das Plus, ein zweites Objekt,
-wählen, bewegen, Spiegel je Objekt, löschen; Abschnitt 10, mit Bildern und zwei Filmen). **Für Etappe 4 ist die feste Naht zwischen
-zwei Objekten im Kern bewiesen** (verschmelzen und abziehen, Abschnitt 5); wie K an der Naht runden soll, ist offen. Offen bleibt
-auch der Rest von Etappe 3 (Liste unter „Etappe 3: wie mehrere Objekte gebaut werden“). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht
+**Stand 18.11., 19:15 Uhr: Etappe 0, 1 und 2 (2a und 2b) sind gebaut, von Etappe 3 die erste Scheibe** (das Plus, ein zweites Objekt,
+wählen, bewegen, Spiegel je Objekt, löschen; Abschnitt 10, mit Bildern und zwei Filmen), **von Etappe 4 die erste Fassung:
+Verschmelzen und Abziehen in Ozzy** (zwei Knöpfe in der Leiste, die Naht als Linie mit Kante, ⌘Z trennt wieder; Abschnitt 10,
+„Etappe 4 in Ozzy“). K an der Naht ist entschieden („Wie Seifenblasen“) und wirkt wie an jeder Linie; an Formen ohne eigene Linien
+hält die Rechnung dabei noch nicht (offen, steht dort). Offen bleibt auch der Rest von Etappe 3 (Liste unter „Etappe 3: wie mehrere
+Objekte gebaut werden“). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht
 es in Abschnitt 7; was offen bleibt, in Abschnitt 8 und je Etappe in Abschnitt 10.
 
 ## 1. Warum der Donut in Ozzy nicht geht
@@ -142,7 +144,7 @@ Jede Etappe endet mit einer sichtbaren Probe (Film oder Bild, vorher und nachher
 | **2a** | **Der Spiegel-Knopf, erster Teil:** an mit Clipping ↔ an; die Fahrt beim Einschalten des Clippings. *(gebaut)* | `ozzy-spiegel-fenster.mjs`, Film |
 | **2b** | **Der Spiegel-Knopf, zweiter Teil:** aus und anwenden. *(gebaut; offen bleibt, was in Abschnitt 10 steht)* Dazu die freie Form im Werk: Das Netz räumt auch ohne Spiegelpaare auf (`verdichten`), Linien zeichnen ohne Spiegel (P quer, Form auf der Haut), das Spiegelbild als Anzeige, Clipping an einem ganzen Objekt, das an die Ebene geschoben wird; Verschieben mit V. | Film: Kugel, aus, einseitig formen, zur Seite, an, Clipping |
 | **3** | **Mehrere Objekte:** Plus in der Leiste, Aufblasen je Objekt, Wählen und Verschieben mit V, Bearbeiten mit A *(erste Scheibe gebaut)*; mehrere Silhouetten auf dem ersten Blatt, ⌘Z über alle Objekte, Sichern und Laden *(offen)*. | `ozzy-objekte-fenster.mjs`; Film: Körper, dann Ohr und Bein dazu (steht aus) |
-| **4** | **Naht zwischen Objekten, fest:** Beweis im Kern, dann „verschmelzen“ und „abziehen“ als Schalter je Objekt; die Naht als Kante, mit K rund. | Kern-Probe mit Bild, dann Film |
+| **4** | **Naht zwischen Objekten, fest:** Beweis im Kern *(gehalten)*, dann „verschmelzen“ und „abziehen“ *(erste Fassung gebaut: zwei Knöpfe in der Leiste)*; die Naht als Kante, mit K weich *(hält an Formen mit eigenen Linien; ohne noch nicht)*. | Kern-Probe mit Bild; `ozzy-naht-fenster.mjs`, Bildbogen (ein Film steht aus) |
 | **5** | **Naht lebt:** verschmolzene Objekte wieder verschieben und auseinanderziehen (Hals, Abriss), die Naht bearbeiten. | Film in echter Geschwindigkeit |
 | **6** | Danach, wie du geschrieben hast: Seifenhaut, Tempo und Bedienung ansehen (Liste in Abschnitt 8). | Messblatt |
 
@@ -182,6 +184,13 @@ Rückweg; (e) Sichern und Laden mit mehreren Objekten; (f) die Fahrt zum Blatt b
 
 **Beantwortet (18.11.):** Was „Spiegel aus“ an einer verschmolzenen Form bedeutet. Mein Vorschlag war: Sie bleibt ganz und ist ab
 dann frei, beide Seiten lassen sich verschieden formen (dasselbe wie „anwenden“). Deine Antwort: „Ja, so bauen“. So ist es gebaut.
+
+- **Etappe 4 (18.11. abends):** Verschmelzen und Abziehen sind zwei Knöpfe neben dem Plus, zu sehen erst mit mehr als einem
+  Objekt (kein Schalter je Objekt: Solange die Naht nicht „lebt“, wäre er nur ein Knopf mit Gedächtnis). Beim Verschmelzen bleibt
+  das größere Objekt (in seinem Maß wird weitergerechnet), beim Abziehen ist das gewählte das Werkzeug. Danach ist der weiße
+  Zeiger an, damit die gewählte Naht zu sehen ist und K sofort wirkt. Eine Naht, an der keine Linie endet, bekommt von selbst
+  vier Punkte in gleichen Abständen (wie ein Kreis mit vier Punkten), sonst wäre sie nicht zu greifen. Der Spiegel folgt einer
+  Regel: Das Bild bleibt, wie es ist.
 
 ## 8. Noch ausstehend (nicht in diesen Etappen)
 
@@ -250,11 +259,13 @@ Quellen: [FiberMesh](https://www-ui.is.s.u-tokyo.ac.jp/~takeo/papers/fibermesh.p
 | 2b | **Objekte bewegen mit V.** Ziehen am Objekt verschiebt es; G, S, R mit Achsen (X, Y, Z), ↩ oder Klick setzt, Esc bricht ab. Ohne Rechnung: Alle Lagen, Linien und Griffe werden abgebildet, die Form bleibt genau dieselbe. Eine verschmolzene Form bleibt in der Spiegelebene. | dritter Teil derselben Probe (`NUR=objekt`) |
 | 2b | **Linien an der freien Form.** P quer gibt einen Loop rundum, eine geschlossene Form liegt auf der Seite der Haut, die man sieht (auch in einer gewendeten Ansicht), eine Abzweigung verbindet zwei Punkte; Freihand und Formen ebenso. Jede Linie entsteht für sich. K und Löschen wirken nur an ihr. Trifft ein Strich in Front oder Top nur das gezeigte Spiegelbild, entsteht die Linie an der Form. | `ozzy-frei-linien-fenster.mjs`: alles gut. [Bilderbogen](../progress/ozzy/2026-11-18-frei-linien-bogen.png) |
 | 3 (erste Scheibe) | **Mehrere Objekte, das Plus.** Das Plus in der Leiste öffnet das leere Blatt, die vorhandenen Objekte stehen blass darin; zeichnen, ↩ bläst das neue auf (Esc führt zurück). Mit V wählt ein Klick das Objekt unter dem Zeiger (Schild „Form 1“, „Form 2“) und macht es zum aktiven; mit A genauso, dann erscheinen seine Linien und Punkte. Spiegel und ⌘Z gehören dem Objekt. ⌫ im Objekt-Modus und der Mülleimer löschen das aktive, solange es andere gibt. „Luft ablassen“ wirkt am aktiven Objekt. Jedes Objekt rechnet in seiner eigenen Größe (ein kleines hat dasselbe dichte Netz wie ein großes: 1 500 Punkte bei 80 und bei 130 Halbmesser). Der Raum, die Umrisse an den Wänden und alle Materialien zeigen alle Objekte. | `ozzy-objekte-fenster.mjs`: alles gut. [Bilderbogen](../progress/ozzy/2026-11-18-objekte-plus-bogen.png) |
+| 4 (erste Fassung) | **Verschmelzen und Abziehen.** Sobald es mehr als ein Objekt gibt, stehen neben dem Plus zwei Knöpfe; sie sind an, wenn das gewählte Objekt ein anderes berührt. **Verschmelzen:** Die zwei werden eine Form. **Abziehen:** Das gewählte Objekt wird aus dem anderen herausgeschnitten. An der Schnittkurve liegt die Naht: eine Linie mit Kante, mit Punkten, gewählt (der weiße Zeiger ist an, K wirkt sofort). Linien, die in die andere Form liefen, enden an der Naht. ⌘Z trennt wieder und gibt das andere Objekt zurück. Der Spiegel: Das Bild bleibt, wie es ist (zwei gespiegelte bleiben gespiegelt; ein Teil mit Spiegelbild verschmilzt auf beiden Seiten; mit einem Teil ohne Spiegel wird die Form ganz und frei). | `ozzy-naht-fenster.mjs` (ohne und mit `LINIE=1`), Tests `naht.test.ts`; Bildbogen `docs/progress/ozzy/2026-11-18-naht-in-ozzy-bogen.png` |
 
 **Beweis 2 (18.11., 17:40 Uhr): die Naht zwischen zwei Objekten.** Ergebnis in Abschnitt 5 (Zeile „Naht zwischen zwei Objekten“).
 Was daraus folgt:
 - **Verschmelzen und Abziehen mit Kante lassen sich bauen** (Etappe 4): schneiden und verbinden beim Loslassen, die Naht ist danach
-  eine Linie mit Punkten, die geschnittenen Linien hängen an ihr. Gebaut ist es noch nicht; die Probe rechnet es im Kern.
+  eine Linie mit Punkten, die geschnittenen Linien hängen an ihr. Seit dem 18.11. abends in Ozzy gebaut (nächster Absatz); die
+  Kern-Probe misst seitdem am Baustein von Ozzy und kommt auf dieselben Zahlen.
 - **Entschieden (Florian, 18.11. abends): „Wie Seifenblasen“.** K macht die Naht weich wie jede andere Linie, die Formen gehen mit
   (die erste Zeile der Tabelle). Der Streifen mit festgehaltener Haut und die Begleitlinien werden nicht gebaut.
 - **K an der Naht, was gemessen wurde.** Drei Arten zu runden sind gemessen (Kriterium für eine schmale
@@ -269,8 +280,62 @@ Was daraus folgt:
   (Für den dritten Weg hätte ein weicher Rand gefehlt; mit Florians Entscheidung entfällt er.)
 - **Noch nicht geprüft:** ein verschmolzenes (gespiegeltes) Objekt als Partner; Formen mit sehr verschieden feinen Netzen; eine
   Naht aus mehreren Schnittkurven; Linien, die genau längs der Naht laufen; die lose Naht (Ausblenden je Bildpunkt beim Ziehen).
-- Die Bibliothek zieht 32 Pakete nach (für ihr Kommandozeilenwerkzeug); im Produkt braucht es nur zwei ihrer Dateien. Sie ist
-  vorerst nur für die Probe eingebunden (`devDependencies` von `apps/editor`).
+- Die Bibliothek zieht 32 Pakete nach (für ihr Kommandozeilenwerkzeug); im Produkt braucht es nur zwei ihrer Dateien. Sie steht
+  wie alles im Editor unter `devDependencies` von `apps/editor` und wird im Fenster erst beim ersten Verbinden geladen.
+
+**Etappe 4 in Ozzy (18.11., 19:15 Uhr): Verschmelzen und Abziehen, erste Fassung.**
+
+Wie es gebaut ist:
+- **Der Baustein** `apps/editor/src/form/naht.ts` (`objekteVerbinden`): Den Schnitt der zwei Netze rechnet die Bibliothek; alle
+  Punkte, die es gab, bleiben genau, wo sie lagen, neu sind nur die Punkte der Naht. Linien, die in die andere Form liefen, werden
+  an der Naht geschnitten (ihr Pfad genau geteilt) und hängen dort. Die Naht ist ein Loop mit Kante.
+- **Gespiegelte Formen:** Verbunden wird die Hälfte z ≥ 0 und dann gespiegelt, so bleiben die Spiegelpaare genau. Die Naht läuft
+  dann von der Spiegelebene zur Spiegelebene (ein Ring), eine Linie der Mitte endet an ihren zwei Enden.
+- **Der Spiegel, eine Regel: Das Bild bleibt, wie es ist.** Zwei gespiegelte Formen: gespiegelt. Gespiegelt und ein freies Teil mit
+  Spiegelbild: gespiegelt, das Teil sitzt danach auf beiden Seiten. Gespiegelt und ein Teil ohne Spiegel: Die Form wird ganz und
+  frei (wie „Spiegel aus“), ⌘Z stellt auch das zurück. Zwei freie mit demselben Spiegel: frei wie zuvor.
+- **Im Werk** `werk.objektVerbinden`: ein Schritt für ⌘Z; danach räumt das Netz an der Naht auf, und die Haut setzt sich wie nach
+  jeder neuen Kante. **In Ozzy** (`main.ts`): `nahtPartner` findet das Objekt, das das gewählte berührt (ihre Kästen überlappen
+  sich; bei mehreren das mit der größten Überlappung); ⌘Z hinter den Schritt legt das aufgenommene Objekt wieder dazu.
+
+Gemessen (zwei frische Formen, Halbmesser 130 und 80, je 1 500 Punkte; `ozzy-naht-fenster.mjs`):
+
+| | ohne eigene Linien (dein Standard) | beide mit ihrer Linie der Mitte |
+| --- | --- | --- |
+| bis verbunden (Klick bis neue Form) | 243 ms | 275 ms |
+| Rauminhalt gleich nach dem Verbinden | 11 037 Tsd., wie gerechnet (Summe ohne die Linse) | 11 037 Tsd. |
+| nachdem sich die Haut gesetzt hat | 11 329 Tsd. (**+2,6 %**) | 11 039 Tsd. (+0,02 %) |
+| Abziehen, nach dem Setzen (gerechnet 8 903 Tsd.) | 9 168 Tsd. (**+3,0 %**) | 8 912 Tsd. (+0,1 %) |
+| Naht | ein Ring mit 3 Punkten (mit dem Spiegelbild vier rundum) | derselbe, dazu enden zwei Stücke der Mittellinien an ihr |
+| umgeschlagene Dreiecke | 0 | 0 |
+| **K an der Naht** | **die Rechnung läuft auseinander; das Werk behält die Form und meldet es** | hält: Die Naht wird weich, die Formen gehen mit, deutlich (Rauminhalt −22 %, an der Naht entsteht ein Hals) |
+
+Dazu 10 Tests des Bausteins (frei, gespiegelt, Teil mit und ohne Spiegelbild, Fehlerfälle) und die Kern-Probe `form-naht.ts`.
+
+**Was an Etappe 4 offen bleibt** (die erste Fassung ist benutzbar, aber nicht fertig):
+1. **K an der Naht an Formen ohne eigene Linien hält nicht** (Tabelle). Du hast „Wie Seifenblasen“ gewählt: Die Naht ist dann eine
+   weiche Linie wie jede andere, und eine einzelne weiche Linie an einem scharfen Knick hat in der heutigen Rechnung keinen festen
+   Ausgang. Mit eigenen Linien an den Formen hält es. Wie es ohne sie halten soll, gehört zu Etappe 5 (die Naht lebt) und braucht
+   einen Beweis im Kern, bevor etwas gebaut wird.
+2. **Nach dem Verbinden wächst eine Form ohne eigene Linien um rund 3 %** (die Haut setzt sich an ihrer ersten Linie; mit eigenen
+   Linien bleibt sie stehen). Das ist dieselbe Rechnung wie nach jeder ersten Linie an einer frischen Form.
+3. **Der Spiegel:** Ein Objekt, das sein Spiegelbild zeigt, und eines ohne (beide frei) lassen sich noch nicht verbinden (Meldung:
+   erst bei beiden denselben Spiegel wählen). Ein Teil mit Spiegelbild, das über die Spiegelebene reicht, erst mit Clipping.
+4. **Linien, die an der Naht hängen:** An einer solchen Form lässt sich der Spiegel danach nicht ausschalten und nicht an der Ebene
+   verschmelzen (hängende Linien sind dort noch nicht ausgeschrieben; derselbe offene Punkt wie in Etappe 2).
+5. Formen mit einem Maul lassen sich noch nicht verbinden.
+6. **Kein lebendes Verbinden:** Verschmelzen ist ein Schritt. Die Teile danach wieder verschieben oder auseinanderziehen (Hals,
+   Abriss) ist Etappe 5; bis dahin trennt ⌘Z. Einen Schalter je Objekt („dieses Objekt zieht ab“) gibt es deshalb noch nicht.
+7. Verbunden wird immer mit einem Objekt (dem mit der größten Überlappung); berührt das gewählte mehrere, eines nach dem anderen.
+8. Keine Fahrt beim Verschmelzen (die Haut wechselt mit einem Schnitt). Die Knöpfe haben noch keine Tasten, ihre Zeichen sind ein
+   erster Entwurf.
+9. Am gewählten Naht-Ring bietet Ozzy „Maul“ an (wie an jedem Ring mit Kante). „Luft ablassen“ zeigt nur die Zeichnung des
+   Objekts, das geblieben ist.
+10. Nicht geprüft: Formen mit sehr verschieden feinen Netzen, eine Naht aus mehreren Schnittkurven, Linien längs der Naht, große
+    Formen (deine gesicherten haben 3 500 bis 11 400 Punkte; im Kern 85 ms bei zweimal 5 200).
+
+**Geprüft am 18.11., 19:10 Uhr (Etappe 4, erste Fassung):** Typen, Lint, 35 Tests des Fensters (10 neue), alle 37 Fenster-Proben
+gegen 5211, die Kern-Probe `form-naht.ts` für beide Arten. Am Kern (`packages/shape`) ist nichts geändert.
 
 **Geprüft am 18.11., 17:15 Uhr (Etappe 3, erste Scheibe):** Typen, Lint, 25 Tests des Fensters, alle 36 Fenster-Proben gegen 5211.
 

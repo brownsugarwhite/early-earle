@@ -9,7 +9,7 @@ ihn (bisher: C1, C2, D1).
 (von `claude/ozzy`, Stand `6bef9f17`), Arbeitsbaum `.claude/worktrees/ozzy-donut-mirror-system-7a31b7`, Fenster
 `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). **Noch nicht in `claude/ozzy` zusammengeführt** (das entscheidet Florian
 oder die Leitung). Plan mit Auftrag, Idee, Beweisen, Etappen und allem Offenen:
-[`docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`](../../plans/2026-11-18-ozzy-objekte-spiegel-naehte.md). Stand 18.11., 17:45 Uhr:
+[`docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`](../../plans/2026-11-18-ozzy-objekte-spiegel-naehte.md). Stand 18.11., 19:15 Uhr:
 
 | Etappe | Stand | Probe |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ oder die Leitung). Plan mit Auftrag, Idee, Beweisen, Etappen und allem Offenen:
 | 2b Spiegel aus (die Form wird ganz und frei), an (Spiegelbild als Anzeige), Clipping an einem freien Objekt; Objekt mit V verschieben, skalieren, drehen; Linien an der freien Form | gebaut | `ozzy-spiegel-fenster.mjs` (`NUR=aus`, `NUR=objekt`), `ozzy-frei-linien-fenster.mjs`, Tests `frei.test.ts` |
 | 3 mehrere Objekte, erste Scheibe: das Plus in der Leiste, ein zweites Objekt aufblasen, mit V und A wählen (das gewählte wird das aktive), Spiegel und ⌘Z je Objekt, löschen, Luft ablassen am aktiven | gebaut | `ozzy-objekte-fenster.mjs` |
 | 3 Rest (mehrere Silhouetten auf dem ersten Blatt, Linien ruhender Objekte, gemeinsamer Rückweg, Sichern und Laden, Fahrt zum Blatt) | nicht gebaut | Plan, Abschnitt 6 und 10 |
-| 4 Naht zwischen Objekten (verschmelzen, abziehen) | **im Kern bewiesen** für die feste Naht mit Kante (Haut geschlossen, Linien an der Naht geschnitten, Rechnung steht, nichts umgeschlagen); wie K an der Naht runden soll, ist offen (drei Arten gemessen); in Ozzy nicht gebaut | `form-naht.ts`, Plan, Abschnitt 5 und 10 (Beweis 2) |
+| 4 Naht zwischen Objekten (verschmelzen, abziehen) | **erste Fassung gebaut:** zwei Knöpfe neben dem Plus (ab zwei Objekten), die Naht ist eine Linie mit Kante und gewählt, ⌘Z trennt wieder; der Spiegel bleibt, wie das Bild ist. K an der Naht („Wie Seifenblasen“) hält an Formen mit eigenen Linien, ohne sie noch nicht (das Werk behält dann die Form). Offenes: Plan, Abschnitt 10, „Was an Etappe 4 offen bleibt“ | `ozzy-naht-fenster.mjs` (`LINIE=1`), `naht.test.ts`, Kern `form-naht.ts`; Bildbogen `docs/progress/ozzy/2026-11-18-naht-in-ozzy-bogen.png` |
 | 5 Naht lebt (auseinanderziehen, Hals) | nicht gebaut, nicht bewiesen | Plan, Abschnitt 5 |
 
 Florian hat am 18.11. auf die Frage zu „Spiegel aus“ geantwortet („Ja, so bauen“); seine Urteile zu den gebauten Etappen stehen aus.
