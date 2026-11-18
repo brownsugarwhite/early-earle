@@ -170,8 +170,9 @@ neue Punkt und jede Richtung der Fläche entsteht aus den Nachbarn ringsum. E1 g
 nur seine drei Ecken und deren Richtungen und wölbt jedes Dreieck für sich. Das ergibt fast, aber nicht genau dieselbe Fläche. Die
 Lage unterscheidet sich kaum; die Spiegelungen und Farben der Seifenhaut hängen aber an der Richtung der Fläche in jedem Bildpunkt,
 und dort sieht man kleine Unterschiede (wie eine leicht andere Delle in einem Spiegel). Es kann unsichtbar sein, es kann auch besser
-aussehen (die Haut wäre im Zug so fein wie in Ruhe). Deshalb steht vor E1 ein Vergleichsbild. Es gibt auch einen Weg ohne
-Unterschied (dieselben Stufen wie heute, nur auf der Grafikkarte gerechnet); er ist aufwendiger, ich würde beide nebeneinander zeigen.
+aussehen (die Haut wäre im Zug so fein wie in Ruhe). Deshalb steht vor E1 ein Vergleichsbild. Denkbar ist auch ein Weg ohne
+Unterschied (dieselben Stufen wie heute, nur auf der Grafikkarte gerechnet). Ob er trägt, ist nicht bewiesen; er wäre aufwendiger,
+und ich würde beide im Vergleichsbild nebeneinander zeigen.
 
 **Woran merkst du den Unterschied beim Zeiger?** Der gezeichnete Zeiger (das Dreieck) wird von Ozzy gezeichnet, also ein bis zwei
 Bilder nach deiner Hand, und nur so oft, wie Ozzy Bilder schafft. Der Zeiger des Systems liegt immer genau unter der Hand. Du würdest
