@@ -64,6 +64,12 @@ gebaut ist, steht im Plan je Schritt unter „Gebaut“, nicht hier.
   im Spiegel-Schalter brauchen das ganze Netz. Ich habe ihn nicht begonnen. Mein Vorschlag: streichen; das Tempo für große Formen
   kommt aus E2 (der Löser rechnet neben dem Bild). Zahlen im Plan unter D1.
 
+- **Etappe E (18.11.): Reihenfolge und Freigabe.** E1 (Haut auf der Grafikkarte) und E2 (Löser neben dem Bild) sind nicht
+  gebaut. Für 120 Bilder je Sekunde im Zug muss der Löser aus dem Bild (E2); E1 allein reicht nicht und ändert den Look der Haut
+  (anderes Flächenstück als heute). Kleiner Plan mit Messung und Beweis:
+  [`2026-11-18-ozzy-loeser-neben-dem-bild.md`](2026-11-18-ozzy-loeser-neben-dem-bild.md). Mein Vorschlag: E2 zuerst, E1 danach
+  mit Vergleichsbild.
+
 ## 2. Kurvennetz im Raum: Unterschiede zur Studie
 
 Er, 17.11.: „Ist erstmal ok so. Ich seh noch unterschiede zur studie in der ich es erarbeitet habe. Aber notiere das für den

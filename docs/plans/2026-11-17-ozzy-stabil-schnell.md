@@ -699,6 +699,19 @@ gegen die heutige Anzeige (Linien genau auf ihrem Pfad, harte Kanten hart), Mess
 holt die jeweils neueste Haut. Heikel sind Netzwechsel, Nachlauf, Pose und der Stand. Beweis: ein Zug im Kern über diesen Weg, gleiche
 Form bis 0,1; im Fenster Rechnen je Bild im Zug höchstens 5 / 7 ms.
 
+**Stand von Etappe E (18.11., früh morgens): nicht gebaut; der Beweis für E2 ist geführt, der kleine Plan liegt vor.** Beide
+Schritte sind große Umbauten (E2 zwei bis drei Tage, E1 ein Tag Beweis und drei bis vier Tage Umbau), E1 ist dazu eine Frage des
+Looks. Ich habe sie in der Nacht nicht begonnen. Alles dazu in
+[`2026-11-18-ozzy-loeser-neben-dem-bild.md`](2026-11-18-ozzy-loeser-neben-dem-bild.md):
+
+- **Messung:** Ein Bild im Zug braucht heute rund 11 ms (Löser 5 bis 9, glatte Haut 1,2 bis 2,5, Linien 1,4 bis 1,9). Für 120
+  Bilder je Sekunde (8,3 ms) muss der Löser aus dem Bild; E1 allein reicht nicht. **Empfehlung: E2 vor E1.**
+- **Beweis E2 im Kern** (`form-neben-dem-bild.ts`): Rechnet der Löser im eigenen Takt (schneller als der Zeiger oder
+  unregelmäßig), liegt die Haut am Ende höchstens 0,07 Einheiten neben der vom Bildtakt (Kriterium 0,1). Überspringt er Ziele (ein
+  langsamer Löser an einer großen Form), sind es an „strange bird“ 0,2 bis 0,9: derselbe Unterschied, den heute ein schnellerer Zug
+  macht.
+- **E1:** Die Grafikkarte gäbe eine andere Fläche als die Stufen von heute; vor dem Bau gehört das Vergleichsbild.
+
 ### Etappe F: Abschluss
 
 `main.ts` (5 643 Zeilen) nach seiner Gliederung mechanisch aufteilen, ohne Verhalten zu ändern (früher, falls die Größe der Datei
