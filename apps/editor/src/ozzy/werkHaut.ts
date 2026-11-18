@@ -403,6 +403,11 @@ export class WerkHaut {
     for (let i = 0; i < L.length; i++) st[i] = L[i]! + feld[i]!;
     return st;
   }
+  /** das nächste `rechnen` rechnet ganz, auch wenn die Haut liegt wie zuletzt (das Clipping wurde umgeschaltet: `spiegelSeite`) */
+  ganzNeu(): void {
+    this.letzte = null;
+  }
+
   /**
    * Clipping (18.11.): die Seite je feinem Punkt für den Schnitt an der Spiegelebene (`HautWerte.spiegelSchnitt`). Gesetzt nur an den
    * Dreiecken, in denen ein Punkt einer Hälfte gerade hinter der Ebene liegt (dort trifft sie ihr Spiegelbild und endet); überall

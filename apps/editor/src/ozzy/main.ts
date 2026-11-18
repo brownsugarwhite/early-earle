@@ -40,7 +40,7 @@ import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
 import { AnsichtsTropfen } from './ansichtsTropfen';
-import { Leiste } from './leiste';
+import { Leiste, type SpiegelZustand } from './leiste';
 import { reglerDehnung, reglerTropfen } from './reglerTropfen';
 import { type Bereich, type ReglerZeile, feinreglerBauen, werteLesen } from './regler';
 
@@ -529,11 +529,78 @@ const FELD_DECKUNG = 0.5;
 let feldToenung: { index: Uint32Array | null; nr: number } = { index: null, nr: 0 };
 
 /**
+ * Der Spiegel-Knopf (18.11., Plan „Objekte, Spiegel und Nähte“; Florian: „Ich kann mirrorhälften erst ohne clipping
+ * ineinanderschieben und dann clipping einschalten um sie zu verschmelzen. Gerne mit einer schönen animation“). Der Zustand des
+ * Objekts ist `werk.G.clipping`: an mit Clipping (`clip`) oder an ohne (`an`); „aus“ und „anwenden“ kommen mit der freien Form.
+ * Wird das Clipping eingeschaltet, während sich die Hälften überragen, läuft `spiegelFahrt`: Die Anzeige schneidet erst so tief
+ * hinter der Ebene, wie die Überschneidung reicht (`tiefe`, Welteinheiten), und wandert in `SPIEGEL_FAHRT` Sekunden zur Ebene; dann
+ * macht das Werk den Schnitt fest. `spiegelMarken`: so viele Schritte hatte das Werk vor einem solchen Verschmelzen (ein ⌘Z dahinter
+ * schaltet auch das Clipping wieder aus, sonst verschmölze der nächste Zug gleich wieder).
+ */
+const spiegelZustand = (): SpiegelZustand => (werk.G.clipping ? 'clip' : 'an');
+let spiegelFahrt: { t: number; tiefe: number } | null = null;
+const SPIEGEL_FAHRT = 0.42;
+const spiegelMarken: number[] = [];
+const spiegelErlaubt = (): boolean => zustand === 'ruhe' && werkGezeigt && !werk.grund && !werk.maulLauf;
+function spiegelWeiter(): void {
+  if (!spiegelErlaubt() || werk.zug || spiegelFahrt) return;
+  spiegelMarken.length = 0;
+  if (werk.G.clipping) {
+    werk.G.clipping = false;
+    werk.G.meldung = 'Spiegel an, ohne Clipping: Was du über die Mitte ziehst, überragt sich · noch ein Klick verschmilzt es';
+  } else {
+    werk.G.clipping = true;
+    const tief = werk.ueberDerMitte() ? werk.tiefeHinterDerMitte() : 0;
+    if (tief > 0) spiegelFahrt = { t: 0, tiefe: tief / werkHaut.f };
+    werk.G.meldung = tief > 0 ? 'Spiegel an, mit Clipping: Die Hälften verschmelzen an der Spiegelebene' : 'Spiegel an, mit Clipping: Was du über die Mitte ziehst, verschmilzt dort';
+  }
+  // die Anzeige liest das Clipping beim Rechnen der Haut (auch wenn sie liegt wie zuletzt)
+  werkHaut.ganzNeu();
+  werkNeu = true;
+  anstossen();
+}
+/** ein Bild der Fahrt; an ihrem Ende wird der Schnitt fest (ein Schritt für ⌘Z), und die Naht ist gewählt */
+function spiegelFahrtSchritt(dt: number): boolean {
+  const F = spiegelFahrt;
+  if (!F) return false;
+  F.t += Math.max(0, dt);
+  if (F.t < SPIEGEL_FAHRT && !werk.zug) return true;
+  spiegelFahrt = null;
+  if (!werk.zug && werk.ueberDerMitte()) {
+    const n = werk.zurueck.length;
+    if (werk.mitteFest(false, true)) {
+      spiegelMarken.push(n);
+      werk.G.meldung = 'Clipping: an der Spiegelebene verschmolzen · die Naht ist gewählt, K macht sie rund · ⌘Z trennt wieder';
+    }
+  }
+  werkNeu = true;
+  return true;
+}
+/** nach einem ⌘Z: Ist das Verschmelzen beim Einschalten des Clippings zurückgenommen, ist auch das Clipping wieder aus */
+function spiegelNachZurueck(): void {
+  let aus = false;
+  while (spiegelMarken.length && werk.zurueck.length <= spiegelMarken[spiegelMarken.length - 1]!) {
+    spiegelMarken.pop();
+    aus = true;
+  }
+  if (aus && werk.G.clipping) {
+    werk.G.clipping = false;
+    werkHaut.ganzNeu();
+    werkNeu = true;
+  }
+}
+
+/**
  * Clipping (18.11.): Reicht in der gezeigten Haut des Werks eine Hälfte über die Spiegelebene, schneidet die Anzeige sie dort ab (der
  * Rand in Welteinheiten, wie `SCHNITT_RAND` im Prüffenster); sonst null. Seifenhaut, Solid und Zebra; Jelly, helles Solid und Grün
- * laufen in fremden Renderern und zeigen bis zum Loslassen beide Hälften ganz.
+ * laufen in fremden Renderern und zeigen bis zum Loslassen beide Hälften ganz. Während `spiegelFahrt` wandert der Rand von der Tiefe
+ * der Überschneidung zur Ebene.
  */
-const spiegelSchnittJetzt = (): number | null => (werkGezeigt && werkHaut.spiegelSchnitt ? werk.SCHNITT_RAND / werkHaut.f : null);
+const spiegelSchnittJetzt = (): number | null => {
+  if (!werkGezeigt || !werkHaut.spiegelSchnitt) return null;
+  const rand = werk.SCHNITT_RAND / werkHaut.f;
+  return spiegelFahrt ? rand + spiegelFahrt.tiefe * (1 - glatt(Math.min(1, spiegelFahrt.t / SPIEGEL_FAHRT))) : rand;
+};
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
@@ -839,6 +906,13 @@ function groessterInnenkreis(xs: readonly number[], ys: readonly number[]): numb
   return best;
 }
 
+/** eine neue Form (aufgeblasen, geladen) beginnt wie jede: Spiegel an, mit Clipping */
+function spiegelGrundstellung(): void {
+  werk.G.clipping = true;
+  spiegelFahrt = null;
+  spiegelMarken.length = 0;
+}
+
 function werkFormAnlegen(): void {
   if (!silhouette) return;
   if (werkForm && werkForm.stand === blatt.stand && (werkForm.geladen !== undefined || mitteLinie() || werkForm.ohneLinie)) return;
@@ -895,6 +969,7 @@ async function formLaden(name: string): Promise<string> {
   neu();
   werkHaut.neueForm();
   werkBlatt.neueForm();
+  spiegelGrundstellung();
   const text = await werk.wesenLaden(name);
   if (!text.startsWith('geladen')) return text;
   werk.anzeige.allesZeigen();
@@ -1071,6 +1146,7 @@ function werkBild(dt: number, m: Moment | null): boolean {
   werk.bildRechnen();
   mess.teile[0] = performance.now() - tw;
   let aktiv = werkBeschaeftigt();
+  if (spiegelFahrtSchritt(dt)) aktiv = true;
   // übergeben wird erst, wenn das Werk seine Form gerechnet hat (die Blase reißt früh ab, das Werk setzt die Haut dann noch)
   const bereit = !werkBeschaeftigt() && werk.ruheOffen === null;
   const zeigen = zustand !== 'blatt' && !!m && !!koerper && T >= m.riss && (werkGezeigt || bereit || T >= m.dauer);
@@ -1164,6 +1240,7 @@ function aufblasen(): void {
   if (!koerper) return;
   koerper.versatz.fill(0);
   raumRechnen();
+  spiegelGrundstellung();
   werkFormAnlegen();
   // die Wände nach der Form des Werks
   raumRechnen();
@@ -2697,6 +2774,7 @@ function bild(dt: number): boolean {
   hintenZeigen();
   maulUiZeigen();
   objektUiZeigen();
+  leiste.spiegelZeigen(spiegelZustand(), spiegelErlaubt());
   tastenStand();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
@@ -5387,6 +5465,7 @@ window.addEventListener('keydown', (e) => {
       werk.anzeige.allesZeigen();
       anstossen();
     }
+    if (zustand === 'ruhe') spiegelNachZurueck();
     return;
   }
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'a' && zustand === 'ruhe' && bearbeitenAn) {
@@ -5578,7 +5657,7 @@ function waehlenTaste(w: Werkzeug): void {
 
 // ---------- Leiste, Menü, Feinregler ----------
 
-const leiste = new Leiste(document.body, werkzeugGewaehlt, muell);
+const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, () => spiegelWeiter());
 
 // S13 (liquid drop, Idee 10): der Ansichts-Tropfen unten rechts; Tippen rastet ein (⇧ die Gegenseite, die Mitte der Raum), Ziehen dreht
 const ansichtsTropfen = new AnsichtsTropfen(
@@ -6146,6 +6225,9 @@ const haken = {
   },
   /** B1: der Zeiger jetzt: Zeigt ihn das System (und mit welchem Bild), hat ihn das letzte Bild gezeichnet, seine Form */
   zeiger: () => ({ system: zeigerSystem.an, bild: zeigerSystem.wert, gezeichnet: zeigerGezeichnet, art: zustand === 'blatt' ? 'pfeil' : zeigerArtJetzt(), tempo: zeigerSystem.tempo, farbe: zustand !== 'blatt' && objektModus() ? 'dunkel' : 'weiss' }),
+  /** der Spiegel-Knopf: sein Zustand, ob er etwas schaltet, die Fahrt beim Einschalten des Clippings (0 … 1) */
+  spiegel: () => ({ zustand: spiegelZustand(), erlaubt: spiegelErlaubt(), fahrt: spiegelFahrt ? Math.min(1, spiegelFahrt.t / SPIEGEL_FAHRT) : null, rand: spiegelSchnittJetzt() }),
+  spiegelWeiter,
   /** Objekte (V): der Modus, ob das Objekt gewählt ist, das Werkzeug des Raums, das Schild am Objekt (Text und Ort, CSS-Pixel) */
   objekt: () => ({
     modus: objektModus(),

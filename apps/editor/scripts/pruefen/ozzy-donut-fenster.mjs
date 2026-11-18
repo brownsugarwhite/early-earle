@@ -10,7 +10,7 @@
 //   MATERIAL=solid|zebra (Standard Seifenhaut)   DICHTE=<Pixeldichte der Bilder> (Standard 1)   AUSSCHNITT=1 (Bilder: nur die Form)
 //   KUGEL=1: statt einer gesicherten Form ein frisch aufgeblasener Kreis mit Linie der Mitte und zwei Ringen (mit P quer über die
 //   Form gezeichnet); gezogen wird ihre Kreuzung an der Seite: der Donut wie im Prüffenster
-import { auf } from './ozzy-teile.mjs';
+import { auf, kugelMitRingen } from './ozzy-teile.mjs';
 
 const NAME = process.env.NAME ?? 'strange bird';
 const TIEF = Number(process.env.TIEF ?? 40);
@@ -26,43 +26,7 @@ const z1 = (x) => x.toFixed(1).replace('.', ',');
 const KUGEL = process.env.KUGEL === '1';
 const { browser, s, O, geladen, ruhig, klick, fehler } = await auf({ form: KUGEL ? '' : NAME, dichte: Number(process.env.DICHTE ?? 1), extra: KUGEL ? 'ohneLinie=0' : '' });
 if (KUGEL) {
-  // ein Kreis auf dem Blatt (Halbmesser 150), aufgeblasen; dann in der Seite zwei Striche mit P quer über die Form: zwei Ringe
-  const [cx, cy, R, k] = [720, 450, 150, 0.5523 * 150];
-  await O('form', [
-    { x: cx + R, y: cy, ein: [0, -k], aus: [0, k] },
-    { x: cx, y: cy + R, ein: [k, 0], aus: [-k, 0] },
-    { x: cx - R, y: cy, ein: [0, k], aus: [0, -k] },
-    { x: cx, y: cy - R, ein: [-k, 0], aus: [k, 0] },
-  ]);
-  await s.waitForTimeout(300);
-  await O('aufblasen');
-  await geladen();
-  await s.keyboard.press('1');
-  await s.waitForTimeout(1600);
-  await ruhig();
-  for (const [A, B] of [
-    [
-      [-250, 0],
-      [250, 0],
-    ],
-    [
-      [10, -250],
-      [10, 250],
-    ],
-  ]) {
-    await s.keyboard.press('p');
-    const a = await O('flaecheHin', 'seite', A[0], A[1]);
-    const b = await O('flaecheHin', 'seite', B[0], B[1]);
-    await klick(a.x, a.y);
-    await klick(b.x, b.y);
-    await s.keyboard.press('Enter');
-    await ruhig();
-    await s.keyboard.press('a');
-    await s.waitForTimeout(200);
-  }
-  await s.keyboard.press('0');
-  await s.waitForTimeout(1800);
-  await ruhig();
+  await kugelMitRingen({ s, O, geladen, ruhig, klick });
 } else await geladen();
 if (MATERIAL) await O('material', MATERIAL);
 

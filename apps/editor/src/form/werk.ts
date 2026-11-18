@@ -1999,6 +1999,18 @@ export const NAHT_AB = 0.05;
  * Reicht die Haut einer Hälfte über die Spiegelebene (weiter als `NAHT_AB`)? Gelesen an der Haut, nicht an den Punkten der Linien:
  * Auch ein Griff oder die Haut zwischen zwei Linien kann hinüberreichen. In der Pose nie.
  */
+/** so tief (Einheiten) reicht die Haut einer Hälfte höchstens hinter die Spiegelebene (0: gar nicht) */
+export function tiefeHinterDerMitte(): number {
+  const seite = grund ? null : hautSeite();
+  if (!seite) return 0;
+  const P = haut.pos;
+  let tief = 0;
+  for (let v = 0; v < haut.n; v++) {
+    const sv = seite[v]!;
+    if (sv !== 0) tief = Math.max(tief, -sv * P[3 * v + 2]!);
+  }
+  return tief;
+}
 export function ueberDerMitte(): boolean {
   if (grund) return false;
   const seite = hautSeite();
@@ -4655,10 +4667,10 @@ export function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: bo
  * Knick, und der Rand jedes Lochs ist ein Loop mit Kante an (`mitteFestmachen` im Kern). Was hinter der Mitte lag, ist weg; ⌘Z führt
  * zurück. Rund wird der Rand danach mit „Kante aus“ (K). Nur in der Grundform und noch nicht mit einem Maul.
  *
- * `vonSelbst` (18.11., Clipping): gleich nach einem Zug, ohne eigenen Schritt für ⌘Z (ein ⌘Z nimmt Zug und Naht zurück). Zurück: ob
- * geschnitten wurde.
+ * `vonSelbst` (18.11., Clipping): gleich nach einem Zug, ohne eigenen Schritt für ⌘Z (ein ⌘Z nimmt Zug und Naht zurück).
+ * `mitPunkten`: Mit dem Rand sind auch seine sichtbaren Punkte gewählt. Zurück: ob geschnitten wurde.
  */
-export function mitteFest(vonSelbst = false): boolean {
+export function mitteFest(vonSelbst = false, mitPunkten = vonSelbst): boolean {
   if (grund || G.maul) {
     G.meldung = grund ? 'In der Pose lässt sich der Schnitt an der Mitte nicht fest machen (erst zurück in die Grundform)' : 'Mit einem Maul lässt sich der Schnitt an der Mitte noch nicht fest machen';
     anzeige.statusZeigen();
@@ -4687,7 +4699,7 @@ export function mitteFest(vonSelbst = false): boolean {
   // gewählt ist der Rand als Ganzes (so wirkt K auch an einem Rand ohne Punkte); von selbst entstanden dazu seine sichtbaren Punkte,
   // damit man die Naht sieht (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
   G.auswahl = r.rand.flatMap((id) => {
-    const l = vonSelbst ? loops[loopNr(id)] : undefined;
+    const l = mitPunkten ? loops[loopNr(id)] : undefined;
     return [{ l: id, i: -1 }, ...(l ? l.punkte.flatMap((q, i) => (istSichtbar(q) ? [{ l: id, i }] : [])) : [])];
   });
   const was = r.rand.length === 1 ? 'Der Rand des Lochs ist ein Loop' : `Die Ränder der ${r.rand.length} Löcher sind Loops`;

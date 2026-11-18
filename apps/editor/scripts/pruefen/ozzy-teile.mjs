@@ -116,6 +116,78 @@ export const mitKarte = (s, n = 40) =>
     return { rechnen: med(rechnen), gesamt: med(gesamt) };
   }, n);
 
+/**
+ * Eine frische Kugel mit drei Linien (18.11., Proben zum Spiegel): ein Kreis auf dem Blatt (Halbmesser 150), aufgeblasen, mit der
+ * Linie der Mitte (die Seite muss mit `extra: 'ohneLinie=0'` geöffnet sein); dann in der Seite zwei Striche mit P quer über die Form
+ * (zwei Ringe, wie im Prüffenster). Zurück im Raum, bei den Punkten (A). `t`: was `auf` zurückgibt.
+ */
+export async function kugelMitRingen(t) {
+  const { s, O, geladen, ruhig, klick } = t;
+  const [cx, cy, R, k] = [720, 450, 150, 0.5523 * 150];
+  await O('form', [
+    { x: cx + R, y: cy, ein: [0, -k], aus: [0, k] },
+    { x: cx, y: cy + R, ein: [k, 0], aus: [-k, 0] },
+    { x: cx - R, y: cy, ein: [0, k], aus: [0, -k] },
+    { x: cx, y: cy - R, ein: [-k, 0], aus: [k, 0] },
+  ]);
+  await s.waitForTimeout(300);
+  await O('aufblasen');
+  await geladen();
+  await s.keyboard.press('1');
+  await s.waitForTimeout(1600);
+  await ruhig();
+  for (const [A, B] of [
+    [
+      [-250, 0],
+      [250, 0],
+    ],
+    [
+      [10, -250],
+      [10, 250],
+    ],
+  ]) {
+    await s.keyboard.press('p');
+    const a = await O('flaecheHin', 'seite', A[0], A[1]);
+    const b = await O('flaecheHin', 'seite', B[0], B[1]);
+    await klick(a.x, a.y);
+    await klick(b.x, b.y);
+    await s.keyboard.press('Enter');
+    await ruhig();
+    await s.keyboard.press('a');
+    await s.waitForTimeout(200);
+  }
+  await s.keyboard.press('0');
+  await s.waitForTimeout(1800);
+  await ruhig();
+}
+
+/**
+ * Der sichtbare Punkt einer Linie neben der Mitte, der am weitesten von ihr liegt (`werkLinienDaten`), und ein Zug an ihm an der Wand
+ * des Tops bis `tief` hinter die Mitte (im Raum). `halten`: nach dem Weg so lange gedrückt bleiben (ms). Zurück: der Punkt.
+ */
+export async function ueberDieMitteZiehen(t, tief = 40, { loslassen = true, halten = 600 } = {}) {
+  const { s, O } = t;
+  let p = null;
+  for (const l of await O('werkLinienDaten')) {
+    if (l.art === 'mitte') continue;
+    for (const q of l.punkte) if (q.sichtbar && (!p || Math.abs(q.z) > Math.abs(p.z))) p = { ...q, id: l.id };
+  }
+  const a = p ? (await O('ankerImBild', p.id, p.i, 'top')).filter((x) => !x.m && x.sichtbar)[0] : null;
+  const ziel = p ? await O('flaecheHin', 'top', p.x, -Math.sign(p.z) * tief) : null;
+  if (!p || !a || !ziel) return null;
+  await s.mouse.move(a.x, a.y, { steps: 3 });
+  await s.waitForTimeout(400);
+  await s.mouse.down();
+  const N = 40;
+  for (let k = 1; k <= N; k++) {
+    await s.mouse.move(a.x + ((ziel.x - a.x) * k) / N, a.y + ((ziel.y - a.y) * k) / N);
+    await s.waitForTimeout(20);
+  }
+  await s.waitForTimeout(halten);
+  if (loslassen) await s.mouse.up();
+  return p;
+}
+
 export const z1 = (x) => (Number.isFinite(x) ? x.toFixed(1).replace('.', ',') : '–');
 export const quantil = (A, p) => {
   const B = [...A].sort((a, b) => a - b);

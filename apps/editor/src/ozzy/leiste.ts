@@ -27,6 +27,26 @@ const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' 
   muell: '<path d="M5 5.2h10M8.1 5.2V3.8h3.8v1.4M6.3 7.1l.75 9.4h5.9l.75-9.4" /><path d="M8.6 9v5.4M11.4 9v5.4" class="duenn" />',
 };
 
+/**
+ * Der Spiegel-Knopf (18.11.): ein Knopf mit Zuständen, ein Klick schaltet weiter. `clip`: an mit Clipping (die Hälften sind an der
+ * Spiegelebene eine Form), `an`: an ohne Clipping (zwei, die sich überragen dürfen), `aus`: kein Spiegelbild. Die feine Linie ist
+ * die Spiegelebene.
+ */
+export type SpiegelZustand = 'clip' | 'an' | 'aus';
+const SPIEGEL_ZEICHEN: Record<SpiegelZustand, string> = {
+  // verschmolzen: der gemeinsame Umriss der beiden Tropfen
+  clip: '<path d="M10 5.5A4.7 5.4 0 1 1 10 14.5A4.7 5.4 0 1 1 10 5.5z" /><path d="M10 2.8v14.4" class="duenn" />',
+  // zwei, die sich überragen
+  an: '<ellipse cx="7.4" cy="10" rx="4.7" ry="5.4" /><ellipse cx="12.6" cy="10" rx="4.7" ry="5.4" /><path d="M10 2.8v14.4" class="duenn" />',
+  // einer, ohne Spiegelbild
+  aus: '<ellipse cx="6.8" cy="10" rx="4.3" ry="5.4" /><path d="M11.8 2.8v14.4" class="duenn" />',
+};
+const SPIEGEL_NAMEN: Record<SpiegelZustand, string> = {
+  clip: 'Spiegel: an mit Clipping. Was über die Mitte reicht, verschmilzt dort zu einer Naht · Klick: ohne Clipping',
+  an: 'Spiegel: an, ohne Clipping. Die Hälften dürfen sich überragen, nichts verschmilzt · Klick: mit Clipping',
+  aus: 'Spiegel: aus. Das Objekt ist ganz und frei · Klick: Spiegel an',
+};
+
 const NAMEN: Record<Werkzeug | 'muell', string> = {
   p: 'Zeichenstift (P): Klick Ecke, Ziehen rund, am ersten Punkt schließen',
   frei: 'Freihand (N): zeichnen, der Strich wird ein Pfad mit wenigen Punkten',
@@ -43,6 +63,14 @@ function zeichen(art: keyof typeof ZEICHEN): SVGSVGElement {
   s.setAttribute('viewBox', '0 0 20 20');
   s.setAttribute('aria-hidden', 'true');
   s.innerHTML = ZEICHEN[art];
+  return s;
+}
+
+function zeichen2(inhalt: string): SVGSVGElement {
+  const s = document.createElementNS(SVG, 'svg');
+  s.setAttribute('viewBox', '0 0 20 20');
+  s.setAttribute('aria-hidden', 'true');
+  s.innerHTML = inhalt;
   return s;
 }
 
@@ -79,6 +107,8 @@ export class Leiste {
   private formenZeichen: HTMLSpanElement;
   private form: 'ellipse' | 'wuerfel' = 'ellipse';
   private aktiv: Werkzeug = 'p';
+  private spiegelKnopf!: HTMLButtonElement;
+  private spiegelStand = '';
   private fx = new Feder(0);
   private laeuft = false;
   private letzte = 0;
@@ -87,6 +117,7 @@ export class Leiste {
     eltern: HTMLElement,
     private wahl: (w: Werkzeug) => void,
     private muell: () => void,
+    private spiegel: (alt: boolean) => void = () => {},
   ) {
     const el = document.createElement('nav');
     el.id = 'leiste';
@@ -126,6 +157,18 @@ export class Leiste {
       if (aufPfeil || this.aktiv === this.form) this.klappen(this.klapp.hidden);
       else this.waehlen(this.form);
     });
+    // der Spiegel des gewählten Objekts (im Raum; auf dem Blatt gibt es noch kein Objekt)
+    const vorSpiegel = document.createElement('span');
+    vorSpiegel.className = 'trenner';
+    el.append(vorSpiegel);
+    const sp = document.createElement('button');
+    sp.type = 'button';
+    sp.className = 'werkzeug spiegel';
+    sp.id = 'spiegel-knopf';
+    sp.addEventListener('click', (e) => this.spiegel(e.altKey));
+    el.append(sp);
+    this.spiegelKnopf = sp;
+    this.spiegelZeigen('clip', false);
     const trenner = document.createElement('span');
     trenner.className = 'trenner';
     el.append(trenner);
@@ -205,6 +248,19 @@ export class Leiste {
   /** ein Werkzeug an oder aus (im Raum: P, sobald das Werk die Form zeigt; der dunkle Zeiger erst im Raum) */
   erlauben(n: 'p' | 'frei' | 'formen' | 'lasso' | 'objekt', an: boolean): void {
     this.knoepfe.get(n)!.toggleAttribute('disabled', !an);
+  }
+
+  /** den Spiegel-Knopf zeigen: sein Zustand und ob er gerade etwas schaltet (im Raum, mit einer Form) */
+  spiegelZeigen(z: SpiegelZustand, erlaubt: boolean): void {
+    const stand = `${z}|${erlaubt}`;
+    if (stand === this.spiegelStand) return;
+    this.spiegelStand = stand;
+    const b = this.spiegelKnopf;
+    b.replaceChildren(zeichen2(SPIEGEL_ZEICHEN[z]));
+    b.title = SPIEGEL_NAMEN[z];
+    b.setAttribute('aria-label', SPIEGEL_NAMEN[z]);
+    b.dataset.zustand = z;
+    b.toggleAttribute('disabled', !erlaubt);
   }
 
   /** Lage der Leiste: unter dem Gruß in der Mitte oder oben */

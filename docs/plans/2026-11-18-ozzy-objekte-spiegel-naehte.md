@@ -4,8 +4,8 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Gebaut wird der Reihe nach (Abschnitt 6).** Wo ich etwas für dich entschieden habe, steht es in Abschnitt 7; was gebaut ist,
-steht in Abschnitt 10.
+**Stand 18.11., 14 Uhr: Etappe 0, Etappe 1 und der erste Teil von Etappe 2 sind gebaut** (Abschnitt 10, mit Bildern und einem
+Film). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht es in Abschnitt 7.
 
 ## 1. Warum der Donut in Ozzy nicht geht
 
@@ -66,33 +66,42 @@ Rundung ausfällt, bestimmen die Linien daneben (wie bei jeder weichen Linie heu
 | **+** in der Leiste | | neues Objekt: Die Seitenansicht öffnet sich als Blatt, die vorhandenen Objekte stehen blass darin; zeichnen, ↩ bläst auf |
 | **Spiegel** in der Leiste | | der Knopf mit drei Zuständen für das gewählte Objekt (Abschnitt 4) |
 
-Leiste: `V A | Lasso P Freihand Formen | + Spiegel | Mülleimer`. Das Plus sitzt in der Leiste und nicht oben rechts, weil dort schon
-„Fressen“ wächst und alles, was mit Objekten zu tun hat, an einer Stelle bleiben soll.
+Leiste: `V A | Lasso P Freihand Formen | + Spiegel | Mülleimer` (das Plus kommt mit Etappe 3). Das Plus sitzt in der Leiste und
+nicht oben rechts, weil dort schon „Fressen“ wächst und alles, was mit Objekten zu tun hat, an einer Stelle bleiben soll.
 
 Beim ersten Zeichnen und nach dem Plus gilt: **Jede geschlossene Linie, die in keiner anderen liegt, wird ein Objekt.** Alle blasen
 zusammen auf, jedes mit seinem eigenen Hals und Schnalz.
 
 ## 4. Der Spiegel-Knopf
 
-Ein Tropfen mit drei Zuständen, ein Klick schaltet weiter; ⌥ + Klick wendet an.
+Ein Knopf in der Leiste mit drei Zuständen für das gewählte Objekt, ein Klick schaltet weiter; ⌥ + Klick wendet an. Sein Zeichen
+zeigt den Zustand: zwei verschmolzene Tropfen, zwei Tropfen, die sich überragen, ein Tropfen allein.
 
 | Zustand | Was du siehst | Bewegen mit V |
 | --- | --- | --- |
+| **an mit Clipping** | An der Spiegelebene sind die beiden eine Form; was über die Ebene reicht, verschmilzt dort (Naht). | in der Ebene (längs, hoch, drehen, skalieren) |
+| **an** | Das Objekt und sein Spiegelbild; was über die Ebene reicht, überragt sich, nichts verschmilzt. | ein ganzes Objekt frei, das Spiegelbild geht gegengleich mit; eine verschmolzene Form in der Ebene |
 | **aus** | ein ganzes Objekt, kein Spiegelbild; beide Seiten lassen sich verschieden formen | frei, in alle Richtungen |
-| **an** | das Objekt und sein Spiegelbild; sie dürfen sich überragen, nichts verschmilzt | frei; das Spiegelbild geht gegengleich mit |
-| **an mit Clipping** | an der Spiegelebene verschmelzen die beiden; die Naht ist ein Loop in der Ebene | in der Ebene (längs, hoch, drehen, skalieren) |
-| **anwenden** (⌥ + Klick) | das Spiegelbild wird echt: ein ganzes Netz (oder zwei Teile, wenn nichts verschmolzen war), danach „aus“ | |
+| **anwenden** (⌥ + Klick) | Das Spiegelbild wird echt: ein ganzes Netz (oder zwei Teile, wenn nichts verschmolzen war), danach „aus“. | |
 
 Die Regeln dazu:
 
-1. **Clipping ein** (oder ein Zug, der mit Clipping über die Ebene führt): Beim Loslassen entsteht die Naht von selbst, als Kante,
-   und ist gewählt. K macht sie rund. Kein markierter Punkt, kein Löschen. ⌘Z nimmt Zug und Naht zusammen zurück.
-2. **Erst ohne Clipping ineinanderschieben, dann Clipping ein:** Die Überschneidung zieht sich in etwa 0,4 s in die Ebene zurück
-   (die Anzeige schneidet erst weit hinter der Ebene und wandert zur Ebene), dann steht die Naht.
-3. **Clipping aus an einer verschmolzenen Form:** Die Form bleibt ganz. Es gibt dann wieder das ganze Objekt und sein Spiegelbild,
-   genau übereinander; schiebst du es zur Seite, laufen sie auseinander. (Eine verschmolzene Form hat keine zwei Hälften mehr, die
-   man einzeln zeigen könnte; in Blender bliebe eine offene Schale.)
+1. **Mit Clipping:** Führt ein Zug über die Ebene, entsteht beim Loslassen die Naht von selbst, als Kante, und ist gewählt. K
+   macht sie rund. Kein markierter Punkt, kein Löschen. ⌘Z nimmt Zug und Naht zusammen zurück. *(gebaut, Etappe 0)*
+2. **Erst ohne Clipping ineinanderschieben, dann Clipping ein:** Die Überschneidung zieht sich in 0,42 s in die Ebene zurück (die
+   Anzeige schneidet erst so tief hinter der Ebene, wie die Überschneidung reicht, und wandert zur Ebene), dann steht die Naht und
+   ist gewählt. ⌘Z trennt wieder und stellt den Knopf zurück auf „an“. *(gebaut, Etappe 2, erster Teil)*
+3. **Clipping aus an einer verschmolzenen Form:** Sie bleibt an der Mitte verbunden, wie sie ist. Was du danach über die Mitte
+   ziehst, überragt sich, statt zu verschmelzen. *(gebaut)* Zur Seite schieben lässt sich erst ein ganzes Objekt: dafür „aus“
+   (die Form wird ganz), verschieben, wieder „an“.
 4. Das erste Objekt und jedes neue beginnen wie heute: in der Mitte, **an mit Clipping**.
+
+**Wie es innen aussieht** (für die nächste Sitzung): Es gibt zwei Arten von Haut. *Verschmolzen:* eine ganze Haut aus Spiegelpaaren,
+die Linien sind die Hälfte z ≥ 0 (so rechnet der Kern seit je). *Frei:* eine Haut ohne Paare, jede Linie ein geschlossener Loop für
+sich (`frei.ts`); ihr Spiegelbild ist nur Anzeige. Der Knopf wechselt die Art nur an zwei Stellen: „aus“ oder „anwenden“ macht aus
+einer verschmolzenen Form eine freie (`spiegelAnwenden`), und „Clipping“ macht aus einer freien, die über die Ebene reicht, eine
+verschmolzene (schneiden und mit dem Spiegelbild verbinden, wie `mitteFestmachen`). Alles andere schaltet nur `werk.G.clipping`
+und die Anzeige.
 
 ## 5. Was bewiesen ist und was nicht
 
@@ -113,9 +122,10 @@ Jede Etappe endet mit einer sichtbaren Probe (Film oder Bild, vorher und nachher
 
 | | Was | Probe |
 | --- | --- | --- |
-| **0** | **Donut in Ozzy, neue Regel.** Die Anzeige schneidet beim Ziehen über die Mitte jede Hälfte an der Ebene ab (Seifenhaut, Solid, Zebra). Beim Loslassen entsteht die Naht von selbst und ist gewählt, K macht sie rund, ⌘Z nimmt beides zurück. | `ozzy-donut-fenster.mjs`, Film |
-| **1** | **V, A, P und die zwei Zeiger; L wählt Verbundenes, Q ist das Lasso.** V wählt und verschiebt das Objekt (mit einem Objekt: in der Ebene). | `ozzy-modi-fenster.mjs`, Film der Zeiger auf Weiß und auf der Rückseite |
-| **2** | **Der Spiegel-Knopf am Objekt:** an mit Clipping ↔ an ↔ aus, anwenden; freie Form im Werk (Netz räumt auf, Linien zeichnen ohne Spiegel); Spiegelbild als Anzeige; die Fahrt beim Einschalten des Clippings. | Film: Kugel, Clipping aus, zur Seite, wieder ein; einseitig formen |
+| **0** | **Donut in Ozzy, neue Regel.** *(gebaut)* Die Anzeige schneidet beim Ziehen über die Mitte jede Hälfte an der Ebene ab (Seifenhaut, Solid, Zebra). Beim Loslassen entsteht die Naht von selbst und ist gewählt, K macht sie rund, ⌘Z nimmt beides zurück. | `ozzy-donut-fenster.mjs`, Film |
+| **1** | **V, A, P und die zwei Zeiger; L wählt Verbundenes, Q ist das Lasso.** *(gebaut)* V wählt das Objekt; verschieben lässt es sich ab Etappe 2b und 3 (mit einem einzigen verschmolzenen Objekt sähe man es nicht: Der Raum richtet sich nach der Form aus). | `ozzy-modi-fenster.mjs`, Film der Zeiger auf Weiß und auf der Rückseite |
+| **2a** | **Der Spiegel-Knopf, erster Teil:** an mit Clipping ↔ an; die Fahrt beim Einschalten des Clippings. *(gebaut)* | `ozzy-spiegel-fenster.mjs`, Film |
+| **2b** | **Der Spiegel-Knopf, zweiter Teil:** aus und anwenden. Dazu die freie Form im Werk: Das Netz räumt auch ohne Spiegelpaare auf (`verdichten`), Linien zeichnen ohne Spiegel (P quer, Form auf der Haut), das Spiegelbild als Anzeige, Clipping an einem ganzen Objekt, das an die Ebene geschoben wird; Verschieben mit V. | Film: Kugel, aus, einseitig formen, zur Seite, an, Clipping |
 | **3** | **Mehrere Objekte:** Plus in der Leiste, mehrere Silhouetten auf dem ersten Blatt, Aufblasen je Objekt, Wählen und Verschieben mit V, Bearbeiten mit A, ⌘Z über alle Objekte, Sichern und Laden. | Film: Körper, dann Ohr und Bein dazu |
 | **4** | **Naht zwischen Objekten, fest:** Beweis im Kern, dann „verschmelzen“ und „abziehen“ als Schalter je Objekt; die Naht als Kante, mit K rund. | Kern-Probe mit Bild, dann Film |
 | **5** | **Naht lebt:** verschmolzene Objekte wieder verschieben und auseinanderziehen (Hals, Abriss), die Naht bearbeiten. | Film in echter Geschwindigkeit |
@@ -125,13 +135,13 @@ Jede Etappe endet mit einer sichtbaren Probe (Film oder Bild, vorher und nachher
 
 - Lasso auf **Q**, damit L frei wird.
 - Das Plus in der Leiste statt oben rechts.
-- „Clipping aus“ an einer verschmolzenen Form lässt sie ganz (Regel 3 oben).
+- „Clipping aus“ an einer verschmolzenen Form lässt sie an der Mitte verbunden (Regel 3 oben); ganz und frei wird sie mit „aus“.
 - Neue Objekte beginnen in der Mitte mit Clipping, wie das erste.
 - Nach dem Aufblasen bist du wie heute bei den Punkten (A); V ist der Schritt zurück zum ganzen Objekt.
 
-**Die eine Frage, die für Etappe 2 zählt:** Was soll „Spiegel aus“ an einer Form bedeuten, die an der Ebene verschmolzen ist?
-Mein Vorschlag steht oben (sie bleibt ganz und ist ab dann frei, also dasselbe wie „anwenden“). Die andere Lesart wäre: Es bleibt
-nur die halbe Form, an der Ebene offen oder flach verschlossen. Ohne dein Wort baue ich den Vorschlag.
+**Die eine Frage, die für Etappe 2b zählt:** Was soll „Spiegel aus“ an einer Form bedeuten, die an der Ebene verschmolzen ist?
+Mein Vorschlag: Sie bleibt ganz und ist ab dann frei, beide Seiten lassen sich verschieden formen (dasselbe wie „anwenden“). Die
+andere Lesart wäre: Es bleibt nur die halbe Form, an der Ebene offen oder flach verschlossen. Ohne dein Wort baue ich den Vorschlag.
 
 ## 8. Noch ausstehend (nicht in diesen Etappen)
 
@@ -187,6 +197,15 @@ eines Objekts sieht man erst mit dem Spiegel-Knopf und mit mehreren Objekten (de
 der Form dreht deshalb vorerst wie Ziehen ins Leere. (2) An der Seifenhaut zeigt nur das Schild, was gewählt ist; ein Umriss am
 gewählten Objekt kommt mit Etappe 3 (dann je Objekt). (3) Auf dem Blatt gilt V noch wie A (weißer Zeiger): Ganze Linien verschieben
 kommt mit den mehreren Silhouetten in Etappe 3.
+| 2a | **Spiegel-Knopf, erster Teil.** In der Leiste, mit Zeichen je Zustand; ein Klick schaltet zwischen „an mit Clipping“ und „an“ (`werk.G.clipping`). Ohne Clipping bleibt ein Zug über die Mitte, wie er ist (die Hälften überragen sich, die Anzeige schneidet nicht). Clipping ein: die Fahrt (`spiegelFahrt`, 0,42 s), dann macht das Werk den Schnitt fest, die Naht ist gewählt; ⌘Z trennt wieder und stellt den Knopf zurück. Eine neue Form beginnt mit Clipping. | `ozzy-spiegel-fenster.mjs`: alles gut. [Bilderbogen](../progress/ozzy/2026-11-18-clipping-bogen.png), [Film](../progress/ozzy/2026-11-18-clipping-einschalten.mp4) |
+
+**Geprüft am 18.11., 14 Uhr:** Typen (`@ee/shape`, `@ee/editor`), Lint der geänderten Dateien, 190 Tests des Kerns, 25 des Fensters,
+alle 33 Fenster-Proben gegen 5211 (`ozzy-silhouette` hielt in einem von drei Läufen nicht: der erste Griff an einer frischen Form
+mit einer Linie schwankt, am unveränderten Stand genauso).
+
+**Was an Etappe 2a offen bleibt:** (1) „aus“ und „anwenden“ fehlen noch (Etappe 2b); der Knopf hat bis dahin zwei Zustände. (2) Der
+Zustand des Spiegels wird noch nicht mit der Form gesichert (eine geladene Form beginnt mit Clipping). (3) In der Pose und während
+„Maul formen“ ist der Knopf aus.
 
 **Was an Etappe 0 offen bleibt:** (1) Wo die Hälften flach aufeinandertreffen, ist die Naht als Kante eine Schneide; direkt an ihr
 zählt die Probe an „strange bird“ 8 sehr schmale umgeschlagene Dreiecke (das größte ein Achtel eines mittleren Dreiecks), mit K sind
