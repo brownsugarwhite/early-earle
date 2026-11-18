@@ -233,19 +233,24 @@ function zeichnen(): void {
 }
 
 // Tempo: gleitend über die letzten Bilder
-const messung = { cpu: [] as number[], abstand: [] as number[], zuletzt: 0, anzeige: 0 };
+const messung = { cpu: [] as number[], gpu: [] as number[], abstand: [] as number[], zuletzt: 0, anzeige: 0 };
 function tempoZeigen(jetzt: number): void {
-  if (messung.zuletzt) messung.abstand.push(jetzt - messung.zuletzt);
+  const fortlaufend = zustand.dauer || zustand.laeuft;
+  if (messung.zuletzt && fortlaufend) messung.abstand.push(jetzt - messung.zuletzt);
   messung.zuletzt = jetzt;
   messung.cpu.push(renderer.letzte.cpuMs);
-  if (messung.cpu.length > 90) messung.cpu.shift();
-  if (messung.abstand.length > 90) messung.abstand.shift();
+  // Zeit der Grafikkarte nur im Dauerlauf (einzelne Bilder enthalten das Übersetzen der Shader und Aufwachen)
+  if (fortlaufend && Number.isFinite(renderer.letzte.gpuMs)) messung.gpu.push(renderer.letzte.gpuMs);
+  for (const a of [messung.cpu, messung.gpu, messung.abstand]) if (a.length > 90) a.shift();
   if (jetzt - messung.anzeige < 400) return;
   messung.anzeige = jetzt;
   const median = (a: number[]): number => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)] ?? 0;
   const bps = messung.abstand.length ? 1000 / median(messung.abstand) : 0;
-  const gpu = renderer.letzte.gpuMs;
-  tempoFeld.textContent = `${zustand.dauer || zustand.laeuft ? `${bps.toFixed(0)} Bilder/s · ` : ''}Prozessor ${median(messung.cpu).toFixed(1)} ms${Number.isFinite(gpu) ? ` · Grafik ${gpu.toFixed(1)} ms` : ''}\n${renderer.breite}×${renderer.hoehe} · ${renderer.letzte.strecken} Kanten · ${renderer.halbFloat ? 'Half-Float' : '8 Bit'}`;
+  const zeilen = [
+    `${fortlaufend && messung.abstand.length > 10 ? `${bps.toFixed(0)} Bilder/s · ` : ''}Prozessor ${median(messung.cpu).toFixed(1)} ms${messung.gpu.length > 10 ? ` · Grafik ${median(messung.gpu).toFixed(1)} ms` : ''}`,
+    `${renderer.breite}×${renderer.hoehe} · ${renderer.letzte.strecken} Kanten · ${renderer.halbFloat ? 'Half-Float' : '8 Bit'}`,
+  ];
+  tempoFeld.textContent = zeilen.join('\n');
 }
 
 let wartet = false;
@@ -270,7 +275,11 @@ function bild(jetzt: number): void {
   if (zustand.laeuft || zustand.dauer) {
     wartet = true;
     requestAnimationFrame(bild);
-  } else messung.zuletzt = 0;
+  } else {
+    messung.zuletzt = 0;
+    messung.abstand.length = 0;
+    messung.gpu.length = 0;
+  }
 }
 
 aufbauen();
