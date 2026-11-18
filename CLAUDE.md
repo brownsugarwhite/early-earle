@@ -25,7 +25,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
 - **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11.):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211
   (`ozzy-objekte`), nicht zusammengeführt. Plan und Stand:
   [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0 bis 3 und
-  Etappe 4, erste Fassung; **Formen beginnen seit dem 18.11. mit drei Loops**, Abschnitt 11; offen: Sitz der Loops, Etappe 5).
+  Etappe 4, erste Fassung; **Formen beginnen seit dem 18.11. mit drei Loops**, Abschnitt 11; Etappe 5 im Kern bewiesen, Abschnitt 12; offen: Sitz der Loops).
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

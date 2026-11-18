@@ -526,6 +526,15 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Mit eigenen Linien an den Formen hält es (die Formen gehen stark mit); an Formen ohne eigene Linien läuft die Rechnung
   auseinander, das Werk behält die Form („Hier ließ sich das Netz nicht aufräumen“). Begleitlinien halten nicht, außen festhalten
   (Halte-Loop) zeigt den Rand des Streifens. Zahlen und Offenes: Plan, Abschnitt 10.
+- **Die Naht lebt (Etappe 5, Beweis im Kern, 18.11. nachts; in Ozzy nicht gebaut):** `scripts/pruefen/form-naht-ziehen.ts` (aus
+  `packages/shape`: `[BLATT=<pfad>] [ABSTAENDE=150,180,…] [RICHTUNG=x,y,z] [RAMPE=30] [NACH=0] npx vite-node …`). Die kleine Form
+  wandert weg; bei jedem Abstand wird aus den zwei unveränderten Formen neu verbunden (`objekteVerbinden`) und gerechnet. Ergebnis:
+  Die Naht schrumpft stetig und verschwindet, nichts springt; mit Kante ist der Schnitt allein die Form (46 bis 78 ms je Stand),
+  weich rechnet 1,2 bis 1,7 s dazu. Merke: (1) `falten().umgeklappt` schlägt an einer sehr scharfen Kante an, ohne dass etwas
+  gefaltet ist (über 120° mitteln die Ecken der Naht über beide Seiten): dort Falten gegen Nachbardreiecke zählen (`gefaltet` in
+  der Probe). (2) Läuft die Naht genau durch eine Kreuzung zweier Linien (weniger als eine halbe Netzkante daneben), entstehen
+  sehr kurze Linienstücke, und die weiche Naht faltet dort 2 bis 10 Dreiecke; feinere Stufen oder weiteres Aufräumen ändern es
+  nicht (offen). Der Bau wäre ein Umbau (die Objekte bleiben Objekte, die verschmolzene Haut ist abgeleitet): Plan, Abschnitt 12.
 - **Formen beginnen mit Edgeloops (seit dem 18.11. spät der Standard; Florian: „ok, dann starten wir mit loops“):** `startLoops`
   in `main.ts`, Menü „Start mit drei Loops“ (gemerkt), `?loops=0|1`. **Im Testbrowser (`navigator.webdriver`) und mit `ohneLinie=`
   in der Adresse sind sie aus:** Die Proben prüfen ihr Thema an der Form ohne Start-Loops, an der ihre Kriterien gemessen sind;

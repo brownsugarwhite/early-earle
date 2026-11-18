@@ -4,7 +4,8 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Stand 18.11., nachts: Formen beginnen mit drei Loops (Abschnitt 11, dein Wort). Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend; die Fahrt zum Blatt beim Plus
+**Stand 18.11., nachts: Formen beginnen mit drei Loops (Abschnitt 11, dein Wort). Etappe 5 (die Naht lebt) ist im Kern bewiesen
+(Abschnitt 12), in Ozzy nicht gebaut. Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend; die Fahrt zum Blatt beim Plus
 gehört nach deinem Wort zum Feinschliff: mehrere Silhouetten auf einem Blatt, der gemeinsame Rückweg, Sichern und Laden der ganzen Szene, Linien ruhender Objekte;
 Abschnitt 10, „Etappe 3, der Rest“), **von Etappe 4 die erste Fassung: Verschmelzen und Abziehen in Ozzy** (zwei Knöpfe in der
 Leiste, die Naht als Linie mit Kante, ⌘Z trennt wieder; Abschnitt 10, „Etappe 4 in Ozzy“). K an der Naht ist entschieden („Wie
@@ -145,7 +146,7 @@ Jede Etappe endet mit einer sichtbaren Probe (Film oder Bild, vorher und nachher
 | **2b** | **Der Spiegel-Knopf, zweiter Teil:** aus und anwenden. *(gebaut; offen bleibt, was in Abschnitt 10 steht)* Dazu die freie Form im Werk: Das Netz räumt auch ohne Spiegelpaare auf (`verdichten`), Linien zeichnen ohne Spiegel (P quer, Form auf der Haut), das Spiegelbild als Anzeige, Clipping an einem ganzen Objekt, das an die Ebene geschoben wird; Verschieben mit V. | Film: Kugel, aus, einseitig formen, zur Seite, an, Clipping |
 | **3** | **Mehrere Objekte:** Plus in der Leiste, Aufblasen je Objekt, Wählen und Verschieben mit V, Bearbeiten mit A; mehrere Silhouetten auf einem Blatt, ⌘Z über alle Objekte, Sichern und Laden der Szene, Linien ruhender Objekte *(gebaut; die Fahrt zum Blatt beim Plus kommt mit dem Feinschliff)*. | `ozzy-objekte-fenster.mjs`, `ozzy-reihe-fenster.mjs`; Bildbogen (ein Film steht aus) |
 | **4** | **Naht zwischen Objekten, fest:** Beweis im Kern *(gehalten)*, dann „verschmelzen“ und „abziehen“ *(erste Fassung gebaut: zwei Knöpfe in der Leiste)*; die Naht als Kante, mit K weich *(hält an Formen mit eigenen Linien; ohne noch nicht)*. | Kern-Probe mit Bild; `ozzy-naht-fenster.mjs`, Bildbogen (ein Film steht aus) |
-| **5** | **Naht lebt:** verschmolzene Objekte wieder verschieben und auseinanderziehen (Hals, Abriss), die Naht bearbeiten. | Film in echter Geschwindigkeit |
+| **5** | **Naht lebt:** verschmolzene Objekte wieder verschieben und auseinanderziehen (Hals, Abriss), die Naht bearbeiten. *(im Kern bewiesen, Abschnitt 12; in Ozzy nicht gebaut)* | `form-naht-ziehen.ts`, Bild; dann Film in echter Geschwindigkeit |
 | **6** | Danach, wie du geschrieben hast: Seifenhaut, Tempo und Bedienung ansehen (Liste in Abschnitt 8). | Messblatt |
 
 ### Etappe 3: wie mehrere Objekte gebaut werden (18.11., 16:45 Uhr)
@@ -488,9 +489,48 @@ verbunden und gerechnet, einmal mit Kante an der Naht, einmal weich (K). Kriteri
    Loslassen steht.
 5. Ein Bild: die Abstände nebeneinander, weich.
 
-**Nicht Teil dieses Beweises:** den Hilfsloop selbst ziehen und beide Objekte folgen lassen (der Zug müsste in beide Objekte
+**Ergebnis (18.11. nachts; Bild [`2026-11-18-naht-lebt-beweis.jpg`](../progress/ozzy/2026-11-18-naht-lebt-beweis.jpg)):** Der Weg
+trägt. Zwei Formen mit je drei Loops (Halbmesser 150 und 90), die kleinere wandert weg:
+
+| Abstand der Mitten | Naht (Halbmesser) | mit Kante | weich (K) |
+| --- | --- | --- | --- |
+| 150 | 85,9 | sauber | sauber, Knick an der Naht 17°, Rauminhalt −1,9 % gegen Kante |
+| 180 | 74,9 | sauber | sauber, 17°, −2,0 % |
+| 205 | 59,8 | sauber | sauber, 19°, −2,2 % |
+| 222 | 44,1 | sauber | sauber, 24°, −1,9 % |
+| 232 | 30,0 | sauber | **10 gefaltete Dreiecke**: Hier läuft die Naht genau durch eine Kreuzung zweier Linien der kleinen Form |
+| 238 | 15,8 | sauber | sauber, 27°, −0,4 % |
+| 246 | getrennt | der Baustein meldet es, es bleiben zwei Objekte | |
+
+1. **Hält.** Mit Kante bei allen Abständen: geschlossen, die Rechnung steht, kein Dreieck gefaltet. Weich bei allen bis auf einen:
+   Wo die Naht fast genau durch eine Kreuzung zweier Linien läuft (weniger als eine halbe Netzkante daneben), entstehen sehr kurze
+   Linienstücke, und einige Dreiecke falten sich (2 bis 10 von 9 400). Geprüft mit einer zweiten Richtung: Die Stelle wandert mit
+   der Kreuzung mit, sie hat nichts mit dem Trennen zu tun. Der schmalste Hals kurz vor dem Trennen ist sauber. **Offen.**
+2. **Die Naht wird stetig kleiner** (Umfang 540 → 99) und verschwindet; getrennt meldet es der Baustein.
+3. **Kein Sprung:** Die abgewandte Hälfte der großen Form liegt von Schritt zu Schritt an derselben Stelle (mit Kante 0,12, weich
+   1,45 Einheiten bei Halbmesser 150), obwohl jedes Mal von vorn gerechnet wird.
+4. **Zeit je Schritt** (zweimal 5 200 Punkte): verbinden 46 bis 78 ms. Mit Kante braucht es danach keine Rechnung: Der Schnitt
+   allein ist schon die Form. Weich rechnet 1,2 bis 1,7 s dazu, bis die Haut steht.
+
+**Was daraus folgt:**
+- **Die harte Naht kann beim Ziehen mitlaufen** (rund 50 bis 80 ms je Stand; an frischen Formen mit 1 500 Punkten weniger).
+- **Der weiche Hals braucht die Rechnung:** Er steht ein bis zwei Sekunden nach dem Loslassen (oder wächst sichtbar nach). Beim
+  Ziehen selbst sähe man die harte Naht.
+- **Die Form geht dabei wenig mit** (0,4 bis 2,2 % Rauminhalt), weil beide Formen eigene Loops haben.
+- Eine Zählfalle: `falten().umgeklappt` schlägt an einer sehr scharfen Kante an, ohne dass etwas gefaltet ist (bei fast getrennten
+  Formen knickt die Naht über 130°). Die Probe zählt deshalb Falten über 100° gegen ein Nachbardreieck, außer quer über die Naht.
+
+**Was der Bau in Ozzy heißt (nicht begonnen; ein Umbau, kein Zusatz):** In Etappe 4 ist Verschmelzen ein Schritt, nach dem es
+eine Form gibt, die als Ganzes bearbeitet wird. Für die lebende Naht bleiben die Objekte Objekte, und bearbeitet werden sie:
+- **Stufe 5a:** Verschmelzen wird ein Zustand je Objekt (dein Schalter). Jedes Objekt behält seine Linien und seinen Rückweg.
+  Stehen die Objekte, zeigt Ozzy die abgeleitete Haut: verbunden, mit der Naht als Kante oder weich. Mit V verschiebst du ein
+  Objekt wie bisher; beim Loslassen entsteht die Naht neu, oder die Objekte sind wieder getrennt.
+- **Stufe 5b:** beim Ziehen selbst die Überschneidung ausblenden und die harte Naht mitlaufen lassen.
+- **Stufe 5c:** den Hilfsloop ziehen, und beide Objekte folgen.
+
+**Nicht bewiesen:** den Hilfsloop selbst ziehen und beide Objekte folgen lassen (der Zug müsste in beide Objekte
 zurückgeschrieben werden); was man beim Ziehen sieht, solange noch nicht neu verbunden ist; mehr als zwei Objekte; gespiegelte
-Objekte.
+Objekte; Abziehen statt Verschmelzen; deine eigenen Formen.
 
 ## Anhang A: Dein Auftrag (18.11.2026, wörtlich)
 
