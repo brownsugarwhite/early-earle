@@ -9,7 +9,8 @@
 //   5  Tab zurück in den Raum und wieder hin, Bild für Bild: kein Nachschieben am Ende (höchstens 3 px), ein Gipfel der Geschwindigkeit je
 //      Bezugspunkt, am Ende genau die gezoomten Felder (höchstens 1 px).
 //   6  Pos1 setzt alle Felder zurück.
-//   7  Keine Fehler in der Konsole.
+//   7  Das Feld des Raums rastet nicht ein (18.11.): 3° neben der Seite losgelassen bleibt es dort, die Vier Ansichten bleiben offen.
+//   8  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] node scripts/pruefen/ozzy-feld-zoom-fenster.mjs
 import { chromium } from '@playwright/test';
 
@@ -191,6 +192,44 @@ await s.keyboard.press('Home');
 await s.waitForTimeout(300);
 const fb = await O('feldBlick');
 ok('6 Pos1 setzt alle Felder zurück', Object.values(fb).every((b) => b.zoom === 1 && b.x === 0 && b.y === 0), JSON.stringify(fb));
-ok('7 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
+
+// 7: Das Feld des Raums rastet nicht ein (Florian, 18.11.: „der 3d view soll in der viereransicht nicht einrasten“). Wo die Seite von
+// Hand liegt, sagt der Raum selbst (Taste 1); dann in den Vier Ansichten das Feld des Raums bis 3° neben sie drehen und loslassen
+await s.keyboard.press('Tab');
+await s.waitForTimeout(1500);
+await s.keyboard.press('1');
+await s.waitForTimeout(1500);
+const bs = await O('blick');
+await s.keyboard.press('0');
+await s.waitForTimeout(1500);
+await s.keyboard.press('Tab');
+await s.waitForTimeout(1500);
+await ruhig();
+const F7 = await O('felderJetzt');
+const b0 = await O('blick');
+const grad = Math.PI / 180;
+const ziel7 = { gier: bs.gier + 3 * grad, neigung: bs.neigung };
+const dx7 = (-(ziel7.gier - b0.gier) * 520) / Math.PI;
+const dy7 = ((ziel7.neigung - b0.neigung) * 520) / Math.PI;
+const A7 = { x: Math.round(F7.raum.x + F7.raum.w / 2), y: Math.round(F7.raum.y + 22) };
+await s.mouse.move(A7.x, A7.y, { steps: 3 });
+await s.waitForTimeout(300);
+await s.mouse.down();
+for (let k = 1; k <= 24; k++) {
+  await s.mouse.move(A7.x + (dx7 * k) / 24, A7.y + (dy7 * k) / 24);
+  await s.waitForTimeout(20);
+}
+await s.waitForTimeout(250);
+const bHalt = await O('blick');
+await s.mouse.up();
+await s.waitForTimeout(1200);
+const b7 = await O('blick');
+const neben = (b) => Math.max(Math.abs(b.gier - ziel7.gier), Math.abs(b.neigung - ziel7.neigung)) / grad;
+ok(
+  '7 das Feld des Raums rastet nicht ein',
+  bs.ansicht === 'seite' && neben(bHalt) <= 1 && b7.ansicht === 'raum' && b7.vier > 0.99 && !b7.fahrt && neben(b7) <= 0.5,
+  `3° neben der Seite losgelassen: gehalten ${z1(neben(bHalt))}° neben dem Ziel, danach Ansicht ${b7.ansicht}, ${z1(neben(b7))}° neben dem Ziel, Vier Ansichten ${z1(b7.vier)}`,
+);
+ok('8 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
 await browser.close();

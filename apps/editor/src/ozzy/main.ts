@@ -4076,8 +4076,15 @@ function hintenZeigen(): void {
   document.body.classList.toggle('wende-an', kanteSichtbar);
 }
 
+/**
+ * Rastet die Drehung von Hand ein? In den Vier Ansichten nie (Florian, 18.11.: „der 3d view soll in der viereransicht nicht einrasten“):
+ * Das Feld des Raums bleibt, wie er es loslässt; die drei Ansichten stehen ja daneben.
+ */
+const rastetEin = (): boolean => vier < 1e-3 && vierZiel === 0;
+
 /** nahe einer der sechs Ansichten: einrasten (nach dem Drehen von Hand) */
 function einrasten(): void {
+  if (!rastetEin()) return;
   const z = ansichtNahe(nutzer.gier, nutzer.neigung);
   if (z) ansichtSetzen(z.a, z.hinten);
 }
@@ -4277,7 +4284,7 @@ function drehenLos(t: number): void {
   const gVor = nutzer.gier + v.vg * SCHWUNG_TAU;
   const nVor = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, nutzer.neigung + v.vn * SCHWUNG_TAU));
   const schnell = Math.hypot(v.vg, v.vn) > 0.6;
-  const ziel = ansichtNahe(gVor, nVor) ?? (schnell ? ansichtNahe(gVor, nVor, SCHWUNG_FANG) : null);
+  const ziel = rastetEin() ? (ansichtNahe(gVor, nVor) ?? (schnell ? ansichtNahe(gVor, nVor, SCHWUNG_FANG) : null)) : null;
   if (ziel) ansichtSetzen(ziel.a, ziel.hinten);
   else if (schnell) schwung = { vg: v.vg, vn: v.vn };
   drehen = null;
@@ -4399,7 +4406,7 @@ function gesteBewegen(): void {
 }
 
 function gesteEnden(): void {
-  if (geste?.gedreht) {
+  if (geste?.gedreht && rastetEin()) {
     const ziel = ansichtNahe(nutzer.gier, nutzer.neigung);
     if (ziel) ansichtSetzen(ziel.a, ziel.hinten);
   }
