@@ -11,7 +11,10 @@ import type { Werkzeug } from './blatt';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
-const ZEICHEN: Record<'lasso' | 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'muell', string> = {
+const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'muell', string> = {
+  // die zwei Zeiger wie in Illustrator: dunkel für ganze Objekte (V), weiß für Punkte (A); dieselbe Form wie der Zeiger im Bild
+  objekt: '<path d="M5.2 3.2l9.9 6.2-4.1 1.2 2.3 4.6-1.9 1-2.3-4.7-3 3.1z" class="voll" />',
+  auswahl: '<path d="M5.2 3.2l9.9 6.2-4.1 1.2 2.3 4.6-1.9 1-2.3-4.7-3 3.1z" />',
   // Lasso: eine Schlinge mit Faden und Tropfen am Ende
   lasso: '<path d="M10.6 3.6c3.6 0 6.2 1.8 6.2 4.2s-2.6 4.2-6.2 4.2c-1.3 0-2.5-.2-3.5-.6C5 10.6 3.8 9.3 3.8 7.8c0-2.4 3.1-4.2 6.8-4.2z" /><path d="M7.1 11.4c-.9 1.1-.8 2.4.3 3.1.9.6 1 1.4.5 2.1" /><circle cx="7.8" cy="17" r="1.05" class="voll" />',
   // Feder des Zeichenstifts
@@ -29,8 +32,9 @@ const NAMEN: Record<Werkzeug | 'muell', string> = {
   frei: 'Freihand (N): zeichnen, der Strich wird ein Pfad mit wenigen Punkten',
   ellipse: 'Ellipse (E): ziehen, ⇧ Kreis, ⌥ aus der Mitte',
   wuerfel: 'Würfel (E): ziehen, ⇧ gleichseitig, ⌥ aus der Mitte',
-  auswahl: 'Auswahl (V, Esc)',
-  lasso: 'Lasso (L): Punkte umfahren, ⇧ dazu, ⌥ weg (V zurück)',
+  objekt: 'Objekte (V): Klick wählt das Objekt, Doppelklick wechselt zu seinen Punkten',
+  auswahl: 'Punkte (A): Punkte, Linien und Griffe ziehen · L wählt alles Verbundene unter dem Zeiger',
+  lasso: 'Lasso (Q): Punkte umfahren, ⇧ dazu, ⌥ weg (A zurück)',
   muell: 'Mülleimer: verwerfen (⌘Z holt es zurück)',
 };
 
@@ -99,9 +103,15 @@ export class Leiste {
       el.append(b);
       return b;
     };
+    knopf('objekt', 'objekt', NAMEN.objekt).addEventListener('click', () => this.waehlen('objekt'));
+    knopf('auswahl', 'auswahl', NAMEN.auswahl).addEventListener('click', () => this.waehlen('auswahl'));
+    const erster = document.createElement('span');
+    erster.className = 'trenner';
+    el.append(erster);
     const lasso = knopf('lasso', 'lasso', NAMEN.lasso);
     lasso.addEventListener('click', () => this.waehlen(this.aktiv === 'lasso' ? 'auswahl' : 'lasso'));
     lasso.toggleAttribute('disabled', true);
+    this.knoepfe.get('objekt')!.toggleAttribute('disabled', true);
     knopf('p', 'p', NAMEN.p).addEventListener('click', () => this.waehlen('p'));
     knopf('frei', 'frei', NAMEN.frei).addEventListener('click', () => this.waehlen('frei'));
     const formen = knopf('formen', 'ellipse', NAMEN.ellipse);
@@ -192,8 +202,8 @@ export class Leiste {
     for (const n of ['p', 'frei', 'formen'] as const) this.knoepfe.get(n)!.toggleAttribute('disabled', !an);
   }
 
-  /** ein Werkzeug an oder aus (im Raum: P, sobald das Werk die Form zeigt) */
-  erlauben(n: 'p' | 'frei' | 'formen' | 'lasso', an: boolean): void {
+  /** ein Werkzeug an oder aus (im Raum: P, sobald das Werk die Form zeigt; der dunkle Zeiger erst im Raum) */
+  erlauben(n: 'p' | 'frei' | 'formen' | 'lasso' | 'objekt', an: boolean): void {
     this.knoepfe.get(n)!.toggleAttribute('disabled', !an);
   }
 

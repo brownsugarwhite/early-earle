@@ -106,7 +106,7 @@ const kasten = (P) => {
 await s.keyboard.press('1');
 await s.waitForTimeout(1500);
 await ruhig();
-await s.keyboard.press('l');
+await s.keyboard.press('q');
 await s.waitForTimeout(300);
 {
   const P = await O('netzPunkte');
@@ -168,7 +168,7 @@ await s.waitForTimeout(1800);
   const v0 = await O('blick');
   await schlinge([[1300, 820], [1200, 700], [1100, 820]]);
   const v1 = await O('blick');
-  await s.keyboard.press('v');
+  await s.keyboard.press('a');
   await s.waitForTimeout(200);
   await s.mouse.move(1300, 820);
   await s.mouse.down();

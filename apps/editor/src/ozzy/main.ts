@@ -495,6 +495,17 @@ let raumWerkzeug: Werkzeug = 'auswahl';
 let raumStrich: { fl: number; st: Strich } | null = null;
 let raumAufzug: { fl: number; art: 'ellipse' | 'wuerfel'; von: { x: number; y: number }; bis: { x: number; y: number } } | null = null;
 const strichWerkzeug = (): boolean => raumWerkzeug === 'frei' || raumWerkzeug === 'ellipse' || raumWerkzeug === 'wuerfel';
+/**
+ * Objekte (18.11., Plan „Objekte, Spiegel und Nähte“; Florian: „V ist schwarzer cursor für das ganze objekt und A ist weißer cursor
+ * für die punkte (edit) wie bei illustrator“): Mit V steht der Raum im Objekt-Modus. Der Zeiger ist dunkel und bleibt es, die Linien
+ * der Form stehen still (keine Punkte, nichts zu greifen), ein Klick auf die Form wählt sie als Ganzes, ein Doppelklick wechselt zu
+ * ihren Punkten (A).
+ */
+const objektModus = (): boolean => raumWerkzeug === 'objekt';
+/** das Objekt ist gewählt (noch gibt es eines: die Form); der letzte Klick darauf (Doppelklick) und ein Drücken im Objekt-Modus */
+let objektGewaehlt = false;
+let objektKlick = { t: 0, x: 0, y: 0 };
+let objektDruck: { x: number; y: number; getroffen: boolean } | null = null;
 /** Pinsel „Ziehen“ an der Blase (Phase 6): Radius in Einheiten des Werks (wie der Einfluss O, [ und ] ändern ihn) */
 let pinselRadius = 90;
 /** der Punkt einer Linie, den der Pinsel gerade fassen würde (Kennung, Nummer, Spiegelbild, Welt) */
@@ -1165,6 +1176,9 @@ function aufblasen(): void {
   zustand = 'auf';
   T = 0;
   film = 1;
+  // nach dem Aufblasen steht der Raum bei den Punkten (A), nicht bei den Objekten
+  raumWerkzeug = 'auswahl';
+  objektGewaehlt = false;
   leiste.lage(true);
   leiste.zeichnenErlaubt(false);
   anstossen();
@@ -1173,7 +1187,8 @@ function aufblasen(): void {
 function ablassen(): void {
   if (zustand === 'blatt') return;
   // die Werkzeuge des Raums aus; die Leiste zeigt wieder das des Blatts
-  if (bearbeiten.stift || strichWerkzeug()) werkzeugImRaum('auswahl');
+  if (bearbeiten.stift || strichWerkzeug() || objektModus()) werkzeugImRaum('auswahl');
+  objektGewaehlt = false;
   leiste.setzen(blatt.werkzeug);
   zug = null;
   drehen = null;
@@ -2626,6 +2641,7 @@ function bild(dt: number): boolean {
   let szene: Szene;
   if (zustand === 'blatt') {
     szene = blatt.szene(K, D);
+    szene.zeigerFarbe = 1;
   } else {
     K.leeren();
     const vp = vpJetzt();
@@ -2659,6 +2675,8 @@ function bild(dt: number): boolean {
       gruen: roentgen > 0 ? (GRUEN.map((g, i) => g + (GRUEN_ROENTGEN[i]! - g) * roentgen) as [number, number, number]) : GRUEN,
       dunkel: hintenJetzt,
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
+      // zwei Zeiger: dunkel für Objekte (V), weiß für Punkte (A, P); keiner tauscht auf der Rückseite seine Farbe
+      zeigerFarbe: objektModus() ? 2 : 1,
       bereiche: bereicheJetzt,
       // S17b: die Rückseite gewendeter Felder malt die Anzeige der Linien selbst (die Haut ist aufs Feld des Raums beschnitten)
       dunkelFuellen: vier > 0.999,
@@ -2678,6 +2696,7 @@ function bild(dt: number): boolean {
   mess.teile[4] = performance.now() - ta;
   hintenZeigen();
   maulUiZeigen();
+  objektUiZeigen();
   tastenStand();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
@@ -2685,7 +2704,11 @@ function bild(dt: number): boolean {
     zustand === 'ruhe' && werkGezeigt && roentgen > 0.5
       ? 'Röntgen: auch Punkte und Linien hinter der Form greifen · ⌥ loslassen: zurück'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
-      ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · V oder L: zurück'
+      ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
+      : zustand === 'ruhe' && werkGezeigt && objektModus()
+      ? objektGewaehlt
+        ? 'Objekt gewählt · Doppelklick oder A: seine Punkte · ⌫ löscht es · Klick daneben wählt ab · ziehen: drehen'
+        : 'Objekte: Klick auf die Form wählt sie · Doppelklick oder A: ihre Punkte · ziehen: drehen · P zeichnen'
       : zustand === 'blatt'
       ? blatt.geschlossen && !blatt.zeichnet
         ? '↩ aufblasen'
@@ -2695,20 +2718,20 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · Klick in ein Feld der Form wählt es · G S R · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · ⇧ + Ziehen wendet · Tropfen in eine Ecke: eine Ansicht · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+              : 'Punkte, Linien und Richtungen ziehen · Klick in ein Feld der Form wählt es · G S R · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · ⇧ + Ziehen wendet · Tropfen in eine Ecke: eine Ansicht · V Objekt · P zeichnen · Q Lasso · L Verbundenes · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
               ? bearbeiten.stift
                 ? 'P an den Wänden: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen · auf Punkt oder Linie: Abzweigung · Esc'
                 : raumNetzDeckung > 0.5
-                  ? 'Punkte, Linien und Richtungen auf der Form ziehen · daneben an der Form: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · W Seifenhaut · 1 3 7 Ansichten · Tab vier'
-                  : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · Punkt an der Ecke ziehen: aufklappen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · W Kurvennetz · 1 3 7 Ansichten · Tab vier'
+                  ? 'Punkte, Linien und Richtungen auf der Form ziehen · daneben an der Form: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · V Objekt · Q Lasso · L Verbundenes · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · W Seifenhaut · 1 3 7 Ansichten · Tab vier'
+                  : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · Punkt an der Ecke ziehen: aufklappen · V Objekt · P zeichnen · Q Lasso · L Verbundenes · K Kante · ⌫ löschen · ⌘Z · W Kurvennetz · 1 3 7 Ansichten · Tab vier'
               : 'ziehen: drehen · an der Blase ziehen · Punkte an der Wand der Seite ziehen · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
             : werkGezeigt
               ? bearbeiten.stift
                 ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-                : 'Punkte, Linien und Richtungen ziehen · Klick in ein Feld der Form wählt es · G S R · ins Leere ziehen: drehen · Tropfen an der Ecke ziehen: Vier Ansichten · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+                : 'Punkte, Linien und Richtungen ziehen · Klick in ein Feld der Form wählt es · G S R · ins Leere ziehen: drehen · Tropfen an der Ecke ziehen: Vier Ansichten · V Objekt · P zeichnen · Q Lasso · L Verbundenes · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
@@ -2888,8 +2911,8 @@ let zeigerGezeichnet = false;
 const zeigerBilder = new Map<string, string>();
 
 /** der Zeiger einer Art als Bild für das System (CSS `cursor`), auf hellem oder dunklem Grund; die Spitze ist der Ort des Zeigers */
-function zeigerBildFuer(art: Exclude<ZeigerArt, 'ring'>, dunkel: boolean): string {
-  const name = `${art}${dunkel ? ' dunkel' : ''}`;
+function zeigerBildFuer(art: Exclude<ZeigerArt, 'ring'>, dunkel: boolean, objekt = false): string {
+  const name = `${art}${dunkel ? ' dunkel' : ''}${objekt ? ' objekt' : ''}`;
   const da = zeigerBilder.get(name);
   if (da) return da;
   const L = linienWerte.zeigerGroesse;
@@ -2911,8 +2934,9 @@ function zeigerBildFuer(art: Exclude<ZeigerArt, 'ring'>, dunkel: boolean): strin
   const b = hx + Math.ceil(x1) + rand;
   const h = hy + Math.ceil(y1) + rand;
   const farbe = (c: readonly number[]): string => `rgb(${c.map((v) => Math.round(v * 255)).join(',')})`;
+  // der Rand ist die Linienfarbe des Grunds, die Füllung bleibt: dunkel für Objekte (V), weiß für Punkte (A)
   const tinte = farbe(dunkel ? [1, 1, 1] : TINTE);
-  const papier = farbe(dunkel ? TINTE : [1, 1, 1]);
+  const papier = farbe(objekt ? TINTE : [1, 1, 1]);
   const gefuellt = art !== 'schlinge';
   const bild = (s: number): string => {
     const c = document.createElement('canvas');
@@ -2979,7 +3003,7 @@ function zeigerSystemSchritt(sz: Szene, dt: number): boolean {
     offen = true;
   }
   // solange er überlappt, bleibt er, wie er war (auch wenn das Werkzeug schon ein anderes ist)
-  const wert = Z.an && art !== 'ring' ? zeigerBildFuer(art, hintenBei(hintenJetzt, zeiger.x * D, zeiger.y * D) > 0.5) : Z.ueberlappt > 0 ? Z.wert : '';
+  const wert = Z.an && art !== 'ring' ? zeigerBildFuer(art, hintenBei(hintenJetzt, zeiger.x * D, zeiger.y * D) > 0.5, zustand !== 'blatt' && objektModus()) : Z.ueberlappt > 0 ? Z.wert : '';
   if (wert !== Z.wert) {
     Z.wert = wert;
     leinwandLinien.style.cursor = wert;
@@ -3697,11 +3721,12 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
 function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger'] | undefined; aktiv: boolean } {
   const { flaechen, stabil } = flaechenJetzt(vp, m);
   werkBlatt.bauen(flaechen, uhr);
-  bearbeitenAn = stabil;
+  // (mit V, im Objekt-Modus, bedient das Verhalten die Linien nicht: Sie stehen still, ohne Punkte)
+  bearbeitenAn = stabil && !objektModus();
   // P in der Leiste, sobald das Werk bedient wird
-  if (bearbeitenAn !== pErlaubt) {
-    pErlaubt = bearbeitenAn;
-    for (const n of ['p', 'frei', 'formen', 'lasso'] as const) leiste.erlauben(n, pErlaubt);
+  if (stabil !== pErlaubt) {
+    pErlaubt = stabil;
+    for (const n of ['p', 'frei', 'formen', 'lasso', 'objekt'] as const) leiste.erlauben(n, pErlaubt);
     // im Raum zeigt die Leiste das Werkzeug des Raums (anfangs die Auswahl, kein Tropfen), nicht das des Blatts
     if (pErlaubt) leiste.setzen(raumWerkzeug);
   }
@@ -3790,7 +3815,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   werkBlatt.netz.punkte.forEach((p, pi) => {
     const A = werkBlatt.anker[pi]!;
     const F = flaechen[A.fl]!;
-    if (A.zuSehen) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
+    if (A.zuSehen && !objektModus()) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
   });
   return { zeiger: undefined, aktiv: werkBlatt.fliesst };
 }
@@ -5015,6 +5040,26 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // Objekte (V): Ein Klick auf die Form wählt sie, einer daneben wählt sie ab, ein Doppelklick auf sie wechselt zu ihren Punkten (A).
+  // Gezogen wird vorerst gedreht wie ins Leere (das Verschieben kommt mit dem Spiegel-Knopf und mit mehreren Objekten)
+  if (objektModus() && werkGezeigt) {
+    const getroffen = objektUnter(x, y);
+    if (getroffen && e.timeStamp - objektKlick.t < 350 && Math.hypot(x - objektKlick.x, y - objektKlick.y) < 8) {
+      objektKlick = { t: 0, x, y };
+      werkzeugImRaum('auswahl');
+      anstossen();
+      return;
+    }
+    if (getroffen) objektKlick = { t: e.timeStamp, x, y };
+    objektDruck = { x, y, getroffen };
+    if (vier > 0.5 && !getroffen) {
+      const R = felder().raum;
+      if (!(x >= R.x && y >= R.y)) vierUmschalten(false);
+    }
+    if (!(vier > 0.5 && getroffen)) drehenBeginnen(x, y, e.timeStamp);
+    anstossen();
+    return;
+  }
   // Linien des Werks: Hängt ein Tropfen am Zeiger, gilt das Drücken ihm; ins Leere im Raum (und im Feld des Raums) dreht es, in einer
   // flachen Ansicht zieht es einen Rahmen (E2)
   // Freihand und Formen: auf einer Fläche beginnt der Strich oder der Aufzug (daneben dreht es weiter)
@@ -5172,6 +5217,12 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
+  // Objekte (V): ein Klick ohne Weg wählt die Form (auf ihr) oder wählt sie ab (daneben)
+  if (objektDruck) {
+    const d = objektDruck;
+    objektDruck = null;
+    if (Math.hypot(zeiger.x - d.x, zeiger.y - d.y) < FELD_KLICK_WEG) objektGewaehlt = d.getroffen;
+  }
   if (drehen) drehenLos(e.timeStamp);
   if (punktZug && werkGezeigt) {
     // losgelassen, bevor der Griff beginnen konnte: ein Klick (die Auswahl steht); sonst endet der Zug im Werk
@@ -5214,6 +5265,30 @@ leinwandLinien.addEventListener(
   { passive: false },
 );
 
+/** Liegt die Form unter dem Ort (CSS-Pixel)? Im Raum ein Strahl gegen ihre Haut, in einer flachen Ansicht oder einem Feld der Ort im Blatt */
+function objektUnter(x: number, y: number): boolean {
+  if (zustand !== 'ruhe' || !werkGezeigt) return false;
+  if (pinselHier(x, y)) return werkHautTreffen(x, y) !== null;
+  const F = werkBlatt.flaechen[werkBlatt.flaecheUnter(x, y)];
+  if (!F || F.raeumlich || !F.tiefe) return false;
+  const XY = F.her(x, y);
+  return XY ? werkFelder.treffer(F.a, XY[0], XY[1], F.vorn ?? 1) !== null : false;
+}
+
+/**
+ * L (18.11., Florian: „wie bei blender … mit l auswählen wenn ich darüber fahre. deselektieren auch wie bei blender“): alles
+ * Verbundene am Teil unter dem Zeiger wählen, ohne Klick; ⇧ + L nimmt es aus der Auswahl. Unter dem Zeiger heißt: über der Haut
+ * des Teils oder an einer seiner Linien oder einem seiner Punkte (auch an den Wänden). Noch hat ein Objekt ein Teil: alle seine Punkte.
+ */
+function verbundenesWaehlen(weg: boolean): void {
+  if (!bearbeitenAn || !zeiger.da || bearbeiten.stift || strichWerkzeug()) return;
+  if (!bearbeiten.haengt && !objektUnter(zeiger.x, zeiger.y)) return;
+  if (weg) {
+    bearbeiten.eingabe('esc');
+    werk.G.auswahl = [];
+  } else bearbeiten.eingabe('alle');
+}
+
 function werkzeugGewaehlt(w: Werkzeug): void {
   // im Raum (mit dem Werk): P, Freihand, Formen und Lasso auf den Flächen
   if (zustand === 'ruhe' && werkGezeigt) {
@@ -5221,6 +5296,12 @@ function werkzeugGewaehlt(w: Werkzeug): void {
     return;
   }
   if (zustand !== 'blatt' || w === 'lasso') return;
+  // auf dem Blatt gibt es noch keine Objekte: Der dunkle Zeiger gilt dort wie der weiße
+  if (w === 'objekt') {
+    waehlenTaste('auswahl');
+    anstossen();
+    return;
+  }
   blatt.werkzeugSetzen(w);
   anstossen();
 }
@@ -5234,7 +5315,12 @@ function stiftImRaum(an: boolean): void {
 function werkzeugImRaum(w: Werkzeug): void {
   raumWerkzeug = w;
   bearbeiten.stiftSchalten(w === 'p');
-  if (strichWerkzeug()) bearbeiten.zeigerWeg();
+  if (strichWerkzeug() || w === 'objekt') bearbeiten.zeigerWeg();
+  if (w === 'objekt') {
+    hauch.ziel = 0;
+    pinselZiel = null;
+    zeigerPinsel = false;
+  } else objektGewaehlt = false;
   raumStrich = null;
   raumAufzug = null;
   leiste.setzen(w);
@@ -5335,25 +5421,33 @@ window.addEventListener('keydown', (e) => {
       // zuerst die Auswahl leeren
       bearbeiten.eingabe('esc');
       werk.G.auswahl = [];
-    } else if (vierZiel > 0.5) vierUmschalten(false);
+    } else if (objektModus() && objektGewaehlt) objektGewaehlt = false;
+    else if (vierZiel > 0.5) vierUmschalten(false);
     else if (ansicht !== 'raum') ansichtSetzen('raum');
     else ablassen();
   } else if (k === 'Backspace' || k === 'Delete') {
     if (zustand === 'blatt') blatt.eingabe('loeschen');
     // gewählte Punkte löschen (im Werk), sonst Luft ablassen
     else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || (bearbeiten.stift && werkBlatt.entwurf()))) bearbeiten.eingabe('loeschen');
-    else ablassen();
+    // im Objekt-Modus (V) löscht ⌫ nur das gewählte Objekt (noch ist es die eine Form: Die Luft geht ab)
+    else if (objektModus() && werkGezeigt) {
+      if (objektGewaehlt) ablassen();
+    } else ablassen();
   } else if ((k === '[' || k === ']') && zustand === 'ruhe' && werkGezeigt) {
     // Radius des Pinsels (wie O im Prüffenster)
     pinselRadius = Math.max(10, Math.min(600, pinselRadius * (k === ']' ? 1.2 : 1 / 1.2)));
   } else if ((k === 'p' || k === 'P') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(!bearbeiten.stift);
-  else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('auswahl');
+  // V: Objekte (dunkler Zeiger), A: Punkte (weißer Zeiger), wie in Illustrator
+  else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('objekt');
+  else if ((k === 'a' || k === 'A') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('auswahl');
   else if ((k === 'w' || k === 'W') && zustand === 'ruhe' && werkGezeigt && !e.metaKey && !e.ctrlKey) {
     // B3: im Raum zwischen Seifenhaut und Kurvennetz wechseln
     raumNetz = !raumNetz;
     werk.G.meldung = raumNetz ? 'Kurvennetz im Raum: Linien und Punkte auf der Form · W: zurück zur Seifenhaut' : '';
   }
-  else if ((k === 'l' || k === 'L') && zustand === 'ruhe' && werkGezeigt && !e.metaKey && !e.ctrlKey) werkzeugImRaum(raumWerkzeug === 'lasso' ? 'auswahl' : 'lasso');
+  // L wählt alles Verbundene unter dem Zeiger (⇧ nimmt es heraus), wie in Blender; das Lasso liegt auf Q, wie in Illustrator
+  else if ((k === 'l' || k === 'L') && zustand === 'ruhe' && werkGezeigt) verbundenesWaehlen(e.shiftKey);
+  else if ((k === 'q' || k === 'Q') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum(raumWerkzeug === 'lasso' ? 'auswahl' : 'lasso');
   else if ((k === 'g' || k === 's' || k === 'r') && zustand === 'ruhe' && werkGezeigt && bearbeitenAn && !e.repeat) {
     // C4: die Auswahl verschieben, skalieren, drehen (Punkte, Linien, Felder)
     if (!tastenZugBeginnen(k)) return;
@@ -5361,7 +5455,7 @@ window.addEventListener('keydown', (e) => {
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
   else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
-  else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt) {
+  else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && !objektModus()) {
     // Kante an den gewählten Punkten oder Linien an und aus (im Werk)
     if (werk.G.auswahl.length && !werk.zug) {
       // S13 (5): die Tusche fließt vom Gewählten aus, und ändert die Kante die Lage der Linie (Ecken), gleitet sie wie nach ⌘Z
@@ -5405,7 +5499,7 @@ window.addEventListener('keydown', (e) => {
   else if (zustand === 'blatt' && (k === 'n' || k === 'N')) waehlenTaste('frei');
   else if (zustand === 'blatt' && k === 'e') waehlenTaste('ellipse');
   else if (zustand === 'blatt' && k === 'E') waehlenTaste('wuerfel');
-  else if (zustand === 'blatt' && (k === 'v' || k === 'V')) waehlenTaste('auswahl');
+  else if (zustand === 'blatt' && (k === 'v' || k === 'V' || k === 'a' || k === 'A')) waehlenTaste('auswahl');
   else if (k === 'm' || k === 'M') materialWeiter();
   else return;
   anstossen();
@@ -5858,6 +5952,41 @@ function maulRing(): (typeof werk.loops)[number] | null {
 const maulHart = (l: (typeof werk.loops)[number]): boolean => !!l.maulGeformt || (!!l.kante && l.punkte.every((p) => p.kante !== false));
 
 /** Tropfen und Regler nach dem Stand des Werks (jedes Bild, solange das Verhalten die Flächen hat) */
+/**
+ * Objekte (V): Unter dem gewählten Objekt hängt ein dunkles Schild mit seinem Namen (so sieht man, was gewählt ist, auch an der
+ * Seifenhaut, die keinen Umriss hat). In den Vier Ansichten steht die Form viermal im Bild: dort kein Schild.
+ */
+const objektTropfen = $<HTMLDivElement>('objekt-tropfen');
+function objektUiZeigen(): void {
+  let ort: { x: number; y: number } | null = null;
+  if (zustand === 'ruhe' && werkGezeigt && objektModus() && objektGewaehlt && vier < 0.02) {
+    const { rx, ry, tiefe } = werkHaut.masse();
+    const vp = vpJetzt();
+    const v = new Vector4();
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    let gut = true;
+    for (let e = 0; e < 8 && gut; e++) {
+      v.set(werkHaut.mitte.x + (e & 1 ? rx : -rx), werkHaut.mitte.y + (e & 2 ? ry : -ry), (e & 4 ? tiefe : -tiefe), 1).applyMatrix4(vp);
+      if (!(v.w > 1e-6)) gut = false;
+      else {
+        const x = (v.x / v.w / 2 + 0.5) * W;
+        x0 = Math.min(x0, x);
+        x1 = Math.max(x1, x);
+        y1 = Math.max(y1, (0.5 - v.y / v.w / 2) * H);
+      }
+    }
+    if (gut) ort = { x: (x0 + x1) / 2, y: Math.min(H - 60, y1 + 10) };
+  }
+  objektTropfen.hidden = !ort;
+  if (!ort) return;
+  const text = werk.G.ablageName || 'Form';
+  if (objektTropfen.textContent !== text) objektTropfen.textContent = text;
+  objektTropfen.style.left = `${ort.x.toFixed(1)}px`;
+  objektTropfen.style.top = `${ort.y.toFixed(1)}px`;
+}
+
 function maulUiZeigen(): void {
   const an = zustand === 'ruhe' && werkGezeigt && bearbeitenAn;
   // der Tropfen hängt unter dem tiefsten sichtbaren Punkt der gewählten Linie
@@ -6016,7 +6145,15 @@ const haken = {
     return { an: raumNetz, deckung: raumNetzDeckung, blatt: raum ? raumBlatt() : null };
   },
   /** B1: der Zeiger jetzt: Zeigt ihn das System (und mit welchem Bild), hat ihn das letzte Bild gezeichnet, seine Form */
-  zeiger: () => ({ system: zeigerSystem.an, bild: zeigerSystem.wert, gezeichnet: zeigerGezeichnet, art: zustand === 'blatt' ? 'pfeil' : zeigerArtJetzt(), tempo: zeigerSystem.tempo }),
+  zeiger: () => ({ system: zeigerSystem.an, bild: zeigerSystem.wert, gezeichnet: zeigerGezeichnet, art: zustand === 'blatt' ? 'pfeil' : zeigerArtJetzt(), tempo: zeigerSystem.tempo, farbe: zustand !== 'blatt' && objektModus() ? 'dunkel' : 'weiss' }),
+  /** Objekte (V): der Modus, ob das Objekt gewählt ist, das Werkzeug des Raums, das Schild am Objekt (Text und Ort, CSS-Pixel) */
+  objekt: () => ({
+    modus: objektModus(),
+    gewaehlt: objektGewaehlt,
+    werkzeug: raumWerkzeug,
+    schild: objektTropfen.hidden ? null : { text: objektTropfen.textContent, x: parseFloat(objektTropfen.style.left), y: parseFloat(objektTropfen.style.top) },
+    unter: zeiger.da ? objektUnter(zeiger.x, zeiger.y) : false,
+  }),
   /** wo ein Punkt des Werks (Loop-Kennung, Nummer) auf den Flächen mit diesem Blatt liegt (CSS-Pixel), ohne und mit Spiegelbild */
   ankerImBild: (id: number, i: number, a?: Flaeche['a']): { x: number; y: number; fl: number; a: Flaeche['a']; m: boolean; sichtbar: boolean }[] =>
     werkBlatt.anker.flatMap((A, pi) => {

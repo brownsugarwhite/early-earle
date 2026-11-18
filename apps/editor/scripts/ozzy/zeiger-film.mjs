@@ -47,10 +47,10 @@ await standbild('1', leer);
 await s.keyboard.press('p');
 await bilder(30);
 await standbild('2', leer);
-await s.keyboard.press('l');
+await s.keyboard.press('q');
 await bilder(30);
 await standbild('3', leer);
-await s.keyboard.press('v');
+await s.keyboard.press('a');
 await bilder(12);
 for (let k = 1; k <= 20; k++) {
   await s.mouse.move(leer.x + ((haut.x - leer.x) * k) / 20, leer.y + ((haut.y - leer.y) * k) / 20);

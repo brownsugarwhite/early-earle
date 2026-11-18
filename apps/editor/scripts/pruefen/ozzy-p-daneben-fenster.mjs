@@ -45,7 +45,7 @@ ok('2 ein Klick weit daneben tut nichts und sagt, warum', b2.entwurf === b1.entw
 await s.keyboard.press('Escape');
 await s.waitForTimeout(400);
 const b3 = await O('bearbeiten');
-await s.keyboard.press('v');
+await s.keyboard.press('a');
 await s.waitForTimeout(300);
 const x0 = R.x + 40;
 const y0 = R.y + R.h - 40;

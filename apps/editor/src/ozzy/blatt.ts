@@ -19,7 +19,11 @@ import { type Linie, type Netz, bezier, kontrollpunkte, netzKopie } from '../lin
 import { type Ansicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
 import type { Kapseln } from './kapseln';
 
-export type Werkzeug = 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'auswahl' | 'lasso';
+/**
+ * `auswahl`: Punkte, Linien und Griffe bearbeiten (A, der weiße Zeiger); `objekt`: ganze Objekte (V, der dunkle Zeiger; nur im Raum,
+ * auf dem Blatt gilt es wie `auswahl`, bis dort ganze Linien verschoben werden können).
+ */
+export type Werkzeug = 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'auswahl' | 'lasso' | 'objekt';
 
 /** Anker der Silhouette: Lage und Griffe relativ zum Punkt (ein = zur vorigen Linie, aus = zur nächsten) */
 export interface Anker {

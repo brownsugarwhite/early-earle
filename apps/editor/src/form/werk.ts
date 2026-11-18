@@ -4684,7 +4684,12 @@ export function mitteFest(vonSelbst = false): boolean {
   naechsteId = r.naechsteId;
   naechsteKreuzung = r.naechsteKreuzung;
   netzGewachsen(nAlt, r.alt, null);
-  G.auswahl = r.rand.map((id) => ({ l: id, i: -1 }));
+  // gewählt ist der Rand als Ganzes (so wirkt K auch an einem Rand ohne Punkte); von selbst entstanden dazu seine sichtbaren Punkte,
+  // damit man die Naht sieht (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
+  G.auswahl = r.rand.flatMap((id) => {
+    const l = vonSelbst ? loops[loopNr(id)] : undefined;
+    return [{ l: id, i: -1 }, ...(l ? l.punkte.flatMap((q, i) => (istSichtbar(q) ? [{ l: id, i }] : [])) : [])];
+  });
   const was = r.rand.length === 1 ? 'Der Rand des Lochs ist ein Loop' : `Die Ränder der ${r.rand.length} Löcher sind Loops`;
   G.meldung = vonSelbst
     ? `Naht an der Spiegelebene: ${r.rand.length === 1 ? 'ein Loop' : `${r.rand.length} Loops`} mit Kante, gewählt · K macht ${r.rand.length === 1 ? 'ihn' : 'sie'} rund · ⌘Z nimmt Zug und Naht zurück`

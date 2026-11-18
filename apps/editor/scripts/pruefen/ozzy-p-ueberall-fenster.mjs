@@ -133,7 +133,7 @@ for (const ort of NUR) {
     }
     if (draussen) {
       console.log(`     ${ort}, ${name}: nicht geprüft (die Geste passt nicht ins Feld)`);
-      await s.keyboard.press('v');
+      await s.keyboard.press('a');
       continue;
     }
     for (const q of pts) await klick(q.x, q.y);
@@ -147,7 +147,7 @@ for (const ort of NUR) {
     const neu = nach.filter((x) => !vor.some((y) => y.id === x.id));
     if (aus) await s.screenshot({ path: `${aus}/ozzy-p-ueberall-${ort}-${name.replace(/ /g, '-')}.png` });
     // das Werkzeug verlassen, ohne Esc (Esc ginge ohne Werkzeug zurück aufs Blatt), dann zurück
-    await s.keyboard.press('v');
+    await s.keyboard.press('a');
     await s.keyboard.press('Meta+z');
     await ruhig(30000);
     const zurueck = (await linien()).length === vor.length;

@@ -443,7 +443,16 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   16 Werte je Ecke stehen auf null bis auf `eeSpine.w = 1` (Rücken: kein Bauch, Punkte überall) und `eeRegion.y` (weit weg von einer
   Maulkante); `eeRest` ist die Form vom Boden aus. Der Bauch kommt später (Florian); dann braucht es Bauch und Rücken je Ecke.
   Die Konsole warnt beim Übersetzen vielfach „Return statement used in an inline 'Fn()'“ (wie im alten Editor, kein Fehler).
-- **Fenster der App (18.11.):** Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
+- **Objekte, Etappe 1 (18.11., Plan `docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`):** Werkzeug `objekt` (V, dunkler
+  Zeiger) neben `auswahl` (A, weißer Zeiger); `objektModus()` in `main.ts`. Im Objekt-Modus ist `bearbeitenAn` falsch (das
+  Verhalten bedient die Linien nicht, sie werden schlicht gezeichnet, ohne Punkte); `pErlaubt` hängt deshalb an `stabil`, nicht an
+  `bearbeitenAn`. `objektUnter(x, y)` sagt, ob die Form unter dem Zeiger liegt (im Raum Strahl gegen die Haut, flach der Ort im
+  Blatt). Die Füllung des Zeigers ist fest (`Szene.zeigerFarbe`: 1 weiß, 2 dunkel), nur der Rand tauscht auf der Rückseite. L ist
+  „Verbundenes wählen“ (`verbundenesWaehlen`), das Lasso liegt auf Q: Proben, die mit V „zurück zur Auswahl“ meinten, drücken jetzt A.
+  Merke: Eine Regel in `werkBlatt.auswahlAbgleichen`, die Ankern mehr Auswahl gibt, als das Verhalten gesetzt hat, ändert dessen
+  Zustand (ein ganz gewählter Loop zeigte alle seine Punkte gewählt; danach verlor P den ersten Klick, Probe `ozzy-p-schnitt`).
+- **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
+  beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`
   ansehen, einen eigenen erst beenden, und danach prüfen, dass 5194, 5197 und 5205 laufen.
 - **Look gegen die Vorlage (18.11.):** `node scripts/pruefen/ozzy-look-messen.mjs [ordner]` legt dieselbe Form gleich groß in

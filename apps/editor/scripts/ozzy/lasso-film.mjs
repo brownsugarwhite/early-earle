@@ -94,7 +94,7 @@ const k = kasten(P);
 const bx = k.x1 - k.x0;
 const by = k.y1 - k.y0;
 await text('L · Lasso: Punkte umfahren');
-await s.keyboard.press('l');
+await s.keyboard.press('q');
 await warten(0.5);
 await schlinge(k.x0 + 0.22 * bx, k.y0 + 0.5 * by, 0.3 * bx, 0.62 * by, 1.7);
 await warten(1.3);

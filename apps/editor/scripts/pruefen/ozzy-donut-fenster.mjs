@@ -57,7 +57,7 @@ if (KUGEL) {
     await klick(b.x, b.y);
     await s.keyboard.press('Enter');
     await ruhig();
-    await s.keyboard.press('v');
+    await s.keyboard.press('a');
     await s.waitForTimeout(200);
   }
   await s.keyboard.press('0');

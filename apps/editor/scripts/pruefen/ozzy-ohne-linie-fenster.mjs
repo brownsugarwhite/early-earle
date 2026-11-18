@@ -99,7 +99,7 @@ for (const x of [cx - 380, cx + 380]) {
 }
 await s.keyboard.press('Enter');
 await ruhig();
-await s.keyboard.press('v');
+await s.keyboard.press('a');
 const L1 = await O('werkLinienDaten');
 await O('hautMerken');
 await s.waitForTimeout(3000);
