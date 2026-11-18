@@ -41,8 +41,10 @@ body {
 #linien {
   cursor: none;
 }
-/* Jelly und helles Solid: die Fläche des Blaupause-Renderers (gast.ts), über dem Raum und unter den Linien */
-#gast {
+/* Jelly und helles Solid: die Fläche des Blaupause-Renderers (gast.ts), über dem Raum und unter den Linien; daneben die des grünen
+   Materials (gruen.ts) */
+#gast,
+#gast-earle {
   position: absolute;
   inset: 0;
   width: 100%;

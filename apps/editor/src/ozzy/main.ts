@@ -34,6 +34,7 @@ import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
 import { type FeldTreffer, werkFelder } from './werkFelder';
 import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
+import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
@@ -116,6 +117,9 @@ const leinwandLinien = $<HTMLCanvasElement>('linien');
 /** eigene Fläche für Jelly und helles Solid (der Blaupause-Renderer als Gast, `gast.ts`), zwischen Raum und Linien */
 const leinwandGast = $<HTMLCanvasElement>('gast');
 leinwandGast.style.display = 'none';
+/** und eine für das grüne Material (das Earle-Material des alten Editors auf dem WebGPU-Renderer, `gruen.ts`) */
+const leinwandGruen = $<HTMLCanvasElement>('gast-earle');
+leinwandGruen.style.display = 'none';
 const gruss = $<HTMLDivElement>('gruss');
 const hinweis = $<HTMLDivElement>('hinweis');
 const infoAnzeige = $<HTMLSpanElement>('info');
@@ -137,13 +141,17 @@ let zustand: Zustand = 'blatt';
 let T = 0;
 let festeZeit: number | null = null;
 let fassung: Fassung = Number(params.get('fassung') ?? 0) as Fassung;
-/** alle Materialien neben der Seifenhaut, in der Reihenfolge des Menüs: Solid, Zebra (`material.ts`), Jelly, helles Solid (`gast.ts`) */
-const MATERIALIEN = [...FESTE_MATERIALIEN, ...GAST_MATERIALIEN] as const;
-type Material = FestesMaterial | GastMaterial;
+/**
+ * alle Materialien neben der Seifenhaut, in der Reihenfolge des Menüs: Solid, Zebra (`material.ts`), Jelly, helles Solid (`gast.ts`),
+ * Grün (`gruen.ts`)
+ */
+const MATERIAL_GRUEN = 'Grün';
+const MATERIALIEN = [...FESTE_MATERIALIEN, ...GAST_MATERIALIEN, MATERIAL_GRUEN] as const;
+type Material = FestesMaterial | GastMaterial | typeof MATERIAL_GRUEN;
 const istGast = (m: Material): m is GastMaterial => (GAST_MATERIALIEN as readonly string[]).includes(m);
 /**
  * Das Material der Haut (Florian, 18.11.): null = die Seifenhaut in ihrer Fassung, sonst eines der festen Materialien. Im Menü gemerkt;
- * `?material=solid|zebra|jelly|helles solid|seifenhaut` für Proben.
+ * `?material=solid|zebra|jelly|helles solid|grün|seifenhaut` für Proben.
  */
 let material: Material | null = ((): Material | null => {
   let wahl = params.get('material');
@@ -159,6 +167,25 @@ let material: Material | null = ((): Material | null => {
 /** das Netz, das `feste` gerade zeigt (Stand der glatten Anzeige) */
 let festeStand: { netz: unknown; version: number } | null = null;
 let gastStand: { netz: unknown; version: number } | null = null;
+/**
+ * Das grüne Material: Sein Renderer (three/webgpu und das Earle-Material aus `@ee/render`) wird erst geladen, wenn es gewählt ist;
+ * bis dahin kostet es Ozzy nichts.
+ */
+let gruen: GruenHaut | null = null;
+let gruenLaedt = false;
+let gruenStand: { netz: unknown; version: number } | null = null;
+function gruenHolen(): GruenHaut | null {
+  if (gruen) return gruen;
+  if (!gruenLaedt) {
+    gruenLaedt = true;
+    void import('./gruen').then((m) => {
+      gruen = new m.GruenHaut(leinwandGruen);
+      gruen.groesse(W, H, D);
+      anstossen();
+    });
+  }
+  return null;
+}
 let W = 1;
 let H = 1;
 let D = 1;
@@ -641,6 +668,7 @@ function groesse(): void {
   haut.groesse(W, H, D);
   feste.groesse(W, H, D);
   gast.groesse(W, H, D);
+  gruen?.groesse(W, H, D);
   anzeige.groesse(W * D, H * D);
   if (zustand === 'blatt') netzStand = -1;
   else raumRechnen();
@@ -1684,6 +1712,7 @@ function feldHautSchneiden(): void {
     hautSchnitt = wert;
     leinwandHaut.style.clipPath = wert;
     leinwandGast.style.clipPath = wert;
+    leinwandGruen.style.clipPath = wert;
   }
 }
 
@@ -2506,16 +2535,30 @@ function bild(dt: number): boolean {
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
   if (material !== null && werkGezeigt && zustand === 'ruhe' && werkHaut.netz && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
+    // beim Einrasten blenden die Materialien auf eigener Fläche aus, während sich das Blatt durch die Form schiebt (ihre Renderer
+    // kennen keinen Schnitt)
+    const blende = schnittJetzt ? 1 - glatt(flach) : 1;
+    if (material !== MATERIAL_GRUEN || w.blaseAus) gruen?.aus();
     if (w.blaseAus) gast.aus();
-    else if (istGast(material)) {
+    else if (material === MATERIAL_GRUEN) {
+      // das grüne Material: das Earle-Material des alten Editors auf seiner eigenen Fläche (`gruen.ts`)
+      gast.aus();
+      const g = gruenHolen();
+      if (!g) aktiv = true;
+      else {
+        if (!gruenStand || gruenStand.netz !== werkHaut.netz || gruenStand.version !== werkHaut.version) {
+          g.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
+          gruenStand = { netz: werkHaut.netz, version: werkHaut.version };
+        }
+        if (g.zeichnen(kam.aktiv, { deckung: (1 - 0.7 * roentgen) * blende })) aktiv = true;
+      }
+    } else if (istGast(material)) {
       // Jelly und helles Solid: der Blaupause-Renderer auf seiner eigenen Fläche über dem Raum (`gast.ts`)
       if (!gastStand || gastStand.netz !== werkHaut.netz || gastStand.version !== werkHaut.version) {
         gast.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
         gastStand = { netz: werkHaut.netz, version: werkHaut.version };
       }
       const heim = richtung(((m?.gier ?? 0) * Math.PI) / 180, ((m?.neigung ?? 0) * Math.PI) / 180);
-      // beim Einrasten blendet die Haut aus, während sich das Blatt durch sie schiebt (der Renderer kennt keinen Schnitt)
-      const blende = schnittJetzt ? 1 - glatt(flach) : 1;
       const unruhig = gast.zeichnen(kam.aktiv, material, {
         deckung: (1 - 0.7 * roentgen) * blende,
         abstand: kam.abstand,
@@ -2534,6 +2577,7 @@ function bild(dt: number): boolean {
     }
   } else {
     gast.aus();
+    gruen?.aus();
     haut.zeichnen(kam.aktiv, w, []);
   }
   mess.teile[3] = performance.now() - tz;
@@ -6301,6 +6345,8 @@ const haken = {
     return material ?? FASSUNGEN[fassung]!;
   },
   /** Jelly und helles Solid: Zeiten des letzten Bilds (ms) und das Fenster, das der Renderer bekam (Gerätepunkte) */
+  /** das grüne Material: Zeit des letzten Bilds (ms), Zahl der Bilder, WebGPU oder WebGL2, und ob seine Fläche zu sehen ist */
+  gruen: () => ({ geladen: !!gruen, ...(gruen?.mess ?? {}), sichtbar: leinwandGruen.style.display !== 'none', deckung: Number(leinwandGruen.style.opacity || 1) }),
   gast: (genau?: boolean) => {
     if (genau !== undefined) gast.genau = genau;
     return {

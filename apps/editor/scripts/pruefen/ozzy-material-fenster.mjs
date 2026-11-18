@@ -1,6 +1,6 @@
 // Ozzy, Materialien neben der Seifenhaut (18.11.2026; Florian: „solid wie in http://localhost:5197/kurven.html?gewichte=geometrie“,
-// „zebra“, „jelly und helles solid … ohne die extra outlines“, „dann auf weiß“, „Du kannst die Materialien erstmal ins Ozzy-Menü
-// packen“), an „strange bird“ (NAME).
+// „zebra“, „jelly und helles solid … ohne die extra outlines“, „dann auf weiß“, „das grüne Material dann ohne Bauch“, „Du kannst die
+// Materialien erstmal ins Ozzy-Menü packen“), an „strange bird“ (NAME).
 // Kriterien:
 //   1  Solid (`?material=solid`): Im Raum trägt die Form die vier Töne des Prüffensters (Körperfarbe 0xe2b98e mal 70, 135, 200, 255
 //      von 255 unter seinem Licht; geprüft: Die Mitte der Form ist sandfarben, Rot > Grün > Blau) und einen Umriss in Tinte; an den
@@ -10,8 +10,10 @@
 //      Gasts liegt auf Ozzys Bild der Haut (höchstens 0,5 Gerätepunkte daneben).
 //   4  Helles Solid (M weiter): der Körper weiß und lavendel, die Kante in Petrol; kein Türkis, kein dunkler Grund, keine Platten in
 //      Rosa und Lila.
+//   4b Grün (M weiter): die Form im Grün des alten Editors mit dunkleren Punkten, auf dem weißen Raum; sein Renderer ist erst jetzt
+//      geladen.
 //   5  M weiter: wieder die Seifenhaut; das Menü zeigt die Wahl (ein Knopf gedrückt), sie ist gemerkt (`ozzy.material`), und die
-//      Fläche des Gasts ist verborgen.
+//      Flächen der Gäste sind verborgen.
 //   6  Eingerastet (Taste 1) liegt mit Solid nur die Linienansicht im Bild (kein sandfarbener Körper), zurück im Raum (0) ist er wieder
 //      da; ebenso mit Jelly (kein Türkis eingerastet, die Fläche des Gasts verborgen).
 //   7  Jelly nach dem Drehen (ins Leere gezogen) und in den Vier Ansichten (Tab): Das Bild des Gasts liegt weiter auf Ozzys Bild.
@@ -43,7 +45,7 @@ const farben = async (name) => {
     const g = c.getContext('2d');
     g.drawImage(bild, 0, 0);
     const P = g.getImageData(0, 0, bild.width, bild.height).data;
-    let sand = 0, tinte = 0, weiss = 0, grau = 0, bunt = 0, tuerkis = 0, petrol = 0, lavendel = 0, rosa = 0;
+    let sand = 0, tinte = 0, weiss = 0, grau = 0, bunt = 0, tuerkis = 0, petrol = 0, lavendel = 0, rosa = 0, gruen = 0, punkt = 0;
     const n = P.length / 4;
     for (let i = 0; i < P.length; i += 4) {
       const r = P[i], gg = P[i + 1], b = P[i + 2];
@@ -52,6 +54,8 @@ const farben = async (name) => {
       else if (r < 30 && gg > 40 && gg < 95 && b > 55 && b < 110) petrol++;
       else if (max < 60) tinte++;
       else if (gg > 120 && b > 120 && r < 0.62 * gg) tuerkis++;
+      else if (gg > r + 25 && gg > b + 45 && gg >= 135) gruen++;
+      else if (gg > r + 15 && gg > b + 30 && gg < 135) punkt++;
       else if (r > 215 && b > 228 && gg > 205 && gg < r && r < b) lavendel++;
       else if (r > 200 && gg < 170 && b > 140) rosa++;
       else if (r > gg + 12 && gg > b + 12 && r > 110) sand++;
@@ -60,7 +64,7 @@ const farben = async (name) => {
     }
     const mitte = 4 * (Math.floor(bild.height / 2) * bild.width + Math.floor(bild.width / 2));
     const a = (x) => x / n;
-    return { sand: a(sand), tinte: a(tinte), weiss: a(weiss), grau: a(grau), bunt: a(bunt), tuerkis: a(tuerkis), petrol: a(petrol), lavendel: a(lavendel), rosa: a(rosa), mitte: [P[mitte], P[mitte + 1], P[mitte + 2]] };
+    return { sand: a(sand), tinte: a(tinte), weiss: a(weiss), grau: a(grau), bunt: a(bunt), tuerkis: a(tuerkis), petrol: a(petrol), lavendel: a(lavendel), rosa: a(rosa), gruen: a(gruen), punkt: a(punkt), mitte: [P[mitte], P[mitte + 1], P[mitte + 2]] };
   }, png.toString('base64'));
 };
 const p = (x) => `${(100 * x).toFixed(1).replace('.', ',')} %`;
@@ -95,6 +99,18 @@ ok(
   (await O('material')) === 'Helles Solid' && g4.sichtbar && f4.lavendel > 0.01 && f4.petrol > 0.002 && f4.tuerkis < 0.002 && f4.tinte < 0.01 && f4.rosa < 0.002 && f4.weiss > 0.5 && g4.abweichung <= 0.5,
   `lavendel ${p(f4.lavendel)}, Petrol ${p(f4.petrol)}, weiß ${p(f4.weiss)}, dunkel ${p(f4.tinte)}, Rosa und Lila ${p(f4.rosa)}; ${z2(g4.abweichung)} Gerätepunkte neben Ozzys Bild`,
 );
+// 4b Grün: sein Renderer wird erst jetzt geladen
+const vorher = await O('gruen');
+await s.keyboard.press('m');
+await s.waitForFunction(() => window.__ozzy.gruen().sichtbar && window.__ozzy.gruen().bilder >= 2, null, { timeout: 60000 }).catch(() => undefined);
+await s.waitForTimeout(1500);
+const f4b = await farben('gruen');
+const g4b = await O('gruen');
+ok(
+  '4b Grün: das Grün des alten Editors mit dunkleren Punkten, auf dem weißen Raum',
+  (await O('material')) === 'Grün' && !vorher.geladen && g4b.sichtbar && f4b.gruen > 0.03 && f4b.punkt > 0.0015 && f4b.weiss > 0.5 && f4b.tuerkis < 0.002 && f4b.tinte < 0.01 && !(await O('gast')).sichtbar,
+  `grün ${p(f4b.gruen)}, dunkles Grün (Punkte, Schatten) ${p(f4b.punkt)}, weiß ${p(f4b.weiss)}; vorher geladen ${vorher.geladen}; auf ${g4b.unterbau}, ${g4b.bilder} Bilder, letztes ${z2(g4b.zeichnen)} ms`,
+);
 // 5 weiter: Seifenhaut; Menü und Speicher
 await s.keyboard.press('m');
 await s.waitForTimeout(900);
@@ -104,8 +120,8 @@ const gemerkt = await s.evaluate(() => localStorage.getItem('ozzy.material'));
 const f5 = await farben('seifenhaut');
 const g5 = await O('gast');
 ok(
-  '5 M weiter: die Seifenhaut, im Menü gezeigt und gemerkt, die Fläche des Gasts verborgen',
-  m5 === 'Seifenhaut' && menue.filter((x) => x.endsWith('*')).join() === 'Seifenhaut*' && ['Solid', 'Zebra', 'Jelly', 'Helles Solid'].every((x) => menue.includes(x)) && gemerkt === 'seifenhaut' && f5.sand < 0.01 && f5.tuerkis < 0.01 && !g5.sichtbar,
+  '5 M weiter: die Seifenhaut, im Menü gezeigt und gemerkt, die Flächen der Gäste verborgen',
+  m5 === 'Seifenhaut' && menue.filter((x) => x.endsWith('*')).join() === 'Seifenhaut*' && ['Solid', 'Zebra', 'Jelly', 'Helles Solid', 'Grün'].every((x) => menue.includes(x)) && gemerkt === 'seifenhaut' && f5.sand < 0.01 && f5.tuerkis < 0.01 && f5.gruen < 0.01 && !g5.sichtbar && !(await O('gruen')).sichtbar,
   `Material ${m5}; Menü ${menue.join(' ')}; gemerkt ${gemerkt}; Gast sichtbar ${g5.sichtbar}`,
 );
 // 6 eingerastet: nur die Linienansicht; zurück im Raum der Körper (Solid und Jelly)
