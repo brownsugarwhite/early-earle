@@ -239,6 +239,9 @@ const ort = (li: number, j: number, sp: boolean): number => (li * 1_000_000 + j)
 const kennJetzt = (): string => `${werk.grund ? 'p' : 'g'}|${werk.loops.map((l) => `${l.id}.${l.proben.length}.${werk.exakt(l) ? 1 : 0}`).join(',')}`;
 
 export class WerkHaut {
+  private static zaehler = 0;
+  /** eindeutig je Anzeige (für Zwischenspeicher, die mehrere Anzeigen kennen: der Verbund der Objekte) */
+  readonly kennung = ++WerkHaut.zaehler;
   /** Werk-Einheiten je Pixel der Welt und die Mitte der Form in der Welt */
   f = 1;
   mitte = { x: 0, y: 0 };
@@ -509,6 +512,27 @@ export class WerkHaut {
     }
     z.seite.set(g.plan.weiterreichen(stufen, grob));
     this.spiegelSchnitt = true;
+  }
+
+  /**
+   * Etappe 5 (der Verbund): dieselbe Haut auf einer gröberen Stufe. Die Verfeinerung hängt neue Punkte nur an (die alten bleiben, wo
+   * sie sind, mit denselben Normalen und Werten): Die ersten `punkte` Punkte des gezeigten Netzes mit den Dreiecken `index` sind die
+   * Haut auf der Stufe `stufe` (höchstens die gezeigte). null: noch kein Netz.
+   */
+  netzAufStufe(stufe: number): { punkte: number; index: Uint32Array; stufe: number } | null {
+    const v = this.netzVon;
+    if (!v || !this.netz) return null;
+    const k = Math.max(0, Math.min(v.stufen, Math.round(stufe)));
+    return { punkte: v.plan.punkte(k), index: v.plan.index(k), stufe: k };
+  }
+
+  /** die feinste Stufe des gezeigten Netzes mit höchstens so vielen Dreiecken (wenigstens das Netz der Rechnung selbst) */
+  stufeMitHoechstens(dreiecke: number): number {
+    const v = this.netzVon;
+    if (!v) return 0;
+    let k = v.stufen;
+    while (k > 0 && v.plan.index(k).length / 3 > dreiecke) k--;
+    return k;
   }
 
   /** B4: fließt die Haut gerade zurück */

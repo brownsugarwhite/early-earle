@@ -113,7 +113,7 @@ await s.waitForTimeout(700);
 await O('form', kreis(760, 400, 80), true);
 await O('aufblasen');
 await fertig();
-await s.click('#naht-vereinen');
+await s.click('#naht-vereinen', { modifiers: ['Alt'] });
 await s.waitForFunction(() => window.__ozzy.objekte().ruhende.length === 0 && !window.__ozzy.nahtStand().laeuft, null, { timeout: 30000 });
 const gleich = await O('nahtStand');
 await still();

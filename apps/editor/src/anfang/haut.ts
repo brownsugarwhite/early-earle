@@ -574,6 +574,13 @@ export interface HautWerte {
    * dem Blatt für ein neues Objekt). Fehlt: 1.
    */
   ruheSicht?: number;
+  /**
+   * Ozzy, Etappe 5 (19.11.): Das fremde Netz (`blaseErsetzen`, das aktive Objekt) wird nicht gezeichnet: Es geht in einem Verbund auf,
+   * der als ruhendes Netz gezeigt wird. Anders als `blaseAus` bleiben die ruhenden Netze zu sehen.
+   */
+  aktivAus?: boolean;
+  /** Ozzy, Etappe 5: wie deutlich das fremde Netz zu sehen ist (ein Objekt, das abzieht, steht blass im Bild); fehlt: 1 */
+  blaseSicht?: number;
 }
 
 export const PAPIER = new Color('#ffffff');
@@ -632,10 +639,12 @@ export class Haut {
    * Ozzy, Etappe 3 (18.11.): die ruhenden Objekte (ihre fertigen Häute als ein Netz), neben der Blase oder dem fremden Netz gezeichnet,
    * mit eigenen Durchgängen (sie blenden nicht mit der Blase ein und aus)
    */
-  private ruhend: HautNetz | null = null;
-  private geoRuhe: BufferGeometry | null = null;
   private matsRuhe: ShaderMaterial[] = [];
-  private netzeRuhe: Mesh[] = [];
+  /** zwei Plätze: 0 die ruhenden Objekte für sich, 1 der Verbund (Etappe 5; er wechselt beim Ziehen mit jedem Stand) */
+  private ruhePlaetze: { netz: HautNetz | null; geo: BufferGeometry | null; netze: Mesh[] }[] = [
+    { netz: null, geo: null, netze: [] },
+    { netz: null, geo: null, netze: [] },
+  ];
   /** weiche Schatten an den Wänden des Würfels */
   readonly schatten = new WandSchatten();
   /** A3: der Fluss der Dicke als Textur (einmal je Bild; neu nur, wenn sich Zeit oder Wind geändert haben) */
@@ -989,14 +998,16 @@ void main() {
   /**
    * Ozzy, Etappe 3: die ruhenden Objekte zeigen (ein Netz aus ihren fertigen Häuten, Lagen im Raum), in allen Zuständen: auf dem Blatt,
    * beim Aufblasen eines neuen Objekts, im Raum. `null`: keine. Dasselbe Netz noch einmal: nichts (ruhende Objekte ändern sich nicht).
+   * `platz` 1: der Verbund (Etappe 5), ein zweites Netz daneben mit denselben Durchgängen.
    */
-  ruheSetzen(netz: HautNetz | null): void {
-    if (netz === this.ruhend) return;
-    for (const m of this.netzeRuhe) this.szene.remove(m);
-    this.netzeRuhe = [];
-    this.geoRuhe?.dispose();
-    this.geoRuhe = null;
-    this.ruhend = netz;
+  ruheSetzen(netz: HautNetz | null, platz = 0): void {
+    const P = this.ruhePlaetze[platz]!;
+    if (netz === P.netz) return;
+    for (const m of P.netze) this.szene.remove(m);
+    P.netze = [];
+    P.geo?.dispose();
+    P.geo = null;
+    P.netz = netz;
     if (!netz) return;
     if (!this.matsRuhe.length) this.matsRuhe = this.durchgaenge(0);
     const g = new BufferGeometry();
@@ -1008,18 +1019,23 @@ void main() {
     g.setAttribute('aDehnung', new BufferAttribute(netz.dehnung, 1));
     g.setAttribute('aSicht', new BufferAttribute(netz.sicht, 1));
     g.setIndex(new BufferAttribute(netz.index, 1));
-    this.geoRuhe = g;
+    P.geo = g;
     this.matsRuhe.forEach((m, i) => {
       const mesh = new Mesh(g, m);
       mesh.renderOrder = i;
       mesh.frustumCulled = false;
       this.szene.add(mesh);
-      this.netzeRuhe.push(mesh);
+      P.netze.push(mesh);
     });
+  }
+  /** nur die Dehnung eines ruhenden Netzes neu hochladen (der Verbund: Seine Farben der Dehnung klingen nach) */
+  ruheDehnungErneuern(platz = 0): void {
+    const g = this.ruhePlaetze[platz]!.geo;
+    if (g) (g.getAttribute('aDehnung') as BufferAttribute).needsUpdate = true;
   }
   /** gibt es ruhende Objekte zu zeichnen */
   get hatRuhende(): boolean {
-    return this.ruhend !== null;
+    return this.ruhePlaetze.some((p) => p.netz !== null);
   }
 
   /** nach `Koerper.setzen`: Lagen, Normalen, Dehnung, Sichtbarkeit hochladen */
@@ -1068,6 +1084,10 @@ void main() {
     };
     // Blase: Rückseite (Durchgänge 0 und 1) erst, wenn sie sich vom Film gelöst hat
     this.mats.forEach((m, i) => setzen(m, i < 2 ? w.hinten : w.vorn));
+    // Etappe 5: ein Objekt, das abzieht, steht blass im Bild (in einer deckenden Fassung gar nicht: Es verdeckte sein Loch)
+    const blass = w.blaseSicht !== undefined && w.blaseSicht < 1 && this.fremd !== null;
+    if (blass) for (const m of this.mats) m.uniforms.uSicht!.value *= w.blaseSicht!;
+    const aktivAus = this.fremd !== null && (!!w.aktivAus || (blass && !durch));
     // B3: das Netz auf der Haut (allein: die Seifenhaut ist aus; sonst liegt es über einer blassen)
     const netzArt = this.netzLinien ? (w.netz ?? 0) : 0;
     if (this.netzLinien) {
@@ -1081,13 +1101,13 @@ void main() {
     }
     if (netzArt === 2) for (const m of this.mats) m.uniforms.uSicht!.value *= 0.4;
     // die ruhenden Objekte: ganz da (sie blenden nicht mit der Blase ein), so deutlich wie verlangt
-    if (this.netzeRuhe.length) {
+    if (this.hatRuhende) {
       this.matsRuhe.forEach((m) => {
         setzen(m, 1);
         m.uniforms.uSicht!.value *= w.ruheSicht ?? 1;
         if (netzArt === 2) m.uniforms.uSicht!.value *= 0.4;
       });
-      this.netzeRuhe.forEach((mesh, i) => (mesh.visible = netzArt === 1 || w.blaseAus ? false : durch ? i < 4 : i === 4));
+      for (const P of this.ruhePlaetze) P.netze.forEach((mesh, i) => (mesh.visible = netzArt === 1 || w.blaseAus ? false : durch ? i < 4 : i === 4));
     }
     // Rahmen: immer als durchsichtige Seifenhaut (vier Durchgänge), bis er zum Schatten geworden ist
     this.matsRahmen.forEach((m) => setzen(m, w.rahmen));
@@ -1096,7 +1116,7 @@ void main() {
       const m = mesh.material as ShaderMaterial;
       const i = this.mats.indexOf(m);
       const j = this.matsRahmen.indexOf(m);
-      if (i >= 0) mesh.visible = netzArt === 1 || w.blaseAus ? false : durch ? i < 4 : i === 4;
+      if (i >= 0) mesh.visible = netzArt === 1 || w.blaseAus || aktivAus ? false : durch ? i < 4 : i === 4;
       else if (j >= 0) mesh.visible = j < 4 && w.rahmen > 1e-3 && (mesh.geometry !== this.geoSchlauch || w.schlauch);
       k++;
     }
@@ -1152,7 +1172,7 @@ void main() {
       for (const n of this.netze) n.visible = n.visible && this.mats.includes(n.material as ShaderMaterial);
       const wandSichtbar = this.schatten.gruppe.visible;
       this.schatten.gruppe.visible = false;
-      for (const m of this.mats) m.uniforms.uSicht!.value = (w.nacht ? 0.8 : 1) * w.sicht * 0.45;
+      for (const m of this.mats) m.uniforms.uSicht!.value = (w.nacht ? 0.8 : 1) * w.sicht * 0.45 * (blass ? w.blaseSicht! : 1);
       for (const m of this.matsRuhe) m.uniforms.uSicht!.value = (w.nacht ? 0.8 : 1) * w.sicht * 0.45 * (w.ruheSicht ?? 1);
       const H = this.ziel.height;
       for (const f of felder) {

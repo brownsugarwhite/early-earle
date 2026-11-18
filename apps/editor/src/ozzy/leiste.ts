@@ -30,8 +30,9 @@ const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' 
 const PLUS_ZEICHEN = '<path d="M10 4.4v11.2M4.4 10h11.2" />';
 const PLUS_NAME = 'Neues Objekt (+): Das Blatt der Seite öffnet sich, die vorhandenen Objekte stehen blass darin; zeichnen, ↩ bläst es auf';
 /**
- * Verschmelzen und Abziehen (Etappe 4): zwei Kreise, ein großer und ein kleiner oben rechts. Verschmelzen zeigt ihren gemeinsamen
- * Umriss, Abziehen den großen mit dem Biss des kleinen (der kleine als feine Linie). Zu sehen erst mit mehr als einem Objekt.
+ * Verschmelzen und Abziehen: zwei Kreise, ein großer und ein kleiner oben rechts. Verschmelzen zeigt ihren gemeinsamen Umriss,
+ * Abziehen den großen mit dem Biss des kleinen (der kleine als feine Linie). Zu sehen erst mit mehr als einem Objekt. Seit Etappe 5
+ * (19.11.) sind es Schalter am gewählten Objekt (unter dem geltenden hängt ein kleiner Tropfen); ⌥ + Klick wendet an (Etappe 4).
  */
 export type NahtKnopf = 'vereinen' | 'abziehen';
 const NAHT_ZEICHEN: Record<NahtKnopf, string> = {
@@ -39,8 +40,8 @@ const NAHT_ZEICHEN: Record<NahtKnopf, string> = {
   abziehen: '<path d="M13.82 9.99A5.6 5.6 0 1 1 10.24 6.11A3.4 3.4 0 0 0 13.82 9.99z" /><path d="M10.24 6.11A3.4 3.4 0 1 1 13.82 9.99" class="duenn" />',
 };
 const NAHT_NAMEN: Record<NahtKnopf, string> = {
-  vereinen: 'Verschmelzen: Das gewählte Objekt und das, das es berührt, werden eine Form; an der Naht entsteht eine Linie mit Kante (K macht sie weich, ⌘Z trennt wieder)',
-  abziehen: 'Abziehen: Das gewählte Objekt wird aus dem herausgeschnitten, das es berührt; der Rand ist eine Linie mit Kante (K macht sie weich, ⌘Z holt es zurück)',
+  vereinen: 'Verschmelzen (an und aus): Das gewählte Objekt verschmilzt mit allem, was es berührt. Es bleibt ein Objekt, die Naht fährt mit · K: Naht rund oder Kante · ⌥ + Klick: anwenden (eine Form, die Naht wird eine Linie)',
+  abziehen: 'Abziehen (an und aus): Das gewählte Objekt schneidet ein Loch in alles, was es berührt. Es bleibt ein Objekt, das Loch fährt mit · K: Rand rund oder Kante · ⌥ + Klick: anwenden (eine Form, der Rand wird eine Linie)',
 };
 
 /**
@@ -144,7 +145,7 @@ export class Leiste {
     private muell: () => void,
     private spiegel: (z: SpiegelZustand, alt: boolean) => void = () => {},
     private plus: () => void = () => {},
-    private naht: (art: NahtKnopf) => void = () => {},
+    private naht: (art: NahtKnopf, anwenden: boolean) => void = () => {},
   ) {
     const el = document.createElement('nav');
     el.id = 'leiste';
@@ -204,14 +205,15 @@ export class Leiste {
     for (const art of ['vereinen', 'abziehen'] as const) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'werkzeug';
+      b.className = 'werkzeug naht';
       b.id = `naht-${art}`;
+      b.setAttribute('aria-pressed', 'false');
       b.title = NAHT_NAMEN[art];
       b.setAttribute('aria-label', NAHT_NAMEN[art]);
       b.append(zeichen2(NAHT_ZEICHEN[art]));
       b.hidden = true;
       b.toggleAttribute('disabled', true);
-      b.addEventListener('click', () => this.naht(art));
+      b.addEventListener('click', (e) => this.naht(art, e.altKey));
       el.append(b);
       this.nahtKnoepfe.set(art, b);
     }
@@ -313,15 +315,16 @@ export class Leiste {
     this.plusKnopf.toggleAttribute('disabled', !an);
   }
 
-  /** Verschmelzen und Abziehen: zu sehen (mit mehr als einem Objekt) und an (das gewählte Objekt berührt ein anderes) */
-  nahtZeigen(sichtbar: boolean, an: boolean): void {
-    const stand = `${sichtbar}|${an}`;
+  /** Verschmelzen und Abziehen: zu sehen (mit mehr als einem Objekt), an (im Raum, mit einer Form) und was am gewählten Objekt gilt */
+  nahtZeigen(sichtbar: boolean, an: boolean, gilt: NahtKnopf | null = null): void {
+    const stand = `${sichtbar}|${an}|${gilt}`;
     if (stand === this.nahtStand) return;
     const sichtWechsel = this.nahtStand.split('|')[0] !== String(sichtbar);
     this.nahtStand = stand;
-    for (const b of this.nahtKnoepfe.values()) {
+    for (const [art, b] of this.nahtKnoepfe) {
       b.hidden = !sichtbar;
       b.toggleAttribute('disabled', !an);
+      b.setAttribute('aria-pressed', String(art === gilt));
     }
     // (die Leiste ist breiter oder schmaler geworden: Der Tropfen unter dem Werkzeug und der des Spiegels sitzen neu)
     if (sichtWechsel) {

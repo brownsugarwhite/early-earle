@@ -49,7 +49,13 @@ export type WesenStand = {
   ozzy?: OzzySzene;
 };
 /** ein Objekt in Ozzy: seine Kennung, sein Spiegel (`werk.G.clipping`, `werk.G.spiegelbild`) und sein Maß im Raum (Ort = Werk / f + mitte) */
-export type OzzyObjekt = { id: number; spiegel: { clipping: boolean; spiegelbild: boolean }; mass: { f: number; mitte: { x: number; y: number } } };
+export type OzzyObjekt = {
+  id: number;
+  spiegel: { clipping: boolean; spiegelbild: boolean };
+  mass: { f: number; mitte: { x: number; y: number } };
+  /** Etappe 5 (19.11.): Das Objekt verschmilzt mit dem, was es berührt, oder zieht davon ab; `rund`: die Naht gerundet, so breit (`breite`, an seiner Größe gemessen) */
+  verbund?: { art: 'vereinen' | 'abziehen'; rund: boolean; breite: number };
+};
 export type OzzySzene = OzzyObjekt & { objekte: (OzzyObjekt & { stand: WesenStand })[] };
 
 const KENNUNG = 'EEKW1\n';

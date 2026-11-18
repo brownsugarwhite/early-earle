@@ -40,7 +40,9 @@ import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
 import { AnsichtsTropfen } from './ansichtsTropfen';
-import { Leiste, type SpiegelZustand } from './leiste';
+import { Leiste, type NahtKnopf, type SpiegelZustand } from './leiste';
+import { Verbund, type VerbundBild, type VerbundGlied, type VerbundSoll } from './verbund';
+import type { VerbundNetz } from './verbundRechnen';
 import { reglerDehnung, reglerTropfen } from './reglerTropfen';
 import { type Bereich, type ReglerZeile, feinreglerBauen, werteLesen } from './regler';
 
@@ -704,8 +706,8 @@ const RUHE_AUF_DEM_BLATT = 0.38;
 let ruheNetzGemerkt: { schl: string; netz: HautNetz | null } = { schl: '', netz: null };
 const objektName = (): string => (ruhende.length ? `Form ${aktivId}` : werk.G.ablageName || (aktivId > 1 ? `Form ${aktivId}` : 'Form'));
 
-/** mehrere Netze der Seifenhaut zu einem (die Lagen liegen alle im Raum) */
-function netzeVereinen(netze: readonly HautNetz[]): HautNetz {
+/** mehrere Netze der Seifenhaut zu einem (die Lagen liegen alle im Raum); `sicht`: je Netz, wie deutlich es zu sehen ist (fehlt: ganz) */
+function netzeVereinen(netze: readonly HautNetz[], sicht?: readonly number[]): HautNetz {
   let N = 0;
   let I = 0;
   for (const n of netze) {
@@ -713,43 +715,54 @@ function netzeVereinen(netze: readonly HautNetz[]): HautNetz {
     I += n.index.length;
   }
   const z: HautNetz = { pos: new Float32Array(3 * N), normal: new Float32Array(3 * N), index: new Uint32Array(I), hoehe: new Float32Array(N), seite: new Float32Array(N), blatt: new Float32Array(2 * N), dehnung: new Float32Array(N), sicht: new Float32Array(N) };
+  // (ruhende Objekte schneidet die Anzeige nicht an der Spiegelebene: Sie sind verschmolzen oder überragen sich. Ihre Dehnung ist
+  // abgeklungen: 1. Bis zum 19.11. stand hier 0, die Anzeige las das als gestaucht: Ruhende Objekte hatten eine dickere Schicht und
+  // andere Farben als das gewählte.)
+  z.dehnung.fill(1);
   let v0 = 0;
   let i0 = 0;
-  for (const n of netze) {
+  netze.forEach((n, j) => {
     const k = n.pos.length / 3;
     z.pos.set(n.pos, 3 * v0);
     z.normal.set(n.normal, 3 * v0);
     z.hoehe.set(n.hoehe, v0);
     z.blatt.set(n.blatt, 2 * v0);
     z.sicht.set(n.sicht, v0);
-    // (ruhende Objekte schneidet die Anzeige nicht an der Spiegelebene: Sie sind verschmolzen oder überragen sich; die Dehnung ist abgeklungen)
+    const s = sicht?.[j] ?? 1;
+    if (s !== 1) for (let i = v0; i < v0 + k; i++) z.sicht[i]! *= s;
     for (let i = 0; i < n.index.length; i++) z.index[i0 + i] = n.index[i]! + v0;
     v0 += k;
     i0 += n.index.length;
-  }
+  });
   return z;
 }
 
 /**
- * Das Netz aller Objekte in einem (das aktive vorn, dahinter die ruhenden): für alles, was die Haut des Werks als ein Netz zeigt (die
- * festen Materialien, Jelly, Grün, der weiße Körper der Linienansichten). Mit einem Objekt ist es dessen Netz selbst. Ändert sich nur
- * das aktive, wird sein Teil überschrieben; neu angelegt wird nur, wenn sich die Größen oder die Reihe der ruhenden ändern.
+ * Das Netz aller Objekte in einem (das aktive vorn, dann der Verbund, dahinter die ruhenden für sich): für alles, was die Haut des
+ * Werks als ein Netz zeigt (die festen Materialien, Jelly, Grün, der weiße Körper der Linienansichten). Mit einem Objekt ist es
+ * dessen Netz selbst. Was in einem Verbund aufgeht (Etappe 5), steht nicht für sich darin. Ändert sich nur das aktive, wird sein
+ * Teil überschrieben; neu angelegt wird nur, wenn sich die Teile ändern.
  */
-let alleNetz: { aktiv: HautNetz; version: number; schl: string; netz: HautNetz } | null = null;
+let alleNetz: { teile: HautNetz[]; version: number; netz: HautNetz } | null = null;
 function zeigeNetzAlle(): HautNetz | null {
-  const a = werkHaut.zeigeNetz;
-  const r = ruheNetzGemerkt.netz;
-  if (!a || !ruhende.length || !r) return a;
-  const schl = ruheNetzGemerkt.schl;
+  const eigen = werkHaut.zeigeNetz;
+  if (!eigen) return null;
+  const a = verbundVerdeckt(aktivId) ? null : eigen;
+  const teile = [a, verbundGezeigt?.netz ?? null, ruheNetzGemerkt.netz].filter((n): n is HautNetz => n !== null);
+  if (teile.length <= 1) return teile[0] ?? null;
   let g = alleNetz;
-  const passt = g !== null && g.schl === schl && g.netz.pos.length === a.pos.length + r.pos.length && g.netz.index.length === a.index.length + r.index.length;
-  if (!g || !passt) {
-    g = { aktiv: a, version: -1, schl, netz: netzeVereinen([a, r]) };
+  if (!g || g.teile.length !== teile.length || g.teile.some((t, i) => t !== teile[i])) {
+    g = { teile, version: werkHaut.version, netz: netzeVereinen(teile) };
     alleNetz = g;
+    // (nur das aktive schneidet die Anzeige an der Spiegelebene, und nur an ihm klingt eine Dehnung; es steht vorn)
+    if (a) {
+      g.netz.seite.set(a.seite);
+      g.netz.dehnung.set(a.dehnung);
+    }
+    return g.netz;
   }
-  if (g.version !== werkHaut.version || g.aktiv !== a) {
+  if (a && g.version !== werkHaut.version) {
     g.version = werkHaut.version;
-    g.aktiv = a;
     const z = g.netz;
     z.pos.set(a.pos);
     z.normal.set(a.normal);
@@ -757,20 +770,29 @@ function zeigeNetzAlle(): HautNetz | null {
     z.hoehe.set(a.hoehe);
     z.blatt.set(a.blatt);
     z.sicht.set(a.sicht);
-    // (nur das aktive Objekt schneidet die Anzeige an der Spiegelebene, und nur an ihm klingt eine Dehnung)
     z.seite.set(a.seite);
     z.dehnung.set(a.dehnung);
   }
   return g.netz;
 }
 
-/** die ruhenden Objekte der Seifenhaut geben (nur, wenn sich ihre Reihe geändert hat) */
+/**
+ * Die ruhenden Objekte der Seifenhaut geben (nur, wenn sich ihre Reihe geändert hat). Was im gezeigten Verbund aufgeht (Etappe 5),
+ * zeigt der Verbund; ein ruhendes Objekt, das abzieht und für sich steht (es beißt nirgends), ist blass.
+ */
 function ruheZeigen(): void {
-  const schl = ruhende.map((r) => `${r.id}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}`).join('|');
+  const teile = ruhende.filter((r) => r.haut.zeigeNetz && !verbundVerdeckt(r.id));
+  const blass = (r: Ruhend): boolean => verbundVon.get(r.id)?.art === 'abziehen';
+  const schl = teile.map((r) => `${r.id}:${r.haut.kennung}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}${blass(r) ? 'b' : ''}`).join('|');
   if (schl === ruheNetzGemerkt.schl) return;
-  const netze = ruhende.map((r) => r.haut.zeigeNetz).filter((n): n is HautNetz => n !== null);
-  ruheNetzGemerkt = { schl, netz: netze.length ? netzeVereinen(netze) : null };
-  haut.ruheSetzen(ruheNetzGemerkt.netz);
+  const netz = teile.length
+    ? netzeVereinen(
+        teile.map((r) => r.haut.zeigeNetz!),
+        teile.map((r) => (blass(r) ? GEIST_SICHT : 1)),
+      )
+    : null;
+  ruheNetzGemerkt = { schl, netz };
+  haut.ruheSetzen(netz, 0);
 }
 
 /** die Linien der Form des Werks im Raum als Strecken, samt Spiegelbildern (für ein Objekt, das von jetzt an ruht) */
@@ -873,9 +895,9 @@ function objektAktivieren(id: number): boolean {
   return true;
 }
 
-/** der nächste Treffer eines Strahls (Ursprung o, Richtung d) auf einem Netz: der Weg längs d, sonst unendlich */
-function strahlAufNetz(P: ArrayLike<number>, T: ArrayLike<number>, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): number {
-  let best = Infinity;
+/** alle Durchgänge eines Strahls durch ein Netz: Paare aus dem Weg längs d und der Seite, von der er das Dreieck trifft (+1, −1) */
+function strahlDurchNetz(P: ArrayLike<number>, T: ArrayLike<number>, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): number[] {
+  const aus: number[] = [];
   for (let t = 0; t < T.length; t += 3) {
     const a = 3 * T[t]!;
     const b = 3 * T[t + 1]!;
@@ -903,15 +925,17 @@ function strahlAufNetz(P: ArrayLike<number>, T: ArrayLike<number>, ox: number, o
     const v = (dx * qx + dy * qy + dz * qz) * inv;
     if (v < 0 || u + v > 1) continue;
     const w = (e2x * qx + e2y * qy + e2z * qz) * inv;
-    if (w > 1e-6 && w < best) best = w;
+    if (w > 1e-6) aus.push(w, det > 0 ? 1 : -1);
   }
-  return best;
+  return aus;
 }
 
 /**
- * Das Objekt unter dem Zeiger: seine Kennung (das aktive oder ein ruhendes; das vorderste), 0: keins. Ein Strahl gegen die Häute
- * (auch gegen gezeigte Spiegelbilder): im Raum von der Kamera aus, in einer flachen Fläche (ein Feld der Vier Ansichten) längs ihrer
- * Achse, von der Seite her, die zum Betrachter zeigt.
+ * Das Objekt unter dem Zeiger: seine Kennung (das aktive oder ein ruhendes), 0: keins. Ein Strahl gegen die Häute (auch gegen gezeigte
+ * Spiegelbilder): im Raum von der Kamera aus, in einer flachen Fläche (ein Feld der Vier Ansichten) längs ihrer Achse, von der Seite
+ * her, die zum Betrachter zeigt. Getroffen ist, was man sieht (Etappe 5): die erste Stelle, an der der Strahl in den Körper tritt.
+ * Tritt er dort aus einem Objekt aus, das abzieht, ist es die Wand seines Lochs: Sie gehört ihm. Ein Objekt, das abzieht und selbst
+ * blass im Bild steht (gewählt, oder solange es nirgends beißt), ist auch an seiner eigenen Haut zu greifen.
  */
 function objektBei(x: number, y: number): number {
   if (zustand !== 'ruhe' || !werkGezeigt) return 0;
@@ -940,29 +964,34 @@ function objektBei(x: number, y: number): number {
     o = { x: welt[0]!, y: welt[1]!, z: welt[2]! };
     d = { x: dir[0]!, y: dir[1]!, z: dir[2]! };
   }
-  let best = Infinity;
-  let id = 0;
-  const f = werkHaut.f;
-  const aktiv = (spiegel: boolean): number => {
-    const sz = spiegel ? -1 : 1;
-    return strahlAufNetz(werk.haut.pos, werk.haut.tri, (o.x - werkHaut.mitte.x) * f, (o.y - werkHaut.mitte.y) * f, sz * o.z * f, d.x, d.y, sz * d.z) / f;
+  // alle Durchgänge des Strahls durch alle Häute, der Reihe nach (je Haut wechseln hinein und hinaus; der erste führt hinein)
+  const alle: { w: number; id: number; rein: boolean; abz: boolean; selbst: boolean }[] = [];
+  const dazu = (id: number, roh: number[], mass: number): void => {
+    const paare: { w: number; s: number }[] = [];
+    for (let i = 0; i < roh.length; i += 2) paare.push({ w: roh[i]! * mass, s: roh[i + 1]! });
+    paare.sort((p, q) => p.w - q.w);
+    // (an einer Kante zwischen zwei Dreiecken trifft der Strahl beide an derselben Stelle von derselben Seite: einmal zählen)
+    const sauber = paare.filter((p, i) => i === 0 || p.s !== paare[i - 1]!.s || p.w - paare[i - 1]!.w > 1e-6 * (1 + Math.abs(p.w)));
+    if (!sauber.length) return;
+    const hinein = sauber[0]!.s;
+    const abz = verbundVon.get(id)?.art === 'abziehen';
+    const selbst = abz && (id === aktivId || !verbundVerdeckt(id));
+    for (const p of sauber) alle.push({ w: p.w, id, rein: p.s === hinein, abz, selbst });
   };
-  for (const s of werkHaut.spiegelbild ? [false, true] : [false]) {
-    const w = aktiv(s);
-    if (w < best) {
-      best = w;
-      id = aktivId;
-    }
+  const f = werkHaut.f;
+  for (const s of werkHaut.spiegelbild ? [1, -1] : [1]) dazu(aktivId, strahlDurchNetz(werk.haut.pos, werk.haut.tri, (o.x - werkHaut.mitte.x) * f, (o.y - werkHaut.mitte.y) * f, s * o.z * f, d.x, d.y, s * d.z), 1 / f);
+  for (const r of ruhende) for (const s of r.treffer.spiegelbild ? [1, -1] : [1]) dazu(r.id, strahlDurchNetz(r.treffer.pos, r.treffer.tri, o.x, o.y, s * o.z, d.x, d.y, s * d.z), 1);
+  alle.sort((p, q) => p.w - q.w);
+  let imKoerper = 0;
+  let imAbzieher = 0;
+  for (const c of alle) {
+    if (c.selbst && c.rein) return c.id;
+    const vorher = imKoerper > 0 && imAbzieher === 0;
+    if (c.abz) imAbzieher += c.rein ? 1 : -1;
+    else imKoerper += c.rein ? 1 : -1;
+    if (!vorher && imKoerper > 0 && imAbzieher === 0) return c.id;
   }
-  for (const r of ruhende)
-    for (const s of r.treffer.spiegelbild ? [1, -1] : [1]) {
-      const w = strahlAufNetz(r.treffer.pos, r.treffer.tri, o.x, o.y, s * o.z, d.x, d.y, s * d.z);
-      if (w < best) {
-        best = w;
-        id = r.id;
-      }
-    }
-  return id;
+  return 0;
 }
 
 /**
@@ -1016,6 +1045,212 @@ function objektLoeschen(): boolean {
   objektAufnehmenJetzt(r);
   objektGewaehlt = false;
   werk.G.meldung = `Form ${weg.id} gelöscht · ⌘Z holt sie zurück`;
+  return true;
+}
+
+// ---------- Der Verbund: die Naht lebt (19.11., Plan „Objekte, Spiegel und Nähte“, Etappe 5) ----------
+
+/**
+ * Verschmelzen und Abziehen als Zustand des Objekts (Florian, Punkt 8: „Es soll aber nur eine art hilfsedgeloop sein, der smooth
+ * entsteht wenn ich objekte ineinanderschiebe. Ich kann ihn auch ein und ausschalten pro objekt … ich kann objekte dann auch einfach
+ * wieder auseinanderschieben und der hilfsedgloop verschwindet“; 19.11.: „dass ich z.B auch ein subtrahiertes loch mit abgerundeten
+ * kanten live und flüssig verschieben und bearbeiten kann“). Die Objekte bleiben Objekte; jedes trägt einen Zustand: frei,
+ * verschmilzt (mit allem, was es berührt) oder zieht ab (von allem, was es berührt). Was zu sehen ist, der Verbund, wird aus ihren
+ * gezeigten Häuten abgeleitet und im Hintergrund gerechnet (`verbund.ts`), bei jedem Stand neu: beim Ziehen auf einer gröberen
+ * Stufe, in Ruhe auf der vollen. `rund`: Die Naht ist rund (K schaltet), `breite`: wie breit, gemessen an der kleinsten halben
+ * Ausdehnung des Objekts ([ und ] stellen sie). Ein Schalter, kein Schritt: ⌘Z nimmt ihn nicht zurück, der Knopf schaltet ihn.
+ */
+type VerbundStand = { art: NahtKnopf | null; rund: boolean; breite: number };
+const verbundVon = new Map<number, VerbundStand>();
+/** Vorgaben: Verschmelzen beginnt rund (sein Bild von den Seifenblasen), Abziehen mit Kante (sein Wort: „eine saubere kante“) */
+const VERBUND_VORGABE: Record<NahtKnopf, { rund: boolean; breite: number }> = { vereinen: { rund: true, breite: 0.5 }, abziehen: { rund: false, breite: 0.3 } };
+const VERBUND_BREITE = [0.06, 1.6] as const;
+/** beim Ziehen: je Objekt höchstens so viele Dreiecke (die feinste Stufe seiner Anzeige darunter) */
+const VERBUND_IM_ZUG = 16_000;
+/** so deutlich steht ein Objekt, das abzieht, im Bild (gewählt, oder solange es nirgends beißt) */
+const GEIST_SICHT = 0.3;
+const verbund = new Verbund(() => anstossen());
+/** das Bild des Verbunds, das die Seifenhaut gerade zeigt */
+let verbundGezeigt: VerbundBild | null = null;
+let verbundFehler = '';
+/** Geht dieses Objekt im gezeigten Verbund auf (es steht dann nicht für sich im Bild)? Ein Objekt, das abzieht, nur, wo es beißt. */
+function verbundVerdeckt(id: number): boolean {
+  const b = verbundGezeigt;
+  return !!b && b.glieder.has(id) && (!b.abzieher.has(id) || b.beisst.has(id));
+}
+/** das aktive Objekt zieht ab und steht im Raum: Es ist blass zu sehen */
+const aktivGeist = (): boolean => werkGezeigt && zustand === 'ruhe' && verbundVon.get(aktivId)?.art === 'abziehen';
+
+/** der Kasten eines Objekts im Raum (quer zur Spiegelebene seine eigene Spanne; mit Spiegelbild gilt auch die gespiegelte) */
+type ObjektKasten = { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number; spiegelbild: boolean };
+function kastenRuhend(r: Ruhend): ObjektKasten {
+  const k = r.kasten;
+  const z = zSpanne(r);
+  return { x0: k.cx - k.rx, x1: k.cx + k.rx, y0: k.cy - k.ry, y1: k.cy + k.ry, z0: z[0], z1: z[1], spiegelbild: r.treffer.spiegelbild };
+}
+function kastenAktiv(): ObjektKasten | null {
+  const P = werk.haut.pos;
+  const a = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z0: Infinity, z1: -Infinity };
+  for (let i = 0; i < P.length; i += 3) {
+    a.x0 = Math.min(a.x0, P[i]!);
+    a.x1 = Math.max(a.x1, P[i]!);
+    a.y0 = Math.min(a.y0, P[i + 1]!);
+    a.y1 = Math.max(a.y1, P[i + 1]!);
+    a.z0 = Math.min(a.z0, P[i + 2]!);
+    a.z1 = Math.max(a.z1, P[i + 2]!);
+  }
+  if (!(a.x1 > a.x0)) return null;
+  const f = werkHaut.f;
+  return { x0: a.x0 / f + werkHaut.mitte.x, x1: a.x1 / f + werkHaut.mitte.x, y0: a.y0 / f + werkHaut.mitte.y, y1: a.y1 / f + werkHaut.mitte.y, z0: a.z0 / f, z1: a.z1 / f, spiegelbild: werkHaut.spiegelbild };
+}
+function kaestenBeruehren(a: ObjektKasten, b: ObjektKasten): boolean {
+  if (Math.min(a.x1, b.x1) <= Math.max(a.x0, b.x0) || Math.min(a.y1, b.y1) <= Math.max(a.y0, b.y0)) return false;
+  const ueber = (p0: number, p1: number, q0: number, q1: number): boolean => Math.min(p1, q1) > Math.max(p0, q0);
+  return ueber(a.z0, a.z1, b.z0, b.z1) || (a.spiegelbild && ueber(-a.z1, -a.z0, b.z0, b.z1)) || (b.spiegelbild && ueber(a.z0, a.z1, -b.z1, -b.z0));
+}
+
+/** eine Kopie der gezeigten Haut eines Objekts auf einer Stufe ihrer Anzeige (für den Rechner; ohne ein gezeigtes Spiegelbild) */
+function netzKopie(h: WerkHaut, stufe: number): VerbundNetz | null {
+  const n = h.netz;
+  const s = h.netzAufStufe(stufe);
+  if (!n || !s) return null;
+  const N = s.punkte;
+  return { pos: n.pos.slice(0, 3 * N), normal: n.normal.slice(0, 3 * N), index: s.index.slice(), hoehe: n.hoehe.slice(0, N), blatt: n.blatt.slice(0, 2 * N), dehnung: n.dehnung.slice(0, N) };
+}
+
+/** Wird gerade etwas gezogen oder läuft etwas nach? Dann rechnet der Verbund auf der groben Stufe mit. */
+const verbundEilig = (): boolean => werk.zug !== null || werk.formZug !== null || werk.nachlauf !== null || objektZug !== null || tastenZug !== null || spiegelFahrt !== null || werkHaut.fliesst;
+
+/**
+ * Was vom Verbund zu sehen sein soll: die Körper. Ein Körper ist, was verschmilzt (Objekte, deren Kästen sich berühren und von denen
+ * eines verschmilzt; ein freies Objekt gehört dazu, sobald ein verschmelzendes es berührt), abzüglich aller Objekte, die abziehen und
+ * ihn berühren. Ein Objekt für sich, das niemand berührt, ist kein Körper: Es steht wie immer im Bild. null: kein Verbund.
+ */
+function verbundSoll(): VerbundSoll | null {
+  if (!verbundVon.size) return null;
+  type O = { id: number; h: WerkHaut; k: ObjektKasten; st: VerbundStand | undefined };
+  const os: O[] = ruhende.filter((r) => r.haut.netz).map((r) => ({ id: r.id, h: r.haut, k: kastenRuhend(r), st: verbundVon.get(r.id) }));
+  // das aktive Objekt gehört dazu, sobald seine Form im Raum steht (nicht auf dem Blatt, nicht beim Aufblasen)
+  if (werkGezeigt && zustand === 'ruhe' && werkHaut.netz) {
+    const k = kastenAktiv();
+    if (k) os.push({ id: aktivId, h: werkHaut, k, st: verbundVon.get(aktivId) });
+  }
+  if (!os.some((o) => o.st?.art)) return null;
+  const halten = os.filter((o) => o.st?.art !== 'abziehen');
+  const abz = os.filter((o) => o.st?.art === 'abziehen');
+  const wurzel = halten.map((_, i) => i);
+  const finde = (i: number): number => {
+    while (wurzel[i] !== i) i = wurzel[i] = wurzel[wurzel[i]!]!;
+    return i;
+  };
+  for (let i = 0; i < halten.length; i++)
+    for (let j = i + 1; j < halten.length; j++) {
+      const a = halten[i]!;
+      const b = halten[j]!;
+      if ((a.st?.art === 'vereinen' || b.st?.art === 'vereinen') && kaestenBeruehren(a.k, b.k)) wurzel[finde(j)] = finde(i);
+    }
+  const gruppen = new Map<number, O[]>();
+  halten.forEach((o, i) => {
+    const w = finde(i);
+    gruppen.set(w, [...(gruppen.get(w) ?? []), o]);
+  });
+  const koerper: VerbundSoll['koerper'] = [];
+  const dabei = new Map<number, O>();
+  for (const g of gruppen.values()) {
+    const ab = abz.filter((c) => g.some((o) => kaestenBeruehren(o.k, c.k)));
+    if (g.length < 2 && !ab.length) continue;
+    koerper.push({ halten: g.map((o) => o.id), abziehen: ab.map((o) => o.id) });
+    for (const o of [...g, ...ab]) dabei.set(o.id, o);
+  }
+  if (!koerper.length) return null;
+  const eilig = verbundEilig();
+  const glieder: VerbundGlied[] = [...dabei.values()].map((o) => {
+    const stufe = eilig ? o.h.stufeMitHoechstens(VERBUND_IM_ZUG) : o.h.stufen;
+    const klein = Math.min(o.k.x1 - o.k.x0, o.k.y1 - o.k.y0, o.k.z1 - o.k.z0) / 2;
+    const rund = o.st?.art && o.st.rund ? Math.round(o.st.breite * klein * 50) / 50 : 0;
+    return { id: o.id, schl: `${o.h.kennung}.${o.h.version}.${stufe}.${o.h.spiegelbild ? 1 : 0}`, netz: () => netzKopie(o.h, stufe), spiegelbild: o.h.spiegelbild, abzieher: o.st?.art === 'abziehen', rund };
+  });
+  const schl = `${eilig ? 'g' : 'f'}#${koerper.map((k) => `${k.halten.join(',')}-${k.abziehen.join(',')}`).join('/')}#${glieder.map((g) => `${g.id}:${g.schl}:${g.abzieher ? 1 : 0}:${g.rund}`).join('|')}`;
+  return { schl, eilig, glieder, koerper, alle: os.map((o) => o.id) };
+}
+
+/**
+ * Je Bild: den Verbund pflegen. Der Rechner bekommt den neuesten Stand, sobald er frei ist; ein neues Bild von ihm geht in die
+ * Seifenhaut (auf einen eigenen Platz neben den ruhenden Objekten). Die Farben der Dehnung klingen im Verbund nach wie an der Form
+ * (er wird nur neu gerechnet, wenn sich eine Lage ändert). Wahr: Es bewegt sich noch etwas.
+ */
+function verbundPflegen(dt: number): boolean {
+  let aktiv = verbund.pflegen(verbundSoll());
+  const b = verbund.bild;
+  if (b !== verbundGezeigt) {
+    verbundGezeigt = b;
+    haut.ruheSetzen(b?.netz ?? null, 1);
+  }
+  if (ruhende.length || ruheNetzGemerkt.netz) ruheZeigen();
+  if (verbund.fehler !== verbundFehler) {
+    verbundFehler = verbund.fehler;
+    if (verbundFehler) werk.G.meldung = `Verschmelzen und Abziehen: ${verbundFehler} · die Objekte stehen für sich`;
+  }
+  if (b?.netz && b.dehnungRest > 0) {
+    const f = Math.exp(-Math.max(0, dt) / 1.6);
+    const D = b.netz.dehnung;
+    b.dehnungRest *= f;
+    if (b.dehnungRest < 0.01) {
+      D.fill(1);
+      b.dehnungRest = 0;
+    } else for (let i = 0; i < D.length; i++) D[i] = 1 + (D[i]! - 1) * f;
+    haut.ruheDehnungErneuern(1);
+    aktiv = true;
+  }
+  return aktiv;
+}
+
+/** Lässt sich der Zustand des gewählten Objekts gerade schalten (wie der Spiegel: im Raum, mit einer Form, nicht in der Pose)? */
+const verbundErlaubt = (): boolean => spiegelErlaubt() && !nahtLaeuft;
+
+/**
+ * Die zwei Knöpfe neben dem Plus: Ein Klick schaltet am gewählten Objekt Verschmelzen oder Abziehen ein und wieder aus (die Objekte
+ * bleiben Objekte, die Naht lebt). ⌥ + Klick wendet an wie bisher (Etappe 4): Aus den zwei Objekten wird eine Form, die Naht ein
+ * Loop mit Kante.
+ */
+function verbundKnopf(art: NahtKnopf, anwenden: boolean): void {
+  if (anwenden) {
+    void objekteVerbindenJetzt(art);
+    return;
+  }
+  if (!verbundErlaubt()) return;
+  const st = verbundVon.get(aktivId);
+  const name = objektName();
+  if (st?.art === art) {
+    st.art = null;
+    werk.G.meldung = `${name} steht wieder für sich`;
+  } else {
+    const v = VERBUND_VORGABE[art];
+    verbundVon.set(aktivId, { art, rund: v.rund, breite: st?.breite ?? v.breite });
+    werk.G.meldung =
+      art === 'vereinen'
+        ? `${name} verschmilzt mit allem, was es berührt · V schiebt es · K: Naht rund oder Kante · [ ]: Breite (mit V) · noch einmal: frei · ⌥ + Klick: anwenden`
+        : `${name} zieht ab: ein Loch in allem, was es berührt · V schiebt es · K: Rand rund oder Kante · [ ]: Breite (mit V) · noch einmal: frei · ⌥ + Klick: anwenden`;
+  }
+  anstossen();
+}
+
+/** K am Objekt: die Naht seines Verbunds rund oder mit Kante; wahr, wenn K hier galt */
+function verbundRundSchalten(): boolean {
+  const st = verbundVon.get(aktivId);
+  if (!st?.art) return false;
+  st.rund = !st.rund;
+  werk.G.meldung = st.rund ? `${st.art === 'vereinen' ? 'Naht' : 'Rand'} rund · [ und ] (mit V): Breite · K: Kante` : `${st.art === 'vereinen' ? 'Naht' : 'Rand'} mit Kante · K: rund`;
+  return true;
+}
+
+/** [ und ] am Objekt (V): die Breite der Rundung; wahr, wenn die Taste hier galt */
+function verbundBreiteStellen(mehr: boolean): boolean {
+  const st = verbundVon.get(aktivId);
+  if (!st?.art) return false;
+  st.breite = Math.max(VERBUND_BREITE[0], Math.min(VERBUND_BREITE[1], st.breite * (mehr ? 1.25 : 0.8)));
+  st.rund = true;
+  werk.G.meldung = `Rundung: Breite ${Math.round(st.breite * 100)} % · [ schmaler · ] breiter · K: Kante`;
   return true;
 }
 
@@ -1081,9 +1316,6 @@ function nahtPartner(): Ruhend | null {
   }
   return best;
 }
-/** Lässt sich gerade verbinden: im Raum, in Ruhe, und das aktive Objekt berührt ein anderes? */
-const nahtErlaubt = (): boolean => !nahtLaeuft && spiegelErlaubt() && !tastenZug && !objektZug && !spiegelFahrt && werk.objektRuht() && nahtPartner() !== null;
-
 /**
  * Verschmelzen oder abziehen (Florian: „Wenn ich objekte verschmelzen möchte, dann sollte das über einen edgeloop passieren … Ich
  * möchte auch objekte voneinander subtrahieren können, sodass eine saubere kante entsteht“). Es geht um das aktive Objekt und das,
@@ -1760,6 +1992,8 @@ async function formLaden(name: string): Promise<string> {
   const cy = (y0 + y1) / 2;
   for (const o of alle) o.mass = { f: o.mass.f / q, mitte: { x: (o.mass.mitte.x - cx) * q, y: (o.mass.mitte.y - cy) * q } };
   objektZaehler = Math.max(...alle.map((o) => o.id));
+  // (Etappe 5: Verschmelzen und Abziehen stehen je Objekt in der Datei; der Verbund bildet sich, sobald die Objekte im Raum stehen)
+  for (const o of [...(sz?.objekte ?? []), ...(sz ? [sz] : [])]) if (o.verbund) verbundVon.set(o.id, { art: o.verbund.art, rund: o.verbund.rund, breite: o.verbund.breite });
   const erstes = alle.shift()!;
   if (alle.length) reihe = { warten: alle, erste: haupt.id, imRaum: false, zahl: alle.length + 1, geladen: name };
   const text = standAufsBlatt(erstes);
@@ -2169,6 +2403,7 @@ function neu(behalten = false): void {
     rueckweg.length = 0;
     rueckZahl.clear();
     reihe = null;
+    verbundVon.clear();
     ruheZeigen();
   }
   werkHaut.neueForm();
@@ -3211,20 +3446,18 @@ function umrissJetzt(achse: 0 | 1 | 2): Float32Array {
   // während das Werk rechnet, darf der Umriss ein paar Bilder alt sein (`werkHaut.umrissVeraltet` holt das nächste Bild)
   const eigen = werkGezeigt ? werkHaut.umriss(achse, werkBeschaeftigt()) : koerper!.umriss(achse);
   if (!ruhende.length) return eigen;
-  // mehrere Objekte: die Umrisse der ruhenden dazu (jede Anzeige merkt sich ihren; zusammengesetzt wird nur, wenn sich einer ändert)
-  const teile = [eigen, ...ruhende.map((r) => r.haut.umriss(achse))];
-  const g = umrissAlle[achse];
-  if (g && g.teile.length === teile.length && g.teile.every((t, i) => t === teile[i])) return g.aus;
-  let n = 0;
-  for (const t of teile) n += t.length;
-  const aus = new Float32Array(n);
-  let o = 0;
-  for (const t of teile) {
-    aus.set(t, o);
-    o += t.length;
-  }
-  umrissAlle[achse] = { teile, aus };
-  return aus;
+  // mehrere Objekte: die Umrisse der ruhenden dazu (jede Anzeige merkt sich ihren; zusammengesetzt wird nur, wenn sich einer ändert).
+  // Etappe 5: Was im Verbund aufgeht, zeichnet der Umriss des Verbunds; ein gewähltes Objekt, das abzieht, behält dazu seinen eigenen
+  const eigenDabei = !(werkGezeigt && zustand === 'ruhe' && verbundVerdeckt(aktivId)) || aktivGeist();
+  const teile = [...(eigenDabei ? [eigen] : []), ...ruheUmrissTeile(achse)];
+  const g = streckenGemerkt(umrissAlle[achse]!, teile);
+  umrissAlle[achse] = g;
+  return g.aus;
+}
+/** die Umrisse von einer Achse ohne das aktive Objekt: der Verbund und die ruhenden Objekte, die für sich stehen */
+function ruheUmrissTeile(achse: 0 | 1 | 2): Float32Array[] {
+  const b = verbundGezeigt;
+  return [...(b ? [b.umriss[achse]] : []), ...ruhende.filter((r) => !verbundVerdeckt(r.id)).map((r) => r.haut.umriss(achse))];
 }
 const umrissAlle: ({ teile: Float32Array[]; aus: Float32Array } | null)[] = [null, null, null];
 
@@ -3241,16 +3474,21 @@ function streckenGemerkt(g: { teile: Float32Array[]; aus: Float32Array } | null,
   }
   return { teile, aus };
 }
-/** die Linien aller ruhenden Objekte im Raum (Strecken): feine Striche an den Wänden und in den Ansichten */
+/**
+ * Die Linien aller ruhenden Objekte im Raum (Strecken): feine Striche an den Wänden und in den Ansichten. Dazu die Nähte des
+ * Verbunds (Etappe 5, der Hilfsloop: Er entsteht, wandert und verschwindet mit der Lage der Objekte). Ein ruhendes Objekt, das
+ * abzieht und in seinem Loch aufgeht, zeigt seine Linien nicht.
+ */
 let ruheLinienGemerkt: { teile: Float32Array[]; aus: Float32Array } | null = null;
 function ruheLinien(): Float32Array {
-  ruheLinienGemerkt = streckenGemerkt(ruheLinienGemerkt, ruhende.map((r) => r.linien));
+  const b = verbundGezeigt;
+  ruheLinienGemerkt = streckenGemerkt(ruheLinienGemerkt, [...ruhende.filter((r) => !(verbundVerdeckt(r.id) && b?.abzieher.has(r.id))).map((r) => r.linien), ...(b ? [b.naht] : [])]);
   return ruheLinienGemerkt.aus;
 }
 /** die Umrisse der ruhenden Objekte von einer Achse (wo der Umriss des aktiven nicht über `umrissJetzt` gezeichnet wird) */
 const ruheUmrissGemerkt: ({ teile: Float32Array[]; aus: Float32Array } | null)[] = [null, null, null];
 function ruheUmrisse(achse: 0 | 1 | 2): Float32Array {
-  const g = streckenGemerkt(ruheUmrissGemerkt[achse]!, ruhende.map((r) => r.haut.umriss(achse)));
+  const g = streckenGemerkt(ruheUmrissGemerkt[achse]!, ruheUmrissTeile(achse));
   ruheUmrissGemerkt[achse] = g;
   return g.aus;
 }
@@ -3361,6 +3599,8 @@ function bild(dt: number): boolean {
   mess.teile = [0, 0, 0, 0, 0, 0];
   aktiv = werkBild(dt, m) || aktiv;
   if (reiheSchritt()) aktiv = true;
+  // Etappe 5: der Verbund (Verschmelzen und Abziehen als Zustand der Objekte) folgt dem Stand von eben
+  if (verbundPflegen(dt)) aktiv = true;
   // C4: gewählte Felder folgen der Haut (Netzwechsel, Züge) und der Auswahl des Werks; G, S, R endet, wenn das Werk den Zug beendet hat
   werkFelder.nachfuehren();
   if (tastenZug && !(werk.zug && werk.zug.modal)) tastenZug = null;
@@ -3572,11 +3812,14 @@ function bild(dt: number): boolean {
     blaseAus: raumNetzDeckung >= 0.999,
     ausschnitt: hautAusschnitt(m),
     ruheSicht,
+    // Etappe 5: Was im Verbund aufgeht, steht nicht für sich im Bild; ein gewähltes Objekt, das abzieht, steht blass darin
+    aktivAus: werkGezeigt && zustand === 'ruhe' && verbundVerdeckt(aktivId) && !aktivGeist(),
+    blaseSicht: aktivGeist() ? GEIST_SICHT : 1,
   };
   const tz = performance.now();
   // ein festes Material statt der Seifenhaut (Florian, 18.11.): Die Seifenhaut zeichnet nur ihren Grund (Papier, dunkle Rückseite),
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
-  const zeigN = zeigeNetzAlle();
+  const zeigN = material !== null && werkGezeigt && zustand === 'ruhe' && !w.leer ? zeigeNetzAlle() : null;
   if (material !== null && werkGezeigt && zustand === 'ruhe' && zeigN && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
     // beim Einrasten blenden die Materialien auf eigener Fläche aus, während sich das Blatt durch die Form schiebt (ihre Renderer
@@ -3723,7 +3966,7 @@ function bild(dt: number): boolean {
   // das Plus: ein neues Objekt gibt es im Raum, sobald eine Form steht (wie der Spiegel)
   leiste.plusErlauben(spiegelErlaubt());
   // Verschmelzen und Abziehen: zu sehen, sobald es mehr als ein Objekt gibt; an, wenn das aktive ein anderes berührt
-  leiste.nahtZeigen(ruhende.length > 0 && zustand === 'ruhe', ruhende.length > 0 && nahtErlaubt());
+  leiste.nahtZeigen(ruhende.length > 0 && zustand === 'ruhe', ruhende.length > 0 && verbundErlaubt(), verbundVon.get(aktivId)?.art ?? null);
   tastenStand();
   // Text
   // (auf dem Blatt eines weiteren Objekts stehen die vorhandenen blass: Dort schweigt der Schriftzug)
@@ -4346,7 +4589,8 @@ function linienKoerper(): LinienKoerper | null {
     wicklung: koerperWicklung,
     durchsichtig: true,
     deckung: koerperDeckung,
-    toenung: feldToenungJetzt(N.index),
+    // (geht das aktive Objekt im Verbund auf, stehen seine Dreiecke nicht mehr einzeln im Netz: keine Tönung gewählter Felder)
+    toenung: verbundVerdeckt(aktivId) ? null : feldToenungJetzt(N.index),
   };
 }
 
@@ -6633,6 +6877,8 @@ window.addEventListener('keydown', (e) => {
       // (gibt es noch andere Objekte, geht nur das gewählte; das letzte Objekt lässt wie bisher die Luft ab)
       if (objektGewaehlt && !objektLoeschen()) ablassen();
     } else ablassen();
+  } else if ((k === '[' || k === ']') && zustand === 'ruhe' && werkGezeigt && objektModus() && verbundBreiteStellen(k === ']')) {
+    // Etappe 5: am Objekt (V) die Breite der Rundung seiner Naht (gesetzt in `verbundBreiteStellen`)
   } else if ((k === '[' || k === ']') && zustand === 'ruhe' && werkGezeigt) {
     // Radius des Pinsels (wie O im Prüffenster)
     pinselRadius = Math.max(10, Math.min(600, pinselRadius * (k === ']' ? 1.2 : 1 / 1.2)));
@@ -6659,7 +6905,9 @@ window.addEventListener('keydown', (e) => {
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
   else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
-  else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && !objektModus()) {
+  else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && (objektModus() || !werk.G.auswahl.length) && verbundRundSchalten()) {
+    // Etappe 5: am Objekt (V, oder mit A ohne gewählte Punkte) schaltet K die Naht seines Verbunds zwischen rund und Kante
+  } else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && !objektModus()) {
     // Kante an den gewählten Punkten oder Linien an und aus (im Werk)
     if (werk.G.auswahl.length && !werk.zug) {
       // S13 (5): die Tusche fließt vom Gewählten aus, und ändert die Kante die Lage der Linie (Ecken), gleitet sie wie nach ⌘Z
@@ -6782,7 +7030,7 @@ function waehlenTaste(w: Werkzeug): void {
 
 // ---------- Leiste, Menü, Feinregler ----------
 
-const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, (z) => spiegelSetzen(z), objektPlus, (art) => void objekteVerbindenJetzt(art));
+const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, (z) => spiegelSetzen(z), objektPlus, verbundKnopf);
 
 // S13 (liquid drop, Idee 10): der Ansichts-Tropfen unten rechts; Tippen rastet ein (⇧ die Gegenseite, die Mitte der Raum), Ziehen dreht
 const ansichtsTropfen = new AnsichtsTropfen(
@@ -6914,8 +7162,13 @@ async function formSichern(name: string): Promise<string> {
   if (werk.zug) return 'Sichern: bitte erst den Zug beenden';
   const st = werk.standJetzt();
   // Ozzy: der Spiegel dieser Form, ihr Maß im Raum und die weiteren Objekte der Szene (jedes mit seinem Stand)
-  const weitere = ruhende.map((r) => ({ id: r.id, spiegel: { clipping: r.stand.clipping, spiegelbild: r.stand.spiegelbild }, mass: { f: r.haut.f, mitte: { ...r.haut.mitte } }, stand: werk.standAus(r.stand.stand) }));
-  st.ozzy = { id: aktivId, spiegel: { clipping: werk.G.clipping, spiegelbild: werk.G.spiegelbild }, mass: { f: werkHaut.f, mitte: { ...werkHaut.mitte } }, objekte: weitere };
+  // (Etappe 5: dazu je Objekt, ob es verschmilzt oder abzieht, und wie seine Naht gerundet ist)
+  const vb = (id: number): { verbund?: NonNullable<OzzyObjekt['verbund']> } => {
+    const v = verbundVon.get(id);
+    return v?.art ? { verbund: { art: v.art, rund: v.rund, breite: v.breite } } : {};
+  };
+  const weitere = ruhende.map((r) => ({ id: r.id, spiegel: { clipping: r.stand.clipping, spiegelbild: r.stand.spiegelbild }, mass: { f: r.haut.f, mitte: { ...r.haut.mitte } }, ...vb(r.id), stand: werk.standAus(r.stand.stand) }));
+  st.ozzy = { id: aktivId, spiegel: { clipping: werk.G.clipping, spiegelbild: werk.G.spiegelbild }, mass: { f: werkHaut.f, mitte: { ...werkHaut.mitte } }, ...vb(aktivId), objekte: weitere };
   // ein Stand, der nicht in Ordnung ist, überschriebe sonst eine gute Datei (und ließe sich nicht wieder laden)
   const mangel = pruefen(st) ?? weitere.map((o) => pruefen(o.stand)).find((x) => x !== null) ?? null;
   if (mangel) return `Sichern geht so nicht: ${mangel} · ⌘Z führt zu einem Stand davor`;
@@ -7203,7 +7456,8 @@ function objektUiZeigen(): void {
   }
   objektTropfen.hidden = !ort;
   if (!ort) return;
-  const text = objektName();
+  const st = verbundVon.get(aktivId);
+  const text = objektName() + (st?.art ? ` · ${st.art === 'vereinen' ? 'verschmilzt' : 'zieht ab'}, ${st.rund ? 'rund' : 'Kante'}` : '');
   if (objektTropfen.textContent !== text) objektTropfen.textContent = text;
   objektTropfen.style.left = `${ort.x.toFixed(1)}px`;
   objektTropfen.style.top = `${ort.y.toFixed(1)}px`;
@@ -7320,6 +7574,57 @@ void document.fonts?.ready.then(() => {
 
 // ---------- Test-Haken ----------
 
+/** für Proben: Rauminhalt (Betrag) und Kasten eines Netzes der Anzeige */
+function netzInhalt(n: { pos: Float32Array; index: Uint32Array }): number {
+  let v = 0;
+  const P = n.pos;
+  for (let t = 0; t < n.index.length; t += 3) {
+    const a = 3 * n.index[t]!;
+    const b = 3 * n.index[t + 1]!;
+    const c = 3 * n.index[t + 2]!;
+    v += P[a]! * (P[b + 1]! * P[c + 2]! - P[b + 2]! * P[c + 1]!) + P[a + 1]! * (P[b + 2]! * P[c]! - P[b]! * P[c + 2]!) + P[a + 2]! * (P[b]! * P[c + 1]! - P[b + 1]! * P[c]!);
+  }
+  return Math.abs(v) / 6;
+}
+/** für Proben: Dreiecke eines Netzes der Anzeige, die gegen ihre Normalen zeigen (umgeklappt), und ihr Anteil an der Fläche */
+function netzUmgeklappt(n: { pos: Float32Array; normal: Float32Array; index: Uint32Array }): { zahl: number; flaeche: number } {
+  let zahl = 0;
+  let um = 0;
+  let alle = 0;
+  const P = n.pos;
+  const N = n.normal;
+  for (let t = 0; t < n.index.length; t += 3) {
+    const a = 3 * n.index[t]!;
+    const b = 3 * n.index[t + 1]!;
+    const c = 3 * n.index[t + 2]!;
+    const ux = P[b]! - P[a]!;
+    const uy = P[b + 1]! - P[a + 1]!;
+    const uz = P[b + 2]! - P[a + 2]!;
+    const vx = P[c]! - P[a]!;
+    const vy = P[c + 1]! - P[a + 1]!;
+    const vz = P[c + 2]! - P[a + 2]!;
+    const fx = uy * vz - uz * vy;
+    const fy = uz * vx - ux * vz;
+    const fz = ux * vy - uy * vx;
+    const f = Math.hypot(fx, fy, fz) / 2;
+    alle += f;
+    if (fx * (N[a]! + N[b]! + N[c]!) + fy * (N[a + 1]! + N[b + 1]! + N[c + 1]!) + fz * (N[a + 2]! + N[b + 2]! + N[c + 2]!) < 0) {
+      zahl++;
+      um += f;
+    }
+  }
+  return { zahl, flaeche: alle > 0 ? um / alle : 0 };
+}
+function netzKasten(P: Float32Array): number[] {
+  const k = [Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity];
+  for (let i = 0; i < P.length; i += 3)
+    for (let x = 0; x < 3; x++) {
+      k[2 * x] = Math.min(k[2 * x]!, P[i + x]!);
+      k[2 * x + 1] = Math.max(k[2 * x + 1]!, P[i + x]!);
+    }
+  return k;
+}
+
 const haken = {
   /** C4: die gewählten Felder (Dreiecke mit Spiegelbild, Punkte auf dem Rand als „Loop.Punkt“) */
   felder: () => werkFelder.stand(),
@@ -7402,6 +7707,47 @@ const haken = {
   reihe: () => (reihe ? { warten: reihe.warten.length, zahl: reihe.zahl, imRaum: reihe.imRaum } : null),
   /** Etappe 4: das aktive Objekt mit dem verbinden, das es berührt (wie die Knöpfe der Leiste) */
   verbinden: (art: 'vereinen' | 'abziehen') => objekteVerbindenJetzt(art),
+  /** Etappe 5: der Verbund. Zustand des gewählten Objekts setzen (wie der Knopf; `art` null: frei), sein Stand und der des Rechners */
+  verbundSetzen(art: NahtKnopf | null, rund?: boolean, breite?: number): void {
+    const v = art ? VERBUND_VORGABE[art] : null;
+    const alt = verbundVon.get(aktivId);
+    if (!art) {
+      if (alt) alt.art = null;
+    } else verbundVon.set(aktivId, { art, rund: rund ?? v!.rund, breite: breite ?? alt?.breite ?? v!.breite });
+    anstossen();
+  },
+  verbund: () => {
+    const b = verbundGezeigt;
+    const soll = verbundSoll();
+    return {
+      zustand: [...verbundVon].map(([id, v]) => ({ id, art: v.art, rund: v.rund, breite: v.breite })),
+      soll: soll ? { eilig: soll.eilig, koerper: soll.koerper, glieder: soll.glieder.map((g) => ({ id: g.id, schl: g.schl, rund: g.rund, abzieher: g.abzieher })) } : null,
+      steht: !!soll && !!b && b.schl === soll.schl,
+      rechnet: verbund.beschaeftigt,
+      fehler: verbund.fehler,
+      stand: verbund.stand,
+      bild: b
+        ? {
+            eilig: b.eilig,
+            punkte: (b.netz?.pos.length ?? 0) / 3,
+            dreiecke: (b.netz?.index.length ?? 0) / 3,
+            naht: b.naht.length / 6,
+            umriss: b.umriss.map((u) => u.length / 6),
+            glieder: [...b.glieder],
+            beisst: [...b.beisst],
+            ms: b.ms,
+            inhalt: b.netz ? netzInhalt(b.netz) : 0,
+            umgeklappt: b.netz ? netzUmgeklappt(b.netz) : { zahl: 0, flaeche: 0 },
+            kasten: b.netz ? netzKasten(b.netz.pos) : null,
+            nahtKasten: b.naht.length ? netzKasten(b.naht) : null,
+          }
+        : null,
+      verdeckt: [aktivId, ...ruhende.map((r) => r.id)].filter((id) => verbundVerdeckt(id)),
+      geist: aktivGeist(),
+      // (der Rauminhalt der gezeigten Haut jedes Objekts für sich, zum Vergleich mit dem Verbund)
+      netze: [{ id: aktivId, h: werkHaut }, ...ruhende.map((r) => ({ id: r.id, h: r.haut }))].map((o) => ({ id: o.id, inhalt: o.h.netz ? netzInhalt(o.h.netz) : 0, punkte: (o.h.netz?.pos.length ?? 0) / 3, stufen: o.h.stufen })),
+    };
+  },
   nahtPartner: () => nahtPartner()?.id ?? 0,
   /** der Stand der Form des Werks für die Probe der Naht: ihre Linien, ob die Haut geschlossen ist, ihr Rauminhalt und Kasten im Raum */
   nahtStand: () => {

@@ -1,7 +1,9 @@
 // Ozzy, Naht zwischen zwei Objekten (Plan „Objekte, Spiegel und Nähte“, Etappe 4, 18.11.2026): zwei aufgeblasene Formen, die sich
 // überschneiden, werden eine (verschmelzen), oder die eine wird aus der anderen herausgeschnitten (abziehen).
+// Seit Etappe 5 (19.11.) sind die zwei Knöpfe Schalter am Objekt (der Verbund, `ozzy-verbund-fenster.mjs`); angewendet wird, was
+// diese Probe prüft, mit ⌥ + Klick.
 // Kriterien:
-//   0  Mit einem Objekt stehen die Knöpfe nicht in der Leiste; mit zwei, die sich berühren, sind sie da und an.
+//   0  Mit einem Objekt stehen die Knöpfe nicht in der Leiste; mit zwei sind sie da und an.
 //   1  Verschmelzen: ein Objekt, die Haut geschlossen und spiegelgleich, der Rauminhalt zwischen dem größeren und der Summe; die Naht
 //      ist ein Loop mit Kante und Punkten, gewählt; das Werkzeug ist der weiße Zeiger. Die Rechnung kommt zur Ruhe, nichts schlägt um.
 //   2  K: Die Naht wird weich (Kante aus), die Rechnung kommt zur Ruhe, nichts schlägt um.
@@ -10,7 +12,7 @@
 //      Werkzeug zurück.
 //   5  Das zweite Objekt mit „Spiegel aus“: Verschmelzen macht die Form ganz und frei (Spiegel „aus“), geschlossen; ⌘Z stellt den
 //      Spiegel der Kugel zurück (Clipping) und gibt das zweite heraus.
-//   6  Berühren sich die zwei nicht, sind die Knöpfe aus.
+//   6  Berührt das gewählte Objekt kein anderes, ändert ⌥ + Klick nichts und sagt es.
 //   7  Keine Fehler in der Konsole.
 // `LINIE=1`: beide Formen mit ihrer Linie der Mitte (sie wird an der Naht geschnitten und hängt dort).
 // Aufruf aus apps/editor: OZZY_URL=http://localhost:5211/ozzy.html [LINIE=1] node scripts/pruefen/ozzy-naht-fenster.mjs [ordner für Bilder]
@@ -84,7 +86,7 @@ ok(
 
 // ---------- 1 Verschmelzen ----------
 const t1 = Date.now();
-await s.click('#naht-vereinen');
+await s.click('#naht-vereinen', { modifiers: ['Alt'] });
 await s.waitForFunction(() => window.__ozzy.objekte().ruhende.length === 0 && !window.__ozzy.nahtStand().laeuft, null, { timeout: 30000 });
 const dauer1 = Date.now() - t1;
 const gleich = await O('nahtStand');
@@ -132,7 +134,7 @@ ok(
 // ---------- 4 Abziehen: das zweite ist das Werkzeug ----------
 await O('objektAktivieren', 2);
 await still();
-await s.click('#naht-abziehen');
+await s.click('#naht-abziehen', { modifiers: ['Alt'] });
 await s.waitForFunction(() => window.__ozzy.objekte().ruhende.length === 0 && !window.__ozzy.nahtStand().laeuft, null, { timeout: 30000 });
 await still();
 const a4 = await O('nahtStand');
@@ -153,7 +155,7 @@ await O('objektAktivieren', 2);
 await still();
 await O('spiegelSetzen', 'aus');
 await still();
-await s.click('#naht-vereinen');
+await s.click('#naht-vereinen', { modifiers: ['Alt'] });
 await s.waitForFunction(() => window.__ozzy.objekte().ruhende.length === 0 && !window.__ozzy.nahtStand().laeuft, null, { timeout: 30000 });
 await still();
 const f5 = await O('nahtStand');
@@ -170,7 +172,7 @@ const sp5b = await O('spiegel');
 const o5b = await O('objekte');
 ok('5b ⌘Z: Die Kugel ist wieder gespiegelt (Clipping), das zweite ruht wieder (Spiegel aus)', sp5b.zustand === 'clip' && !sp5b.frei && o5b.ruhende.length === 1 && o5b.ruhende[0].frei && (await O('nahtStand')).ohnePaar === 0, `Spiegel ${sp5b.zustand}, frei ${sp5b.frei}; ruhend ${o5b.ruhende.map((r) => `${r.id}${r.frei ? ' frei' : ''}`)}`);
 
-// ---------- 6 berühren sie sich nicht, sind die Knöpfe aus ----------
+// ---------- 6 berührt es kein anderes, ändert das Anwenden nichts ----------
 await O('objektAktivieren', 2);
 await still();
 await s.click('#plus');
@@ -181,7 +183,12 @@ await O('aufblasen');
 await geladen();
 await still();
 const k6 = await knopf('vereinen');
-ok('6 ein drittes Objekt abseits: Die Knöpfe sind da, aber aus', k6.da && !k6.an && (await O('nahtPartner')) === 0, `da ${k6.da}, an ${k6.an}, Partner ${await O('nahtPartner')}`);
+const o6a = await O('objekte');
+await s.click('#naht-vereinen', { modifiers: ['Alt'] });
+await still();
+const o6b = await O('objekte');
+const m6 = String((await O('werk')).meldung);
+ok('6 ein drittes Objekt abseits: ⌥ + Klick ändert nichts und sagt, dass es kein anderes berührt', k6.da && k6.an && (await O('nahtPartner')) === 0 && o6b.ruhende.length === o6a.ruhende.length && o6b.aktiv === o6a.aktiv && /berührt kein anderes/.test(m6), `da ${k6.da}, an ${k6.an}, Partner ${await O('nahtPartner')}; Objekte ${o6a.ruhende.length + 1} → ${o6b.ruhende.length + 1}; „${m6}“`);
 
 ok('7 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
