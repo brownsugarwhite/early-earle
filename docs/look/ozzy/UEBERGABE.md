@@ -1,36 +1,38 @@
-# Übergabe: Ozzy (Stand 17.11.2026, abends)
+# Übergabe: Ozzy (Stand 18.11.2026, früh morgens)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“): Man zeichnet eine
 Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im Raum, in den eingerasteten Ansichten und in den Vier
-Ansichten. Gerechnet wird mit dem Kern von Sitzung 4, unverändert.
+Ansichten. Gerechnet wird mit dem Kern von Sitzung 4; seit dem 17.11. nachts ist die Sitzung von Ozzy auch die des Kerns und ändert
+ihn (bisher: C1, C2, D1).
 
-**Stand:** Stand 0, Phasen 1 bis 6 und die Schritte S1 bis S20 sind gebaut. Florian (17.11.): „Die offenen Abnahmen sind für mich fürs
-erste ok.“ S21 (Kanten gleiten) wurde ganz wieder entfernt (missverstanden; er: „lassen wir es erstmal so. Es gefällt mir gut.“). Alle
-24 Proben von Ozzy, die Typen, Lint und die Tests des Fensters halten (17.11. abends). Diese Übergabe ist neu geordnet; die gewachsene
-Fassung mit allen Messwerten und Zwischenständen liegt im Archiv:
-[`docs/verlauf/2026-11-17-ozzy-uebergabe-verlauf.md`](../../verlauf/2026-11-17-ozzy-uebergabe-verlauf.md).
+**Stand:** Stand 0, Phasen 1 bis 6 und S1 bis S20 sind gebaut (seine Abnahmen dazu: „fürs erste ok“, 17.11.). **Es gilt der Plan „Ozzy
+stabil und schnell“** (freigegeben am 17.11. nachts): [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md).
+Was gebaut ist, steht dort je Schritt unter „Gebaut“, mit Zahlen und Bildern. Die gewachsene Fassung dieser Übergabe bis zum 17.11.
+liegt im Archiv: [`docs/verlauf/2026-11-17-ozzy-uebergabe-verlauf.md`](../../verlauf/2026-11-17-ozzy-uebergabe-verlauf.md).
 
-**Wie es weitergeht (17.11. nachts):** Der Plan „Ozzy stabil und schnell“ ist freigegeben (Florian: „Du kannst loslegen.“):
-[`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md) (seine Klarstellungen und Antworten
-wörtlich, Befunde, sechs Etappen; **was gebaut ist, steht dort je Schritt unter „Gebaut“**). Der Spiegel-Schalter ruht, bis er ihn
-genauer beschreibt. **Stand (17.11., 21 Uhr): Etappe A ist gebaut bis auf zwei kleine Reste** (A4: das Gedrehte in der Pose merken, der
-Weichzeichner; A2: Vergleichsbild zu den Spiegelungen), **dazu B1** (Greifen sofort beim Drücken; der Zeiger des Systems als Schalter
-`?zeiger=system` mit Film [`2026-11-17-zeiger-system.mp4`](../../progress/ozzy/2026-11-17-zeiger-system.mp4), sein Urteil steht aus)
-**und der erste Teil von B2** (Wenden räumlich in den Feldern und in der einzelnen Ansicht; von hinten zeigt die Seite die zugewandte
-Hälfte; Film [`2026-11-17-feld-wenden-raeumlich.mp4`](../../progress/ozzy/2026-11-17-feld-wenden-raeumlich.mp4), sein Urteil steht aus). Gemessen an „strange bird“: Grafikkarte je Bild im Raum 15,8 → 6,0 ms, Vier
-Ansichten 16,8 → 10,3 ms, eingerastet 9,7 → 4,3 ms, nah herangezoomt 21,1 → 12,6 ms; Zug 18,8 / 26,4 → 10,7 / 17,1 ms je Bild; keine
-Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
-[`2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md) (vorher),
-[`2026-11-17-messen-nach-a.md`](../../progress/ozzy/2026-11-17-messen-nach-a.md) (nach A). Sein Urteil zur Seifenhaut steht aus.
-Die Linien werden nur noch neu aufgebaut, wenn sich etwas ändert (Linien je Bild im Raum 1,7 → 0,6 ms). B3 ist geklärt und gebaut: Florian
-meinte das **Kurvennetz auf der Form im Raum** („genau wie in den Projektionsflächen, aber im Raum“), nicht das Dreiecksnetz. Taste W
-schaltet im Raum zwischen Seifenhaut und Kurvennetz (weißer Körper mit Umriss, Linien und Punkte auf der Form, zu greifen wie auf den
-Flächen; Film `docs/progress/ozzy/2026-11-17-kurvennetz-im-raum.mp4`). Sein Urteil (17.11.): „Ist erstmal ok so“, er sieht noch
-Unterschiede zur Studie (`raum.html`): **für den Feinschliff notiert**, mit Vergleichsbild und Liste im Plan unter B3. Es fehlen noch
-P auf der Form und das Feld des Raums in den Vier Ansichten. Aus B4 gebaut: Ein Entwurf mit P gehört seiner Fläche (ein Klick knapp
-neben dem Feld zählt dazu, statt die Vier Ansichten zu schließen); nach ⌘Z fließt die Haut mit den Linien zurück. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
-ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 27 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
-`ozzy-zug-messen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`; seit dem 18.11. sind die Zählung der Züge und die Übersicht zu P Proben: `ozzy-zuege-fenster.mjs`, `ozzy-p-ueberall-fenster.mjs`).
+**Auftrag der Nacht (Florian, 17.11., 23 Uhr 30):** „ok dann c. […] Du kannst selbstständig bis einschließlich E Tempo II
+weitermachen. Fragen an mich und details die dir auffallen und nicht gleich behoben/entschieden werden müssen kommen in den
+feinschliff.“ **Was daraus wurde (18.11., früh morgens):**
+
+| Schritt | Stand | Bild, Probe |
+| --- | --- | --- |
+| A, B1, B2 (fast ganz), B3 | gebaut am 17.11. (Tempo I, Seifenhaut, Greifen beim Drücken, Wenden räumlich, Kurvennetz im Raum mit W); seine Urteile zu Seifenhaut, Zeiger, Wenden stehen aus | Messblätter `2026-11-17-messen-*.md` |
+| C1 Fehler im Kern | gebaut: Eine frische Form läuft nicht mehr davon, keine Punkte ohne Spiegelbild, umgeschlagene Dreiecke werden aufgerichtet | `ozzy-zuege-fenster`, `ozzy-werk`, Tests `eineLinie`, `verdichten` |
+| C2 P gebogen rundum | gebaut: ein Strich quer über die Form, gerade oder gebogen, mit beliebig vielen Punkten: ein Loop rundum, auf jeder Fläche gleich | `2026-11-18-p-gebogen-fenster.png`, `ozzy-p-schnitt-fenster`, `ozzy-p-ueberall-fenster` |
+| C3 Gleiten | **Beweis hält nicht, nichts gebaut:** Eine Linie auf der Haut zu verschieben ändert die Form (10 Einheiten Weg: 2 bis 6 Einheiten). Frage an ihn mit drei Wegen | `2026-11-18-gleiten-beweis.png`, Kern `form-gleiten.ts` |
+| C4 Felder, G S R | gebaut: Klick wählt ein Feld zwischen Linien (getönt), ziehen bewegt es, ⇧ + Klick weitere; G, S, R für jede Auswahl | `2026-11-18-feld-waehlen-ziehen.png`, `ozzy-felder-fenster` |
+| D1 halbe Haut | Teil 1 gebaut (Gewichte und Vermessen auf der Hälfte: eine Runde bei 80 %), Teil 2 gebaut (regelmäßig langsame Bilder im Zug behoben); Teil 3 und 4 gemessen, nicht gebaut, Empfehlung: Teil 4 streichen | Kern `form-halb.ts`, Test `halbNetz.test.ts`, `ozzy-zug-messen.mjs` |
+| D2 Spiegel-Schalter | ruht, bis er ihn beschreibt | |
+| E Tempo II | **nicht gebaut:** zwei große Umbauten; Messung, Beweis für E2 im Kern und kleiner Plan liegen vor; Empfehlung: E2 vor E1 | [`2026-11-18-ozzy-loeser-neben-dem-bild.md`](../../plans/2026-11-18-ozzy-loeser-neben-dem-bild.md), Kern `form-neben-dem-bild.ts` |
+
+**Fragen an Florian und alles, was warten kann:** [`docs/plans/2026-11-17-ozzy-feinschliff.md`](../../plans/2026-11-17-ozzy-feinschliff.md)
+(Abschnitt 1: Gleiten, Felder, halbe Haut Teil 4, Reihenfolge von E, Spitze ohne Dicke, P quer über die Mitte, dazu seine offenen
+Urteile). Nichts davon hält die Arbeit auf.
+
+**Geprüft am 18.11. früh:** alle 30 Fenster-Proben (`node scripts/pruefen/ozzy-alle.mjs`, in drei Teilen je unter zehn Minuten), 190
+Tests des Kerns, 25 des Fensters, Typen, Lint der geänderten Dateien, im Prüffenster die Donut-Probe. Zug im Raum an der Wand der Seite
+(`ozzy-zug-messen.mjs`, Rechnen je Bild Median / 95 %): „strange bird“ 11,1 / 16,7 ms, „teat firefish“ 11,4 / 16,1 ms, „maul handgemacht
+test“ 12,8 / 15,1 ms.
 
 ## 1. Einstieg
 
@@ -44,9 +46,9 @@ ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 27 nacheinander)
 | Seine Testformen | `wesen/`: „teat firefish“, „strange bird“, „test_kaputt“, „maul handgemacht test“ (beliebige Tests, kein Maßstab fürs Tempo) |
 
 **Florians Regeln für Ozzy** (gelten weiter):
-- „Hauptsache am Rechenkern wird nicht verändert […] daran nichts ändern oder optimieren“ (das macht die Kern-Sitzung), und „keinen
-  Unterschied zwischen meinen Kurven und dem Modell, wie es bei Sitzung 4 ist“. Ozzy benutzt die Rechnung, wie sie ist. Neue Handgriffe
-  im Werk nur mit seiner Zustimmung (bisher `zugGriffRaum`, S6b).
+- „keinen Unterschied zwischen meinen Kurven und dem Modell, wie es bei Sitzung 4 ist“ (16.11.; damals dazu: am Rechenkern nichts
+  ändern). Seit dem 17.11. nachts ist diese Sitzung auch die des Kerns und darf ihn ändern; die Regel zu Kurven und Modell bleibt
+  (deshalb keine „Formschicht“). Zusätze in `werk.ts` stehen im Kopf von `scripts/werk-schnitt/schnitt.mjs`.
 - Die Reglerwerte bleiben die Grundwerte der Studien, bis er seine festlegt.
 - Look zuerst beweisen (Vergleichsbild oder Film, gleiche Ansicht, vorher und nachher), dann bauen. Je Schritt eine vorher festgelegte
   Probe. Nie „bestanden“ ohne ihn. Keine Messreihen im Hintergrund, keine Agenten-Fächer ohne Rückfrage (Wochenlimit).
@@ -78,7 +80,11 @@ in eine Ecke ziehen rastet dort ein (Rückweg).
 **Bearbeiten** (auf jeder Fläche: Wand, eingerastete Ansicht, Feld): Punkte, Linien und Richtungen ziehen; Doppelklick auf eine Richtung
 schaltet Knick und rund; ⌥ knickt (beim Drücken und beim Drehen); ⇧ beim Drehen kippt die Richtung aus der Ebene; L Lasso (⇧ dazu, ⌥ weg);
 K Kante; ⌫ löscht; ⌘A alle; ⌥ halten: Röntgen (Verdecktes greifbar, S14). P im Raum: eine Form auf der Fläche, eine Abzweigung von einer
-Linie, oder zwei Klicks im Leeren quer über die Form mit ↩ ein Loop rundum (vorher zeigt der Lichtring, wo er läuft, S15). N, e, E im Raum
+Linie, oder ein Strich, der im Leeren beginnt und endet, quer über die Form (gerade oder gebogen, mit beliebig vielen Punkten), mit ↩
+ein Loop rundum (vorher zeigt der Lichtring, wo er läuft; C2). **Felder (C4):** In einer flachen Ansicht (eingerastet, auch von hinten,
+und in den Feldern der Vier Ansichten) wählt ein Klick auf die Form das Feld zwischen den Linien (getönt; gewählt sind die Punkte auf
+seinem Rand), ziehen bewegt es, ⇧ + Klick nimmt weitere dazu oder heraus. **G, S, R** verschieben, skalieren, drehen die Auswahl
+(Punkte, Linien, Felder) mit dem Zeiger: Klick oder ↩ beendet, Esc nimmt zurück, X, Y, Z halten eine Achse. N, e, E im Raum
 legen Freihand und Formen auf die Haut. Über der Blase zieht der Pinsel den nächsten Punkt einer Linie mit dem Einfluss O ([ und ]
 Radius). Ein gewählter Ring bekommt den Tropfen „Maul“; mit Maul steht oben rechts „Fressen“ (Pose mit Kiefer und Kopf).
 
@@ -112,8 +118,9 @@ Werk (src/form/werk.ts, aus kurven.ts geschnitten; Rechnung des Kerns packages/s
 
 | Datei (`apps/editor/src/ozzy/`) | Zeilen | Inhalt |
 | --- | --- | --- |
-| `main.ts` | 5 643 | alles Übrige (Gliederung unten) |
-| `werkBlatt.ts` | 1 618 | Linien des Werks auf allen Flächen als ein Netz der Studie; Züge als Handgriffe des Werks in Blattkoordinaten; `StiftWerk` für P; Verdecktes (Tiefenkarte je Achse, `Flaeche.tiefe`); ⌘Z-Fluss, Tusche, Lichtring |
+| `main.ts` | 6 297 | alles Übrige (Gliederung unten; die Zeilennummern dort sind vom 17.11.) |
+| `werkBlatt.ts` | 1 759 | Linien des Werks auf allen Flächen als ein Netz der Studie; Züge als Handgriffe des Werks in Blattkoordinaten; `StiftWerk` für P; Verdecktes (Tiefenkarte je Achse, `Flaeche.tiefe`); ⌘Z-Fluss, Tusche, Lichtring |
+| `werkFelder.ts` | 460 | C4: Felder der Haut zwischen Linien (Treffer, Füllen bis an die Ketten der Linien, Spiegelbild, Saat für Netzwechsel, getönte Dreiecke für die Anzeige) |
 | `werkHaut.ts` | 586 | glatte Anzeige der Haut (übernommen aus `kurven.ts`: `glattAnlegen`, `glattZeigen`), Umriss je Achse, Muster und Dehnung für die Seifenhaut |
 | `blatt.ts` | 425 | Blatt: P, Freihand, Formen in einem Netz, Silhouette |
 | `ansichtsTropfen.ts` | 297 | Ansichts-Tropfen (S13, Idee 10) |
@@ -194,9 +201,11 @@ S21 Gleiten der Wände und Kanten (beide Fassungen; „Ich glaube da haben wir u
 
 - Typen: `pnpm --filter @ee/shape typecheck`, `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`. Lint nur geänderte Dateien:
   `pnpm --filter @ee/editor exec eslint <dateien>`. Tests des Fensters aus `apps/editor`: `npx vitest run src/form/ src/linien/`.
-- Proben aus `apps/editor`, Ozzy auf 5205: `GPU=1 node scripts/pruefen/ozzy-<name>-fenster.mjs`. Alle 24 nacheinander dauern rund acht
-  Minuten (die längste, `ozzy-ansichten`, eine Minute). Im Vordergrund, nie zusammen mit vitest, währenddessen nichts unter `src` ändern.
-- Stand 17.11. abends: alle 24 halten. Dabei korrigiert: `ozzy-pinsel` lud die Kugel ohne die Linie an der Spiegelkante (seit S9
+- Proben aus `apps/editor`, Ozzy auf 5205: `GPU=1 node scripts/pruefen/ozzy-<name>-fenster.mjs`; alle: `node scripts/pruefen/ozzy-alle.mjs
+  [wörter]`. Die 30 dauern zusammen rund 15 Minuten (die längste, `ozzy-p-ueberall`, 160 s): in drei Teilen laufen lassen. Im
+  Vordergrund, nie zusammen mit vitest, währenddessen nichts unter `src` ändern. Kern: aus `packages/shape` `npx vitest run src/dicht/
+  src/loeser/zerlegung.test.ts`, Kernproben mit `npx vite-node ../../apps/editor/scripts/pruefen/<probe>.ts`.
+- Stand 18.11. früh: alle 30 halten. Stand 17.11. abends: alle 24. Dabei korrigiert: `ozzy-pinsel` lud die Kugel ohne die Linie an der Spiegelkante (seit S9
   Standard; jetzt `?ohneLinie=0`); `ozzy-silhouette` meldete die bekannte Grenze des Kerns (an Einbuchtungen bis 2,0 über der Linie, seit
   Weg A) als Fehler und wacht jetzt darüber, dass es nicht mehr wird (höchstens 2,5).
 - Keine Prüfung, sondern Werkzeug: `ozzy-messen.mjs` (Tempo und Ruhe, S1), `ozzy-bearbeiten-bilder.mjs` (Bilder).
@@ -223,15 +232,17 @@ S21 Gleiten der Wände und Kanten (beide Fassungen; „Ich glaube da haben wir u
 **Phase 7:** Tempo am Mac (120 Bilder je Sekunde: Median höchstens 6 ms, 95 % höchstens 8 ms) und auf dem iPhone 16 nie gemessen; seine
 Reglerwerte als Grundwerte; S12 am echten Gerät (Druck und Schweben des Stifts gibt es im Simulator nicht).
 
-**Kern-Sitzung** (Ozzy ändert daran nichts): 4c (Rest der halben Haut); Pose Etappe 4 und 5; umgeschlagene Dreiecke an der Mitte und an
-dünnen Spitzen (Fischschwanz: 21 nach dem Setzen); Griff bei Abzweigungen; Punkte ohne Spiegelbild beim Verdichten (Plan des Kerns, A.4);
-P gebogen (S8); Pinsel zwischen den Linien (Aufblasen, Absaugen, Glätten der Haut); an Einbuchtungen rundet die Haut bis 2,0 über die
-Linie; im Zug die Runde des Werks (rund 6 ms); ohne vergehende Zeit kann ein Zug die Haut zerreißen. Plan:
+**Kern** (seit dem 17.11. nachts dieselbe Sitzung). Erledigt am 18.11.: umgeschlagene Dreiecke an der Mitte und an dünnen Spitzen,
+Punkte ohne Spiegelbild beim Verdichten, der empfindliche Anlauf eines neuen Lösers (C1); P gebogen (C2); aus 4c die Gewichte und das
+Vermessen auf der Hälfte (D1). Offen: der Rest von 4c (Empfehlung: streichen, siehe Liste für den Feinschliff); Pose Etappe 4 und 5;
+Griff bei Abzweigungen; eine Spitze ohne Dicke (Klinge); Pinsel zwischen den Linien (Aufblasen, Absaugen, Glätten der Haut); an
+Einbuchtungen rundet die Haut bis 2,0 über die Linie; der Zug mit O hängt am Zeitpunkt des Einwechselns; ohne vergehende Zeit kann
+ein Zug die Haut zerreißen. Plan des Kerns:
 [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](../../plans/2026-11-12-schnell-glatt-exakt.md).
 
 **Eigene Sitzungen, später:** Maul-System (er beschreibt zuerst die Fälle; daran hängt auch das Maul aus einer Linie, das in Ozzy nicht
-angeschlossen ist), Auswahl wie in Blender (Schritt 7), Teile anfügen, Fell, Look des Spiels, Nacht, Backen fürs Spiel (höchstens 8 000
-Dreiecke je Form).
+angeschlossen ist), Teile anfügen, Fell, Look des Spiels, Nacht, Backen fürs Spiel (höchstens 8 000 Dreiecke je Form). Die Auswahl
+wie in Blender (Schritt 7) ist mit C4 gebaut (Punkte, Linien, Felder; G, S, R).
 
 ## 8. Rückblick: was besser und eleganter ginge
 

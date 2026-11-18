@@ -5,29 +5,27 @@ Verweise. Verlauf, Messwerte und Florians Rückmeldungen gehören in `docs/` (Pl
 unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.2026 liegt in
 [`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`](docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md).
 
-## Stand (18.11.2026, nachts)
+## Stand (18.11.2026, früh morgens)
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
   **Gearbeitet wird am Teil Charaktere: dem Editor für die Formen.** Das alte Spiel (Brett, Karte, `packages/genome`,
   `render/src/creature`) bleibt unangetastet.
-- **Der Editor heißt Ozzy** (Florian, 16.11.), das Designsystem **liquid drop**: die Studien (Aufblasen, Linien, Ecke/Werft,
-  Bleistift) mit dem vollen Kern von Sitzung 4. Seite `apps/editor/ozzy.html`, Code `apps/editor/src/ozzy/`, Pläne
-  [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md) und [`…-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md).
-  **Stand, Bedienung, Aufbau, Offenes und Vorschläge: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md) (17.11. abends).**
-  Gebaut: Stand 0, Phasen 1 bis 6, S1 bis S20; alle 24 Proben halten. Florian (17.11.): „Die offenen Abnahmen sind für mich fürs
-  erste ok.“ S21 (Kanten gleiten) ganz entfernt, missverstanden; ruht. **Es gilt der Plan „Ozzy stabil und schnell“** (freigegeben
-  17.11.): [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md), Etappen A bis F (Tempo,
-  Seifenhaut, Zeiger, Wenden, Wireframe, P, Gleiten, Flächen, halbe Haut; der Spiegel-Schalter ruht, bis Florian ihn beschreibt;
-  Maul, Posen, Teile danach). Gebaut steht dort je Schritt; Stand: A bis auf Reste, B1, B2 fast ganz, B3 (Kurvennetz, W), C1, C2, C4 (Felder, G S R), D1 Teil 1/2; C3 Gleiten: Beweis hält nicht, Frage offen. Auftrag: selbstständig bis einschließlich E; Fragen in `…-ozzy-feinschliff.md`. Die Sitzung ist auch die des
-  Kerns und darf ihn ändern. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell.
+- **Der Editor heißt Ozzy** (Florian, 16.11.), das Designsystem **liquid drop**. Seite `apps/editor/ozzy.html`, Code
+  `apps/editor/src/ozzy/`. **Einstieg: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md) (18.11. früh).** Es gilt der Plan
+  [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md) (Etappen A bis F; gebaut steht dort
+  je Schritt). Stand: A, B1 bis B3, C1 (Fehler im Kern), C2 (P gebogen rundum), C4 (Felder; G, S, R), D1 Teil 1 und 2 sind gebaut.
+  **C3 Gleiten: Beweis hält nicht, nicht gebaut. E nicht gebaut** (Beweis und kleiner Plan:
+  [`…-18-ozzy-loeser-neben-dem-bild.md`](docs/plans/2026-11-18-ozzy-loeser-neben-dem-bild.md)). D2 (Spiegel-Schalter) ruht.
+  **Seine offenen Fragen und Urteile: [`docs/plans/2026-11-17-ozzy-feinschliff.md`](docs/plans/2026-11-17-ozzy-feinschliff.md),
+  Abschnitt 1; zuerst lesen, was er dazu sagt.** Die Sitzung ist auch die des Kerns und darf ihn ändern. Es bleibt: kein
+  Unterschied zwischen seinen Kurven und dem Modell.
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)
-  bleibt Prüffenster. Plan „schnell, glatt, exakt“ mit seinen offenen Punkten (4c Rest der halben Haut, Pose Etappe 4 und 5,
-  umgeschlagene Dreiecke an der Mitte, Griff bei Abzweigungen, Punkte ohne Spiegelbild nach dem Verdichten):
-  [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), Übergabe von Sitzung 4 (Stand
-  14.11.) in [`docs/UEBERGABE.md`](docs/UEBERGABE.md). Das Maul-System bekommt später eine eigene Sitzung; Schritt 7 kommt später.
+  bleibt Prüffenster. Plan „schnell, glatt, exakt“ mit seinen offenen Punkten (Rest von 4c, Pose Etappe 4 und 5, Griff bei
+  Abzweigungen): [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), Übergabe von
+  Sitzung 4 (Stand 14.11.) in [`docs/UEBERGABE.md`](docs/UEBERGABE.md). Das Maul-System bekommt später eine eigene Sitzung.
 - **Studien (abgeschlossen, Feinschliff jetzt in Ozzy):** Linien `src/linien/` (`linien.html`, `raum.html`,
   [`docs/look/linien/UEBERGABE.md`](docs/look/linien/UEBERGABE.md)); Aufblasen `src/anfang/` (`anfang.html`,
   [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md)); Ecke/Werft nur als Konzept im Cloud-Zweig
