@@ -1,4 +1,4 @@
-# Übergabe: Ozzy (Stand 18.11.2026, mittags)
+# Übergabe: Ozzy (Stand 18.11.2026, nachmittags)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“): Man zeichnet eine
 Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im Raum, in den eingerasteten Ansichten und in den Vier
@@ -9,21 +9,21 @@ ihn (bisher: C1, C2, D1).
 [`docs/plans/2026-11-18-ozzy-nach-dem-ersten-test.md`](../../plans/2026-11-18-ozzy-nach-dem-ersten-test.md) (oben die Tabelle „Stand
 nach deinen Antworten“). Vergleich mit dem Fenster von Sitzung 4:
 [`docs/research/2026-11-18-vergleich-5197-ozzy.md`](../../research/2026-11-18-vergleich-5197-ozzy.md). Seine Bildschirmfotos und Fotos:
-[`2026-11-18-florian-test/`](2026-11-18-florian-test/). **Stand 18.11., mittags:**
+[`2026-11-18-florian-test/`](2026-11-18-florian-test/). **Stand 18.11., nachmittags:**
 
 - **Gebaut:** In den Vier Ansichten rastet das Feld des Raums nicht ein (`rastetEin` in `main.ts`; Schieben bleibt Leertaste +
   Ziehen, sein Wort). Schritt 4, Teil 1: die Messlatte `ozzy-look-messen.mjs` (gegen `raum.html` auf 5199, Eintrag `linien-look`) und
-  der Umriss der eingerasteten Seite so breit wie in der Vorlage (die Linie der Mitte bleibt fein, wo der weiße Körper den Umriss
-  zeichnet; `werkBlatt.ts`).
-- **Wartet auf sein Wort:** Schritt 1 (Aufblasen; er überlegt, wie „ohne Linie“ aussehen soll und ob Loops vorgezeichnet werden),
-  Schritt 3 (Seifenhaut im Zug), Schritt 5 (flüssig drehen) samt den Wänden aus Schritt 4 (Entwurf als Bild
-  `docs/progress/ozzy/2026-11-18-waende-entwurf.png`; gebaut wird mit Schritt 5, sonst wird das Drehen teurer).
-- **Bekannter Fehler, nicht behoben (Rückschritt aus C1, `SCHRITT_MAX`):** An einer frisch aufgeblasenen Form (keine oder eine
-  Linie) läuft die Rechnung nicht mehr sichtbar davon, sondern kriecht ins Falsche und wird angenommen: ohne Linie Ballon oder Punkt
-  (jede Form), mit Linie Ballon bei feinerem Netz oder schwierigen Silhouetten. Bis zum 17.11. wurde so ein Ergebnis verworfen, die
-  aufgeblasene Form blieb. An Formen mit vielen Linien ist die Rechnung dieselbe wie auf 5197 (ein Zug an „strange bird“ gibt in
-  5197, im Prüffenster und in Ozzy dasselbe Netz). Die Probe `ozzy-ohne-linie-fenster.mjs` merkt den Fehler nicht (sie prüft nur,
-  ob die Haut steht).
+  der Umriss der eingerasteten Seite so breit wie in der Vorlage (`werkBlatt.ts`). **Der Rückschritt beim Aufblasen ist behoben**
+  (`verfeinern.ts`: ohne Linien nie setzen; ändert sich der Rauminhalt über einen Auftrag um mehr als 30 %, ohne dass sich eine Linie
+  bewegt hat, gilt der Stand davor, verdichtet und aufgerichtet). **Materialien Solid und Zebra** (`src/ozzy/material.ts`, im Menü
+  neben den Fassungen der Seifenhaut, Taste M; Probe `ozzy-material-fenster.mjs`).
+- **Wartet auf sein Wort:** Jelly und helles Solid (Frage: mit ihrem dunklen Grund wie im Blaupause-Editor?), das grüne Material
+  (Earle, WebGPU, braucht eine zweite Zeichenfläche und Werte je Ecke); Schritt 1 (Netz der frischen Form: größer anlegen?, Loops
+  vorzeichnen, die ersten Linien), Schritt 3 (Seifenhaut im Zug), Schritt 5 (flüssig drehen) samt den Wänden aus Schritt 4.
+- **Bleibt wahr:** Mit keiner oder einer Linie hat die Rechnung keinen festen Ausgang (ein Mitschnitt: dieselbe Form läuft einmal
+  ruhig aus und einmal davon). Die Sicherung fängt das Davonlaufen; die Form bleibt dann, wie sie aufgeblasen wurde, und in der
+  Statuszeile steht „Hier ließ sich das Netz nicht aufräumen …“ (der Text passt nicht mehr ganz: Das Netz ist aufgeräumt, nur das
+  Setzen ist verworfen).
 - Das Gleiten ist zurückgestellt; Maul, Posen und Teile will er in einer neuen Sitzung beginnen.
 
 **Stand:** Stand 0, Phasen 1 bis 6 und S1 bis S20 sind gebaut (seine Abnahmen dazu: „fürs erste ok“, 17.11.). **Es gilt der Plan „Ozzy
