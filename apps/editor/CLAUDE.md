@@ -493,9 +493,9 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (2) Eine Linie, die in die andere Form läuft, wird an der Naht geschnitten: Pfad teilen am Punkt, der dem Nahtpunkt am nächsten
   liegt (`stueckNaechstes`, `stueckTeilen`), die Stelle `s` des neuen Punkts aus dem Parameter im Stück (dann behalten alle Proben
   ihre Stelle), das Stück draußen ist ein `ring` mit `haengt: [true, true]`; die Kreuzungen zweier Formen vorher getrennt zählen.
-  (3) Die Schnittkurve hinterlässt sehr kurze Kanten: `nadelnZusammenlegen`, dann verdichten, bevor gerechnet wird. (4) Die Dauer
-  einer Rechnung nie aus `heute().weg` lesen (nur der letzte Abschnitt): die Haut vorher und nachher über `flaechenAbstand`
-  vergleichen. (5) K an der Naht rundet die ganze Form mit (weiche Linie = überall glatt); Begleitlinien halten sie nicht; außen
+  (3) Die Schnittkurve hinterlässt sehr kurze Kanten: `nadelnZusammenlegen`, dann verdichten, bevor gerechnet wird. (4) Wie weit
+  eine Rechnung die Haut bewegt hat, nie aus `heute().weg` lesen (das zählt nur den letzten Abschnitt; so stand erst 0,7 statt 22,5
+  im Bericht): die Haut vorher und nachher über `flaechenAbstand` vergleichen. (5) K an der Naht rundet die ganze Form mit (weiche Linie = überall glatt); Begleitlinien halten sie nicht; außen
   festhalten (Halte-Loop wie `maulFormen`) hält, zeigt aber den Rand des Streifens. Zahlen: Plan, Abschnitt 10, Beweis 2.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
