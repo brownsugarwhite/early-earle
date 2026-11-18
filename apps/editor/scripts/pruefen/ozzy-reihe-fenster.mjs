@@ -5,6 +5,7 @@
 //   2  Jedes Objekt liegt, wo es gezeichnet wurde, und ist so groß wie seine Zeichnung.
 //   3  Der Raum steht vom ersten Objekt an (er richtet sich nach allen): Die Kamera bleibt, während die anderen aufblasen.
 //   4  Luft ablassen am aktiven Objekt zeigt nur seine Zeichnung; ↩ bläst dieselbe Form wieder auf, die anderen bleiben.
+//   4b In den Vier Ansichten macht ein Klick (V) auf ein ruhendes Objekt in einem flachen Feld es zum aktiven.
 //   5  Mit dem Plus: zwei Linien auf dem neuen Blatt werden zwei weitere Objekte.
 //   5b Sichern, neu, laden: Die Datei trägt die ganze Szene (alle Objekte mit Lage, Größe, Spiegel; dasselbe Objekt ist aktiv).
 //   6  Keine Fehler in der Konsole.
@@ -95,6 +96,40 @@ await s.keyboard.press('Enter');
 await fertig();
 const o4 = await O('objekte');
 ok('4 Luft ablassen zeigt nur die Zeichnung dieses Objekts; ↩ bläst es wieder auf, die anderen bleiben', z4.geschlossene === 1 && o4.ruhende.length === 2 && o4.aktiv === 1 && Math.abs(o4.kasten.rx - FORMEN[0].R) < 6, `geschlossene Linien auf dem Blatt ${z4.geschlossene}; danach aktiv ${o4.aktiv}, ruhend ${o4.ruhende.map((r) => r.id)}, Halbmesser ${z1(o4.kasten.rx)}`);
+
+// ---------- 4b in den Vier Ansichten: Ein Klick auf ein ruhendes Objekt in einem Feld macht es zum aktiven ----------
+await s.keyboard.press('Tab');
+await s.waitForFunction(() => window.__ozzy.weltImFeld('seite', { x: 0, y: 0, z: 0 }) !== null, null, { timeout: 20000 });
+await s.waitForTimeout(900);
+await s.keyboard.press('v');
+await s.waitForTimeout(300);
+const o4c = await O('objekte');
+const r2 = o4c.ruhende.find((r) => r.id === 2);
+const ortSeite = await O('weltImFeld', 'seite', { x: r2.kasten.cx, y: r2.kasten.cy, z: 0 });
+await s.mouse.move(ortSeite.x, ortSeite.y, { steps: 4 });
+await s.waitForTimeout(300);
+await s.mouse.down();
+await s.waitForTimeout(60);
+await s.mouse.up();
+await fertig();
+const o4d = await O('objekte');
+await bild('reihe-3b-vier');
+// und in der Top-Ansicht das dritte
+const r3 = [...o4d.ruhende].find((r) => r.id === 3);
+const ortTop = await O('weltImFeld', 'top', { x: r3.kasten.cx, y: 0, z: 0 });
+await s.mouse.move(ortTop.x, ortTop.y, { steps: 4 });
+await s.waitForTimeout(300);
+await s.mouse.down();
+await s.waitForTimeout(60);
+await s.mouse.up();
+await fertig();
+const o4e = await O('objekte');
+ok('4b Vier Ansichten, V: Klick auf ein ruhendes Objekt im Feld der Seite und im Feld von oben macht es zum aktiven', o4d.aktiv === 2 && o4e.aktiv === 3, `nach dem Klick in der Seite aktiv ${o4d.aktiv} (erwartet 2), nach dem Klick von oben aktiv ${o4e.aktiv} (erwartet 3)`);
+await O('objektAktivieren', 1);
+await s.keyboard.press('a');
+await s.keyboard.press('Tab');
+await s.waitForTimeout(1200);
+await fertig();
 
 // ---------- 5 das Plus mit zwei Linien ----------
 await s.click('#plus');

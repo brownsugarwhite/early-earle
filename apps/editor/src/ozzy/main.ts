@@ -540,6 +540,11 @@ type Ruhend = {
   treffer: { pos: Float32Array; tri: Uint32Array; spiegelbild: boolean };
   /** sein Kasten im Raum: Mitte und halbe Maße (die Tiefe gilt nach beiden Seiten der Spiegelebene) */
   kasten: { cx: number; cy: number; rx: number; ry: number; tiefe: number };
+  /**
+   * seine Linien im Raum, als Strecken (je 6 Zahlen: Anfang, Ende), samt ihren Spiegelbildern: Solange das Objekt ruht, stehen sie als
+   * feine Striche an den Wänden und in den Ansichten (ohne Punkte; zu greifen sind sie, sobald das Objekt aktiv ist)
+   */
+  linien: Float32Array;
 };
 /**
  * Etappe 4: Das aktive Objekt hat ein anderes aufgenommen (verschmolzen oder abgezogen). `n`: so viele Schritte hatte das Werk davor;
@@ -742,6 +747,28 @@ function ruheZeigen(): void {
   haut.ruheSetzen(ruheNetzGemerkt.netz);
 }
 
+/** die Linien der Form des Werks im Raum als Strecken, samt Spiegelbildern (für ein Objekt, das von jetzt an ruht) */
+function linienImRaum(): Float32Array {
+  const f = werkHaut.f;
+  const mx = werkHaut.mitte.x;
+  const my = werkHaut.mitte.y;
+  const frei = werk.istFrei();
+  const aus: number[] = [];
+  for (const l of werk.loops) {
+    const L = l.ruhe;
+    const n = l.proben.length;
+    const m = l.art === 'ring' ? n - 1 : n;
+    // gespiegelt: an einer verschmolzenen Form Ring und Paar (die Linie der Mitte liegt in der Ebene), an einer freien alles, wenn sie ihr Spiegelbild zeigt
+    const spiegeln = frei ? werkHaut.spiegelbild : l.art !== 'mitte';
+    for (const sz of spiegeln ? [1, -1] : [1])
+      for (let j = 0; j < m; j++) {
+        const k = (j + 1) % n;
+        aus.push(L[3 * j]! / f + mx, L[3 * j + 1]! / f + my, (sz * L[3 * j + 2]!) / f, L[3 * k]! / f + mx, L[3 * k + 1]! / f + my, (sz * L[3 * k + 2]!) / f);
+      }
+  }
+  return Float32Array.from(aus);
+}
+
 /** das aktive Objekt ablegen: Es ruht von jetzt an (bis ein anderes aufgenommen oder eine neue Form angelegt wird, steht es noch im Werk) */
 function objektAblegenJetzt(): Ruhend | null {
   if (!werkForm || !werkGezeigt || !werkHaut.zeigeNetz || tastenZug || objektZug || spiegelFahrt) return null;
@@ -768,6 +795,7 @@ function objektAblegenJetzt(): Ruhend | null {
     zeichnung: blatt.netzKopie(),
     treffer: { pos, tri: Uint32Array.from(werk.haut.tri), spiegelbild: werkHaut.spiegelbild },
     kasten: k,
+    linien: linienImRaum(),
   };
   ruhende.push(r);
   werkFelder.leeren();
@@ -855,14 +883,37 @@ function strahlAufNetz(P: ArrayLike<number>, T: ArrayLike<number>, ox: number, o
 }
 
 /**
- * Das Objekt unter dem Zeiger: seine Kennung (das aktive oder ein ruhendes; das vorderste), 0: keins. Im Raum und in einer
- * eingerasteten Ansicht ein Strahl gegen die Häute (auch gegen gezeigte Spiegelbilder); in den Feldern der Vier Ansichten zählt nur
- * das aktive Objekt.
+ * Das Objekt unter dem Zeiger: seine Kennung (das aktive oder ein ruhendes; das vorderste), 0: keins. Ein Strahl gegen die Häute
+ * (auch gegen gezeigte Spiegelbilder): im Raum von der Kamera aus, in einer flachen Fläche (ein Feld der Vier Ansichten) längs ihrer
+ * Achse, von der Seite her, die zum Betrachter zeigt.
  */
 function objektBei(x: number, y: number): number {
   if (zustand !== 'ruhe' || !werkGezeigt) return 0;
-  if (!ruhende.length || !pinselHier(x, y)) return objektUnter(x, y) ? aktivId : 0;
-  const { o, d } = kam.strahl(x, y, W, H);
+  if (!ruhende.length) return objektUnter(x, y) ? aktivId : 0;
+  let o: { x: number; y: number; z: number };
+  let d: { x: number; y: number; z: number };
+  if (pinselHier(x, y)) ({ o, d } = kam.strahl(x, y, W, H));
+  else {
+    const F = werkBlatt.flaechen[werkBlatt.flaecheUnter(x, y)];
+    if (!F || F.raeumlich || !F.tiefe) return objektUnter(x, y) ? aktivId : 0;
+    const XY = F.her(x, y);
+    if (!XY) return 0;
+    // der Ort im Blatt (im Maß des aktiven Objekts, wie `werkFelder.treffer`: Seite (x, −y), Front (z, −y), Top (x, z)) als Strahl im Raum
+    const iu = F.a === 'front' ? 2 : 0;
+    const iv = F.a === 'top' ? 2 : 1;
+    const it = F.a === 'seite' ? 2 : F.a === 'front' ? 0 : 1;
+    const vorn = F.vorn ?? 1;
+    const p = [0, 0, 0];
+    p[iu] = XY[0];
+    p[iv] = (F.a === 'top' ? 1 : -1) * XY[1];
+    const f = werkHaut.f;
+    const welt = [p[0]! / f + werkHaut.mitte.x, p[1]! / f + werkHaut.mitte.y, p[2]! / f];
+    welt[it] = vorn * 1e5;
+    const dir = [0, 0, 0];
+    dir[it] = -vorn;
+    o = { x: welt[0]!, y: welt[1]!, z: welt[2]! };
+    d = { x: dir[0]!, y: dir[1]!, z: dir[2]! };
+  }
   let best = Infinity;
   let id = 0;
   const f = werkHaut.f;
@@ -3078,6 +3129,45 @@ function umrissJetzt(achse: 0 | 1 | 2): Float32Array {
 }
 const umrissAlle: ({ teile: Float32Array[]; aus: Float32Array } | null)[] = [null, null, null];
 
+/** mehrere Felder von Strecken zu einem, gemerkt, solange es dieselben Felder sind */
+function streckenGemerkt(g: { teile: Float32Array[]; aus: Float32Array } | null, teile: Float32Array[]): { teile: Float32Array[]; aus: Float32Array } {
+  if (g && g.teile.length === teile.length && g.teile.every((t, i) => t === teile[i])) return g;
+  let n = 0;
+  for (const t of teile) n += t.length;
+  const aus = new Float32Array(n);
+  let o = 0;
+  for (const t of teile) {
+    aus.set(t, o);
+    o += t.length;
+  }
+  return { teile, aus };
+}
+/** die Linien aller ruhenden Objekte im Raum (Strecken): feine Striche an den Wänden und in den Ansichten */
+let ruheLinienGemerkt: { teile: Float32Array[]; aus: Float32Array } | null = null;
+function ruheLinien(): Float32Array {
+  ruheLinienGemerkt = streckenGemerkt(ruheLinienGemerkt, ruhende.map((r) => r.linien));
+  return ruheLinienGemerkt.aus;
+}
+/** die Umrisse der ruhenden Objekte von einer Achse (wo der Umriss des aktiven nicht über `umrissJetzt` gezeichnet wird) */
+const ruheUmrissGemerkt: ({ teile: Float32Array[]; aus: Float32Array } | null)[] = [null, null, null];
+function ruheUmrisse(achse: 0 | 1 | 2): Float32Array {
+  const g = streckenGemerkt(ruheUmrissGemerkt[achse]!, ruhende.map((r) => r.haut.umriss(achse)));
+  ruheUmrissGemerkt[achse] = g;
+  return g.aus;
+}
+/** Strecken im Raum als Striche zeichnen (`legen`: vom Raum ins Bild) */
+function streckenZeichnen(seg: Float32Array, legen: (x: number, y: number, z: number) => [number, number], r: number): void {
+  if (r < 0.01 || !seg.length) return;
+  const g = K.neueGruppe();
+  for (let i = 0; i < seg.length; i += 6) {
+    const [ax, ay] = legen(seg[i]!, seg[i + 1]!, seg[i + 2]!);
+    const [bx, by] = legen(seg[i + 3]!, seg[i + 4]!, seg[i + 5]!);
+    K.push(ax, ay, bx, by, r, r, g, 0, false);
+  }
+}
+/** so breit sind die Linien ruhender Objekte, gemessen am Umriss (die feine Linie des Designs: innen 0,25 zu 1) */
+const ruheBreite = (): number => linienWerte.innen / Math.max(1e-6, linienWerte.umriss);
+
 /**
  * A3: der Kasten der Haut des Werks im Bild (Gerätepunkte, Ursprung oben links), wenn von der Seifenhaut nur sie zu sehen ist (Ruhe,
  * kein Rahmen, kein Schlauch; nicht in der Pose, dort drehen die Knochen die Haut aus ihrem Kasten). Die Seifenhaut legt ihr teures
@@ -3537,7 +3627,8 @@ function bild(dt: number): boolean {
   leiste.nahtZeigen(ruhende.length > 0 && zustand === 'ruhe', ruhende.length > 0 && nahtErlaubt());
   tastenStand();
   // Text
-  gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
+  // (auf dem Blatt eines weiteren Objekts stehen die vorhandenen blass: Dort schweigt der Schriftzug)
+  gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer && !ruhende.length));
   const h =
     zustand === 'ruhe' && werkGezeigt && roentgen > 0.5
       ? 'Röntgen: auch Punkte und Linien hinter der Form greifen · ⌥ loslassen: zurück'
@@ -3896,8 +3987,6 @@ function wandLinien(vp: Matrix4, m: Moment): void {
     // B3: mit dem Kurvennetz auf der Form treten die Zeichnungen an den Wänden zurück (sie lägen sonst über dem weißen Körper)
     const st = staerke[achse] * (1 - raumNetzDeckung);
     if (st < 0.01) continue;
-    // mit dem Werk zeichnet `werkLinien` alle Linien; hier bleibt in Front und Top der Umriss der Haut
-    if (werkGezeigt && achse === 2 && mitteDa()) continue;
     const w = achse * 2 + (s[achse] > 0 ? 1 : 0);
     const ueber = wandSicht[w]!;
     const lage = mitte[achse]! + s[achse] * e.L;
@@ -3910,6 +3999,14 @@ function wandLinien(vp: Matrix4, m: Moment): void {
       return [a, b];
     };
     const r = r0 * st * (0.82 + 0.18 * ueber);
+    // ruhende Objekte: ihre Linien als feine Striche an jeder Wand
+    if (ruhende.length) streckenZeichnen(ruheLinien(), legen, r * ruheBreite());
+    // mit dem Werk zeichnet `werkLinien` alle Linien; hier bleibt in Front und Top der Umriss der Haut (an der Rückwand nur der der
+    // ruhenden Objekte: Der des aktiven ist dort seine Linie)
+    if (werkGezeigt && achse === 2 && mitteDa()) {
+      if (ruhende.length) streckenZeichnen(ruheUmrisse(2), legen, r);
+      continue;
+    }
     // die Linie der Seite (die gezeichnete, ab dem Abriss die des Werks) an der Rückwand
     const linie = achse === 2 ? seitenLinie(2) : null;
     if (linie) {
@@ -3926,6 +4023,7 @@ function wandLinien(vp: Matrix4, m: Moment): void {
         const gross = p.i === punktUnterZeiger || punktZug?.i === p.i ? linienWerte.tropfen : 1;
         K.punkt(px, py, linienWerte.punktRadius * D * gross * st * (0.55 + 0.45 * ueber));
       }
+      if (ruhende.length) streckenZeichnen(ruheUmrisse(2), legen, r);
     } else {
       const seg = achse === 2 && !werkGezeigt ? k.umriss(2) : umrissJetzt(achse);
       const g = K.neueGruppe();
@@ -4258,6 +4356,16 @@ function linienDerAnsicht(vp: Matrix4): void {
   const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(achse)) - 0.97) / 0.025));
   const s = flach * flach * t * t * (3 - 2 * t);
   if (s < 0.01) return;
+  // ruhende Objekte: ihre Linien als feine Striche (ihren Umriss zeichnet die Hülle des weißen Körpers)
+  if (ruhende.length)
+    streckenZeichnen(
+      ruheLinien(),
+      (x, y, z) => {
+        const [a, b] = projizieren(new Vector3(x, y, z), vp);
+        return [a, b];
+      },
+      (linienWerte.innen / 2) * D * s,
+    );
   if (werkGezeigt && ansicht === 'seite' && mitteDa()) return;
   // S20: mit dem Körper zeichnet die Hülle den Umriss (der alte blendet dabei aus)
   const r0 = (linienWerte.umriss / 2) * D * s * (1 - koerperDeckung);
@@ -4311,6 +4419,12 @@ function felderLinien(f: Falt, m: Moment): void {
     return [x, y];
   };
   for (const n of ['seite', 'front', 'top'] as const) {
+    // ruhende Objekte: ihre Linien als feine Striche in jedem Feld
+    if (ruhende.length) {
+      K.bereich = BEREICH_VON[n];
+      streckenZeichnen(ruheLinien(), (x, y, z) => mischen(n, new Vector3(x, y, z)), (linienWerte.innen / 2) * D * breite(n === 'front' ? 0 : n === 'top' ? 1 : 2, false));
+      K.bereich = 0;
+    }
     if (werkGezeigt && n === 'seite' && mitteDa()) continue;
     // S17: was zu diesem Feld gehört, wird an seinem Rand abgeschnitten
     K.bereich = BEREICH_VON[n];
@@ -7553,6 +7667,13 @@ const haken = {
     netzBauen();
     leiste.lage(true);
     anstossen();
+  },
+  /** ein Ort des Raums in einem Feld der Vier Ansichten (CSS-Pixel), wenn sie aufgeklappt sind */
+  weltImFeld(n: 'seite' | 'front' | 'top', p: { x: number; y: number; z: number }): { x: number; y: number } | null {
+    if (vier < 0.9) return null;
+    const F = felder();
+    const [x, y] = imFeld(n, new Vector3(p.x, p.y, p.z), F, feldMassstab(F));
+    return { x: x / D, y: y / D };
   },
   /** die Zeichnung auf dem Blatt: wie viele Linien, wie viele davon geschlossen */
   zeichnung: () => {
