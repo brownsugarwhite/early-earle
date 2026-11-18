@@ -4,9 +4,9 @@
 // Winkel und Länge): an den Schlüsselwinkeln genau Florians Zeichnung. Alles liegt in Körperkoordinaten (x von der Mitte der Bohne,
 // y vom Boden). Der Kopf sitzt am Hals (Punkt im Raum, folgt ψ) plus einem Versatz, der mit θ wandert.
 // Die Enden der Bohne hängen an den äußeren Beinkanten: Lage und Winkel folgen dem Bein, der Versatz aus den Schlüsseln bleibt.
-import { abbilden, type Form, kasten, type Punkt, schwerpunkt, verschieben } from './form';
+import { abbilden, flaeche as flaecheVon, type Form, kasten, type Punkt, schwerpunkt, verschieben } from './form';
 import type { Fluessig, RenderTeil, Szene, Verdecker } from './renderer';
-import { gruppeVon } from './szenen';
+import { gruppeVon, weissGruppeVon } from './szenen';
 import { type AnsichtName, type FigurAnsicht, type FigurDaten, type TeilName, teilVon } from './vorlagen/import';
 
 // ---- Interpolation ------------------------------------------------------------------------------------------------------
@@ -68,9 +68,18 @@ export function formAusSchluesseln(keys: readonly Schluessel[], w: number): Form
           for (let d = 1; d < winkel.length && Number.isNaN(best); d++) best = !Number.isNaN(winkel[j - d] ?? NaN) ? winkel[j - d]! : !Number.isNaN(winkel[j + d] ?? NaN) ? winkel[j + d]! : NaN;
           winkel[j] = best;
         }
+      let schwenk = 0;
       for (let j = 1; j < winkel.length; j++) {
         while (winkel[j]! - winkel[j - 1]! > Math.PI) winkel[j]! -= 2 * Math.PI;
         while (winkel[j]! - winkel[j - 1]! < -Math.PI) winkel[j]! += 2 * Math.PI;
+        schwenk = Math.max(schwenk, Math.abs(winkel[j]! - winkel[j - 1]!));
+      }
+      // Dreht ein Griff zwischen zwei Schlüsseln weiter als 100° (Fransen, die im Profil auf einer Linie liegen), würde er über den
+      // Winkel gemischt einen Kreis schlagen und die Kurve hakt aus: solche Griffe geradlinig mischen (sie werden unterwegs kurz)
+      if (schwenk > (100 * Math.PI) / 180) {
+        const gx = pchip(xs, keys.map((k) => k.form[a]![g][0] - k.form[a]!.p[0]), w);
+        const gy = pchip(xs, keys.map((k) => k.form[a]![g][1] - k.form[a]!.p[1]), w);
+        return [px + gx, py + gy];
       }
       const l = Math.max(0, pchip(xs, laengen, w));
       const ang = pchip(xs, winkel, w);
@@ -100,8 +109,8 @@ const BEINE: TeilName[] = ['beinRV', 'beinRH', 'beinLV', 'beinLH'];
 const KLEMME_AUSSEN = 6.5;
 /** Klemme eines verdeckten Fensters: so tief im Gips, dass der schmale Streifen ganz darunter liegt */
 const VERDECKT_RAND = 14;
-/** wie tief die Bohne den Schwanz verdeckt: vorn ganz (0), ab 45° gar nicht mehr (er liegt dann vor ihr wie in Florians 3/4) */
-const SCHWANZ_HINTER: { w: number; tiefe: number }[] = [{ w: 0, tiefe: 0 }, { w: 30, tiefe: 0 }, { w: 45, tiefe: 80 }, { w: 90, tiefe: 80 }];
+/** Größe des Schwanzweiß: wird kleiner, wenn der Schwanz hinter Bohne und Kopf verschwindet (Florian 18.11.: nicht abschneiden) */
+const SCHWANZ_WEISS: { w: number; groesse: number }[] = [{ w: 0, groesse: 0 }, { w: 22, groesse: 0 }, { w: 42, groesse: 1 }, { w: 90, groesse: 1 }];
 
 /** Körperkoordinaten einer Ansicht: x von der Mitte der Bohne, y vom Boden (Unterkante der Beine) */
 export function koerperUrsprung(a: FigurAnsicht): Punkt {
@@ -208,6 +217,7 @@ export class FigurRaster {
       { w: 45, x: mitten.get(45)![0] - hals45[0], y: mitten.get(45)![1] - hals45[1] },
       { w: 90, x: mitten.get(90)![0] - cLogo[0], y: mitten.get(90)![1] - cLogo[1] },
     ];
+    this.spitzenFinden();
     // Bohnenenden: Versatz von Anker 1 und 5 zur äußeren Beinkante je Schlüssel, dazu der Winkelunterschied
     const links: { w: number; off: Punkt; dw: number }[] = [];
     const rechts: { w: number; off: Punkt; dw: number }[] = [];
@@ -227,6 +237,84 @@ export class FigurRaster {
         while (liste[j]!.dw - liste[j - 1]!.dw < -Math.PI) liste[j]!.dw += 2 * Math.PI;
       }
     this.bohnenEnde = { links, rechts };
+  }
+
+  /** Spitzen je Kopfteil (Index), die zwischen 45° und 90° im Rahmen ihrer Nachbarn geführt werden */
+  private readonly spitzen = new Map<TeilName, number[]>();
+
+  /**
+   * Fransenspitzen: in der 3/4-Ansicht nach außen zeigende scharfe Ecken (Bartfransen, Haarspitzen), die im Profil fast gerade auf
+   * einer Kante liegen. Auf Bahnen gemischt, wandern sie an ihrem Nachbarn vorbei und falten die Kontur (Haken, Zacken zwischen 45°
+   * und 90°). Sie werden dort im Rahmen ihrer beiden Nachbarn geführt: Lage längs der Verbindung und Abstand quer dazu werden
+   * gemischt, so zieht sich die Spitze auf die Kante zurück, statt durch den Nachbarn zu klappen.
+   */
+  private spitzenFinden(): void {
+    const richtungen = (f: Form, j: number): [Punkt, Punkt] => {
+      const n = f.length;
+      const a = f[j]!;
+      const vor = f[(j - 1 + n) % n]!;
+      const nach = f[(j + 1) % n]!;
+      const ein: Punkt = Math.hypot(a.p[0] - a.i[0], a.p[1] - a.i[1]) > 1e-3 ? [a.p[0] - a.i[0], a.p[1] - a.i[1]] : [a.p[0] - vor.o[0], a.p[1] - vor.o[1]];
+      const aus: Punkt = Math.hypot(a.o[0] - a.p[0], a.o[1] - a.p[1]) > 1e-3 ? [a.o[0] - a.p[0], a.o[1] - a.p[1]] : [nach.i[0] - a.p[0], nach.i[1] - a.p[1]];
+      return [einheit(ein), einheit(aus)];
+    };
+    const knick = (f: Form, j: number): number => {
+      const [e, a] = richtungen(f, j);
+      return (Math.acos(Math.max(-1, Math.min(1, e[0] * a[0] + e[1] * a[1]))) * 180) / Math.PI;
+    };
+    for (const name of ['bartA', 'bartB', 'kopfA', 'kopfB', 'ohrA', 'ohrB'] as TeilName[]) {
+      const keys = this.kopf.get(name);
+      const k45 = keys?.find((x) => x.w === 45)?.form;
+      const k90 = keys?.find((x) => x.w === 90)?.form;
+      if (!k45 || !k90) continue;
+      const n = k45.length;
+      // nur nach außen zeigende Spitzen (Kerben mitzuführen schob Anker an der Nase heraus)
+      const umlauf = Math.sign(flaecheVon(k45));
+      const liste: number[] = [];
+      for (let j = 0; j < n; j++) {
+        if (knick(k45, j) < 110 || knick(k90, j) > 40) continue;
+        const [e, a] = richtungen(k45, j);
+        if (Math.sign(e[0] * a[1] - e[1] * a[0]) === umlauf) continue;
+        liste.push(j);
+      }
+      if (liste.length) this.spitzen.set(name, liste);
+    }
+  }
+
+  /** Spitzen zwischen 45° und 90° im Rahmen ihrer Nachbarn führen (Form ist schon gemischt) */
+  private spitzenFuehren(name: TeilName, form: Form, theta: number): Form {
+    const liste = this.spitzen.get(name);
+    if (!liste || theta <= 45 || theta >= 90) return form;
+    const keys = this.kopf.get(name)!;
+    const k45 = keys.find((x) => x.w === 45)!.form;
+    const k90 = keys.find((x) => x.w === 90)!.form;
+    const n = form.length;
+    const rahmen = (f: Form, j: number): { u: number; h: number } => {
+      const a = f[(j - 1 + n) % n]!.p;
+      const b = f[(j + 1) % n]!.p;
+      const d: Punkt = [b[0] - a[0], b[1] - a[1]];
+      const l2 = d[0] * d[0] + d[1] * d[1] || 1;
+      const q: Punkt = [f[j]!.p[0] - a[0], f[j]!.p[1] - a[1]];
+      const l = Math.sqrt(l2);
+      return { u: (q[0] * d[0] + q[1] * d[1]) / l2, h: (q[0] * -d[1] + q[1] * d[0]) / l };
+    };
+    const t = (theta - 45) / 45;
+    const glatt = t * t * (3 - 2 * t);
+    const out = form.map((a) => ({ p: [a.p[0], a.p[1]] as Punkt, i: [a.i[0], a.i[1]] as Punkt, o: [a.o[0], a.o[1]] as Punkt }));
+    for (const j of liste) {
+      const r45 = rahmen(k45, j);
+      const r90 = rahmen(k90, j);
+      const u = r45.u + (r90.u - r45.u) * glatt;
+      const h = r45.h + (r90.h - r45.h) * glatt;
+      const a = form[(j - 1 + n) % n]!.p;
+      const b = form[(j + 1) % n]!.p;
+      const d: Punkt = [b[0] - a[0], b[1] - a[1]];
+      const l = Math.hypot(d[0], d[1]) || 1;
+      const p: Punkt = [a[0] + d[0] * u + (-d[1] / l) * h, a[1] + d[1] * u + (d[0] / l) * h];
+      const alt = form[j]!;
+      out[j] = { p, i: [p[0] + alt.i[0] - alt.p[0], p[1] + alt.i[1] - alt.p[1]], o: [p[0] + alt.o[0] - alt.p[0], p[1] + alt.o[1] - alt.p[1]] };
+    }
+    return out;
   }
 
   private halsBei(psi: number): Punkt {
@@ -280,12 +368,21 @@ export class FigurRaster {
     const theta = Math.max(0, Math.min(90, lage.theta));
     const koerper = new Map<TeilName, Form>();
     for (const [n, keys] of this.koerper) koerper.set(n, formAusSchluesseln(keys, psi));
+    {
+      const g = Math.max(0, Math.min(1, pchip(SCHWANZ_WEISS.map((x) => x.w), SCHWANZ_WEISS.map((x) => x.groesse), psi)));
+      if (g < 0.999) {
+        const w = koerper.get('schwanzW')!;
+        const c = schwerpunkt(w);
+        const k = Math.max(g, 0.001);
+        koerper.set('schwanzW', abbilden(w, (q) => [c[0] + (q[0] - c[0]) * k, c[1] + (q[1] - c[1]) * k]));
+      }
+    }
     if (mitBohnenenden) this.bohnenendenSetzen(koerper, psi);
     const hals = this.halsBei(psi);
     const vx = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.x), theta);
     const vy = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.y), theta);
     const kopf = new Map<TeilName, Form>();
-    for (const [n, keys] of this.kopf) kopf.set(n, verschieben(formAusSchluesseln(keys, theta), hals[0] + vx, hals[1] + vy));
+    for (const [n, keys] of this.kopf) kopf.set(n, verschieben(this.spitzenFuehren(n, formAusSchluesseln(keys, theta), theta), hals[0] + vx, hals[1] + vy));
     // Malreihenfolge (an den Schlüsseln wie in Florians Dateien): Ohren, Bohne, Beine von fern nach nah, Keile, Schwanz (sein Weiß
     // liegt vorn hinter der Bohne und tritt bis 45° weich davor), Fenster, Kopfmasken, Bart, Nase. Das Fenster links vorn liegt vorn über der Haarspitze von Maske B, das rechts vorn in der
     // Seite über der Haarspitze von Maske A (so in Front und Logo gezeichnet).
@@ -351,6 +448,8 @@ export class FigurRaster {
     const index = new Map(liste.map((t, i) => [t.name, i]));
     const teile: RenderTeil[] = liste.map((t) => {
       const r: RenderTeil = { name: t.name, weiss: t.weiss, gruppe: gruppeVon(t.name), form: t.form };
+      const wg = weissGruppeVon(t.name);
+      if (wg) r.weissGruppe = wg;
       if (t.rand !== undefined) {
         const bein = index.get(t.name.replace('fenster', 'bein') as TeilName);
         if (bein !== undefined) {
@@ -361,8 +460,6 @@ export class FigurRaster {
       if (t.name === 'schwanzW') {
         r.traeger = index.get('schwanz')!;
         r.rand = 6;
-        r.hinter = index.get('bohne')!;
-        r.hinterTiefe = pchip(SCHWANZ_HINTER.map((x) => x.w), SCHWANZ_HINTER.map((x) => x.tiefe), lage.psi);
       }
       return r;
     });

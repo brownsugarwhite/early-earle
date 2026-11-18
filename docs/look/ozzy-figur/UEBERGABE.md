@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 18.11.2026 abends, Etappen A und B gebaut, C begonnen)
+# Übergabe: Ozzy-Figur (Stand 18.11.2026 spätabends, Etappen A und B gebaut, C in zwei Runden)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -81,7 +81,68 @@ ungefähr“), `ozzy_sit01.svg` (Sitzen, Kopf vorn), `ozzy_st02.svg` (Sitzen, Ko
 Offen nach C, erster Teil: Rückseite (90° → 180°, Zuordnung der gespiegelten Rückteile prüfen), Nicken, Sitzen als Pose (Etappe D),
 Florians Urteil zu den Zwischenwinkeln (zwischen 45° und 90° am Kinn kleine Kerben).
 
+## Etappe C, zweiter Teil (18.11. spätabends, nach Florians zweiter Rückmeldung)
+
+Florian (18.11., zwei Bildschirmfotos in [`rueckmeldung-2026-11-18/`](rueckmeldung-2026-11-18/)): „am Kopf entstehen ab 45 bis 100
+Grad noch komische Zacken und Auswucherungen“; die kleine Wulst weg, die wächst, je mehr Bohne und Beine verschmelzen; das Weiß
+des Schwanzes soll kleiner werden, wenn es hinter dem Kopf verschwindet, nicht abgeschnitten; „Das weiße vom vorderbein sollte mit
+dem weiß vom kopf verschmelzen. das sollte in allen posen dann funktionieren. das weicht dann etwas von meiner vorlage ab.“; die
+Verjüngung der Outlines im Gesicht, wo das Weiß aus dem Schwarz tritt, „muss super smooth sein“.
+
+- **Wulst Bohne–Bein weg:** `sminN` im Renderer: weiche Vereinigung nach Kantenrichtung (k mal (1 − cos)/1,2 aus den Ableitungen
+  der Felder). Laufen die Kanten in dieselbe Richtung (die Bohne fließt tangential ins Bein), wird nichts aufgetragen; in Ecken und
+  über Lücken rundet sie voll. Gilt für alle schwarzen Paare. Bild `2026-11-18-c2-beine.png`.
+- **Schwanzweiß schrumpft:** `SCHWANZ_WEISS` in `raster.ts` skaliert das Weiß um seine Mitte (0 bis 22°, wächst bis 42°), statt es
+  hinter Bohne oder Kopf abzuschneiden. Bild `2026-11-18-c2-schwanz.png`.
+- **Weiß verschmilzt (Bart mit den Fenstern der Vorderbeine):** Gruppe je Teil (`weissGruppe`: `bart`, `fenster` nur für `fensterRV`
+  und `fensterLV`), Stärke `weissWeiss` (Regler „Weiß – Weiß“ 0–60, Standard 28). Jedes Teil geht so ein, wie es nach der
+  Malreihenfolge sichtbar ist (später gezeichnetes Schwarz als Abstand abgezogen); das Fenster darf sich dabei bis 0,3 k unter
+  Kopf, Ohren und Nase schieben, so trennen schmale Haarspitzen und der Rand der Maske nicht mehr. Dann einfache weiche Vereinigung
+  (ohne Kantenrichtung, deren Ableitungen an Knicken der Felder rauschen: ausgefranste Kanten) und Kantenglättung nach dem Gefälle.
+  Sie schließt Lücken unter k/2 (14 Einheiten): **beim Drehen** (Körper 45° bis 75°, Kopf 45° bis 60°: Lücken 8–12) fließt das
+  Weiß wie ein Tropfen ins Bein; **die stehenden Vorlagen** (Lücken 16–30) bekommen nur kleine Rundungen; **im Liegen** verschmelzen
+  Bart und Pfotenfenster ganz, in `lieg1` bleibt dabei die mittlere Kerbe des Barts als schwarzer Tropfen eingeschlossen (Florians
+  Entscheidung, Bild `2026-11-18-c2-weiss-liegen-nah.png`). Unterschiedsbilder: nur zwischen Bart und Fenstern wird es weiß,
+  nirgends schwarz (`2026-11-18-c2-weiss-unterschied-*.png`).
+- **Tempo der Verschmelzung:** Die Stärke vergrößerte die Reichweite aller Abstandsfelder (R 40 → 88 Bildpunkte) und verdoppelte so
+  die Zeit je Bild (Mac 3 → 6 ms). Jetzt hat jedes Teil seine eigene Reichweite (Attribut `reich` je Strecke): k + 4 Bildpunkte
+  nur ab dem ersten verschmelzenden Teil der Malreihenfolge, sonst wie bisher; kodiert wird mit dem größten R. Bild unverändert,
+  Kosten etwa +1 ms (3,0 → 4,0 ms in Chrome und WebKit ohne fremde Last).
+- **Kopf, Zacken zwischen 45° und 90°:** Griffe, die zwischen zwei Schlüsseln mehr als 100° schwenken, werden geradlinig gemischt
+  (über den Winkel schlugen sie einen Kreis: Haken). Fransenspitzen, die im 3/4 scharf nach außen zeigen und im Profil flach liegen
+  (`bartB` 2, `kopfB` 2), werden zwischen 45° und 90° im Rahmen ihrer Nachbarn geführt (`spitzenFinden`, `spitzenFuehren`). Damit sind
+  45° bis 60° ruhig. **Offen:** am Kinnband zwischen 63° und 78° kleine Haken und Stufen, neben der Nase zwischen 60° und 72° eine
+  kleine Stufe, an der fernen Wange um 10° ein dünner Haken und um 30–35° eine kleine Stufe (`2026-11-18-c2-offen-kinnband.png`,
+  `2026-11-18-c2-offen-wange.png`). **Ursache:** In Florians 3/4 liegt die Bartspitze vor ihrer Kerbe, im Profil liegen beide in
+  umgekehrter Reihenfolge auf der Kinnlinie; fünf Stücke der fernen Seite kehren ihre Sehne zwischen zwei Schlüsseln um (`kopfB`
+  4→5 zwischen 0° und 45°; `kopfB` 2→3, `bartB` 2→3, 4→5, 6→7 zwischen 45° und 90°), die Anker laufen aneinander vorbei. Dazu
+  haben seine Pfade viele Eckpunkte mit nur einem Griff (der andere hat Länge 0); deren Richtung dreht sich beim Mischen nicht mit.
+- **Versucht und zurückgenommen** (je Bild geprüft, keiner hielt): umkehrende Stücke auf einen Punkt falten mit der Sehnenrichtung
+  des Schlüssels (Kinn bei 69–78° glatt, aber eine schwarze Zacke neben der Nase bei 63–66°); nur die Stufe quer zur Kontur
+  herausnehmen (Haarlinien, weil die inneren Griffe stehen blieben); die gemischte Sehne samt inneren Griffen bis zum Vorbeilaufen
+  verkürzen (Zacke an der Nase) oder nur kurz davor (kein Unterschied); Eckpunkte mit Griff 0 unterwegs mit gemischter Richtung
+  öffnen (neue Zacken an der Nase).
+- **Vorschlag für die nächste Runde:** die Ursache in den Schlüsseln beheben statt beim Mischen: Im Profil liegen die betroffenen
+  Anker auf einer glatten Strecke; sie dort längs der Strecke in die Reihenfolge des 3/4 legen (Form bleibt, nur die Lage der Anker
+  ändert sich), dann kehrt sich keine Sehne mehr um. Oder Florian zeichnet einen Zwischenschlüssel um 67°.
+- **Proben** (`2026-11-18-c2-proben.json`, Bilder `2026-11-18-c2-c-*`): A, B1, B2, C1 bestanden wie vorher. Tempo diesmal unter
+  fremder Last (Illustrator, Photoshop, Simulator: Last 7): ohne Verschmelzung 7,6 ms, mit 9,0 ms je Bild.
+
+Offen nach C, zweiter Teil: Florians Urteil zur Verschmelzung (Stärke, Tropfen im Liegen), Kinn und Wange der fernen Seite (siehe
+oben), Rückseite 90° → 180°, Nicken, Sitzen als Pose (Etappe D), seine Messung auf dem iPhone.
+
 ## Fallen
+
+- Jede weiche Vereinigung braucht Felder, die bis k reichen: Sättigt ein Feld innerhalb von k, verschiebt `smin` jede Kante
+  (der Bart wuchs bei Reichweite 0,6 k überall um 2 Bildpunkte). Reichweite je Teil, nie unter k.
+- Die Reichweite der Felder bestimmt die Zeit des ersten Durchgangs: Eine große Stärke für alle Teile verdoppelte die Zeit je Bild.
+- `sminN` (nach Kantenrichtung) nur für Schwarz: An Weiß mit Knicken aus `max`/`min` rauschen die Ableitungen, die Kanten fransen aus.
+- Verschmelzendes Weiß muss die Malreihenfolge als Abstand mitnehmen (`max(w, −ueber)`), sonst verliert ein Fenster die Haarspitze,
+  die über ihm gezeichnet ist.
+- Große Stärke an vielen nahen Kanten (Zickzack des Barts über dem Pfotenfenster) lässt schwarze Tropfen stehen: an den liegenden
+  Vorlagen prüfen.
+- Florians Pfade haben viele Eckpunkte mit nur einem Griff; ihre Richtung kommt vom nächsten Kontrollpunkt und wird beim Mischen
+  nicht mitgedreht.
 
 - Gespiegelte Hälften (A/B) überlappen; nie mehrere Teile in einen Kanal (Schablone löscht Überlappungen gegensinniger Pfade aus).
 - Das Minimum der Teilefelder ist innen kein Abstand zum Umriss: Für Weiß-Regeln den Kanal der Außenkanten nehmen.

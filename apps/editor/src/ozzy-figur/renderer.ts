@@ -29,6 +29,8 @@ export interface RenderTeil {
   hinter?: number;
   /** wie tief das verdeckende Teil zählt (Figur-Einheiten): 0 = genau sein Umriss deckt, größer = es deckt nur noch tiefer innen */
   hinterTiefe?: number;
+  /** Weiß, das mit anderem Weiß verschmilzt: Bart und Vorderbeinfenster fließen ineinander (Stärke `fluessig.weissWeiss`) */
+  weissGruppe?: 'bart' | 'fenster';
 }
 /** Verdecken auf der abgewandten Seite: Rand wächst zur fernen Seite hin (Figur-Einheiten) */
 export interface Verdecker {
@@ -51,10 +53,12 @@ export interface Fluessig {
   kopfOhr: number;
   ohrOhr: number;
   kopfNase: number;
+  /** Bartweiß und Fensterweiß fließen ineinander (0 = wie gezeichnet: Haarspitzen dürfen Fenster überdecken) */
+  weissWeiss: number;
   klemme: number;
 }
-export const EXAKT: Fluessig = { bohneBein: 0, bohneSchwanz: 0, bohneKopf: 0, kopfOhr: 0, ohrOhr: 0, kopfNase: 0, klemme: 0 };
-export const FLUESSIG: Fluessig = { bohneBein: 12, bohneSchwanz: 10, bohneKopf: 10, kopfOhr: 8, ohrOhr: 4, kopfNase: 0, klemme: 4 };
+export const EXAKT: Fluessig = { bohneBein: 0, bohneSchwanz: 0, bohneKopf: 0, kopfOhr: 0, ohrOhr: 0, kopfNase: 0, weissWeiss: 0, klemme: 0 };
+export const FLUESSIG: Fluessig = { bohneBein: 12, bohneSchwanz: 10, bohneKopf: 10, kopfOhr: 8, ohrOhr: 4, kopfNase: 5, weissWeiss: 28, klemme: 4 };
 
 export interface Szene {
   teile: RenderTeil[];
@@ -84,7 +88,7 @@ const LESEN = `uniform sampler2D t0, t1, t2, t3, t4, t5; uniform float R;
 float feld(ivec2 q, int c){ int i = c / 4; int k = c - i * 4;
   vec4 v = i == 0 ? texelFetch(t0, q, 0) : i == 1 ? texelFetch(t1, q, 0) : i == 2 ? texelFetch(t2, q, 0) : i == 3 ? texelFetch(t3, q, 0) : i == 4 ? texelFetch(t4, q, 0) : texelFetch(t5, q, 0);
   float e = k == 0 ? v.x : k == 1 ? v.y : k == 2 ? v.z : v.w; return (e - 0.5) * 2.0 * R; }\n`;
-const STRECKE_VS = `in vec2 ecke; in vec2 pa; in vec2 pb; in float kanal; uniform vec2 gr; out vec2 va; out vec2 vb; flat out int vk;
+const STRECKE_VS = `in vec2 ecke; in vec2 pa; in vec2 pb; in float kanal; in float reich; uniform vec2 gr; out vec2 va; out vec2 vb; flat out int vk;
 vec2 lageVon(float R){ vec2 d = pb - pa; float l = length(d); vec2 t = l > 1e-6 ? d / l : vec2(1, 0); vec2 n = vec2(-t.y, t.x);
   return (ecke.x < 0.0 ? pa - t * R : pb + t * R) + n * R * ecke.y; }\n`;
 
@@ -128,7 +132,7 @@ export class FigurRenderer {
     const streckeFS = `in vec2 va; in vec2 vb; flat in int vk; uniform float R;
       float abstand(){ vec2 p = gl_FragCoord.xy; vec2 ab = vb - va; float h = clamp(dot(p - va, ab) / max(dot(ab, ab), 1e-9), 0.0, 1.0); return min(length(p - va - ab * h) / R, 1.0); }\n`;
     this.pStrecke = this.programm(
-      KOPF + 'uniform float R;\n' + STRECKE_VS + 'void main(){ va = pa; vb = pb; vk = int(kanal + 0.5); gl_Position = vec4(lageVon(R) / gr * 2.0 - 1.0, 0.0, 1.0); }',
+      KOPF + STRECKE_VS + 'void main(){ va = pa; vb = pb; vk = int(kanal + 0.5); gl_Position = vec4(lageVon(reich) / gr * 2.0 - 1.0, 0.0, 1.0); }',
       KOPF + AUS6 + SETZE + streckeFS + 'void main(){ setze(vk, 0.5 + 0.5 * abstand(), 1.0); }',
     );
     this.pAussen = this.programm(
@@ -145,20 +149,26 @@ export class FigurRenderer {
             if (((schwarzBits >> c) & 1) == 0 || c == vk) continue;
             if (feld(qm, c) < -0.5 || feld(qa, c) < -0.5) { innen = true; break; }
           }
-          gl_Position = innen ? vec4(2.0, 2.0, 2.0, 1.0) : vec4(lageVon(R) / gr * 2.0 - 1.0, 0.0, 1.0); }`,
+          gl_Position = innen ? vec4(2.0, 2.0, 2.0, 1.0) : vec4(lageVon(reich) / gr * 2.0 - 1.0, 0.0, 1.0); }`,
       KOPF + 'layout(location=0) out vec4 o0;\n' + streckeFS + 'void main(){ o0 = vec4(0.5 + 0.5 * abstand()); }',
     );
     this.pBild = this.programm(
       KOPF + 'in vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }',
       KOPF + LESEN +
         `uniform sampler2D tAussen; uniform int anzahl; uniform int gruppe[${MAX_TEILE}]; uniform int traeger[${MAX_TEILE}]; uniform float rand[${MAX_TEILE}];
-        uniform int hinter[${MAX_TEILE}]; uniform float hinterTiefe[${MAX_TEILE}];
+        uniform int hinter[${MAX_TEILE}]; uniform float hinterTiefe[${MAX_TEILE}]; uniform int weissGruppe[${MAX_TEILE}]; uniform float kWeiss; uniform int fensterKanal[2];
         uniform float kBohneBein, kBohneSchwanz, kBohneKopf, kKopfOhr, kOhrOhr, kKopfNase, kKlemme;
         uniform int verdeckerZahl; uniform vec4 verdeckerA[4]; uniform vec2 verdeckerB[4];
         uniform int spaltNah, spaltFern; uniform float spaltBreite, spaltAuslauf; uniform int diagnose;
         out vec4 farbe;
         float smin(float a, float b, float k){ if (k < 1e-4) return min(a, b); float h = max(k - abs(a - b), 0.0) / k; return min(a, b) - h * h * k * 0.25; }
         float smax(float a, float b, float k){ return -smin(-a, -b, k); }
+        // Weiche Vereinigung nach Kantenrichtung: laufen beide Kanten in dieselbe Richtung (Bohne fließt tangential ins Bein), wird
+        // nichts aufgetragen (keine Wulst); in Ecken und über Lücken rundet sie voll
+        float sminN(float a, float b, float k){ if (k < 1e-4) return min(a, b);
+          vec2 na = vec2(dFdx(a), dFdy(a)); vec2 nb = vec2(dFdx(b), dFdy(b)); float la = length(na); float lb = length(nb);
+          float c = (la > 1e-4 && lb > 1e-4) ? dot(na, nb) / (la * lb) : 0.0;
+          return smin(a, b, k * clamp((1.0 - c) / 1.2, 0.0, 1.0)); }
         float deck(float d){ return clamp(0.5 - d, 0.0, 1.0); }
         void main(){ ivec2 p = ivec2(gl_FragCoord.xy);
           vec4 T[6]; T[0] = texelFetch(t0, p, 0); T[1] = texelFetch(t1, p, 0); T[2] = texelFetch(t2, p, 0);
@@ -168,27 +178,49 @@ export class FigurRenderer {
             float e = k == 0 ? v.x : k == 1 ? v.y : k == 2 ? v.z : v.w; d[c] = c < anzahl ? (e - 0.5) * 2.0 * R : 1e5; }
           float g[8]; for (int i = 0; i < 8; i++) g[i] = 1e5;
           for (int c = 0; c < ${MAX_TEILE}; c++) { if (c >= anzahl) break; int gi = gruppe[c]; if (gi >= 0) g[gi] = min(g[gi], d[c]); }
-          float ohren = smin(g[4], g[5], kOhrOhr);
-          float kopf = smin(g[3], ohren, kKopfOhr);
-          kopf = smin(kopf, g[6], kKopfNase);
-          float koerper = smin(g[0], g[1], kBohneBein);
-          koerper = smin(koerper, g[2], kBohneSchwanz);
-          float schwarz = min(smin(koerper, kopf, kBohneKopf), g[7]);
-          float ueber[${MAX_TEILE}]; float lauf = 1e5;
-          for (int c = ${MAX_TEILE - 1}; c >= 0; c--) { ueber[c] = lauf; if (c < anzahl && gruppe[c] >= 0) lauf = min(lauf, d[c]); }
+          float ohren = sminN(g[4], g[5], kOhrOhr);
+          float kopf = sminN(g[3], ohren, kKopfOhr);
+          kopf = sminN(kopf, g[6], kKopfNase);
+          float koerper = sminN(g[0], g[1], kBohneBein);
+          koerper = sminN(koerper, g[2], kBohneSchwanz);
+          float schwarz = min(sminN(koerper, kopf, kBohneKopf), g[7]);
+          // ueber: Schwarz, das nach dem Kanal gezeichnet wird; fuer die verschmelzenden Fenster dasselbe mit Kopf, Ohren und Nase um
+          // heben zurueckgesetzt (in einem Durchgang, ohne zweite Schleife)
+          float heben = 0.3 * kWeiss;
+          float ueber[${MAX_TEILE}]; float lauf = 1e5; float laufH = 1e5; float decktF0 = 1e5; float decktF1 = 1e5;
+          for (int c = ${MAX_TEILE - 1}; c >= 0; c--) { ueber[c] = lauf;
+            if (c == fensterKanal[0]) decktF0 = laufH;
+            if (c == fensterKanal[1]) decktF1 = laufH;
+            if (c < anzahl && gruppe[c] >= 0) { lauf = min(lauf, d[c]); laufH = min(laufH, gruppe[c] >= 3 && gruppe[c] <= 6 ? d[c] + heben : d[c]); } }
           float u = (texelFetch(tAussen, p, 0).x - 0.5) * 2.0 * R;
           float sil = schwarz < 0.0 ? -u : u;
           vec2 pf = gl_FragCoord.xy; float rv = 0.0;
           for (int k = 0; k < 4; k++) { if (k >= verdeckerZahl) break;
             vec2 q = (pf - verdeckerA[k].xy) / verdeckerB[k].x; rv += verdeckerB[k].y * smoothstep(0.15, 0.85, clamp(dot(q, verdeckerA[k].zw), 0.0, 1.0)); }
-          float weiss = 0.0;
+          float weiss = 0.0; float wBart = 1e5; float ueberBart = 1e5;
           for (int c = 0; c < ${MAX_TEILE}; c++) { if (c >= anzahl) break; if (gruppe[c] >= 0) continue;
             float w = d[c]; int t = traeger[c];
             if (t >= 0) w = smax(w, d[t] + rand[c], kKlemme);
             if (rv > 0.05) w = smax(w, sil + rv, min(kKlemme, rv));
             float cw = deck(w) * (1.0 - deck(ueber[c]));
             int hi = hinter[c]; if (hi >= 0) cw *= 1.0 - deck(d[hi] + hinterTiefe[c]);
-            weiss = max(weiss, cw); }
+            weiss = max(weiss, cw);
+            // Bart, wie er nach der Malreihenfolge sichtbar ist (das später gezeichnete Schwarz als Abstand abgezogen)
+            if (weissGruppe[c] == 1) { wBart = min(wBart, max(w, -ueber[c])); ueberBart = min(ueberBart, ueber[c]); } }
+          // Bart und Vorderbeinfenster verschmelzen wie Tropfen, sobald sie sich nahekommen (Florian, 18.11.). Das Fenster schiebt
+          // sich dafür bis 0,3 k unter Kopf, Ohren und Nase (schmale Haarspitzen und der Rand der Maske trennen dann nicht mehr);
+          // sonst gilt die Malreihenfolge. Einfache weiche Vereinigung ohne Kantenrichtung: deren Ableitungen rauschen an Knicken.
+          if (kWeiss > 0.0) {
+            float wFenster = 1e5;
+            for (int i = 0; i < 2; i++) { int c = fensterKanal[i]; if (c < 0) continue;
+              float w = d[c]; int t = traeger[c];
+              if (t >= 0) w = smax(w, d[t] + rand[c], kKlemme);
+              if (rv > 0.05) w = smax(w, sil + rv, min(kKlemme, rv));
+              wFenster = min(wFenster, max(w, -(i == 0 ? decktF0 : decktF1))); }
+            float U = smin(wBart, wFenster, kWeiss);
+            // Kantenglättung nach dem Gefälle: wo die Vereinigung Lücken schließt, ist sie kein Abstand mehr (Gefälle unter 1)
+            float gU = length(vec2(dFdx(U), dFdy(U)));
+            weiss = max(weiss, clamp(0.5 - U / clamp(gU, 0.5, 1.0), 0.0, 1.0) * (1.0 - deck(ueberBart))); }
           float spalt = 0.0;
           // Ohrspalt wie Florians Keil im Profil: weißer Streifen an der Kante des nahen Ohrs, nur im fernen Ohr; am Umriss des fernen
           // Ohrs am breitesten (dort offen zum Hintergrund), nach innen spitz auslaufend
@@ -296,9 +328,19 @@ export class FigurRenderer {
     if (teile.length > MAX_TEILE) throw new Error(`höchstens ${MAX_TEILE} Teile (${teile.length})`);
     const s = ansicht.massstab;
     const fl = szene.fluessig;
-    // Band: so breit, dass jede weiche Vereinigung, Klemme und Verdecken volle Abstände sieht
-    const groesst = Math.max(...Object.values(fl), ...szene.verdecker.map((v) => v.staerke), ...teile.map((t) => t.rand ?? 0), szene.ohrspalt?.auslauf ?? 0);
-    const R = Math.min(this.halbFloat ? 96 : 24, Math.max(16, groesst * s * 1.25 + 4));
+    // Band: so breit, dass jede weiche Vereinigung, Klemme und Verdecken volle Abstände sieht. Die Verschmelzung von Weiß braucht
+    // die größte Reichweite, aber nur ab dem ersten verschmelzenden Teil der Malreihenfolge (Fenster, Bart und was über ihnen liegt):
+    // Die Vierecke um die Strecken sind je Teil so groß wie nötig (sie bestimmen die Zeit des ersten Durchgangs; Bohne und Beine
+    // haben den längsten Umriss), kodiert wird für alle mit dem größten R.
+    const { weissWeiss, ...schwarzFl } = fl;
+    const groesst = Math.max(...Object.values(schwarzFl), ...szene.verdecker.map((v) => v.staerke), ...teile.map((t) => t.rand ?? 0), szene.ohrspalt?.auslauf ?? 0);
+    const grenze = this.halbFloat ? 96 : 24;
+    const rBasis = Math.min(grenze, Math.max(16, groesst * s * 1.25 + 4));
+    // mindestens k: Sättigt ein Feld innerhalb von k, verschiebt die weiche Vereinigung jede Kante des Barts
+    const rWeiss = Math.min(grenze, Math.max(rBasis, weissWeiss * s + 4));
+    const erster = teile.findIndex((t) => t.weiss && t.weissGruppe);
+    const reichweite = teile.map((_, i) => (erster >= 0 && i >= erster ? rWeiss : rBasis));
+    const R = Math.max(...reichweite, rBasis);
     this.letzte.R = R;
     const abb = (q: Punkt): Punkt => [(q[0] - ansicht.x0) * s, H - (q[1] - ansicht.y0) * s];
     const polys = teile.map((t) => {
@@ -315,7 +357,7 @@ export class FigurRenderer {
     // Strecken für Pass 1 und 3
     let zahl = 0;
     for (const p of polys) zahl += p.pts.length / 2;
-    const str = new Float32Array(zahl * 5);
+    const str = new Float32Array(zahl * 6);
     let o = 0;
     polys.forEach((p, ch) => {
       const v = p.pts;
@@ -327,6 +369,7 @@ export class FigurRenderer {
         str[o++] = v[2 * j2]!;
         str[o++] = v[2 * j2 + 1]!;
         str[o++] = ch;
+        str[o++] = reichweite[ch]!;
       }
     });
     this.letzte.strecken = zahl;
@@ -351,9 +394,10 @@ export class FigurRenderer {
     gl.uniform1f(this.ort(this.pStrecke, 'R'), R);
     const streckenAttribute = (p: WebGLProgram): number[] => [
       this.attr(p, 'ecke', this.bufQuad, 2, 0, 0, 0),
-      this.attr(p, 'pa', this.bufStr, 2, 20, 0, 1),
-      this.attr(p, 'pb', this.bufStr, 2, 20, 8, 1),
-      this.attr(p, 'kanal', this.bufStr, 1, 20, 16, 1),
+      this.attr(p, 'pa', this.bufStr, 2, 24, 0, 1),
+      this.attr(p, 'pb', this.bufStr, 2, 24, 8, 1),
+      this.attr(p, 'kanal', this.bufStr, 1, 24, 16, 1),
+      this.attr(p, 'reich', this.bufStr, 1, 24, 20, 1),
     ];
     let ls = streckenAttribute(this.pStrecke);
     gl.enable(gl.BLEND);
@@ -465,6 +509,18 @@ export class FigurRenderer {
     });
     gl.uniform1iv(this.ort(this.pBild, 'hinter'), hi);
     gl.uniform1fv(this.ort(this.pBild, 'hinterTiefe'), ht);
+    const wg = new Int32Array(MAX_TEILE);
+    teile.forEach((t, ch) => {
+      if (t.weiss && t.weissGruppe) wg[ch] = t.weissGruppe === 'bart' ? 1 : 2;
+    });
+    gl.uniform1iv(this.ort(this.pBild, 'weissGruppe'), wg);
+    const fk = new Int32Array([-1, -1]);
+    let fz = 0;
+    teile.forEach((t, ch) => {
+      if (t.weiss && t.weissGruppe === 'fenster' && fz < 2) fk[fz++] = ch;
+    });
+    gl.uniform1iv(this.ort(this.pBild, 'fensterKanal'), fk);
+    gl.uniform1f(this.ort(this.pBild, 'kWeiss'), fl.weissWeiss * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneBein'), fl.bohneBein * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneSchwanz'), fl.bohneSchwanz * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneKopf'), fl.bohneKopf * s);

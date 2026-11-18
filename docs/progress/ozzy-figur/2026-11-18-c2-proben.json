@@ -1,0 +1,354 @@
+{
+ "zeit": "2026-11-18T17:53:30.812Z",
+ "A": {
+  "front": {
+   "ansicht": "front",
+   "nurNeu": 523,
+   "nurVorlage": 435,
+   "schwarz": 254280,
+   "anteil": 0.0037675003932672643,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019408509803908252
+  },
+  "back": {
+   "ansicht": "back",
+   "nurNeu": 543,
+   "nurVorlage": 10,
+   "schwarz": 427575,
+   "anteil": 0.001293340349646261,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0003817254901960791
+  },
+  "logo": {
+   "ansicht": "logo",
+   "nurNeu": 676,
+   "nurVorlage": 471,
+   "schwarz": 297720,
+   "anteil": 0.0038526131936047294,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.00202208627450848
+  },
+  "profil": {
+   "ansicht": "profil",
+   "nurNeu": 595,
+   "nurVorlage": 393,
+   "schwarz": 307197,
+   "anteil": 0.0032161772413142053,
+   "deutlich": 1,
+   "deutlichAnteil": 0.0000032552401227876575,
+   "mittel": 0.0016394823529401307
+  },
+  "viertel": {
+   "ansicht": "viertel",
+   "nurNeu": 551,
+   "nurVorlage": 480,
+   "schwarz": 304414,
+   "anteil": 0.0033868350338683503,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019413686274497041
+  },
+  "lieg1": {
+   "ansicht": "lieg1",
+   "nurNeu": 537,
+   "nurVorlage": 478,
+   "schwarz": 266844,
+   "anteil": 0.0038037205258503095,
+   "deutlich": 13,
+   "deutlichAnteil": 0.000048717602794141894,
+   "mittel": 0.0018240666666654824
+  },
+  "lieg2": {
+   "ansicht": "lieg2",
+   "nurNeu": 673,
+   "nurVorlage": 429,
+   "schwarz": 329520,
+   "anteil": 0.0033442583151250304,
+   "deutlich": 19,
+   "deutlichAnteil": 0.00005765962612284535,
+   "mittel": 0.0018315843137243141
+  },
+  "sitz1": {
+   "ansicht": "sitz1",
+   "nurNeu": 638,
+   "nurVorlage": 440,
+   "schwarz": 286094,
+   "anteil": 0.0037679923381825553,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019277176470575393
+  },
+  "sitz2": {
+   "ansicht": "sitz2",
+   "nurNeu": 605,
+   "nurVorlage": 351,
+   "schwarz": 290588,
+   "anteil": 0.0032898812063815435,
+   "deutlich": 1,
+   "deutlichAnteil": 0.0000034412983330350877,
+   "mittel": 0.0015794235294107862
+  },
+  "logoWebKit": {
+   "ansicht": "logo",
+   "nurNeu": 86,
+   "nurVorlage": 283,
+   "schwarz": 298122,
+   "anteil": 0.001237748304385453,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0017277803921555116
+  },
+  "viertelWebKit": {
+   "ansicht": "viertel",
+   "nurNeu": 70,
+   "nurVorlage": 253,
+   "schwarz": 304668,
+   "anteil": 0.0010601704150091248,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0016375843137241808
+  }
+ },
+ "B1": {
+  "front": {
+   "ansicht": "front",
+   "spitzen": [],
+   "ausgelassen": 10,
+   "groesster": 0
+  },
+  "back": {
+   "ansicht": "back",
+   "spitzen": [],
+   "ausgelassen": 12,
+   "groesster": 0
+  },
+  "logo": {
+   "ansicht": "logo",
+   "spitzen": [],
+   "ausgelassen": 14,
+   "groesster": 0
+  },
+  "profil": {
+   "ansicht": "profil",
+   "spitzen": [],
+   "ausgelassen": 13,
+   "groesster": 0
+  },
+  "viertel": {
+   "ansicht": "viertel",
+   "spitzen": [],
+   "ausgelassen": 12,
+   "groesster": 0
+  },
+  "lieg1": {
+   "ansicht": "lieg1",
+   "spitzen": [],
+   "ausgelassen": 10,
+   "groesster": 0
+  },
+  "lieg2": {
+   "ansicht": "lieg2",
+   "spitzen": [],
+   "ausgelassen": 9,
+   "groesster": 0
+  },
+  "sitz1": {
+   "ansicht": "sitz1",
+   "spitzen": [
+    {
+     "teil": "kopfB",
+     "anker": 5,
+     "versatz": -0.084
+    }
+   ],
+   "ausgelassen": 11,
+   "groesster": 0.084
+  },
+  "sitz2": {
+   "ansicht": "sitz2",
+   "spitzen": [],
+   "ausgelassen": 11,
+   "groesster": 0
+  }
+ },
+ "B2": {
+  "drehen": {
+   "zahlen": [
+    2736,
+    1171,
+    1069,
+    1062,
+    1202,
+    1454,
+    1606,
+    1621,
+    1610,
+    1935,
+    2317,
+    2848,
+    3666
+   ],
+   "enden": 3666,
+   "schlimmstes": 2848
+  },
+  "kopf": {
+   "zahlen": [
+    3118,
+    1195,
+    1067,
+    1063,
+    1205,
+    1447,
+    1603,
+    1630,
+    1603,
+    1914,
+    2320,
+    2845,
+    3670
+   ],
+   "enden": 3670,
+   "schlimmstes": 2845
+  },
+  "koerper": {
+   "zahlen": [
+    2833,
+    2899,
+    2900,
+    2949,
+    2958,
+    3000,
+    3030,
+    3190,
+    3254,
+    3270,
+    3293,
+    3288,
+    3273
+   ],
+   "enden": 3273,
+   "schlimmstes": 3293
+  }
+ },
+ "C1": {
+  "drehen@0=front": {
+   "ansicht": "front",
+   "nurNeu": 392,
+   "nurVorlage": 566,
+   "schwarz": 241096,
+   "anteil": 0.003973520921126854,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0018782235294105526
+  },
+  "drehen@45=viertel": {
+   "ansicht": "viertel",
+   "nurNeu": 592,
+   "nurVorlage": 481,
+   "schwarz": 290546,
+   "anteil": 0.00369304688414227,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0018686431372536587
+  },
+  "drehen@90=profil": {
+   "ansicht": "profil",
+   "nurNeu": 505,
+   "nurVorlage": 452,
+   "schwarz": 307197,
+   "anteil": 0.003115264797507788,
+   "deutlich": 2,
+   "deutlichAnteil": 0.000006510480245575315,
+   "mittel": 0.001646003921567656
+  },
+  "kopf@0=logo": {
+   "ansicht": "logo",
+   "nurNeu": 561,
+   "nurVorlage": 539,
+   "schwarz": 285138,
+   "anteil": 0.0038577811445685947,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019726705882340857
+  },
+  "kopf@90=profil": {
+   "ansicht": "profil",
+   "nurNeu": 532,
+   "nurVorlage": 431,
+   "schwarz": 307164,
+   "anteil": 0.00313513302340118,
+   "deutlich": 1,
+   "deutlichAnteil": 0.000003255589847768619,
+   "mittel": 0.0016481450980382524
+  },
+  "koerper@0=front": {
+   "ansicht": "front",
+   "nurNeu": 394,
+   "nurVorlage": 577,
+   "schwarz": 251699,
+   "anteil": 0.003857782510061621,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019480039215672973
+  },
+  "koerper@90=logo": {
+   "ansicht": "logo",
+   "nurNeu": 558,
+   "nurVorlage": 548,
+   "schwarz": 297720,
+   "anteil": 0.003714899905951901,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.002041847058822184
+  }
+ },
+ "B4": {
+  "chrome": {
+   "logo": {
+    "median": 7.699999809265137,
+    "p95": 11.699999809265137,
+    "gpuMedian": 11.914916,
+    "strecken": 1901,
+    "R": 67.0902727839302,
+    "renderer": "WebKit WebGL"
+   },
+   "drehen": {
+    "median": 8.700000286102295,
+    "p95": 13.300000190734863,
+    "gpuMedian": 4.50725,
+    "strecken": 2049,
+    "R": 65.74055829228243,
+    "renderer": "WebKit WebGL"
+   }
+  },
+  "webkit": {
+   "logo": {
+    "median": 8,
+    "p95": 12,
+    "gpuMedian": null,
+    "strecken": 1901,
+    "R": 67.0902727839302,
+    "renderer": "WebKit WebGL"
+   },
+   "drehen": {
+    "median": 9,
+    "p95": 15,
+    "gpuMedian": null,
+    "strecken": 2049,
+    "R": 65.74055829228243,
+    "renderer": "WebKit WebGL"
+   }
+  }
+ },
+ "bestanden": {
+  "A": true,
+  "B1": true,
+  "B2": true,
+  "C1": true
+ },
+ "fehlerChrome": [],
+ "fehlerWebKit": []
+}

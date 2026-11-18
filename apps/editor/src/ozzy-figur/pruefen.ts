@@ -2,8 +2,9 @@
 // apps/editor/scripts/ozzy-figur/proben.mjs. Jede Messung zeichnet selbst und liest das Bild sofort (preserveDrawingBuffer).
 import { abflachen, type Form, type Punkt } from './form';
 import { type Ansicht, type Diagnose, EXAKT, type FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
-import type { Regeln } from './szenen';
+import { REGELN, type Regeln } from './szenen';
 import { koerperUrsprung } from './raster';
+import { drehLage, type Drehung, rasterVon } from './szenen';
 import { type AnsichtName, type FigurDaten } from './vorlagen/import';
 
 type SzenenName = AnsichtName | 'drehen' | 'kopf' | 'koerper';
@@ -30,10 +31,11 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     for (let y = 0; y < h; y++) px.set(roh.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4);
     return { px, w, h };
   };
-  const zeigen = (name: SzenenName, t: number, fluessig: boolean, diagnose: Diagnose, w: number, h: number): Ansicht => {
+  const zeigen = (name: SzenenName, t: number, fluessig: boolean, diagnose: Diagnose, w: number, h: number, regeln?: Partial<Regeln>, fl?: Partial<Fluessig>): Ansicht => {
     r.groesse(w, h);
     const a = k.einpassen(name, w, h, 0, Math.round(w * 0.03));
-    r.zeichne(k.szeneBauen(name, t, fluessig ? FLUESSIG : EXAKT), a, diagnose);
+    const basis = fluessig ? FLUESSIG : EXAKT;
+    r.zeichne(k.szeneBauen(name, t, { ...basis, ...(fl ?? {}) }, regeln ? ({ ...REGELN, ...regeln } as Regeln) : undefined), a, diagnose);
     return a;
   };
   const svgBild = async (text: string, a: Ansicht, w: number, h: number): Promise<Uint8ClampedArray> => {
@@ -69,6 +71,8 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     daten: k.daten,
     zeigen,
     bild: (): string => r.canvas.toDataURL('image/png'),
+    /** Teile einer Drehung (Körperkoordinaten, Malreihenfolge) für Prüfbilder ohne Grafikkarte */
+    rasterTeile: (art: Drehung, t: number) => rasterVon(k.daten).teile(drehLage(art, t)).map((x) => ({ name: x.name, weiss: x.weiss, form: x.form })),
     /** Ausschnitt des letzten Bilds in Figur-Einheiten, vergrößert */
     ausschnitt(a: Ansicht, x0: number, y0: number, x1: number, y1: number, faktor = 4): string {
       const sx = (x0 - a.x0) * a.massstab, sy = (y0 - a.y0) * a.massstab, sw = (x1 - x0) * a.massstab, sh = (y1 - y0) * a.massstab;
@@ -209,14 +213,14 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     },
 
     /** B: Tempo je Bild (Szene bauen, zeichnen, auf die Grafikkarte warten) */
-    tempo(name: SzenenName, t: number, fluessig: boolean, n = 120, w = 1000, h = 1000) {
+    tempo(name: SzenenName, t: number, fluessig: boolean, n = 120, w = 1000, h = 1000, fl?: Partial<Fluessig>) {
       r.groesse(w, h);
       const a = k.einpassen(name, w, h, 0, 30);
       const z: number[] = [];
       const gpu: number[] = [];
       for (let i = 0; i < n; i++) {
         const t0 = performance.now();
-        r.zeichne(k.szeneBauen(name, (t + i * 0.003) % 1, fluessig ? FLUESSIG : EXAKT), a, 0);
+        r.zeichne(k.szeneBauen(name, (t + i * 0.003) % 1, { ...(fluessig ? FLUESSIG : EXAKT), ...(fl ?? {}) }), a, 0);
         r.warten();
         z.push(performance.now() - t0);
         if (Number.isFinite(r.letzte.gpuMs)) gpu.push(r.letzte.gpuMs);

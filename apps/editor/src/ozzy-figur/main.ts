@@ -110,6 +110,7 @@ function aufbauen(): void {
       ${regler('kopfOhr', 'Kopf – Ohr', 30, zustand.fl.kopfOhr)}
       ${regler('ohrOhr', 'Ohr – Ohr', 30, zustand.fl.ohrOhr)}
       ${regler('kopfNase', 'Kopf – Nase', 30, zustand.fl.kopfNase)}
+      ${regler('weissWeiss', 'Weiß – Weiß', 60, zustand.fl.weissWeiss)}
       ${regler('klemme', 'Klemme weich', 12, zustand.fl.klemme)}
     </div>
     <div id="regelRegler">

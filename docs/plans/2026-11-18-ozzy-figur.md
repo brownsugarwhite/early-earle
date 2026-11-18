@@ -212,3 +212,12 @@ Raster für Körper (0°/45°/90°) und Kopf (0°/45°/90°) aus seinen Dateien,
 mit verdeckten Schlüsseln, weiches „Dahinter“ im Renderer. Probe C1 (neu): An jedem Schlüsselwinkel trifft das Raster seine Vorlage
 genau (bestanden, 0,000–0,001 %). Noch nicht gebaut: 90° → 180° (Rückseite), Nicken, Posen (Etappe D).
 
+
+## 10. Etappe C, zweiter Teil (Nachtrag 18.11. spätabends)
+
+Florians zweite Rückmeldung (Zacken am Kopf zwischen 45° und 100°, Wulst Bohne–Bein, Schwanzweiß, Weiß von Vorderbein und Kopf
+verschmelzen, Verjüngung im Gesicht „super smooth“) ist in der Übergabe beantwortet. Gebaut: Vereinigung nach Kantenrichtung (keine
+Wulst), schrumpfendes Schwanzweiß, Verschmelzen von Bart und Vorderbeinfenstern wie Tropfen (Regler „Weiß – Weiß“, Reichweite der
+Felder je Teil, damit es nur etwa 1 ms kostet), Führung der Fransenspitzen zwischen 45° und 90°. Offen und als nächster Schritt
+vorgeschlagen: die Anker der fernen Kopfseite im Profil-Schlüssel in die Reihenfolge des 3/4 legen (fünf Stücke kehren sonst ihre
+Sehne um; Mischen allein hielt in fünf Versuchen nicht).

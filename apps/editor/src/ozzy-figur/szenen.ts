@@ -28,6 +28,13 @@ export function gruppeVon(name: TeilName): Gruppe {
   return 'sonst';
 }
 
+/** Weiß, das verschmilzt (Florian, 18.11.): der Bart mit den Fenstern der Vorderbeine; die Hinterbeine bleiben, wie gezeichnet */
+export function weissGruppeVon(name: TeilName): 'bart' | 'fenster' | undefined {
+  if (name === 'bartA' || name === 'bartB') return 'bart';
+  if (name === 'fensterRV' || name === 'fensterLV') return 'fenster';
+  return undefined;
+}
+
 interface Roh {
   name: TeilName;
   weiss: boolean;
@@ -38,6 +45,8 @@ export function renderTeile(liste: Roh[]): RenderTeil[] {
   const index = new Map(liste.map((t, i) => [t.name, i]));
   return liste.map((t) => {
     const r: RenderTeil = { name: t.name, weiss: t.weiss, gruppe: gruppeVon(t.name), form: t.form };
+    const wg = weissGruppeVon(t.name);
+    if (wg) r.weissGruppe = wg;
     if (t.name === 'schwanzW') {
       const s = index.get('schwanz');
       if (s !== undefined) {
