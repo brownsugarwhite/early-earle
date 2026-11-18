@@ -1,9 +1,19 @@
 # Ozzy nach deinem ersten Test: Ursachen und Plan
 
-**Stand: Entwurf vom 18.11.2026, vormittags. Nicht freigegeben, nichts davon gebaut.** Du hast am Morgen getestet und gebeten: alles
+**Stand: 18.11.2026, mittags. Schritt 2 (Rest) und Schritt 4 (Teil 1) sind gebaut, alles andere wartet (Tabelle gleich unten).** Du hast am Morgen getestet und gebeten: alles
 ansehen, die Ursachen suchen, nur einen Plan vorstellen. Deine vier Bildschirmfotos liegen in
 [`docs/look/ozzy/2026-11-18-florian-test/`](../look/ozzy/2026-11-18-florian-test/). Gemessen ist auf deinem Mac, im Testbrowser
 (Fenster 1440 × 900, doppelte Dichte, höchstens 60 Bilder je Sekunde); dein Bildschirm hat 120 Bilder, also 8,3 ms je Bild.
+
+## Stand nach deinen Antworten (18.11., mittags)
+
+| Schritt | Dein Wort | Stand |
+| --- | --- | --- |
+| 1 Aufblasen | „meine formen waren mit linie … vllt muss ich das nochmal genau testen und erörtern wie es genau ohne linie aussehen sollte … und ob schon edgeloops vorgezeichnet sein sollen an den optimalen stellen.“ | **nicht gebaut, wartet auf dich.** Der Vergleich mit 5197 ([`2026-11-18-vergleich-5197-ozzy.md`](../research/2026-11-18-vergleich-5197-ozzy.md)) hat den Schritt geschärft: Die Rechnung ist dieselbe wie in Sitzung 4; fragil ist die frisch aufgeblasene Form (zehnmal gröberes Netz, eine Linie), und mein Rückschritt aus C1 gilt auch mit Linie. Vorgezeichnete Loops halten die Form (ein Lauf: fünf Loops rundum). Neue Reihenfolge im Schritt: erst die Sicherung wiederherstellen, dann das Netz der frischen Form, dann die Loops (deine Entscheidung, mit Bild). |
+| 2 Vier Ansichten | „schieben kannst du erstmal so lassen. … Den rest von 2 kannst du machen“ | **gebaut** (`6e8c5d00`): In den Vier Ansichten rastet das Feld des Raums nicht mehr ein. Das Schieben bleibt bei Leertaste + Ziehen. |
+| 3 Seifenhaut im Zug | „Es ist nicht nur das eckige. Das mesh wirkt einfach viel fragiler als in der version auf 5197.“ | Vergleich geliefert (oben). Die Dehnung der Seifenhaut (weicher, schneller ruhig) ist nicht gebaut und wartet auf dein Ja; sie gilt unabhängig von Schritt 1, die eckigen Flecken sind an deinen gesicherten Formen gemessen. |
+| 4 Ein Look überall | „ok bitte aber exakt. Mit ganz smooth verjüngenden outlines.“ | **Teil 1 gebaut** (`d727e24e`): Messlatte als Probe (`ozzy-look-messen.mjs`); der Umriss der eingerasteten Seite ist so breit wie in der Vorlage (1,9 gegen 1,8 Gerätepunkte, vorher 2,5; Bild [`2026-11-18-umriss-seite-vorher-nachher.png`](../progress/ozzy/2026-11-18-umriss-seite-vorher-nachher.png)). **Die Wände: Entwurf als Bild** ([`2026-11-18-waende-entwurf.png`](../progress/ozzy/2026-11-18-waende-entwurf.png)), gebaut wird zusammen mit Schritt 5, weil drei weiße Körper an den Wänden das Drehen sonst teurer machen. |
+| 5 Flüssig drehen | „Wie behebst du das?“ | erklärt im Abschnitt zu Schritt 5 und in der Antwort; nicht gebaut, wartet auf dein Ja. |
 
 ## Kurz
 
@@ -148,15 +158,21 @@ ab; innere Konturen und verdeckte Linien wie dort. Dann dein Auge. **Aufwand:** 
 - **Last:** Jede Zeigerbewegung zeichnet ein volles Bild samt Seifenhaut (bis 120 je Sekunde); nach jedem Zug laufen 5 bis 6 s
   Bilder weiter (das Abklingen aus Schritt 3); dazu rechnet nach jedem Zug der Hintergrund. In Ruhe zeichnet Ozzy nichts.
 
-**Was ich bauen würde:**
+**Wie ich es behebe** (deine Frage vom 18.11. mittags):
 
-1. **Der Zeiger allein kostet keine Seifenhaut:** Bewegt sich nur der Zeiger (nicht über der Blase), wird nur die Linienfläche neu
-   gezeichnet.
-2. **Wände beim Drehen fast umsonst** (mit Schritt 4, Punkt 2).
-3. **Seifenhaut groß im Bild:** die fünf Durchgänge einzeln messen und herausnehmen, was man nicht sieht (Kriterium: Bild gleich).
-   Nicht gröber zeichnen.
-4. **Aufklappen vorbereiten:** was das Aufklappen braucht, in der Ruhe davor anlegen, sodass kein Bild aus dem Takt fällt.
-5. **Gleichmäßiger Takt:** Braucht ein Bild doch länger, lieber gleichmäßig jedes zweite als abwechselnd.
+1. **Der Zeiger allein kostet keine Seifenhaut.** Ozzy hat zwei Zeichenflächen übereinander: unten die Seifenhaut, oben Linien und
+   Zeiger. Heute werden bei jeder Zeigerbewegung beide neu gezeichnet. Künftig nur die obere, solange sich an der Seifenhaut nichts
+   ändert (der Zeiger liegt nicht über der Blase, nichts dreht sich, nichts klingt nach).
+2. **Die Wände sind beim Drehen fast umsonst.** Was an einer Wand steht, hängt nur von der Form ab, nicht vom Blick. Jede Wand wird
+   einmal als Bild gezeichnet (weißer Körper, Umriss, Linien: der Look aus Schritt 4) und beim Drehen nur noch als Bild an ihre
+   Wand gelegt. Neu gezeichnet wird sie, wenn sich die Form ändert oder du an dieser Wand arbeitest.
+3. **Die Seifenhaut groß im Bild.** Sie wird in fünf Durchgängen gezeichnet. Ich messe jeden einzeln und nehme heraus oder
+   vereinfache, was man im Bild nicht sieht (Kriterium: das Bild bleibt gleich). Gröber gezeichnet wird sie nicht.
+4. **Das Aufklappen wird vorbereitet.** Das eine Bild von 105 ms entsteht, weil im ersten Bild des Aufklappens die glatte Haut in
+   voller Feinheit und die Zeichnungen der drei Wände zum ersten Mal angelegt werden. Beides lege ich in der Ruhe davor an (sobald
+   die Form steht), auf mehrere Bilder verteilt.
+5. **Gleichmäßiger Takt.** Braucht ein Bild doch länger als ein Takt, zeigt Ozzy gleichmäßig jedes zweite, statt zwischen einem und
+   zwei Takten zu wechseln; das ist es, was man als Stocken sieht.
 
 **Kriterium (ich teste es, an „strange bird“ und „teat firefish“ in deiner Fenstergröße):** Drehen im Raum mit Schwung: Grafikkarte
 und Prozessor zusammen in 95 % der Bilder unter 8,3 ms in gewöhnlicher Größe; Aufklappen und zurück ohne ein Bild über 25 ms; Zeiger
@@ -187,12 +203,15 @@ bis dahin gibt (geschätzt drei bis vier statt zwei bis drei Tage). Schritt 1 di
 beginnt jede neue Form unsicher, und angefügte Teile beginnen wie eine neue Form. Die Schritte 2 bis 5 betreffen die Anzeige von
 Ozzy, nicht den Kern; sie können auch neben der neuen Sitzung laufen.
 
-## Fragen an dich
+## Fragen an dich (Stand 18.11., mittags)
 
-1. **Freigabe und Reihenfolge:** alle fünf Schritte hier, dann die neue Sitzung? Oder nur Schritt 1 und 2 hier, dann die neue
-   Sitzung, und 3 bis 5 laufen daneben?
-2. **Trackpad:** zwei Finger schieben, Pinch zoomt (heute zoomen zwei Finger)?
-3. **Zur Kontrolle, nicht dringend:** Stand bei deinem Test im Menü „mit Linie“ an?
+1. **Schritt 1, die Sicherung:** Soll ich meinen Rückschritt aus der Nacht gleich beheben (ein Ergebnis, das die Form verliert, wird
+   wieder verworfen; ohne Linien rechnet der Löser nie)? Das ist klein und unabhängig davon, wie du „ohne Linie“ und die
+   vorgezeichneten Loops entscheidest.
+2. **Schritt 1, Loops vorzeichnen:** Willst du dazu ein Bild mit zwei, drei Fassungen an deinen Delfinen (wenige Loops an den
+   dicksten Stellen und Engstellen; dazu je Flosse einer)?
+3. **Schritt 5 und die Wände aus Schritt 4:** Ja zum Weg, wie er unter Schritt 5 steht?
+4. **Schritt 3 (Seifenhaut im Zug):** Ja?
 
 ## Anhang: die nachgezeichneten Silhouetten (zum Nachstellen)
 
