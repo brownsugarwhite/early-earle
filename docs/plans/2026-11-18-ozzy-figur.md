@@ -1,6 +1,7 @@
 # Plan: Ozzy-Figur, 2,5D-Bewegungswerkzeug mit Physik (18.11.2026)
 
-**Stand: Entwurf zur Freigabe.** Gebaut ist noch nichts außer den Proben dieses Plans. Recherche:
+**Stand: freigegeben (Florian, 18.11.: „Ja, A und B bauen“); Etappen A und B gebaut**, Ergebnis in Abschnitt 8 und in der
+Übergabe [`docs/look/ozzy-figur/UEBERGABE.md`](../look/ozzy-figur/UEBERGABE.md). Recherche:
 [`docs/research/2026-11-18-ozzy-figur-recherche.md`](../research/2026-11-18-ozzy-figur-recherche.md). Vorlagen:
 `docs/look/ozzy-figur/vorlagen/` (Florians sechs SVGs vom 18.11.). Prüfbilder: `docs/progress/ozzy-figur/2026-11-18-t*.png`.
 Proben zum Nachrechnen: `apps/editor/scripts/ozzy-figur/tests/` (README dort). Zweig `claude/ozzy-animation-physics-294508`,
@@ -191,3 +192,16 @@ dann D und E, dann F. Jede Etappe wird committet und gepusht; die Übergabe steh
 
 - **Freigabe dieses Wegs** (2,5D mit deinen SVGs, eigene Physik; nicht 3D, nicht Rive) und der Etappen A und B als nächsten Block.
 - Später, wenn du magst: Vorlagen für Sitzen oder Springen. Nötig sind sie nicht; ich leite sie aus deinen Posen ab, du korrigierst.
+
+## 8. Stand der Etappen (Nachtrag 18.11. abends)
+
+- **A gebaut und bestanden:** Import mit Bericht (`docs/look/ozzy-figur/import-bericht.md`), alle sechs Vorlagen im exakten Modus
+  0,000–0,006 % deutlich abweichend. Das Kriterium misst jetzt deutliche Unterschiede (|Δ| > 0,5); 0,1–0,4 % Kantenpixel kippen nur,
+  weil Chrome Kanten anders glättet (WebKit 0,12 %).
+- **B gebaut:** B1 (Spitzen ≤ 0,19 Bildpunkte), B2 (kein Weiß-Leck beim Drehen) und B4 (Mac 2–3,6 ms je Bild mit Warten, Chrome und
+  WebKit) bestanden. **B3 nicht bestanden:** Der automatische Ohrspalt verjüngt sich richtig, deckt sich aber nur zu 25 % mit
+  Florians sichtbarem Keil. Das Kriterium habe ich nach genauem Blick auf seinen Keil angepasst: Er ist zum Hintergrund hin offen
+  und läuft nach innen spitz aus (vorher hieß es „an beiden Enden spitz“). **Folge für C:** Sein Keil wird Teil des
+  Profil-Schlüssels und morpht mit; der automatische Spalt bleibt Rückfall für Ohren, die die Physik bewegt.
+- **Offen vor C:** Florians Messung auf dem iPhone und sein Blick auf die Stärken je Paar (Übergabe, Abschnitt „Offen“).
+

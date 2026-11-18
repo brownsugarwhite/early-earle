@@ -58,6 +58,13 @@
       "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/maskottchen", "--filter", "@ee/editor", "exec", "vite", "--port", "5207", "--strictPort"],
       "port": 5207,
       "url": "http://localhost:5207"
+    },
+    {
+      "name": "ozzy-figur",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508", "--filter", "@ee/editor", "exec", "vite", "--port", "5213", "--strictPort", "--host"],
+      "port": 5213,
+      "url": "http://localhost:5213"
     }
   ]
 }

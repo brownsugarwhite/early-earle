@@ -1,0 +1,183 @@
+/* Ozzy Figur (18.11.2026): Werkzeug für das Maskottchen, Designsystem „liquid drop“ wie der Editor:
+   Papier, Tinte, Haarlinien, Lobster für Namen und Überschriften. */
+@font-face {
+  font-family: 'Lobster';
+  src: url('../../../../assets/fonts/lobster/Lobster-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+:root {
+  --tinte: #1f1a17;
+  --leise: rgba(31, 26, 23, 0.46);
+  --haar: rgba(31, 26, 23, 0.16);
+  --hauch: rgba(31, 26, 23, 0.05);
+  --papier: #ffffff;
+  --gruen: #b9d1b4;
+  --feder: cubic-bezier(0.22, 1.18, 0.36, 1);
+  --leiste: 300px;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 12px/1.45 system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#kopfzeile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: var(--leiste);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 20px;
+  z-index: 3;
+  pointer-events: none;
+}
+#kopfzeile h1 {
+  margin: 0;
+  font: 400 30px/1 'Lobster', Georgia, serif;
+  white-space: nowrap;
+}
+#kopfzeile h1 span {
+  color: var(--leise);
+}
+#tempo {
+  color: var(--leise);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: pre;
+}
+#buehne {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: var(--leiste);
+  bottom: 0;
+}
+#buehne canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#oben {
+  pointer-events: none;
+}
+#leiste {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--leiste);
+  border-left: 1px solid var(--haar);
+  padding: 16px 16px 40px;
+  overflow-y: auto;
+  background: var(--papier);
+}
+#leiste h2 {
+  margin: 18px 0 8px;
+  font: 400 19px/1.1 'Lobster', Georgia, serif;
+}
+#leiste h2:first-child {
+  margin-top: 4px;
+}
+.knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.knopf {
+  appearance: none;
+  border: 1px solid var(--haar);
+  background: var(--papier);
+  color: var(--tinte);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 260ms var(--feder);
+}
+.knopf:hover {
+  border-color: var(--leise);
+}
+.knopf.an {
+  background: var(--tinte);
+  border-color: var(--tinte);
+  color: var(--papier);
+}
+.knopf:active {
+  transform: scale(0.96);
+}
+.regler {
+  display: grid;
+  grid-template-columns: 96px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.regler input[type='range'] {
+  width: 100%;
+  accent-color: var(--tinte);
+}
+.regler output {
+  text-align: right;
+  color: var(--leise);
+  font-variant-numeric: tabular-nums;
+}
+.schalter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+  cursor: pointer;
+}
+.schalter input {
+  accent-color: var(--tinte);
+}
+.hinweis {
+  color: var(--leise);
+  margin: 6px 0 0;
+}
+#bericht {
+  margin: 6px 0 0;
+  padding: 0 0 0 14px;
+  color: var(--leise);
+}
+#bericht li {
+  margin: 3px 0;
+}
+@media (max-width: 760px) {
+  :root {
+    --leiste: 0px;
+  }
+  #buehne {
+    bottom: 46vh;
+  }
+  #leiste {
+    top: auto;
+    left: 0;
+    width: auto;
+    height: 46vh;
+    border-left: 0;
+    border-top: 1px solid var(--haar);
+  }
+  #kopfzeile {
+    right: 0;
+  }
+}
