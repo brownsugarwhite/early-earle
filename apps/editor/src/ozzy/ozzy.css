@@ -170,6 +170,10 @@ body.wende-an #hinweis {
   opacity: 0.26;
   cursor: default;
 }
+/* Verschmelzen und Abziehen stehen erst in der Leiste, wenn es mehr als ein Objekt gibt */
+#leiste .werkzeug[hidden] {
+  display: none;
+}
 #leiste .klapp-pfeil {
   position: absolute;
   right: 0;

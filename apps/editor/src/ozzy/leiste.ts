@@ -29,6 +29,19 @@ const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' 
 /** das Plus: ein neues Objekt */
 const PLUS_ZEICHEN = '<path d="M10 4.4v11.2M4.4 10h11.2" />';
 const PLUS_NAME = 'Neues Objekt (+): Das Blatt der Seite öffnet sich, die vorhandenen Objekte stehen blass darin; zeichnen, ↩ bläst es auf';
+/**
+ * Verschmelzen und Abziehen (Etappe 4): zwei Kreise, ein großer und ein kleiner oben rechts. Verschmelzen zeigt ihren gemeinsamen
+ * Umriss, Abziehen den großen mit dem Biss des kleinen (der kleine als feine Linie). Zu sehen erst mit mehr als einem Objekt.
+ */
+export type NahtKnopf = 'vereinen' | 'abziehen';
+const NAHT_ZEICHEN: Record<NahtKnopf, string> = {
+  vereinen: '<path d="M13.82 9.99A5.6 5.6 0 1 1 10.24 6.11A3.4 3.4 0 1 1 13.82 9.99z" />',
+  abziehen: '<path d="M13.82 9.99A5.6 5.6 0 1 1 10.24 6.11A3.4 3.4 0 0 0 13.82 9.99z" /><path d="M10.24 6.11A3.4 3.4 0 1 1 13.82 9.99" class="duenn" />',
+};
+const NAHT_NAMEN: Record<NahtKnopf, string> = {
+  vereinen: 'Verschmelzen: Das gewählte Objekt und das, das es berührt, werden eine Form; an der Naht entsteht eine Linie mit Kante (K macht sie weich, ⌘Z trennt wieder)',
+  abziehen: 'Abziehen: Das gewählte Objekt wird aus dem herausgeschnitten, das es berührt; der Rand ist eine Linie mit Kante (K macht sie weich, ⌘Z holt es zurück)',
+};
 
 /**
  * Der Spiegel-Knopf (18.11., Florian: „einen multifunktionsknopf für den mirrormodifier … mirror an, mirror aus, mirror an mit
@@ -113,6 +126,8 @@ export class Leiste {
   private form: 'ellipse' | 'wuerfel' = 'ellipse';
   private aktiv: Werkzeug = 'p';
   private plusKnopf!: HTMLButtonElement;
+  private nahtKnoepfe = new Map<NahtKnopf, HTMLButtonElement>();
+  private nahtStand = '';
   private spiegelKnoepfe = new Map<SpiegelZustand, HTMLButtonElement>();
   private spiegelTropfen!: HTMLDivElement;
   private spiegelStand = '';
@@ -129,6 +144,7 @@ export class Leiste {
     private muell: () => void,
     private spiegel: (z: SpiegelZustand, alt: boolean) => void = () => {},
     private plus: () => void = () => {},
+    private naht: (art: NahtKnopf) => void = () => {},
   ) {
     const el = document.createElement('nav');
     el.id = 'leiste';
@@ -184,6 +200,21 @@ export class Leiste {
     plusEl.addEventListener('click', () => this.plus());
     el.append(plusEl);
     this.plusKnopf = plusEl;
+    // Verschmelzen und Abziehen (Etappe 4): erst zu sehen, wenn es mehr als ein Objekt gibt
+    for (const art of ['vereinen', 'abziehen'] as const) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'werkzeug';
+      b.id = `naht-${art}`;
+      b.title = NAHT_NAMEN[art];
+      b.setAttribute('aria-label', NAHT_NAMEN[art]);
+      b.append(zeichen2(NAHT_ZEICHEN[art]));
+      b.hidden = true;
+      b.toggleAttribute('disabled', true);
+      b.addEventListener('click', () => this.naht(art));
+      el.append(b);
+      this.nahtKnoepfe.set(art, b);
+    }
     const gruppe = document.createElement('span');
     gruppe.className = 'spiegel-gruppe';
     gruppe.id = 'spiegel';
@@ -280,6 +311,23 @@ export class Leiste {
   /** das Plus an oder aus (ein neues Objekt gibt es nur im Raum, wenn schon eine Form steht) */
   plusErlauben(an: boolean): void {
     this.plusKnopf.toggleAttribute('disabled', !an);
+  }
+
+  /** Verschmelzen und Abziehen: zu sehen (mit mehr als einem Objekt) und an (das gewählte Objekt berührt ein anderes) */
+  nahtZeigen(sichtbar: boolean, an: boolean): void {
+    const stand = `${sichtbar}|${an}`;
+    if (stand === this.nahtStand) return;
+    const sichtWechsel = this.nahtStand.split('|')[0] !== String(sichtbar);
+    this.nahtStand = stand;
+    for (const b of this.nahtKnoepfe.values()) {
+      b.hidden = !sichtbar;
+      b.toggleAttribute('disabled', !an);
+    }
+    // (die Leiste ist breiter oder schmaler geworden: Der Tropfen unter dem Werkzeug und der des Spiegels sitzen neu)
+    if (sichtWechsel) {
+      this.setzen(this.aktiv, true);
+      this.spiegelStand = '';
+    }
   }
 
   /** die Zeichenwerkzeuge an oder aus (im Raum wirken sie erst mit dem Werk) */

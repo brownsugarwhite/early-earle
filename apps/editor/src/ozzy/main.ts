@@ -532,6 +532,8 @@ type Ruhend = {
   stand: werk.ObjektStand;
   form: { stand: number; zurueck: number; geladen?: string; ohneLinie?: boolean };
   marken: { n: number; clipping: boolean; spiegelbild: boolean }[];
+  /** die Objekte, die es aufgenommen hat (verschmolzen, abgezogen): ⌘Z hinter den Schritt gibt sie wieder heraus */
+  naehte: NahtMarke[];
   koerper: Koerper | null;
   zeichnung: ReturnType<Blatt['netzKopie']>;
   /** seine grobe Haut im Raum, für Treffer: Lagen (3 je Punkt), Dreiecke; ob auch sein Spiegelbild zu treffen ist */
@@ -539,7 +541,15 @@ type Ruhend = {
   /** sein Kasten im Raum: Mitte und halbe Maße (die Tiefe gilt nach beiden Seiten der Spiegelebene) */
   kasten: { cx: number; cy: number; rx: number; ry: number; tiefe: number };
 };
+/**
+ * Etappe 4: Das aktive Objekt hat ein anderes aufgenommen (verschmolzen oder abgezogen). `n`: so viele Schritte hatte das Werk davor;
+ * ein ⌘Z dahinter gibt `teil` wieder heraus (es ruht dann wie zuvor) und stellt den Spiegel von davor zurück.
+ */
+type NahtMarke = { n: number; teil: Ruhend; clipping: boolean; spiegelbild: boolean };
 const ruhende: Ruhend[] = [];
+const nahtMarken: NahtMarke[] = [];
+/** läuft gerade ein Verbinden (beim ersten Mal lädt die Bibliothek einen Augenblick)? */
+let nahtLaeuft = false;
 let aktivId = 1;
 /** wie deutlich die ruhenden Objekte zu sehen sind (auf dem Blatt blass), weich nachgeführt */
 let ruheSicht = 1;
@@ -637,6 +647,7 @@ function objektAblegenJetzt(): Ruhend | null {
     stand,
     form: werkForm,
     marken: spiegelMarken.splice(0),
+    naehte: nahtMarken.splice(0),
     koerper,
     zeichnung: blatt.netzKopie(),
     treffer: { pos, tri: Uint32Array.from(werk.haut.tri), spiegelbild: werkHaut.spiegelbild },
@@ -655,6 +666,8 @@ function objektAufnehmenJetzt(r: Ruhend): void {
   aktivId = r.id;
   spiegelMarken.length = 0;
   spiegelMarken.push(...r.marken);
+  nahtMarken.length = 0;
+  nahtMarken.push(...r.naehte);
   spiegelFahrt = null;
   blatt.netzSetzen(r.zeichnung);
   silhouette = blatt.silhouette();
@@ -807,6 +820,151 @@ function objektLoeschen(): boolean {
   werk.G.meldung = `Form ${weg} gelöscht`;
   return true;
 }
+
+// ---------- Naht zwischen zwei Objekten (18.11., Plan „Objekte, Spiegel und Nähte“, Etappe 4) ----------
+
+/** die Spanne eines ruhenden Objekts quer zur Spiegelebene (aus seiner groben Haut, einmal gerechnet) */
+const zSpannen = new WeakMap<Ruhend, [number, number]>();
+function zSpanne(r: Ruhend): [number, number] {
+  let z = zSpannen.get(r);
+  if (!z) {
+    z = [Infinity, -Infinity];
+    const P = r.treffer.pos;
+    for (let i = 2; i < P.length; i += 3) {
+      z[0] = Math.min(z[0], P[i]!);
+      z[1] = Math.max(z[1], P[i]!);
+    }
+    zSpannen.set(r, z);
+  }
+  return z;
+}
+
+/**
+ * Das ruhende Objekt, das das aktive berührt: Ihre Kästen im Raum überlappen sich (auch der eines gezeigten Spiegelbilds); von
+ * mehreren das mit der größten Überlappung. null: keins. (Ob sich die Häute wirklich schneiden, sagt erst das Verbinden.)
+ */
+function nahtPartner(): Ruhend | null {
+  if (!ruhende.length || !werkForm) return null;
+  const P = werk.haut.pos;
+  const f = werkHaut.f;
+  const a = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z0: Infinity, z1: -Infinity };
+  for (let i = 0; i < P.length; i += 3) {
+    a.x0 = Math.min(a.x0, P[i]!);
+    a.x1 = Math.max(a.x1, P[i]!);
+    a.y0 = Math.min(a.y0, P[i + 1]!);
+    a.y1 = Math.max(a.y1, P[i + 1]!);
+    a.z0 = Math.min(a.z0, P[i + 2]!);
+    a.z1 = Math.max(a.z1, P[i + 2]!);
+  }
+  if (!(a.x1 > a.x0)) return null;
+  a.x0 = a.x0 / f + werkHaut.mitte.x;
+  a.x1 = a.x1 / f + werkHaut.mitte.x;
+  a.y0 = a.y0 / f + werkHaut.mitte.y;
+  a.y1 = a.y1 / f + werkHaut.mitte.y;
+  a.z0 /= f;
+  a.z1 /= f;
+  const ueber = (p0: number, p1: number, q0: number, q1: number): number => Math.min(p1, q1) - Math.max(p0, q0);
+  let best: Ruhend | null = null;
+  let weit = 0;
+  for (const r of ruhende) {
+    const k = r.kasten;
+    const ux = ueber(a.x0, a.x1, k.cx - k.rx, k.cx + k.rx);
+    const uy = ueber(a.y0, a.y1, k.cy - k.ry, k.cy + k.ry);
+    if (ux <= 0 || uy <= 0) continue;
+    // quer zur Spiegelebene: die Spannen selbst oder, wo eines sein Spiegelbild zeigt, die gespiegelte
+    const z = zSpanne(r);
+    let uz = ueber(a.z0, a.z1, z[0], z[1]);
+    if (r.treffer.spiegelbild || werkHaut.spiegelbild) uz = Math.max(uz, ueber(a.z0, a.z1, -z[1], -z[0]));
+    if (uz <= 0) continue;
+    if (ux * uy * uz > weit) {
+      weit = ux * uy * uz;
+      best = r;
+    }
+  }
+  return best;
+}
+/** Lässt sich gerade verbinden: im Raum, in Ruhe, und das aktive Objekt berührt ein anderes? */
+const nahtErlaubt = (): boolean => !nahtLaeuft && spiegelErlaubt() && !tastenZug && !objektZug && !spiegelFahrt && werk.objektRuht() && nahtPartner() !== null;
+
+/**
+ * Verschmelzen oder abziehen (Florian: „Wenn ich objekte verschmelzen möchte, dann sollte das über einen edgeloop passieren … Ich
+ * möchte auch objekte voneinander subtrahieren können, sodass eine saubere kante entsteht“). Es geht um das aktive Objekt und das,
+ * das es berührt. Verschmelzen: Die zwei werden eine Form; weitergerechnet wird im Maß des größeren. Abziehen: Das aktive Objekt ist
+ * das Werkzeug und wird aus dem anderen herausgeschnitten. An der Schnittkurve entsteht die Naht (ein Loop mit Kante, gewählt; K
+ * macht sie weich). Ein Schritt für ⌘Z: Er gibt das aufgenommene Objekt wieder heraus (`nahtNachZurueck`).
+ */
+async function objekteVerbindenJetzt(art: 'vereinen' | 'abziehen'): Promise<boolean> {
+  const was = art === 'vereinen' ? 'Verschmelzen' : 'Abziehen';
+  if (nahtLaeuft || zustand !== 'ruhe' || !werkGezeigt || !werkForm) return false;
+  const partner = nahtPartner();
+  if (!partner || tastenZug || objektZug || spiegelFahrt || !werk.objektRuht()) {
+    werk.G.meldung = partner ? `${was}: erst den laufenden Handgriff beenden` : `${was}: Das gewählte Objekt berührt kein anderes (mit dem dunklen Zeiger V an ein anderes schieben)`;
+    anstossen();
+    return false;
+  }
+  // Wer bleibt: beim Abziehen das berührte Objekt, beim Verschmelzen das größere (in der Seite gemessen)
+  const a = werkMasseWeltAktiv();
+  const vorher = aktivId;
+  const partnerBleibt = art === 'abziehen' || (a !== null && partner.kasten.rx * partner.kasten.ry > a.rx * a.ry);
+  if (partnerBleibt && !objektAktivieren(partner.id)) {
+    werk.G.meldung = `${was}: erst den laufenden Handgriff beenden`;
+    anstossen();
+    return false;
+  }
+  const teil = partnerBleibt ? ruhende.find((x) => x.id === vorher) : partner;
+  if (!teil) return false;
+  // das Teil im Maß des Objekts, das bleibt (jedes rechnet in seiner eigenen Größe; die Spiegelebene ist für alle dieselbe)
+  const f = werkHaut.f;
+  const k = f / teil.haut.f;
+  const d = { x: (teil.haut.mitte.x - werkHaut.mitte.x) * f, y: (teil.haut.mitte.y - werkHaut.mitte.y) * f, z: 0 };
+  const davor: NahtMarke = { n: werk.zurueck.length, teil, clipping: werk.G.clipping, spiegelbild: werk.G.spiegelbild };
+  nahtLaeuft = true;
+  let ok = false;
+  try {
+    ok = await werk.objektVerbinden(teil.stand, k, d, art);
+  } finally {
+    nahtLaeuft = false;
+  }
+  if (!ok) {
+    // nichts ist geändert: Das Objekt von eben ist wieder das gewählte (die Meldung des Werks bleibt stehen)
+    const text = werk.G.meldung;
+    if (partnerBleibt && objektAktivieren(vorher)) werk.G.meldung = text;
+    anstossen();
+    return false;
+  }
+  const i = ruhende.indexOf(teil);
+  if (i >= 0) ruhende.splice(i, 1);
+  nahtMarken.push(davor);
+  // die Naht ist gewählt: mit dem weißen Zeiger sieht man ihre Punkte, und K wirkt sofort
+  if (objektModus() || bearbeiten.stift || strichWerkzeug()) werkzeugImRaum('auswahl');
+  objektGewaehlt = false;
+  werkFelder.leeren();
+  werkHaut.ganzNeu();
+  werkNeu = true;
+  ruheZeigen();
+  raumRechnen(bw.band);
+  anstossen();
+  return true;
+}
+
+/** nach einem ⌘Z: Ist ein Verbinden zurückgenommen, ruht das aufgenommene Objekt wieder wie zuvor, und der Spiegel gilt wie davor */
+function nahtNachZurueck(): void {
+  let m: NahtMarke | undefined;
+  let etwas = false;
+  while (nahtMarken.length && werk.zurueck.length <= nahtMarken[nahtMarken.length - 1]!.n) {
+    m = nahtMarken.pop()!;
+    ruhende.push(m.teil);
+    werk.G.clipping = m.clipping;
+    werk.G.spiegelbild = m.spiegelbild;
+    etwas = true;
+  }
+  if (!etwas) return;
+  werkHaut.ganzNeu();
+  werkNeu = true;
+  ruheZeigen();
+  raumRechnen(bw.band);
+}
+
 /** Pinsel „Ziehen“ an der Blase (Phase 6): Radius in Einheiten des Werks (wie der Einfluss O, [ und ] ändern ihn) */
 let pinselRadius = 90;
 /** der Punkt einer Linie, den der Pinsel gerade fassen würde (Kennung, Nummer, Spiegelbild, Welt) */
@@ -1262,6 +1420,7 @@ function spiegelGrundstellung(): void {
   werk.G.spiegelbild = true;
   spiegelFahrt = null;
   spiegelMarken.length = 0;
+  nahtMarken.length = 0;
 }
 
 function werkFormAnlegen(): void {
@@ -3167,6 +3326,8 @@ function bild(dt: number): boolean {
   leiste.spiegelZeigen(spiegelZustand(), spiegelErlaubt());
   // das Plus: ein neues Objekt gibt es im Raum, sobald eine Form steht (wie der Spiegel)
   leiste.plusErlauben(spiegelErlaubt());
+  // Verschmelzen und Abziehen: zu sehen, sobald es mehr als ein Objekt gibt; an, wenn das aktive ein anderes berührt
+  leiste.nahtZeigen(ruhende.length > 0 && zustand === 'ruhe', ruhende.length > 0 && nahtErlaubt());
   tastenStand();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
@@ -5991,7 +6152,10 @@ window.addEventListener('keydown', (e) => {
       werk.anzeige.allesZeigen();
       anstossen();
     }
-    if (zustand === 'ruhe') spiegelNachZurueck();
+    if (zustand === 'ruhe') {
+      spiegelNachZurueck();
+      nahtNachZurueck();
+    }
     return;
   }
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'a' && zustand === 'ruhe' && bearbeitenAn) {
@@ -6190,7 +6354,7 @@ function waehlenTaste(w: Werkzeug): void {
 
 // ---------- Leiste, Menü, Feinregler ----------
 
-const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, (z) => spiegelSetzen(z), objektPlus);
+const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, (z) => spiegelSetzen(z), objektPlus, (art) => void objekteVerbindenJetzt(art));
 
 // S13 (liquid drop, Idee 10): der Ansichts-Tropfen unten rechts; Tippen rastet ein (⇧ die Gegenseite, die Mitte der Raum), Ziehen dreht
 const ansichtsTropfen = new AnsichtsTropfen(
@@ -6781,6 +6945,41 @@ const haken = {
   }),
   objektPlus,
   objektAktivieren,
+  /** Etappe 4: das aktive Objekt mit dem verbinden, das es berührt (wie die Knöpfe der Leiste) */
+  verbinden: (art: 'vereinen' | 'abziehen') => objekteVerbindenJetzt(art),
+  nahtPartner: () => nahtPartner()?.id ?? 0,
+  /** der Stand der Form des Werks für die Probe der Naht: ihre Linien, ob die Haut geschlossen ist, ihr Rauminhalt und Kasten im Raum */
+  nahtStand: () => {
+    const h = werk.haut;
+    const f = werkHaut.f;
+    const kanten = new Map<number, number>();
+    let inhalt = 0;
+    for (let t = 0; t < h.tri.length; t += 3) {
+      const [a, b, c] = [h.tri[t]!, h.tri[t + 1]!, h.tri[t + 2]!];
+      for (const [u, w] of [
+        [a, b],
+        [b, c],
+        [c, a],
+      ] as const)
+        kanten.set(u * h.n + w, (kanten.get(u * h.n + w) ?? 0) + 1);
+      const P = h.pos;
+      inhalt += P[3 * a]! * (P[3 * b + 1]! * P[3 * c + 2]! - P[3 * b + 2]! * P[3 * c + 1]!) + P[3 * a + 1]! * (P[3 * b + 2]! * P[3 * c]! - P[3 * b]! * P[3 * c + 2]!) + P[3 * a + 2]! * (P[3 * b]! * P[3 * c + 1]! - P[3 * b + 1]! * P[3 * c]!);
+    }
+    let offen = 0;
+    for (const [key, zahl] of kanten) if (zahl !== 1 || kanten.get((key % h.n) * h.n + Math.floor(key / h.n)) !== 1) offen++;
+    let ohnePaar = 0;
+    for (let v = 0; v < h.n; v++) if (h.spiegel[v]! < 0 || h.spiegel[h.spiegel[v]!] !== v) ohnePaar++;
+    return {
+      punkte: h.n,
+      offen,
+      ohnePaar,
+      inhalt: inhalt / 6 / (f * f * f),
+      kasten: werkMasseWeltAktiv(),
+      linien: werk.loops.map((l) => ({ id: l.id, art: l.art, kante: !!l.kante, haengt: l.haengt ?? null, punkte: l.punkte.length, proben: l.proben.length, pfad: !!l.pfad })),
+      marken: nahtMarken.length,
+      laeuft: nahtLaeuft,
+    };
+  },
   objektBei,
   /** Objekte (V): der Modus, ob das Objekt gewählt ist, das Werkzeug des Raums, das Schild am Objekt (Text und Ort, CSS-Pixel) */
   objekt: () => ({

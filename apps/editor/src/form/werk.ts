@@ -138,6 +138,7 @@ import {
   packen,
   pruefen,
 } from './ablage';
+import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMit } from './naht';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -790,6 +791,74 @@ export function objektAufnehmen(o: ObjektStand): void {
   G.spiegelbild = o.spiegelbild;
   G.ablageName = o.name;
   wiederherstellen(o.stand);
+}
+
+// ---------- Naht zwischen zwei Objekten (18.11., Plan „Objekte, Spiegel und Nähte“, Etappe 4) ----------
+
+/**
+ * Ein ruhendes Objekt mit dem aktiven verbinden. Florian: „Wenn ich objekte verschmelzen möchte, dann sollte das über einen edgeloop
+ * passieren … Ich möchte auch objekte voneinander subtrahieren können, sodass eine saubere kante entsteht.“ `vereinen`: Die zwei
+ * werden eine Form; `abziehen`: Das andere wird aus dem aktiven herausgeschnitten. An der Schnittkurve entsteht die Naht: ein Loop mit
+ * Kante an, gewählt (K macht ihn weich wie jede Linie; Florian: „Wie Seifenblasen“). Linien, die in die andere Form liefen, enden an
+ * der Naht. Ein Schritt für ⌘Z (das andere Objekt gibt die Hülle wieder heraus).
+ *
+ * `teil`: der Stand des anderen Objekts; `k`, `d`: sein Maß im Maß des aktiven (Ort im aktiven = k · Ort im anderen + d).
+ * Der Spiegel: Das Bild bleibt, wie es ist (`objekteVerbinden`); wird das aktive dafür frei, zeigt es kein Spiegelbild mehr.
+ * Zurück: ob verbunden wurde (sonst steht der Grund in der Meldung, nichts ist geändert).
+ */
+export async function objektVerbinden(teil: ObjektStand, k: number, d: V3, art: NahtArt): Promise<boolean> {
+  const was = art === 'vereinen' ? 'Verschmelzen' : 'Abziehen';
+  const sagen = (text: string): false => {
+    G.meldung = text;
+    anzeige.statusZeigen();
+    return false;
+  };
+  const bereit = (): string => (!objektRuht() ? `${was}: erst den laufenden Handgriff beenden (und zurück in die Grundform)` : G.maul || teil.stand.maul || pose.delta || teil.stand.pose.delta ? `${was} geht mit einem Maul noch nicht` : '');
+  if (bereit()) return sagen(bereit());
+  const hautDavor = haut;
+  let wasm: Awaited<ReturnType<typeof manifoldLaden>>;
+  try {
+    wasm = await manifoldLaden();
+  } catch (e) {
+    return sagen(`${was}: Die Bibliothek für den Schnitt der Netze ließ sich nicht laden (${e instanceof Error ? e.message : String(e)})`);
+  }
+  // (beim ersten Mal lädt die Bibliothek einen Augenblick: Inzwischen kann ein Handgriff begonnen oder das Objekt gewechselt haben)
+  if (haut !== hautDavor) return false;
+  if (bereit()) return sagen(bereit());
+  const hB: Haut = { ...teil.stand.haut, pos: teil.stand.pos };
+  const r = objekteVerbindenMit(
+    wasm,
+    { haut, loops, spiegelbild: G.spiegelbild },
+    { haut: hautImMass(hB, k, d), loops: teil.stand.loops.map((l) => loopImMass(l, k, d)), spiegelbild: teil.spiegelbild },
+    art,
+    { naechsteId, naechsteKreuzung },
+  );
+  if ('fehler' in r) return sagen(`${was} geht hier nicht: ${r.fehler}`);
+  zurueck.push(schnappschuss());
+  // was für die Form von eben bereitlag oder noch rechnete, gilt nicht mehr (ein anderes Netz)
+  hintergrundVerwerfen();
+  ruheOffen = null;
+  haut = r.haut;
+  loops = r.loops;
+  naechsteId = r.naechsteId;
+  naechsteKreuzung = r.naechsteKreuzung;
+  if (r.aFrei) G.spiegelbild = false;
+  // die Schnittkurve hinterlässt sehr kurze Kanten: zusammenlegen, bevor gerechnet wird
+  nadelnWeg();
+  // gewählt sind die Nähte als Ganzes und ihre sichtbaren Punkte (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
+  G.auswahl = r.naehte.flatMap((id) => {
+    const l = loops[loopNr(id)];
+    return [{ l: id, i: -1 }, ...(l ? l.punkte.flatMap((q, i) => (istSichtbar(q) ? [{ l: id, i }] : [])) : [])];
+  });
+  const naht = r.naehte.length === 1 ? 'Die Naht ist ein Loop' : `Die ${r.naehte.length} Nähte sind Loops`;
+  G.meldung = `${art === 'vereinen' ? 'Verschmolzen' : 'Abgezogen'}: ${naht} mit Kante, gewählt · K macht sie weich · ⌘Z ${art === 'vereinen' ? 'trennt wieder' : 'holt das Objekt zurück'}`;
+  // das Netz an der Naht ist neu: Die Haut setzt sich und räumt auf wie nach einer Kante
+  hautNeuRechnen();
+  anzeige.geometrieNeu();
+  anzeige.allesZeigen();
+  // eine freie Form mit Spiegelbild und Clipping, die jetzt über die Spiegelebene reicht, verschmilzt dort (derselbe Schritt für ⌘Z)
+  if (istFrei() && G.clipping && ueberDerMitte()) mitteFest(true);
+  return true;
 }
 
 /**

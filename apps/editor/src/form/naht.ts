@@ -28,7 +28,6 @@ import {
   stueckNaechstes,
   stueckTeilen,
 } from '@ee/shape/dicht';
-import Module from 'manifold-3d';
 
 export type NahtArt = 'vereinen' | 'abziehen';
 /** eine Form, die verbunden wird: ihre Haut (gespiegelt oder frei), ihre Linien, und ob eine freie ihr Spiegelbild zeigt */
@@ -53,17 +52,22 @@ export type NahtErgebnis = {
   ms: number;
 };
 
-type Wasm = Awaited<ReturnType<typeof Module>>;
+export type Wasm = Awaited<ReturnType<(typeof import('manifold-3d'))['default']>>;
 let geladen: Promise<Wasm> | null = null;
-/** die Bibliothek laden (einmal; im Fenster kommt ihre WASM-Datei über Vite) */
+/** die Bibliothek laden (einmal, erst wenn sie gebraucht wird; im Fenster kommt ihre WASM-Datei über Vite) */
 export function manifoldLaden(): Promise<Wasm> {
   geladen ??= (async () => {
+    const { default: Module } = await import('manifold-3d');
     const imFenster = typeof window !== 'undefined' && typeof document !== 'undefined';
     const ort = imFenster ? (await import('manifold-3d/manifold.wasm?url')).default : null;
     const w = await Module(ort ? { locateFile: () => ort } : undefined);
     w.setup();
     return w;
-  })();
+  })().catch((e: unknown) => {
+    // (ein zweiter Versuch darf neu laden)
+    geladen = null;
+    throw e;
+  });
   return geladen;
 }
 
@@ -220,8 +224,8 @@ type Schnitt = {
  * Hälfte z ≥ 0 des Ergebnisses und gespiegelt (A ist dann ganz und spiegelgleich, B ganz und spiegelgleich oder ein Teil auf der
  * Seite z ≥ 0).
  */
-async function schneiden(a: Haut, b: Haut, art: NahtArt, halb: boolean): Promise<Schnitt | { fehler: string }> {
-  const { Manifold, Mesh } = await manifoldLaden();
+function schneiden(wasm: Wasm, a: Haut, b: Haut, art: NahtArt, halb: boolean): Schnitt | { fehler: string } {
+  const { Manifold, Mesh } = wasm;
   const idA = Manifold.reserveIDs(2);
   const idB = idA + 1;
   const netz = (h: Haut, id: number): InstanceType<typeof Mesh> =>
@@ -644,6 +648,10 @@ function linieUebertragen(L: Loop, alt: Haut, neuVon: Int32Array, R: Lauf, idBeh
  * „Spiegel aus“; war es A, sagt das `aFrei`). Zwei freie Formen, von denen nur eine ihr Spiegelbild zeigt: `fehler`.
  */
 export async function objekteVerbinden(a: NahtTeil, b: NahtTeil, art: NahtArt, ids: { naechsteId: number; naechsteKreuzung: number }): Promise<NahtErgebnis | { fehler: string }> {
+  return objekteVerbindenMit(await manifoldLaden(), a, b, art, ids);
+}
+/** dasselbe mit der schon geladenen Bibliothek (`manifoldLaden`): ohne Warten, in einem Stück */
+export function objekteVerbindenMit(wasm: Wasm, a: NahtTeil, b: NahtTeil, art: NahtArt, ids: { naechsteId: number; naechsteKreuzung: number }): NahtErgebnis | { fehler: string } {
   const t0 = performance.now();
   let { naechsteId, naechsteKreuzung } = ids;
   let A = { haut: a.haut, loops: [...a.loops] };
@@ -685,7 +693,7 @@ export async function objekteVerbinden(a: NahtTeil, b: NahtTeil, art: NahtArt, i
     if (hi <= 0) B = { haut: hautGespiegelt(B.haut), loops: B.loops.map(loopGespiegelt) };
   }
   for (const l of [...A.loops, ...B.loops]) if (l.maulGeformt || l.maulLinie !== undefined) return { fehler: 'eine Form mit einem Maul lässt sich noch nicht verbinden' };
-  const S = await schneiden(A.haut, B.haut, art, halb);
+  const S = schneiden(wasm, A.haut, B.haut, art, halb);
   if ('fehler' in S) return S;
   const h = S.haut;
   // die Kreuzungen von B zählen neu (zwei Formen zählen ihre Kreuzungen jede für sich)
