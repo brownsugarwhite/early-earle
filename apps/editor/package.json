@@ -25,6 +25,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "electron": "44.4.5",
     "electron-builder": "26.16.1",
+    "manifold-3d": "^3.5.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "0.186.1",
