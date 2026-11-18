@@ -399,5 +399,15 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   neuen Gewichten auf; mitten in der Bewegung gibt das andere Lagen der Nachbarpunkte als danach (an „teat firefish“ 1,4 Einheiten
   bei einem Zug um 119). Proben, die Ozzy mit dem Prüffenster vergleichen, ziehen rasch und halten dann, bis das Verfeinern da ist
   (`ozzy-pinsel-fenster.mjs`). Wird ein Fenster schneller oder langsamer, verschieben sich solche Zeitpunkte.
+- **Frische Form, Schrittweite (18.11.):** `SCHRITT_MAX` (C1) macht aus einem Davonlaufen (nicht endlich, wird verworfen, die Form
+  bleibt) ein Davonkriechen (endlich, „steht“, wird angenommen): An einer Form mit keiner oder einer Linie endet die Rechnung als
+  Ballon oder Punkt. Nicht behoben (Plan `2026-11-18-ozzy-nach-dem-ersten-test.md`, Schritt 1). Nachstellen im Kern:
+  `form-aufraeumen.ts <stand>` mit und ohne `SCHRITT=0 MITTE=0`. Merke: Eine Probe für „hält“ misst gegen die gezeichnete Form
+  (Umriss, Ausdehnung, Rauminhalt), nie nur, ob die Haut steht; und eine frische Form hat ein zehnmal gröberes Netz als seine
+  gesicherten (650 bis 730 statt 3 500 bis 11 400 Punkte), dünne Stellen sind dünner als die Netzkante.
+- **Look gegen die Vorlage (18.11.):** `node scripts/pruefen/ozzy-look-messen.mjs [ordner]` legt dieselbe Form gleich groß in
+  `raum.html` (Port 5199, Eintrag `linien-look`) und Ozzy und misst die Breite des Umrisses. Wo der weiße Körper den Umriss zeichnet
+  (`F.tiefe`), bleibt die Linie der Mitte in der Seite fein (`werkBlatt.ts`); sonst lägen zwei Striche übereinander. Die Wände im
+  Raum zeichnen noch Striche entlang jeder Kontur (`wandLinien`, Tiefenkarten).
 - **Vor Arbeit an `kurven.ts` oder am Löser lesen:** `docs/verlauf/2026-11-11-uebergabe-kurven.md`, Abschnitt 3 (Karte von
   `kurven.ts`) und Abschnitt 4 (Fallen, was schon kaputtging).
