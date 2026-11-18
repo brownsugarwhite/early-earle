@@ -41,6 +41,14 @@ body {
 #linien {
   cursor: none;
 }
+/* Jelly und helles Solid: die Fläche des Blaupause-Renderers (gast.ts), über dem Raum und unter den Linien */
+#gast {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 /* S4b, das Wenden: Die Rückseite (dunkler Grund, helle Linien) zeichnen Haut und Linien selbst, hinter einer harten Kante (main.ts,
    `kanteRechnen`). Solange sie zu sehen ist, kehren Marke und Hinweis ihre Farbe mit ihr um: auf Weiß wie immer (Tinte, leise), auf
    Dunkel hell, und die Kante läuft durch sie hindurch */

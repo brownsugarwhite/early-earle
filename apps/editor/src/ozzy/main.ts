@@ -33,6 +33,7 @@ import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
 import { type FeldTreffer, werkFelder } from './werkFelder';
+import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
@@ -112,6 +113,9 @@ const bw = werteLesen<BuehnenWerte>('ozzy-buehne-1', BUEHNE_GRUND);
 const buehne = $<HTMLDivElement>('buehne');
 const leinwandHaut = $<HTMLCanvasElement>('haut');
 const leinwandLinien = $<HTMLCanvasElement>('linien');
+/** eigene Fläche für Jelly und helles Solid (der Blaupause-Renderer als Gast, `gast.ts`), zwischen Raum und Linien */
+const leinwandGast = $<HTMLCanvasElement>('gast');
+leinwandGast.style.display = 'none';
 const gruss = $<HTMLDivElement>('gruss');
 const hinweis = $<HTMLDivElement>('hinweis');
 const infoAnzeige = $<HTMLSpanElement>('info');
@@ -120,6 +124,7 @@ const renderer = new WebGLRenderer({ canvas: leinwandHaut, antialias: false, alp
 const haut = new Haut(renderer);
 /** die Haut des Werks mit einem festen Material statt der Seifenhaut (Solid, Zebra) */
 const feste = new FesteHaut(renderer);
+const gast = new GastHaut(leinwandGast);
 const anzeige = new FluessigeAnzeige(leinwandLinien);
 const blatt = new Blatt(linienWerte, freihandWerte);
 const kam = new Kamera();
@@ -132,11 +137,15 @@ let zustand: Zustand = 'blatt';
 let T = 0;
 let festeZeit: number | null = null;
 let fassung: Fassung = Number(params.get('fassung') ?? 0) as Fassung;
+/** alle Materialien neben der Seifenhaut, in der Reihenfolge des Menüs: Solid, Zebra (`material.ts`), Jelly, helles Solid (`gast.ts`) */
+const MATERIALIEN = [...FESTE_MATERIALIEN, ...GAST_MATERIALIEN] as const;
+type Material = FestesMaterial | GastMaterial;
+const istGast = (m: Material): m is GastMaterial => (GAST_MATERIALIEN as readonly string[]).includes(m);
 /**
  * Das Material der Haut (Florian, 18.11.): null = die Seifenhaut in ihrer Fassung, sonst eines der festen Materialien. Im Menü gemerkt;
- * `?material=solid|zebra|seifenhaut` für Proben.
+ * `?material=solid|zebra|jelly|helles solid|seifenhaut` für Proben.
  */
-let material: FestesMaterial | null = ((): FestesMaterial | null => {
+let material: Material | null = ((): Material | null => {
   let wahl = params.get('material');
   if (wahl === null) {
     try {
@@ -145,10 +154,11 @@ let material: FestesMaterial | null = ((): FestesMaterial | null => {
       wahl = null;
     }
   }
-  return FESTE_MATERIALIEN.find((m) => m.toLowerCase() === (wahl ?? '').toLowerCase()) ?? null;
+  return MATERIALIEN.find((m) => m.toLowerCase() === (wahl ?? '').toLowerCase()) ?? null;
 })();
 /** das Netz, das `feste` gerade zeigt (Stand der glatten Anzeige) */
 let festeStand: { netz: unknown; version: number } | null = null;
+let gastStand: { netz: unknown; version: number } | null = null;
 let W = 1;
 let H = 1;
 let D = 1;
@@ -630,6 +640,7 @@ function groesse(): void {
   renderer.setSize(W, H, false);
   haut.groesse(W, H, D);
   feste.groesse(W, H, D);
+  gast.groesse(W, H, D);
   anzeige.groesse(W * D, H * D);
   if (zustand === 'blatt') netzStand = -1;
   else raumRechnen();
@@ -1672,6 +1683,7 @@ function feldHautSchneiden(): void {
   if (wert !== hautSchnitt) {
     hautSchnitt = wert;
     leinwandHaut.style.clipPath = wert;
+    leinwandGast.style.clipPath = wert;
   }
 }
 
@@ -2494,14 +2506,36 @@ function bild(dt: number): boolean {
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
   if (material !== null && werkGezeigt && zustand === 'ruhe' && werkHaut.netz && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
-    if (!w.blaseAus) {
+    if (w.blaseAus) gast.aus();
+    else if (istGast(material)) {
+      // Jelly und helles Solid: der Blaupause-Renderer auf seiner eigenen Fläche über dem Raum (`gast.ts`)
+      if (!gastStand || gastStand.netz !== werkHaut.netz || gastStand.version !== werkHaut.version) {
+        gast.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
+        gastStand = { netz: werkHaut.netz, version: werkHaut.version };
+      }
+      const heim = richtung(((m?.gier ?? 0) * Math.PI) / 180, ((m?.neigung ?? 0) * Math.PI) / 180);
+      // beim Einrasten blendet die Haut aus, während sich das Blatt durch sie schiebt (der Renderer kennt keinen Schnitt)
+      const blende = schnittJetzt ? 1 - glatt(flach) : 1;
+      const unruhig = gast.zeichnen(kam.aktiv, material, {
+        deckung: (1 - 0.7 * roentgen) * blende,
+        abstand: kam.abstand,
+        kante: werk.MK / werkHaut.f,
+        heim: [heim.x, heim.y, heim.z],
+        jetzt: performance.now(),
+      });
+      if (unruhig) aktiv = true;
+    } else {
+      gast.aus();
       if (!festeStand || festeStand.netz !== werkHaut.netz || festeStand.version !== werkHaut.version) {
         feste.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
         festeStand = { netz: werkHaut.netz, version: werkHaut.version };
       }
       feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen });
     }
-  } else haut.zeichnen(kam.aktiv, w, []);
+  } else {
+    gast.aus();
+    haut.zeichnen(kam.aktiv, w, []);
+  }
   mess.teile[3] = performance.now() - tz;
   let diff = -1;
   let p99 = -1;
@@ -5624,7 +5658,7 @@ FASSUNGEN.forEach((name, i) => {
   fassungKnoepfe.append(b);
 });
 // die festen Materialien in derselben Reihe (Florian, 18.11.: „Du kannst die Materialien erstmal ins Ozzy-Menü packen“)
-FESTE_MATERIALIEN.forEach((name) => {
+MATERIALIEN.forEach((name) => {
   const b = document.createElement('button');
   b.type = 'button';
   b.textContent = name;
@@ -5633,7 +5667,7 @@ FESTE_MATERIALIEN.forEach((name) => {
 });
 function materialZeigen(): void {
   [...fassungKnoepfe.children].forEach((b, i) =>
-    b.setAttribute('aria-pressed', String(i < FASSUNGEN.length ? material === null && i === fassung : FESTE_MATERIALIEN[i - FASSUNGEN.length] === material)),
+    b.setAttribute('aria-pressed', String(i < FASSUNGEN.length ? material === null && i === fassung : MATERIALIEN[i - FASSUNGEN.length] === material)),
   );
   try {
     localStorage.setItem('ozzy.material', material ?? 'seifenhaut');
@@ -5649,16 +5683,16 @@ function fassungSetzen(f: Fassung): void {
   materialZeigen();
 }
 /** ein festes Material (null: zurück zur Seifenhaut) */
-function materialSetzen(m: FestesMaterial | null): void {
+function materialSetzen(m: Material | null): void {
   material = m;
   materialZeigen();
 }
 /** M: der Reihe nach durch die Seifenhaut mit ihren Fassungen und die festen Materialien */
 function materialWeiter(): void {
-  const i = material === null ? fassung : FASSUNGEN.length + FESTE_MATERIALIEN.indexOf(material);
-  const j = (i + 1) % (FASSUNGEN.length + FESTE_MATERIALIEN.length);
+  const i = material === null ? fassung : FASSUNGEN.length + MATERIALIEN.indexOf(material);
+  const j = (i + 1) % (FASSUNGEN.length + MATERIALIEN.length);
   if (j < FASSUNGEN.length) fassungSetzen(j as Fassung);
-  else materialSetzen(FESTE_MATERIALIEN[j - FASSUNGEN.length]!);
+  else materialSetzen(MATERIALIEN[j - FASSUNGEN.length]!);
 }
 materialZeigen();
 
@@ -6263,8 +6297,21 @@ const haken = {
   fassung: fassungSetzen,
   /** ein festes Material wählen (Name wie im Menü) oder mit null die Seifenhaut; zurück: was jetzt gilt */
   material: (m?: string | null): string => {
-    if (m !== undefined) materialSetzen(m === null ? null : (FESTE_MATERIALIEN.find((x) => x.toLowerCase() === m.toLowerCase()) ?? null));
+    if (m !== undefined) materialSetzen(m === null ? null : (MATERIALIEN.find((x) => x.toLowerCase() === m.toLowerCase()) ?? null));
     return material ?? FASSUNGEN[fassung]!;
+  },
+  /** Jelly und helles Solid: Zeiten des letzten Bilds (ms) und das Fenster, das der Renderer bekam (Gerätepunkte) */
+  gast: (genau?: boolean) => {
+    if (genau !== undefined) gast.genau = genau;
+    return {
+      ...gast.mess,
+      sichtbar: leinwandGast.style.display !== 'none',
+      deckung: Number(leinwandGast.style.opacity || 1),
+      gier: lageRaum?.gier ?? 0,
+      neigung: lageRaum?.neigung ?? 0,
+      /** wie weit das Bild des Gasts neben Ozzys Bild der Haut liegt (Gerätepunkte) */
+      abweichung: gast.abweichung(kam.aktiv),
+    };
   },
   zeit(t: number | null): void {
     festeZeit = t;
