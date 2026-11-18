@@ -470,6 +470,20 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   sie dort mit abbilden. (7) ⌫ ohne gewählte Punkte lässt in Ozzy die Luft ab (so gewollt): Eine Probe, die löschen will, wählt
   vorher einen Punkt. Proben: `ozzy-spiegel-fenster.mjs` (`NUR=clip|aus|objekt`), `ozzy-frei-linien-fenster.mjs`, Tests
   `frei.test.ts`; Film `scripts/ozzy/spiegel-film.mjs`.
+- **Mehrere Objekte (Etappe 3, erste Scheibe, 18.11.):** Ein Objekt ist ein Stand des Werks plus seine eigene Anzeige. Das Werk
+  rechnet immer an einem, dem aktiven; die anderen ruhen (`ruhende` in `main.ts`: je Objekt sein `werk.ObjektStand` samt Rückweg und
+  Spiegel, eine eigene `WerkHaut`, seine Zeichnung, seine Blase, grobe Haut und Kasten im Raum für Treffer). `werkHaut` ist deshalb
+  ein `let`: Beim Wechsel (`objektAktivieren`) wechseln Anzeige, Werk (`werk.objektAblegen`, `objektAufnehmen`), Zeichnung, Blase,
+  `werkForm` und die Marken des Spiegels zusammen. Merke: (1) Jedes Objekt hat sein eigenes Maß (`werkHaut.f`, `mitte`); die Netze
+  der Anzeige liegen im Raum, die Spiegelebene z = 0 ist für alle dieselbe. Nie ein Maß oder eine Lage des Werks über einen Wechsel
+  hinweg merken. (2) Die Seifenhaut zeichnet die ruhenden als eigenes Netz (`Haut.ruheSetzen`, eigene Durchgänge, `HautWerte.ruheSicht`);
+  alles andere, was die Haut als ein Netz zeigt, nimmt `zeigeNetzAlle()` statt `werkHaut.zeigeNetz`. (3) Wer etwas am Kasten der Form
+  im Bild festmacht (Raum, Ausschnitt der Seifenhaut, Umrisse), rechnet über alle Objekte (`werkMasseWelt`, `hautAusschnitt`,
+  `umrissJetzt`); `werkMasseWeltAktiv` ist das aktive allein. (4) `neu(true)` (das Plus) lässt die ruhenden stehen, `neu()` räumt
+  alle ab; der Haken `form(anker, true)` zeichnet aufs Blatt eines neuen Objekts. (5) Ablegen geht nur in Ruhe (`werk.objektRuht`:
+  kein Zug, nicht in der Pose); rechnet der Hintergrund noch, steht sein Auftrag wieder im Stand des Objekts. (6) `typeof werkForm`
+  in einem Typ ist an der Stelle auf `null` verengt: den Typ ausschreiben. Probe: `ozzy-objekte-fenster.mjs`. Offenes: Plan,
+  Abschnitt 10 („Was an Etappe 3 offen bleibt“).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

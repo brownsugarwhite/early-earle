@@ -9,7 +9,7 @@ ihn (bisher: C1, C2, D1).
 (von `claude/ozzy`, Stand `6bef9f17`), Arbeitsbaum `.claude/worktrees/ozzy-donut-mirror-system-7a31b7`, Fenster
 `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). **Noch nicht in `claude/ozzy` zusammengeführt** (das entscheidet Florian
 oder die Leitung). Plan mit Auftrag, Idee, Beweisen, Etappen und allem Offenen:
-[`docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`](../../plans/2026-11-18-ozzy-objekte-spiegel-naehte.md). Stand 18.11., 16:30 Uhr:
+[`docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`](../../plans/2026-11-18-ozzy-objekte-spiegel-naehte.md). Stand 18.11., 17:15 Uhr:
 
 | Etappe | Stand | Probe |
 | --- | --- | --- |
@@ -17,11 +17,14 @@ oder die Leitung). Plan mit Auftrag, Idee, Beweisen, Etappen und allem Offenen:
 | 1 V (dunkler Zeiger, Objekte), A (weißer Zeiger, Punkte), L wählt Verbundenes, Q Lasso | gebaut | `ozzy-modi-fenster.mjs` |
 | 2a Spiegel-Knopf: Clipping ↔ an, Fahrt beim Einschalten | gebaut | `ozzy-spiegel-fenster.mjs` |
 | 2b Spiegel aus (die Form wird ganz und frei), an (Spiegelbild als Anzeige), Clipping an einem freien Objekt; Objekt mit V verschieben, skalieren, drehen; Linien an der freien Form | gebaut | `ozzy-spiegel-fenster.mjs` (`NUR=aus`, `NUR=objekt`), `ozzy-frei-linien-fenster.mjs`, Tests `frei.test.ts` |
-| 3 mehrere Objekte und Plus, 4 Naht zwischen Objekten (verschmelzen, abziehen), 5 Naht lebt | nicht gebaut; 4 und 5 brauchen zuerst ihren Beweis | Plan, Abschnitt 5 und 6 |
+| 3 mehrere Objekte, erste Scheibe: das Plus in der Leiste, ein zweites Objekt aufblasen, mit V und A wählen (das gewählte wird das aktive), Spiegel und ⌘Z je Objekt, löschen, Luft ablassen am aktiven | gebaut | `ozzy-objekte-fenster.mjs` |
+| 3 Rest (mehrere Silhouetten auf dem ersten Blatt, Linien ruhender Objekte, gemeinsamer Rückweg, Sichern und Laden, Fahrt zum Blatt), 4 Naht zwischen Objekten (verschmelzen, abziehen), 5 Naht lebt | nicht gebaut; 4 und 5 brauchen zuerst ihren Beweis | Plan, Abschnitt 5, 6 und 10 |
 
 Florian hat am 18.11. auf die Frage zu „Spiegel aus“ geantwortet („Ja, so bauen“); seine Urteile zu den gebauten Etappen stehen aus.
 Was sich an der Bedienung geändert hat: V ist der Objekt-Modus (vorher „Auswahl“; die Punkte liegen auf A), das Lasso liegt auf Q
-(vorher L), L wählt alle Punkte des Teils unter dem Zeiger; in der Leiste steht die Gruppe für den Spiegel (aus, an, Clipping).
+(vorher L), L wählt alle Punkte des Teils unter dem Zeiger; in der Leiste stehen das Plus (neues Objekt) und die Gruppe für den
+Spiegel (aus, an, Clipping). Mit mehreren Objekten löscht der Mülleimer das aktive Objekt (mit einem geht er wie bisher zurück aufs
+leere Blatt).
 Was offen bleibt, steht im Plan in Abschnitt 8 („Aus dieser Sitzung“). Wie die freie Form innen aussieht und was man dabei nicht
 verletzen darf: `apps/editor/CLAUDE.md`, Eintrag „Spiegel und freie Form“.
 
