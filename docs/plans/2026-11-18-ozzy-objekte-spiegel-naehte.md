@@ -4,8 +4,8 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Stand 18.11., spät: Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend bis auf die Fahrt zum Blatt beim
-Plus: mehrere Silhouetten auf einem Blatt, der gemeinsame Rückweg, Sichern und Laden der ganzen Szene, Linien ruhender Objekte;
+**Stand 18.11., spät: Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend; die Fahrt zum Blatt beim Plus
+gehört nach deinem Wort zum Feinschliff: mehrere Silhouetten auf einem Blatt, der gemeinsame Rückweg, Sichern und Laden der ganzen Szene, Linien ruhender Objekte;
 Abschnitt 10, „Etappe 3, der Rest“), **von Etappe 4 die erste Fassung: Verschmelzen und Abziehen in Ozzy** (zwei Knöpfe in der
 Leiste, die Naht als Linie mit Kante, ⌘Z trennt wieder; Abschnitt 10, „Etappe 4 in Ozzy“). K an der Naht ist entschieden („Wie
 Seifenblasen“) und wirkt wie an jeder Linie; an Formen ohne eigene Linien hält die Rechnung dabei noch nicht. **Das steht aus, dein
@@ -143,7 +143,7 @@ Jede Etappe endet mit einer sichtbaren Probe (Film oder Bild, vorher und nachher
 | **1** | **V, A, P und die zwei Zeiger; L wählt Verbundenes, Q ist das Lasso.** *(gebaut)* V wählt das Objekt; verschieben lässt es sich ab Etappe 2b und 3 (mit einem einzigen verschmolzenen Objekt sähe man es nicht: Der Raum richtet sich nach der Form aus). | `ozzy-modi-fenster.mjs`, Film der Zeiger auf Weiß und auf der Rückseite |
 | **2a** | **Der Spiegel-Knopf, erster Teil:** an mit Clipping ↔ an; die Fahrt beim Einschalten des Clippings. *(gebaut)* | `ozzy-spiegel-fenster.mjs`, Film |
 | **2b** | **Der Spiegel-Knopf, zweiter Teil:** aus und anwenden. *(gebaut; offen bleibt, was in Abschnitt 10 steht)* Dazu die freie Form im Werk: Das Netz räumt auch ohne Spiegelpaare auf (`verdichten`), Linien zeichnen ohne Spiegel (P quer, Form auf der Haut), das Spiegelbild als Anzeige, Clipping an einem ganzen Objekt, das an die Ebene geschoben wird; Verschieben mit V. | Film: Kugel, aus, einseitig formen, zur Seite, an, Clipping |
-| **3** | **Mehrere Objekte:** Plus in der Leiste, Aufblasen je Objekt, Wählen und Verschieben mit V, Bearbeiten mit A; mehrere Silhouetten auf einem Blatt, ⌘Z über alle Objekte, Sichern und Laden der Szene, Linien ruhender Objekte *(gebaut; offen: die Fahrt zum Blatt beim Plus)*. | `ozzy-objekte-fenster.mjs`, `ozzy-reihe-fenster.mjs`; Bildbogen (ein Film steht aus) |
+| **3** | **Mehrere Objekte:** Plus in der Leiste, Aufblasen je Objekt, Wählen und Verschieben mit V, Bearbeiten mit A; mehrere Silhouetten auf einem Blatt, ⌘Z über alle Objekte, Sichern und Laden der Szene, Linien ruhender Objekte *(gebaut; die Fahrt zum Blatt beim Plus kommt mit dem Feinschliff)*. | `ozzy-objekte-fenster.mjs`, `ozzy-reihe-fenster.mjs`; Bildbogen (ein Film steht aus) |
 | **4** | **Naht zwischen Objekten, fest:** Beweis im Kern *(gehalten)*, dann „verschmelzen“ und „abziehen“ *(erste Fassung gebaut: zwei Knöpfe in der Leiste)*; die Naht als Kante, mit K weich *(hält an Formen mit eigenen Linien; ohne noch nicht)*. | Kern-Probe mit Bild; `ozzy-naht-fenster.mjs`, Bildbogen (ein Film steht aus) |
 | **5** | **Naht lebt:** verschmolzene Objekte wieder verschieben und auseinanderziehen (Hals, Abriss), die Naht bearbeiten. | Film in echter Geschwindigkeit |
 | **6** | Danach, wie du geschrieben hast: Seifenhaut, Tempo und Bedienung ansehen (Liste in Abschnitt 8). | Messblatt |
@@ -166,7 +166,7 @@ die Zeichnung auf dem Blatt (für „Luft ablassen“).
 
 Reihenfolge: (a) Plus, zweites Objekt, wählen mit V und A, bewegen, Spiegel je Objekt, löschen, alle Materialien für alle Objekte
 *(gebaut, 18.11.)*; (b) mehrere Silhouetten auf dem ersten Blatt *(gebaut)*; (c) Linien ruhender Objekte blass zeigen *(gebaut)*; (d) gemeinsamer
-Rückweg *(gebaut)*; (e) Sichern und Laden mit mehreren Objekten *(gebaut)*; (f) die Fahrt zum Blatt beim Plus *(offen)*.
+Rückweg *(gebaut)*; (e) Sichern und Laden mit mehreren Objekten *(gebaut)*; (f) die Fahrt zum Blatt beim Plus *(Feinschliff, dein Wort vom 18.11.)*.
 
 ## 7. Was ich für dich entschieden habe (sag, wenn du es anders willst)
 
@@ -367,6 +367,8 @@ gegen 5211, die Kern-Probe `form-naht.ts` für beide Arten. Am Kern (`packages/s
 
 **Was an Etappe 3 offen bleibt:**
 1. **Die Fahrt zum Blatt beim Plus:** Es wechselt weiter mit einem Schnitt aufs Blatt (keine Fahrt wie beim Luftablassen).
+   **Dein Wort (18.11. spät): „Du kannst die fahrt erstmal weglassen. Das gehört dann zum feinschliff“.** Sie wird jetzt nicht
+   gebaut und steht für den Feinschliff (Etappe 6).
 2. **Die Reihe bläst nacheinander auf, nicht alle zugleich** (das Werk rechnet immer an einer Form). Ob das Tempo und die
    Reihenfolge so gefallen, ist dein Urteil.
 3. **⌘Z nimmt „neues Objekt“ nicht zurück** (löschen lässt es sich mit ⌫, und das Löschen lässt sich zurücknehmen). ⌘Z auf dem
