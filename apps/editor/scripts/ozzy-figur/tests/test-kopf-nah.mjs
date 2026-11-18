@@ -1,0 +1,23 @@
+import { writeFileSync } from 'node:fs';
+import { DATEIEN, TEILE, ladeAnsicht, verschiebe, zuPfad, morph, VORLAGEN } from './morph.mjs';
+const V = {}; for (const [k, f] of Object.entries(DATEIEN)) V[k] = ladeAnsicht(VORLAGEN, f);
+const DY = -9.74;
+const teil = (ans, name) => { const e = V[ans].els[TEILE[name][ans]]; return ans === 'profil' ? verschiebe(e.form, 0, DY) : e.form; };
+const logo = V.logo.els;
+const koerperHinten = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 14].map(i => logo[i]);
+const kopfTeile = ['ohrB', 'ohrA', 'kopfB', 'kopfA', 'bartA', 'bartB', 'nase'];
+const weiss = { bartA: 1, bartB: 1 };
+const art = process.env.ART ?? 'W';
+const T = (process.env.T ?? '0,0.333,0.5,0.667,1').split(',').map(Number);
+const bunt = process.env.BUNT === '1';
+const farbe = { ohrB: '#c33', ohrA: '#36c', kopfB: '#a3a', kopfA: '#3a6', bartA: '#fd8', bartB: '#8ef', nase: '#000' };
+const X0 = 60, Y0 = -12, W = 360, H = 360;
+let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W * T.length * 1.4}" height="${(H + 30) * 1.4}" viewBox="0 0 ${W * T.length} ${H + 30}"><rect width="100%" height="100%" fill="#fff"/>`;
+T.forEach((t, k) => {
+  svg += `<g transform="translate(${k * W - X0},${-Y0})">`;
+  for (const e of koerperHinten) svg += `<path d="${zuPfad(e.form)}" fill="${e.weiss ? '#fff' : (bunt ? '#999' : '#000')}"/>`;
+  for (const n of kopfTeile) svg += `<path d="${zuPfad(morph(teil('logo', n), teil('profil', n), t, art))}" fill="${bunt ? farbe[n] : (weiss[n] ? '#fff' : '#000')}" ${bunt ? 'fill-opacity="0.75" stroke="#000" stroke-width="0.7"' : ''}/>`;
+  svg += `</g><text x="${k * W + W / 2}" y="${H + 22}" font-size="16" font-family="Helvetica" text-anchor="middle" fill="#888">${art} ${Math.round(t * 90)}°</text>`;
+});
+svg += '</svg>';
+writeFileSync(process.argv[2], svg);
