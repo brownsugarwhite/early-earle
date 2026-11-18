@@ -33,6 +33,7 @@ import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
 import { type FeldTreffer, werkFelder } from './werkFelder';
+import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
@@ -117,6 +118,8 @@ const infoAnzeige = $<HTMLSpanElement>('info');
 
 const renderer = new WebGLRenderer({ canvas: leinwandHaut, antialias: false, alpha: false, powerPreference: 'high-performance' });
 const haut = new Haut(renderer);
+/** die Haut des Werks mit einem festen Material statt der Seifenhaut (Solid, Zebra) */
+const feste = new FesteHaut(renderer);
 const anzeige = new FluessigeAnzeige(leinwandLinien);
 const blatt = new Blatt(linienWerte, freihandWerte);
 const kam = new Kamera();
@@ -129,6 +132,23 @@ let zustand: Zustand = 'blatt';
 let T = 0;
 let festeZeit: number | null = null;
 let fassung: Fassung = Number(params.get('fassung') ?? 0) as Fassung;
+/**
+ * Das Material der Haut (Florian, 18.11.): null = die Seifenhaut in ihrer Fassung, sonst eines der festen Materialien. Im Menü gemerkt;
+ * `?material=solid|zebra|seifenhaut` für Proben.
+ */
+let material: FestesMaterial | null = ((): FestesMaterial | null => {
+  let wahl = params.get('material');
+  if (wahl === null) {
+    try {
+      wahl = localStorage.getItem('ozzy.material');
+    } catch {
+      wahl = null;
+    }
+  }
+  return FESTE_MATERIALIEN.find((m) => m.toLowerCase() === (wahl ?? '').toLowerCase()) ?? null;
+})();
+/** das Netz, das `feste` gerade zeigt (Stand der glatten Anzeige) */
+let festeStand: { netz: unknown; version: number } | null = null;
 let W = 1;
 let H = 1;
 let D = 1;
@@ -600,6 +620,7 @@ function groesse(): void {
   renderer.setPixelRatio(D);
   renderer.setSize(W, H, false);
   haut.groesse(W, H, D);
+  feste.groesse(W, H, D);
   anzeige.groesse(W * D, H * D);
   if (zustand === 'blatt') netzStand = -1;
   else raumRechnen();
@@ -2386,7 +2407,18 @@ function bild(dt: number): boolean {
     ausschnitt: hautAusschnitt(m),
   };
   const tz = performance.now();
-  haut.zeichnen(kam.aktiv, w, []);
+  // ein festes Material statt der Seifenhaut (Florian, 18.11.): Die Seifenhaut zeichnet nur ihren Grund (Papier, dunkle Rückseite),
+  // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
+  if (material !== null && werkGezeigt && zustand === 'ruhe' && werkHaut.netz && !w.leer) {
+    haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
+    if (!w.blaseAus) {
+      if (!festeStand || festeStand.netz !== werkHaut.netz || festeStand.version !== werkHaut.version) {
+        feste.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz), werkHaut.f);
+        festeStand = { netz: werkHaut.netz, version: werkHaut.version };
+      }
+      feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen });
+    }
+  } else haut.zeichnen(kam.aktiv, w, []);
   mess.teile[3] = performance.now() - tz;
   let diff = -1;
   let p99 = -1;
@@ -5205,7 +5237,7 @@ window.addEventListener('keydown', (e) => {
   else if (zustand === 'blatt' && k === 'e') waehlenTaste('ellipse');
   else if (zustand === 'blatt' && k === 'E') waehlenTaste('wuerfel');
   else if (zustand === 'blatt' && (k === 'v' || k === 'V')) waehlenTaste('auswahl');
-  else if (k === 'm' || k === 'M') fassungSetzen(((fassung + 1) % FASSUNGEN.length) as Fassung);
+  else if (k === 'm' || k === 'M') materialWeiter();
   else return;
   anstossen();
 });
@@ -5508,12 +5540,44 @@ FASSUNGEN.forEach((name, i) => {
   b.addEventListener('click', () => fassungSetzen(i as Fassung));
   fassungKnoepfe.append(b);
 });
-function fassungSetzen(f: Fassung): void {
-  fassung = f;
-  [...fassungKnoepfe.children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === f)));
+// die festen Materialien in derselben Reihe (Florian, 18.11.: „Du kannst die Materialien erstmal ins Ozzy-Menü packen“)
+FESTE_MATERIALIEN.forEach((name) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = name;
+  b.addEventListener('click', () => materialSetzen(name));
+  fassungKnoepfe.append(b);
+});
+function materialZeigen(): void {
+  [...fassungKnoepfe.children].forEach((b, i) =>
+    b.setAttribute('aria-pressed', String(i < FASSUNGEN.length ? material === null && i === fassung : FESTE_MATERIALIEN[i - FASSUNGEN.length] === material)),
+  );
+  try {
+    localStorage.setItem('ozzy.material', material ?? 'seifenhaut');
+  } catch {
+    // ohne Speicher gilt die Wahl bis zum Neuladen
+  }
   anstossen();
 }
-fassungSetzen(fassung);
+/** die Seifenhaut in dieser Fassung */
+function fassungSetzen(f: Fassung): void {
+  fassung = f;
+  material = null;
+  materialZeigen();
+}
+/** ein festes Material (null: zurück zur Seifenhaut) */
+function materialSetzen(m: FestesMaterial | null): void {
+  material = m;
+  materialZeigen();
+}
+/** M: der Reihe nach durch die Seifenhaut mit ihren Fassungen und die festen Materialien */
+function materialWeiter(): void {
+  const i = material === null ? fassung : FASSUNGEN.length + FESTE_MATERIALIEN.indexOf(material);
+  const j = (i + 1) % (FASSUNGEN.length + FESTE_MATERIALIEN.length);
+  if (j < FASSUNGEN.length) fassungSetzen(j as Fassung);
+  else materialSetzen(FESTE_MATERIALIEN[j - FASSUNGEN.length]!);
+}
+materialZeigen();
 
 const bereiche: Bereich[] = [
   { titel: 'Linien und Punkte', speicher: 'ozzy-linien-1', zeilen: LINIEN_REGLER as ReglerZeile<string>[], werte: linienWerte as unknown as Record<string, number>, grundwerte: LINIEN_GRUNDWERTE as unknown as Record<string, number> },
@@ -6114,6 +6178,11 @@ const haken = {
   ablassen,
   neu,
   fassung: fassungSetzen,
+  /** ein festes Material wählen (Name wie im Menü) oder mit null die Seifenhaut; zurück: was jetzt gilt */
+  material: (m?: string | null): string => {
+    if (m !== undefined) materialSetzen(m === null ? null : (FESTE_MATERIALIEN.find((x) => x.toLowerCase() === m.toLowerCase()) ?? null));
+    return material ?? FASSUNGEN[fassung]!;
+  },
   zeit(t: number | null): void {
     festeZeit = t;
     if (t !== null && zustand === 'blatt') aufblasen();

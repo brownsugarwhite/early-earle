@@ -5,6 +5,7 @@
 // Aufruf aus apps/editor, Ozzy auf 5205:
 //   node scripts/pruefen/ozzy-karte-messen.mjs
 //   NAME="strange bird" DICHTE=2 FASSUNGEN=ist,ohneAA,…  (alle Namen: unten in `flicken`)
+//   EXTRA="material=solid"  weitere Schalter der Adresse (18.11.: ein festes Material statt der Seifenhaut)
 import { auf, mitKarte, z1 } from './ozzy-teile.mjs';
 
 const FORM = process.env.NAME ?? 'strange bird';
@@ -38,7 +39,7 @@ const flicken = {
 console.log(`Form ${FORM}, Dichte ${DICHTE}; je Zelle: Rechnen / mit Grafikkarte (ms je Bild, Median aus 40)`);
 console.log('| Fassung | Raum | Raum nah | eingerastet Seite | Vier Ansichten | |\n| --- | --- | --- | --- | --- | --- |');
 for (const name of (process.env.FASSUNGEN ?? Object.keys(flicken).join(',')).split(',')) {
-  const { browser, s, geladen, fehler } = await auf({ form: FORM, dichte: DICHTE, flicken: flicken[name] ?? {} });
+  const { browser, s, geladen, fehler } = await auf({ form: FORM, dichte: DICHTE, flicken: flicken[name] ?? {}, extra: process.env.EXTRA ?? '' });
   await geladen();
   await s.waitForTimeout(3000);
   const aus = [];
