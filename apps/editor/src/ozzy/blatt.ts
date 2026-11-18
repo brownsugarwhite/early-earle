@@ -281,6 +281,24 @@ export class Blatt {
   }
 
   /** Mülleimer: das Blatt leeren (⌘Z holt es zurück) */
+  /** Etappe 3 (mehrere Objekte): die ganze Zeichnung des Blatts als Kopie, und eine solche wieder einsetzen (die Zeichnung eines Objekts) */
+  netzKopie(): Netz {
+    const n = this.netz;
+    return {
+      punkte: n.punkte.map((p) => ({ ...p })),
+      linien: n.linien.map((l) => ({ ...l, punkte: [...l.punkte], stuecke: l.stuecke.map((s) => ({ ...s })), ...(l.knick ? { knick: [...l.knick] } : {}) })),
+    };
+  }
+  netzSetzen(n: Netz): void {
+    this.strich = null;
+    this.aufzug = null;
+    if (this.verhalten.werk.entwurf()) this.verhalten.eingabe('esc');
+    this.verhalten.netzErsetzen({
+      punkte: n.punkte.map((p) => ({ ...p })),
+      linien: n.linien.map((l) => ({ ...l, punkte: [...l.punkte], stuecke: l.stuecke.map((s) => ({ ...s })), ...(l.knick ? { knick: [...l.knick] } : {}) })),
+    });
+  }
+
   leeren(): void {
     this.strich = null;
     this.aufzug = null;

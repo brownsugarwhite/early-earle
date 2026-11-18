@@ -718,19 +718,7 @@ export function spiegelAus(): boolean {
   }
   zurueck.push(schnappschuss());
   // was für die verschmolzene Form bereitlag oder noch rechnete, gilt nicht mehr (dieselben Punkte, aber ein anderes Netz für den Löser)
-  nachlauf = null;
-  G.aufgeraeumt = null;
-  G.aufraeumen = null;
-  G.zwischenstand = null;
-  G.gegriffen = null;
-  verfeinerung = null;
-  G.eingetroffen = null;
-  nichtsZuVerfeinern = null;
-  nachLoesenOffen = null;
-  vorlageBereit = null;
-  vorlageStand = '';
-  vorlageNetz = '';
-  standFertig = '';
+  hintergrundVerwerfen();
   ruheOffen = null;
   haut = r.haut;
   loops = r.loops;
@@ -742,6 +730,66 @@ export function spiegelAus(): boolean {
   anzeige.geometrieNeu();
   anzeige.allesZeigen();
   return true;
+}
+
+/** Was der Hintergrund für die Form von eben bereitgelegt hat oder noch rechnet, gilt nicht mehr (ein anderes Netz, eine andere Form) */
+export function hintergrundVerwerfen(): void {
+  nachlauf = null;
+  G.aufgeraeumt = null;
+  G.aufraeumen = null;
+  G.zwischenstand = null;
+  G.gegriffen = null;
+  verfeinerung = null;
+  G.eingetroffen = null;
+  nichtsZuVerfeinern = null;
+  verfeinernPause = 0;
+  nachLoesenOffen = null;
+  vorlageBereit = null;
+  vorlageStand = '';
+  vorlageNetz = '';
+  standFertig = '';
+  hintergrundGescheitert = '';
+}
+
+// ---------- Objekte (18.11., Plan „Objekte, Spiegel und Nähte“, Etappe 3) ----------
+
+/**
+ * Ein ruhendes Objekt: der Stand seiner Form, sein Rückweg (⌘Z) und sein Spiegel. Das Werk rechnet immer an einem Objekt; die anderen
+ * liegen so bereit. `objektAblegen` gibt den Stand des aktiven heraus, `objektAufnehmen` macht einen abgelegten zum aktiven: ein
+ * Zuweisen, keine Rechnung.
+ */
+export type ObjektStand = { stand: Schnappschuss; zurueck: Schnappschuss[]; clipping: boolean; spiegelbild: boolean; name: string };
+
+/** Ist eine Haut frei (für ein ruhendes Objekt, dessen Haut nicht im Werk steht)? */
+export const hautFreiVon = (h: Haut): boolean => hautFrei(h);
+/** Lässt sich das aktive Objekt gerade ablegen (kein Zug, kein Formen, nicht in der Pose)? */
+export const objektRuht = (): boolean => !zug && !formZug && !maulLauf && !grund && !G.stift && !G.abzweig;
+
+/**
+ * Den Stand des aktiven Objekts herausgeben (es bleibt im Werk stehen, bis ein anderes aufgenommen oder eine neue Form angelegt wird).
+ * Rechnete der Hintergrund noch an ihm (Setzen, Aufräumen), steht der Auftrag wieder im Stand: Er läuft weiter, wenn das Objekt wieder
+ * aktiv ist. null: Es ruht gerade nicht (`objektRuht`).
+ */
+export function objektAblegen(): ObjektStand | null {
+  if (!objektRuht()) return null;
+  const stand = schnappschuss();
+  const a = G.aufraeumen;
+  if (a && !stand.ruhe) stand.ruhe = { setzen: a.setzen, nurInRuhe: a.nurInRuhe, verdichten: a.verdichten, ziele: null };
+  return { stand, zurueck: zurueck.splice(0), clipping: G.clipping, spiegelbild: G.spiegelbild, name: G.ablageName };
+}
+
+/** Ein abgelegtes Objekt zum aktiven machen (das bisherige muss vorher abgelegt sein: Sein Stand geht hier verloren) */
+export function objektAufnehmen(o: ObjektStand): void {
+  hintergrundVerwerfen();
+  G.modus = 'frei';
+  G.entwurf = null;
+  G.spur = null;
+  zurueck.length = 0;
+  zurueck.push(...o.zurueck);
+  G.clipping = o.clipping;
+  G.spiegelbild = o.spiegelbild;
+  G.ablageName = o.name;
+  wiederherstellen(o.stand);
 }
 
 /**

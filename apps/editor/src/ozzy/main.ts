@@ -23,7 +23,7 @@ import { MAUL_WINKEL_MAX, eckenAuto, istEcke } from '@ee/shape/dicht';
 import { type Camera, Color, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
-import { FASSUNGEN, type Fassung, Haut, type HautWerte } from '../anfang/haut';
+import { FASSUNGEN, type Fassung, Haut, type HautNetz, type HautWerte } from '../anfang/haut';
 import { GRUNDWERTE as BLASE_GRUNDWERTE, REGLER as BLASE_REGLER, type Werte as BlasenWerte } from '../anfang/regler';
 import { FluessigeAnzeige, type Koerper as LinienKoerper, type Szene, ZEIGER_PUNKTE } from '../linien/fluessig';
 import { REGLER as LINIEN_REGLER } from '../linien/regler';
@@ -428,7 +428,8 @@ const WERK_HALBMESSER = 150;
  */
 const WERK_DICKE = 115;
 const WERK_GROESSER = 4;
-const werkHaut = new WerkHaut();
+/** die Anzeige des aktiven Objekts (jedes Objekt hat seine eigene, `ruhende`: Beim Wechsel des Objekts wechselt auch sie) */
+let werkHaut = new WerkHaut();
 /**
  * Die Form im Werk: aus welcher Silhouette (Stand des Blatts) und wie viele Schritte für ⌘Z das Werk danach schon hatte (davor liegt
  * seine Startkugel, dorthin geht ⌘Z in Ozzy nicht).
@@ -517,6 +518,261 @@ let objektDruck: { x: number; y: number; getroffen: boolean; gespiegelt: boolean
  * zugewandt ist; das Werk bildet die ganze Form ab (`werk.formZug…`, kein Löser).
  */
 let objektZug: { F: Flaeche; modal: boolean; sx: number; sy: number; gespiegelt: boolean } | null = null;
+
+// ---------- mehrere Objekte (18.11., Plan „Objekte, Spiegel und Nähte“, Etappe 3) ----------
+
+/**
+ * Ein ruhendes Objekt. Das Werk rechnet immer an einem Objekt, dem aktiven; die anderen ruhen: ihr Stand im Werk (samt Rückweg und
+ * Spiegel), ihre fertige Anzeige (eine eigene `WerkHaut`, ihr Netz liegt im Raum), ihre Zeichnung auf dem Blatt und ihre Blase (für
+ * „Luft ablassen“). Wer ein ruhendes Objekt anklickt, macht es zum aktiven (`objektAktivieren`): ein Zuweisen, keine Rechnung.
+ */
+type Ruhend = {
+  id: number;
+  haut: WerkHaut;
+  stand: werk.ObjektStand;
+  form: { stand: number; zurueck: number; geladen?: string; ohneLinie?: boolean };
+  marken: { n: number; clipping: boolean; spiegelbild: boolean }[];
+  koerper: Koerper | null;
+  zeichnung: ReturnType<Blatt['netzKopie']>;
+  /** seine grobe Haut im Raum, für Treffer: Lagen (3 je Punkt), Dreiecke; ob auch sein Spiegelbild zu treffen ist */
+  treffer: { pos: Float32Array; tri: Uint32Array; spiegelbild: boolean };
+  /** sein Kasten im Raum: Mitte und halbe Maße (die Tiefe gilt nach beiden Seiten der Spiegelebene) */
+  kasten: { cx: number; cy: number; rx: number; ry: number; tiefe: number };
+};
+const ruhende: Ruhend[] = [];
+let aktivId = 1;
+/** wie deutlich die ruhenden Objekte zu sehen sind (auf dem Blatt blass), weich nachgeführt */
+let ruheSicht = 1;
+const RUHE_AUF_DEM_BLATT = 0.38;
+/** das Netz aller ruhenden Objekte, wie die Seifenhaut es zeigt (neu, wenn sich ihre Reihe ändert) */
+let ruheNetzGemerkt: { schl: string; netz: HautNetz | null } = { schl: '', netz: null };
+const objektName = (): string => werk.G.ablageName || (ruhende.length || aktivId > 1 ? `Form ${aktivId}` : 'Form');
+
+/** mehrere Netze der Seifenhaut zu einem (die Lagen liegen alle im Raum) */
+function netzeVereinen(netze: readonly HautNetz[]): HautNetz {
+  let N = 0;
+  let I = 0;
+  for (const n of netze) {
+    N += n.pos.length / 3;
+    I += n.index.length;
+  }
+  const z: HautNetz = { pos: new Float32Array(3 * N), normal: new Float32Array(3 * N), index: new Uint32Array(I), hoehe: new Float32Array(N), seite: new Float32Array(N), blatt: new Float32Array(2 * N), dehnung: new Float32Array(N), sicht: new Float32Array(N) };
+  let v0 = 0;
+  let i0 = 0;
+  for (const n of netze) {
+    const k = n.pos.length / 3;
+    z.pos.set(n.pos, 3 * v0);
+    z.normal.set(n.normal, 3 * v0);
+    z.hoehe.set(n.hoehe, v0);
+    z.blatt.set(n.blatt, 2 * v0);
+    z.sicht.set(n.sicht, v0);
+    // (ruhende Objekte schneidet die Anzeige nicht an der Spiegelebene: Sie sind verschmolzen oder überragen sich; die Dehnung ist abgeklungen)
+    for (let i = 0; i < n.index.length; i++) z.index[i0 + i] = n.index[i]! + v0;
+    v0 += k;
+    i0 += n.index.length;
+  }
+  return z;
+}
+
+/** die ruhenden Objekte der Seifenhaut geben (nur, wenn sich ihre Reihe geändert hat) */
+function ruheZeigen(): void {
+  const schl = ruhende.map((r) => `${r.id}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}`).join('|');
+  if (schl === ruheNetzGemerkt.schl) return;
+  const netze = ruhende.map((r) => r.haut.zeigeNetz).filter((n): n is HautNetz => n !== null);
+  ruheNetzGemerkt = { schl, netz: netze.length ? netzeVereinen(netze) : null };
+  haut.ruheSetzen(ruheNetzGemerkt.netz);
+}
+
+/** das aktive Objekt ablegen: Es ruht von jetzt an (bis ein anderes aufgenommen oder eine neue Form angelegt wird, steht es noch im Werk) */
+function objektAblegenJetzt(): Ruhend | null {
+  if (!werkForm || !werkGezeigt || !werkHaut.zeigeNetz || tastenZug || objektZug || spiegelFahrt) return null;
+  const k = werkMasseWeltAktiv();
+  const stand = k ? werk.objektAblegen() : null;
+  if (!stand || !k) return null;
+  const f = werkHaut.f;
+  const P = werk.haut.pos;
+  const pos = new Float32Array(P.length);
+  for (let i = 0; i < P.length; i += 3) {
+    pos[i] = P[i]! / f + werkHaut.mitte.x;
+    pos[i + 1] = P[i + 1]! / f + werkHaut.mitte.y;
+    pos[i + 2] = P[i + 2]! / f;
+  }
+  const r: Ruhend = {
+    id: aktivId,
+    haut: werkHaut,
+    stand,
+    form: werkForm,
+    marken: spiegelMarken.splice(0),
+    koerper,
+    zeichnung: blatt.netzKopie(),
+    treffer: { pos, tri: Uint32Array.from(werk.haut.tri), spiegelbild: werkHaut.spiegelbild },
+    kasten: k,
+  };
+  ruhende.push(r);
+  werkFelder.leeren();
+  return r;
+}
+
+/** ein ruhendes Objekt zum aktiven machen (das bisherige ist abgelegt oder wird verworfen) */
+function objektAufnehmenJetzt(r: Ruhend): void {
+  const i = ruhende.indexOf(r);
+  if (i >= 0) ruhende.splice(i, 1);
+  werkHaut = r.haut;
+  aktivId = r.id;
+  spiegelMarken.length = 0;
+  spiegelMarken.push(...r.marken);
+  spiegelFahrt = null;
+  blatt.netzSetzen(r.zeichnung);
+  silhouette = blatt.silhouette();
+  netzStand = blatt.stand;
+  koerper = r.koerper;
+  haut.setzeKoerper(koerper);
+  haut.hochladen();
+  werkForm = r.form;
+  werkBlatt.neueForm();
+  werkFelder.leeren();
+  werk.objektAufnehmen(r.stand);
+  werk.anzeige.allesZeigen();
+  uebergabe = null;
+  uebergabeStart = null;
+  hautZeigt = null;
+  werkNeu = true;
+  ruheZeigen();
+  raumRechnen(bw.band);
+  if (koerper && raum) T = moment(0, masse(), werte).dauer;
+}
+
+/** ein Objekt (seine Kennung) zum aktiven machen; wahr, wenn es jetzt das aktive ist */
+function objektAktivieren(id: number): boolean {
+  if (id === aktivId) return true;
+  const r = ruhende.find((x) => x.id === id);
+  if (!r || zustand !== 'ruhe') return false;
+  if (!objektAblegenJetzt()) {
+    werk.G.meldung = 'Das andere Objekt lässt sich erst wählen, wenn der laufende Handgriff beendet ist';
+    return false;
+  }
+  objektAufnehmenJetzt(r);
+  werk.G.meldung = '';
+  return true;
+}
+
+/** der nächste Treffer eines Strahls (Ursprung o, Richtung d) auf einem Netz: der Weg längs d, sonst unendlich */
+function strahlAufNetz(P: ArrayLike<number>, T: ArrayLike<number>, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): number {
+  let best = Infinity;
+  for (let t = 0; t < T.length; t += 3) {
+    const a = 3 * T[t]!;
+    const b = 3 * T[t + 1]!;
+    const c = 3 * T[t + 2]!;
+    const e1x = P[b]! - P[a]!;
+    const e1y = P[b + 1]! - P[a + 1]!;
+    const e1z = P[b + 2]! - P[a + 2]!;
+    const e2x = P[c]! - P[a]!;
+    const e2y = P[c + 1]! - P[a + 1]!;
+    const e2z = P[c + 2]! - P[a + 2]!;
+    const px = dy * e2z - dz * e2y;
+    const py = dz * e2x - dx * e2z;
+    const pz = dx * e2y - dy * e2x;
+    const det = e1x * px + e1y * py + e1z * pz;
+    if (Math.abs(det) < 1e-12) continue;
+    const inv = 1 / det;
+    const tx = ox - P[a]!;
+    const ty = oy - P[a + 1]!;
+    const tz = oz - P[a + 2]!;
+    const u = (tx * px + ty * py + tz * pz) * inv;
+    if (u < 0 || u > 1) continue;
+    const qx = ty * e1z - tz * e1y;
+    const qy = tz * e1x - tx * e1z;
+    const qz = tx * e1y - ty * e1x;
+    const v = (dx * qx + dy * qy + dz * qz) * inv;
+    if (v < 0 || u + v > 1) continue;
+    const w = (e2x * qx + e2y * qy + e2z * qz) * inv;
+    if (w > 1e-6 && w < best) best = w;
+  }
+  return best;
+}
+
+/**
+ * Das Objekt unter dem Zeiger: seine Kennung (das aktive oder ein ruhendes; das vorderste), 0: keins. Im Raum und in einer
+ * eingerasteten Ansicht ein Strahl gegen die Häute (auch gegen gezeigte Spiegelbilder); in den Feldern der Vier Ansichten zählt nur
+ * das aktive Objekt.
+ */
+function objektBei(x: number, y: number): number {
+  if (zustand !== 'ruhe' || !werkGezeigt) return 0;
+  if (!ruhende.length || !pinselHier(x, y)) return objektUnter(x, y) ? aktivId : 0;
+  const { o, d } = kam.strahl(x, y, W, H);
+  let best = Infinity;
+  let id = 0;
+  const f = werkHaut.f;
+  const aktiv = (spiegel: boolean): number => {
+    const sz = spiegel ? -1 : 1;
+    return strahlAufNetz(werk.haut.pos, werk.haut.tri, (o.x - werkHaut.mitte.x) * f, (o.y - werkHaut.mitte.y) * f, sz * o.z * f, d.x, d.y, sz * d.z) / f;
+  };
+  for (const s of werkHaut.spiegelbild ? [false, true] : [false]) {
+    const w = aktiv(s);
+    if (w < best) {
+      best = w;
+      id = aktivId;
+    }
+  }
+  for (const r of ruhende)
+    for (const s of r.treffer.spiegelbild ? [1, -1] : [1]) {
+      const w = strahlAufNetz(r.treffer.pos, r.treffer.tri, o.x, o.y, s * o.z, d.x, d.y, s * d.z);
+      if (w < best) {
+        best = w;
+        id = r.id;
+      }
+    }
+  return id;
+}
+
+/**
+ * Das Plus: ein neues Objekt. Das aktive ruht von jetzt an, das Blatt der Seite öffnet sich leer, die vorhandenen Objekte stehen
+ * blass darin; gezeichnet wird das neue, ↩ bläst es auf (wie das erste). Esc auf dem leeren Blatt führt zurück in den Raum.
+ */
+function objektPlus(): void {
+  if (zustand !== 'ruhe' || !werkGezeigt || !werkForm) return;
+  if (bearbeiten.stift || strichWerkzeug() || objektModus()) werkzeugImRaum('auswahl');
+  const r = objektAblegenJetzt();
+  if (!r) {
+    werk.G.meldung = 'Ein neues Objekt: erst den laufenden Handgriff beenden (und zurück in die Grundform)';
+    anstossen();
+    return;
+  }
+  // (die Anzeige des Objekts von eben gehört ihm: Das neue bekommt seine eigene)
+  werkHaut = new WerkHaut();
+  ruheZeigen();
+  neu(true);
+  // (die nächste freie Nummer: Ein abgebrochenes Plus oder ein gelöschtes Objekt hinterlässt keine Lücke am Ende)
+  aktivId = Math.max(...ruhende.map((x) => x.id)) + 1;
+  werk.G.meldung = 'Neues Objekt: seine Form zeichnen, ↩ bläst es auf · Esc: zurück';
+  anstossen();
+}
+
+/** das Plus abbrechen (Esc auf dem leeren Blatt): zurück in den Raum, das zuletzt abgelegte Objekt ist wieder das aktive */
+function objektPlusAbbrechen(): boolean {
+  const r = ruhende[ruhende.length - 1];
+  if (zustand !== 'blatt' || !r || !blatt.leer) return false;
+  objektAufnehmenJetzt(r);
+  raumRechnen();
+  massstab.jetzt = massstab.ziel;
+  zustand = 'ruhe';
+  if (koerper && raum) T = moment(0, masse(), werte).dauer;
+  leiste.lage(true);
+  werk.G.meldung = '';
+  anstossen();
+  return true;
+}
+
+/** das aktive Objekt löschen, wenn es noch andere gibt: Das zuletzt abgelegte wird das aktive. Wahr, wenn gelöscht wurde */
+function objektLoeschen(): boolean {
+  const r = ruhende[ruhende.length - 1];
+  if (!r || zustand !== 'ruhe' || !werk.objektRuht() || tastenZug || objektZug) return false;
+  const weg = aktivId;
+  objektAufnehmenJetzt(r);
+  objektGewaehlt = false;
+  werk.G.meldung = `Form ${weg} gelöscht`;
+  return true;
+}
 /** Pinsel „Ziehen“ an der Blase (Phase 6): Radius in Einheiten des Werks (wie der Einfluss O, [ und ] ändern ihn) */
 let pinselRadius = 90;
 /** der Punkt einer Linie, den der Pinsel gerade fassen würde (Kennung, Nummer, Spiegelbild, Welt) */
@@ -690,6 +946,25 @@ const wandSicht = [0, 0, 0, 0, 0, 0];
 
 /** Maße der Form des Werks in der Welt (Mitte, halbe Ausdehnungen; die Tiefe von der Mittelebene), wenn das Werk eine hat */
 function werkMasseWelt(): { cx: number; cy: number; rx: number; ry: number; tiefe: number } | null {
+  const a = werkMasseWeltAktiv();
+  if (!ruhende.length) return a;
+  // mehrere Objekte: der Kasten um alle (der Raum, seine Wände und der Maßstab richten sich nach allen)
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  let z = 0;
+  for (const k of a ? [a, ...ruhende.map((r) => r.kasten)] : ruhende.map((r) => r.kasten)) {
+    x0 = Math.min(x0, k.cx - k.rx);
+    x1 = Math.max(x1, k.cx + k.rx);
+    y0 = Math.min(y0, k.cy - k.ry);
+    y1 = Math.max(y1, k.cy + k.ry);
+    z = Math.max(z, k.tiefe);
+  }
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rx: (x1 - x0) / 2, ry: (y1 - y0) / 2, tiefe: z };
+}
+/** der Kasten des aktiven Objekts im Raum (aus der Haut des Werks) */
+function werkMasseWeltAktiv(): { cx: number; cy: number; rx: number; ry: number; tiefe: number } | null {
   if (!werkForm) return null;
   const P = werk.haut.pos;
   if (!P.length) return null;
@@ -735,6 +1010,25 @@ function raumRechnen(band = 0): void {
     ry = Math.max(ry, Math.abs(F.y[i]! - F.cy));
   }
   const tiefe = koerper.fuelle * F.qMax;
+  if (ruhende.length) {
+    // die Blase eines neuen Objekts neben den ruhenden: der Kasten um alle
+    let x0 = F.cx - rx;
+    let x1 = F.cx + rx;
+    let y0 = F.cy - ry;
+    let y1 = F.cy + ry;
+    let z = tiefe;
+    for (const { kasten: k } of ruhende) {
+      x0 = Math.min(x0, k.cx - k.rx);
+      x1 = Math.max(x1, k.cx + k.rx);
+      y0 = Math.min(y0, k.cy - k.ry);
+      y1 = Math.max(y1, k.cy + k.ry);
+      z = Math.max(z, k.tiefe);
+    }
+    const R2 = Math.max((x1 - x0) / 2, (y1 - y0) / 2, z, 1);
+    raum = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, L: R2 * (1 + bw.waende), rx: (x1 - x0) / 2, ry: (y1 - y0) / 2, tiefe: z, R: R2 };
+    massstab.ziel = (bw.groesse * Math.min(W, H)) / (2 * R2);
+    return;
+  }
   const R = Math.max(rx, ry, tiefe, 1);
   raum = { cx: F.cx, cy: F.cy, L: R * (1 + bw.waende), rx, ry, tiefe, R };
   massstab.ziel = (bw.groesse * Math.min(W, H)) / (2 * R);
@@ -939,6 +1233,8 @@ function spiegelGrundstellung(): void {
 function werkFormAnlegen(): void {
   if (!silhouette) return;
   if (werkForm && werkForm.stand === blatt.stand && (werkForm.geladen !== undefined || mitteLinie() || werkForm.ohneLinie)) return;
+  // (eine neu angelegte Form beginnt mit Spiegel und Clipping; bleibt die Form des Werks nach „Luft ablassen“, bleibt auch ihr Spiegel)
+  spiegelGrundstellung();
   const ab = abtasten(silhouette, 2);
   let x0 = Infinity;
   let x1 = -Infinity;
@@ -1267,7 +1563,6 @@ function aufblasen(): void {
   if (!koerper) return;
   koerper.versatz.fill(0);
   raumRechnen();
-  spiegelGrundstellung();
   werkFormAnlegen();
   // die Wände nach der Form des Werks
   raumRechnen();
@@ -1353,9 +1648,17 @@ function nochEinmal(): void {
   anstossen();
 }
 
-/** zurück aufs leere Blatt (der Mülleimer im Raum); die Zeichnung bleibt für ⌘Z auf dem Blatt */
-function neu(): void {
+/**
+ * zurück aufs leere Blatt (der Mülleimer im Raum); die Zeichnung bleibt für ⌘Z auf dem Blatt. `behalten` (das Plus): Die ruhenden
+ * Objekte bleiben stehen, das Blatt ist leer für ein neues.
+ */
+function neu(behalten = false): void {
   if (bearbeiten.stift) bearbeiten.stiftSchalten(false);
+  if (!behalten) {
+    ruhende.length = 0;
+    aktivId = 1;
+    ruheZeigen();
+  }
   werkHaut.neueForm();
   werkBlatt.neueForm();
   zustand = 'blatt';
@@ -2361,8 +2664,24 @@ function mitteDa(): boolean {
 
 function umrissJetzt(achse: 0 | 1 | 2): Float32Array {
   // während das Werk rechnet, darf der Umriss ein paar Bilder alt sein (`werkHaut.umrissVeraltet` holt das nächste Bild)
-  return werkGezeigt ? werkHaut.umriss(achse, werkBeschaeftigt()) : koerper!.umriss(achse);
+  const eigen = werkGezeigt ? werkHaut.umriss(achse, werkBeschaeftigt()) : koerper!.umriss(achse);
+  if (!ruhende.length) return eigen;
+  // mehrere Objekte: die Umrisse der ruhenden dazu (jede Anzeige merkt sich ihren; zusammengesetzt wird nur, wenn sich einer ändert)
+  const teile = [eigen, ...ruhende.map((r) => r.haut.umriss(achse))];
+  const g = umrissAlle[achse];
+  if (g && g.teile.length === teile.length && g.teile.every((t, i) => t === teile[i])) return g.aus;
+  let n = 0;
+  for (const t of teile) n += t.length;
+  const aus = new Float32Array(n);
+  let o = 0;
+  for (const t of teile) {
+    aus.set(t, o);
+    o += t.length;
+  }
+  umrissAlle[achse] = { teile, aus };
+  return aus;
 }
+const umrissAlle: ({ teile: Float32Array[]; aus: Float32Array } | null)[] = [null, null, null];
 
 /**
  * A3: der Kasten der Haut des Werks im Bild (Gerätepunkte, Ursprung oben links), wenn von der Seifenhaut nur sie zu sehen ist (Ruhe,
@@ -2371,10 +2690,7 @@ function umrissJetzt(achse: 0 | 1 | 2): Float32Array {
  */
 function hautAusschnitt(m: Moment | null): { x: number; y: number; b: number; h: number } | null {
   if (zustand !== 'ruhe' || !werkGezeigt || !m || 1 - m.schatten > 1e-3 || werk.grund !== null) return null;
-  const { rx, ry, tiefe } = werkHaut.masse();
   const vp = vpJetzt();
-  const mx = werkHaut.mitte.x;
-  const my = werkHaut.mitte.y;
   // die gewölbte Anzeige reicht ein wenig über die Rechenpunkte hinaus
   const k = 1.05;
   let x0 = Infinity;
@@ -2382,17 +2698,21 @@ function hautAusschnitt(m: Moment | null): { x: number; y: number; b: number; h:
   let y0 = Infinity;
   let y1 = -Infinity;
   const v = new Vector4();
-  for (let e = 0; e < 8; e++) {
-    v.set(mx + (e & 1 ? k : -k) * rx, my + (e & 2 ? k : -k) * ry, (e & 4 ? k : -k) * tiefe, 1).applyMatrix4(vp);
-    // eine Ecke hinter der Kamera: kein verlässlicher Kasten
-    if (!(v.w > 1e-6)) return null;
-    const x = (v.x / v.w / 2 + 0.5) * W * D;
-    const y = (0.5 - v.y / v.w / 2) * H * D;
-    x0 = Math.min(x0, x);
-    x1 = Math.max(x1, x);
-    y0 = Math.min(y0, y);
-    y1 = Math.max(y1, y);
-  }
+  // der Kasten des aktiven Objekts (um seine Mitte, nach beiden Seiten der Spiegelebene) und die der ruhenden
+  const eigen = werkHaut.masse();
+  const kaesten = [{ cx: werkHaut.mitte.x, cy: werkHaut.mitte.y, rx: eigen.rx, ry: eigen.ry, tiefe: eigen.tiefe }, ...ruhende.map((r) => r.kasten)];
+  for (const b of kaesten)
+    for (let e = 0; e < 8; e++) {
+      v.set(b.cx + (e & 1 ? k : -k) * b.rx, b.cy + (e & 2 ? k : -k) * b.ry, (e & 4 ? k : -k) * b.tiefe, 1).applyMatrix4(vp);
+      // eine Ecke hinter der Kamera: kein verlässlicher Kasten
+      if (!(v.w > 1e-6)) return null;
+      const x = (v.x / v.w / 2 + 0.5) * W * D;
+      const y = (0.5 - v.y / v.w / 2) * H * D;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
   const rand = 8 * D + 0.03 * Math.max(x1 - x0, y1 - y0);
   return { x: x0 - rand, y: y0 - rand, b: x1 - x0 + 2 * rand, h: y1 - y0 + 2 * rand };
 }
@@ -2620,6 +2940,13 @@ function bild(dt: number): boolean {
     wandSicht[i]! += (ziel - wandSicht[i]!) * (1 - Math.exp(-dt / 0.12));
     if (Math.abs(ziel - wandSicht[i]!) > 2e-3) aktiv = true;
   }
+  // die ruhenden Objekte: auf dem Blatt (für ein neues Objekt, oder wenn dem aktiven die Luft abgelassen ist) blass, sonst wie die Haut
+  if (ruhende.length) {
+    const ziel = zustand === 'blatt' ? RUHE_AUF_DEM_BLATT : zustand === 'ab' ? RUHE_AUF_DEM_BLATT + (1 - RUHE_AUF_DEM_BLATT) * glatt(Math.min(1, T / 0.8)) : 1;
+    ruheSicht += (ziel - ruheSicht) * (1 - Math.exp(-dt / 0.16));
+    if (Math.abs(ziel - ruheSicht) > 2e-3) aktiv = true;
+    else ruheSicht = ziel;
+  } else ruheSicht = 1;
   // Haut (keine Schatten an den Wänden: dort stehen die Linien). Eingerastet ist nur der Umriss zu sehen (Florian, 16.11.): Die Blase
   // verdunstet beim Einrasten, die Haut wird dünner (die Farben laufen) und klar, und kommt beim Lösen genauso zurück.
   const F = koerper?.flach;
@@ -2656,6 +2983,7 @@ function bild(dt: number): boolean {
     netz: werkGezeigt ? netzArt : 0,
     blaseAus: raumNetzDeckung >= 0.999,
     ausschnitt: hautAusschnitt(m),
+    ruheSicht,
   };
   const tz = performance.now();
   // ein festes Material statt der Seifenhaut (Florian, 18.11.): Die Seifenhaut zeichnet nur ihren Grund (Papier, dunkle Rückseite),
@@ -2803,6 +3131,8 @@ function bild(dt: number): boolean {
   maulUiZeigen();
   objektUiZeigen();
   leiste.spiegelZeigen(spiegelZustand(), spiegelErlaubt());
+  // das Plus: ein neues Objekt gibt es im Raum, sobald eine Form steht (wie der Spiegel)
+  leiste.plusErlauben(spiegelErlaubt());
   tastenStand();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
@@ -5173,7 +5503,11 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
       anstossen();
       return;
     }
-    const getroffen = objektUnter(x, y);
+    const unter = objektBei(x, y);
+    // ein ruhendes Objekt unter dem Zeiger wird das aktive (dann gilt alles Weitere ihm)
+    const gewechselt = unter !== 0 && unter !== aktivId && objektAktivieren(unter);
+    if (gewechselt) objektKlick = { t: 0, x, y };
+    const getroffen = unter !== 0 && unter === aktivId;
     if (getroffen && e.timeStamp - objektKlick.t < 350 && Math.hypot(x - objektKlick.x, y - objektKlick.y) < 8) {
       objektKlick = { t: 0, x, y };
       werkzeugImRaum('auswahl');
@@ -5194,6 +5528,15 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     }
     anstossen();
     return;
+  }
+  // Punkte (A) mit mehreren Objekten: Ein Klick auf ein ruhendes Objekt macht es zum aktiven (seine Linien und Punkte erscheinen).
+  // Nicht, wo etwas vom aktiven am Zeiger hängt oder das aktive davor liegt
+  if (bearbeitenAn && raumWerkzeug === 'auswahl' && ruhende.length && !bearbeiten.haengt) {
+    const unter = objektBei(x, y);
+    if (unter !== 0 && unter !== aktivId && objektAktivieren(unter)) {
+      anstossen();
+      return;
+    }
   }
   // Linien des Werks: Hängt ein Tropfen am Zeiger, gilt das Drücken ihm; ins Leere im Raum (und im Feld des Raums) dreht es, in einer
   // flachen Ansicht zieht es einen Rahmen (E2)
@@ -5541,7 +5884,12 @@ function werkzeugImRaum(w: Werkzeug): void {
 
 function muell(): void {
   if (zustand === 'blatt') blatt.leeren();
-  else neu();
+  else if (ruhende.length && zustand === 'ruhe') {
+    // mit mehreren Objekten verwirft der Mülleimer das aktive (wie ⌫ im Objekt-Modus); das letzte geht wie bisher zurück aufs leere Blatt
+    if (!objektLoeschen()) werk.G.meldung = 'Das Objekt lässt sich erst löschen, wenn der laufende Handgriff beendet ist';
+    anstossen();
+    return;
+  } else neu();
   leiste.lage(false);
   anstossen();
 }
@@ -5627,6 +5975,8 @@ window.addEventListener('keydown', (e) => {
     } else if (bearbeitenAn) bearbeiten.eingabe('enter');
   } else if (k === 'Escape') {
     if (zustand === 'blatt') {
+      // (das Plus abbrechen: auf dem leeren Blatt eines neuen Objekts zurück in den Raum, zum Objekt von eben)
+      if (objektPlusAbbrechen()) return;
       if (!blatt.eingabe('esc')) {
         blatt.werkzeugSetzen('auswahl');
         leiste.setzen('auswahl');
@@ -5654,7 +6004,8 @@ window.addEventListener('keydown', (e) => {
     else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || (bearbeiten.stift && werkBlatt.entwurf()))) bearbeiten.eingabe('loeschen');
     // im Objekt-Modus (V) löscht ⌫ nur das gewählte Objekt (noch ist es die eine Form: Die Luft geht ab)
     else if (objektModus() && werkGezeigt) {
-      if (objektGewaehlt) ablassen();
+      // (gibt es noch andere Objekte, geht nur das gewählte; das letzte Objekt lässt wie bisher die Luft ab)
+      if (objektGewaehlt && !objektLoeschen()) ablassen();
     } else ablassen();
   } else if ((k === '[' || k === ']') && zustand === 'ruhe' && werkGezeigt) {
     // Radius des Pinsels (wie O im Prüffenster)
@@ -5805,7 +6156,7 @@ function waehlenTaste(w: Werkzeug): void {
 
 // ---------- Leiste, Menü, Feinregler ----------
 
-const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, (z) => spiegelSetzen(z));
+const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, (z) => spiegelSetzen(z), objektPlus);
 
 // S13 (liquid drop, Idee 10): der Ansichts-Tropfen unten rechts; Tippen rastet ein (⇧ die Gegenseite, die Mitte der Raum), Ziehen dreht
 const ansichtsTropfen = new AnsichtsTropfen(
@@ -6208,7 +6559,7 @@ function objektUiZeigen(): void {
   }
   objektTropfen.hidden = !ort;
   if (!ort) return;
-  const text = werk.G.ablageName || 'Form';
+  const text = objektName();
   if (objektTropfen.textContent !== text) objektTropfen.textContent = text;
   objektTropfen.style.left = `${ort.x.toFixed(1)}px`;
   objektTropfen.style.top = `${ort.y.toFixed(1)}px`;
@@ -6386,6 +6737,17 @@ const haken = {
     gezeigt: werkHaut.zeigeNetz ? werkHaut.zeigeNetz.pos.length / 3 : 0,
   }),
   spiegelSetzen,
+  /** Etappe 3: die Objekte (das aktive und die ruhenden mit ihren Kästen im Raum), das Plus, ein Objekt zum aktiven machen */
+  objekte: () => ({
+    aktiv: aktivId,
+    name: objektName(),
+    ruhende: ruhende.map((r) => ({ id: r.id, kasten: r.kasten, punkte: r.treffer.pos.length / 3, gezeigt: (r.haut.zeigeNetz?.pos.length ?? 0) / 3, spiegelbild: r.treffer.spiegelbild, frei: werk.hautFreiVon(r.stand.stand.haut), clipping: r.stand.clipping })),
+    ruheSicht,
+    kasten: werkMasseWeltAktiv(),
+  }),
+  objektPlus,
+  objektAktivieren,
+  objektBei,
   /** Objekte (V): der Modus, ob das Objekt gewählt ist, das Werkzeug des Raums, das Schild am Objekt (Text und Ort, CSS-Pixel) */
   objekt: () => ({
     modus: objektModus(),
@@ -6473,6 +6835,12 @@ const haken = {
       oAn: werk.G.oAn,
     };
   },
+  /** wo ein Ort des Raums im Bild liegt (CSS-Pixel); der Zustand des Ablaufs (Blatt, Aufblasen, Raum, Ablassen) */
+  weltImBild: (q: { x: number; y: number; z: number }): { x: number; y: number } => {
+    const [x, y] = projizieren(new Vector3(q.x, q.y, q.z), vpJetzt());
+    return { x: x / D, y: y / D };
+  },
+  zustand: (): string => zustand,
   /** wo ein Ort des Werks (wie gezeigt) im Bild liegt (CSS-Pixel) */
   werkImBild: (q: { x: number; y: number; z: number }): { x: number; y: number } => {
     const [x, y] = projizieren(werkInWelt(q), vpJetzt());
@@ -6703,9 +7071,9 @@ const haken = {
     fressen: !fressen.hidden,
     haut: mitHaut ? Array.from(werk.alsAnzeige(() => werk.haut.pos)) : null,
   }),
-  /** eine geschlossene Silhouette setzen (CSS-Pixel des Blatts), wie mit P gezeichnet */
-  form(anker: { x: number; y: number; ein?: [number, number]; aus?: [number, number] }[]): void {
-    neu();
+  /** eine geschlossene Silhouette setzen (CSS-Pixel des Blatts), wie mit P gezeichnet; `dazu`: auf dem Blatt eines neuen Objekts (nach dem Plus), die anderen Objekte bleiben */
+  form(anker: { x: number; y: number; ein?: [number, number]; aus?: [number, number] }[], dazu = false): void {
+    if (!dazu) neu();
     const n = { punkte: anker.map((a) => ({ x: a.x, y: a.y, sichtbar: true, verdeckt: false })), linien: [] as never[] };
     const m = anker.length;
     const linie = {

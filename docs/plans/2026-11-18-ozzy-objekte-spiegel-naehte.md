@@ -144,6 +144,26 @@ Jede Etappe endet mit einer sichtbaren Probe (Film oder Bild, vorher und nachher
 | **5** | **Naht lebt:** verschmolzene Objekte wieder verschieben und auseinanderziehen (Hals, Abriss), die Naht bearbeiten. | Film in echter Geschwindigkeit |
 | **6** | Danach, wie du geschrieben hast: Seifenhaut, Tempo und Bedienung ansehen (Liste in Abschnitt 8). | Messblatt |
 
+### Etappe 3: wie mehrere Objekte gebaut werden (18.11., 16:45 Uhr)
+
+Gelesen, bevor gebaut wird: Ozzy hat für die eine Form drei Dinge, die zusammengehören. Das Werk (Stand der Rechnung, samt Rückweg
+für ⌘Z), ihre glatte Anzeige (`WerkHaut`: sie liegt schon in den Koordinaten des Raums vor, mit eigenem Maß und eigener Mitte) und
+die Zeichnung auf dem Blatt (für „Luft ablassen“).
+
+- **Ein Objekt ist ein Stand des Werks plus seine eigene Anzeige.** Das Werk rechnet immer an einem, dem aktiven. Die anderen ruhen:
+  Ihr Stand liegt bereit (`werk.objektAblegen`, `werk.objektAufnehmen`), ihre fertige Haut steht im Bild und kostet nichts, solange
+  niemand sie anfasst. Wer ein ruhendes Objekt anklickt, macht es zum aktiven (der Tausch ist ein Zuweisen, keine Rechnung).
+- **Jedes Objekt rechnet in seiner eigenen Größe** (jede Form wie bisher rund 150 Einheiten groß, mit eigenem Maß `f`): So gelten
+  alle Maße des Kerns unverändert, auch für ein kleines Ohr neben einem großen Körper, und nichts wird weit vom Ursprung gerechnet.
+- **Der Rückweg gehört dem Objekt** (⌘Z nimmt den letzten Schritt am aktiven Objekt zurück). Ein gemeinsamer Rückweg über alle
+  Objekte (auch für „neues Objekt“ und „Objekt gelöscht“) ist der zweite Schritt.
+- **Das Plus** öffnet das Blatt der Seite: Die vorhandenen Objekte stehen blass darin, gezeichnet wird das neue, ↩ bläst es auf.
+- **Luft ablassen** (zurück zur Zeichnung) gibt es, solange es ein Objekt gibt. Mit mehreren löscht ⌫ im Objekt-Modus das gewählte.
+
+Reihenfolge: (a) Plus, zweites Objekt, wählen mit V und A, bewegen, Spiegel je Objekt, löschen; (b) mehrere Silhouetten auf dem
+ersten Blatt; (c) Linien ruhender Objekte blass zeigen, alle Materialien für alle Objekte; (d) gemeinsamer Rückweg; (e) Sichern und
+Laden mit mehreren Objekten.
+
 ## 7. Was ich für dich entschieden habe (sag, wenn du es anders willst)
 
 - Lasso auf **Q**, damit L frei wird.

@@ -26,6 +26,9 @@ const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' 
   wuerfel: '<path d="M4.2 7.4h8.4v8.4H4.2z" /><path d="M4.2 7.4l3.2-3.2h8.4v8.4l-3.2 3.2" /><path d="M12.6 7.4l3.2-3.2" />',
   muell: '<path d="M5 5.2h10M8.1 5.2V3.8h3.8v1.4M6.3 7.1l.75 9.4h5.9l.75-9.4" /><path d="M8.6 9v5.4M11.4 9v5.4" class="duenn" />',
 };
+/** das Plus: ein neues Objekt */
+const PLUS_ZEICHEN = '<path d="M10 4.4v11.2M4.4 10h11.2" />';
+const PLUS_NAME = 'Neues Objekt (+): Das Blatt der Seite öffnet sich, die vorhandenen Objekte stehen blass darin; zeichnen, ↩ bläst es auf';
 
 /**
  * Der Spiegel-Knopf (18.11., Florian: „einen multifunktionsknopf für den mirrormodifier … mirror an, mirror aus, mirror an mit
@@ -109,6 +112,7 @@ export class Leiste {
   private formenZeichen: HTMLSpanElement;
   private form: 'ellipse' | 'wuerfel' = 'ellipse';
   private aktiv: Werkzeug = 'p';
+  private plusKnopf!: HTMLButtonElement;
   private spiegelKnoepfe = new Map<SpiegelZustand, HTMLButtonElement>();
   private spiegelTropfen!: HTMLDivElement;
   private spiegelStand = '';
@@ -124,6 +128,7 @@ export class Leiste {
     private wahl: (w: Werkzeug) => void,
     private muell: () => void,
     private spiegel: (z: SpiegelZustand, alt: boolean) => void = () => {},
+    private plus: () => void = () => {},
   ) {
     const el = document.createElement('nav');
     el.id = 'leiste';
@@ -167,6 +172,18 @@ export class Leiste {
     const vorSpiegel = document.createElement('span');
     vorSpiegel.className = 'trenner';
     el.append(vorSpiegel);
+    // das Plus (Etappe 3): ein neues Objekt; nur im Raum, mit einer Form
+    const plusEl = document.createElement('button');
+    plusEl.type = 'button';
+    plusEl.className = 'werkzeug';
+    plusEl.id = 'plus';
+    plusEl.title = PLUS_NAME;
+    plusEl.setAttribute('aria-label', PLUS_NAME);
+    plusEl.append(zeichen2(PLUS_ZEICHEN));
+    plusEl.toggleAttribute('disabled', true);
+    plusEl.addEventListener('click', () => this.plus());
+    el.append(plusEl);
+    this.plusKnopf = plusEl;
     const gruppe = document.createElement('span');
     gruppe.className = 'spiegel-gruppe';
     gruppe.id = 'spiegel';
@@ -258,6 +275,11 @@ export class Leiste {
       this.fx.v = 0;
     }
     this.anstossen();
+  }
+
+  /** das Plus an oder aus (ein neues Objekt gibt es nur im Raum, wenn schon eine Form steht) */
+  plusErlauben(an: boolean): void {
+    this.plusKnopf.toggleAttribute('disabled', !an);
   }
 
   /** die Zeichenwerkzeuge an oder aus (im Raum wirken sie erst mit dem Werk) */
