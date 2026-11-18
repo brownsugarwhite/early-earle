@@ -51,6 +51,13 @@ gebaut ist, steht im Plan je Schritt unter „Gebaut“, nicht hier.
 
   Mein Vorschlag: A. Genau stehen bleibt die Form nur, wenn an der alten Stelle eine Linie bleibt (B).
 
+- **Felder (C4, 18.11.): die Farbe und zwei Regeln.** Ein gewähltes Feld ist hellgrün getönt (das Grün der verdeckten Linien, zur
+  Hälfte), auf der dunklen Rückseite dunkelgrün; Bild
+  [`2026-11-18-feld-waehlen-ziehen.png`](../progress/ozzy/2026-11-18-feld-waehlen-ziehen.png). Passt die Farbe? Und zwei Regeln, die
+  ich gesetzt habe: (1) Ein Feld reicht bis an die Linie der Mitte; sein Spiegelbild ist immer mitgewählt. Ziehst du es, gehen
+  auch die Punkte der Mitte auf seinem Rand mit (der Umriss ändert sich). (2) In den Vier Ansichten schließt ein Klick auf die
+  Form die Ansichten nicht mehr (er wählt das Feld); ein Klick ins Leere schließt sie wie bisher.
+
 ## 2. Kurvennetz im Raum: Unterschiede zur Studie
 
 Er, 17.11.: „Ist erstmal ok so. Ich seh noch unterschiede zur studie in der ich es erarbeitet habe. Aber notiere das für den
@@ -91,6 +98,21 @@ durchgehen, nicht raten.
 - **C2 (18.11.), sehr flache Kreuzung:** Streift ein neuer Loop eine vorhandene Linie fast längs, bleiben zwischen den Linien
   schmale Dreiecke, die verkehrt liegen können (alle Ecken auf Linien). Sauber wäre, den neuen Loop dort ein Stück auf der alten
   Linie laufen zu lassen oder die zwei Punkte zu verschmelzen.
+
+- **C4 (18.11.), Felder im Raum:** An der Seifenhaut im Raum gibt es keine Felder (dort zieht der Pinsel). Zu bauen wären der
+  Treffer mit dem Strahl der Kamera (`werkHautTreffen` gibt es) und eine Tönung auf der Seifenhaut (ihr Netz ist dasselbe).
+- **C4 (18.11.), Zeichen unter dem Zeiger:** Über einem Feld zeigt nichts, dass ein Klick es wählen würde (über Punkten und Linien
+  hängt ein Tropfen). Ein leichter Hauch der Tönung unter dem Zeiger wäre ein Treffer je Bild (0,2 bis 0,5 ms bei 25 000
+  Dreiecken); nicht gebaut.
+- **C4 (18.11.), iPad:** Tippen wählt ein Feld, Ziehen bewegt es (wie mit der Maus; am Gerät nicht geprüft). Für G, S, R fehlen
+  Knöpfe unten.
+- **C4 (18.11.), ⌘Z:** Nach ⌘Z ist nichts mehr gewählt (das Verhalten räumt die Auswahl auf, wie bei Punkten); das Feld muss neu
+  geklickt werden.
+- **C4 (18.11.), R um 90°:** Dreht man die Punkte eines Felds weit (in der Probe 90°), verknoten sich die Linien mit ihren
+  Nachbarn, und die Punkte landen nicht mehr starr gedreht. Bei 30° ist die Drehung genau. Wie bei jedem weiten Zug.
+- **C4 (18.11.), Ziehen während einer Fahrt der Ansicht:** Läuft gerade eine Fahrt in eine Ansicht (nach 1, 3, 7 oder nach dem
+  Wenden), dreht ein Ziehen nicht (die Fahrt setzt die Drehung in jedem Bild neu). Das war schon so; aufgefallen, weil ⇧ + Klick bis
+  heute immer eine solche Fahrt auslöste (jetzt nicht mehr, wenn er ein Feld umschaltet).
 
 ## 4. Beobachtungen
 

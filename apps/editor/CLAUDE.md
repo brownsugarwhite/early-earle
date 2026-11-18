@@ -363,6 +363,18 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   deren Punkt: Dort liegt der neue Loop bis einen halben Bildpunkt neben dem Strich. (4) `aufraeumen` richtet zum Schluss auch auf,
   wenn nur gesetzt wurde (`AufraeumAuftrag.aufrichten`); `aufrichtenJetzt` gleich nach dem Schnitt. Proben:
   `ozzy-p-schnitt-fenster.mjs`, `ozzy-p-ueberall-fenster.mjs` (zwölf Lagen, 160 s), Kern `form-vorhang.ts`, Test `vorhang.test.ts`.
+- **Felder (C4, 18.11.):** `src/ozzy/werkFelder.ts`. Ein Feld ist die Haut zwischen Linien; gewählt ist es eine Auswahl von Punkten
+  des Werks (`werk.G.auswahl`: die sichtbaren Punkte auf seinem Rand) plus die Tönung. Merke: (1) Es hängt an einer Saat (Ort tief im
+  Feld) und wird nach jedem Netzwechsel von dort neu gefüllt; es bleibt nur, solange alle Punkte seines Rands gewählt sind
+  (`nachfuehren`, je Bild). (2) Die Tönung ist eine zweite Dreiecksliste auf den Punkten des weißen Körpers
+  (`Koerper.toenung` in `fluessig.ts`); sie setzt voraus, dass die feinen Dreiecke eines Dreiecks der Anzeige hintereinander stehen
+  (4^Stufen je Dreieck, `GlattPlan.triFein`) und dass die Anzeige alle Dreiecke der Haut zeigt (`werk.anzeigeIndex`). Getönte
+  Bildpunkte stehen mit Deckung 0,5 im Puffer des Körpers (daran erkennt die Anzeige sie auf der dunklen Rückseite). (3) Der Klick
+  auf die Form in einer flachen Ansicht entscheidet sich erst mit der Bewegung (`feldDruck` in `main.ts`): ohne Weg wählt er, an
+  einem gewählten Feld zieht er, sonst beginnt das Drehen am Ort des Drückens. (4) G, S, R (`tastenZug`) sind `werk.zugStarten`
+  mit `g`, `s`, `r`; solange er läuft, gehören alle Tasten ihm. (5) ⇧ + Klick schaltet ein Feld um, ohne die Fahrt in die
+  Ansicht, die ⇧ sonst beim Loslassen auslöst; der zweite Klick eines ⇧ + Doppelklicks nimmt das Umschalten zurück. Probe
+  `ozzy-felder-fenster.mjs`.
 - **Gleiten auf der Haut (C3, 18.11.) ist nicht gebaut: Die Form bleibt dabei nicht stehen** (Kernprobe `form-gleiten.ts`, Zahlen im
   Plan unter C3). Die Linien tragen die Form (eine weiche Linie gelöscht: 9 bis 66 Einheiten); 10 Einheiten Gleitweg ändern die Haut
   um 2 bis 6 Einheiten. Wer es doch baut oder misst: (1) die Linie nicht neu einsetzen (`loopEinsetzen` scheitert dicht neben ihrer

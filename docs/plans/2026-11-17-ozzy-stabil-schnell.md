@@ -580,6 +580,34 @@ Linienstücke und Flächen. Eine Fläche ist das Feld der Haut zwischen Linien; 
   bisher. In jeder Ansicht gleich.
 - Florian, 17.11. nachts: „Bei Flächen meine ich A“ (das Feld zwischen den Linien, wie die Flächenauswahl in Blender).
 
+**Gebaut (18.11., nachts; Fenster, der Kern ist unberührt).** Was du siehst, in Seite, Front und Top, eingerastet (auch von hinten)
+und in den Feldern der Vier Ansichten: Ein Klick auf die Form zwischen den Linien wählt dieses Feld. Es tönt sich grün, die Punkte
+auf seinem Rand sind gewählt. Am gewählten Feld ziehen bewegt es. **G verschiebt, S skaliert, R dreht die Auswahl** (Punkte, Linien,
+Felder), geführt vom Zeiger: Klick oder ↩ beendet, Esc nimmt zurück, X, Y oder Z hält den Zug längs einer Achse. ⇧ + Klick nimmt ein
+weiteres Feld dazu oder wieder heraus. Ziehen an einer nicht gewählten Stelle dreht wie bisher. Bild:
+[`2026-11-18-feld-waehlen-ziehen.png`](../progress/ozzy/2026-11-18-feld-waehlen-ziehen.png) (vorher, gewählt, gezogen; von hinten).
+
+- **Ein Feld** (`werkFelder.ts`): Die Ketten der Linien im Netz (auch die der gespiegelten Hälfte und die Linie der Mitte) sind
+  Grenzen; vom getroffenen Dreieck aus wird bis an sie gefüllt. Sein Spiegelbild gehört immer dazu (dieselben Punkte). Gewählt
+  meint es die sichtbaren Punkte der Linien auf seinem Rand: Es ist eine Auswahl von Punkten des Werks, dazu die Tönung. So geht
+  alles Weitere über die Handgriffe, die es schon gab (Zug des Werks, ⌘Z, Löschen, K).
+- **Es überlebt Züge und Netzwechsel** über eine Saat tief in seinem Inneren: Nach jedem Netzwechsel wird es von dort neu gefüllt.
+  Es bleibt gewählt, solange alle Punkte seines Rands gewählt sind; ein Klick auf einen Punkt, das Lasso oder Esc nehmen die Tönung
+  weg.
+- **Die Tönung** liegt genau auf der Haut (dieselben Punkte wie der weiße Körper, eine eigene Liste seiner Dreiecke; `fluessig.ts`),
+  mit scharfem Rand an den Linien. Auf der dunklen Rückseite ist sie ein dunkles Grün.
+- **G, S, R** sind die Züge des Werks über die Tastatur, wie im Prüffenster (`zugStarten` mit `g`, `s`, `r`): auf der Fläche unter
+  dem Zeiger (Ansicht, Feld, Wand), im Raum in der Ebene durch die Mitte der Auswahl, die der Kamera am meisten zugewandt ist.
+- **Der Klick im Feld der Vier Ansichten** schließt sie nicht mehr, wenn er die Form trifft (er wählt das Feld); ein Zug dort dreht
+  und klappt zurück wie bisher, ein Klick ins Leere ebenso.
+- **Probe** `ozzy-felder-fenster.mjs` (zwölf Kriterien, „strange bird“): wählen und Tönung; ziehen (alle Punkte auf dem Rand um
+  denselben Weg, sonst keiner; bleibt gewählt nach dem Aufräumen); ⌘Z; G mit Klick und mit Esc; S (doppelter Abstand des Zeigers:
+  Abstände mal 2,0); R (30°: 30,0°, Abstände bleiben); ⇧ + Klick dazu und weg, ⇧ + Doppelklick wendet nur; Drehen an nicht gewählter
+  Stelle; Esc; Front, Top, Seite von hinten, Feld der Seite in den Vier Ansichten; G an einem einzelnen Punkt und an allen (⌘A).
+  Alle 30 Fenster-Proben halten.
+- **Offen, in der Liste für den Feinschliff:** im Raum (an der Seifenhaut) gibt es keine Felder; kein Zeichen unter dem Zeiger,
+  welches Feld ein Klick wählen würde; auf dem iPad fehlen Knöpfe für G, S, R; nach ⌘Z ist nichts mehr gewählt (wie bei Punkten).
+
 ### Etappe D: Die Hälfte als Wahrheit und der Spiegel-Schalter
 
 **D1. Der Rest der halben Haut (Schritt 4c; groß, in vier Teilen, jeder mit seiner Probe wie in 4b).** Gewichte und Vermessen auf

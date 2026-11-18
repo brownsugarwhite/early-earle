@@ -32,6 +32,7 @@ import { auskunft, packen, pruefen, zusammen } from '../form/ablage';
 import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
+import { type FeldTreffer, werkFelder } from './werkFelder';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
@@ -434,6 +435,21 @@ let pinselRadius = 90;
 let pinselZiel: { id: number; i: number; m: boolean; welt: Vector3 } | null = null;
 /** ein Zug des Pinsels: die Ebene des Blatts, in der gezogen wird */
 let pinselZug: { F: Flaeche } | null = null;
+/**
+ * C4 (18.11.): Drücken auf ein Feld der Haut (zwischen Linien) in einer flachen Ansicht. Erst die Bewegung entscheidet: Ohne sie ist
+ * es ein Klick (das Feld wird gewählt); an einem gewählten Feld zieht sie es (`zieht`), sonst dreht sie wie bisher (dann endet
+ * dieser Zustand, und das Drehen beginnt am Ort des Drückens).
+ */
+let feldDruck: { x: number; y: number; zeit: number; fl: number; t: FeldTreffer; gewaehlt: boolean; zieht: boolean } | null = null;
+/** C4: G, S oder R läuft (ein Zug des Werks über die Tastatur): die Fläche, auf der der Zeiger ihn führt, und die Tiefe der Auswahl */
+let tastenZug: { F: Flaeche; T: number | undefined } | null = null;
+/** C4: ⇧ + Klick hat ein Feld zur Auswahl genommen oder herausgenommen (für den Doppelklick: Er wendet, das Feld bleibt, wie es war) */
+let feldUmgeschaltet = { zeit: 0, x: 0, y: 0 };
+/** C4: so weit (Bildpunkte) muss der Zeiger gehen, bis aus dem Drücken auf ein Feld ein Zug oder ein Drehen wird */
+const FELD_KLICK_WEG = 4;
+/** C4: die Tönung eines gewählten Felds über dem weißen Körper (das Grün der verdeckten Linien) und ihre Deckung */
+const FELD_DECKUNG = 0.5;
+let feldToenung: { index: Uint32Array | null; nr: number } = { index: null, nr: 0 };
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
@@ -2117,7 +2133,7 @@ function bild(dt: number): boolean {
   // A4: was unter dem Zeiger liegt, einmal je Bild (nicht, solange etwas gezogen wird: Dort gilt das Drücken)
   if (schwebenOffen) {
     schwebenOffen = false;
-    const zieht = feldWendenZug || schwenkZug || bearbeitenGedrueckt || pinselZug || wenden || raumStrich || raumAufzug || eckZug || teiler.zug || punktZug || drehen || (zug && koerper);
+    const zieht = feldWendenZug || schwenkZug || bearbeitenGedrueckt || pinselZug || feldDruck || tastenZug || wenden || raumStrich || raumAufzug || eckZug || teiler.zug || punktZug || drehen || (zug && koerper);
     if (zustand !== 'blatt' && !zieht) schweben(zeiger.x, zeiger.y);
   }
   if (festeZeit !== null) dt = 1 / 60;
@@ -2166,6 +2182,9 @@ function bild(dt: number): boolean {
   // das Werk: sein Bildtakt und, ab dem Abriss, seine Haut
   mess.teile = [0, 0, 0, 0, 0, 0];
   aktiv = werkBild(dt, m) || aktiv;
+  // C4: gewählte Felder folgen der Haut (Netzwechsel, Züge) und der Auswahl des Werks; G, S, R endet, wenn das Werk den Zug beendet hat
+  werkFelder.nachfuehren();
+  if (tastenZug && !(werk.zug && werk.zug.modal)) tastenZug = null;
   // hat das Werk nach einem Handgriff ausgerechnet: der Raum folgt der Form (nur bei großen Änderungen)
   const beschaeftigt = werkBeschaeftigt();
   if (werkWarBeschaeftigt && !beschaeftigt && zustand === 'ruhe') raumRechnen(bw.band);
@@ -2475,7 +2494,7 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · ⇧ + Ziehen wendet · Tropfen in eine Ecke: eine Ansicht · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+              : 'Punkte, Linien und Richtungen ziehen · Klick in ein Feld der Form wählt es · G S R · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · ⇧ + Ziehen wendet · Tropfen in eine Ecke: eine Ansicht · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
@@ -2488,7 +2507,7 @@ function bild(dt: number): boolean {
             : werkGezeigt
               ? bearbeiten.stift
                 ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Tropfen an der Ecke ziehen: Vier Ansichten · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+                : 'Punkte, Linien und Richtungen ziehen · Klick in ein Feld der Form wählt es · G S R · ins Leere ziehen: drehen · Tropfen an der Ecke ziehen: Vier Ansichten · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
@@ -3067,7 +3086,92 @@ function linienKoerper(): LinienKoerper | null {
     wicklung: koerperWicklung,
     durchsichtig: true,
     deckung: koerperDeckung,
+    toenung: feldToenungJetzt(N.index),
   };
+}
+
+/** C4: die getönten Dreiecke der gewählten Felder für den Körper der Anzeige (null: nichts gewählt) */
+function feldToenungJetzt(index: Uint32Array): NonNullable<LinienKoerper['toenung']> | null {
+  const ix = werkFelder.anzeigeIndex(index, werkHaut.stufen);
+  if (ix !== feldToenung.index) feldToenung = { index: ix, nr: feldToenung.nr + 1 };
+  return ix ? { index: ix, nr: feldToenung.nr, farbe: GRUEN, deckung: FELD_DECKUNG } : null;
+}
+
+/**
+ * C4: das Feld der Haut unter dem Zeiger. Nur, wo der weiße Körper liegt und die Fläche längs ihrer Achse gesehen wird (eingerastet,
+ * Feld der Vier Ansichten); nicht in der Pose, nicht im Zug.
+ */
+function feldTreffen(x: number, y: number): { fl: number; t: FeldTreffer } | null {
+  if (!werkGezeigt || !bearbeitenAn || werk.zug || werk.grund) return null;
+  const fl = werkBlatt.flaecheUnter(x, y);
+  const F = werkBlatt.flaechen[fl];
+  if (!F || F.raeumlich || !F.tiefe) return null;
+  const XY = F.her(x, y);
+  if (!XY) return null;
+  const t = werkFelder.treffer(F.a, XY[0], XY[1], F.vorn ?? 1);
+  return t ? { fl, t } : null;
+}
+
+/** C4: ein Klick auf ein Feld: Es wird gewählt (mit `dazu`: zur Auswahl dazu, ein gewähltes wieder weg) */
+function feldKlick(tri: number, dazu: boolean): void {
+  const r = werkFelder.waehlen(tri, dazu);
+  werk.G.meldung = r === 'leer' ? 'Dieses Feld hat keinen Punkt auf seinem Rand: nichts zu greifen' : r === 'gewaehlt' ? 'Feld gewählt · ziehen bewegt es · G verschieben, S skalieren, R drehen · ⇧ + Klick: weitere Felder' : '';
+  werkNeu = true;
+}
+
+/** C4: ⇧ + Klick (ohne Weg) an der Stelle: das Feld dort zur Auswahl dazu oder wieder weg; zurück: ob dort ein Feld lag */
+function feldUmschalten(x: number, y: number, zeit: number): boolean {
+  if (raumWerkzeug !== 'auswahl' || bearbeiten.stift) return false;
+  const f = feldTreffen(x, y);
+  if (!f) return false;
+  feldKlick(f.t.tri, true);
+  feldUmgeschaltet = { zeit, x, y };
+  return true;
+}
+
+/** C4: G, S oder R: die Auswahl des Werks verschieben, skalieren oder drehen (wie im Prüffenster), geführt vom Zeiger */
+function tastenZugBeginnen(k: 'g' | 's' | 'r'): boolean {
+  if (!werkGezeigt || !bearbeitenAn || werk.zug || tastenZug || feldDruck || bearbeitenGedrueckt || pinselZug || bearbeiten.stift || strichWerkzeug() || raumWerkzeug === 'lasso') return false;
+  const mitte = werk.auswahlMitte();
+  if (!mitte || !zeiger.da) {
+    werk.G.meldung = 'G, S, R: erst Punkte, eine Linie oder ein Feld wählen';
+    return true;
+  }
+  // die Fläche unter dem Zeiger (Ansicht, Feld, Wand); sonst die Ebene durch die Mitte der Auswahl, die der Kamera am meisten zugewandt ist
+  let F: Flaeche | null = werkBlatt.flaechen[werkBlatt.flaecheUnter(zeiger.x, zeiger.y)] ?? null;
+  let T: number | undefined;
+  if (F) T = F.raeumlich ? (F.a === 'seite' ? mitte.z : F.a === 'front' ? mitte.x : mitte.y) : undefined;
+  else {
+    const blick = new Vector3();
+    kam.aktiv.getWorldDirection(blick);
+    const ax = Math.abs(blick.x) >= Math.abs(blick.y) && Math.abs(blick.x) >= Math.abs(blick.z) ? 0 : Math.abs(blick.y) >= Math.abs(blick.z) ? 1 : 2;
+    const w = werkInWelt(mitte);
+    F = ebene(BLATT_DER_ACHSE[ax]!, ax === 0 ? w.x : ax === 1 ? w.y : w.z, vpJetzt(), 1, 1, false);
+  }
+  const XY = F.her(zeiger.x, zeiger.y, T);
+  if (!XY) return false;
+  werk.G.maus = { a: F.a, X: XY[0], Y: XY[1] };
+  if (!werk.zugStarten(k, F.a, XY[0], XY[1], false)) return true;
+  tastenZug = { F, T };
+  werk.G.meldung = `${k === 'g' ? 'G: verschieben' : k === 's' ? 'S: skalieren' : 'R: drehen'} · X, Y, Z: nur längs dieser Achse · Klick oder ↩: fertig · Esc: zurück`;
+  werkNeu = true;
+  return true;
+}
+
+function tastenZugBewegen(x: number, y: number): void {
+  const z = tastenZug;
+  const XY = z?.F.her(x, y, z.T);
+  if (!z || !XY) return;
+  werk.G.maus = { a: z.F.a, X: XY[0], Y: XY[1] };
+  if (werk.zug && werk.zug.modal) werk.zugBewegen(XY[0], XY[1]);
+}
+
+function tastenZugEnde(ok: boolean): void {
+  if (!tastenZug) return;
+  tastenZug = null;
+  if (werk.zug && werk.zug.modal) werk.zugEnde(ok);
+  werk.G.meldung = '';
+  werkNeu = true;
 }
 
 /** S20: die Tiefe eines Orts des Werks zum Betrachter der Kamera (wie der Körper sie in die Anzeige schreibt) */
@@ -4440,6 +4544,35 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     bearbeiten.kippen = e.shiftKey;
     if (!strichWerkzeug()) bearbeiten.zeigerSetzen(x, y, x, y, dt);
   }
+  // C4: G, S oder R folgt dem Zeiger
+  if (tastenZug) {
+    tastenZugBewegen(x, y);
+    anstossen();
+    return;
+  }
+  // C4: auf ein Feld gedrückt: Mit dem ersten Weg entscheidet sich, ob es gezogen wird (gewählt) oder ob gedreht wird (wie bisher)
+  if (feldDruck) {
+    const d = feldDruck;
+    if (!d.zieht && Math.hypot(x - d.x, y - d.y) >= FELD_KLICK_WEG) {
+      if (d.gewaehlt) {
+        // (auf der Spiegelhälfte gegriffen, geht es in der Tiefe gespiegelt)
+        werkBlatt.feldZiehenBeginnen(d.fl, d.x, d.y, d.t.ort.z < 0);
+        d.zieht = true;
+      } else {
+        feldDruck = null;
+        // drehen, in jeder Ansicht (S4); in einem flachen Feld der Vier Ansichten klappen sie dabei zurück in den Raum (F3)
+        if (vier > 0.5) {
+          const R = felder().raum;
+          if (!(d.x >= R.x && d.y >= R.y)) vierUmschalten(false);
+        }
+        drehenBeginnen(d.x, d.y, d.zeit);
+      }
+    }
+    if (feldDruck?.zieht) werkBlatt.ziehen(x - d.x, y - d.y);
+    else if (drehen) drehenZiehen(x, y, e.timeStamp);
+    anstossen();
+    return;
+  }
   if (bearbeitenGedrueckt) {
     anstossen();
     return;
@@ -4579,6 +4712,12 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     return;
   }
   if (zustand !== 'ruhe' || !koerper) return;
+  // C4: G, S oder R läuft: Der Klick beendet den Zug (wie im Prüffenster)
+  if (tastenZug) {
+    tastenZugEnde(true);
+    anstossen();
+    return;
+  }
   // S17: Leertaste + Ziehen schwenkt das Feld unter dem Zeiger (in den Vier Ansichten) oder die ganze Ansicht
   if (leertaste) {
     const n = feldUnter(x, y);
@@ -4624,6 +4763,8 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
       const jetzt = e.timeStamp;
       if (jetzt - letzterUmschaltKlick.t < 350 && Math.hypot(x - letzterUmschaltKlick.x, y - letzterUmschaltKlick.y) < 8) {
         letzterUmschaltKlick = { t: 0, x, y };
+        // C4: Der erste Klick hat das Feld dort umgeschaltet: zurück (der Doppelklick wendet nur)
+        if (jetzt - feldUmgeschaltet.zeit < 400) feldUmschalten(feldUmgeschaltet.x, feldUmgeschaltet.y, 0);
         feldWendenFahrt(n, Math.round(feldWende[n].phi / Math.PI) * Math.PI + Math.PI);
         anstossen();
         return;
@@ -4651,6 +4792,8 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     const jetzt = e.timeStamp;
     if (jetzt - letzterUmschaltKlick.t < 350 && Math.hypot(x - letzterUmschaltKlick.x, y - letzterUmschaltKlick.y) < 8) {
       letzterUmschaltKlick = { t: 0, x, y };
+      // C4: Der erste Klick hat das Feld dort umgeschaltet: zurück (der Doppelklick wendet nur)
+      if (jetzt - feldUmgeschaltet.zeit < 400) feldUmschalten(feldUmgeschaltet.x, feldUmgeschaltet.y, 0);
       wendenSicht = true;
       ansichtSetzen(ansicht, !gewendet);
       anstossen();
@@ -4693,6 +4836,15 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     // Ansicht (und schloss die Vier Ansichten), die angefangene Linie war dann nicht mehr fortzusetzen
     if (bearbeiten.stift && werkBlatt.entwurfOffen) {
       werk.G.meldung = 'P: Die Linie gehört zu der Ansicht, in der sie begonnen wurde. Dort weiterzeichnen · ↩ schließt · Esc bricht ab';
+      anstossen();
+      return;
+    }
+  }
+  // C4: ein Feld der Haut (zwischen Linien) in einer flachen Ansicht: Der Klick wählt es, an einem gewählten Feld ziehen bewegt es
+  if (raumWerkzeug === 'auswahl' && !bearbeiten.stift && !e.shiftKey) {
+    const f = feldTreffen(x, y);
+    if (f) {
+      feldDruck = { x, y, zeit: e.timeStamp, fl: f.fl, t: f.t, gewaehlt: werkFelder.istGewaehlt(f.t.tri), zieht: false };
       anstossen();
       return;
     }
@@ -4749,6 +4901,8 @@ const loslassen = (e: PointerEvent): void => {
   if (feldWendenZug) {
     // zur näheren Seite, wie in der Vollansicht
     const n = feldWendenZug.n;
+    // C4: ⇧ + Klick ohne Weg auf ein Feld der Haut: zur Auswahl dazu oder wieder weg
+    if (Math.hypot(zeiger.x - feldWendenZug.x0, zeiger.y - feldWendenZug.y0) < FELD_KLICK_WEG) feldUmschalten(feldWendenZug.x0, feldWendenZug.y0, e.timeStamp);
     feldWendenZug = null;
     feldWendenFahrt(n, Math.round(feldWende[n].phi / Math.PI) * Math.PI);
     anstossen();
@@ -4765,6 +4919,16 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
+  // C4: auf ein Feld gedrückt: ohne Weg ein Klick (es wird gewählt), sonst endet sein Zug
+  if (feldDruck) {
+    const d = feldDruck;
+    feldDruck = null;
+    if (d.zieht) werkBlatt.ziehenEnden();
+    else feldKlick(d.t.tri, false);
+    werkNeu = true;
+    anstossen();
+    return;
+  }
   if (bearbeitenGedrueckt) {
     bearbeiten.loslassen();
     bearbeitenGedrueckt = false;
@@ -4778,7 +4942,14 @@ const loslassen = (e: PointerEvent): void => {
   }
   if (wenden) {
     const a = wenden.a;
+    // C4: ⇧ + Klick ohne Weg auf ein Feld der Haut: zur Auswahl dazu oder wieder weg. Dann ist nichts gewendet: keine Fahrt zurück
+    // in die Ansicht (solange sie liefe, drehte ein Ziehen nicht)
+    const nurFeld = Math.hypot(zeiger.x - wenden.x, zeiger.y - wenden.y) < FELD_KLICK_WEG && feldUmschalten(wenden.x, wenden.y, e.timeStamp);
     wenden = null;
+    if (nurFeld) {
+      anstossen();
+      return;
+    }
     ansichtSetzen(a, rueckseite(a));
     anstossen();
     return;
@@ -4811,7 +4982,7 @@ const loslassen = (e: PointerEvent): void => {
 leinwandLinien.addEventListener('pointerup', loslassen);
 leinwandLinien.addEventListener('pointercancel', loslassen);
 leinwandLinien.addEventListener('pointerleave', () => {
-  if (drehen || zug || punktZug || teiler.zug || bearbeitenGedrueckt) return;
+  if (drehen || zug || punktZug || teiler.zug || bearbeitenGedrueckt || feldDruck || tastenZug) return;
   zeiger.da = false;
   bearbeiten.zeigerWeg();
   blatt.weg();
@@ -4887,6 +5058,20 @@ window.addEventListener('keydown', (e) => {
   bearbeiten.umschalt = e.shiftKey;
   bearbeiten.kippen = e.shiftKey;
   const k = e.key;
+  // C4: G, S oder R läuft: Esc nimmt zurück, ↩ beendet, X, Y, Z halten den Zug längs einer Achse (noch einmal: wieder frei)
+  if (tastenZug) {
+    e.preventDefault();
+    const kk = k.toLowerCase();
+    if (k === 'Escape') tastenZugEnde(false);
+    else if (k === 'Enter') tastenZugEnde(true);
+    else if ((kk === 'x' || kk === 'y' || kk === 'z') && werk.zug) {
+      werk.zug.achse = werk.zug.achse === kk ? null : kk;
+      if (werk.G.maus) werk.zugBewegen(werk.G.maus.X, werk.G.maus.Y);
+      werkNeu = true;
+    }
+    anstossen();
+    return;
+  }
   if ((e.metaKey || e.ctrlKey) && k === ',') {
     e.preventDefault();
     reglerZeigen(!reglerOffen);
@@ -4961,6 +5146,10 @@ window.addEventListener('keydown', (e) => {
     werk.G.meldung = raumNetz ? 'Kurvennetz im Raum: Linien und Punkte auf der Form · W: zurück zur Seifenhaut' : '';
   }
   else if ((k === 'l' || k === 'L') && zustand === 'ruhe' && werkGezeigt && !e.metaKey && !e.ctrlKey) werkzeugImRaum(raumWerkzeug === 'lasso' ? 'auswahl' : 'lasso');
+  else if ((k === 'g' || k === 's' || k === 'r') && zustand === 'ruhe' && werkGezeigt && bearbeitenAn && !e.repeat) {
+    // C4: die Auswahl verschieben, skalieren, drehen (Punkte, Linien, Felder)
+    if (!tastenZugBeginnen(k)) return;
+  }
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
   else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
@@ -5432,7 +5621,8 @@ const maulHart = (l: (typeof werk.loops)[number]): boolean => !!l.maulGeformt ||
 function maulUiZeigen(): void {
   const an = zustand === 'ruhe' && werkGezeigt && bearbeitenAn;
   // der Tropfen hängt unter dem tiefsten sichtbaren Punkt der gewählten Linie
-  const l = an && !werk.grund && !werk.maulLauf && !werk.zug && !bearbeiten.stift ? maulRing() : null;
+  // (nicht, wenn ein Feld gewählt ist: Dann sind die Punkte auf seinem Rand gewählt, kein Ring)
+  const l = an && !werk.grund && !werk.maulLauf && !werk.zug && !bearbeiten.stift && werkFelder.anzahl === 0 ? maulRing() : null;
   let ort: { x: number; y: number } | null = null;
   if (l && werk.G.maul?.id !== l.id) {
     werkBlatt.anker.forEach((A, pi) => {
@@ -5539,6 +5729,15 @@ void document.fonts?.ready.then(() => {
 // ---------- Test-Haken ----------
 
 const haken = {
+  /** C4: die gewählten Felder (Dreiecke mit Spiegelbild, Punkte auf dem Rand als „Loop.Punkt“) */
+  felder: () => werkFelder.stand(),
+  /** C4: das Feld der Haut unter dem Ort (CSS-Pixel): sein Dreieck, der Ort im Werk, ob es gewählt ist; null: dort liegt keins */
+  feldBei: (x: number, y: number) => {
+    const f = feldTreffen(x, y);
+    return f ? { tri: f.t.tri, ort: f.t.ort, gewaehlt: werkFelder.istGewaehlt(f.t.tri), flaeche: werkBlatt.flaechen[f.fl]?.a ?? null } : null;
+  },
+  /** C4: läuft G, S oder R? (die Art des Zugs im Werk, sonst null) */
+  tastenZug: () => (tastenZug && werk.zug ? werk.zug.modal : null),
   /** eine gesicherte Form laden (wie Menü → Laden); zurück: die Meldung des Werks */
   laden: (name: string): Promise<string> => formLaden(name),
   /** Bearbeiten über das Werk: ob das Verhalten die Flächen hat, Netz, Flächen, Auswahl (Anker und im Werk) */

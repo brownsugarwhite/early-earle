@@ -67,6 +67,11 @@ export interface Koerper {
    * tiefen Falten hervor, nicht an flachen Knicken der Haut (dort zeigte sie sich stückweise als kurze Striche)
    */
   huelleTiefe?: number;
+  /**
+   * Ozzy (C4): getönte Dreiecke der Haut (ein gewähltes Feld zwischen Linien): eine eigene Dreiecksliste auf denselben Punkten;
+   * `nr` wechselt mit ihr (dann wird sie neu hochgeladen). Farbe und Deckung der Tönung über dem Weiß.
+   */
+  toenung?: { index: Uint32Array; nr: number; farbe: [number, number, number]; deckung: number } | null;
 }
 
 export interface Szene {
@@ -258,12 +263,15 @@ void main() {
   float tiefe = 1e9;
   vec3 grund = vec3(0.0);
   float grundA = 0.0;
+  float getoent = 0.0;
   if (uMitKoerper == 1) {
     tiefe = texelFetch(uKoerperTiefe, ivec2(gl_FragCoord.xy), 0).r;
     vec4 kf = texelFetch(uKoerperFarbe, ivec2(gl_FragCoord.xy), 0);
     // Ozzy (S20): außerhalb des Körpers durchsichtig (Alpha 0 im Puffer), Körper und Umriss so deckend wie verlangt
-    grundA = kf.a * uKoerperDeckung;
+    grundA = (kf.a > 0.0 ? 1.0 : 0.0) * uKoerperDeckung;
     grund = kf.a > 0.0 ? kf.rgb : vec3(1.0);
+    // Ozzy (C4): ein getöntes Feld steht mit halber Deckung im Puffer
+    getoent = kf.a > 0.25 && kf.a < 0.75 ? 1.0 : 0.0;
   }
   float fl = 0.0;
   for (int i = 0; i < ${MAX_FELDER}; i++) {
@@ -338,7 +346,7 @@ void main() {
   float d1 = smin(dL.y, dB.y, k);
   // auf der Rückseite tauschen Tinte und Papier (Ozzy, S20: auch Körper und Umriss)
   float hinten = hintenBei(p);
-  grund = mix(grund, uTinte + uPapier - grund, hinten);
+  grund = mix(grund, mix(uTinte + uPapier - grund, mix(uTinte, uGruen, 0.4), getoent), hinten);
   vec3 tinte = mix(uTinte, uPapier, hinten);
   vec3 papier = mix(uPapier, uTinte, hinten);
   // wo das weiche Minimum die Form verdickt, gilt die Verdickung als Breite
@@ -409,6 +417,7 @@ uniform float uHuelleTiefe;
 uniform vec2 uViewport;
 uniform vec3 uRand[4];
 uniform int uRandAn;
+uniform vec4 uToenung;
 layout(location = 0) out vec4 farbe;
 layout(location = 1) out vec4 tiefe;
 void main() {
@@ -430,6 +439,10 @@ void main() {
     vec3 c = mix(vec3(1.0), vec3(0.93, 0.925, 0.915), clamp(stufe, 0.0, 1.0));
     c = mix(c, vec3(0.875, 0.87, 0.86), clamp(stufe - 1.0, 0.0, 1.0));
     farbe = vec4(mix(vec3(1.0), c, uSchattierung), 1.0);
+    // Ozzy (C4): ein gewähltes Feld ist getönt; die Deckung 0,5 im Puffer sagt der Anzeige der Linien, dass es getönt ist (auf der
+    // Rückseite, wo Tinte und Papier tauschen, bekommt es ein dunkles Grün statt der Gegenfarbe)
+    farbe.rgb = mix(farbe.rgb, uToenung.rgb, uToenung.a);
+    if (uToenung.a > 0.0) farbe.a = 0.5;
   }
   tiefe = vec4(vTiefe, 0.0, 0.0, 1.0);
 }
@@ -488,6 +501,8 @@ export class FluessigeAnzeige {
     b: number;
     h: number;
   } | null = null;
+  /** Ozzy (C4): die getönten Dreiecke des Körpers (eigene Liste auf seinen Punkten) */
+  private kT: { vao: WebGLVertexArrayObject; index: WebGLBuffer; anzahl: number; netz: number; nr: number } | null = null;
   private tiefeLesen = new Float32Array(4);
   /** zuletzt: Kapseln, Einträge in den Kacheln, Zeit fürs Verteilen (ms) */
   stat = { kapseln: 0, eintraege: 0, verteilenMs: 0 };
@@ -501,7 +516,7 @@ export class FluessigeAnzeige {
     for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uKoerperDeckung', 'uBand', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
-    for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte', 'uTiefeMax', 'uHuelleTiefe', 'uRand', 'uRandAn']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
+    for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte', 'uTiefeMax', 'uHuelleTiefe', 'uRand', 'uRandAn', 'uToenung']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
     this.vaoQuad = gl.createVertexArray()!;
     gl.bindVertexArray(this.vaoQuad);
     const vb = gl.createBuffer();
@@ -593,6 +608,27 @@ export class FluessigeAnzeige {
       kd.geaendert = false;
     }
     const k = this.k;
+    // Ozzy (C4): die getönten Dreiecke: dieselben Punkte, eine eigene Dreiecksliste
+    const tn = kd.toenung && kd.toenung.index.length ? kd.toenung : null;
+    if (tn && (!this.kT || this.kT.netz !== kd.netz || this.kT.nr !== tn.nr)) {
+      if (this.kT) {
+        gl.deleteVertexArray(this.kT.vao);
+        gl.deleteBuffer(this.kT.index);
+      }
+      const vao = gl.createVertexArray()!;
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, k.pos);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, k.normal);
+      gl.enableVertexAttribArray(1);
+      gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+      const index = gl.createBuffer()!;
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, tn.index, gl.STATIC_DRAW);
+      gl.bindVertexArray(null);
+      this.kT = { vao, index, anzahl: tn.index.length, netz: kd.netz, nr: tn.nr };
+    }
     // Ziel in der Größe der Leinwand: Farbe, Tiefe zum Betrachter (Gleitkomma), Tiefenpuffer
     if (!k.fb || k.b !== this.breite || k.h !== this.hoehe) {
       if (k.fb) gl.deleteFramebuffer(k.fb);
@@ -660,7 +696,15 @@ export class FluessigeAnzeige {
         gl.disable(gl.CULL_FACE);
       }
       gl.uniform1f(this.uniK.uHuelle!, 0);
+      gl.uniform4f(this.uniK.uToenung!, 0, 0, 0, 0);
       gl.drawElements(gl.TRIANGLES, k.anzahl, gl.UNSIGNED_INT, 0);
+      // Ozzy (C4): das gewählte Feld noch einmal, getönt (dieselbe Tiefe: Es liegt genau auf der Haut)
+      if (tn && this.kT) {
+        gl.uniform4f(this.uniK.uToenung!, tn.farbe[0], tn.farbe[1], tn.farbe[2], tn.deckung);
+        gl.bindVertexArray(this.kT.vao);
+        gl.drawElements(gl.TRIANGLES, this.kT.anzahl, gl.UNSIGNED_INT, 0);
+        gl.bindVertexArray(k.vao);
+      }
       if (a.schere) gl.disable(gl.SCISSOR_TEST);
     }
     gl.bindVertexArray(null);

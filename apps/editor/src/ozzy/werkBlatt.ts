@@ -1087,6 +1087,16 @@ export class WerkBlatt implements Raum {
     return vor >= 0 ? [P.x[vor]!, P.y[vor]!] : null;
   }
 
+  /**
+   * C4: an einem gewählten Feld der Haut ziehen. Die Auswahl des Werks (die Punkte auf dem Rand des Felds) geht mit; gegriffen ist
+   * die Stelle des Zeigers auf der Fläche `fl` (`m`: auf der Spiegelhälfte der Form). Weiter mit `ziehen` und `ziehenEnden`.
+   */
+  feldZiehenBeginnen(fl: number, x: number, y: number, m: boolean): void {
+    this.klickRueck = false;
+    this.zg = this.flaechen[fl] && werk.G.auswahl.length ? { fl, m, sx: x, sy: y, los: false, T: undefined } : null;
+    this.geaendert();
+  }
+
   punkteZiehenBeginnen(pis: number[]): void {
     this.klickRueck = false;
     this.zg = null;
