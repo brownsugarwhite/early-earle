@@ -192,3 +192,20 @@ Ozzy, nicht den Kern; sie können auch neben der neuen Sitzung laufen.
    Sitzung, und 3 bis 5 laufen daneben?
 2. **Trackpad:** zwei Finger schieben, Pinch zoomt (heute zoomen zwei Finger)?
 3. **Zur Kontrolle, nicht dringend:** Stand bei deinem Test im Menü „mit Linie“ an?
+
+## Anhang: die nachgezeichneten Silhouetten (zum Nachstellen)
+
+Punkte aus deinen Bildschirmfotos abgelesen, `[x, y]` in Bildpunkten des Fotos, im Uhrzeigersinn; eine `1` an dritter Stelle heißt
+Ecke. Für die Probe auf 520 Bildpunkte Breite gebracht; glatte Punkte bekommen Griffe längs der Verbindung ihrer Nachbarn, je ein
+Drittel des Abstands zum Nachbarn lang. Gesetzt mit `__ozzy.form(anker)`, aufgeblasen mit `__ozzy.aufblasen()`; `?ohneLinie=0|1`
+wählt den Schalter, `?dreiecke=8000` das viermal so feine Netz. Im Kern stellt `form-aufraeumen.ts` die Rechnung nach (Stand über
+`__ozzy.standGepackt()`; `SCHRITT=0` zeigt das Verhalten vor C1).
+
+```js
+// erste Silhouette (dein erstes Bild)
+[[783, 357], [812, 372], [936, 358], [1203, 427], [1282, 462], [1284, 388, 1], [1378, 406], [1553, 426], [1626, 446], [1568, 358],
+ [1620, 275], [1588, 266], [1440, 303], [1346, 273], [1254, 208], [1236, 213], [1178, 138], [1163, 140], [1130, 203], [1035, 199], [898, 266]]
+// zweite Silhouette (dein zweites Bild)
+[[697, 268], [748, 233], [870, 176], [951, 166], [1002, 134, 1], [1002, 146, 1], [975, 203], [1042, 221], [1110, 262], [1133, 307, 1],
+ [1180, 275, 1], [1179, 285, 1], [1198, 337, 1], [1196, 346, 1], [975, 340], [940, 290], [890, 342], [775, 265]]
+```
