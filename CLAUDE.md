@@ -5,21 +5,22 @@ Verweise. Verlauf, Messwerte und Florians Rückmeldungen gehören in `docs/` (Pl
 unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.2026 liegt in
 [`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`](docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md).
 
-## Stand (18.11.2026, früh morgens)
+## Stand (18.11.2026, vormittags)
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
   **Gearbeitet wird am Teil Charaktere: dem Editor für die Formen.** Das alte Spiel (Brett, Karte, `packages/genome`,
   `render/src/creature`) bleibt unangetastet.
 - **Der Editor heißt Ozzy** (Florian, 16.11.), das Designsystem **liquid drop**. Seite `apps/editor/ozzy.html`, Code
-  `apps/editor/src/ozzy/`. **Einstieg: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md) (18.11. früh).** Es gilt der Plan
-  [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md) (Etappen A bis F; gebaut steht dort
-  je Schritt). Stand: A, B1 bis B3, C1 (Fehler im Kern), C2 (P gebogen rundum), C4 (Felder; G, S, R), D1 Teil 1 und 2 sind gebaut.
-  **C3 Gleiten: Beweis hält nicht, nicht gebaut. E nicht gebaut** (Beweis und kleiner Plan:
-  [`…-18-ozzy-loeser-neben-dem-bild.md`](docs/plans/2026-11-18-ozzy-loeser-neben-dem-bild.md)). D2 (Spiegel-Schalter) ruht.
-  **Seine offenen Fragen und Urteile: [`docs/plans/2026-11-17-ozzy-feinschliff.md`](docs/plans/2026-11-17-ozzy-feinschliff.md),
-  Abschnitt 1; zuerst lesen, was er dazu sagt.** Die Sitzung ist auch die des Kerns und darf ihn ändern. Es bleibt: kein
-  Unterschied zwischen seinen Kurven und dem Modell.
+  `apps/editor/src/ozzy/`. **Einstieg: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md) (18.11. vormittags).** Gebaut
+  nach [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md): A, B1 bis B3, C1, C2 (P
+  gebogen rundum), C4 (Felder; G, S, R), D1 Teil 1 und 2. C3 Gleiten: zurückgestellt (Beweis hält nicht). E nicht gebaut
+  ([`…-18-ozzy-loeser-neben-dem-bild.md`](docs/plans/2026-11-18-ozzy-loeser-neben-dem-bild.md)), D2 ruht. **Nach seinem ersten
+  Test (18.11.) wartet [`…-18-ozzy-nach-dem-ersten-test.md`](docs/plans/2026-11-18-ozzy-nach-dem-ersten-test.md) auf seine
+  Freigabe: nichts bauen ohne sein Wort** (Schritt 1 behebt auch einen Rückschritt aus C1 beim Aufblasen ohne Linie). Offene
+  Fragen und Urteile: [`docs/plans/2026-11-17-ozzy-feinschliff.md`](docs/plans/2026-11-17-ozzy-feinschliff.md). Die Sitzung ist
+  auch die des Kerns und darf ihn ändern. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell. Maul, Posen und Teile
+  will er in einer neuen Sitzung beginnen.
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

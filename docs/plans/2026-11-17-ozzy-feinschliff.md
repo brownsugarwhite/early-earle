@@ -8,6 +8,20 @@ Hier steht, was warten kann: Fragen an Florian, Zurückgestelltes aus dem Plan
 [`2026-11-17-ozzy-stabil-schnell.md`](2026-11-17-ozzy-stabil-schnell.md) und Beobachtungen. Jeder Eintrag mit Datum und Ort. Was
 gebaut ist, steht im Plan je Schritt unter „Gebaut“, nicht hier.
 
+## 0. Nach seinem ersten Test (18.11., vormittags)
+
+Florian hat getestet. Ursachen und Plan zur Behebung stehen in
+[`2026-11-18-ozzy-nach-dem-ersten-test.md`](2026-11-18-ozzy-nach-dem-ersten-test.md) (Entwurf, nicht freigegeben). Seine Antworten
+zu dieser Liste:
+
+- **Gleiten (C3):** zurückgestellt („Dann stellen wir das gleiten“). Nicht bauen, bevor er es wieder aufruft.
+- **Tempo im Zug (D1):** „Das Tempo beim Zug ist schon besser geworden“, „beim zug ist das Tempo ok“.
+- **Zeiger (B1):** „ich bin mir nicht sicher ob mich da etwas stört oder ob ich es sehe“: nichts zu entscheiden, das Dreieck bleibt.
+- **Reihenfolge:** Maul, Posen und Teile (Beine anfügen und verschmelzen) will er in einer neuen Sitzung beginnen; E1, E2, Gleiten,
+  D1 Teil 3 und 4 und der Spiegel-Schalter können danach kommen.
+- **Die Frage „Spitze ohne Dicke“ (C1) ist jetzt dringender:** Sein Aufblasen zeigt dieselbe Schwäche (mit keiner oder einer Linie
+  hat die Rechnung keinen festen Ausgang). Sie ist Schritt 1 des neuen Plans.
+
 ## 1. Fragen an Florian (keine hält die Arbeit auf)
 
 - **Zeiger (B1):** Soll der Zeiger des Systems (`?zeiger=system`) Standard werden, so bleiben oder anders werden (zum Beispiel über

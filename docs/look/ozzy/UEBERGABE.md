@@ -1,9 +1,18 @@
-# Übergabe: Ozzy (Stand 18.11.2026, früh morgens)
+# Übergabe: Ozzy (Stand 18.11.2026, vormittags)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“): Man zeichnet eine
 Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im Raum, in den eingerasteten Ansichten und in den Vier
 Ansichten. Gerechnet wird mit dem Kern von Sitzung 4; seit dem 17.11. nachts ist die Sitzung von Ozzy auch die des Kerns und ändert
 ihn (bisher: C1, C2, D1).
+
+**Nach Florians erstem Test (18.11., vormittags): zuerst lesen.** Er hat getestet und um Ursachen und einen Plan gebeten, ohne Bau:
+[`docs/plans/2026-11-18-ozzy-nach-dem-ersten-test.md`](../../plans/2026-11-18-ozzy-nach-dem-ersten-test.md) (**Entwurf, nicht
+freigegeben, nichts gebaut**; fünf Schritte: Aufblasen hält, Vier Ansichten, Seifenhaut im Zug, ein Look überall, flüssig drehen).
+Seine Bildschirmfotos: [`2026-11-18-florian-test/`](2026-11-18-florian-test/). Das Gleiten ist zurückgestellt; Maul, Posen und Teile
+will er in einer neuen Sitzung beginnen. **Bekannter Fehler bis zum Bau von Schritt 1 (Rückschritt aus C1):** Im Standard „ohne
+Linie“ wird jede frisch aufgeblasene Form zu einem Ballon oder fällt zusammen (das Löschen der Linie der Mitte stößt eine Rechnung
+ohne jede Linie an; seit `SCHRITT_MAX` bricht sie nicht mehr ab, sondern wird angenommen). Mit „mit Linie“ im Menü hält die Form
+meistens. Die Probe `ozzy-ohne-linie-fenster.mjs` merkt das nicht (sie prüft nur, ob die Haut steht).
 
 **Stand:** Stand 0, Phasen 1 bis 6 und S1 bis S20 sind gebaut (seine Abnahmen dazu: „fürs erste ok“, 17.11.). **Es gilt der Plan „Ozzy
 stabil und schnell“** (freigegeben am 17.11. nachts): [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md).
