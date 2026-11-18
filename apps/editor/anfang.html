@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Anfang · Probe</title>
+    <link rel="stylesheet" href="./src/anfang/anfang.css" />
+  </head>
+  <body>
+    <div id="buehne">
+      <canvas id="haut"></canvas>
+      <div id="gruss">draw a silhouette</div>
+      <canvas id="linien"></canvas>
+    </div>
+    <footer id="leiste">
+      <div id="hinweis"></div>
+      <span class="titel">Anfang · Probe</span>
+      <span id="fassungen"></span>
+      <button type="button" id="knopf-nacht" aria-pressed="false" title="Grund: Papier oder Nacht (N)">Nacht</button>
+      <button type="button" id="knopf-nochmal" title="noch einmal aufblasen (Leertaste)">Noch einmal</button>
+      <button type="button" id="knopf-neu" title="leeres Blatt">Neu</button>
+      <button type="button" id="knopf-regler" aria-pressed="false" title="Feinregler (R)">Feinregler</button>
+      <span class="hilfe">P: Klick Ecke, Ziehen rund, ⌥ bricht den Griff, am ersten Punkt schließen · ↩ aufblasen · 1 Seite, 3 Front, 7 Top, 0 Raum, 4 vier Ansichten · M Fassung · ⌫ / Esc zurück</span>
+      <span id="info" class="wert"></span>
+    </footer>
+    <aside id="regler" hidden>
+      <div id="regler-liste"></div>
+      <div class="regler-knoepfe">
+        <button type="button" id="knopf-grundwerte">Grundwerte</button>
+        <button type="button" id="knopf-kopieren">Werte kopieren</button>
+      </div>
+    </aside>
+    <div id="titel"></div>
+    <script type="module" src="./src/anfang/main.ts"></script>
+  </body>
+</html>

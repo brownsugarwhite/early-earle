@@ -1,0 +1,373 @@
+G4.4 im Fenster (10.11.2026): form-aendern-probe.mjs, echte Grafikkarte. Einheiten: 1 = 0,89 px bei 100 %, 2,7 px bei 300 %.
+Erst der Stand vor G4.4 (d8bb2b8f), dann der Stand danach. &dreiecke=6000 / 14000 / 30000 sind 5 200 / 11 000 / 23 400 Punkte.
+(„Ruhe nach −… ms“ in den Läufen heißt: In diesem Schritt hat sich nichts bewegt.)
+
+########## VORHER: vorher-5k
+kurven.html?gewichte=geometrie · 4706 Punkte am Anfang · 0.89 px je Einheit bei 100 %
+Loop 1 schneiden (Ring waagerecht) (4706 → 4966 Punkte)
+    Fenster: 3 Halte über 50 ms, zusammen 248 ms: 124 ms (endet nach 361 ms), 65 ms (endet nach 71 ms), 59 ms (endet nach 212 ms) · Ruhe nach 361 ms
+    Haut: 1 Netzwechsel (nach 212 ms 4706 → 4966), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 2.09 (99 % 1.85, Mittel 0.14) bei (123, -0, 89)
+    Zeiten im Fenster (ms): neu gerechnet 32, vorgerechnet 118, gesetzt 0, zerlegt 0
+Loop 2 schneiden (Mitte) (4966 → 4966 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 114 ms: 114 ms (endet nach 276 ms) · Ruhe nach 276 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 2.04, von 141 bis 141 ms) · am Ende gegen vorher bis 2.04 (99 % 1.60, Mittel 0.07) bei (-123, 89, 0)
+    Zeiten im Fenster (ms): neu gerechnet 18, vorgerechnet 104, gesetzt 0, zerlegt 0
+Loop 3 schneiden (Ring senkrecht) (4966 → 5222 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 186 ms: 114 ms (endet nach 319 ms), 72 ms (endet nach 177 ms) · Ruhe nach 319 ms
+    Haut: 1 Netzwechsel (nach 177 ms 4966 → 5222), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 1.62 (99 % 1.18, Mittel 0.06) bei (10, 23, 146)
+    Zeiten im Fenster (ms): neu gerechnet 45, vorgerechnet 111, gesetzt 0, zerlegt 0
+Erster Griff nach den Loops (6 Einheiten hinauf) (5222 → 4966 Punkte): Drücken 16 ms, dabei zerlegt 3 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 41 ms) · Ruhe nach 1170 ms
+    Haut: 1 Netzwechsel (nach 1170 ms 5222 → 4966), Bewegung bei gleichem Netz in 9 Bildern (größte je Bild 7.03, von 105 bis 238 ms) · am Ende gegen vorher bis 6.02 (99 % 5.15, Mittel 1.47) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 7.03, in 5 Bildern über 0,18 (Folge: 5.30 7.03 4.74 1.41 0.23 0.06 0.03 0.04 0.02) · es bleibt bis 1.96 (99 % 1.89, Mittel 0.77) bei (-120, -91, 22)
+    Zeiten im Fenster (ms): neu gerechnet 45, vorgerechnet 111, gesetzt 0, zerlegt 3, letzter Auftrag 1 angewendet [60/29/110/29] gesamt 309
+Zweiter Griff (noch einmal 6 Einheiten) (4966 → 4964 Punkte): Drücken 16 ms, dabei zerlegt 6 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 31 ms) · Ruhe nach 1005 ms
+    Haut: 1 Netzwechsel (nach 1005 ms 4966 → 4964), Bewegung bei gleichem Netz in 5 Bildern (größte je Bild 3.00, von 98 bis 178 ms) · am Ende gegen vorher bis 6.00 (99 % 5.59, Mittel 0.79) bei (7, 160, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.06, in 0 Bildern über 0,18 (Folge: 0.06 0.06 0.04 0.01 0.04) · es bleibt bis 0.09 (99 % 0.09, Mittel 0.03)
+    Zeiten im Fenster (ms): neu gerechnet 45, vorgerechnet 111, gesetzt 0, zerlegt 6, letzter Auftrag 2 angewendet [38/20/101/18] gesamt 197
+Weiter Zug (60 Einheiten hinauf, 20 Mausschritte) (4964 → 5102 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 32 ms) · Ruhe nach 1118 ms
+    Haut: 1 Netzwechsel (nach 1118 ms 4964 → 5102), Bewegung bei gleichem Netz in 36 Bildern (größte je Bild 3.00, von 39 bis 753 ms) · am Ende gegen vorher bis 59.97 (99 % 55.83, Mittel 7.99) bei (7, 220, 0)
+    Zeiten im Fenster (ms): neu gerechnet 45, vorgerechnet 111, gesetzt 0, zerlegt 4, letzter Auftrag 4 angewendet [53/28/168/48] gesamt 354
+Kante an (K am gezogenen Punkt) (5102 → 5112 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 391 ms: 244 ms (endet nach 233 ms), 146 ms (endet nach 402 ms) · Ruhe nach 402 ms
+    Haut: 1 Netzwechsel (nach 233 ms 5102 → 5112), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.07, von 402 bis 402 ms) · am Ende gegen vorher bis 20.79 (99 % 18.80, Mittel 6.80) bei (-51, 174, 0)
+    Zeiten im Fenster (ms): neu gerechnet 226, vorgerechnet 112, gesetzt 134, zerlegt 108, letzter Auftrag 4 angewendet [53/28/168/48] gesamt 354
+Erster Griff nach der Kante (6 Einheiten hinauf) (5112 → 5118 Punkte): Drücken 13 ms, dabei zerlegt 3 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 32 ms) · Ruhe nach 1144 ms
+    Haut: 1 Netzwechsel (nach 1144 ms 5112 → 5118), Bewegung bei gleichem Netz in 5 Bildern (größte je Bild 3.00, von 88 bis 169 ms) · am Ende gegen vorher bis 6.00 (99 % 4.15, Mittel 0.55) bei (10, 226, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.06, in 0 Bildern über 0,18 (Folge: 0.06 0.02 0.01 0.03 0.03) · es bleibt bis 0.07 (99 % 0.07, Mittel 0.02)
+    Zeiten im Fenster (ms): neu gerechnet 226, vorgerechnet 112, gesetzt 134, zerlegt 3, letzter Auftrag 6 angewendet [49/33/167/79] gesamt 345
+Kante aus (K) (5118 → 5244 Punkte)
+    Fenster: 3 Halte über 50 ms, zusammen 498 ms: 208 ms (endet nach 198 ms), 153 ms (endet nach 376 ms), 137 ms (endet nach 527 ms) · Ruhe nach 527 ms
+    Haut: 2 Netzwechsel (nach 198 ms 5118 → 5242, nach 376 ms 5242 → 5244), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.09, von 527 bis 527 ms) · am Ende gegen vorher bis 28.13 (99 % 26.27, Mittel 8.85) bei (-75, 194, 0)
+    Zeiten im Fenster (ms): neu gerechnet 194, vorgerechnet 103, gesetzt 119, zerlegt 98, letzter Auftrag 6 angewendet [49/33/167/79] gesamt 345
+Punkt setzen (Doppelklick auf den waagerechten Ring) (5244 → 5244 Punkte): Punkte der Loops 10 → 11
+    Fenster: 1 Halte über 50 ms, zusammen 104 ms: 104 ms (endet nach 135 ms) · Ruhe nach 135 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 194, vorgerechnet 92, gesetzt 119, zerlegt 1, letzter Auftrag 6 angewendet [49/33/167/79] gesamt 345
+Punkt löschen (Entf) (5244 → 5244 Punkte): Punkte der Loops → 10
+    Fenster: 2 Halte über 50 ms, zusammen 167 ms: 94 ms (endet nach 191 ms), 73 ms (endet nach 70 ms) · Ruhe nach 191 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.01, von 70 bis 70 ms) · am Ende gegen vorher bis 0.01 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 67, vorgerechnet 91, gesetzt 119, zerlegt 6, letzter Auftrag 6 angewendet [49/33/167/79] gesamt 345
+Rückgängig (⌘Z: das Löschen) (5244 → 5244 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 95 ms: 95 ms (endet nach 127 ms) · Ruhe nach 127 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.01, von 16 bis 16 ms) · am Ende gegen vorher bis 0.01 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 67, vorgerechnet 93, gesetzt 119, zerlegt 6, letzter Auftrag 6 angewendet [49/33/167/79] gesamt 345
+Rückgängig (⌘Z: den Punkt) (5244 → 5244 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 17 ms) · Ruhe nach -1889 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 67, vorgerechnet 14, gesetzt 119, zerlegt 6, letzter Auftrag 6 angewendet [49/33/167/79] gesamt 345
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+
+########## VORHER: vorher-11k
+kurven.html?gewichte=geometrie&dreiecke=14000 · 10216 Punkte am Anfang · 0.89 px je Einheit bei 100 %
+Loop 1 schneiden (Ring waagerecht) (10216 → 10592 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 796 ms: 683 ms (endet nach 952 ms), 113 ms (endet nach 249 ms) · Ruhe nach 952 ms
+    Haut: 1 Netzwechsel (nach 249 ms 10216 → 10592), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 2.02 (99 % 1.78, Mittel 0.09) bei (124, 0, 88)
+    Zeiten im Fenster (ms): neu gerechnet 68, vorgerechnet 671, gesetzt 0, zerlegt 0
+Loop 2 schneiden (Mitte) (10592 → 10592 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 407 ms: 357 ms (endet nach 527 ms), 50 ms (endet nach 154 ms) · Ruhe nach 527 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 2.02, von 154 bis 154 ms) · am Ende gegen vorher bis 2.02 (99 % 1.27, Mittel 0.05) bei (-125, 88, 0)
+    Zeiten im Fenster (ms): neu gerechnet 35, vorgerechnet 340, gesetzt 0, zerlegt 0
+Loop 3 schneiden (Ring senkrecht) (10592 → 10964 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 418 ms: 330 ms (endet nach 564 ms), 88 ms (endet nach 206 ms) · Ruhe nach 564 ms
+    Haut: 1 Netzwechsel (nach 206 ms 10592 → 10964), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 1.74 (99 % 1.22, Mittel 0.05) bei (10, 148, 13)
+    Zeiten im Fenster (ms): neu gerechnet 49, vorgerechnet 328, gesetzt 0, zerlegt 0
+Erster Griff nach den Loops (6 Einheiten hinauf) (10964 → 10609 Punkte): Drücken 21 ms, dabei zerlegt 5 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 45 ms) · Ruhe nach 1518 ms
+    Haut: 1 Netzwechsel (nach 1518 ms 10964 → 10609), Bewegung bei gleichem Netz in 13 Bildern (größte je Bild 13.92, von 122 bis 322 ms) · am Ende gegen vorher bis 6.00 (99 % 4.86, Mittel 1.51) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 11.62, in 7 Bildern über 0,18 (Folge: 11.01 11.62 2.07 1.15 0.60 0.29 0.21 0.14 0.09 0.04 0.04 0.03 0.01) · es bleibt bis 1.98 (99 % 1.89, Mittel 0.78) bei (123, -88, -17)
+    Zeiten im Fenster (ms): neu gerechnet 49, vorgerechnet 328, gesetzt 0, zerlegt 5, letzter Auftrag 1 angewendet [102/49/287/83] gesamt 591
+Zweiter Griff (noch einmal 6 Einheiten) (10609 → 10617 Punkte): Drücken 26 ms, dabei zerlegt 12 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 37 ms) · Ruhe nach 1489 ms
+    Haut: 1 Netzwechsel (nach 1489 ms 10609 → 10617), Bewegung bei gleichem Netz in 9 Bildern (größte je Bild 3.00, von 102 bis 278 ms) · am Ende gegen vorher bis 6.00 (99 % 5.62, Mittel 0.79) bei (8, 160, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.10, in 0 Bildern über 0,18 (Folge: 0.10 0.06 0.01 0.01 0.05 0.02 0.05 0.02 0.01) · es bleibt bis 0.08 (99 % 0.07, Mittel 0.02)
+    Zeiten im Fenster (ms): neu gerechnet 49, vorgerechnet 328, gesetzt 0, zerlegt 12, letzter Auftrag 2 angewendet [78/36/445/34] gesamt 611
+Weiter Zug (60 Einheiten hinauf, 20 Mausschritte) (10617 → 10997 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 36 ms) · Ruhe nach 1518 ms
+    Haut: 1 Netzwechsel (nach 1518 ms 10617 → 10997), Bewegung bei gleichem Netz in 47 Bildern (größte je Bild 3.00, von 79 bis 855 ms) · am Ende gegen vorher bis 59.97 (99 % 56.11, Mittel 8.10) bei (8, 220, 0)
+    Zeiten im Fenster (ms): neu gerechnet 49, vorgerechnet 328, gesetzt 0, zerlegt 10, letzter Auftrag 4 angewendet [129/66/304/92] gesamt 663
+Kante an (K am gezogenen Punkt) (10997 → 11045 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 920 ms: 547 ms (endet nach 533 ms), 374 ms (endet nach 927 ms) · Ruhe nach 927 ms
+    Haut: 1 Netzwechsel (nach 533 ms 10997 → 11045), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.07, von 927 bis 927 ms) · am Ende gegen vorher bis 20.82 (99 % 18.67, Mittel 6.90) bei (-44, 179, 0)
+    Zeiten im Fenster (ms): neu gerechnet 522, vorgerechnet 312, gesetzt 360, zerlegt 291, letzter Auftrag 4 angewendet [129/66/304/92] gesamt 663
+Erster Griff nach der Kante (6 Einheiten hinauf) (11045 → 11065 Punkte): Drücken 14 ms, dabei zerlegt 14 ms
+    Fenster: 1 Halte über 50 ms, zusammen 50 ms: 50 ms (endet nach 714 ms) · Ruhe nach 1323 ms
+    Haut: 2 Netzwechsel (nach 714 ms 11045 → 11059, nach 1323 ms 11059 → 11065), Bewegung bei gleichem Netz in 9 Bildern (größte je Bild 3.00, von 86 bis 748 ms) · am Ende gegen vorher bis 6.00 (99 % 4.06, Mittel 0.56) bei (10, 226, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.08, in 0 Bildern über 0,18 (Folge: 0.08 0.04 0.02 0.03 0.02 0.03 0.02 0.01 0.01) · es bleibt bis 0.06 (99 % 0.06, Mittel 0.02)
+    Zeiten im Fenster (ms): neu gerechnet 522, vorgerechnet 312, gesetzt 360, zerlegt 14, letzter Auftrag 6 angewendet [71/55/270/52] gesamt 464
+Kante aus (K) (11065 → 11473 Punkte)
+    Fenster: 3 Halte über 50 ms, zusammen 1365 ms: 607 ms (endet nach 609 ms), 413 ms (endet nach 1032 ms), 345 ms (endet nach 1398 ms) · Ruhe nach 1398 ms
+    Haut: 2 Netzwechsel (nach 609 ms 11065 → 11467, nach 1032 ms 11467 → 11473), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.03, von 1398 bis 1398 ms) · am Ende gegen vorher bis 28.11 (99 % 26.26, Mittel 9.04) bei (-73, 196, 0)
+    Zeiten im Fenster (ms): neu gerechnet 566, vorgerechnet 313, gesetzt 334, zerlegt 288, letzter Auftrag 6 angewendet [71/55/270/52] gesamt 464
+Punkt setzen (Doppelklick auf den waagerechten Ring) (11473 → 11473 Punkte): Punkte der Loops 10 → 11
+    Fenster: 1 Halte über 50 ms, zusammen 281 ms: 281 ms (endet nach 332 ms) · Ruhe nach 332 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 566, vorgerechnet 278, gesetzt 334, zerlegt 4, letzter Auftrag 6 angewendet [71/55/270/52] gesamt 464
+Punkt löschen (Entf) (11473 → 11455 Punkte): Punkte der Loops → 10
+    Fenster: 2 Halte über 50 ms, zusammen 547 ms: 345 ms (endet nach 553 ms), 201 ms (endet nach 192 ms) · Ruhe nach 553 ms
+    Haut: 1 Netzwechsel (nach 192 ms 11473 → 11455), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.01, von 553 bis 553 ms) · am Ende gegen vorher bis 0.02 (99 % 0.01, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 184, vorgerechnet 307, gesetzt 328, zerlegt 11, letzter Auftrag 6 angewendet [71/55/270/52] gesamt 464
+Rückgängig (⌘Z: das Löschen) (11455 → 11473 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 311 ms: 311 ms (endet nach 340 ms) · Ruhe nach 340 ms
+    Haut: 1 Netzwechsel (nach 13 ms 11455 → 11473), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.05 (99 % 0.01, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 184, vorgerechnet 303, gesetzt 328, zerlegt 11, letzter Auftrag 6 angewendet [71/55/270/52] gesamt 464
+Rückgängig (⌘Z: den Punkt) (11473 → 11473 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 42 ms) · Ruhe nach -2218 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 184, vorgerechnet 25, gesetzt 328, zerlegt 11, letzter Auftrag 6 angewendet [71/55/270/52] gesamt 464
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+
+########## VORHER: vorher-23k
+kurven.html?gewichte=geometrie&dreiecke=30000 · 22310 Punkte am Anfang · 0.89 px je Einheit bei 100 %
+Loop 1 schneiden (Ring waagerecht) (22310 → 22858 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 1216 ms: 1063 ms (endet nach 1373 ms), 153 ms (endet nach 279 ms) · Ruhe nach 1373 ms
+    Haut: 1 Netzwechsel (nach 279 ms 22310 → 22858), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 1.99 (99 % 1.68, Mittel 0.06) bei (124, 0, 88)
+    Zeiten im Fenster (ms): neu gerechnet 91, vorgerechnet 1062, gesetzt 0, zerlegt 0
+Loop 2 schneiden (Mitte) (22858 → 22858 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 1092 ms: 990 ms (endet nach 1221 ms), 102 ms (endet nach 217 ms) · Ruhe nach 1221 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 2.02, von 217 bis 217 ms) · am Ende gegen vorher bis 2.02 (99 % 1.13, Mittel 0.03) bei (-124, 89, 0)
+    Zeiten im Fenster (ms): neu gerechnet 76, vorgerechnet 973, gesetzt 0, zerlegt 0
+Loop 3 schneiden (Ring senkrecht) (22858 → 23406 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 1321 ms: 1183 ms (endet nach 1455 ms), 138 ms (endet nach 244 ms) · Ruhe nach 1455 ms
+    Haut: 1 Netzwechsel (nach 244 ms 22858 → 23406), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 1.80 (99 % 1.07, Mittel 0.03) bei (10, 148, 12)
+    Zeiten im Fenster (ms): neu gerechnet 73, vorgerechnet 1181, gesetzt 0, zerlegt 0
+Erster Griff nach den Loops (6 Einheiten hinauf) (23406 → 23656 Punkte): Drücken 35 ms, dabei zerlegt 8 ms
+    Fenster: 1 Halte über 50 ms, zusammen 74 ms: 74 ms (endet nach 163 ms) · Ruhe nach 4351 ms
+    Haut: 1 Netzwechsel (nach 4351 ms 23406 → 23656), Bewegung bei gleichem Netz in 20 Bildern (größte je Bild 42.67, von 163 bis 808 ms) · am Ende gegen vorher bis 5.99 (99 % 4.40, Mittel 1.56) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 25.91, in 10 Bildern über 0,18 (Folge: 21.80 25.91 8.77 3.28 1.76 0.95 0.43 0.35 0.26 0.21 0.15 0.13 0.08 0.10 …) · es bleibt bis 2.00 (99 % 1.92, Mittel 0.82) bei (125, -86, -11)
+    Zeiten im Fenster (ms): neu gerechnet 73, vorgerechnet 1181, gesetzt 0, zerlegt 8, letzter Auftrag 2 angewendet [315/143/2446/241] gesamt 3214
+Zweiter Griff (noch einmal 6 Einheiten) (23656 → 23616 Punkte): Drücken 54 ms, dabei zerlegt 30 ms
+    Fenster: 4 Halte über 50 ms, zusammen 271 ms: 92 ms (endet nach 185 ms), 71 ms (endet nach 428 ms), 55 ms (endet nach 65 ms), 54 ms (endet nach 319 ms) · Ruhe nach 2292 ms
+    Haut: 1 Netzwechsel (nach 2292 ms 23656 → 23616), Bewegung bei gleichem Netz in 9 Bildern (größte je Bild 3.00, von 185 bis 555 ms) · am Ende gegen vorher bis 6.00 (99 % 5.54, Mittel 0.77) bei (9, 160, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.12, in 0 Bildern über 0,18 (Folge: 0.12 0.06 0.04 0.06 0.04 0.02 0.06 0.02 0.01) · es bleibt bis 0.08 (99 % 0.08, Mittel 0.02)
+    Zeiten im Fenster (ms): neu gerechnet 73, vorgerechnet 1181, gesetzt 0, zerlegt 30, letzter Auftrag 3 angewendet [178/59/840/54] gesamt 1162
+Weiter Zug (60 Einheiten hinauf, 20 Mausschritte) (23616 → 24534 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 107 ms: 55 ms (endet nach 59 ms), 52 ms (endet nach 112 ms) · Ruhe nach 5003 ms
+    Haut: 1 Netzwechsel (nach 5003 ms 23616 → 24534), Bewegung bei gleichem Netz in 58 Bildern (größte je Bild 3.00, von 112 bis 1898 ms) · am Ende gegen vorher bis 59.96 (99 % 55.40, Mittel 8.02) bei (9, 220, 0)
+    Zeiten im Fenster (ms): neu gerechnet 73, vorgerechnet 1181, gesetzt 0, zerlegt 24, letzter Auftrag 5 angewendet [269/154/2370/232] gesamt 3097
+Kante an (K am gezogenen Punkt) (24534 → 24484 Punkte)
+    Fenster: 2 Halte über 50 ms, zusammen 2469 ms: 1425 ms (endet nach 1415 ms), 1044 ms (endet nach 2485 ms) · Ruhe nach 2485 ms
+    Haut: 1 Netzwechsel (nach 1415 ms 24534 → 24484), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.10, von 2485 bis 2485 ms) · am Ende gegen vorher bis 20.85 (99 % 18.69, Mittel 7.03) bei (-47, 177, 0)
+    Zeiten im Fenster (ms): neu gerechnet 1403, vorgerechnet 904, gesetzt 1032, zerlegt 857, letzter Auftrag 5 angewendet [269/154/2370/232] gesamt 3097
+Erster Griff nach der Kante (6 Einheiten hinauf) (24484 → 24514 Punkte): Drücken 30 ms, dabei zerlegt 8 ms
+    Fenster: 2 Halte über 50 ms, zusammen 123 ms: 73 ms (endet nach 165 ms), 50 ms (endet nach 458 ms) · Ruhe nach 2509 ms
+    Haut: 1 Netzwechsel (nach 2509 ms 24484 → 24514), Bewegung bei gleichem Netz in 10 Bildern (größte je Bild 3.00, von 165 bis 523 ms) · am Ende gegen vorher bis 6.00 (99 % 3.96, Mittel 0.56) bei (10, 226, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.08, in 0 Bildern über 0,18 (Folge: 0.08 0.06 0.03 0.02 0.03 0.02 0.01 0.04 0.03 0.01) · es bleibt bis 0.06 (99 % 0.06, Mittel 0.02)
+    Zeiten im Fenster (ms): neu gerechnet 1403, vorgerechnet 904, gesetzt 1032, zerlegt 8, letzter Auftrag 7 angewendet [169/89/919/164] gesamt 1414
+Kante aus (K) (24514 → 25900 Punkte)
+    Fenster: 5 Halte über 50 ms, zusammen 6242 ms: 1549 ms (endet nach 1533 ms), 1270 ms (endet nach 2821 ms), 1189 ms (endet nach 4024 ms), 1163 ms (endet nach 5197 ms), 1071 ms (endet nach 6289 ms) · Ruhe nach 6289 ms
+    Haut: 4 Netzwechsel (nach 1533 ms 24514 → 25868, nach 2821 ms 25868 → 25896, nach 4024 ms 25896 → 25898, nach 5197 ms 25898 → 25900), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.02, von 6289 bis 6289 ms) · am Ende gegen vorher bis 28.09 (99 % 26.57, Mittel 9.17) bei (-71, 197, 0)
+    Zeiten im Fenster (ms): neu gerechnet 1524, vorgerechnet 1028, gesetzt 1060, zerlegt 905, letzter Auftrag 7 angewendet [169/89/919/164] gesamt 1414
+Punkt setzen (Doppelklick auf den waagerechten Ring) (25900 → 25900 Punkte): Punkte der Loops 10 → 11
+    Fenster: 1 Halte über 50 ms, zusammen 994 ms: 994 ms (endet nach 1046 ms) · Ruhe nach 1046 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 1524, vorgerechnet 980, gesetzt 1060, zerlegt 8, letzter Auftrag 7 angewendet [169/89/919/164] gesamt 1414
+Punkt löschen (Entf) (25900 → 25850 Punkte): Punkte der Loops → 10
+    Fenster: 2 Halte über 50 ms, zusammen 1555 ms: 1066 ms (endet nach 1575 ms), 488 ms (endet nach 481 ms) · Ruhe nach 1575 ms
+    Haut: 1 Netzwechsel (nach 481 ms 25900 → 25850), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.02, von 1575 bis 1575 ms) · am Ende gegen vorher bis 0.04 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 475, vorgerechnet 1004, gesetzt 1058, zerlegt 31, letzter Auftrag 7 angewendet [169/89/919/164] gesamt 1414
+Rückgängig (⌘Z: das Löschen) (25850 → 25900 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 1050 ms: 1050 ms (endet nach 1072 ms) · Ruhe nach 1072 ms
+    Haut: 1 Netzwechsel (nach 8 ms 25850 → 25900), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.03 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 475, vorgerechnet 1033, gesetzt 1058, zerlegt 31, letzter Auftrag 7 angewendet [169/89/919/164] gesamt 1414
+Rückgängig (⌘Z: den Punkt) (25900 → 25900 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 79 ms: 79 ms (endet nach 104 ms) · Ruhe nach 104 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Zeiten im Fenster (ms): neu gerechnet 475, vorgerechnet 63, gesetzt 1058, zerlegt 31, letzter Auftrag 7 angewendet [169/89/919/164] gesamt 1414
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+
+########## NACHHER: final-6000
+kurven.html?gewichte=geometrie&dreiecke=6000 · 4706 Punkte am Anfang · 0.89 px je Einheit bei 100 %
+Loop 1 schneiden (Ring waagerecht) (4706 → 4966 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 68 ms: 68 ms (endet nach 213 ms) · Ruhe nach 213 ms
+    Haut: 1 Netzwechsel (nach 213 ms 4706 → 4966), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 2.09 (99 % 1.85, Mittel 0.14) bei (123, -0, 89)
+    Hintergrund: Auftrag 2 angewendet [verdichten/Zeilen/zerlegen/setzen 0/21/108/0] nach 134 ms · im Fenster: neu gerechnet 38, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Loop 2 schneiden (Mitte) (4966 → 4966 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 29 ms) · Ruhe nach 388 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 2 Bildern (größte je Bild 4.48, von 131 bis 388 ms) · am Ende gegen vorher bis 2.04 (99 % 1.94, Mittel 0.89) bei (-123, 89, 0)
+    Hintergrund: gesetzte Haut nach 224 ms (14 Runden), Auftrag 3 angewendet [verdichten/Zeilen/zerlegen/setzen 0/16/103/96] nach 226 ms · im Fenster: neu gerechnet 20, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Loop 3 schneiden (Ring senkrecht) (4966 → 5222 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 40 ms) · Ruhe nach 426 ms
+    Haut: 1 Netzwechsel (nach 145 ms 4966 → 5222), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.18, von 426 bis 426 ms) · am Ende gegen vorher bis 0.12 (99 % 0.11, Mittel 0.03)
+    Hintergrund: gesetzte Haut nach 247 ms (6 Runden), Auftrag 4 angewendet [verdichten/Zeilen/zerlegen/setzen 0/17/163/52] nach 250 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Erster Griff nach den Loops (6 Einheiten hinauf) (5222 → 4978 Punkte): Drücken 25 ms, dabei zerlegt 12 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 39 ms) · Ruhe nach 1141 ms
+    Haut: 1 Netzwechsel (nach 1141 ms 5222 → 4978), Bewegung bei gleichem Netz in 8 Bildern (größte je Bild 3.00, von 108 bis 209 ms) · am Ende gegen vorher bis 6.00 (99 % 5.66, Mittel 0.83) bei (7, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.14, in 0 Bildern über 0,18 (Folge: 0.11 0.14 0.02 0.01 0.02 0.01 0.02 0.02) · es bleibt bis 0.06 (99 % 0.06, Mittel 0.02)
+    Hintergrund: Auftrag 5 angewendet [verdichten/Zeilen/zerlegen/setzen 70/20/194/15] nach 313 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 12 ms · umgeschlagene Dreiecke 0
+Zweiter Griff (noch einmal 6 Einheiten) (4978 → 4976 Punkte): Drücken 15 ms, dabei zerlegt 5 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 30 ms) · Ruhe nach 985 ms
+    Haut: 1 Netzwechsel (nach 985 ms 4978 → 4976), Bewegung bei gleichem Netz in 5 Bildern (größte je Bild 3.00, von 75 bis 175 ms) · am Ende gegen vorher bis 6.00 (99 % 5.65, Mittel 0.81) bei (7, 160, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.06, in 0 Bildern über 0,18 (Folge: 0.06 0.06 0.04 0.03 0.04) · es bleibt bis 0.09 (99 % 0.09, Mittel 0.03)
+    Hintergrund: Auftrag 6 angewendet [verdichten/Zeilen/zerlegen/setzen 45/20/85/12] nach 178 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 5 ms · umgeschlagene Dreiecke 0
+Weiter Zug (60 Einheiten hinauf, 20 Mausschritte) (4976 → 5106 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 32 ms) · Ruhe nach 1042 ms
+    Haut: 2 Netzwechsel (nach 826 ms 4976 → 5058, nach 1042 ms 5058 → 5106), Bewegung bei gleichem Netz in 29 Bildern (größte je Bild 3.00, von 34 bis 860 ms) · am Ende gegen vorher bis 59.97 (99 % 56.26, Mittel 8.15) bei (7, 220, 0)
+    Hintergrund: Auftrag 8 angewendet [verdichten/Zeilen/zerlegen/setzen 28/14/89/24] nach 171 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 9 ms · umgeschlagene Dreiecke 0
+Kante an (K am gezogenen Punkt) (5106 → 5112 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 23 ms) · Ruhe nach 420 ms
+    Haut: 1 Netzwechsel (nach 420 ms 5106 → 5112), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 27.98, von 267 bis 267 ms) · am Ende gegen vorher bis 20.79 (99 % 18.52, Mittel 6.61) bei (-51, 174, 0)
+    Hintergrund: gesetzte Haut nach 225 ms (11 Runden), Auftrag 9 angewendet [verdichten/Zeilen/zerlegen/setzen 33/45/174/107] nach 378 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 9 ms · umgeschlagene Dreiecke 0
+Erster Griff nach der Kante (6 Einheiten hinauf) (5112 → 5130 Punkte): Drücken 27 ms, dabei zerlegt 7 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 34 ms) · Ruhe nach 1000 ms
+    Haut: 2 Netzwechsel (nach 261 ms 5112 → 5118, nach 1000 ms 5118 → 5130), Bewegung bei gleichem Netz in 7 Bildern (größte je Bild 3.00, von 94 bis 283 ms) · am Ende gegen vorher bis 6.00 (99 % 4.16, Mittel 0.56) bei (10, 226, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.06, in 0 Bildern über 0,18 (Folge: 0.06 0.03 0.03 0.04 0.03 0.01 0.01) · es bleibt bis 0.07 (99 % 0.07, Mittel 0.02)
+    Hintergrund: Auftrag 11 angewendet [verdichten/Zeilen/zerlegen/setzen 32/20/93/20] nach 179 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 7 ms · umgeschlagene Dreiecke 0
+Kante aus (K) (5130 → 5260 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 21 ms) · Ruhe nach 490 ms
+    Haut: 1 Netzwechsel (nach 490 ms 5130 → 5260), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 30.90, von 205 bis 205 ms) · am Ende gegen vorher bis 28.13 (99 % 26.22, Mittel 8.64) bei (-75, 194, 0)
+    Hintergrund: gesetzte Haut nach 168 ms (10 Runden), Auftrag 12 angewendet [verdichten/Zeilen/zerlegen/setzen 40/36/267/91] nach 453 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 7 ms · umgeschlagene Dreiecke 0
+Punkt setzen (Doppelklick auf den waagerechten Ring) (5260 → 5260 Punkte): Punkte der Loops 10 → 11
+    Fenster: kein Halt über 50 ms (längster Abstand 37 ms) · Ruhe nach -2010 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Hintergrund: Auftrag 13 angewendet [verdichten/Zeilen/zerlegen/setzen 0/18/90/0] nach 116 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 7 ms · umgeschlagene Dreiecke 0
+Punkt löschen (Entf) (5260 → 5256 Punkte): Punkte der Loops → 10
+    Fenster: kein Halt über 50 ms (längster Abstand 22 ms) · Ruhe nach 310 ms
+    Haut: 1 Netzwechsel (nach 310 ms 5260 → 5256), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.01, von 174 bis 174 ms) · am Ende gegen vorher bis 0.01 (99 % 0.01, Mittel 0.00)
+    Hintergrund: gesetzte Haut nach 138 ms (1 Runden), Auftrag 14 angewendet [verdichten/Zeilen/zerlegen/setzen 18/26/183/32] nach 273 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 7 ms · umgeschlagene Dreiecke 0
+Rückgängig (⌘Z: das Löschen) (5256 → 5260 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 17 ms) · Ruhe nach 10 ms
+    Haut: 1 Netzwechsel (nach 10 ms 5256 → 5260), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.05 (99 % 0.01, Mittel 0.00)
+    Hintergrund: Auftrag 15 angewendet [verdichten/Zeilen/zerlegen/setzen 0/17/91/0] nach 126 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 7 ms · umgeschlagene Dreiecke 0
+Rückgängig (⌘Z: den Punkt) (5260 → 5260 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 18 ms) · Ruhe nach -1904 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Hintergrund: Auftrag 16 angewendet [verdichten/Zeilen/zerlegen/setzen 0/21/91/0] nach 126 ms · im Fenster: neu gerechnet 23, vorgerechnet 0, zerlegt 7 ms · umgeschlagene Dreiecke 0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (5260 → 5322 Punkte): Drücken 3 ms, zerlegt beim Greifen 5 ms; der Griff wartete auf die gesetzte Haut (noch 109 ms nach den Mausschritten); fern vom Griff je Bild ab dem Drücken: 0.15 0.04 0.02 (größter 0.15)
+    Fenster: 1 Halte über 50 ms, zusammen 69 ms: 69 ms (endet nach 177 ms) · Ruhe nach 1462 ms
+    Haut: 2 Netzwechsel (nach 177 ms 5260 → 5512, nach 1462 ms 5512 → 5322), Bewegung bei gleichem Netz in 3 Bildern (größte je Bild 6.00, von 421 bis 453 ms) · am Ende gegen vorher bis 6.00 (99 % 5.41, Mittel 0.69) bei (6, 232, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.15, in 0 Bildern über 0,18 (Folge: 0.15 0.04 0.02) · es bleibt bis 0.28 (99 % 0.21, Mittel 0.04)
+    Hintergrund: gesetzte Haut nach 182 ms (6 Runden), Auftrag 18 angewendet [verdichten/Zeilen/zerlegen/setzen 54/20/97/22] nach 217 ms · im Fenster: neu gerechnet 40, vorgerechnet 0, zerlegt 5 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+
+########## NACHHER: final-14000
+kurven.html?gewichte=geometrie&dreiecke=14000 · 10216 Punkte am Anfang · 0.89 px je Einheit bei 100 %
+Loop 1 schneiden (Ring waagerecht) (10216 → 10592 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 102 ms: 102 ms (endet nach 231 ms) · Ruhe nach 231 ms
+    Haut: 1 Netzwechsel (nach 231 ms 10216 → 10592), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 2.02 (99 % 1.78, Mittel 0.09) bei (124, 0, 88)
+    Hintergrund: Auftrag 2 angewendet [verdichten/Zeilen/zerlegen/setzen 0/46/302/0] nach 367 ms · im Fenster: neu gerechnet 59, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Loop 2 schneiden (Mitte) (10592 → 10592 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 68 ms: 68 ms (endet nach 173 ms) · Ruhe nach 843 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 2 Bildern (größte je Bild 8.50, von 173 bis 843 ms) · am Ende gegen vorher bis 2.03 (99 % 1.93, Mittel 0.94) bei (-124, 87, 9)
+    Hintergrund: gesetzte Haut nach 636 ms (14 Runden), Auftrag 3 angewendet [verdichten/Zeilen/zerlegen/setzen 0/60/350/220] nach 639 ms · im Fenster: neu gerechnet 52, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Loop 3 schneiden (Ring senkrecht) (10592 → 10964 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 114 ms: 114 ms (endet nach 219 ms) · Ruhe nach 908 ms
+    Haut: 1 Netzwechsel (nach 219 ms 10592 → 10964), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.25, von 908 bis 908 ms) · am Ende gegen vorher bis 0.07 (99 % 0.06, Mittel 0.01)
+    Hintergrund: gesetzte Haut nach 654 ms (7 Runden), Auftrag 4 angewendet [verdichten/Zeilen/zerlegen/setzen 0/35/495/117] nach 656 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Erster Griff nach den Loops (6 Einheiten hinauf) (10964 → 10537 Punkte): Drücken 37 ms, dabei zerlegt 21 ms
+    Fenster: 1 Halte über 50 ms, zusammen 53 ms: 53 ms (endet nach 158 ms) · Ruhe nach 1745 ms
+    Haut: 1 Netzwechsel (nach 1745 ms 10964 → 10537), Bewegung bei gleichem Netz in 10 Bildern (größte je Bild 3.00, von 158 bis 334 ms) · am Ende gegen vorher bis 6.00 (99 % 5.67, Mittel 0.84) bei (8, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.12, in 0 Bildern über 0,18 (Folge: 0.07 0.12 0.03 0.01 0.01 0.02 0.01 0.02 0.01 0.01) · es bleibt bis 0.10 (99 % 0.09, Mittel 0.03)
+    Hintergrund: Auftrag 5 angewendet [verdichten/Zeilen/zerlegen/setzen 116/41/584/47] nach 811 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 21 ms · umgeschlagene Dreiecke 0
+Zweiter Griff (noch einmal 6 Einheiten) (10537 → 10545 Punkte): Drücken 24 ms, dabei zerlegt 11 ms
+    Fenster: kein Halt über 50 ms (längster Abstand 44 ms) · Ruhe nach 1276 ms
+    Haut: 1 Netzwechsel (nach 1276 ms 10537 → 10545), Bewegung bei gleichem Netz in 9 Bildern (größte je Bild 3.00, von 113 bis 264 ms) · am Ende gegen vorher bis 6.00 (99 % 5.66, Mittel 0.82) bei (8, 160, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.10, in 0 Bildern über 0,18 (Folge: 0.10 0.06 0.01 0.02 0.05 0.02 0.05 0.02 0.01) · es bleibt bis 0.07 (99 % 0.07, Mittel 0.02)
+    Hintergrund: Auftrag 6 angewendet [verdichten/Zeilen/zerlegen/setzen 79/38/247/20] nach 409 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 11 ms · umgeschlagene Dreiecke 0
+Weiter Zug (60 Einheiten hinauf, 20 Mausschritte) (10545 → 10933 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 30 ms) · Ruhe nach 1968 ms
+    Haut: 1 Netzwechsel (nach 1968 ms 10545 → 10933), Bewegung bei gleichem Netz in 44 Bildern (größte je Bild 3.00, von 67 bis 809 ms) · am Ende gegen vorher bis 59.97 (99 % 56.57, Mittel 8.30) bei (8, 220, 0)
+    Hintergrund: Auftrag 8 angewendet [verdichten/Zeilen/zerlegen/setzen 141/78/751/130] nach 1159 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 11 ms · umgeschlagene Dreiecke 0
+Kante an (K am gezogenen Punkt) (10933 → 10961 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 28 ms) · Ruhe nach 1049 ms
+    Haut: 1 Netzwechsel (nach 1049 ms 10933 → 10961), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 27.99, von 627 bis 627 ms) · am Ende gegen vorher bis 20.82 (99 % 18.66, Mittel 6.72) bei (-44, 179, 0)
+    Hintergrund: gesetzte Haut nach 583 ms (10 Runden), Auftrag 9 angewendet [verdichten/Zeilen/zerlegen/setzen 68/88/515/306] nach 1004 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 11 ms · umgeschlagene Dreiecke 0
+Erster Griff nach der Kante (6 Einheiten hinauf) (10961 → 10983 Punkte): Drücken 38 ms, dabei zerlegt 19 ms
+    Fenster: 1 Halte über 50 ms, zusammen 59 ms: 59 ms (endet nach 532 ms) · Ruhe nach 1348 ms
+    Haut: 2 Netzwechsel (nach 532 ms 10961 → 10965, nach 1348 ms 10965 → 10983), Bewegung bei gleichem Netz in 10 Bildern (größte je Bild 3.00, von 130 bis 552 ms) · am Ende gegen vorher bis 6.00 (99 % 4.11, Mittel 0.57) bei (10, 226, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.08, in 0 Bildern über 0,18 (Folge: 0.08 0.04 0.03 0.02 0.04 0.02 0.04 0.02 0.02 0.00) · es bleibt bis 0.07 (99 % 0.07, Mittel 0.03)
+    Hintergrund: Auftrag 11 angewendet [verdichten/Zeilen/zerlegen/setzen 76/36/260/32] nach 430 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 19 ms · umgeschlagene Dreiecke 0
+Kante aus (K) (10983 → 11421 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 23 ms) · Ruhe nach 936 ms
+    Haut: 1 Netzwechsel (nach 936 ms 10983 → 11421), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 30.90, von 499 bis 499 ms) · am Ende gegen vorher bis 28.11 (99 % 26.31, Mittel 8.84) bei (-73, 196, 0)
+    Hintergrund: gesetzte Haut nach 461 ms (10 Runden), Auftrag 12 angewendet [verdichten/Zeilen/zerlegen/setzen 60/58/564/202] nach 898 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 19 ms · umgeschlagene Dreiecke 0
+Punkt setzen (Doppelklick auf den waagerechten Ring) (11421 → 11421 Punkte): Punkte der Loops 10 → 11
+    Fenster: kein Halt über 50 ms (längster Abstand 36 ms) · Ruhe nach -2564 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Hintergrund: Auftrag 13 angewendet [verdichten/Zeilen/zerlegen/setzen 0/36/290/0] nach 334 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 14 ms · umgeschlagene Dreiecke 0
+Punkt löschen (Entf) (11421 → 11417 Punkte): Punkte der Loops → 10
+    Fenster: kein Halt über 50 ms (längster Abstand 23 ms) · Ruhe nach 805 ms
+    Haut: 1 Netzwechsel (nach 805 ms 11421 → 11417), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.01, von 402 bis 402 ms) · am Ende gegen vorher bis 0.01 (99 % 0.01, Mittel 0.00)
+    Hintergrund: gesetzte Haut nach 365 ms (1 Runden), Auftrag 14 angewendet [verdichten/Zeilen/zerlegen/setzen 61/58/580/48] nach 768 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 14 ms · umgeschlagene Dreiecke 0
+Rückgängig (⌘Z: das Löschen) (11417 → 11421 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 17 ms) · Ruhe nach 10 ms
+    Haut: 1 Netzwechsel (nach 10 ms 11417 → 11421), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.03 (99 % 0.01, Mittel 0.00)
+    Hintergrund: Auftrag 15 angewendet [verdichten/Zeilen/zerlegen/setzen 0/33/282/0] nach 323 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 14 ms · umgeschlagene Dreiecke 0
+Rückgängig (⌘Z: den Punkt) (11421 → 11421 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 17 ms) · Ruhe nach -2186 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Hintergrund: Auftrag 16 angewendet [verdichten/Zeilen/zerlegen/setzen 0/31/282/0] nach 326 ms · im Fenster: neu gerechnet 76, vorgerechnet 0, zerlegt 14 ms · umgeschlagene Dreiecke 0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (11421 → 11590 Punkte): Drücken 5 ms, zerlegt beim Greifen 13 ms; der Griff wartete auf die gesetzte Haut (noch 382 ms nach den Mausschritten); fern vom Griff je Bild ab dem Drücken: 0.18 0.13 0.10 0.01 (größter 0.18)
+    Fenster: 1 Halte über 50 ms, zusammen 92 ms: 92 ms (endet nach 209 ms) · Ruhe nach 2356 ms
+    Haut: 2 Netzwechsel (nach 209 ms 11421 → 11769, nach 2356 ms 11769 → 11590), Bewegung bei gleichem Netz in 4 Bildern (größte je Bild 6.00, von 710 bis 765 ms) · am Ende gegen vorher bis 6.00 (99 % 5.43, Mittel 0.71) bei (7, 232, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.18, in 0 Bildern über 0,18 (Folge: 0.18 0.13 0.10 0.01) · es bleibt bis 0.24 (99 % 0.18, Mittel 0.04)
+    Hintergrund: gesetzte Haut nach 430 ms (6 Runden), Auftrag 18 angewendet [verdichten/Zeilen/zerlegen/setzen 125/60/572/42] nach 811 ms · im Fenster: neu gerechnet 52, vorgerechnet 0, zerlegt 13 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+
+########## NACHHER: final-30000
+kurven.html?gewichte=geometrie&dreiecke=30000 · 22310 Punkte am Anfang · 0.89 px je Einheit bei 100 %
+Loop 1 schneiden (Ring waagerecht) (22310 → 22858 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 163 ms: 163 ms (endet nach 287 ms) · Ruhe nach 287 ms
+    Haut: 1 Netzwechsel (nach 287 ms 22310 → 22858), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 1.99 (99 % 1.68, Mittel 0.06) bei (124, 0, 88)
+    Hintergrund: Auftrag 2 angewendet [verdichten/Zeilen/zerlegen/setzen 0/68/932/0] nach 1021 ms · im Fenster: neu gerechnet 94, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Loop 2 schneiden (Mitte) (22858 → 22858 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 112 ms: 112 ms (endet nach 215 ms) · Ruhe nach 1944 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 2 Bildern (größte je Bild 24.40, von 215 bis 1944 ms) · am Ende gegen vorher bis 2.03 (99 % 1.91, Mittel 1.03) bei (-124, 89, 0)
+    Hintergrund: gesetzte Haut nach 1693 ms (21 Runden), Auftrag 3 angewendet [verdichten/Zeilen/zerlegen/setzen 0/53/889/735] nach 1698 ms · im Fenster: neu gerechnet 87, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Loop 3 schneiden (Ring senkrecht) (22858 → 23452 Punkte)
+    Fenster: 1 Halte über 50 ms, zusammen 197 ms: 197 ms (endet nach 300 ms) · Ruhe nach 2177 ms
+    Haut: 1 Netzwechsel (nach 300 ms 22858 → 23452), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.76, von 2177 bis 2177 ms) · am Ende gegen vorher bis 0.18 (99 % 0.15, Mittel 0.03)
+    Hintergrund: gesetzte Haut nach 1838 ms (7 Runden), Auftrag 4 angewendet [verdichten/Zeilen/zerlegen/setzen 0/57/1482/279] nach 1842 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 0 ms · umgeschlagene Dreiecke 0
+Erster Griff nach den Loops (6 Einheiten hinauf) (23452 → 23379 Punkte): Drücken 52 ms, dabei zerlegt 32 ms
+    Fenster: 3 Halte über 50 ms, zusammen 186 ms: 83 ms (endet nach 182 ms), 53 ms (endet nach 69 ms), 50 ms (endet nach 233 ms) · Ruhe nach 5364 ms
+    Haut: 1 Netzwechsel (nach 5364 ms 23452 → 23379), Bewegung bei gleichem Netz in 9 Bildern (größte je Bild 3.00, von 182 bis 491 ms) · am Ende gegen vorher bis 5.99 (99 % 5.67, Mittel 0.86) bei (10, 154, -3)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.20, in 1 Bildern über 0,18 (Folge: 0.10 0.17 0.20 0.12 0.05 0.03 0.03 0.02 0.01) · es bleibt bis 0.07 (99 % 0.07, Mittel 0.02)
+    Hintergrund: Auftrag 6 angewendet [verdichten/Zeilen/zerlegen/setzen 370/183/3148/546] nach 4305 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 32 ms · umgeschlagene Dreiecke 0
+Zweiter Griff (noch einmal 6 Einheiten) (23379 → 23361 Punkte): Drücken 48 ms, dabei zerlegt 26 ms
+    Fenster: 1 Halte über 50 ms, zusammen 63 ms: 63 ms (endet nach 156 ms) · Ruhe nach 3541 ms
+    Haut: 1 Netzwechsel (nach 3541 ms 23379 → 23361), Bewegung bei gleichem Netz in 8 Bildern (größte je Bild 3.00, von 156 bis 438 ms) · am Ende gegen vorher bis 5.99 (99 % 5.66, Mittel 0.82) bei (10, 160, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.12, in 0 Bildern über 0,18 (Folge: 0.12 0.07 0.06 0.03 0.06 0.01 0.06 0.02) · es bleibt bis 0.08 (99 % 0.08, Mittel 0.02)
+    Hintergrund: Auftrag 7 angewendet [verdichten/Zeilen/zerlegen/setzen 238/126/1649/455] nach 2496 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 26 ms · umgeschlagene Dreiecke 0
+Weiter Zug (60 Einheiten hinauf, 20 Mausschritte) (23361 → 24479 Punkte)
+    Fenster: 5 Halte über 50 ms, zusammen 378 ms: 138 ms (endet nach 1234 ms), 71 ms (endet nach 125 ms), 59 ms (endet nach 277 ms), 58 ms (endet nach 1331 ms), 52 ms (endet nach 54 ms) · Ruhe nach 4631 ms
+    Haut: 1 Netzwechsel (nach 4631 ms 23361 → 24479), Bewegung bei gleichem Netz in 53 Bildern (größte je Bild 3.00, von 125 bis 2078 ms) · am Ende gegen vorher bis 59.95 (99 % 56.47, Mittel 8.56) bei (10, 220, 0)
+    Hintergrund: Auftrag 9 angewendet [verdichten/Zeilen/zerlegen/setzen 268/135/1794/249] nach 2541 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 24 ms · umgeschlagene Dreiecke 0
+Kante an (K am gezogenen Punkt) (24479 → 24411 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 32 ms) · Ruhe nach 3441 ms
+    Haut: 1 Netzwechsel (nach 3441 ms 24479 → 24411), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 27.98, von 1569 bis 1569 ms) · am Ende gegen vorher bis 20.85 (99 % 18.75, Mittel 6.78) bei (-47, 177, 0)
+    Hintergrund: gesetzte Haut nach 1514 ms (14 Runden), Auftrag 10 angewendet [verdichten/Zeilen/zerlegen/setzen 142/191/2371/655] nach 3387 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 24 ms · umgeschlagene Dreiecke 0
+Erster Griff nach der Kante (6 Einheiten hinauf) (24411 → 24435 Punkte): Drücken 68 ms, dabei zerlegt 38 ms
+    Fenster: 2 Halte über 50 ms, zusammen 134 ms: 68 ms (endet nach 89 ms), 66 ms (endet nach 202 ms) · Ruhe nach 2453 ms
+    Haut: 1 Netzwechsel (nach 2453 ms 24411 → 24435), Bewegung bei gleichem Netz in 10 Bildern (größte je Bild 3.00, von 202 bis 553 ms) · am Ende gegen vorher bis 6.00 (99 % 4.05, Mittel 0.58) bei (10, 226, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.07, in 0 Bildern über 0,18 (Folge: 0.07 0.05 0.02 0.01 0.03 0.02 0.01 0.03 0.02 0.01) · es bleibt bis 0.06 (99 % 0.06, Mittel 0.02)
+    Hintergrund: Auftrag 12 angewendet [verdichten/Zeilen/zerlegen/setzen 176/85/888/111] nach 1334 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 38 ms · umgeschlagene Dreiecke 0
+Kante aus (K) (24435 → 25395 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 38 ms) · Ruhe nach 4621 ms
+    Haut: 1 Netzwechsel (nach 4621 ms 24435 → 25395), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 31.52, von 2172 bis 2172 ms) · am Ende gegen vorher bis 28.09 (99 % 26.50, Mittel 8.98) bei (-71, 197, 0)
+    Hintergrund: gesetzte Haut nach 2125 ms (15 Runden), Auftrag 13 angewendet [verdichten/Zeilen/zerlegen/setzen 256/211/3337/740] nach 4572 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 38 ms · umgeschlagene Dreiecke 0
+Punkt setzen (Doppelklick auf den waagerechten Ring) (25395 → 25395 Punkte): Punkte der Loops 10 → 11
+    Fenster: 1 Halte über 50 ms, zusammen 83 ms: 83 ms (endet nach 81 ms) · Ruhe nach 81 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Hintergrund: Auftrag 14 angewendet [verdichten/Zeilen/zerlegen/setzen 0/105/904/0] nach 1053 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 35 ms · umgeschlagene Dreiecke 0
+Punkt löschen (Entf) (25395 → 25373 Punkte): Punkte der Loops → 10
+    Fenster: kein Halt über 50 ms (längster Abstand 30 ms) · Ruhe nach 3320 ms
+    Haut: 1 Netzwechsel (nach 3320 ms 25395 → 25373), Bewegung bei gleichem Netz in 1 Bildern (größte je Bild 0.03, von 1063 bis 1063 ms) · am Ende gegen vorher bis 0.02 (99 % 0.02, Mittel 0.01)
+    Hintergrund: gesetzte Haut nach 1019 ms (1 Runden), Auftrag 15 angewendet [verdichten/Zeilen/zerlegen/setzen 210/169/2707/159] nach 3276 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 35 ms · umgeschlagene Dreiecke 0
+Rückgängig (⌘Z: das Löschen) (25373 → 25395 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 17 ms) · Ruhe nach 16 ms
+    Haut: 1 Netzwechsel (nach 16 ms 25373 → 25395), Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.03 (99 % 0.02, Mittel 0.01)
+    Hintergrund: Auftrag 16 angewendet [verdichten/Zeilen/zerlegen/setzen 0/57/895/0] nach 976 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 35 ms · umgeschlagene Dreiecke 0
+Rückgängig (⌘Z: den Punkt) (25395 → 25395 Punkte)
+    Fenster: kein Halt über 50 ms (längster Abstand 18 ms) · Ruhe nach -1385 ms
+    Haut: 0 Netzwechsel, Bewegung bei gleichem Netz in 0 Bildern · am Ende gegen vorher bis 0.00 (99 % 0.00, Mittel 0.00)
+    Hintergrund: Auftrag 17 angewendet [verdichten/Zeilen/zerlegen/setzen 0/57/917/0] nach 986 ms · im Fenster: neu gerechnet 131, vorgerechnet 0, zerlegt 35 ms · umgeschlagene Dreiecke 0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (25395 → 25631 Punkte): Drücken 8 ms, zerlegt beim Greifen 46 ms; der Griff wartete auf die gesetzte Haut (noch 1255 ms nach den Mausschritten); fern vom Griff je Bild ab dem Drücken: 0.18 0.07 0.11 0.05 0.01 (größter 0.18)
+    Fenster: 2 Halte über 50 ms, zusammen 271 ms: 184 ms (endet nach 293 ms), 87 ms (endet nach 1680 ms) · Ruhe nach 4808 ms
+    Haut: 2 Netzwechsel (nach 293 ms 25395 → 25957, nach 4808 ms 25957 → 25631), Bewegung bei gleichem Netz in 5 Bildern (größte je Bild 6.00, von 1680 bis 1863 ms) · am Ende gegen vorher bis 6.00 (99 % 5.45, Mittel 0.70) bei (10, 232, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.18, in 0 Bildern über 0,18 (Folge: 0.18 0.07 0.11 0.05 0.01) · es bleibt bis 0.19 (99 % 0.16, Mittel 0.03)
+    Hintergrund: gesetzte Haut nach 1275 ms (6 Runden), Auftrag 19 angewendet [verdichten/Zeilen/zerlegen/setzen 234/117/1798/137] nach 2311 ms · im Fenster: neu gerechnet 107, vorgerechnet 0, zerlegt 46 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+

@@ -1,0 +1,32 @@
+
+=== ohr, geometrie, 5222 Punkte (10440 Dreiecke), Anlegen 189 ms ===
+  Unbekannte Lagen 5222 (×3 Spalten), Einträge in L (Lagen) 616127; Krümmung: PCG, Vorkonditionierer n 4578, Einträge 78156; Quellen (weiche Linienpunkte) 644, harte/Ecken 0; Bindungen 650; Kanten 15660
+A Kosten (30 Runden im Zug, außen gemessen 13.14 ms je Runde; Maschine geteilt, nur Anteile verwenden):
+  vermessen (mit Normalen) 7 % · intrinsisch 9 % · Krümmung verteilen 30 % (PCG-Schritte je Runde 4.43) · Lagen lösen 48 % · Rest (rechte Seite, Spiegel) 7 %
+  absolut (Vorbehalt): vermessen 0.92, intrinsisch 1.12, Krümmung 3.89, lösen 6.30, Rest 0.91 ms
+B Liniengenauigkeit (Abstand Hautpunkt der Bindung ↔ sein Ziel; Zielschritt je Mausschritt bis 2.33; Versatz Haut↔Linie beim Anlegen bis 0.000):
+  Schritt 1: größter 0.002, Mittel 0.000
+  Schritt 15: größter 0.002, Mittel 0.000
+  Schritt 30: größter 0.002, Mittel 0.000
+C Konvergenz nach dem Zug (Ziele fest, je eine Runde):
+  Runde 1: größte Bewegung 1.1981 (rms 0.2369), cos zum Schritt davor NaN, seit Zugende 1.198
+  Runde 2: größte Bewegung 0.9562 (rms 0.2085), cos zum Schritt davor 0.27, seit Zugende 1.663
+  Runde 3: größte Bewegung 0.2090 (rms 0.0459), cos zum Schritt davor -0.78, seit Zugende 1.473
+  Runde 4: größte Bewegung 0.2029 (rms 0.0333), cos zum Schritt davor 0.79, seit Zugende 1.292
+  Runde 5: größte Bewegung 0.0402 (rms 0.0078), cos zum Schritt davor 0.19, seit Zugende 1.274
+  Runde 6: größte Bewegung 0.0392 (rms 0.0057), cos zum Schritt davor 0.36, seit Zugende 1.261
+  Runde 8: größte Bewegung 0.0309 (rms 0.0068), cos zum Schritt davor 0.93, seit Zugende 1.312
+  Runde 10: größte Bewegung 0.0145 (rms 0.0031), cos zum Schritt davor 0.86, seit Zugende 1.350
+  Runde 15: größte Bewegung 0.0094 (rms 0.0013), cos zum Schritt davor 0.97, seit Zugende 1.353
+  Runde 20: größte Bewegung 0.0081 (rms 0.0019), cos zum Schritt davor -0.47, seit Zugende 1.355
+  Runde 30: größte Bewegung 0.0034 (rms 0.0012), cos zum Schritt davor 0.21, seit Zugende 1.358
+  Runde 40: größte Bewegung 0.0081 (rms 0.0022), cos zum Schritt davor -0.82, seit Zugende 1.356
+  Runde 50: größte Bewegung 0.0015 (rms 0.0005), cos zum Schritt davor 0.97, seit Zugende 1.357
+  Runde 75: größte Bewegung 0.0024 (rms 0.0009), cos zum Schritt davor 0.99, seit Zugende 1.357
+  Runde 100: größte Bewegung 0.0312 (rms 0.0098), cos zum Schritt davor 0.02, seit Zugende 1.353
+  Runde 150: größte Bewegung 0.0106 (rms 0.0036), cos zum Schritt davor -0.88, seit Zugende 1.357
+  Runde 200: größte Bewegung 0.0196 (rms 0.0066), cos zum Schritt davor -0.66, seit Zugende 1.359
+  Runde 300: größte Bewegung 0.0024 (rms 0.0008), cos zum Schritt davor -0.59, seit Zugende 1.360
+  Runde 400: größte Bewegung 0.0042 (rms 0.0013), cos zum Schritt davor 0.99, seit Zugende 1.359
+  Liniengenauigkeit nach 400 Runden: größter 0.0000, Mittel 0.0000
+  Faktor je Runde (größte Bewegung): Runden 2→10 0.592, 10→30 0.930, 30→100 1.032, 100→200 0.995

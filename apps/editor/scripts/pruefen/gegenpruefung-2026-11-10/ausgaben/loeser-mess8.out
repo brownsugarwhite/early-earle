@@ -1,0 +1,40 @@
+Nachmessung 10.11. nachmittags (Schritt G3), einzeln und nacheinander: loeser/mess8.ts
+=== ohr, geometrie, 5222 Punkte: 30 Mausschritte mit je 3 Runden, 100 Runden Ruhe, dann zweimal ein neuer Löser mit 30 Runden ===
+  100 Runden Ruhe mit dem Löser des Zugs: Form 0.28 (rms 0.045, 74 Punkte über 0,18, 0 über 1) bei (33, 86, 109)
+    Bremse je Punkt: kleinste 0.020, Viertel 0.267, Mitte 0.555, drei Viertel 0.954, größte 1.000; am Boden (0,02) 8 von 5222
+  weitere 20 Runden mit demselben Löser: Form 0.01 (rms 0.003, 0 Punkte über 0,18, 0 über 1) bei (-75, 108, 154)
+  neuer Löser 1, 30 Runden: Form gegen vorher 0.01 (rms 0.003, 0 Punkte über 0,18, 0 über 1) bei (110, -49, 95)
+    die ersten Runden: 0.01 0.00 0.00 0.00 0.01 0.01 0.02 0.01
+    Bremse je Punkt: kleinste 0.020, Viertel 0.500, Mitte 0.500, drei Viertel 0.867, größte 1.000; am Boden (0,02) 4 von 5222
+  neuer Löser 2, 30 Runden: Form gegen vorher 0.02 (rms 0.004, 0 Punkte über 0,18, 0 über 1) bei (97, -62, 101)
+    die ersten Runden: 0.02 0.00 0.00 0.00 0.00 0.01 0.01 0.01
+    Bremse je Punkt: kleinste 0.020, Viertel 0.278, Mitte 0.424, drei Viertel 0.500, größte 1.000; am Boden (0,02) 2 von 5222
+  neuer Löser 3, 30 Runden: Form gegen vorher 0.00 (rms 0.001, 0 Punkte über 0,18, 0 über 1) bei (-84, -68, -98)
+    die ersten Runden: 0.01 0.00 0.00 0.00 0.00 0.01 0.01 0.01
+    Bremse je Punkt: kleinste 0.020, Viertel 0.298, Mitte 0.434, drei Viertel 0.909, größte 1.000; am Boden (0,02) 8 von 5222
+=== ohr, geometrie, 10964 Punkte: 30 Mausschritte mit je 3 Runden, 100 Runden Ruhe, dann zweimal ein neuer Löser mit 30 Runden ===
+  100 Runden Ruhe mit dem Löser des Zugs: Form 0.29 (rms 0.057, 242 Punkte über 0,18, 0 über 1) bei (35, 82, -109)
+    Bremse je Punkt: kleinste 0.020, Viertel 0.298, Mitte 0.488, drei Viertel 1.000, größte 1.000; am Boden (0,02) 78 von 10964
+  weitere 20 Runden mit demselben Löser: Form 0.02 (rms 0.006, 0 Punkte über 0,18, 0 über 1) bei (-89, 83, -143)
+  neuer Löser 1, 30 Runden: Form gegen vorher 0.03 (rms 0.007, 0 Punkte über 0,18, 0 über 1) bei (-87, 81, -146)
+    die ersten Runden: 0.03 0.03 0.03 0.02 0.01 0.01 0.01 0.01
+    Bremse je Punkt: kleinste 0.020, Viertel 0.339, Mitte 0.954, drei Viertel 1.000, größte 1.000; am Boden (0,02) 4 von 10964
+  neuer Löser 2, 30 Runden: Form gegen vorher 0.03 (rms 0.006, 0 Punkte über 0,18, 0 über 1) bei (-61, 115, -172)
+    die ersten Runden: 0.04 0.03 0.01 0.01 0.03 0.01 0.01 0.00
+    Bremse je Punkt: kleinste 0.020, Viertel 0.271, Mitte 0.488, drei Viertel 1.000, größte 1.000; am Boden (0,02) 38 von 10964
+  neuer Löser 3, 30 Runden: Form gegen vorher 0.03 (rms 0.008, 0 Punkte über 0,18, 0 über 1) bei (-68, 117, -162)
+    die ersten Runden: 0.01 0.00 0.03 0.02 0.01 0.01 0.01 0.01
+    Bremse je Punkt: kleinste 0.020, Viertel 0.238, Mitte 0.373, drei Viertel 0.625, größte 1.000; am Boden (0,02) 38 von 10964
+=== ohr, geometrie, 23406 Punkte: 30 Mausschritte mit je 3 Runden, 100 Runden Ruhe, dann zweimal ein neuer Löser mit 30 Runden ===
+  100 Runden Ruhe mit dem Löser des Zugs: Form 0.53 (rms 0.082, 1164 Punkte über 0,18, 0 über 1) bei (30, 84, -116)
+    Bremse je Punkt: kleinste 0.020, Viertel 0.728, Mitte 1.000, drei Viertel 1.000, größte 1.000; am Boden (0,02) 54 von 23406
+  weitere 20 Runden mit demselben Löser: Form 0.04 (rms 0.006, 0 Punkte über 0,18, 0 über 1) bei (-53, 96, -183)
+  neuer Löser 1, 30 Runden: Form gegen vorher 0.05 (rms 0.007, 0 Punkte über 0,18, 0 über 1) bei (-50, 135, -173)
+    die ersten Runden: 0.07 0.07 0.03 0.01 0.01 0.01 0.03 0.02
+    Bremse je Punkt: kleinste 0.020, Viertel 0.250, Mitte 1.000, drei Viertel 1.000, größte 1.000; am Boden (0,02) 308 von 23406
+  neuer Löser 2, 30 Runden: Form gegen vorher 0.06 (rms 0.010, 0 Punkte über 0,18, 0 über 1) bei (-52, 125, 178)
+    die ersten Runden: 0.04 0.02 0.01 0.01 0.01 0.01 0.02 0.01
+    Bremse je Punkt: kleinste 0.020, Viertel 1.000, Mitte 1.000, drei Viertel 1.000, größte 1.000; am Boden (0,02) 20 von 23406
+  neuer Löser 3, 30 Runden: Form gegen vorher 0.05 (rms 0.005, 0 Punkte über 0,18, 0 über 1) bei (-52, 125, -178)
+    die ersten Runden: 0.02 0.07 0.01 0.02 0.01 0.02 0.00 0.03
+    Bremse je Punkt: kleinste 0.020, Viertel 0.954, Mitte 1.000, drei Viertel 1.000, größte 1.000; am Boden (0,02) 56 von 23406

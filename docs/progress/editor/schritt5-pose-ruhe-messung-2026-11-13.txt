@@ -1,0 +1,25 @@
+Schritt 5, Etappe 1: kleiner Beweis „die Pose in ihrer Ruhe mit der Rechnung der Grundform“ (13.11.2026)
+Probe: apps/editor/scripts/pruefen/form-pose-ruhe.ts (Form: formen/pose-maul-kugel.eewesen, aus form-pose-ruhe-fenster.mjs)
+Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-pose-ruhe.ts
+Alle Bewegungen gemessen gegen die zur Ruhe gerechnete Haut der jeweiligen Fassung; Kugel mit Halbmesser 150.
+
+Form: 1682 Punkte, 2 Loops, Maul = Loop 2 (Mundwinkel an Probe 21, Gelenk -55,0/-19,3), Öffnung 184 Dreiecke; Maul 30° offen; Unterlippe: Punkt 1 mit 30,0°; gezeigte Haut am Anfang: Knicke über 60° 0, umgeschlagen 0
+Grundform zur Ruhe gerechnet (15 Runden): Haut bis 1,62 neben der gesicherten
+(a) Öffnung rechnet mit
+   ohne Zug, 20 Runden: Haut bis 0,029 bewegt; gezeigt: Knicke über 60° 0, umgeschlagen 0
+   Unterlippe 25 nach unten: steht nach 47 Runden; Haut bis 26,8 bewegt, fern vom Maul (y > 60) bis 10,73; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 95,3 ms
+   Unterlippe 25 nach oben: steht nach 61 Runden; Haut bis 33,5 bewegt, fern vom Maul (y > 60) bis 31,69; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 77,9 ms
+   Punkt oben auf dem Ring 40 nach oben: steht nach 61 Runden; Haut bis 40,0 bewegt, fern vom Maul (y > 60) bis 40,00; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 72,1 ms
+(b) Lippen als Kante
+   Wechsel zu dieser Fassung: Haut bis 0,62 neben der Grundform (fern vom Maul bis 0,37), steht nach 6 Runden
+   ohne Zug, 20 Runden: Haut bis 0,116 bewegt; gezeigt: Knicke über 60° 0, umgeschlagen 0
+   Unterlippe 25 nach unten: steht nach 43 Runden; Haut bis 25,0 bewegt, fern vom Maul (y > 60) bis 0,95; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 53,2 ms
+   Unterlippe 25 nach oben: steht nach 45 Runden; Haut bis 25,0 bewegt, fern vom Maul (y > 60) bis 0,92; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 52,5 ms
+   Punkt oben auf dem Ring 40 nach oben: steht nach 73 Runden; Haut bis 56,8 bewegt, fern vom Maul (y > 60) bis 56,82; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 94,0 ms
+(c) Öffnung herausgenommen
+   Wechsel zu dieser Fassung: Haut bis 35,74 neben der Grundform (fern vom Maul bis 35,74), steht nach 31 Runden
+   ohne Zug, 20 Runden: Haut bis 0,078 bewegt; gezeigt: Knicke über 60° 0, umgeschlagen 0
+   Unterlippe 25 nach unten: steht nach 59 Runden; Haut bis 25,0 bewegt, fern vom Maul (y > 60) bis 1,82; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 93,5 ms
+   Unterlippe 25 nach oben: steht nach 55 Runden; Haut bis 25,0 bewegt, fern vom Maul (y > 60) bis 2,17; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 85,4 ms
+   Punkt oben auf dem Ring 40 nach oben: steht nach 70 Runden; Haut bis 39,9 bewegt, fern vom Maul (y > 60) bis 39,93; Linien neben ihrem Pfad bis 0,00; gezeigt: Knicke über 60° 0, umgeschlagen 0; Vorsicht 0; 104,6 ms
+Grundform bitgleich: ja

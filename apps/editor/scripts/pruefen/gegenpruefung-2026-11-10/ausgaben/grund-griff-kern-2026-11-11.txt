@@ -1,0 +1,184 @@
+# form-griff-verdreht.ts, 11.11.2026: Griff am obersten Punkt von Loop 4 um 40° bzw. 180° gedreht, 60 Runden, zurückgedreht, 60 Runden
+# (im Kern, derselbe Löser, ohne Fenster und ohne Verdichten; 5 Runden je Mausschritt; GEWICHTE=geometrie ist die Rechnung des Fensters mit ?gewichte=geometrie, gleich die ohne)
+
+## test_kaputt · GEWICHTE=geometrie · GRAD=40
+Setzen (60 Runden): Bewegung je Runde 1: 0.14 · 2: 0.05 · 3: 0.02 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.01 · gegen die gesicherte Form: Punkte bis 0.2 (99 % 0.1, Mittel 0.0), Rauminhalt 100.0 %, umgeschlagen 0, Knicke über 150° 0
+test_kaputt.eewesen: 6217 Punkte · Punkt 4:2 (-12, 150, 0), Griff aus um 40° gedreht · 5 Runden je Schritt · Gewichte geometrie
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 99.7 %, gegen die Form davor bis 29.66 (99 % 25.49)
+verdreht, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 99.7 %, gegen die Form davor bis 29.66 (99 % 25.49)
+nach dem Verdrehen: Bewegung je Runde 1: 0.02 · 2: 0.01 · 3: 0.01 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.17 (99 % 0.13)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.18 (99 % 0.14)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.18 (99 % 0.14)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.20 (99 % 0.16)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.01 · 2: 0.01 · 3: 0.00 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+
+## test_kaputt · GEWICHTE=geometrie · GRAD=180
+Setzen (60 Runden): Bewegung je Runde 1: 0.14 · 2: 0.05 · 3: 0.02 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.01 · gegen die gesicherte Form: Punkte bis 0.2 (99 % 0.1, Mittel 0.0), Rauminhalt 100.0 %, umgeschlagen 0, Knicke über 150° 0
+test_kaputt.eewesen: 6217 Punkte · Punkt 4:2 (-12, 150, 0), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte geometrie
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 38, Knicke über 150° 24, Rauminhalt 93.4 %, gegen die Form davor bis 86.71 (99 % 75.17) · Loop 4 kreuzt sich selbst
+verdreht, nach 60 Runden: umgeschlagen 28, Knicke über 150° 40, Rauminhalt 92.4 %, gegen die Form davor bis 86.71 (99 % 76.35) · Loop 4 kreuzt sich selbst
+nach dem Verdrehen: Bewegung je Runde 1: 1.08 · 2: 1.57 · 3: 1.39 · 5: 1.70 · 10: 0.43 · 20: 0.44 · 40: 0.35 · 60: 0.01 · unter 0,05 ab Runde 55
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 11.76 (99 % 4.79)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 11.76 (99 % 4.79)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 11.76 (99 % 4.79)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 11.76 (99 % 4.79)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.06 · 2: 0.04 · 3: 0.04 · 5: 0.03 · 10: 0.03 · 20: 0.01 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 2
+
+## test_kaputt · GEWICHTE=gleich · GRAD=40
+Setzen (60 Runden): Bewegung je Runde 1: 2.47 · 2: 1.51 · 3: 0.56 · 5: 0.16 · 10: 0.01 · 20: 0.00 · 40: 0.00 · 60: 0.00 · gegen die gesicherte Form: Punkte bis 3.1 (99 % 2.7, Mittel 0.6), Rauminhalt 99.4 %, umgeschlagen 0, Knicke über 150° 0
+test_kaputt.eewesen: 6217 Punkte · Punkt 4:2 (-12, 150, 0), Griff aus um 40° gedreht · 5 Runden je Schritt · Gewichte gleich
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 99.7 %, gegen die Form davor bis 29.66 (99 % 25.76)
+verdreht, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 99.7 %, gegen die Form davor bis 29.66 (99 % 25.76)
+nach dem Verdrehen: Bewegung je Runde 1: 0.01 · 2: 0.00 · 3: 0.00 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.08 (99 % 0.06)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.08 (99 % 0.06)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.08 (99 % 0.07)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 0.08 (99 % 0.07)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.01 · 2: 0.01 · 3: 0.00 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+
+## test_kaputt · GEWICHTE=gleich · GRAD=180
+Setzen (60 Runden): Bewegung je Runde 1: 2.47 · 2: 1.51 · 3: 0.56 · 5: 0.16 · 10: 0.01 · 20: 0.00 · 40: 0.00 · 60: 0.00 · gegen die gesicherte Form: Punkte bis 3.1 (99 % 2.7, Mittel 0.6), Rauminhalt 99.4 %, umgeschlagen 0, Knicke über 150° 0
+test_kaputt.eewesen: 6217 Punkte · Punkt 4:2 (-12, 150, 0), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte gleich
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 0, Knicke über 150° 2, Rauminhalt 91.2 %, gegen die Form davor bis 86.71 (99 % 74.85) · Loop 4 kreuzt sich selbst
+verdreht, nach 60 Runden: umgeschlagen 0, Knicke über 150° 2, Rauminhalt 91.2 %, gegen die Form davor bis 86.71 (99 % 74.86) · Loop 4 kreuzt sich selbst
+nach dem Verdrehen: Bewegung je Runde 1: 0.07 · 2: 0.04 · 3: 0.02 · 5: 0.01 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 2
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.84 (99 % 1.44)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.84 (99 % 1.44)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.83 (99 % 1.44)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.83 (99 % 1.43)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.04 · 2: 0.02 · 3: 0.01 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+
+## strange bird · GEWICHTE=geometrie · GRAD=40
+Setzen (60 Runden): Bewegung je Runde 1: 23.01 · 2: 14.86 · 3: 3.32 · 5: 1.24 · 10: 0.21 · 20: 0.02 · 40: 0.01 · 60: 0.00 · gegen die gesicherte Form: Punkte bis 19.3 (99 % 9.4, Mittel 1.5), Rauminhalt 100.4 %, umgeschlagen 6, Knicke über 150° 8
+strange bird.eewesen: 16010 Punkte · Punkt 4:1 (46, 466, 44), Griff aus um 40° gedreht · 5 Runden je Schritt · Gewichte geometrie
+gesetzt: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 98.7 %, gegen die Form davor bis 20.48 (99 % 18.64)
+verdreht, nach 60 Runden: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 98.7 %, gegen die Form davor bis 20.48 (99 % 18.62)
+nach dem Verdrehen: Bewegung je Runde 1: 0.06 · 2: 0.04 · 3: 0.04 · 5: 0.06 · 10: 0.05 · 20: 0.02 · 40: 0.02 · 60: 0.03 · unter 0,05 ab Runde 6
+zurück, gehalten: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 100.0 %, gegen die Form davor bis 0.49 (99 % 0.38)
+zurück, nach 10 Runden: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 100.0 %, gegen die Form davor bis 0.46 (99 % 0.37)
+zurück, nach 30 Runden: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 100.0 %, gegen die Form davor bis 0.50 (99 % 0.41)
+zurück, nach 60 Runden: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 100.0 %, gegen die Form davor bis 0.57 (99 % 0.47)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.05 · 2: 0.04 · 3: 0.04 · 5: 0.03 · 10: 0.04 · 20: 0.02 · 40: 0.01 · 60: 0.04 · unter 0,05 ab Runde 60
+
+## strange bird · GEWICHTE=geometrie · GRAD=180
+Setzen (60 Runden): Bewegung je Runde 1: 23.01 · 2: 14.86 · 3: 3.32 · 5: 1.24 · 10: 0.21 · 20: 0.02 · 40: 0.01 · 60: 0.00 · gegen die gesicherte Form: Punkte bis 19.3 (99 % 9.4, Mittel 1.5), Rauminhalt 100.4 %, umgeschlagen 6, Knicke über 150° 8
+strange bird.eewesen: 16010 Punkte · Punkt 4:1 (46, 466, 44), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte geometrie
+gesetzt: umgeschlagen 6, Knicke über 150° 8, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 100, Knicke über 150° 80, Rauminhalt 94.2 %, gegen die Form davor bis 62.82 (99 % 51.87)
+verdreht, nach 60 Runden: umgeschlagen 144, Knicke über 150° 114, Rauminhalt 94.6 %, gegen die Form davor bis 68.87 (99 % 54.21)
+nach dem Verdrehen: Bewegung je Runde 1: 1.26 · 2: 0.68 · 3: 2.24 · 5: 0.28 · 10: 1.70 · 20: 0.31 · 40: 2.44 · 60: 2.37 · unter 0,05 ab Runde nie
+zurück, gehalten: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.2 %, gegen die Form davor bis 15.15 (99 % 8.60)
+zurück, nach 10 Runden: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.1 %, gegen die Form davor bis 14.92 (99 % 8.51)
+zurück, nach 30 Runden: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.0 %, gegen die Form davor bis 14.80 (99 % 8.57)
+zurück, nach 60 Runden: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.0 %, gegen die Form davor bis 14.76 (99 % 8.55)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.27 · 2: 0.24 · 3: 0.22 · 5: 0.20 · 10: 0.15 · 20: 0.05 · 40: 0.01 · 60: 0.00 · unter 0,05 ab Runde 21
+
+## strange bird · GEWICHTE=gleich · GRAD=40
+Setzen (60 Runden): Bewegung je Runde 1: 0.01 · 2: 0.00 · 3: 0.00 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · gegen die gesicherte Form: Punkte bis 0.1 (99 % 0.1, Mittel 0.0), Rauminhalt 100.0 %, umgeschlagen 4, Knicke über 150° 4
+strange bird.eewesen: 16010 Punkte · Punkt 4:1 (46, 466, 44), Griff aus um 40° gedreht · 5 Runden je Schritt · Gewichte gleich
+gesetzt: umgeschlagen 4, Knicke über 150° 4, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 4, Knicke über 150° 6, Rauminhalt 98.5 %, gegen die Form davor bis 20.84 (99 % 18.84)
+verdreht, nach 60 Runden: umgeschlagen 4, Knicke über 150° 6, Rauminhalt 98.5 %, gegen die Form davor bis 20.85 (99 % 18.86)
+nach dem Verdrehen: Bewegung je Runde 1: 0.00 · 2: 0.00 · 3: 0.00 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+zurück, gehalten: umgeschlagen 4, Knicke über 150° 4, Rauminhalt 100.0 %, gegen die Form davor bis 0.32 (99 % 0.26)
+zurück, nach 10 Runden: umgeschlagen 4, Knicke über 150° 4, Rauminhalt 100.0 %, gegen die Form davor bis 0.33 (99 % 0.28)
+zurück, nach 30 Runden: umgeschlagen 4, Knicke über 150° 4, Rauminhalt 100.0 %, gegen die Form davor bis 0.37 (99 % 0.31)
+zurück, nach 60 Runden: umgeschlagen 4, Knicke über 150° 4, Rauminhalt 100.0 %, gegen die Form davor bis 0.42 (99 % 0.35)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.01 · 2: 0.00 · 3: 0.00 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+
+## strange bird · GEWICHTE=gleich · GRAD=180
+Setzen (60 Runden): Bewegung je Runde 1: 0.01 · 2: 0.00 · 3: 0.00 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · gegen die gesicherte Form: Punkte bis 0.1 (99 % 0.1, Mittel 0.0), Rauminhalt 100.0 %, umgeschlagen 4, Knicke über 150° 4
+strange bird.eewesen: 16010 Punkte · Punkt 4:1 (46, 466, 44), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte gleich
+gesetzt: umgeschlagen 4, Knicke über 150° 4, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 26, Knicke über 150° 22, Rauminhalt 92.9 %, gegen die Form davor bis 65.41 (99 % 58.08)
+verdreht, nach 60 Runden: umgeschlagen 28, Knicke über 150° 28, Rauminhalt 92.8 %, gegen die Form davor bis 65.52 (99 % 58.38)
+nach dem Verdrehen: Bewegung je Runde 1: 0.30 · 2: 0.22 · 3: 0.23 · 5: 0.16 · 10: 0.02 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 8
+zurück, gehalten: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.0 %, gegen die Form davor bis 6.57 (99 % 2.61)
+zurück, nach 10 Runden: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.0 %, gegen die Form davor bis 6.56 (99 % 2.61)
+zurück, nach 30 Runden: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.0 %, gegen die Form davor bis 6.56 (99 % 2.61)
+zurück, nach 60 Runden: umgeschlagen 4, Knicke über 150° 2, Rauminhalt 100.0 %, gegen die Form davor bis 6.56 (99 % 2.61)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.03 · 2: 0.02 · 3: 0.01 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1
+
+## teat firefish · GEWICHTE=geometrie · GRAD=40
+Setzen (60 Runden): Bewegung je Runde 1: 0.02 · 2: 0.01 · 3: 0.01 · 5: 0.01 · 10: 0.01 · 20: 0.01 · 40: 0.02 · 60: 0.07 · gegen die gesicherte Form: Punkte bis 0.5 (99 % 0.5, Mittel 0.1), Rauminhalt 100.0 %, umgeschlagen 0, Knicke über 150° 9
+teat firefish.eewesen: 27770 Punkte · Punkt 4:18 (-48, 582, 0), Griff aus um 40° gedreht · 5 Runden je Schritt · Gewichte geometrie
+gesetzt: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 8.33 (99 % 0.53)
+verdreht, nach 60 Runden: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 8.33 (99 % 1.04)
+nach dem Verdrehen: Bewegung je Runde 1: 0.03 · 2: 0.02 · 3: 0.02 · 5: 0.02 · 10: 0.02 · 20: 0.03 · 40: 0.08 · 60: 0.04 · unter 0,05 ab Runde 44
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 1.63 (99 % 1.45)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 1.72 (99 % 1.53)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 1.91 (99 % 1.70)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 2.18 (99 % 1.94)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.01 · 2: 0.01 · 3: 0.01 · 5: 0.02 · 10: 0.06 · 20: 0.04 · 40: 0.04 · 60: 0.06 · unter 0,05 ab Runde nie
+
+## teat firefish · GEWICHTE=geometrie · GRAD=180
+Setzen (60 Runden): Bewegung je Runde 1: 0.02 · 2: 0.01 · 3: 0.01 · 5: 0.01 · 10: 0.01 · 20: 0.01 · 40: 0.02 · 60: 0.07 · gegen die gesicherte Form: Punkte bis 0.5 (99 % 0.5, Mittel 0.1), Rauminhalt 100.0 %, umgeschlagen 0, Knicke über 150° 9
+teat firefish.eewesen: 27770 Punkte · Punkt 4:18 (-48, 582, 0), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte geometrie
+gesetzt: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 6, Knicke über 150° 18, Rauminhalt 99.9 %, gegen die Form davor bis 24.36 (99 % 0.54) · Loop 4 kreuzt sich selbst
+verdreht, nach 60 Runden: umgeschlagen 6, Knicke über 150° 12, Rauminhalt 99.9 %, gegen die Form davor bis 24.36 (99 % 1.07) · Loop 4 kreuzt sich selbst
+nach dem Verdrehen: Bewegung je Runde 1: 0.24 · 2: 0.16 · 3: 0.17 · 5: 0.09 · 10: 0.02 · 20: 0.01 · 40: 0.01 · 60: 0.02 · unter 0,05 ab Runde 60
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 1.81 (99 % 1.46)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 1.81 (99 % 1.54)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 1.91 (99 % 1.70)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 9, Rauminhalt 100.0 %, gegen die Form davor bis 2.18 (99 % 1.94)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.02 · 2: 0.02 · 3: 0.02 · 5: 0.02 · 10: 0.02 · 20: 0.05 · 40: 0.02 · 60: 0.07 · unter 0,05 ab Runde nie
+
+## teat firefish · GEWICHTE=gleich · GRAD=40
+Setzen (60 Runden): Bewegung je Runde 1: 10.34 · 2: 6.83 · 3: 3.00 · 5: 1.17 · 10: 0.15 · 20: 0.01 · 40: 0.01 · 60: 0.01 · gegen die gesicherte Form: Punkte bis 8.4 (99 % 6.2, Mittel 1.2), Rauminhalt 100.0 %, umgeschlagen 0, Knicke über 150° 0
+teat firefish.eewesen: 27770 Punkte · Punkt 4:18 (-48, 582, 0), Griff aus um 40° gedreht · 5 Runden je Schritt · Gewichte gleich
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 8.33 (99 % 0.36)
+verdreht, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 8.33 (99 % 0.70)
+nach dem Verdrehen: Bewegung je Runde 1: 0.05 · 2: 0.02 · 3: 0.01 · 5: 0.01 · 10: 0.01 · 20: 0.01 · 40: 0.01 · 60: 0.01 · unter 0,05 ab Runde 2
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.09 (99 % 0.96)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.15 (99 % 1.01)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.27 (99 % 1.12)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.45 (99 % 1.27)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.02 · 2: 0.01 · 3: 0.01 · 5: 0.01 · 10: 0.01 · 20: 0.01 · 40: 0.01 · 60: 0.01 · unter 0,05 ab Runde 1
+
+## teat firefish · GEWICHTE=gleich · GRAD=180
+Setzen (60 Runden): Bewegung je Runde 1: 10.34 · 2: 6.83 · 3: 3.00 · 5: 1.17 · 10: 0.15 · 20: 0.01 · 40: 0.01 · 60: 0.01 · gegen die gesicherte Form: Punkte bis 8.4 (99 % 6.2, Mittel 1.2), Rauminhalt 100.0 %, umgeschlagen 0, Knicke über 150° 0
+teat firefish.eewesen: 27770 Punkte · Punkt 4:18 (-48, 582, 0), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte gleich
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 99.9 %, gegen die Form davor bis 25.02 (99 % 0.87) · Loop 4 kreuzt sich selbst
+verdreht, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 99.9 %, gegen die Form davor bis 25.02 (99 % 0.87) · Loop 4 kreuzt sich selbst
+nach dem Verdrehen: Bewegung je Runde 1: 0.03 · 2: 0.02 · 3: 0.01 · 5: 0.01 · 10: 0.01 · 20: 0.01 · 40: 0.01 · 60: 0.01 · unter 0,05 ab Runde 1
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 2.58 (99 % 1.01)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 2.58 (99 % 1.07)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 2.58 (99 % 1.17)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 2.59 (99 % 1.31)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.01 · 2: 0.01 · 3: 0.01 · 5: 0.01 · 10: 0.01 · 20: 0.01 · 40: 0.01 · 60: 0.01 · unter 0,05 ab Runde 1
+
+## test_kaputt · GEWICHTE=geometrie · GRAD=180 · NEU=1 (nach dem Verdrehen ein neuer Löser, zerlegt auf der gefalteten Haut)
+Setzen (60 Runden): Bewegung je Runde 1: 0.14 · 2: 0.05 · 3: 0.02 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.01 · gegen die gesicherte Form: Punkte bis 0.2 (99 % 0.1, Mittel 0.0), Rauminhalt 100.0 %, umgeschlagen 0, Knicke über 150° 0
+test_kaputt.eewesen: 6217 Punkte · Punkt 4:2 (-12, 150, 0), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte geometrie
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 38, Knicke über 150° 24, Rauminhalt 93.4 %, gegen die Form davor bis 86.71 (99 % 75.17) · Loop 4 kreuzt sich selbst
+verdreht, nach 60 Runden: umgeschlagen 28, Knicke über 150° 40, Rauminhalt 92.4 %, gegen die Form davor bis 86.71 (99 % 76.35) · Loop 4 kreuzt sich selbst
+nach dem Verdrehen: Bewegung je Runde 1: 1.08 · 2: 1.57 · 3: 1.39 · 5: 1.70 · 10: 0.43 · 20: 0.44 · 40: 0.35 · 60: 0.01 · unter 0,05 ab Runde 55
+zurück, gehalten: umgeschlagen 10, Knicke über 150° 10, Rauminhalt 99.8 %, gegen die Form davor bis 25.63 (99 % 16.94)
+zurück, nach 10 Runden: umgeschlagen 10, Knicke über 150° 8, Rauminhalt 99.7 %, gegen die Form davor bis 25.74 (99 % 17.00)
+zurück, nach 30 Runden: umgeschlagen 10, Knicke über 150° 8, Rauminhalt 99.7 %, gegen die Form davor bis 25.61 (99 % 17.00)
+zurück, nach 60 Runden: umgeschlagen 10, Knicke über 150° 8, Rauminhalt 99.7 %, gegen die Form davor bis 25.62 (99 % 17.01)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.30 · 2: 0.24 · 3: 0.21 · 5: 0.13 · 10: 0.31 · 20: 0.02 · 40: 0.00 · 60: 0.01 · unter 0,05 ab Runde 19
+
+## test_kaputt · GEWICHTE=gleich · GRAD=180 · NEU=1
+Setzen (60 Runden): Bewegung je Runde 1: 2.47 · 2: 1.51 · 3: 0.56 · 5: 0.16 · 10: 0.01 · 20: 0.00 · 40: 0.00 · 60: 0.00 · gegen die gesicherte Form: Punkte bis 3.1 (99 % 2.7, Mittel 0.6), Rauminhalt 99.4 %, umgeschlagen 0, Knicke über 150° 0
+test_kaputt.eewesen: 6217 Punkte · Punkt 4:2 (-12, 150, 0), Griff aus um 180° gedreht · 5 Runden je Schritt · Gewichte gleich
+gesetzt: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %
+verdreht, gehalten: umgeschlagen 0, Knicke über 150° 2, Rauminhalt 91.2 %, gegen die Form davor bis 86.71 (99 % 74.85) · Loop 4 kreuzt sich selbst
+verdreht, nach 60 Runden: umgeschlagen 0, Knicke über 150° 2, Rauminhalt 91.2 %, gegen die Form davor bis 86.71 (99 % 74.86) · Loop 4 kreuzt sich selbst
+nach dem Verdrehen: Bewegung je Runde 1: 0.07 · 2: 0.04 · 3: 0.02 · 5: 0.01 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 2
+zurück, gehalten: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.84 (99 % 1.44)
+zurück, nach 10 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.84 (99 % 1.44)
+zurück, nach 30 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.83 (99 % 1.44)
+zurück, nach 60 Runden: umgeschlagen 0, Knicke über 150° 0, Rauminhalt 100.0 %, gegen die Form davor bis 1.83 (99 % 1.43)
+nach dem Zurückdrehen: Bewegung je Runde 1: 0.04 · 2: 0.02 · 3: 0.01 · 5: 0.00 · 10: 0.00 · 20: 0.00 · 40: 0.00 · 60: 0.00 · unter 0,05 ab Runde 1

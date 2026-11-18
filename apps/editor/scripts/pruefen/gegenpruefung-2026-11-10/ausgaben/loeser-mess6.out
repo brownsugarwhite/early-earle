@@ -1,0 +1,12 @@
+
+hals: verdichtet 5222 → 5230 Punkte; Maß ×300 (Kugel R 150 = 1) an alten, unbewegten Punkten abseits der Linien, deren Nachbarschaft sich geändert hat
+  Normalen nach Fläche, 1340 Punkte: gleich 0.730 → 0.785 (7.6 %), je Punkt 0.078 · je Kante normiert 0.853 → 0.890 (4.3 %), je Punkt 0.066 · geometrie 0.902 → 0.922 (2.1 %), je Punkt 0.040
+  Normalen nach Max, 1340 Punkte: gleich 0.764 → 0.827 (8.3 %), je Punkt 0.072 · je Kante normiert 0.821 → 0.866 (5.5 %), je Punkt 0.053 · geometrie 0.902 → 0.922 (2.1 %), je Punkt 0.040
+
+ohr: verdichtet 5222 → 5176 Punkte; Maß ×300 (Kugel R 150 = 1) an alten, unbewegten Punkten abseits der Linien, deren Nachbarschaft sich geändert hat
+  Normalen nach Fläche, 652 Punkte: gleich 0.860 → 0.982 (14.2 %), je Punkt 0.239 · je Kante normiert 1.061 → 1.113 (4.9 %), je Punkt 0.179 · geometrie 1.105 → 1.151 (4.2 %), je Punkt 0.145
+  Normalen nach Max, 652 Punkte: gleich 0.892 → 1.030 (15.5 %), je Punkt 0.232 · je Kante normiert 0.987 → 1.086 (10.0 %), je Punkt 0.189 · geometrie 1.104 → 1.152 (4.3 %), je Punkt 0.145
+
+ruessel: verdichtet 5222 → 5913 Punkte; Maß ×300 (Kugel R 150 = 1) an alten, unbewegten Punkten abseits der Linien, deren Nachbarschaft sich geändert hat
+  Normalen nach Fläche, 1742 Punkte: gleich 0.536 → 0.749 (39.8 %), je Punkt 0.249 · je Kante normiert 0.734 → 0.912 (24.3 %), je Punkt 0.209 · geometrie 0.978 → 1.010 (3.3 %), je Punkt 0.080
+  Normalen nach Max, 1742 Punkte: gleich 0.574 → 0.814 (41.8 %), je Punkt 0.263 · je Kante normiert 0.715 → 0.898 (25.5 %), je Punkt 0.201 · geometrie 0.978 → 1.010 (3.3 %), je Punkt 0.081

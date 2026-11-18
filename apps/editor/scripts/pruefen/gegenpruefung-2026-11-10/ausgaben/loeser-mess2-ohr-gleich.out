@@ -1,0 +1,12 @@
+  Weg a 30×1: nach dem Zug → nach 300 Runden: Fläche bis 0.45 (99 % 0.36); letzte Runde bewegt 0.0178, letzte 10 Runden zusammen 0.0032
+  Weg b 1×1: nach dem Zug → nach 300 Runden: Fläche bis 8.58 (99 % 4.71); letzte Runde bewegt 0.0003, letzte 10 Runden zusammen 0.0034
+  Weg c 120×2: nach dem Zug → nach 300 Runden: Fläche bis 0.56 (99 % 0.46); letzte Runde bewegt 0.0004, letzte 10 Runden zusammen 0.0035
+  Weg d 150 % und zurück: nach dem Zug → nach 300 Runden: Fläche bis 0.20 (99 % 0.13); letzte Runde bewegt 0.0004, letzte 10 Runden zusammen 0.0036
+
+=== ohr, gleich: Endformen gegeneinander (Fläche: größter / 99 % / Mittel; Punkt für Punkt: größter) ===
+  a 30×1 ↔ b 1×1: Fläche 0.992 / 0.719 / 0.064; Punkte 2.293
+  a 30×1 ↔ c 120×2: Fläche 0.081 / 0.062 / 0.005; Punkte 0.244
+  a 30×1 ↔ d 150 % und zurück: Fläche 0.872 / 0.339 / 0.053; Punkte 2.566
+  b 1×1 ↔ c 120×2: Fläche 0.992 / 0.692 / 0.060; Punkte 2.175
+  b 1×1 ↔ d 150 % und zurück: Fläche 0.915 / 0.790 / 0.099; Punkte 2.295
+  c 120×2 ↔ d 150 % und zurück: Fläche 0.818 / 0.343 / 0.056; Punkte 2.642

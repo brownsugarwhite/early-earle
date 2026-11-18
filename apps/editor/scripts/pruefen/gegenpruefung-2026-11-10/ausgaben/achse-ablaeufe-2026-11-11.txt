@@ -1,0 +1,707 @@
+# form-ablauf-probe.mjs an Florians Form test_kaputt, 11.11.2026: zwölf Abläufe hintereinander
+# ABLAUF="zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0; zug front 4:oben 0,-60,0>0,40,0>0,-40,0; zug front 3:unten 0,0,-60>0,0,0; zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0; zug front 3:aussen 0,0,-200>0,0,-300>0,0,0; griff front 3:aussen aus 0,0,-200>0,0,0; zug seite 4:oben -160,-13,0>0,0,0; zug front 3:unten 0,0,-60; zug front 3:unten 0,0,40 @3; zug front 4:oben 0,40,0>0,-20,0>0,0,0; griff seite 4:oben aus -200,-17,0; griff seite 4:oben aus 200,17,0"
+
+## Stand von gestern Nacht (b72c3586) (Port 5194)
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6445 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6419 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6419 Punkte · größte Koordinate 260 · Rauminhalt 90.5 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6413 Punkte · größte Koordinate 260 · Rauminhalt 90.5 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6552 Punkte · größte Koordinate 260 · Rauminhalt 92.6 % · Fläche 98.8 % · Knicke über 60° 55, über 150° 25 · umgeschlagen 26 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+   in Ruhe (nach 1.5 s): 6560 Punkte · größte Koordinate 260 · Rauminhalt 92.6 % · Fläche 98.9 % · Knicke über 60° 102, über 150° 40 · umgeschlagen 35 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6714 Punkte · größte Koordinate 260 · Rauminhalt 92.8 % · Fläche 103.8 % · Knicke über 60° 303, über 150° 115 · umgeschlagen 135 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 6
+   in Ruhe (nach 11.7 s): 6714 Punkte · größte Koordinate 260 · Rauminhalt 92.7 % · Fläche 105.0 % · Knicke über 60° 308, über 150° 112 · umgeschlagen 124 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 6 · Meldung: Hier ließ sich das Netz nicht aufräumen (die Haut lief dabei auseinander). Die Form bleibt, wie sie ist.
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 25.2 % · Fläche 863.7 % · Knicke über 60° 1233, über 150° 440 · umgeschlagen 590 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 22 · Meldung: Hier kommt die Haut nicht zur Ruhe: Sie bleibt bei ihrer ruhigsten Lage stehen.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 22 · Meldung: Hier kommt die Haut nicht zur Ruhe: Sie bleibt bei ihrer ruhigsten Lage stehen.
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 1, Fehler 0, Schritt verkleinert 24 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 1, Fehler 0, Schritt verkleinert 24 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 2, Fehler 0, Schritt verkleinert 26 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 2, Fehler 0, Schritt verkleinert 26 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 3, Fehler 0, Schritt verkleinert 28 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 3, Fehler 0, Schritt verkleinert 28 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 4, Fehler 0, Schritt verkleinert 30 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 4, Fehler 0, Schritt verkleinert 30 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 5, Fehler 0, Schritt verkleinert 32 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 5, Fehler 0, Schritt verkleinert 32 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 6, Fehler 0, Schritt verkleinert 34 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 6, Fehler 0, Schritt verkleinert 34 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 7, Fehler 0, Schritt verkleinert 36 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (NICHT nach 60 s): 5978 Punkte · größte Koordinate 718 · Rauminhalt 24.6 % · Fläche 877.4 % · Knicke über 60° 1268, über 150° 415 · umgeschlagen 624 · Schutz: zurückgenommen 7, Fehler 0, Schritt verkleinert 36 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+Konsole: keine Fehler
+
+## Stand von gestern Nacht (b72c3586), zweiter Lauf mit Bildern (nur die ersten fünf Abläufe; WARTEN=25)
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6463 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 28, über 150° 20 · umgeschlagen 26 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.5 s): 6413 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 28, über 150° 22 · umgeschlagen 14 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6413 Punkte · größte Koordinate 260 · Rauminhalt 90.5 % · Fläche 97.0 % · Knicke über 60° 28, über 150° 28 · umgeschlagen 14 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6385 Punkte · größte Koordinate 260 · Rauminhalt 90.5 % · Fläche 97.0 % · Knicke über 60° 29, über 150° 28 · umgeschlagen 14 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6497 Punkte · größte Koordinate 260 · Rauminhalt 92.2 % · Fläche 98.3 % · Knicke über 60° 56, über 150° 32 · umgeschlagen 26 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+   in Ruhe (nach 0.5 s): 6491 Punkte · größte Koordinate 260 · Rauminhalt 92.2 % · Fläche 98.3 % · Knicke über 60° 50, über 150° 28 · umgeschlagen 22 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6662 Punkte · größte Koordinate 260 · Rauminhalt 94.5 % · Fläche 100.3 % · Knicke über 60° 108, über 150° 62 · umgeschlagen 56 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 3
+   in Ruhe (nach 1.4 s): 6782 Punkte · größte Koordinate 260 · Rauminhalt 95.0 % · Fläche 100.5 % · Knicke über 60° 141, über 150° 78 · umgeschlagen 66 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 3
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  6782 Punkte · größte Koordinate 260 · Rauminhalt 95.0 % · Fläche 100.5 % · Knicke über 60° 141, über 150° 78 · umgeschlagen 66 · Schutz: zurückgenommen 1, Fehler 0, Schritt verkleinert 3 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+   in Ruhe (nach 0.1 s): 6782 Punkte · größte Koordinate 260 · Rauminhalt 95.0 % · Fläche 100.5 % · Knicke über 60° 141, über 150° 78 · umgeschlagen 66 · Schutz: zurückgenommen 1, Fehler 0, Schritt verkleinert 3 · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.
+
+Konsole: 33 Fehler: THREE.BufferGeometry.computeBoundingSphere(): Computed radius is NaN. The "position" attribute is likely to have NaN values. BufferGeometry | THREE.BufferGeometry.computeBoundingSphere(): Computed radius is NaN. The "position" attribute is likely to have NaN values. BufferGeometry | THREE.BufferGeom
+
+## Endgültiger Stand (Port 5193): mit eingesetzten Loops die Rechnung vom 10.11.; kreuzt sich eine Linie selbst, bleiben Netz und Zerlegung
+### Lauf 1
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.5 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  5991 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6107 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6107 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6111 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6214 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6238 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6238 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6170 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6280 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6346 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6380 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6380 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6380 Punkte · größte Koordinate 260 · Rauminhalt 90.7 % · Fläche 100.2 % · Knicke über 60° 96, über 150° 28 · umgeschlagen 48 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.6 s): 6380 Punkte · größte Koordinate 260 · Rauminhalt 91.0 % · Fläche 100.5 % · Knicke über 60° 152, über 150° 32 · umgeschlagen 58 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6380 Punkte · größte Koordinate 260 · Rauminhalt 95.0 % · Fläche 100.5 % · Knicke über 60° 28, über 150° 6 · umgeschlagen 4 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6408 Punkte · größte Koordinate 260 · Rauminhalt 95.0 % · Fläche 100.4 % · Knicke über 60° 20, über 150° 2 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Konsole: keine Fehler
+
+### Lauf 2
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  5987 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6079 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  5789 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6043 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6158 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6156 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6156 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6090 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6164 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6268 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6306 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6306 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6306 Punkte · größte Koordinate 260 · Rauminhalt 89.1 % · Fläche 99.4 % · Knicke über 60° 154, über 150° 44 · umgeschlagen 58 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.7 s): 6306 Punkte · größte Koordinate 260 · Rauminhalt 88.6 % · Fläche 99.3 % · Knicke über 60° 220, über 150° 54 · umgeschlagen 82 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6306 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6310 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Konsole: keine Fehler
+
+### Lauf 3
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  5707 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.5 s): 6167 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6167 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6155 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6268 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6264 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6264 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6196 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6310 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6368 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6402 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6402 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6402 Punkte · größte Koordinate 260 · Rauminhalt 86.4 % · Fläche 100.8 % · Knicke über 60° 115, über 150° 28 · umgeschlagen 42 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6402 Punkte · größte Koordinate 260 · Rauminhalt 86.4 % · Fläche 100.8 % · Knicke über 60° 147, über 150° 26 · umgeschlagen 52 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6402 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+   in Ruhe (nach 0.5 s): 6364 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+
+Konsole: keine Fehler
+
+### Läufe 4 bis 6 mit LINIEN=1 ORTE=1 (Punkte, Kreuzungen und Lage der Linien nach jedem Schritt; wo die Knicke über 150° liegen)
+### Lauf 4
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+   Loop 1:ring 5 Punkte: 0 (150.0, 7.6, 0.0) ein (0.0, 0.0, -15.6) aus (0.0, 0.0, 15.6) K6 | 1 (144.6, 7.7, 43.2) ein (3.5, -0.0, -13.2) aus (-19.5, 0.1, 73.8) K2 | 2 (-10.6, 8.5, 147.6) ein (66.5, -0.3, 4.2) aus (-59.3, 0.3, -3.7) K1 | 3 (-144.5, 9.2, 43.4) ein (17.5, -0.1, 65.8) aus (-3.5, 0.0, -13.2) K3 | 4 (-149.9, 9.2, 0.0) ein (0.0, 0.0, 15.7) aus (0.0, 0.0, -15.7) K7
+   Loop 2:ring 5 Punkte: 0 (-12.4, 149.7, 0.0) ein (0.0, 0.0, -21.5) aus (0.0, 0.0, 21.5) K8 | 1 (-12.2, 114.1, 249.5) ein (-0.1, 7.7, -18.0) aus (0.3, -21.5, 50.4) K4 | 2 (-10.6, 8.5, 147.6) ein (-0.7, 59.1, -3.4) aus (1.0, -78.7, 4.5) K1 | 3 (-8.9, -148.2, 23.5) ein (-0.1, 11.4, 76.1) aus (0.0, -1.1, -7.6) K5 | 4 (-8.9, -149.9, 0.0) ein (0.0, 0.0, 8.0) aus (0.0, 0.0, -8.0) K9
+   Loop 3:paar 4 Punkte: 0 (-144.5, 9.2, 43.4) ein (-7.8, -81.5, -10.3) aus (6.6, 69.1, 8.7) K3 | 1 (-12.2, 114.1, 249.5) ein (-69.5, -5.8, -0.7) aus (79.3, 6.6, 0.8) K4 | 2 (144.6, 7.7, 43.2) ein (-6.6, 79.0, 10.0) aus (7.4, -88.0, -11.1) K2 | 3 (-8.9, -148.2, 23.5) ein (88.7, -5.2, -0.7) aus (-82.5, 4.8, 0.6) K5
+   Loop 4:mitte 4 Punkte: 0 (-8.9, -149.9, 0.0) ein (91.7, -5.3, 0.0) aus (-85.7, 5.0, 0.0) K9 | 1 (-149.9, 9.2, 0.0) ein (-5.1, -85.3, 0.0) aus (5.0, 84.7, 0.0) K7 | 2 (-12.4, 149.7, 0.0) ein (-84.5, -7.6, 0.0) aus (97.2, 8.7, 0.0) K8 | 3 (150.0, 7.6, 0.0) ein (-4.5, 95.9, 0.0) aus (4.3, -91.4, 0.0) K6
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 0.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 0.00
+   Punkt 4:2 bei (-12.4, 149.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:3 bei (-8.9, -148.2, 23.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:3 bei (-8.9, -148.2, 23.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  5953 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6063 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:1 bei (-12.2, 114.1, 249.5), Griff ein (-69.5, -5.8, -0.7), aus (79.3, 6.6, 0.8), glatt
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6063 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6057 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:1 bei (-12.2, 114.1, 249.5), Griff ein (-69.5, -5.8, -0.7), aus (79.3, 6.6, 0.8), glatt
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6240 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.5 s): 6254 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 105 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6254 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6188 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 105 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 3:3 bei (-8.9, -148.2, 7.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6278 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6364 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 103 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 3:3 bei (-8.9, -148.2, 47.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6388 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.2 s): 6388 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 103 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6388 Punkte · größte Koordinate 260 · Rauminhalt 90.5 % · Fläche 99.7 % · Knicke über 60° 160, über 150° 52 · umgeschlagen 68 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+   in Ruhe (nach 0.7 s): 6388 Punkte · größte Koordinate 260 · Rauminhalt 90.5 % · Fläche 99.8 % · Knicke über 60° 166, über 150° 50 · umgeschlagen 68 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 103 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (84.6, 6.8, 0.0), aus (-102.8, -8.3, 0.0), glatt
+   Knicke über 150° bei (Mitte der Kante x, y, z · Länge): (-1, 110, 17 · 7.3) (-1, 110, 17 · 7.1) (-3, 112, -22 · 10.7) (-24, 109, -16 · 10.8) (-30, 107, 9 · 8.2) (-12, 112, -55 · 11.2) (-7, 113, -68 · 9.5) (-20, 112, 25 · 9.9) (-29, 107, 10 · 9.4) (-7, 112, 25 · 4.1) (-25, 109, -15 · 8.8) (-8, 113, -67 · 13.7) (-25, 109, 16 · 10.7) (-17, 113, 34 · 9.5) (-18, 113, 29 · 7.2) (-8, 113, 67 · 13.7) (-7, 113, 68 · 9.5) (-35, 106, 2 · 5.0) (-33, 106, 5 · 2.2) (-35, 106, -2 · 5.0) (-1, 110, -17 · 7.1) (-34, 106, 5 · 1.8) (-25, 109, 16 · 10.9) (-12, 113, -55 · 10.0) (-12, 112, 55 · 11.2) (-35, 106, 2 · 5.0) (-26, 109, -13 · 9.0) (-25, 109, 15 · 8.8) (-18, 113, 28 · 5.8) (-18, 113, -28 · 5.8) (-18, 113, -29 · 7.2) (-21, 111, -22 · 7.9) (-21, 111, 22 · 7.9) (-25, 109, -16 · 10.9) (-20, 112, -25 · 9.9) (-24, 109, 16 · 10.8) (-25, 109, -16 · 10.7) (-3, 112, 22 · 10.7) (-17, 113, -34 · 9.5) (-29, 107, -10 · 9.4)
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6388 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 3
+   in Ruhe (nach 0.3 s): 6340 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 3
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 103 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Konsole: keine Fehler
+
+### Lauf 5
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+   Loop 1:ring 5 Punkte: 0 (150.0, 7.6, 0.0) ein (0.0, 0.0, -15.6) aus (0.0, 0.0, 15.6) K6 | 1 (144.6, 7.7, 43.2) ein (3.5, -0.0, -13.2) aus (-19.5, 0.1, 73.8) K2 | 2 (-10.6, 8.5, 147.6) ein (66.5, -0.3, 4.2) aus (-59.3, 0.3, -3.7) K1 | 3 (-144.5, 9.2, 43.4) ein (17.5, -0.1, 65.8) aus (-3.5, 0.0, -13.2) K3 | 4 (-149.9, 9.2, 0.0) ein (0.0, 0.0, 15.7) aus (0.0, 0.0, -15.7) K7
+   Loop 2:ring 5 Punkte: 0 (-12.4, 149.7, 0.0) ein (0.0, 0.0, -21.5) aus (0.0, 0.0, 21.5) K8 | 1 (-12.2, 114.1, 249.5) ein (-0.1, 7.7, -18.0) aus (0.3, -21.5, 50.4) K4 | 2 (-10.6, 8.5, 147.6) ein (-0.7, 59.1, -3.4) aus (1.0, -78.7, 4.5) K1 | 3 (-8.9, -148.2, 23.5) ein (-0.1, 11.4, 76.1) aus (0.0, -1.1, -7.6) K5 | 4 (-8.9, -149.9, 0.0) ein (0.0, 0.0, 8.0) aus (0.0, 0.0, -8.0) K9
+   Loop 3:paar 4 Punkte: 0 (-144.5, 9.2, 43.4) ein (-7.8, -81.5, -10.3) aus (6.6, 69.1, 8.7) K3 | 1 (-12.2, 114.1, 249.5) ein (-69.5, -5.8, -0.7) aus (79.3, 6.6, 0.8) K4 | 2 (144.6, 7.7, 43.2) ein (-6.6, 79.0, 10.0) aus (7.4, -88.0, -11.1) K2 | 3 (-8.9, -148.2, 23.5) ein (88.7, -5.2, -0.7) aus (-82.5, 4.8, 0.6) K5
+   Loop 4:mitte 4 Punkte: 0 (-8.9, -149.9, 0.0) ein (91.7, -5.3, 0.0) aus (-85.7, 5.0, 0.0) K9 | 1 (-149.9, 9.2, 0.0) ein (-5.1, -85.3, 0.0) aus (5.0, 84.7, 0.0) K7 | 2 (-12.4, 149.7, 0.0) ein (-84.5, -7.6, 0.0) aus (97.2, 8.7, 0.0) K8 | 3 (150.0, 7.6, 0.0) ein (-4.5, 95.9, 0.0) aus (4.3, -91.4, 0.0) K6
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 0.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 0.00
+   Punkt 4:2 bei (-12.4, 149.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6201 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:3 bei (-8.9, -148.2, 23.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6201 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6201 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:3 bei (-8.9, -148.2, 23.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  6155 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6147 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:1 bei (-12.2, 114.1, 249.5), Griff ein (-69.5, -5.8, -0.7), aus (79.3, 6.6, 0.8), glatt
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6147 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6149 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:1 bei (-12.2, 114.1, 249.5), Griff ein (-69.5, -5.8, -0.7), aus (79.3, 6.6, 0.8), glatt
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6176 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6178 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 103 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6178 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6112 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 103 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 16.04 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 3:3 bei (-8.9, -148.2, 7.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6226 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6286 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 101 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 23.96 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 3:3 bei (-8.9, -148.2, 47.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6310 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6310 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 101 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 23.96 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6310 Punkte · größte Koordinate 260 · Rauminhalt 87.4 % · Fläche 100.1 % · Knicke über 60° 114, über 150° 26 · umgeschlagen 40 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.7 s): 6310 Punkte · größte Koordinate 260 · Rauminhalt 87.3 % · Fläche 100.2 % · Knicke über 60° 180, über 150° 50 · umgeschlagen 54 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 101 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 23.96 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (84.6, 6.8, 0.0), aus (-102.8, -8.3, 0.0), glatt
+   Knicke über 150° bei (Mitte der Kante x, y, z · Länge): (-1, 108, 11 · 13.6) (-2, 108, -12 · 2.4) (5, 110, 3 · 7.3) (-16, 110, 70 · 9.2) (-11, 114, 92 · 4.7) (-22, 105, -37 · 9.6) (-34, 106, -4 · 10.3) (-23, 104, 25 · 13.8) (-23, 105, -23 · 6.5) (-34, 106, 4 · 10.3) (-12, 113, -79 · 12.9) (-13, 111, 80 · 4.8) (-6, 106, -22 · 6.0) (5, 110, -3 · 7.3) (-15, 111, 76 · 3.1) (-16, 110, 74 · 9.1) (-9, 114, -99 · 10.1) (-17, 110, -66 · 6.9) (-23, 104, -25 · 13.8) (-22, 105, 37 · 9.6) (-22, 105, 39 · 5.2) (-11, 114, -92 · 4.7) (-21, 107, 50 · 3.9) (-16, 110, -70 · 9.2) (-7, 114, -105 · 2.7) (-17, 110, 66 · 6.9) (-8, 114, 100 · 12.8) (-21, 107, -50 · 3.9) (-6, 106, 22 · 6.0) (-12, 113, 87 · 9.5) (-13, 112, -81 · 7.0) (-13, 111, -80 · 4.8) (-34, 105, -3 · 6.8) (-1, 108, -11 · 13.6) (-34, 105, 3 · 6.8) (-29, 106, -10 · 11.3) (-29, 106, 10 · 11.3) (-9, 114, 99 · 10.1) (-7, 114, 105 · 2.7) (-8, 114, -100 · 12.8)
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6310 Punkte · größte Koordinate 260 · Rauminhalt 92.6 % · Fläche 99.0 % · Knicke über 60° 42, über 150° 10 · umgeschlagen 20 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 3
+   in Ruhe (nach 0.8 s): 6318 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 10, über 150° 10 · umgeschlagen 6 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 3
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 101 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 23.96 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 126 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+   Knicke über 150° bei (Mitte der Kante x, y, z · Länge): (-12, 112, -67 · 12.3) (-11, 113, -69 · 8.3) (-12, 112, 55 · 11.2) (-11, 112, 53 · 8.4) (-12, 112, -55 · 11.2) (-11, 112, -53 · 8.4) (-10, 112, -61 · 7.3) (-10, 112, 61 · 7.3) (-12, 112, 67 · 12.3) (-11, 113, 69 · 8.3)
+
+Konsole: keine Fehler
+
+### Lauf 6
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+   Loop 1:ring 5 Punkte: 0 (150.0, 7.6, 0.0) ein (0.0, 0.0, -15.6) aus (0.0, 0.0, 15.6) K6 | 1 (144.6, 7.7, 43.2) ein (3.5, -0.0, -13.2) aus (-19.5, 0.1, 73.8) K2 | 2 (-10.6, 8.5, 147.6) ein (66.5, -0.3, 4.2) aus (-59.3, 0.3, -3.7) K1 | 3 (-144.5, 9.2, 43.4) ein (17.5, -0.1, 65.8) aus (-3.5, 0.0, -13.2) K3 | 4 (-149.9, 9.2, 0.0) ein (0.0, 0.0, 15.7) aus (0.0, 0.0, -15.7) K7
+   Loop 2:ring 5 Punkte: 0 (-12.4, 149.7, 0.0) ein (0.0, 0.0, -21.5) aus (0.0, 0.0, 21.5) K8 | 1 (-12.2, 114.1, 249.5) ein (-0.1, 7.7, -18.0) aus (0.3, -21.5, 50.4) K4 | 2 (-10.6, 8.5, 147.6) ein (-0.7, 59.1, -3.4) aus (1.0, -78.7, 4.5) K1 | 3 (-8.9, -148.2, 23.5) ein (-0.1, 11.4, 76.1) aus (0.0, -1.1, -7.6) K5 | 4 (-8.9, -149.9, 0.0) ein (0.0, 0.0, 8.0) aus (0.0, 0.0, -8.0) K9
+   Loop 3:paar 4 Punkte: 0 (-144.5, 9.2, 43.4) ein (-7.8, -81.5, -10.3) aus (6.6, 69.1, 8.7) K3 | 1 (-12.2, 114.1, 249.5) ein (-69.5, -5.8, -0.7) aus (79.3, 6.6, 0.8) K4 | 2 (144.6, 7.7, 43.2) ein (-6.6, 79.0, 10.0) aus (7.4, -88.0, -11.1) K2 | 3 (-8.9, -148.2, 23.5) ein (88.7, -5.2, -0.7) aus (-82.5, 4.8, 0.6) K5
+   Loop 4:mitte 4 Punkte: 0 (-8.9, -149.9, 0.0) ein (91.7, -5.3, 0.0) aus (-85.7, 5.0, 0.0) K9 | 1 (-149.9, 9.2, 0.0) ein (-5.1, -85.3, 0.0) aus (5.0, 84.7, 0.0) K7 | 2 (-12.4, 149.7, 0.0) ein (-84.5, -7.6, 0.0) aus (97.2, 8.7, 0.0) K8 | 3 (150.0, 7.6, 0.0) ein (-4.5, 95.9, 0.0) aus (4.3, -91.4, 0.0) K6
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 0.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 0.00
+   Punkt 4:2 bei (-12.4, 149.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:3 bei (-8.9, -148.2, 23.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 183 Proben, gegen den Anfang 0.00 · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:3 bei (-8.9, -148.2, 23.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  5817 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.5 s): 6003 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:1 bei (-12.2, 114.1, 249.5), Griff ein (-69.5, -5.8, -0.7), aus (79.3, 6.6, 0.8), glatt
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  5795 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6001 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 102 Proben, gegen den Anfang 40.00 · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 125 Proben, gegen den Anfang 40.00
+   Punkt 3:1 bei (-12.2, 114.1, 249.5), Griff ein (-69.5, -5.8, -0.7), aus (79.3, 6.6, 0.8), glatt
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6215 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6213 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 106 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 127 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6213 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6147 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 106 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 127 Proben, gegen den Anfang andere Probenzahl
+   Punkt 3:3 bei (-8.9, -148.2, 7.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6237 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6327 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 104 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 127 Proben, gegen den Anfang andere Probenzahl
+   Punkt 3:3 bei (-8.9, -148.2, 47.5), Griff ein (88.7, -5.2, -0.7), aus (-82.5, 4.8, 0.6), glatt
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6357 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6357 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 104 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 127 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6357 Punkte · größte Koordinate 260 · Rauminhalt 87.9 % · Fläche 99.8 % · Knicke über 60° 164, über 150° 46 · umgeschlagen 60 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.7 s): 6357 Punkte · größte Koordinate 260 · Rauminhalt 87.9 % · Fläche 99.8 % · Knicke über 60° 186, über 150° 58 · umgeschlagen 70 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 104 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 127 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (84.6, 6.8, 0.0), aus (-102.8, -8.3, 0.0), glatt
+   Knicke über 150° bei (Mitte der Kante x, y, z · Länge): (-4, 108, -23 · 8.3) (-11, 112, 67 · 7.2) (-24, 106, -25 · 11.7) (-20, 107, -46 · 8.8) (-28, 105, -14 · 11.7) (-5, 112, 83 · 7.5) (-5, 112, 84 · 9.8) (-24, 105, 26 · 14.3) (-23, 106, 29 · 7.0) (-6, 112, -81 · 12.6) (-6, 112, 81 · 3.5) (-29, 105, 11 · 5.7) (-13, 109, -66 · 10.2) (-34, 105, -3 · 7.3) (-18, 108, 54 · 10.0) (-13, 112, 63 · 9.1) (-22, 106, -31 · 2.1) (-10, 112, -71 · 11.8) (-24, 105, -26 · 14.3) (-29, 105, -11 · 5.7) (-27, 105, -16 · 6.3) (-28, 105, -14 · 11.8) (-28, 105, 14 · 11.7) (-13, 112, -63 · 9.1) (-25, 105, -20 · 12.9) (4, 110, 12 · 7.2) (-22, 106, -34 · 6.7) (-6, 105, 31 · 11.8) (-24, 106, 25 · 11.7) (-22, 106, 31 · 2.1) (-23, 106, -29 · 7.0) (-20, 107, 46 · 8.8) (-5, 112, 86 · 6.3) (-5, 112, -86 · 6.3) (-6, 112, -81 · 3.5) (-5, 112, -84 · 9.8) (-8, 111, -75 · 9.6) (-8, 111, 75 · 9.6) (-27, 105, 16 · 6.3) (-28, 105, 14 · 11.8)
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6357 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6343 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   Linien: 1:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 77 Proben, gegen den Anfang 0.00 · 2:ring 5 Punkte (5 Kreuzungen, 0 Ecken), 104 Proben, gegen den Anfang andere Probenzahl · 3:paar 4 Punkte (4 Kreuzungen, 0 Ecken), 181 Proben, gegen den Anfang andere Probenzahl · 4:mitte 4 Punkte (4 Kreuzungen, 0 Ecken), 127 Proben, gegen den Anfang andere Probenzahl
+   Punkt 4:2 bei (-12.4, 109.7, 0.0), Griff ein (-84.5, -7.6, 0.0), aus (97.2, 8.7, 0.0), glatt
+
+Konsole: keine Fehler
+
+## Derselbe Stand noch ohne die Regel „Linie kreuzt sich selbst“ (zwei Läufe)
+### Lauf 1
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.5 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.5 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  6157 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6153 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6153 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6149 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6170 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6180 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6180 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6114 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6204 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6292 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6322 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.2 s): 6322 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6322 Punkte · größte Koordinate 260 · Rauminhalt 91.1 % · Fläche 100.5 % · Knicke über 60° 153, über 150° 42 · umgeschlagen 56 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.9 s): 6293 Punkte · größte Koordinate 260 · Rauminhalt 91.3 % · Fläche 100.5 % · Knicke über 60° 58, über 150° 13 · umgeschlagen 12 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6293 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 26, über 150° 26 · umgeschlagen 14 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+   in Ruhe (nach 0.3 s): 6333 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+
+Konsole: keine Fehler
+
+### Lauf 2
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6229 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.5 s): 6227 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6227 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.6 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6203 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  6171 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6159 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6159 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6157 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6104 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6142 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6142 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6070 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6160 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6250 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6298 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6296 Punkte · größte Koordinate 260 · Rauminhalt 93.4 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6296 Punkte · größte Koordinate 260 · Rauminhalt 86.3 % · Fläche 100.8 % · Knicke über 60° 102, über 150° 36 · umgeschlagen 34 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 1.7 s): 6331 Punkte · größte Koordinate 260 · Rauminhalt 86.2 % · Fläche 100.7 % · Knicke über 60° 46, über 150° 7 · umgeschlagen 4 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6331 Punkte · größte Koordinate 260 · Rauminhalt 91.8 % · Fläche 99.5 % · Knicke über 60° 30, über 150° 10 · umgeschlagen 4 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+   in Ruhe (nach 0.7 s): 6385 Punkte · größte Koordinate 260 · Rauminhalt 92.2 % · Fläche 99.2 % · Knicke über 60° 22, über 150° 14 · umgeschlagen 6 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+
+Konsole: keine Fehler
+
+## Zwischenstand vom Morgen: Normalfluss als Rechnung für alle Fälle (entspricht heute &normalfluss=1), ohne die Regel „Linie kreuzt sich selbst“
+### Lauf 1
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6233 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6231 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6231 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6207 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6207 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6207 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6207 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6207 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  5639 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6113 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6113 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6105 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6105 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 10, über 150° 10 · umgeschlagen 6 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6089 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6089 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6019 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6109 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6183 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6185 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6183 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6183 Punkte · größte Koordinate 260 · Rauminhalt 91.7 % · Fläche 101.5 % · Knicke über 60° 148, über 150° 40 · umgeschlagen 58 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 1.4 s): 6209 Punkte · größte Koordinate 260 · Rauminhalt 91.7 % · Fläche 101.2 % · Knicke über 60° 85, über 150° 30 · umgeschlagen 32 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6209 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 6, über 150° 6 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.4 s): 6247 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Konsole: keine Fehler
+
+### Lauf 2
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6233 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6233 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6233 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6207 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6207 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  6205 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 8, über 150° 8 · umgeschlagen 4 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6197 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  5863 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6043 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6162 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6150 Punkte · größte Koordinate 260 · Rauminhalt 90.4 % · Fläche 97.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6150 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.6 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.3 s): 6082 Punkte · größte Koordinate 260 · Rauminhalt 88.3 % · Fläche 95.7 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6206 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.4 s): 6236 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6270 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.5 s): 6268 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6268 Punkte · größte Koordinate 260 · Rauminhalt 90.8 % · Fläche 100.3 % · Knicke über 60° 132, über 150° 36 · umgeschlagen 52 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 1.8 s): 6199 Punkte · größte Koordinate 260 · Rauminhalt 90.5 % · Fläche 99.6 % · Knicke über 60° 91, über 150° 20 · umgeschlagen 26 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6199 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 24, über 150° 24 · umgeschlagen 12 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+   in Ruhe (nach 0.4 s): 6273 Punkte · größte Koordinate 260 · Rauminhalt 93.3 % · Fläche 99.0 % · Knicke über 60° 10, über 150° 10 · umgeschlagen 6 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Konsole: keine Fehler
+
+## Griff verdreht loslassen und zurückdrehen an der frisch geladenen Form
+# ABLAUF="griff seite 4:oben aus -200,-17,0; griff seite 4:oben aus 200,17,0"; je Lauf die beiden Zeilen „in Ruhe“ (verdreht, zurückgedreht)
+### ohne die Regel „Linie kreuzt sich selbst“ (drei Läufe)
+Lauf 1: in Ruhe (nach 1.0 s): 6289 Punkte · größte Koordinate 260 · Rauminhalt 89.7 % · Fläche 100.6 % · Knicke über 60° 27, über 150° 4 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 1: in Ruhe (nach 0.5 s): 6411 Punkte · größte Koordinate 260 · Rauminhalt 97.8 % · Fläche 100.7 % · Knicke über 60° 12, über 150° 2 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 2: in Ruhe (nach 1.0 s): 6289 Punkte · größte Koordinate 260 · Rauminhalt 89.7 % · Fläche 100.6 % · Knicke über 60° 27, über 150° 4 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 2: in Ruhe (nach 0.8 s): 6413 Punkte · größte Koordinate 260 · Rauminhalt 97.8 % · Fläche 100.7 % · Knicke über 60° 12, über 150° 4 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 3: in Ruhe (nach 1.0 s): 6299 Punkte · größte Koordinate 260 · Rauminhalt 88.7 % · Fläche 101.2 % · Knicke über 60° 25, über 150° 4 · umgeschlagen 4 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Lauf 3: in Ruhe (nach 1.0 s): 6499 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 6, über 150° 6 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+### ohne die Regel und ohne Verdichten (&verdichten=0; drei Läufe)
+Lauf 1: in Ruhe (nach 0.7 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.8 % · Fläche 100.7 % · Knicke über 60° 89, über 150° 28 · umgeschlagen 30 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Lauf 1: in Ruhe (nach 0.3 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 98.2 % · Fläche 100.3 % · Knicke über 60° 24, über 150° 4 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Lauf 2: in Ruhe (nach 0.8 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.8 % · Fläche 100.7 % · Knicke über 60° 86, über 150° 32 · umgeschlagen 32 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 2: in Ruhe (nach 0.2 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 98.2 % · Fläche 100.3 % · Knicke über 60° 26, über 150° 4 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 3: in Ruhe (nach 0.5 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.9 % · Fläche 100.7 % · Knicke über 60° 81, über 150° 32 · umgeschlagen 30 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+Lauf 3: in Ruhe (nach 0.1 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 98.2 % · Fläche 100.3 % · Knicke über 60° 24, über 150° 4 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+### endgültiger Stand (fünf Läufe)
+Lauf 1: in Ruhe (nach 0.5 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.8 % · Fläche 100.7 % · Knicke über 60° 85, über 150° 24 · umgeschlagen 30 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+Lauf 1: in Ruhe (nach 0.8 s): 6269 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 2: in Ruhe (nach 0.1 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.8 % · Fläche 100.7 % · Knicke über 60° 75, über 150° 28 · umgeschlagen 28 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+Lauf 2: in Ruhe (nach 0.8 s): 6261 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 3: in Ruhe (nach 0.4 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.8 % · Fläche 100.7 % · Knicke über 60° 79, über 150° 24 · umgeschlagen 30 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+Lauf 3: in Ruhe (nach 0.5 s): 6263 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 4: in Ruhe (nach 0.1 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.8 % · Fläche 100.7 % · Knicke über 60° 75, über 150° 28 · umgeschlagen 28 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+Lauf 4: in Ruhe (nach 0.3 s): 6267 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 2
+Lauf 5: in Ruhe (nach 0.5 s): 6217 Punkte · größte Koordinate 260 · Rauminhalt 89.8 % · Fläche 100.7 % · Knicke über 60° 89, über 150° 28 · umgeschlagen 30 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+Lauf 5: in Ruhe (nach 0.5 s): 6261 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 1
+
+## Griff in einem Zug 160 Einheiten auf die falsche Seite und zurück (form-griff-spur.mjs), endgültiger Stand: je Lauf die letzte Zeile
+Lauf 1: in Ruhe {"punkte":6135,"umg":0,"hint":1,"stufen":0,"offen":false,"auf":false,"nachlauf":false,"unruhe":0}
+Lauf 2: in Ruhe {"punkte":6131,"umg":0,"hint":0,"stufen":0,"offen":false,"auf":false,"nachlauf":false,"unruhe":0}
+Lauf 3: in Ruhe {"punkte":6139,"umg":0,"hint":1,"stufen":0,"offen":false,"auf":false,"nachlauf":false,"unruhe":0}
+Lauf 4: in Ruhe {"punkte":6129,"umg":0,"hint":0,"stufen":0,"offen":false,"auf":false,"nachlauf":false,"unruhe":0}
+Lauf 5: in Ruhe {"punkte":6137,"umg":0,"hint":0,"stufen":0,"offen":false,"auf":false,"nachlauf":false,"unruhe":0}

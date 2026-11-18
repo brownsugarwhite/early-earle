@@ -1,0 +1,73 @@
+== teat firefish ==
+   ../../wesen/teat firefish.eewesen, 2,39 MB; 27770 Punkte im Netz, 17 Loops mit 90 Punkten; gesichert 2026-11-10T19:59:28.515Z; Adresse kurven.html?gewichte=geometrie
+1  Netz: 27.770 Punkte, 55.536 Dreiecke. Startkante (das Maß) 8,64, mittlere Kante jetzt 8,93 (1,03 Startkanten).
+   Fläche 1.773.192: Ein gleichmäßiges Netz mit der Startkante hätte dort 27.453 Punkte, das Wesen hat 1,01-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                83.304       0,0 %     0,1 %     1,1 %    12,5 %    65,2 %    21,2 %     0,0 %
+   zwischen zwei Punkten auf Linien     3.304       0,1 %     1,7 %    21,2 %    26,5 %    38,0 %    12,5 %     0,0 %
+   von einer Linie weg                 10.622       0,0 %     0,0 %     2,1 %    15,3 %    59,1 %    23,4 %     0,0 %
+   ohne Punkt auf einer Linie          69.378       0,0 %     0,0 %     0,0 %    11,3 %    67,4 %    21,2 %     0,0 %
+   kürzeste 0,684, längste 15,11 (1,75 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                 2.972   10,7 %    8,5 %    1,27        0,92
+   bis 1 Startkante daneben        2.856   10,3 %    9,1 %    1,14        0,97
+   1 bis 2                         4.402   15,9 %   16,8 %    0,95        1,05
+   2 bis 4                         7.166   25,8 %   26,5 %    0,98        1,03
+   4 bis 8                         7.878   28,4 %   29,3 %    0,98        1,03
+   weiter als 8                    2.496    9,0 %    9,7 %    0,94        1,05
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 1.901 (6,8 %); mehr als viermal: 232 (0,8 %)
+4  Güte:
+   ganzes Netz: 27770 Punkte, 55536 Dreiecke
+    Kanten: Mittel 8.93, kürzeste 0.68, längste 15.11, Streuung (σ/Mittel) 0.26
+    Wertigkeit: ≤3:0.0 % 4:6.3 % 5:19.0 % 6:50.4 % 7:18.0 % 8:5.7 % ≥9:0.7 %; mittlere Abweichung von 6: 0.63
+    kleinster Winkel je Dreieck: kleinster 4.4°, 1 % 17.5°, 5 % 25.6°, Median 42.2°; unter 20°: 1.6 %, unter 10°: 0.1 %; stumpf (> 90°): 23.4 %
+    längste/kürzeste Kante je Dreieck: Median 1.46, 95 % 2.20, größte 10.25; über 2: 9.5 %, über 4: 0.3 %
+    längste/kürzeste Kante je Punkt: Median 1.73, 95 % 2.70, größte 14.01
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.105, 95 % 0.349; Kotangens-Gewicht negativ: 4.4 %
+   an den Linien (bis 1 Startkante): 5828 Punkte, 16278 Dreiecke
+    Kanten: Mittel 8.24, kürzeste 0.68, längste 15.11, Streuung (σ/Mittel) 0.31
+    Wertigkeit: ≤3:0.0 % 4:10.4 % 5:19.7 % 6:46.6 % 7:14.7 % 8:7.6 % ≥9:1.0 %; mittlere Abweichung von 6: 0.74
+    kleinster Winkel je Dreieck: kleinster 4.4°, 1 % 12.4°, 5 % 20.1°, Median 40.5°; unter 20°: 4.9 %, unter 10°: 0.4 %; stumpf (> 90°): 30.0 %
+    längste/kürzeste Kante je Dreieck: Median 1.52, 95 % 2.60, größte 10.25; über 2: 15.5 %, über 4: 0.9 %
+    längste/kürzeste Kante je Punkt: Median 1.92, 95 % 4.07, größte 14.01
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.151, 95 % 0.438; Kotangens-Gewicht negativ: 5.9 %
+   fern von Linien (weiter als 2 Startkanten): 17540 Punkte, 39254 Dreiecke
+    Kanten: Mittel 9.08, kürzeste 4.31, längste 15.11, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:5.6 % 5:19.4 % 6:50.9 % 7:18.7 % 8:4.8 % ≥9:0.5 %; mittlere Abweichung von 6: 0.61
+    kleinster Winkel je Dreieck: kleinster 10.5°, 1 % 23.1°, 5 % 27.8°, Median 42.9°; unter 20°: 0.3 %, unter 10°: 0.0 %; stumpf (> 90°): 20.5 %
+    längste/kürzeste Kante je Dreieck: Median 1.44, 95 % 2.07, größte 3.36; über 2: 6.9 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.69, 95 % 2.38, größte 3.40
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.097, 95 % 0.308; Kotangens-Gewicht negativ: 3.8 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 2, unter 10°: 68, unter 20°: 910 (von 55.536); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 1749
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 2; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 1
+      1  bei (-368, 443, 27): 1 Dreiecke, kleinster Winkel 4,36°, kürzeste Kante 0,154 Startkanten, 0,0 Startkanten von der nächsten Linie
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 3,3°, 95 % 12,2°, 99 % 20,8°, größte 90,6°; über 15°: 2,6 %, über 25°: 0,6 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,063, 95 % 0,256, 99 % 0,451, größter 1,77; über 0,2: 9,3 %, über 0,8: 0,2 % (die Linien dieses Wesens werden auf 0,22 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 20.477 Punkte; für 0,8: 9.598; ohne Obergrenze der Kante: 19.542 bzw. 4.886. Das Wesen hat 27.770.
+   Zu grob für 0,2: auf 3,5 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 17; Punkte auf Linien im Netz 2.972 (10,7 %)
+   Abstand der Proben in Startkanten: Median 0,80, 5 % 0,29, kleinster 0,079; unter 0,25: 2,1 %, unter 0,5: 22,1 %
+     Loop   1 ring    7 Punkte,  155 Proben auf  1.414 (Abstand im Mittel 1,06, kleinster 0,372 Startkanten)
+     Loop   2 ring    4 Punkte,   96 Proben auf    792 (Abstand im Mittel 0,96, kleinster 0,338 Startkanten)
+     Loop   4 mitte  38 Punkte,  746 Proben auf  5.963 (Abstand im Mittel 0,93, kleinster 0,079 Startkanten), Kante auf 8,2 %
+     Loop   5 ring    2 Punkte,   47 Proben auf    256 (Abstand im Mittel 0,64, kleinster 0,278 Startkanten)
+     Loop   6 ring    3 Punkte,   39 Proben auf    203 (Abstand im Mittel 0,62, kleinster 0,260 Startkanten)
+     Loop   7 ring    5 Punkte,  154 Proben auf  1.007 (Abstand im Mittel 0,76, kleinster 0,156 Startkanten)
+     Loop   8 ring    3 Punkte,   71 Proben auf    530 (Abstand im Mittel 0,88, kleinster 0,350 Startkanten)
+     Loop   9 ring    3 Punkte,   32 Proben auf    155 (Abstand im Mittel 0,58, kleinster 0,163 Startkanten)
+     Loop  10 ring    3 Punkte,   94 Proben auf    538 (Abstand im Mittel 0,67, kleinster 0,122 Startkanten)
+     Loop  11 ring    3 Punkte,   84 Proben auf    579 (Abstand im Mittel 0,81, kleinster 0,184 Startkanten)
+     Loop  12 ring    2 Punkte,   35 Proben auf    215 (Abstand im Mittel 0,73, kleinster 0,375 Startkanten)
+     Loop  13 ring    2 Punkte,   35 Proben auf    170 (Abstand im Mittel 0,58, kleinster 0,132 Startkanten)
+     Loop  14 ring    3 Punkte,   41 Proben auf    167 (Abstand im Mittel 0,48, kleinster 0,266 Startkanten)
+     Loop  15 ring    3 Punkte,   60 Proben auf    362 (Abstand im Mittel 0,71, kleinster 0,154 Startkanten)
+     Loop  16 ring    2 Punkte,   33 Proben auf    140 (Abstand im Mittel 0,51, kleinster 0,222 Startkanten)
+     Loop  17 ring    2 Punkte,   23 Proben auf     73 (Abstand im Mittel 0,38, kleinster 0,159 Startkanten)
+     Loop  18 ring    5 Punkte,  156 Proben auf    790 (Abstand im Mittel 0,59, kleinster 0,129 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/florian/teat-firefish-netz.html
+

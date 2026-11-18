@@ -1,0 +1,173 @@
+Schritt 6, das Maul aus nur einer Linie: Messwerte im Kern nach dem Einbau (14.11.2026)
+Probe: apps/editor/scripts/pruefen/form-maul-linie.ts (Aufruf aus packages/shape). Kugel, Halbmesser 150; die Linie läuft in der Seite vom Umriss vorn bis zum Mundwinkel (Länge etwa 94; der Mundwinkel liegt bei x −55, z 138).
+Die Unterlippe ist das um WINKEL0 gedrehte Abbild der Linie; gerechnet wird diese leicht geöffnete Lage, „zu“ dreht der Kieferknochen zurück.
+Haltelinien: zwei Ringe um den Körper bei x = −10 und 70. Gegenüber dem 13.11.: Die Kette kehrt genau am Mundwinkel um, Nadeln werden wie im Fenster weggeräumt, „Maul formen“ hält die Haut fern vom Maul mit Bindungen an ihrem Ort, und läuft die Rechnung davon, formt es noch einmal mit halb so großen Stufen.
+„Wie im Fenster“: ohne die Rechnung vor dem Formen (VOR=0); so läuft es nach dem Zeichnen mit F.
+
+--- mit Haltelinien, 2000 Dreiecke (wie im Fenster), 20° (das Bild)
+Kugel: 1852 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 57 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,27 vom gedrehten Abbild der ersten ab (20° um den Mundwinkel)
+   als Abbild gesetzt: 16 Runden, steht; Abweichung 0,00; 1647 Punkte; die Form reicht hinten bis x 149,8 (vorher 150)
+Maul geformt: 1822 Punkte, 188 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel mit 2 Haltelinien nach dem Formen: außen am Maul bis 2,2, fern bis 0,3 neben der Kugel von vorher; Ausdehnung x -147,8 bis 149,8, y -150,1 bis 150,1, z bis 149,7
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 2
+Die drei Lagen (gerechnet ist die mittlere; 1822 Punkte, 490 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,19 (bei x -87,8, z 118,9); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 6; außen über die Naht im Mittel 3,1° (größter Wert 6,0°)
+   wie gerechnet (20°)    Lippen vorn 31,75 auseinander, größter Spalt 31,75 (bei x -141,1, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 13,8° (größter Wert 19,1°)
+   auf (30° von zu)       Lippen vorn 47,33 auseinander, größter Spalt 47,33 (bei x -134,4, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 22,1° (größter Wert 28,9°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,19; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- mit Haltelinien, 6000 Dreiecke, 20°
+Kugel: 5336 Punkte, mittlere Kante 8,6; die Maullinie hat 5 Punkte (3 sichtbar), 91 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,21 vom gedrehten Abbild der ersten ab (20° um den Mundwinkel)
+   als Abbild gesetzt: 16 Runden, steht; Abweichung 0,00; 4941 Punkte; die Form reicht hinten bis x 150,0 (vorher 150)
+Maul geformt: 5269 Punkte, 393 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel mit 2 Haltelinien nach dem Formen: außen am Maul bis 2,1, fern bis 0,3 neben der Kugel von vorher; Ausdehnung x -147,9 bis 150,0, y -150,2 bis 150,2, z bis 149,9
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 0
+Die drei Lagen (gerechnet ist die mittlere; 5269 Punkte, 984 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,07 (bei x -146,6, z 3,9); umgeschlagen außen 0, in der Tasche 6; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 4; außen über die Naht im Mittel 4,6° (größter Wert 6,5°)
+   wie gerechnet (20°)    Lippen vorn 31,83 auseinander, größter Spalt 31,83 (bei x -141,3, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 11,3° (größter Wert 19,2°)
+   auf (30° von zu)       Lippen vorn 47,45 auseinander, größter Spalt 47,45 (bei x -134,6, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 19,0° (größter Wert 29,1°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,07; so genau gibt das Netz jede Linie wieder: 0,22); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- mit Haltelinien, 3000 Dreiecke, 20°
+Kugel: 2724 Punkte, mittlere Kante 12,2; die Maullinie hat 5 Punkte (3 sichtbar), 66 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,23 vom gedrehten Abbild der ersten ab (20° um den Mundwinkel)
+   als Abbild gesetzt: 13 Runden, steht; Abweichung 0,00; 2476 Punkte; die Form reicht hinten bis x 150,0 (vorher 150)
+Maul geformt: 2713 Punkte, 202 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel mit 2 Haltelinien nach dem Formen: außen am Maul bis 2,1, fern bis 0,2 neben der Kugel von vorher; Ausdehnung x -148,1 bis 150,0, y -150,1 bis 150,1, z bis 149,9
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 0
+Die drei Lagen (gerechnet ist die mittlere; 2713 Punkte, 654 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,13 (bei x -146,2, z 10,6); umgeschlagen außen 0, in der Tasche 4; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 3; außen über die Naht im Mittel 4,6° (größter Wert 5,6°)
+   wie gerechnet (20°)    Lippen vorn 31,82 auseinander, größter Spalt 31,82 (bei x -141,2, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 11,9° (größter Wert 17,4°)
+   auf (30° von zu)       Lippen vorn 47,43 auseinander, größter Spalt 47,43 (bei x -134,5, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 19,9° (größter Wert 27,0°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,13; so genau gibt das Netz jede Linie wieder: 0,31); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- mit Haltelinien, 2000 Dreiecke, 16°
+Kugel: 1848 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 56 Stellen
+   gezeichnet: die zweite Lippe weicht bis 2,89 vom gedrehten Abbild der ersten ab (16° um den Mundwinkel)
+   als Abbild gesetzt: 17 Runden, steht; Abweichung 0,00; 1645 Punkte; die Form reicht hinten bis x 149,8 (vorher 150)
+Maul geformt: 1811 Punkte, 193 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel mit 2 Haltelinien nach dem Formen: außen am Maul bis 2,0, fern bis 0,3 neben der Kugel von vorher; Ausdehnung x -148,0 bis 149,8, y -150,1 bis 150,1, z bis 149,7
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 2
+Die drei Lagen (gerechnet ist die mittlere; 1811 Punkte, 456 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,15 (bei x -141,7, z 38,4); umgeschlagen außen 0, in der Tasche 2; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 3; außen über die Naht im Mittel 2,1° (größter Wert 4,2°)
+   wie gerechnet (16°)    Lippen vorn 25,50 auseinander, größter Spalt 25,50 (bei x -143,2, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 11,4° (größter Wert 15,4°)
+   auf (30° von zu)       Lippen vorn 47,43 auseinander, größter Spalt 47,43 (bei x -134,5, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 22,8° (größter Wert 29,3°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,15; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- mit Haltelinien, 2000 Dreiecke, 24°
+Kugel: 1838 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 53 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,31 vom gedrehten Abbild der ersten ab (24° um den Mundwinkel)
+   als Abbild gesetzt: 16 Runden, steht; Abweichung 0,00; 1640 Punkte; die Form reicht hinten bis x 149,8 (vorher 150)
+Maul geformt: 1800 Punkte, 195 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel mit 2 Haltelinien nach dem Formen: außen am Maul bis 2,2, fern bis 0,3 neben der Kugel von vorher; Ausdehnung x -148,0 bis 149,8, y -150,1 bis 150,1, z bis 149,7
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 0
+Die drei Lagen (gerechnet ist die mittlere; 1800 Punkte, 464 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,20 (bei x -146,6, z 4,8); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 2; außen über die Naht im Mittel 5,2° (größter Wert 7,9°)
+   wie gerechnet (24°)    Lippen vorn 38,12 auseinander, größter Spalt 38,12 (bei x -138,9, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 14,9° (größter Wert 19,8°)
+   auf (30° von zu)       Lippen vorn 47,46 auseinander, größter Spalt 47,46 (bei x -134,6, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 19,8° (größter Wert 25,8°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,20; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- mit Haltelinien, 2000 Dreiecke, 12°
+Kugel: 1848 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 58 Stellen
+   gezeichnet: die zweite Lippe weicht bis 2,21 vom gedrehten Abbild der ersten ab (12° um den Mundwinkel)
+   als Abbild gesetzt: 14 Runden, steht; Abweichung 0,00; 1652 Punkte; die Form reicht hinten bis x 149,8 (vorher 150)
+Maul geformt: 1846 Punkte, 181 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel mit 2 Haltelinien nach dem Formen: außen am Maul bis 1,8, fern bis 0,3 neben der Kugel von vorher; Ausdehnung x -148,2 bis 149,8, y -150,1 bis 150,1, z bis 149,7
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 2
+Die drei Lagen (gerechnet ist die mittlere; 1846 Punkte, 504 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,10 (bei x -105,5, z 103,7); umgeschlagen außen 0, in der Tasche 16; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 3; außen über die Naht im Mittel 1,6° (größter Wert 3,6°)
+   wie gerechnet (12°)    Lippen vorn 19,22 auseinander, größter Spalt 19,22 (bei x -145,0, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 9,8° (größter Wert 15,3°)
+   auf (30° von zu)       Lippen vorn 47,58 auseinander, größter Spalt 47,58 (bei x -134,8, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 24,1° (größter Wert 33,0°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,10; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- Kugel allein, 2000 Dreiecke, 20°
+Kugel: 1622 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 57 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,27 vom gedrehten Abbild der ersten ab (20° um den Mundwinkel)
+   als Abbild gesetzt: 100 Runden, steht; Abweichung 0,00; 1569 Punkte; die Form reicht hinten bis x 151,8 (vorher 150)
+Maul geformt: 1741 Punkte, 187 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel ohne Haltelinien nach dem Formen: außen am Maul bis 7,9, fern bis 13,2 neben der Kugel von vorher; Ausdehnung x -146,6 bis 151,8, y -161,9 bis 136,4, z bis 149,3
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 0
+Die drei Lagen (gerechnet ist die mittlere; 1741 Punkte, 484 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,19 (bei x -87,8, z 118,9); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 3; außen über die Naht im Mittel 2,8° (größter Wert 5,2°)
+   wie gerechnet (20°)    Lippen vorn 31,75 auseinander, größter Spalt 31,75 (bei x -141,1, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 14,1° (größter Wert 19,1°)
+   auf (30° von zu)       Lippen vorn 47,33 auseinander, größter Spalt 47,33 (bei x -134,4, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 22,5° (größter Wert 28,6°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,19; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- Kugel allein, 2000 Dreiecke, 12°
+Kugel: 1618 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 58 Stellen
+   gezeichnet: die zweite Lippe weicht bis 2,21 vom gedrehten Abbild der ersten ab (12° um den Mundwinkel)
+   als Abbild gesetzt: 150 Runden, steht; Abweichung 0,00; 1572 Punkte; die Form reicht hinten bis x 148,0 (vorher 150)
+Maul geformt: 1764 Punkte, 188 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel ohne Haltelinien nach dem Formen: außen am Maul bis 9,3, fern bis 18,5 neben der Kugel von vorher; Ausdehnung x -146,9 bis 148,0, y -164,0 bis 131,3, z bis 147,9
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 4
+Die drei Lagen (gerechnet ist die mittlere; 1764 Punkte, 500 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,10 (bei x -105,5, z 103,7); umgeschlagen außen 0, in der Tasche 8; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 1,8° (größter Wert 4,3°)
+   wie gerechnet (12°)    Lippen vorn 19,22 auseinander, größter Spalt 19,22 (bei x -145,0, z 0,0); umgeschlagen außen 0, in der Tasche 4; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 10,4° (größter Wert 14,7°)
+   auf (30° von zu)       Lippen vorn 47,58 auseinander, größter Spalt 47,58 (bei x -134,8, z 0,0); umgeschlagen außen 0, in der Tasche 4; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 24,8° (größter Wert 32,3°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,10; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- Kugel allein, 2000 Dreiecke, 8°
+Kugel: 1620 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 59 Stellen
+   gezeichnet: die zweite Lippe weicht bis 1,58 vom gedrehten Abbild der ersten ab (8° um den Mundwinkel)
+   als Abbild gesetzt: 208 Runden, STEHT NICHT; Abweichung 0,00; 1563 Punkte; die Form reicht hinten bis x 144,8 (vorher 150)
+Maul geformt: 1759 Punkte, 175 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel ohne Haltelinien nach dem Formen: außen am Maul bis 9,6, fern bis 21,2 neben der Kugel von vorher; Ausdehnung x -147,2 bis 144,8, y -164,1 bis 128,8, z bis 147,0
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 4
+Die drei Lagen (gerechnet ist die mittlere; 1759 Punkte, 484 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,21 (bei x -127,0, z 75,8); umgeschlagen außen 0, in der Tasche 12; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 3; außen über die Naht im Mittel 2,9° (größter Wert 6,0°)
+   wie gerechnet (8°)     Lippen vorn 12,87 auseinander, größter Spalt 12,87 (bei x -146,4, z 0,0); umgeschlagen außen 0, in der Tasche 2; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 8,9° (größter Wert 11,0°)
+   auf (30° von zu)       Lippen vorn 47,75 auseinander, größter Spalt 47,75 (bei x -135,0, z 0,0); umgeschlagen außen 0, in der Tasche 4; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 26,4° (größter Wert 32,1°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,21; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf HÄLT NICHT; 4 die Rechnung steht hält
+
+--- Kugel allein, wie im Fenster, 2000 Dreiecke, 20°
+Kugel: 1622 Punkte, mittlere Kante 15,3; die Maullinie hat 5 Punkte (3 sichtbar), 57 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,27 vom gedrehten Abbild der ersten ab (20° um den Mundwinkel)
+   als Abbild gesetzt: 100 Runden, steht; Abweichung 0,00; 1622 Punkte; die Form reicht hinten bis x 151,8 (vorher 150)
+Maul geformt: 1741 Punkte, 187 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel ohne Haltelinien nach dem Formen: außen am Maul bis 7,9, fern bis 13,2 neben der Kugel von vorher; Ausdehnung x -146,6 bis 151,8, y -161,9 bis 136,4, z bis 149,3
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 0
+Die drei Lagen (gerechnet ist die mittlere; 1741 Punkte, 484 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,19 (bei x -87,8, z 118,9); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 3; außen über die Naht im Mittel 2,8° (größter Wert 5,2°)
+   wie gerechnet (20°)    Lippen vorn 31,75 auseinander, größter Spalt 31,75 (bei x -141,1, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 14,1° (größter Wert 19,1°)
+   auf (30° von zu)       Lippen vorn 47,33 auseinander, größter Spalt 47,33 (bei x -134,4, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 22,5° (größter Wert 28,6°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,19; so genau gibt das Netz jede Linie wieder: 0,38); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- Kugel allein, wie im Fenster, 3000 Dreiecke, 20°
+Kugel: 2478 Punkte, mittlere Kante 12,2; die Maullinie hat 5 Punkte (3 sichtbar), 66 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,23 vom gedrehten Abbild der ersten ab (20° um den Mundwinkel)
+   als Abbild gesetzt: 208 Runden, STEHT NICHT; Abweichung 0,00; 2478 Punkte; die Form reicht hinten bis x 141,8 (vorher 150)
+Maul geformt: 2630 Punkte, 205 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel ohne Haltelinien nach dem Formen: außen am Maul bis 8,5, fern bis 18,7 neben der Kugel von vorher; Ausdehnung x -146,8 bis 141,8, y -157,9 bis 131,6, z bis 145,8
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 0
+Die drei Lagen (gerechnet ist die mittlere; 2630 Punkte, 642 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,13 (bei x -146,2, z 10,6); umgeschlagen außen 0, in der Tasche 2; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 3; außen über die Naht im Mittel 3,7° (größter Wert 6,7°)
+   wie gerechnet (20°)    Lippen vorn 31,82 auseinander, größter Spalt 31,82 (bei x -141,2, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 13,0° (größter Wert 16,7°)
+   auf (30° von zu)       Lippen vorn 47,43 auseinander, größter Spalt 47,43 (bei x -134,5, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 21,1° (größter Wert 26,5°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,13; so genau gibt das Netz jede Linie wieder: 0,31); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält
+
+--- Kugel allein, wie im Fenster, 6000 Dreiecke, 20°
+Kugel: 4886 Punkte, mittlere Kante 8,6; die Maullinie hat 5 Punkte (3 sichtbar), 91 Stellen
+   gezeichnet: die zweite Lippe weicht bis 3,21 vom gedrehten Abbild der ersten ab (20° um den Mundwinkel)
+   als Abbild gesetzt: 208 Runden, STEHT NICHT; Abweichung 0,00; 4886 Punkte; die Form reicht hinten bis x 132,5 (vorher 150)
+Maul geformt: 5054 Punkte, 390 Runden, steht; die zweite Lippe weicht danach 0,00 vom Abbild der ersten ab
+Kiefer: Gelenk 0,00 neben dem Mundwinkel der Linie, Drehsinn 1
+Die Kugel ohne Haltelinien nach dem Formen: außen am Maul bis 11,0, fern bis 25,0 neben der Kugel von vorher; Ausdehnung x -146,9 bis 132,5, y -153,9 bis 127,2, z bis 142,8
+Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen 0
+Die drei Lagen (gerechnet ist die mittlere; 5054 Punkte, 960 Dreiecke in der Tasche):
+   zu                     Lippen vorn 0,00 auseinander, größter Spalt 0,07 (bei x -67,1, z 132,4); umgeschlagen außen 0, in der Tasche 14; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 4; außen über die Naht im Mittel 3,9° (größter Wert 7,3°)
+   wie gerechnet (20°)    Lippen vorn 31,83 auseinander, größter Spalt 31,83 (bei x -141,3, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 12,9° (größter Wert 17,1°)
+   auf (30° von zu)       Lippen vorn 47,45 auseinander, größter Spalt 47,45 (bei x -134,6, z 0,0); umgeschlagen außen 0, in der Tasche 0; Kreuzungen in 9 Schnitten: außen 0, Tasche durch die Haut 0, Tasche mit sich 0; außen über die Naht im Mittel 20,6° (größter Wert 27,0°)
+Kriterien: 1 Lippen aufeinander hält (Spalt 0,07; so genau gibt das Netz jede Linie wieder: 0,22); 2 zu: außen nichts umgeschlagen, nichts tritt durch die Haut hält; 3 auf hält; 4 die Rechnung steht hält

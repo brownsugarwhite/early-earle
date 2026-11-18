@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ozzy</title>
+    <link rel="stylesheet" href="./src/ozzy/ozzy.css" />
+  </head>
+  <body>
+    <div id="buehne">
+      <canvas id="haut"></canvas>
+      <canvas id="gast"></canvas>
+      <canvas id="gast-earle"></canvas>
+      <div id="gruss">draw something</div>
+      <canvas id="linien"></canvas>
+    </div>
+    <button type="button" id="marke" aria-expanded="false" title="Menü und Feinregler (⌘,)">Ozzy</button>
+    <div id="hinweis"></div>
+    <nav id="tasten" aria-label="Tasten">
+      <button type="button" data-taste="0" data-ansicht="raum" title="Raum (0)">Raum</button>
+      <button type="button" data-taste="1" data-ansicht="seite" title="Seite (1)">Seite</button>
+      <button type="button" data-taste="3" data-ansicht="front" title="Front (3)">Front</button>
+      <button type="button" data-taste="7" data-ansicht="top" title="Top (7)">Top</button>
+      <button type="button" data-taste="Tab" data-ansicht="vier" title="Vier Ansichten (Tab)">Vier</button>
+      <button type="button" data-taste="w" data-netz aria-pressed="false" title="Kurvennetz im Raum (W): Linien und Punkte auf der Form">Netz</button>
+      <span class="trenner"></span>
+      <button type="button" class="zeichen" data-taste="Enter" title="↩">&#x21A9;&#xFE0E;</button>
+      <button type="button" data-taste="Escape" title="Esc">Esc</button>
+      <span class="trenner"></span>
+      <button type="button" data-taste="z" data-meta="1" title="Zurück (⌘Z)">Zurück</button>
+      <button type="button" data-taste="Backspace" title="Löschen (⌫)">Löschen</button>
+      <button type="button" data-taste="k" title="Kante (K)">Kante</button>
+      <button type="button" data-roentgen aria-pressed="false" title="Röntgen (⌥ halten): auch greifen, was hinter der Form liegt">Röntgen</button>
+      <button type="button" data-taste="Home" title="Einpassen (Pos1)">Einpassen</button>
+    </nav>
+    <button type="button" id="maul-tropfen" class="maul-tropfen" hidden>Maul</button>
+    <aside id="fressen" class="fressen" hidden>
+      <button type="button" id="fressen-knopf" aria-pressed="false" title="Fressen-Pose: alles, was du ziehst, formt die Pose; die Grundform bleibt">Fressen</button>
+      <label><span>Maul</span><input id="fressen-maul" type="range" min="0" max="55" step="0.5" value="30" /><span class="zahl" id="fressen-maul-zahl"></span></label>
+      <label><span>Kopf</span><input id="fressen-kopf" type="range" min="0" max="40" step="0.5" value="0" /><span class="zahl" id="fressen-kopf-zahl"></span></label>
+    </aside>
+    <span id="info"></span>
+    <aside id="regler" hidden>
+      <div class="regler-kopf">
+        <span class="regler-titel">Feinregler</span>
+        <span id="fassungen" aria-label="Material der Haut (M)"></span>
+      </div>
+      <label class="schalter" title="Nach dem Aufblasen die Linie an der Spiegelkante behalten (Standard: ohne, wie die Startkugel der Kern-Sitzung); gilt beim nächsten Aufblasen"><input type="checkbox" id="mit-linie" /> Linie an der Spiegelkante</label>
+      <details id="sichern">
+        <summary>Sichern</summary>
+        <div class="sichern-feld">
+          <input type="text" id="sichern-name" maxlength="60" placeholder="Name der Form" autocomplete="off" spellcheck="false" />
+          <button type="button" id="sichern-knopf">Sichern</button>
+        </div>
+      </details>
+      <details id="laden">
+        <summary>Laden</summary>
+        <div id="laden-liste" class="laden-liste"></div>
+      </details>
+      <div id="regler-liste"></div>
+      <div class="regler-knoepfe">
+        <button type="button" id="knopf-neu">Neu</button>
+        <button type="button" id="knopf-grundwerte">Grundwerte</button>
+        <button type="button" id="knopf-kopieren">Werte kopieren</button>
+      </div>
+    </aside>
+    <script type="module" src="./src/ozzy/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 500" width="1260" height="500" font-family="'Helvetica Neue', Arial, sans-serif">
+  <style>
+    .t { font-size: 21px; font-weight: 800; letter-spacing: 0.05em; fill: #0b1e66; }
+    .u { font-size: 13.5px; fill: #5a6fa8; }
+    .c { font-size: 15px; fill: #0b1e66; }
+    .k { font-size: 12.5px; fill: #5a6fa8; }
+    .linie { fill: none; stroke: #0b1e66; stroke-width: 4; stroke-linecap: round; }
+    .vorher { fill: none; stroke: #c4cfe2; stroke-width: 4; stroke-linecap: round; }
+    .griff { stroke: #0b1e66; stroke-width: 1.5; }
+    .griffvorher { stroke: #c4cfe2; stroke-width: 1.5; }
+    .spitze { fill: #0b1e66; }
+    .spitzevorher { fill: #c4cfe2; }
+    .gezogen { fill: #ff5b1f; stroke: #0b1e66; stroke-width: 1.2; }
+    .punkt { fill: #ffffff; stroke: #0b1e66; stroke-width: 2.2; }
+    .haut { fill: #eef2f9; }
+    .weich { fill: none; stroke: #8fa0cc; stroke-width: 1; stroke-dasharray: 5 4; }
+  </style>
+  <rect width="1260" height="500" fill="#ffffff"/>
+
+  <!-- 1 Gleiten: Blick auf die Haut -->
+  <g transform="translate(30 0)">
+    <text class="t" x="0" y="42">1 GLEITEN</text>
+    <text class="u" x="0" y="64">Das Fenster schaut auf die Haut drauf</text>
+    <rect class="haut" x="10" y="92" width="360" height="236"/>
+    <path class="vorher" d="M40,255 C100,255 130,210 190,210 C250,210 280,165 340,165"/>
+    <line class="griffvorher" x1="130" y1="210" x2="250" y2="210"/>
+    <rect class="spitzevorher" x="126" y="206" width="8" height="8"/><rect class="spitzevorher" x="246" y="206" width="8" height="8"/>
+    <path class="linie" d="M40,255 C100,255 141,244 190,210 C239,176 280,165 340,165"/>
+    <line class="griff" x1="141" y1="244" x2="239" y2="176"/>
+    <rect class="spitze" x="137" y="240" width="8" height="8"/>
+    <rect class="gezogen" x="234.5" y="171.5" width="9" height="9"/>
+    <circle class="punkt" cx="190" cy="210" r="6.5"/>
+    <text class="c" x="0" y="362">Die Linie läuft anders.</text>
+    <text class="c" x="0" y="383">Die Haut behält ihre Richtung.</text>
+  </g>
+
+  <!-- 2 Kippen: Blick von der Seite -->
+  <g transform="translate(440 0)">
+    <text class="t" x="0" y="42">2 KIPPEN</text>
+    <text class="u" x="0" y="64">Das Fenster schaut von der Seite auf die Haut</text>
+    <path class="haut" d="M30,290 C90,290 138,230 190,200 C242,170 290,290 350,290 L350,328 L30,328 Z"/>
+    <path class="vorher" d="M30,290 C90,290 130,200 190,200 C250,200 290,290 350,290"/>
+    <line class="griffvorher" x1="130" y1="200" x2="250" y2="200"/>
+    <rect class="spitzevorher" x="126" y="196" width="8" height="8"/><rect class="spitzevorher" x="246" y="196" width="8" height="8"/>
+    <path class="weich" d="M190,200 C180,240 178,286 183,328"/>
+    <path class="linie" d="M30,290 C90,290 138,230 190,200 C242,170 290,290 350,290"/>
+    <line class="griff" x1="138" y1="230" x2="242" y2="170"/>
+    <rect class="spitze" x="134" y="226" width="8" height="8"/>
+    <rect class="gezogen" x="237.5" y="165.5" width="9" height="9"/>
+    <circle class="punkt" cx="190" cy="200" r="6.5"/>
+    <text class="k" x="196" y="318">kreuzende Linie, keine Kante</text>
+    <text class="c" x="0" y="362">Die Haut kippt an diesem Punkt mit.</text>
+    <text class="c" x="0" y="383">Beide Griffe bleiben eine Gerade: glatt.</text>
+  </g>
+
+  <!-- 3 Knicken: Ecke an einer Kante -->
+  <g transform="translate(850 0)">
+    <text class="t" x="0" y="42">3 KNICKEN</text>
+    <text class="u" x="0" y="64">Der Punkt ist eine Ecke, quer läuft eine Kante</text>
+    <path class="haut" d="M30,290 C90,290 150,246 190,200 C250,200 290,290 350,290 L350,328 L30,328 Z"/>
+    <path class="vorher" d="M30,290 C90,290 130,200 190,200"/>
+    <line class="griffvorher" x1="130" y1="200" x2="190" y2="200"/>
+    <rect class="spitzevorher" x="126" y="196" width="8" height="8"/>
+    <path class="linie" d="M190,200 C180,240 178,286 183,328"/>
+    <path class="linie" d="M30,290 C90,290 150,246 190,200 C250,200 290,290 350,290"/>
+    <line class="griff" x1="150" y1="246" x2="190" y2="200"/>
+    <line class="griff" x1="190" y1="200" x2="250" y2="200"/>
+    <rect class="spitze" x="246" y="196" width="8" height="8"/>
+    <rect class="gezogen" x="145.5" y="241.5" width="9" height="9"/>
+    <path class="punkt" d="M190,190.5 L199.5,200 L190,209.5 L180.5,200 Z"/>
+    <text class="k" x="198" y="318">kreuzende Linie ist Kante (4 px)</text>
+    <text class="c" x="0" y="362">Jeder Griff bewegt sich allein.</text>
+    <text class="c" x="0" y="383">Die Haut knickt entlang der Kante.</text>
+  </g>
+
+  <line x1="30" y1="418" x2="1230" y2="418" stroke="#c4cfe2" stroke-width="1"/>
+  <text class="c" x="30" y="448" font-weight="700">1 und 2 sind dieselbe Mausbewegung. Was sie bewirkt, entscheidet das Fenster, in dem du ziehst.</text>
+  <line class="vorher" x1="30" y1="474" x2="62" y2="474"/><text class="k" x="70" y="478">vorher</text>
+  <rect class="gezogen" x="130" y="469.5" width="9" height="9"/><text class="k" x="147" y="478">gezogener Griff</text>
+  <circle class="punkt" cx="262" cy="474" r="5.5"/><text class="k" x="274" y="478">glatter Punkt</text>
+  <path class="punkt" d="M376,466 L384,474 L376,482 L368,474 Z"/><text class="k" x="392" y="478">Ecke</text>
+</svg>

@@ -1,0 +1,6 @@
+Dicke z = ±1: Spiegel der beiden Spitzen (Punkte 4, 5) = 5, 4 (richtig: 5, 4)
+Dicke z = ±0.01: Spiegel der beiden Spitzen (Punkte 4, 5) = 5, 4 (richtig: 5, 4)
+Dicke z = ±0.001: Spiegel der beiden Spitzen (Punkte 4, 5) = 5, 4 (richtig: 5, 4)
+Dicke z = ±0.0004: Spiegel der beiden Spitzen (Punkte 4, 5) = 5, 5 (richtig: 5, 4)
+Dicke z = ±0: Spiegel der beiden Spitzen (Punkte 4, 5) = 5, 5 (richtig: 5, 4)
+zwei Punkte 0,0003 auseinander (6, 7) und ihre Spiegelbilder (8, 9): Spiegel = 9, 9, 7, 7 (richtig: 8, 9, 6, 7)

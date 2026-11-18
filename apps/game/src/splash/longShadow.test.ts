@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { sweepPath, aroundPoint, SHADOW_K, type Pt, type Ring } from './longShadow';
 import { LOGO } from './logo.gen';
 
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
+
 /** Polygone aus M/L/Z-Pfaddaten. */
 function polys(d: string): Pt[][] {
   const out: Pt[][] = [];
@@ -189,6 +192,6 @@ describe('longShadow', () => {
       sweepPath([ring], L, 1);
       best = Math.min(best, performance.now() - t0);
     }
-    expect(best).toBeLessThan(1);
+    expect(best).toBeLessThan(1 * ZEIT);
   });
 });

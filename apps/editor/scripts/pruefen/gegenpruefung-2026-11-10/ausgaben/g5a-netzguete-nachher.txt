@@ -1,0 +1,428 @@
+== probe-23k-hals ==
+   ../../apps/editor/pruefen-ausgabe/probewesen-g5a/probe-23k-hals.eewesen, 2,33 MB; 28413 Punkte im Netz, 4 Loops mit 16 Punkten; gesichert 2026-11-10T18:39:59.038Z; Adresse kurven.html?gewichte=geometrie&dreiecke=30000
+1  Netz: 28.413 Punkte, 56.822 Dreiecke. Startkante (das Maß) 3,97, mittlere Kante jetzt 4,15 (1,05 Startkanten).
+   Fläche 393.787: Ein gleichmäßiges Netz mit der Startkante hätte dort 28.891 Punkte, das Wesen hat 0,98-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                85.233       0,0 %     0,0 %     0,4 %    11,4 %    66,3 %    21,9 %     0,0 %
+   zwischen zwei Punkten auf Linien     1.235       0,0 %     0,0 %    15,7 %    27,0 %    45,7 %    11,7 %     0,0 %
+   von einer Linie weg                  4.530       0,0 %     0,1 %     3,0 %    15,5 %    53,9 %    27,5 %     0,0 %
+   ohne Punkt auf einer Linie          79.468       0,0 %     0,0 %     0,0 %    10,9 %    67,4 %    21,7 %     0,0 %
+   kürzeste 0,829, längste 6,94 (1,75 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                 1.197    4,2 %    3,5 %    1,19        0,95
+   bis 1 Startkante daneben        1.270    4,5 %    4,1 %    1,08        0,99
+   1 bis 2                         1.970    6,9 %    7,3 %    0,94        1,06
+   2 bis 4                         3.910   13,8 %   14,0 %    0,96        1,05
+   4 bis 8                         6.574   23,1 %   23,4 %    0,97        1,04
+   weiter als 8                   13.492   47,5 %   47,8 %    0,98        1,04
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 893 (3,1 %); mehr als viermal: 89 (0,3 %)
+4  Güte:
+   ganzes Netz: 28413 Punkte, 56822 Dreiecke
+    Kanten: Mittel 4.15, kürzeste 0.83, längste 6.94, Streuung (σ/Mittel) 0.25
+    Wertigkeit: ≤3:0.0 % 4:3.1 % 5:14.0 % 6:66.0 % 7:13.7 % 8:3.0 % ≥9:0.1 %; mittlere Abweichung von 6: 0.40
+    kleinster Winkel je Dreieck: kleinster 6.4°, 1 % 22.7°, 5 % 28.0°, Median 42.9°; unter 20°: 0.4 %, unter 10°: 0.0 %; stumpf (> 90°): 20.3 %
+    längste/kürzeste Kante je Dreieck: Median 1.44, 95 % 2.07, größte 5.85; über 2: 6.8 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.75, 95 % 2.56, größte 5.85
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.129, 95 % 0.370; Kotangens-Gewicht negativ: 4.2 %
+   an den Linien (bis 1 Startkante): 2467 Punkte, 7056 Dreiecke
+    Kanten: Mittel 3.84, kürzeste 0.83, längste 6.94, Streuung (σ/Mittel) 0.31
+    Wertigkeit: ≤3:0.0 % 4:7.1 % 5:14.8 % 6:55.9 % 7:16.5 % 8:5.3 % ≥9:0.4 %; mittlere Abweichung von 6: 0.57
+    kleinster Winkel je Dreieck: kleinster 6.4°, 1 % 14.8°, 5 % 24.4°, Median 40.6°; unter 20°: 2.3 %, unter 10°: 0.3 %; stumpf (> 90°): 26.4 %
+    längste/kürzeste Kante je Dreieck: Median 1.52, 95 % 2.23, größte 5.85; über 2: 12.8 %, über 4: 0.1 %
+    längste/kürzeste Kante je Punkt: Median 1.90, 95 % 3.32, größte 5.85
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.161, 95 % 0.426; Kotangens-Gewicht negativ: 5.1 %
+   fern von Linien (weiter als 2 Startkanten): 23976 Punkte, 50008 Dreiecke
+    Kanten: Mittel 4.16, kürzeste 1.85, längste 6.94, Streuung (σ/Mittel) 0.25
+    Wertigkeit: ≤3:0.0 % 4:2.9 % 5:13.9 % 6:66.8 % 7:13.4 % 8:2.9 % ≥9:0.1 %; mittlere Abweichung von 6: 0.39
+    kleinster Winkel je Dreieck: kleinster 16.0°, 1 % 23.8°, 5 % 28.4°, Median 43.2°; unter 20°: 0.1 %, unter 10°: 0.0 %; stumpf (> 90°): 19.5 %
+    längste/kürzeste Kante je Dreieck: Median 1.43, 95 % 2.04, größte 3.21; über 2: 6.0 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.74, 95 % 2.48, größte 3.52
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.130, 95 % 0.367; Kotangens-Gewicht negativ: 4.0 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 0, unter 10°: 18, unter 20°: 210 (von 56.822); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 885
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 0; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 0
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 1,4°, 95 % 2,5°, 99 % 3,8°, größte 6,8°; über 15°: 0,0 %, über 25°: 0,0 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,011, 95 % 0,026, 99 % 0,039, größter 0,08; über 0,2: 0,0 %, über 0,8: 0,0 % (die Linien dieses Wesens werden auf 0,10 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 2.744 Punkte; für 0,8: 2.022; ohne Obergrenze der Kante: 2.652 bzw. 663. Das Wesen hat 28.413.
+   Zu grob für 0,2: auf 0,0 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 4; Punkte auf Linien im Netz 1.197 (4,2 %)
+   Abstand der Proben in Startkanten: Median 0,85, 5 % 0,37, kleinster 0,251; unter 0,25: 0,0 %, unter 0,5: 13,0 %
+     Loop   1 ring    3 Punkte,  139 Proben auf    473 (Abstand im Mittel 0,86, kleinster 0,345 Startkanten)
+     Loop   2 mitte   6 Punkte,  301 Proben auf  1.252 (Abstand im Mittel 1,05, kleinster 0,306 Startkanten)
+     Loop   3 ring    4 Punkte,  200 Proben auf    593 (Abstand im Mittel 0,75, kleinster 0,251 Startkanten)
+     Loop   4 ring    3 Punkte,  117 Proben auf    313 (Abstand im Mittel 0,68, kleinster 0,253 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/g5/nach/probe-23k-hals-netz.html
+
+== probe-23k-kugel ==
+   ../../apps/editor/pruefen-ausgabe/probewesen-g5a/probe-23k-kugel.eewesen, 1,91 MB; 23160 Punkte im Netz, 3 Loops mit 10 Punkten; gesichert 2026-11-10T18:39:43.345Z; Adresse kurven.html?gewichte=geometrie&dreiecke=30000
+1  Netz: 23.160 Punkte, 46.316 Dreiecke. Startkante (das Maß) 3,97, mittlere Kante jetzt 3,92 (0,99 Startkanten).
+   Fläche 284.004: Ein gleichmäßiges Netz mit der Startkante hätte dort 20.837 Punkte, das Wesen hat 1,11-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                69.474       0,0 %     0,4 %     2,7 %    19,1 %    57,8 %    18,3 %     1,6 %
+   zwischen zwei Punkten auf Linien     1.178       0,0 %    19,6 %    15,4 %    27,6 %    36,1 %     1,0 %     0,3 %
+   von einer Linie weg                  3.948       0,2 %     1,9 %    17,6 %    20,9 %    31,9 %    23,5 %     4,1 %
+   ohne Punkt auf einer Linie          64.348       0,0 %     0,0 %     1,6 %    18,9 %    59,8 %    18,3 %     1,5 %
+   kürzeste 0,387, längste 12,45 (3,14 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                 1.148    5,0 %    3,3 %    1,68        0,79
+   bis 1 Startkante daneben        1.182    5,1 %    3,9 %    1,44        0,83
+   1 bis 2                         1.680    7,3 %    8,2 %    0,98        1,05
+   2 bis 4                         2.888   12,5 %   13,2 %    1,05        1,02
+   4 bis 8                         5.606   24,2 %   24,6 %    1,10        0,99
+   weiter als 8                   10.656   46,0 %   46,8 %    1,09        0,99
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 2.138 (9,2 %); mehr als viermal: 382 (1,6 %)
+4  Güte:
+   ganzes Netz: 23160 Punkte, 46316 Dreiecke
+    Kanten: Mittel 3.92, kürzeste 0.39, längste 12.45, Streuung (σ/Mittel) 0.32
+    Wertigkeit: ≤3:0.0 % 4:2.9 % 5:11.6 % 6:71.5 % 7:10.9 % 8:3.2 % ≥9:0.0 %; mittlere Abweichung von 6: 0.35
+    kleinster Winkel je Dreieck: kleinster 4.2°, 1 % 17.5°, 5 % 25.0°, Median 39.6°; unter 20°: 1.6 %, unter 10°: 0.3 %; stumpf (> 90°): 25.2 %
+    längste/kürzeste Kante je Dreieck: Median 1.54, 95 % 2.30, größte 13.52; über 2: 13.2 %, über 4: 0.6 %
+    längste/kürzeste Kante je Punkt: Median 2.00, 95 % 3.00, größte 14.76
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.152, 95 % 0.396; Kotangens-Gewicht negativ: 6.7 %
+   an den Linien (bis 1 Startkante): 2330 Punkte, 6272 Dreiecke
+    Kanten: Mittel 3.30, kürzeste 0.39, längste 11.19, Streuung (σ/Mittel) 0.47
+    Wertigkeit: ≤3:0.1 % 4:14.9 % 5:8.6 % 6:50.6 % 7:17.6 % 8:7.9 % ≥9:0.3 %; mittlere Abweichung von 6: 0.73
+    kleinster Winkel je Dreieck: kleinster 4.2°, 1 % 6.4°, 5 % 14.6°, Median 36.0°; unter 20°: 8.9 %, unter 10°: 2.6 %; stumpf (> 90°): 32.9 %
+    längste/kürzeste Kante je Dreieck: Median 1.68, 95 % 3.50, größte 13.52; über 2: 25.8 %, über 4: 4.0 %
+    längste/kürzeste Kante je Punkt: Median 2.51, 95 % 10.27, größte 14.76
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.170, 95 % 0.519; Kotangens-Gewicht negativ: 5.8 %
+   fern von Linien (weiter als 2 Startkanten): 19150 Punkte, 39902 Dreiecke
+    Kanten: Mittel 3.97, kürzeste 1.35, längste 11.92, Streuung (σ/Mittel) 0.30
+    Wertigkeit: ≤3:0.0 % 4:1.5 % 5:12.0 % 6:74.1 % 7:9.7 % 8:2.7 % ≥9:0.0 %; mittlere Abweichung von 6: 0.30
+    kleinster Winkel je Dreieck: kleinster 11.5°, 1 % 21.9°, 5 % 26.1°, Median 40.2°; unter 20°: 0.4 %, unter 10°: 0.0 %; stumpf (> 90°): 24.0 %
+    längste/kürzeste Kante je Dreieck: Median 1.52, 95 % 2.20, größte 4.87; über 2: 11.3 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.97, 95 % 2.80, größte 4.87
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.161, 95 % 0.392; Kotangens-Gewicht negativ: 6.7 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 24, unter 10°: 162, unter 20°: 726 (von 46.316); Punkte mit höchstens drei Nachbarn: 2 (davon auf Linien 0), mit vier: 662
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 2; sonst mit einer Ecke auf einer Linie 22; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 8
+      1  bei (30, -2, 145): 3 Dreiecke, kleinster Winkel 4,22°, kürzeste Kante 0,118 Startkanten, 0,0 Startkanten von der nächsten Linie
+      2  bei (9, -2, 148): 1 Dreiecke, kleinster Winkel 4,24°, kürzeste Kante 0,122 Startkanten, 0,0 Startkanten von der nächsten Linie
+      3  bei (9, 136, 59): 1 Dreiecke, kleinster Winkel 4,55°, kürzeste Kante 0,130 Startkanten, 0,0 Startkanten von der nächsten Linie
+      4  bei (43, -2, 143): 1 Dreiecke, kleinster Winkel 4,56°, kürzeste Kante 0,128 Startkanten, 0,0 Startkanten von der nächsten Linie
+      5  bei (-43, -2, 143): 1 Dreiecke, kleinster Winkel 4,68°, kürzeste Kante 0,119 Startkanten, 0,0 Startkanten von der nächsten Linie
+      6  bei (10, 131, 69): 1 Dreiecke, kleinster Winkel 4,81°, kürzeste Kante 0,254 Startkanten, 0,0 Startkanten von der nächsten Linie
+      7  bei (-25, -2, 146): 3 Dreiecke, kleinster Winkel 4,81°, kürzeste Kante 0,123 Startkanten, 0,0 Startkanten von der nächsten Linie
+      8  bei (10, 86, 121): 1 Dreiecke, kleinster Winkel 5,00°, 1 Punkte mit ≤ 3 Nachbarn, kürzeste Kante 0,102 Startkanten, 0,1 Startkanten von der nächsten Linie
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 1,4°, 95 % 2,3°, 99 % 2,7°, größte 3,6°; über 15°: 0,0 %, über 25°: 0,0 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,011, 95 % 0,028, 99 % 0,040, größter 0,09; über 0,2: 0,0 %, über 0,8: 0,0 % (die Linien dieses Wesens werden auf 0,10 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 2.117 Punkte; für 0,8: 1.461; ohne Obergrenze der Kante: 2.105 bzw. 526. Das Wesen hat 23.160.
+   Zu grob für 0,2: auf 0,0 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 3; Punkte auf Linien im Netz 1.148 (5,0 %)
+   Abstand der Proben in Startkanten: Median 0,69, 5 % 0,12, kleinster 0,113; unter 0,25: 16,2 %, unter 0,5: 28,9 %
+     Loop   1 ring    3 Punkte,  192 Proben auf    473 (Abstand im Mittel 0,62, kleinster 0,115 Startkanten)
+     Loop   2 mitte   4 Punkte,  280 Proben auf    947 (Abstand im Mittel 0,85, kleinster 0,169 Startkanten)
+     Loop   3 ring    3 Punkte,  247 Proben auf    466 (Abstand im Mittel 0,48, kleinster 0,113 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/g5/nach/probe-23k-kugel-netz.html
+
+== probe-23k-wesen ==
+   ../../apps/editor/pruefen-ausgabe/probewesen-g5a/probe-23k-wesen.eewesen, 2,68 MB; 32698 Punkte im Netz, 4 Loops mit 17 Punkten; gesichert 2026-11-10T18:40:27.480Z; Adresse kurven.html?gewichte=geometrie&dreiecke=30000
+1  Netz: 32.698 Punkte, 65.392 Dreiecke. Startkante (das Maß) 3,97, mittlere Kante jetzt 4,17 (1,05 Startkanten).
+   Fläche 458.012: Ein gleichmäßiges Netz mit der Startkante hätte dort 33.604 Punkte, das Wesen hat 0,97-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                98.088       0,0 %     0,0 %     0,3 %    10,8 %    66,5 %    22,4 %     0,0 %
+   zwischen zwei Punkten auf Linien     1.276       0,0 %     0,0 %    13,2 %    24,5 %    48,0 %    14,3 %     0,0 %
+   von einer Linie weg                  4.750       0,0 %     0,0 %     2,1 %    13,8 %    58,0 %    26,1 %     0,0 %
+   ohne Punkt auf einer Linie          92.062       0,0 %     0,0 %     0,0 %    10,4 %    67,2 %    22,3 %     0,0 %
+   kürzeste 0,942, längste 6,94 (1,75 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                 1.236    3,8 %    3,3 %    1,12        0,97
+   bis 1 Startkante daneben        1.330    4,1 %    3,7 %    1,08        0,99
+   1 bis 2                         2.100    6,4 %    6,7 %    0,93        1,06
+   2 bis 4                         4.170   12,8 %   13,0 %    0,96        1,05
+   4 bis 8                         7.302   22,3 %   22,1 %    0,98        1,04
+   weiter als 8                   16.560   50,6 %   51,3 %    0,96        1,05
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 979 (3,0 %); mehr als viermal: 64 (0,2 %)
+4  Güte:
+   ganzes Netz: 32698 Punkte, 65392 Dreiecke
+    Kanten: Mittel 4.17, kürzeste 0.94, längste 6.94, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:3.9 % 5:14.2 % 6:63.2 % 7:15.4 % 8:3.2 % ≥9:0.1 %; mittlere Abweichung von 6: 0.44
+    kleinster Winkel je Dreieck: kleinster 5.6°, 1 % 22.7°, 5 % 27.9°, Median 43.0°; unter 20°: 0.4 %, unter 10°: 0.0 %; stumpf (> 90°): 21.8 %
+    längste/kürzeste Kante je Dreieck: Median 1.44, 95 % 2.05, größte 5.15; über 2: 6.2 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.72, 95 % 2.49, größte 6.60
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.120, 95 % 0.349; Kotangens-Gewicht negativ: 4.4 %
+   an den Linien (bis 1 Startkante): 2566 Punkte, 7410 Dreiecke
+    Kanten: Mittel 3.86, kürzeste 0.94, längste 6.92, Streuung (σ/Mittel) 0.29
+    Wertigkeit: ≤3:0.0 % 4:7.0 % 5:15.4 % 6:55.7 % 7:15.7 % 8:5.8 % ≥9:0.3 %; mittlere Abweichung von 6: 0.58
+    kleinster Winkel je Dreieck: kleinster 5.6°, 1 % 15.8°, 5 % 25.5°, Median 41.7°; unter 20°: 1.8 %, unter 10°: 0.1 %; stumpf (> 90°): 24.8 %
+    längste/kürzeste Kante je Dreieck: Median 1.48, 95 % 2.22, größte 5.15; über 2: 9.8 %, über 4: 0.1 %
+    längste/kürzeste Kante je Punkt: Median 1.83, 95 % 3.29, größte 6.60
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.154, 95 % 0.417; Kotangens-Gewicht negativ: 4.6 %
+   fern von Linien (weiter als 2 Startkanten): 28032 Punkte, 58272 Dreiecke
+    Kanten: Mittel 4.19, kürzeste 1.63, längste 6.94, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:3.8 % 5:14.1 % 6:63.6 % 7:15.3 % 8:3.0 % ≥9:0.1 %; mittlere Abweichung von 6: 0.43
+    kleinster Winkel je Dreieck: kleinster 6.3°, 1 % 23.5°, 5 % 28.3°, Median 43.1°; unter 20°: 0.2 %, unter 10°: 0.0 %; stumpf (> 90°): 21.4 %
+    längste/kürzeste Kante je Dreieck: Median 1.43, 95 % 2.03, größte 3.46; über 2: 5.7 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.71, 95 % 2.45, größte 3.47
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.120, 95 % 0.345; Kotangens-Gewicht negativ: 4.3 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 0, unter 10°: 10, unter 20°: 264 (von 65.392); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 1288
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 0; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 0
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 1,1°, 95 % 2,5°, 99 % 3,4°, größte 5,9°; über 15°: 0,0 %, über 25°: 0,0 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,010, 95 % 0,025, 99 % 0,036, größter 0,07; über 0,2: 0,0 %, über 0,8: 0,0 % (die Linien dieses Wesens werden auf 0,10 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 3.048 Punkte; für 0,8: 2.351; ohne Obergrenze der Kante: 2.767 bzw. 692. Das Wesen hat 32.698.
+   Zu grob für 0,2: auf 0,0 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 4; Punkte auf Linien im Netz 1.236 (3,8 %)
+   Abstand der Proben in Startkanten: Median 0,93, 5 % 0,37, kleinster 0,251; unter 0,25: 0,0 %, unter 0,5: 10,9 %
+     Loop   1 ring    3 Punkte,  148 Proben auf    555 (Abstand im Mittel 0,95, kleinster 0,452 Startkanten)
+     Loop   2 mitte   6 Punkte,  320 Proben auf  1.355 (Abstand im Mittel 1,07, kleinster 0,307 Startkanten)
+     Loop   3 ring    5 Punkte,  204 Proben auf    632 (Abstand im Mittel 0,78, kleinster 0,251 Startkanten), Kante auf 100,0 %
+     Loop   4 ring    3 Punkte,  114 Proben auf    308 (Abstand im Mittel 0,69, kleinster 0,253 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/g5/nach/probe-23k-wesen-netz.html
+
+== probe-5k-hals ==
+   ../../apps/editor/pruefen-ausgabe/probewesen-g5a/probe-5k-hals.eewesen, 0,52 MB; 6055 Punkte im Netz, 4 Loops mit 16 Punkten; gesichert 2026-11-10T19:32:42.266Z; Adresse kurven.html?gewichte=geometrie
+1  Netz: 6.055 Punkte, 12.106 Dreiecke. Startkante (das Maß) 8,64, mittlere Kante jetzt 8,92 (1,03 Startkanten).
+   Fläche 393.827: Ein gleichmäßiges Netz mit der Startkante hätte dort 6.097 Punkte, das Wesen hat 0,99-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                18.159       0,0 %     0,0 %     1,6 %    12,5 %    66,2 %    19,8 %     0,0 %
+   zwischen zwei Punkten auf Linien       701       0,0 %     0,3 %    26,7 %    32,5 %    34,2 %     6,3 %     0,0 %
+   von einer Linie weg                  2.216       0,0 %     0,0 %     4,4 %    22,1 %    57,0 %    16,4 %     0,0 %
+   ohne Punkt auf einer Linie          15.242       0,0 %     0,0 %     0,0 %    10,1 %    69,0 %    20,9 %     0,0 %
+   kürzeste 1,560, längste 15,11 (1,75 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                   655   10,8 %    7,1 %    1,51        0,83
+   bis 1 Startkante daneben          566    9,3 %    9,1 %    1,02        0,98
+   1 bis 2                           802   13,2 %   14,8 %    0,89        1,08
+   2 bis 4                         1.454   24,0 %   25,9 %    0,92        1,06
+   4 bis 8                         1.882   31,1 %   30,5 %    1,01        1,02
+   weiter als 8                      696   11,5 %   12,6 %    0,91        1,07
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 329 (5,4 %); mehr als viermal: 80 (1,3 %)
+4  Güte:
+   ganzes Netz: 6055 Punkte, 12106 Dreiecke
+    Kanten: Mittel 8.92, kürzeste 1.56, längste 15.11, Streuung (σ/Mittel) 0.26
+    Wertigkeit: ≤3:0.0 % 4:5.4 % 5:14.2 % 6:60.2 % 7:15.5 % 8:4.6 % ≥9:0.0 %; mittlere Abweichung von 6: 0.50
+    kleinster Winkel je Dreieck: kleinster 8.8°, 1 % 20.0°, 5 % 28.7°, Median 43.0°; unter 20°: 1.0 %, unter 10°: 0.1 %; stumpf (> 90°): 20.4 %
+    längste/kürzeste Kante je Dreieck: Median 1.44, 95 % 2.03, größte 4.72; über 2: 5.5 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.78, 95 % 2.67, größte 5.61
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.130, 95 % 0.380; Kotangens-Gewicht negativ: 3.0 %
+   an den Linien (bis 1 Startkante): 1221 Punkte, 3336 Dreiecke
+    Kanten: Mittel 7.96, kürzeste 1.56, längste 15.06, Streuung (σ/Mittel) 0.33
+    Wertigkeit: ≤3:0.0 % 4:13.6 % 5:13.9 % 6:41.0 % 7:22.8 % 8:8.8 % ≥9:0.0 %; mittlere Abweichung von 6: 0.81
+    kleinster Winkel je Dreieck: kleinster 8.8°, 1 % 14.2°, 5 % 22.4°, Median 41.8°; unter 20°: 3.7 %, unter 10°: 0.2 %; stumpf (> 90°): 26.4 %
+    längste/kürzeste Kante je Dreieck: Median 1.48, 95 % 2.40, größte 4.72; über 2: 12.9 %, über 4: 0.2 %
+    längste/kürzeste Kante je Punkt: Median 2.12, 95 % 3.87, größte 5.61
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.144, 95 % 0.418; Kotangens-Gewicht negativ: 3.0 %
+   fern von Linien (weiter als 2 Startkanten): 4032 Punkte, 8908 Dreiecke
+    Kanten: Mittel 9.10, kürzeste 4.34, längste 15.11, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:3.3 % 5:13.7 % 6:66.6 % 7:12.7 % 8:3.7 % ≥9:0.0 %; mittlere Abweichung von 6: 0.40
+    kleinster Winkel je Dreieck: kleinster 20.8°, 1 % 26.8°, 5 % 30.8°, Median 43.3°; unter 20°: 0.0 %, unter 10°: 0.0 %; stumpf (> 90°): 18.0 %
+    längste/kürzeste Kante je Dreieck: Median 1.42, 95 % 1.91, größte 2.81; über 2: 2.7 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.75, 95 % 2.40, größte 3.26
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.140, 95 % 0.369; Kotangens-Gewicht negativ: 2.8 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 0, unter 10°: 8, unter 20°: 122 (von 12.106); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 328
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 0; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 0
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 2,9°, 95 % 5,5°, 99 % 8,4°, größte 14,6°; über 15°: 0,0 %, über 25°: 0,0 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,052, 95 % 0,121, 99 % 0,184, größter 0,34; über 0,2: 0,7 %, über 0,8: 0,0 % (die Linien dieses Wesens werden auf 0,22 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 2.782 Punkte; für 0,8: 2.022; ohne Obergrenze der Kante: 2.698 bzw. 675. Das Wesen hat 6.055.
+   Zu grob für 0,2: auf 0,0 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 4; Punkte auf Linien im Netz 655 (10,8 %)
+   Abstand der Proben in Startkanten: Median 0,72, 5 % 0,29, kleinster 0,181; unter 0,25: 0,2 %, unter 0,5: 23,8 %
+     Loop   1 ring    3 Punkte,   95 Proben auf    473 (Abstand im Mittel 0,58, kleinster 0,253 Startkanten)
+     Loop   2 mitte   6 Punkte,  143 Proben auf  1.252 (Abstand im Mittel 1,01, kleinster 0,294 Startkanten)
+     Loop   3 ring    4 Punkte,  110 Proben auf    594 (Abstand im Mittel 0,63, kleinster 0,256 Startkanten)
+     Loop   4 ring    3 Punkte,   59 Proben auf    314 (Abstand im Mittel 0,63, kleinster 0,181 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/g5/nach/probe-5k-hals-netz.html
+
+== probe-5k-kugel ==
+   ../../apps/editor/pruefen-ausgabe/probewesen-g5a/probe-5k-kugel.eewesen, 0,45 MB; 5197 Punkte im Netz, 3 Loops mit 10 Punkten; gesichert 2026-11-10T19:32:37.285Z; Adresse kurven.html?gewichte=geometrie
+1  Netz: 5.197 Punkte, 10.390 Dreiecke. Startkante (das Maß) 8,64, mittlere Kante jetzt 8,13 (0,94 Startkanten).
+   Fläche 283.949: Ein gleichmäßiges Netz mit der Startkante hätte dort 4.396 Punkte, das Wesen hat 1,18-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                15.585       0,0 %     0,7 %     2,8 %    20,3 %    64,6 %    11,6 %     0,0 %
+   zwischen zwei Punkten auf Linien       655       0,0 %    15,7 %    35,3 %    27,6 %    21,1 %     0,3 %     0,0 %
+   von einer Linie weg                  1.960       0,0 %     0,3 %     9,4 %    38,1 %    40,7 %    11,5 %     0,0 %
+   ohne Punkt auf einer Linie          12.970       0,0 %     0,0 %     0,2 %    17,2 %    70,5 %    12,2 %     0,0 %
+   kürzeste 0,959, längste 14,71 (1,70 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                   623   12,0 %    6,5 %    2,20        0,68
+   bis 1 Startkante daneben          534   10,3 %    9,4 %    1,30        0,85
+   1 bis 2                           676   13,0 %   15,5 %    0,99        1,03
+   2 bis 4                         1.234   23,7 %   26,9 %    1,05        1,01
+   4 bis 8                         1.698   32,7 %   33,6 %    1,15        0,96
+   weiter als 8                      432    8,3 %    8,2 %    1,20        0,92
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 554 (10,7 %); mehr als viermal: 216 (4,2 %)
+4  Güte:
+   ganzes Netz: 5197 Punkte, 10390 Dreiecke
+    Kanten: Mittel 8.13, kürzeste 0.96, längste 14.71, Streuung (σ/Mittel) 0.28
+    Wertigkeit: ≤3:0.0 % 4:5.5 % 5:11.4 % 6:65.5 % 7:12.9 % 8:4.6 % ≥9:0.0 %; mittlere Abweichung von 6: 0.45
+    kleinster Winkel je Dreieck: kleinster 10.1°, 1 % 17.7°, 5 % 27.8°, Median 42.4°; unter 20°: 1.7 %, unter 10°: 0.0 %; stumpf (> 90°): 17.0 %
+    längste/kürzeste Kante je Dreieck: Median 1.45, 95 % 2.11, größte 5.64; über 2: 6.9 %, über 4: 0.3 %
+    längste/kürzeste Kante je Punkt: Median 1.84, 95 % 3.07, größte 8.44
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.135, 95 % 0.391; Kotangens-Gewicht negativ: 1.2 %
+   an den Linien (bis 1 Startkante): 1157 Punkte, 3010 Dreiecke
+    Kanten: Mittel 6.83, kürzeste 0.96, längste 14.48, Streuung (σ/Mittel) 0.38
+    Wertigkeit: ≤3:0.0 % 4:19.8 % 5:7.4 % 6:37.9 % 7:23.0 % 8:11.7 % ≥9:0.2 %; mittlere Abweichung von 6: 0.94
+    kleinster Winkel je Dreieck: kleinster 10.1°, 1 % 12.8°, 5 % 19.1°, Median 41.3°; unter 20°: 5.9 %, unter 10°: 0.0 %; stumpf (> 90°): 23.6 %
+    längste/kürzeste Kante je Dreieck: Median 1.50, 95 % 2.93, größte 5.64; über 2: 19.2 %, über 4: 1.2 %
+    längste/kürzeste Kante je Punkt: Median 2.22, 95 % 4.50, größte 8.44
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.089, 95 % 0.386; Kotangens-Gewicht negativ: 1.4 %
+   fern von Linien (weiter als 2 Startkanten): 3364 Punkte, 7390 Dreiecke
+    Kanten: Mittel 8.41, kürzeste 3.96, längste 14.51, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:0.8 % 5:11.8 % 6:76.2 % 7:8.9 % 8:2.2 % ≥9:0.0 %; mittlere Abweichung von 6: 0.27
+    kleinster Winkel je Dreieck: kleinster 23.3°, 1 % 28.2°, 5 % 31.6°, Median 42.6°; unter 20°: 0.0 %, unter 10°: 0.0 %; stumpf (> 90°): 14.2 %
+    längste/kürzeste Kante je Dreieck: Median 1.44, 95 % 1.89, größte 2.28; über 2: 1.8 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.81, 95 % 2.50, größte 3.25
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.168, 95 % 0.398; Kotangens-Gewicht negativ: 1.0 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 0, unter 10°: 0, unter 20°: 178 (von 10.390); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 287
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 0; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 0
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 3,1°, 95 % 4,2°, 99 % 4,9°, größte 6,0°; über 15°: 0,0 %, über 25°: 0,0 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,052, 95 % 0,103, 99 % 0,133, größter 0,16; über 0,2: 0,0 %, über 0,8: 0,0 % (die Linien dieses Wesens werden auf 0,22 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 2.062 Punkte; für 0,8: 1.457; ohne Obergrenze der Kante: 2.051 bzw. 513. Das Wesen hat 5.197.
+   Zu grob für 0,2: auf 0,0 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 3; Punkte auf Linien im Netz 623 (12,0 %)
+   Abstand der Proben in Startkanten: Median 0,57, 5 % 0,19, kleinster 0,111; unter 0,25: 13,7 %, unter 0,5: 43,9 %
+     Loop   1 ring    3 Punkte,  129 Proben auf    473 (Abstand im Mittel 0,43, kleinster 0,148 Startkanten)
+     Loop   2 mitte   4 Punkte,  131 Proben auf    947 (Abstand im Mittel 0,84, kleinster 0,213 Startkanten)
+     Loop   3 ring    3 Punkte,  122 Proben auf    466 (Abstand im Mittel 0,45, kleinster 0,111 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/g5/nach/probe-5k-kugel-netz.html
+
+== probe-5k-spiel ==
+   ../../apps/editor/pruefen-ausgabe/probewesen-g5a/probe-5k-spiel.eewesen, 0,64 MB; 7590 Punkte im Netz, 4 Loops mit 17 Punkten; gesichert 2026-11-10T19:33:15.753Z; Adresse kurven.html?gewichte=geometrie
+1  Netz: 7.590 Punkte, 15.176 Dreiecke. Startkante (das Maß) 8,64, mittlere Kante jetzt 8,63 (1,00 Startkanten).
+   Fläche 458.342: Ein gleichmäßiges Netz mit der Startkante hätte dort 7.096 Punkte, das Wesen hat 1,07-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                22.764       0,0 %     0,0 %     1,0 %    13,7 %    69,3 %    15,9 %     0,0 %
+   zwischen zwei Punkten auf Linien       724       0,0 %     1,1 %    22,1 %    30,9 %    39,1 %     6,8 %     0,0 %
+   von einer Linie weg                  2.414       0,0 %     0,0 %     3,1 %    19,6 %    61,8 %    15,4 %     0,0 %
+   ohne Punkt auf einer Linie          19.626       0,0 %     0,0 %     0,0 %    12,4 %    71,3 %    16,3 %     0,0 %
+   kürzeste 1,445, längste 14,99 (1,74 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                   680    9,0 %    6,6 %    1,45        0,85
+   bis 1 Startkante daneben          670    8,8 %    8,1 %    1,16        0,94
+   1 bis 2                           982   12,9 %   14,0 %    0,99        1,02
+   2 bis 4                         1.730   22,8 %   23,7 %    1,03        1,01
+   4 bis 8                         2.324   30,6 %   30,7 %    1,07        0,99
+   weiter als 8                    1.204   15,9 %   17,0 %    1,00        1,03
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 410 (5,4 %); mehr als viermal: 56 (0,7 %)
+4  Güte:
+   ganzes Netz: 7590 Punkte, 15176 Dreiecke
+    Kanten: Mittel 8.63, kürzeste 1.45, längste 14.99, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:4.3 % 5:15.8 % 6:60.1 % 7:15.5 % 8:4.1 % ≥9:0.2 %; mittlere Abweichung von 6: 0.49
+    kleinster Winkel je Dreieck: kleinster 9.1°, 1 % 21.1°, 5 % 28.7°, Median 43.6°; unter 20°: 0.7 %, unter 10°: 0.0 %; stumpf (> 90°): 20.2 %
+    längste/kürzeste Kante je Dreieck: Median 1.42, 95 % 2.01, größte 5.12; über 2: 5.3 %, über 4: 0.1 %
+    längste/kürzeste Kante je Punkt: Median 1.71, 95 % 2.56, größte 5.46
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.135, 95 % 0.363; Kotangens-Gewicht negativ: 3.7 %
+   an den Linien (bis 1 Startkante): 1350 Punkte, 3752 Dreiecke
+    Kanten: Mittel 7.82, kürzeste 1.45, längste 14.75, Streuung (σ/Mittel) 0.29
+    Wertigkeit: ≤3:0.0 % 4:10.8 % 5:15.6 % 6:47.4 % 7:17.8 % 8:8.0 % ≥9:0.4 %; mittlere Abweichung von 6: 0.72
+    kleinster Winkel je Dreieck: kleinster 9.1°, 1 % 15.1°, 5 % 22.9°, Median 42.3°; unter 20°: 2.6 %, unter 10°: 0.2 %; stumpf (> 90°): 24.4 %
+    längste/kürzeste Kante je Dreieck: Median 1.46, 95 % 2.38, größte 5.12; über 2: 11.0 %, über 4: 0.2 %
+    längste/kürzeste Kante je Punkt: Median 1.89, 95 % 3.58, größte 5.46
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.162, 95 % 0.426; Kotangens-Gewicht negativ: 4.2 %
+   fern von Linien (weiter als 2 Startkanten): 5258 Punkte, 11472 Dreiecke
+    Kanten: Mittel 8.77, kürzeste 4.33, längste 14.99, Streuung (σ/Mittel) 0.23
+    Wertigkeit: ≤3:0.0 % 4:2.9 % 5:15.5 % 6:64.1 % 7:14.2 % 8:3.2 % ≥9:0.1 %; mittlere Abweichung von 6: 0.42
+    kleinster Winkel je Dreieck: kleinster 18.8°, 1 % 25.3°, 5 % 29.9°, Median 43.9°; unter 20°: 0.1 %, unter 10°: 0.0 %; stumpf (> 90°): 18.7 %
+    längste/kürzeste Kante je Dreieck: Median 1.41, 95 % 1.94, größte 2.93; über 2: 3.6 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.69, 95 % 2.37, größte 3.19
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.137, 95 % 0.347; Kotangens-Gewicht negativ: 3.5 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 0, unter 10°: 6, unter 20°: 108 (von 15.176); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 326
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 0; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 0
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 2,4°, 95 % 5,3°, 99 % 7,8°, größte 14,0°; über 15°: 0,0 %, über 25°: 0,0 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,043, 95 % 0,110, 99 % 0,162, größter 0,28; über 0,2: 0,3 %, über 0,8: 0,0 % (die Linien dieses Wesens werden auf 0,22 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 3.051 Punkte; für 0,8: 2.353; ohne Obergrenze der Kante: 2.773 bzw. 693. Das Wesen hat 7.590.
+   Zu grob für 0,2: auf 0,0 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 4; Punkte auf Linien im Netz 680 (9,0 %)
+   Abstand der Proben in Startkanten: Median 0,76, 5 % 0,31, kleinster 0,167; unter 0,25: 1,0 %, unter 0,5: 20,2 %
+     Loop   1 ring    3 Punkte,   94 Proben auf    555 (Abstand im Mittel 0,69, kleinster 0,272 Startkanten)
+     Loop   2 mitte   6 Punkte,  152 Proben auf  1.355 (Abstand im Mittel 1,03, kleinster 0,294 Startkanten)
+     Loop   3 ring    5 Punkte,  118 Proben auf    632 (Abstand im Mittel 0,63, kleinster 0,256 Startkanten), Kante auf 100,0 %
+     Loop   4 ring    3 Punkte,   60 Proben auf    308 (Abstand im Mittel 0,60, kleinster 0,167 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/g5/nach/probe-5k-spiel-netz.html
+
+== probe-5k-wesen ==
+   ../../apps/editor/pruefen-ausgabe/probewesen-g5a/probe-5k-wesen.eewesen, 0,60 MB; 7108 Punkte im Netz, 4 Loops mit 17 Punkten; gesichert 2026-11-10T19:32:46.730Z; Adresse kurven.html?gewichte=geometrie
+1  Netz: 7.108 Punkte, 14.212 Dreiecke. Startkante (das Maß) 8,64, mittlere Kante jetzt 8,92 (1,03 Startkanten).
+   Fläche 458.364: Ein gleichmäßiges Netz mit der Startkante hätte dort 7.096 Punkte, das Wesen hat 1,00-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                21.318       0,0 %     0,0 %     1,1 %    11,4 %    67,4 %    20,1 %     0,0 %
+   zwischen zwei Punkten auf Linien       706       0,0 %     1,1 %    22,1 %    28,9 %    39,0 %     8,9 %     0,0 %
+   von einer Linie weg                  2.326       0,0 %     0,0 %     3,5 %    17,4 %    62,9 %    16,3 %     0,0 %
+   ohne Punkt auf einer Linie          18.286       0,0 %     0,0 %     0,0 %     9,9 %    69,1 %    21,0 %     0,0 %
+   kürzeste 1,445, längste 15,11 (1,75 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                   662    9,3 %    6,7 %    1,40        0,87
+   bis 1 Startkante daneben          606    8,5 %    8,1 %    1,05        0,98
+   1 bis 2                           906   12,7 %   13,8 %    0,93        1,06
+   2 bis 4                         1.610   22,7 %   23,8 %    0,95        1,05
+   4 bis 8                         2.216   31,2 %   30,6 %    1,02        1,02
+   weiter als 8                    1.108   15,6 %   17,0 %    0,92        1,08
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 353 (5,0 %); mehr als viermal: 58 (0,8 %)
+4  Güte:
+   ganzes Netz: 7108 Punkte, 14212 Dreiecke
+    Kanten: Mittel 8.92, kürzeste 1.45, längste 15.11, Streuung (σ/Mittel) 0.25
+    Wertigkeit: ≤3:0.0 % 4:5.6 % 5:15.4 % 6:58.0 % 7:16.0 % 8:4.8 % ≥9:0.3 %; mittlere Abweichung von 6: 0.53
+    kleinster Winkel je Dreieck: kleinster 9.3°, 1 % 21.0°, 5 % 28.1°, Median 43.2°; unter 20°: 0.8 %, unter 10°: 0.0 %; stumpf (> 90°): 21.1 %
+    längste/kürzeste Kante je Dreieck: Median 1.43, 95 % 2.05, größte 5.03; über 2: 6.0 %, über 4: 0.1 %
+    längste/kürzeste Kante je Punkt: Median 1.72, 95 % 2.61, größte 5.17
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.124, 95 % 0.359; Kotangens-Gewicht negativ: 3.9 %
+   an den Linien (bis 1 Startkante): 1268 Punkte, 3550 Dreiecke
+    Kanten: Mittel 8.10, kürzeste 1.45, längste 15.10, Streuung (σ/Mittel) 0.30
+    Wertigkeit: ≤3:0.0 % 4:13.0 % 5:15.0 % 6:42.5 % 7:20.0 % 8:8.7 % ≥9:0.8 %; mittlere Abweichung von 6: 0.81
+    kleinster Winkel je Dreieck: kleinster 9.3°, 1 % 15.4°, 5 % 22.4°, Median 42.1°; unter 20°: 2.9 %, unter 10°: 0.1 %; stumpf (> 90°): 24.7 %
+    längste/kürzeste Kante je Dreieck: Median 1.47, 95 % 2.40, größte 5.03; über 2: 11.7 %, über 4: 0.2 %
+    längste/kürzeste Kante je Punkt: Median 1.97, 95 % 3.65, größte 5.17
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.153, 95 % 0.421; Kotangens-Gewicht negativ: 4.2 %
+   fern von Linien (weiter als 2 Startkanten): 4934 Punkte, 10796 Dreiecke
+    Kanten: Mittel 9.07, kürzeste 4.22, längste 15.11, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:4.1 % 5:14.6 % 6:62.8 % 7:14.5 % 8:3.9 % ≥9:0.2 %; mittlere Abweichung von 6: 0.45
+    kleinster Winkel je Dreieck: kleinster 18.1°, 1 % 24.6°, 5 % 29.4°, Median 43.5°; unter 20°: 0.1 %, unter 10°: 0.0 %; stumpf (> 90°): 20.0 %
+    längste/kürzeste Kante je Dreieck: Median 1.42, 95 % 1.96, größte 2.93; über 2: 4.3 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.71, 95 % 2.40, größte 3.20
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.129, 95 % 0.347; Kotangens-Gewicht negativ: 3.8 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 0; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 0, unter 10°: 4, unter 20°: 112 (von 14.212); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 395
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 0; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 0
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 2,5°, 95 % 5,3°, 99 % 7,8°, größte 13,7°; über 15°: 0,0 %, über 25°: 0,0 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,046, 95 % 0,115, 99 % 0,172, größter 0,30; über 0,2: 0,4 %, über 0,8: 0,0 % (die Linien dieses Wesens werden auf 0,22 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 3.038 Punkte; für 0,8: 2.353; ohne Obergrenze der Kante: 2.754 bzw. 689. Das Wesen hat 7.108.
+   Zu grob für 0,2: auf 0,0 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 4; Punkte auf Linien im Netz 662 (9,3 %)
+   Abstand der Proben in Startkanten: Median 0,78, 5 % 0,31, kleinster 0,167; unter 0,25: 1,0 %, unter 0,5: 20,2 %
+     Loop   1 ring    3 Punkte,   94 Proben auf    555 (Abstand im Mittel 0,69, kleinster 0,272 Startkanten)
+     Loop   2 mitte   6 Punkte,  150 Proben auf  1.355 (Abstand im Mittel 1,05, kleinster 0,294 Startkanten)
+     Loop   3 ring    5 Punkte,  112 Proben auf    632 (Abstand im Mittel 0,66, kleinster 0,256 Startkanten), Kante auf 100,0 %
+     Loop   4 ring    3 Punkte,   58 Proben auf    308 (Abstand im Mittel 0,63, kleinster 0,167 Startkanten)
+
+   Bild: ../../apps/editor/pruefen-ausgabe/g5/nach/probe-5k-wesen-netz.html
+
+== Übersicht ==
+Wesen                       Punkte gleichm.     × an Linien Dichte nah  fern  < 5° 3/4 Nb. umgekl. Stellen  genügten   (grob)  zu grob
+probe-23k-hals              28.413   28.891  0,98     8,7 %       1,13  0,97     0     885       0       0     2.744    2.022    0,0 %
+probe-23k-kugel             23.160   20.837  1,11    10,1 %       1,55  1,09    24     664       0       8     2.117    1.461    0,0 %
+probe-23k-wesen             32.698   33.604  0,97     7,8 %       1,10  0,97     0    1288       0       0     3.048    2.351    0,0 %
+probe-5k-hals                6.055    6.097  0,99    20,2 %       1,24  0,96     0     328       0       0     2.782    2.022    0,0 %
+probe-5k-kugel               5.197    4.396  1,18    22,3 %       1,66  1,11     0     287       0       0     2.062    1.457    0,0 %
+probe-5k-spiel               7.590    7.096  1,07    17,8 %       1,29  1,04     0     326       0       0     3.051    2.353    0,0 %
+probe-5k-wesen               7.108    7.096  1,00    17,8 %       1,21  0,97     0     395       0       0     3.038    2.353    0,0 %

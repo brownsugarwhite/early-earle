@@ -1,0 +1,66 @@
+G4.4 (10.11.2026): „Loop 4 schneiden und sofort greifen“ aus form-aendern-probe.mjs (NUR=sofort), je Netzdichte neu, ohne das Setzen
+nach neuen Loops (&loopsetzen=0) und im Ablauf von vorher (&nachlauf=0).
+
+##### &dreiecke=6000 
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (5222 → 5020 Punkte): Drücken 3 ms, zerlegt beim Greifen 12 ms; der Griff wartete auf die gesetzte Haut (noch 265 ms nach den Mausschritten); fern vom Griff je Bild ab dem Drücken: 0.11 0.02 0.02 0.03 0.02 0.01 (größter 0.11)
+    Fenster: 1 Halte über 50 ms, zusammen 52 ms: 52 ms (endet nach 167 ms) · Ruhe nach 1586 ms
+    Haut: 2 Netzwechsel (nach 167 ms 5222 → 5478, nach 1586 ms 5478 → 5020), Bewegung bei gleichem Netz in 6 Bildern (größte je Bild 6.00, von 560 bis 624 ms) · am Ende gegen vorher bis 6.00 (99 % 5.66, Mittel 0.83) bei (7, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.11, in 0 Bildern über 0,18 (Folge: 0.11 0.02 0.02 0.03 0.02 0.01) · es bleibt bis 0.19 (99 % 0.15, Mittel 0.03)
+    Hintergrund: gesetzte Haut nach 315 ms (5 Runden), Auftrag 6 angewendet [verdichten/Zeilen/zerlegen/setzen 64/21/83/13] nach 197 ms · im Fenster: neu gerechnet 30, vorgerechnet 0, zerlegt 12 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=6000 &loopsetzen=0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (5222 → 5018 Punkte): Drücken 148 ms, zerlegt beim Greifen 129 ms; der Griff begann sofort; fern vom Griff je Bild ab dem Drücken: 4.02 4.61 1.43 0.59 0.22 0.10 0.05 0.01 (größter 4.61)
+    Fenster: 2 Halte über 50 ms, zusammen 205 ms: 150 ms (endet nach 321 ms), 54 ms (endet nach 158 ms) · Ruhe nach 1525 ms
+    Haut: 2 Netzwechsel (nach 158 ms 5222 → 5472, nach 1525 ms 5472 → 5018), Bewegung bei gleichem Netz in 8 Bildern (größte je Bild 6.91, von 392 bis 493 ms) · am Ende gegen vorher bis 6.02 (99 % 5.15, Mittel 1.36) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 4.61, in 5 Bildern über 0,18 (Folge: 4.02 4.61 1.43 0.59 0.22 0.10 0.05 0.01) · es bleibt bis 1.80 (99 % 1.66, Mittel 0.45) bei (-120, -91, -20)
+    Hintergrund: Auftrag 5 angewendet [verdichten/Zeilen/zerlegen/setzen 60/18/86/27] nach 210 ms · im Fenster: neu gerechnet 31, vorgerechnet 0, zerlegt 129 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=6000 &nachlauf=0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (5222 → 5018 Punkte): Drücken 134 ms, zerlegt beim Greifen 118 ms; der Griff begann sofort; fern vom Griff je Bild ab dem Drücken: 4.02 4.61 1.43 0.59 0.22 0.06 0.07 0.02 (größter 4.61)
+    Fenster: 3 Halte über 50 ms, zusammen 345 ms: 143 ms (endet nach 1502 ms), 135 ms (endet nach 293 ms), 67 ms (endet nach 1343 ms) · Ruhe nach 1502 ms
+    Haut: 2 Netzwechsel (nach 157 ms 5222 → 5472, nach 1343 ms 5472 → 5018), Bewegung bei gleichem Netz in 9 Bildern (größte je Bild 6.91, von 360 bis 1502 ms) · am Ende gegen vorher bis 6.02 (99 % 5.15, Mittel 1.36) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 4.61, in 5 Bildern über 0,18 (Folge: 4.02 4.61 1.43 0.59 0.22 0.06 0.07 0.02 0.03) · es bleibt bis 1.80 (99 % 1.66, Mittel 0.45) bei (-120, -91, 20)
+    Hintergrund: kein neuer Auftrag · im Fenster: neu gerechnet 27, vorgerechnet 108, zerlegt 118 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=14000 
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (10964 → 10649 Punkte): Drücken 6 ms, zerlegt beim Greifen 21 ms; der Griff wartete auf die gesetzte Haut (noch 789 ms nach den Mausschritten); fern vom Griff je Bild ab dem Drücken: 0.15 0.10 0.09 0.02 0.02 (größter 0.15)
+    Fenster: 2 Halte über 50 ms, zusammen 146 ms: 90 ms (endet nach 200 ms), 56 ms (endet nach 1116 ms) · Ruhe nach 2368 ms
+    Haut: 2 Netzwechsel (nach 200 ms 10964 → 11308, nach 2368 ms 11308 → 10649), Bewegung bei gleichem Netz in 5 Bildern (größte je Bild 6.00, von 1116 bis 1205 ms) · am Ende gegen vorher bis 6.00 (99 % 5.67, Mittel 0.83) bei (8, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.15, in 0 Bildern über 0,18 (Folge: 0.15 0.10 0.09 0.02 0.02) · es bleibt bis 0.16 (99 % 0.11, Mittel 0.02)
+    Hintergrund: gesetzte Haut nach 840 ms (7 Runden), Auftrag 6 angewendet [verdichten/Zeilen/zerlegen/setzen 111/39/246/23] nach 437 ms · im Fenster: neu gerechnet 53, vorgerechnet 0, zerlegt 21 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=14000 &loopsetzen=0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (10964 → 10708 Punkte): Drücken 533 ms, zerlegt beim Greifen 508 ms; der Griff begann sofort; fern vom Griff je Bild ab dem Drücken: 5.27 7.76 2.24 1.21 0.27 0.13 0.09 0.05 0.03 0.02 0.01 0.01 0.01 0.00 (größter 7.76)
+    Fenster: 3 Halte über 50 ms, zusammen 675 ms: 535 ms (endet nach 725 ms), 86 ms (endet nach 189 ms), 55 ms (endet nach 808 ms) · Ruhe nach 2295 ms
+    Haut: 2 Netzwechsel (nach 189 ms 10964 → 11308, nach 2295 ms 11308 → 10708), Bewegung bei gleichem Netz in 14 Bildern (größte je Bild 13.98, von 808 bis 1033 ms) · am Ende gegen vorher bis 6.00 (99 % 4.85, Mittel 1.42) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 7.76, in 5 Bildern über 0,18 (Folge: 5.27 7.76 2.24 1.21 0.27 0.13 0.09 0.05 0.03 0.02 0.01 0.01 0.01 0.00) · es bleibt bis 1.90 (99 % 1.75, Mittel 0.49) bei (-125, -85, -14)
+    Hintergrund: Auftrag 5 angewendet [verdichten/Zeilen/zerlegen/setzen 106/42/268/46] nach 478 ms · im Fenster: neu gerechnet 50, vorgerechnet 0, zerlegt 508 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=14000 &nachlauf=0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (10964 → 10708 Punkte): Drücken 328 ms, zerlegt beim Greifen 304 ms; der Griff begann sofort; fern vom Griff je Bild ab dem Drücken: 5.27 7.76 2.24 1.21 0.27 0.13 0.09 0.05 0.03 0.02 0.01 0.01 0.01 0.00 … (größter 7.76)
+    Fenster: 4 Halte über 50 ms, zusammen 851 ms: 339 ms (endet nach 2067 ms), 329 ms (endet nach 522 ms), 101 ms (endet nach 1712 ms), 81 ms (endet nach 192 ms) · Ruhe nach 2067 ms
+    Haut: 2 Netzwechsel (nach 192 ms 10964 → 11308, nach 1712 ms 11308 → 10708), Bewegung bei gleichem Netz in 16 Bildern (größte je Bild 13.98, von 592 bis 2067 ms) · am Ende gegen vorher bis 6.00 (99 % 4.85, Mittel 1.42) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 7.76, in 5 Bildern über 0,18 (Folge: 5.27 7.76 2.24 1.21 0.27 0.13 0.09 0.05 0.03 0.02 0.01 0.01 0.01 0.00 …) · es bleibt bis 1.90 (99 % 1.75, Mittel 0.49) bei (-125, -85, 14)
+    Hintergrund: kein neuer Auftrag · im Fenster: neu gerechnet 46, vorgerechnet 290, zerlegt 304 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=30000 
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (23452 → 23505 Punkte): Drücken 12 ms, zerlegt beim Greifen 36 ms; der Griff wartete auf die gesetzte Haut (noch 1248 ms nach den Mausschritten); fern vom Griff je Bild ab dem Drücken: 0.14 0.05 0.10 0.12 0.08 0.03 0.01 0.01 (größter 0.14)
+    Fenster: 3 Halte über 50 ms, zusammen 344 ms: 200 ms (endet nach 309 ms), 80 ms (endet nach 1722 ms), 64 ms (endet nach 1785 ms) · Ruhe nach 5843 ms
+    Haut: 2 Netzwechsel (nach 309 ms 23452 → 23966, nach 5843 ms 23966 → 23505), Bewegung bei gleichem Netz in 8 Bildern (größte je Bild 6.00, von 1722 bis 2020 ms) · am Ende gegen vorher bis 5.99 (99 % 5.67, Mittel 0.85) bei (10, 154, 3)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 0.14, in 0 Bildern über 0,18 (Folge: 0.14 0.05 0.10 0.12 0.08 0.03 0.01 0.01) · es bleibt bis 0.14 (99 % 0.10, Mittel 0.03)
+    Hintergrund: gesetzte Haut nach 1284 ms (7 Runden), Auftrag 7 angewendet [verdichten/Zeilen/zerlegen/setzen 377/152/2395/257] nach 3299 ms · im Fenster: neu gerechnet 124, vorgerechnet 0, zerlegt 36 ms · umgeschlagene Dreiecke 0
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=30000 &loopsetzen=0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (23406 → 23458 Punkte): Drücken 2509 ms, zerlegt beim Greifen 2440 ms; der Griff begann sofort; fern vom Griff je Bild ab dem Drücken: 12.93 24.55 11.81 2.13 1.38 0.61 0.45 0.32 0.27 0.19 0.19 0.12 0.13 0.05 … (größter 24.55)
+    Fenster: 5 Halte über 50 ms, zusammen 2878 ms: 2515 ms (endet nach 2785 ms), 157 ms (endet nach 261 ms), 97 ms (endet nach 2933 ms), 56 ms (endet nach 2989 ms), 53 ms (endet nach 3043 ms) · Ruhe nach 6822 ms
+    Haut: 2 Netzwechsel (nach 261 ms 23406 → 23920, nach 6822 ms 23920 → 23458), Bewegung bei gleichem Netz in 20 Bildern (größte je Bild 39.35, von 2933 bis 3606 ms) · am Ende gegen vorher bis 5.99 (99 % 4.41, Mittel 1.48) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 24.55, in 11 Bildern über 0,18 (Folge: 12.93 24.55 11.81 2.13 1.38 0.61 0.45 0.32 0.27 0.19 0.19 0.12 0.13 0.05 …) · es bleibt bis 1.94 (99 % 1.79, Mittel 0.51) bei (-124, -87, -12)
+    Hintergrund: Auftrag 6 angewendet [verdichten/Zeilen/zerlegen/setzen 312/135/1806/315] nach 2673 ms · im Fenster: neu gerechnet 91, vorgerechnet 0, zerlegt 2440 ms · umgeschlagene Dreiecke 2
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler
+##### &dreiecke=30000 &nachlauf=0
+Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf) (23406 → 23458 Punkte): Drücken 922 ms, zerlegt beim Greifen 873 ms; der Griff begann sofort; fern vom Griff je Bild ab dem Drücken: 12.93 24.55 11.81 2.13 1.38 0.61 0.45 0.32 0.27 0.19 0.19 0.12 0.13 0.05 … (größter 24.55)
+    Fenster: 6 Halte über 50 ms, zusammen 3404 ms: 1108 ms (endet nach 3810 ms), 940 ms (endet nach 4776 ms), 923 ms (endet nach 1181 ms), 205 ms (endet nach 2675 ms), 154 ms (endet nach 257 ms) · Ruhe nach 4776 ms
+    Haut: 3 Netzwechsel (nach 257 ms 23406 → 23920, nach 2675 ms 23920 → 23448, nach 3810 ms 23448 → 23458), Bewegung bei gleichem Netz in 21 Bildern (größte je Bild 39.35, von 1278 bis 4776 ms) · am Ende gegen vorher bis 5.99 (99 % 4.41, Mittel 1.48) bei (10, 154, 0)
+    fern vom Griff (untere Hälfte, y unter -40): Ausschlag je Bild bis 24.55, in 11 Bildern über 0,18 (Folge: 12.93 24.55 11.81 2.13 1.38 0.61 0.45 0.32 0.27 0.19 0.19 0.12 0.13 0.05 …) · es bleibt bis 1.94 (99 % 1.79, Mittel 0.51) bei (-124, -87, -12)
+    Hintergrund: kein neuer Auftrag · im Fenster: neu gerechnet 91, vorgerechnet 880, zerlegt 873 ms · umgeschlagene Dreiecke 2
+Spiegelgleichheit 0.0e+0 · Konsole: keine Fehler

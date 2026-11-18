@@ -1,0 +1,48 @@
+# Was die Schritte G4 an Florians Firefish (27 770 Punkte) ändern: derselbe Zug und „Kante an/aus“ ohne Hintergrund (&hintergrund=0) und heute
+# 11.11.2026 früh, form-gesichert-zug.mjs. Achtung: &hintergrund=0 ist nicht genau der Stand vor G4 (im Zug lief das Zerlegen seit dem 08.11. schon in einem Worker); für Kante und für das Loslassen gilt er.
+
+## zug-hintergrund=0
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.6 s · 27770 Punkte, größte Koordinate 754 · Auftrag: null
+
+Zug 1: Punkt 4:18 bei (-48, 582, 0) um (0, 60, 0) in der seite, 40 Schritte je 16 ms, halten 400 ms
+  Greifen: erste Bewegung der Haut 1926 ms nach dem Drücken
+  im Zug (57.7 s): 154 Bilder, Abstand Median 40 ms, 95 % 1457 ms, längster 1704 ms · je Runde 33.7 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 2) · 27852 Punkte, größte Koordinate 754
+  nach dem Loslassen: das Fenster steht höchstens 1238 ms still (Bilder über 100 ms Abstand: 1) · letzte Bewegung der Haut nach 0 s, alles ruht nach 1.3 s (ja) · Netzwechsel: 27770 → 27776 nach -55.7 s, 27776 → 27778 nach -52.5 s, 27778 → 27782 nach -50.9 s, 27782 → 27784 nach -49.4 s, 27784 → 27782 nach -47.8 s, 27782 → 27784 nach -46.3 s, 27784 → 27788 nach -44.8 s, 27788 → 27792 nach -43.2 s, 27792 → 27794 nach -41.7 s, 27794 → 27796 nach -40.2 s, 27796 → 27798 nach -34.7 s, 27798 → 27800 nach -31.9 s, 27800 → 27804 nach -30.3 s, 27804 → 27812 nach -28.7 s, 2
+  Auftrag im Hintergrund: null
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27852 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 90 Punkte (42 Kreuzungen) · Zug 32.1 ms · zerlegen 1235 ms · Bereich 27852 von 27852 · verdichtet +2 (99 ms)
+
+Konsole: keine Fehler
+
+## zug-heute
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.6 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,116,1369,0],"gesamt":1510,"einwechseln":2,"angewendet":true,"unruhe":0}
+
+Zug 1: Punkt 4:18 bei (-48, 582, 0) um (0, 60, 0) in der seite, 40 Schritte je 16 ms, halten 400 ms
+  Greifen: erste Bewegung der Haut 325 ms nach dem Drücken
+  im Zug (5.0 s): 156 Bilder, Abstand Median 36 ms, 95 % 57 ms, längster 176 ms · je Runde 32.0 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 3) · 27816 Punkte, größte Koordinate 754
+  nach dem Loslassen: das Fenster steht höchstens 40 ms still (Bilder über 100 ms Abstand: 0) · letzte Bewegung der Haut nach 3.7 s, alles ruht nach 3.8 s (ja) · Netzwechsel: 27770 → 27776 nach -2.8 s, 27776 → 27816 nach -0.9 s, 27816 → 27858 nach 3.7 s
+  Auftrag im Hintergrund: {"nr":6,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":52,"gelegt":5,"durchgaenge":2,"runden":9,"ms":[406,210,2500,519],"gesamt":3710,"einwechseln":23,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27858 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 90 Punkte (42 Kreuzungen) · Zug 30.9 ms · zerlegen 35 ms · Bereich 27816 von 27858 · verdichtet +52 −5 (406 ms)
+
+Konsole: keine Fehler
+
+## kante-hintergrund=0
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.6 s · 27770 Punkte, größte Koordinate 754 · Auftrag: null
+Kante an (Punkt 4:28): das Fenster steht höchstens 2043 ms still, alles ruht nach 7.1 s · 28482 Punkte, nicht endlich 0 · Kante
+Kante aus (Punkt 4:28): das Fenster steht höchstens 5328 ms still, alles ruht nach 22.6 s · 37725 Punkte, nicht endlich 0 · keine Kante
+
+Konsole: keine Fehler
+
+## kante-heute
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.7 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,126,1434,0],"gesamt":1583,"einwechseln":2,"angewendet":true,"unruhe":0}
+Kante an (Punkt 4:28): das Fenster steht höchstens 45 ms still, alles ruht nach 6.9 s · 28480 Punkte, nicht endlich 0 · Kante
+Kante aus (Punkt 4:28): das Fenster steht höchstens 49 ms still, alles ruht nach 19.7 s · 36666 Punkte, nicht endlich 0 · keine Kante
+
+Konsole: keine Fehler

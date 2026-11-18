@@ -1,0 +1,83 @@
+Florians Fall „Hörner, mit dem Griff gespielt“ (08.11.) nachgestellt am 10.11.2026 nachts mit form-drei-faelle.mjs (FALL=hoerner, GPU=1,
+?gewichte=geometrie, Standard-Startnetz, ABLEGEN=fall-hoerner), danach form-netzguete.ts. Sein Bild vom 08.11. zeigte 18 234 bzw. 26 284 Punkte;
+nachgestellt sind es am Ende 7 352.
+
+== fall-hoerner ==
+   ../../apps/editor/pruefen-ausgabe/probewesen/fall-hoerner.eewesen, 0,62 MB; 7352 Punkte im Netz, 3 Loops mit 14 Punkten; gesichert 2026-11-10T18:01:46.843Z; Adresse kurven.html?gewichte=geometrie
+1  Netz: 7.352 Punkte, 14.700 Dreiecke. Startkante (das Maß) 8,64, mittlere Kante jetzt 8,73 (1,01 Startkanten).
+   Fläche 453.268: Ein gleichmäßiges Netz mit der Startkante hätte dort 7.018 Punkte, das Wesen hat 1,05-mal so viele (die Startkugel selbst: rund 1,08-mal).
+2  Kanten nach Länge in Startkanten (Regeln: über 1,75 teilen, unter 0,5 zusammenlegen, auf einer Linie erst unter 0,25):
+                                       Kanten   unter 0,11 0,11–0,25  0,25–0,5  0,5–0,75 0,75–1,25 1,25–1,75 über 1,75
+   alle                                22.050       0,0 %     0,1 %     1,1 %    14,5 %    65,9 %    18,4 %     0,0 %
+   zwischen zwei Punkten auf Linien       642       0,6 %     1,9 %    27,9 %    30,8 %    31,9 %     6,9 %     0,0 %
+   von einer Linie weg                  2.040       0,1 %     0,1 %     1,8 %    23,1 %    55,1 %    19,8 %     0,0 %
+   ohne Punkt auf einer Linie          19.368       0,0 %     0,0 %     0,1 %    13,1 %    68,2 %    18,7 %     0,0 %
+   kürzeste 0,631, längste 15,11 (1,75 Startkanten)
+3  Wo die Punkte liegen (Abstand zur nächsten Linie längs der Fläche; Dichte 1 = wie das Startnetz):
+                                  Punkte   Anteil   Fläche  Dichte  Kante dort
+   auf einer Linie                   594    8,1 %    5,6 %    1,51        0,84
+   bis 1 Startkante daneben          552    7,5 %    6,7 %    1,18        0,93
+   1 bis 2                           828   11,3 %   11,9 %    0,99        1,04
+   2 bis 4                         1.528   20,8 %   21,1 %    1,03        1,02
+   4 bis 8                         2.108   28,7 %   27,8 %    1,08        0,99
+   weiter als 8                    1.742   23,7 %   27,0 %    0,92        1,06
+   Punkte, deren Umgebung mehr als doppelt so dicht ist wie das Startnetz: 425 (5,8 %); mehr als viermal: 104 (1,4 %)
+4  Güte:
+   ganzes Netz: 7352 Punkte, 14700 Dreiecke
+    Kanten: Mittel 8.73, kürzeste 0.63, längste 15.11, Streuung (σ/Mittel) 0.26
+    Wertigkeit: ≤3:0.0 % 4:4.2 % 5:14.9 % 6:61.3 % 7:16.0 % 8:3.4 % ≥9:0.1 %; mittlere Abweichung von 6: 0.47
+    kleinster Winkel je Dreieck: kleinster 0.4°, 1 % 17.1°, 5 % 27.7°, Median 42.6°; unter 20°: 1.4 %, unter 10°: 0.5 %; stumpf (> 90°): 20.7 %
+    längste/kürzeste Kante je Dreieck: Median 1.45, 95 % 2.06, größte 9.12; über 2: 6.2 %, über 4: 0.2 %
+    längste/kürzeste Kante je Punkt: Median 1.77, 95 % 2.64, größte 15.62
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.132, 95 % 0.382; Kotangens-Gewicht negativ: 3.4 %
+   an den Linien (bis 1 Startkante): 1146 Punkte, 3162 Dreiecke
+    Kanten: Mittel 7.80, kürzeste 0.63, längste 14.94, Streuung (σ/Mittel) 0.33
+    Wertigkeit: ≤3:0.2 % 4:12.4 % 5:13.8 % 6:45.0 % 7:21.5 % 8:6.8 % ≥9:0.3 %; mittlere Abweichung von 6: 0.75
+    kleinster Winkel je Dreieck: kleinster 0.4°, 1 % 5.3°, 5 % 18.6°, Median 40.6°; unter 20°: 5.6 %, unter 10°: 2.3 %; stumpf (> 90°): 28.1 %
+    längste/kürzeste Kante je Dreieck: Median 1.52, 95 % 2.61, größte 9.12; über 2: 15.1 %, über 4: 1.1 %
+    längste/kürzeste Kante je Punkt: Median 2.04, 95 % 4.20, größte 15.62
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.143, 95 % 0.443; Kotangens-Gewicht negativ: 4.5 %
+   fern von Linien (weiter als 2 Startkanten): 5378 Punkte, 11566 Dreiecke
+    Kanten: Mittel 8.88, kürzeste 2.92, längste 15.11, Streuung (σ/Mittel) 0.24
+    Wertigkeit: ≤3:0.0 % 4:2.8 % 5:15.1 % 6:64.9 % 7:14.4 % 8:2.7 % ≥9:0.1 %; mittlere Abweichung von 6: 0.41
+    kleinster Winkel je Dreieck: kleinster 14.4°, 1 % 24.3°, 5 % 30.2°, Median 43.0°; unter 20°: 0.2 %, unter 10°: 0.0 %; stumpf (> 90°): 18.5 %
+    längste/kürzeste Kante je Dreieck: Median 1.43, 95 % 1.93, größte 3.03; über 2: 3.6 %, über 4: 0.0 %
+    längste/kürzeste Kante je Punkt: Median 1.74, 95 % 2.41, größte 4.46
+    Tangentialanteil des gleichen Laplace / mittlere Kante: Median 0.134, 95 % 0.374; Kotangens-Gewicht negativ: 3.0 %
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 18; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 2, unter 5°: 30, unter 10°: 74, unter 20°: 204 (von 14.700); Punkte mit höchstens drei Nachbarn: 2 (davon auf Linien 2), mit vier: 310
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 6; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 2; sonst mit einer Ecke auf einer Linie 14; ohne Ecke auf einer Linie 8
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 4
+      1  bei (11, 235, 227): 16 Dreiecke, kleinster Winkel 1,11°, 7 umgeklappt, 1 Punkte mit ≤ 3 Nachbarn, kürzeste Kante 0,073 Startkanten, 0,0 Startkanten von der nächsten Linie
+      2  bei (10, 135, 61): 1 Dreiecke, kleinster Winkel 0,45°, kürzeste Kante 0,264 Startkanten, 0,0 Startkanten von der nächsten Linie
+      3  bei (11, 57, 139): 1 Dreiecke, kleinster Winkel 4,13°, kürzeste Kante 0,311 Startkanten, 0,0 Startkanten von der nächsten Linie
+      4  bei (11, 113, 94): 1 Dreiecke, kleinster Winkel 4,20°, kürzeste Kante 0,108 Startkanten, 0,0 Startkanten von der nächsten Linie
+6  Rundung (ohne Kanten): Drehung der Normale über eine Kante: Median 3,8°, 95 % 9,3°, 99 % 13,7°, größte 175,8°; über 15°: 0,7 %, über 25°: 0,1 %
+   Sehnenfehler je Kante (Länge × Drehung / 8): Median 0,069, 95 % 0,211, 99 % 0,301, größter 4,45; über 0,2: 6,0 %, über 0,8: 0,1 % (die Linien dieses Wesens werden auf 0,22 genau aufgelöst)
+   Schätzung, wie viele Punkte für die Rundung genügten (Kante überall so lang, dass der Sehnenfehler gerade erreicht wird, höchstens 15 Einheiten): für 0,2: 4.855 Punkte; für 0,8: 2.384; ohne Obergrenze der Kante: 4.833 bzw. 1.208. Das Wesen hat 7.352.
+   Zu grob für 0,2: auf 0,4 % der Fläche sind die Kanten mehr als 1,5-mal so lang wie dafür nötig.
+7  Linien: 3; Punkte auf Linien im Netz 594 (8,1 %)
+   Abstand der Proben in Startkanten: Median 0,69, 5 % 0,27, kleinster 0,105; unter 0,25: 2,2 %, unter 0,5: 27,1 %
+     Loop   1 ring    3 Punkte,   95 Proben auf    473 (Abstand im Mittel 0,58, kleinster 0,253 Startkanten)
+     Loop   2 mitte   4 Punkte,  130 Proben auf    947 (Abstand im Mittel 0,84, kleinster 0,290 Startkanten)
+     Loop   3 ring    7 Punkte,  142 Proben auf    820 (Abstand im Mittel 0,67, kleinster 0,105 Startkanten)
+
+
+---- Verlauf der Probe (Punkte je Zug) ----
+  (Netz vor dem Loslassen: 5478 Punkte, 10952 Dreiecke, größte Koordinate 258.5, nicht endlich 0; Endstand: 6468 Punkte)
+  (Netz vor dem Loslassen: 6468 Punkte, 12932 Dreiecke, größte Koordinate 256.3, nicht endlich 0; Endstand: 6458 Punkte)
+  (Netz vor dem Loslassen: 6458 Punkte, 12912 Dreiecke, größte Koordinate 262.2, nicht endlich 0; Endstand: 6546 Punkte)
+  (Netz vor dem Loslassen: 6546 Punkte, 13088 Dreiecke, größte Koordinate 255.1, nicht endlich 0; Endstand: 6560 Punkte)
+  (Netz vor dem Loslassen: 6560 Punkte, 13116 Dreiecke, größte Koordinate 252.3, nicht endlich 0; Endstand: 6562 Punkte)
+  (Netz vor dem Loslassen: 6562 Punkte, 13120 Dreiecke, größte Koordinate 262.0, nicht endlich 0; Endstand: 6576 Punkte)
+  (Netz vor dem Loslassen: 6576 Punkte, 13148 Dreiecke, größte Koordinate 237.8, nicht endlich 0; Endstand: 6292 Punkte)
+  (Netz vor dem Loslassen: 6292 Punkte, 12580 Dreiecke, größte Koordinate 241.4, nicht endlich 0; Endstand: 6134 Punkte)
+  (Netz vor dem Loslassen: 6134 Punkte, 12264 Dreiecke, größte Koordinate 245.0, nicht endlich 0; Endstand: 6156 Punkte)
+  (Netz vor dem Loslassen: 6156 Punkte, 12308 Dreiecke, größte Koordinate 263.2, nicht endlich 0; Endstand: 6660 Punkte)
+  (Netz vor dem Loslassen: 6660 Punkte, 13316 Dreiecke, größte Koordinate 256.1, nicht endlich 0; Endstand: 7070 Punkte)
+  (Netz vor dem Loslassen: 7070 Punkte, 14136 Dreiecke, größte Koordinate 250.3, nicht endlich 0; Endstand: 7042 Punkte)
+  (Netz vor dem Loslassen: 7042 Punkte, 14080 Dreiecke, größte Koordinate 283.2, nicht endlich 0; Endstand: 7352 Punkte)
+  Endstand gegen vor dem Loslassen: bewegt bis 2.5, Volumen -0.84 %
+  Griff (Welt) 107.7 → 107.7 lang · Linie: größte Drehung von Probe zu Probe 45.8°, Selbstkreuzungen in der Front 0
+
+fall-hoerner: gesichert: „fall-hoerner“ (7352 Punkte im Netz, 3 Loops mit 14 Punkten, 0.6 MB)

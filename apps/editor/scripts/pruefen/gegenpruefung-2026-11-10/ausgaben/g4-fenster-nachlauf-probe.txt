@@ -1,0 +1,39 @@
+=== form-nachlauf-probe.mjs, 5 200 Punkte (GPU=1)
+gut  A sofort ⌘Z: Stand gegen vor dem Zug 0.0e+0 (beim Loslassen: Nachlauf true, Hintergrund false)
+gut  A bleibt: 3 s später 0.0e+0, 4966 Punkte (vorher 4966); Auftrag im Hintergrund: keiner
+gut  B Hintergrund: Auftrag angewendet, 4966 → 5274 Punkte, 2-mal verdichtet
+gut  B ⌘Z: Stand gegen vor dem Zug 0.0e+0, 4966 Punkte
+gut  C gleich wieder gegriffen: beim ersten Loslassen Nachlauf true, Hintergrund false; zerlegt beim zweiten Greifen 1 ms; Punkt jetzt bei y 258.8 (Start 154.0), 5384 Punkte, Auftrag angewendet
+gut  C zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  D ⌘Z im Hintergrund: Hintergrund rechnete ja; Stand gegen vor dem Zug 0.0e+0
+gut  D bleibt: später 0.0e+0, 4966 Punkte (vorher 4966); Auftrag verfallen
+gut  E Kante im Hintergrund: Hintergrund rechnete ja; Auftrag verfallen; die Kante im Fenster neu gerechnet in 206 ms, 4966 Punkte
+gut  E zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  F Loop im Hintergrund: Hintergrund rechnete ja; Loops 3 → 4; Auftrag verfallen; 5214 Punkte
+gut  F zwei Schritte zurück: Stand gegen den Anfang 0.0e+0, Loops 3
+gut  H Fehler im Auftrag: Hintergrund rechnete ja; im Fenster verdichtet: 4966 → 5074 Punkte; das späte Ergebnis des Auftrags: keiner
+gut  H ein Schritt zurück: Stand gegen den Anfang 0.0e+0
+gut  G Ausfall: Hintergrund rechnete ja; ohne Hintergrund weiter: true; 4966 → 5074 Punkte (im Fenster verdichtet 110 neu)
+gut  G Zug ohne Hintergrund: Punkt 214.0 → 264.0, 5378 Punkte, kein Nachlauf und kein Auftrag (wie mit ?hintergrund=0)
+gut  Spiegelgleichheit: 0
+gut  Konsole: keine Fehler
+
+=== form-nachlauf-probe.mjs, 11 000 Punkte (&dreiecke=14000, GPU=1)
+gut  A sofort ⌘Z: Stand gegen vor dem Zug 0.0e+0 (beim Loslassen: Nachlauf true, Hintergrund false)
+gut  A bleibt: 3 s später 0.0e+0, 10609 Punkte (vorher 10609); Auftrag im Hintergrund: keiner
+gut  B Hintergrund: Auftrag angewendet, 10609 → 11349 Punkte, 2-mal verdichtet
+gut  B ⌘Z: Stand gegen vor dem Zug 0.0e+0, 10609 Punkte
+gut  C gleich wieder gegriffen: beim ersten Loslassen Nachlauf true, Hintergrund false; zerlegt beim zweiten Greifen 3 ms; Punkt jetzt bei y 258.8 (Start 154.0), 11596 Punkte, Auftrag angewendet
+gut  C zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  D ⌘Z im Hintergrund: Hintergrund rechnete ja; Stand gegen vor dem Zug 0.0e+0
+gut  D bleibt: später 0.0e+0, 10609 Punkte (vorher 10609); Auftrag verfallen
+gut  E Kante im Hintergrund: Hintergrund rechnete ja; Auftrag verfallen; die Kante im Fenster neu gerechnet in 493 ms, 10617 Punkte
+gut  E zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  F Loop im Hintergrund: Hintergrund rechnete ja; Loops 3 → 4; Auftrag verfallen; 10959 Punkte
+gut  F zwei Schritte zurück: Stand gegen den Anfang 0.0e+0, Loops 3
+gut  H Fehler im Auftrag: Hintergrund rechnete ja; im Fenster verdichtet: 10609 → 10939 Punkte; das späte Ergebnis des Auftrags: keiner
+gut  H ein Schritt zurück: Stand gegen den Anfang 0.0e+0
+gut  G Ausfall: Hintergrund rechnete ja; ohne Hintergrund weiter: true; 10609 → 10939 Punkte (im Fenster verdichtet 342 neu)
+gut  G Zug ohne Hintergrund: Punkt 214.0 → 264.0, 11619 Punkte, kein Nachlauf und kein Auftrag (wie mit ?hintergrund=0)
+gut  Spiegelgleichheit: 0
+gut  Konsole: keine Fehler

@@ -1,0 +1,47 @@
+teat firefish: 27770 Punkte, Fläche 1.773.192
+
+— Hals: Ringe 14, 16, 17, bis zur Spitze; Länge 483, halbe Höhe der Ringe 56 / 43 / 23
+  Haut dort: 1831 Punkte, 5,8 % der Fläche · Loft-Netz gleich dicht: 1825 Punkte
+  Ringenden neben der Seitenlinie: 0,000 · größte Korrektur durch die dritte Führung: 0,00
+  Abstand heutige Haut → Loft: Median 1,43, 90 % 5,15, 99 % 6,82, größter 7,57 Einheiten (= 3,5 / 12,6 / 16,7 / 18,6 % der halben Höhe); im Mittel liegt die Haut 0,58 außerhalb des Lofts
+  Ringe → Loft (muss 0 sein): Ring 14 0,044, Ring 16 0,010, Ring 17 0,005
+  Knick am ersten Ring, würde man den Loft dort an die übrige Haut setzen (23 Stellen): Median 11,5°, größter 71,3°
+  Zeit: Loft neu aus den Kurven 0,30 ms (kleinste von 40; mittlere 0,37 ms) für 1825 Punkte
+  /Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/pruefen-ausgabe/loft/teat-firefish-loft-hals.html
+
+— Schwanz: Ringe 6, 9, Führung 7, bis zur Spitze; Länge 382, halbe Höhe der Ringe 64 / 50
+  Haut dort: 1346 Punkte, 4,5 % der Fläche · Loft-Netz gleich dicht: 1345 Punkte
+  Ringenden neben der Seitenlinie: 0,000 · größte Korrektur durch die dritte Führung: 8,03
+  Abstand heutige Haut → Loft: Median 0,21, 90 % 0,81, 99 % 1,83, größter 1,97 Einheiten (= 0,4 / 1,4 / 3,2 / 3,4 % der halben Höhe); im Mittel liegt die Haut 0,13 innerhalb des Lofts
+  Ringe → Loft (muss 0 sein): Ring 6 0,049, Ring 9 0,058
+  Knick am ersten Ring, würde man den Loft dort an die übrige Haut setzen (23 Stellen): Median 3,0°, größter 7,6°
+  Zeit: Loft neu aus den Kurven 2,86 ms (kleinste von 40; mittlere 3,11 ms) für 1345 Punkte
+  /Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/pruefen-ausgabe/loft/teat-firefish-loft-schwanz.html
+
+— Halsansatz mit Abzweigung: Ringe 13, 14; Länge 296, halbe Höhe der Ringe 61 / 56
+  Haut dort: 717 Punkte, 2,1 % der Fläche · Loft-Netz gleich dicht: 864 Punkte
+  Ringenden neben der Seitenlinie: 0,000 · größte Korrektur durch die dritte Führung: 0,00
+  Abstand heutige Haut → Loft: Median 8,83, 90 % 27,61, 99 % 34,39, größter 36,58 Einheiten (= 15,0 / 47,0 / 58,5 / 62,2 % der halben Höhe); im Mittel liegt die Haut 11,50 innerhalb des Lofts
+  Ringe → Loft (muss 0 sein): Ring 13 0,017, Ring 14 0,031
+  Knick am ersten Ring, würde man den Loft dort an die übrige Haut setzen (23 Stellen): Median 18,0°, größter 43,4°
+  Zeit: Loft neu aus den Kurven 0,16 ms (kleinste von 40; mittlere 0,17 ms) für 864 Punkte
+  /Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/pruefen-ausgabe/loft/teat-firefish-loft-halsansatz-mit-abzweigung.html
+
+Schläuche mit Spitze zusammen: 10,3 % der Fläche
+/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/pruefen-ausgabe/loft/teat-firefish-loft.html
+
+=== Derselbe Zug: Loft gegen Löser der Grundform (über die ganze Haut, nach der Geometrie) ===
+Löser anlegen mit Zerlegen: 1.851 ms
+
+— Hals: Ring 16, oberes Ende (-40, 470) um 30 Einheiten nach außen; bewegte Loops: 4, 16
+  Loft: 0,30 ms je Schritt (kleinste von 40; mittlere 0,58 ms), fertig in einem Schritt, ändert nur diesen Schlauch
+  Löser: anlegen 108 ms, dann 7 Runden bis zur Ruhe = 355 ms (je Runde 50,7 ms; größter Weg je Runde: 30,00 6,08 1,05 0,64 0,26 0,08 0,04 …)
+  Löser bewegt im Schlauch bis 30,0 Einheiten, außerhalb bis 0,5 (2 Punkte über 0,5)
+  nach dem Zug: Haut des Lösers → Loft: Median 2,03, 90 % 11,57, 99 % 16,69, größter 17,29 Einheiten (= 5,0 / 28,4 / 41,0 / 42,4 % der halben Höhe); im Mittel liegt die Haut 2,37 außerhalb des Lofts
+
+— Schwanz: Ring 9, oberes Ende (430, 110) um 30 Einheiten nach außen; bewegte Loops: 4, 9
+  Loft: 2,86 ms je Schritt (kleinste von 40; mittlere 3,16 ms), fertig in einem Schritt, ändert nur diesen Schlauch
+  Löser: anlegen 56 ms, dann 8 Runden bis zur Ruhe = 353 ms (je Runde 44,2 ms; größter Weg je Runde: 30,00 4,81 0,83 0,37 0,19 0,15 0,09 0,05 …)
+  Löser bewegt im Schlauch bis 30,0 Einheiten, außerhalb bis 1,2 (31 Punkte über 0,5)
+  nach dem Zug: Haut des Lösers → Loft: Median 0,59, 90 % 3,14, 99 % 5,44, größter 5,79 Einheiten (= 1,0 / 5,5 / 9,5 / 10,1 % der halben Höhe); im Mittel liegt die Haut 0,96 außerhalb des Lofts
+/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/pruefen-ausgabe/loft/teat-firefish-loft-zug.html

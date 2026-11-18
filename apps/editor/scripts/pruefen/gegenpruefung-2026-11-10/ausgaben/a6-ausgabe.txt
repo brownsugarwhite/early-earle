@@ -1,0 +1,17 @@
+WebAssembly-Modul aus kern.wasm.o: Importe memory __linear_memory; Funktionen chol=0, loesen_k=1, loesen3=2, loesen_super=3
+
+## 5222 Punkte, nnz(L) 616127 (WebAssembly in Node v25.8.1)
+| Kern | Median ms | Minimum ms | Unterschied zu JavaScript |
+| --- | --- | --- | --- |
+| Zerlegen (Baum + Muster + Werte) | 33.64 | 31.95 | 0.0e+0 |
+| Lösen 3 Spalten, wie der Code heute (Schleife über c) | 2.36 | 1.72 | 0.0e+0 |
+| Lösen 3 Spalten, ausgeschrieben, getrennte Felder | 1.00 | 0.91 | 9.5e-11 |
+| Lösen 3 Spalten, Superknoten | 1.10 | 0.99 | 1.8e-10 |
+
+## 10964 Punkte, nnz(L) 1498335 (WebAssembly in Node v25.8.1)
+| Kern | Median ms | Minimum ms | Unterschied zu JavaScript |
+| --- | --- | --- | --- |
+| Zerlegen (Baum + Muster + Werte) | 102.61 | 100.69 | 0.0e+0 |
+| Lösen 3 Spalten, wie der Code heute (Schleife über c) | 4.97 | 4.18 | 0.0e+0 |
+| Lösen 3 Spalten, ausgeschrieben, getrennte Felder | 2.47 | 2.26 | 5.5e-10 |
+| Lösen 3 Spalten, Superknoten | 2.61 | 2.37 | 7.2e-10 |

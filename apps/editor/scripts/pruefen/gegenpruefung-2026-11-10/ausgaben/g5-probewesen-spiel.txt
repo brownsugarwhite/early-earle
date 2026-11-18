@@ -1,0 +1,10 @@
+form-probewesen.mjs mit SPIEL=30 (10.11.2026, 5 200 Punkte am Start, ?gewichte=geometrie): mit dem Ohr und dem Kopf gespielt, je 30-mal
+hinaus und zurück an dieselbe Stelle. Die Form ist am Ende dieselbe (Fläche 458 353 → 458 342 nach je 6-mal), das Netz nicht.
+
+probe-5k-lang-kugel: gesichert: „probe-5k-lang-kugel“ (5222 Punkte im Netz, 3 Loops mit 10 Punkten, 0.4 MB)
+probe-5k-lang-hals: gesichert: „probe-5k-lang-hals“ (6021 Punkte im Netz, 4 Loops mit 16 Punkten, 0.5 MB)
+probe-5k-lang-wesen: gesichert: „probe-5k-lang-wesen“ (7090 Punkte im Netz, 4 Loops mit 17 Punkten, 0.6 MB)
+  Ohr, 30-mal hinaus und zurück, Punkte im Netz nach jedem Mal: 7090 7324 7348 7368 7376 7376 7380 7392 7404 7424 7446 7436 7440 7438 7440 7436 7460 7446 7446 7462 7466 7480 7494 7484 7478 7492 7502 7506 7504 7524 7524
+  Kopf, 30-mal hinaus und zurück, Punkte im Netz nach jedem Mal: 7524 7716 7716 7722 7722 7726 7720 7724 7730 7732 7734 7734 7738 7736 7742 7746 7750 7756 7760 7762 7760 7764 7758 7766 7768 7770 7766 7764 7760 7764 7768
+probe-5k-lang-spiel: gesichert: „probe-5k-lang-spiel“ (7768 Punkte im Netz, 4 Loops mit 17 Punkten, 0.7 MB)
+am Ende 7768 Punkte, 4 Loops · Konsole: keine Fehler

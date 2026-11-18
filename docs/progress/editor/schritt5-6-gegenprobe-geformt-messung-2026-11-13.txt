@@ -1,0 +1,28 @@
+Gegenproben zu den Beweisen der Schritte 5 und 6 an Florians Weg (13.11.2026, 18 Uhr)
+Florian: „Ich kann doch jedes beliebige Maul auch mit dem jetzigen Mesh von Hand formen […]“ und „[…] dann ist es ja ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“
+
+== 1. Ein Maul mit Linien geformt, wie von Hand (form-maul-geformt.ts) ==
+Kugel mit drei Loops, 2710 Punkte: Punkt vorn 110 nach innen gezogen (40 Schritte): steht nach 84 Runden; Bucht 110,0 tief; Linien bis 0,00 neben ihrem Pfad; Knicke über 60° 0 → 0, umgeschlagen 0 → 0; Vorsicht 0
+
+== 2. Florians Form „maul handgemacht test“: Knochen und Pose (form-pose-geformt.ts, LIPPE=14) ==
+Form „maul handgemacht test“: 3485 Punkte, 13 Loops, Maschenweite 15,3; x -371,6 … 359,7, y -172,7 … 227,2, halbe Breite 61,5
+   Loop 7 (Nr. 0): ring, 26 Proben, Länge 179,5, 4 Punkte (4 sichtbar); von (151,6, -28,8, 0,0) bis (104,1, 75,1, 0,0)
+   Loop 8 (Nr. 1): ring, 32 Proben, Länge 189,4, 3 Punkte (3 sichtbar); von (-22,2, 119,6, 0,0) bis (-371,6, 132,9, 0,0)
+   Loop 4 (Nr. 2): ring, 13 Proben, Länge 61,0, 2 Punkte (2 sichtbar); von (2,7, -172,7, 0,0) bis (6,6, -117,4, 0,0)
+   Loop 9 (Nr. 3): ring, 17 Proben, Länge 21,1, 4 Punkte (4 sichtbar); von (21,5, -10,7, 0,0) bis (28,0, 35,1, 0,0)
+   Loop 10 (Nr. 4): ring, 27 Proben, Länge 183,7, 3 Punkte (3 sichtbar); von (25,5, 146,7, 0,0) bis (6,1, 226,3, 0,0)
+   Loop 3 (Nr. 5): mitte, 186 Proben, Länge 966,4, 17 Punkte (17 sichtbar); von (-81,5, -135,6, 0,0) bis (-103,1, -122,0, 0,0)
+   Loop 6 (Nr. 6): mitte, 53 Proben, Länge 384,0, 4 Punkte (4 sichtbar); von (28,7, -114,4, 0,0) bis (16,7, -117,2, 0,0)
+   Loop 11 (Nr. 7): mitte, 50 Proben, Länge 320,7, 4 Punkte (4 sichtbar); von (104,1, 75,1, 0,0) bis (105,0, 79,8, 0,0)
+   Loop 12 (Nr. 8): ring, 33 Proben, Länge 191,3, 4 Punkte (4 sichtbar); von (147,9, 190,3, 0,0) bis (185,7, 4,0, 0,0)
+   Loop 13 (Nr. 9): ring, 57 Proben, Länge 443,6, 5 Punkte (5 sichtbar); von (-5,4, -13,5, 0,0) bis (351,3, 162,1, 0,0)
+   Loop 14 (Nr. 10): ring, Kante, 66 Proben, Länge 535,4, 7 Punkte (7 sichtbar); von (-293,5, 118,5, 0,0) bis (-232,4, -10,8, 0,0)
+   Loop 15 (Nr. 11): ring, 29 Proben, Länge 185,5, 4 Punkte (4 sichtbar); von (-206,8, 211,3, 0,0) bis (-202,8, 115,8, 0,0)
+   Loop 16 (Nr. 12): ring, 17 Proben, Länge 132,0, 3 Punkte (3 sichtbar); von (-147,4, -13,7, 0,0) bis (-166,4, -78,1, 0,0)
+Lippenlinie: Loop 14; Mundwinkel an Probe 36 bei (-41,4, 35,2); mit dem Unterkiefer drehen 226 Punkte ganz, 400 zum Teil; (die Maul-Funktion von heute würde 622 Dreiecke als Öffnung wegschneiden: die Innenseiten der Kiefer)
+Grundform: Knicke über 60° 96, umgeschlagen 8; zur Ruhe gerechnet in 8 Runden, dabei bis 0,07 bewegt
+Knochen allein: Unterkiefer 20° weiter offen: Knicke über 60° 119, umgeschlagen 12; 20° weiter zu: 134 / 28
+Punkt der Unterlippe 25 nach unten (Loop 14, Punkt 3, gezeigt bei -48,3/6,4/33,5, dreht 20,0°): steht nach 43 Runden; Haut bis 24,8 bewegt, fern vom Maul bis 0,00; Linien bis 0,00 neben ihrem Pfad; gezeigt: Knicke über 60° 101, umgeschlagen 12; Vorsicht 0
+derselbe Punkt 25 nach oben (auf den Oberkiefer zu) (Loop 14, Punkt 3, gezeigt bei -48,3/6,4/33,5, dreht 20,0°): steht nach 43 Runden; Haut bis 24,8 bewegt, fern vom Maul bis 0,00; Linien bis 0,00 neben ihrem Pfad; gezeigt: Knicke über 60° 123, umgeschlagen 12; Vorsicht 0
+derselbe Punkt 70 nach oben (Loop 14, Punkt 3, gezeigt bei -48,3/6,4/33,5, dreht 20,0°): steht nach 54 Runden; Haut bis 69,5 bewegt, fern vom Maul bis 0,00; Linien bis 0,00 neben ihrem Pfad; gezeigt: Knicke über 60° 151, umgeschlagen 20; Vorsicht 0
+Punkt fern vom Maul 25 nach außen (Loop 12, Punkt 2, gezeigt bei 245,8/83,0/39,7, dreht 0,0°): steht nach 42 Runden; Haut bis 25,0 bewegt, fern vom Maul bis 25,00; Linien bis 0,00 neben ihrem Pfad; gezeigt: Knicke über 60° 119, umgeschlagen 12; Vorsicht 0

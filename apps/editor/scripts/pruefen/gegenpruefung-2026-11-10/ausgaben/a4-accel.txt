@@ -1,0 +1,10 @@
+
+## 5222 Punkte (Apple Accelerate, dünn besetzte Cholesky-Zerlegung)
+Zerlegen ganz (Ordnung + symbolisch + Werte): Median 6.52 ms, Minimum 5.46 ms; Faktor 45.4 MB (unser L: 7.4 MB)
+nur Werte neu (gleiches Muster, SparseRefactor): Median 1.32 ms, Minimum 1.16 ms
+Lösen 3 Spalten: Median 0.76 ms, Minimum 0.72 ms; Unterschied zur JavaScript-Lösung 8.5e-09
+
+## 10964 Punkte (Apple Accelerate, dünn besetzte Cholesky-Zerlegung)
+Zerlegen ganz (Ordnung + symbolisch + Werte): Median 12.26 ms, Minimum 11.58 ms; Faktor 112.1 MB (unser L: 18.0 MB)
+nur Werte neu (gleiches Muster, SparseRefactor): Median 5.26 ms, Minimum 4.32 ms
+Lösen 3 Spalten: Median 2.08 ms, Minimum 1.69 ms; Unterschied zur JavaScript-Lösung 1.7e-07

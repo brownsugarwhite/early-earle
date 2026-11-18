@@ -1,0 +1,84 @@
+Nachmessung 10.11. nachmittags (Schritt G3), einzeln und nacheinander: loeser/mess7.ts
+=== ruhe, geometrie, 5222 Punkte, 30 Mausschritte mit je 3 Runden, dann 50 Runden ===
+  Anfang: Rauminhalt 14162087, Oberfläche 283133
+  nach dem Zug: Rauminhalt 14162087, Oberfläche 283133
+  die ersten Runden einzeln:
+    Runde 1: Bewegung 3.934, davon Form 3.932 (rms 1.722, 4076 Punkte über 0,18) bei (-67, -67, -111), 70 von der nächsten Linie
+    Runde 2: Bewegung 7.943, davon Form 7.937 (rms 3.368, 4134 Punkte über 0,18) bei (-71, -71, -117), 72 von der nächsten Linie
+    Runde 3: Bewegung 2.947, davon Form 2.944 (rms 1.197, 3502 Punkte über 0,18) bei (-69, -69, -115), 71 von der nächsten Linie
+    Runde 4: Bewegung 1.048, davon Form 1.047 (rms 0.413, 2884 Punkte über 0,18) bei (-69, -69, 114), 71 von der nächsten Linie
+    Runde 5: Bewegung 0.102, davon Form 0.101 (rms 0.027, 0 Punkte über 0,18) bei (-94, -58, -101), 59 von der nächsten Linie
+    Runde 6: Bewegung 0.015, davon Form 0.015 (rms 0.005, 0 Punkte über 0,18) bei (-60, -41, -131), 42 von der nächsten Linie
+    Runde 7: Bewegung 0.025, davon Form 0.025 (rms 0.007, 0 Punkte über 0,18) bei (-94, -58, -101), 59 von der nächsten Linie
+    Runde 8: Bewegung 0.023, davon Form 0.022 (rms 0.005, 0 Punkte über 0,18) bei (-109, -41, -95), 42 von der nächsten Linie
+    Runde 9: Bewegung 0.011, davon Form 0.011 (rms 0.003, 0 Punkte über 0,18) bei (-57, 70, -120), 68 von der nächsten Linie
+    Runde 10: Bewegung 0.009, davon Form 0.009 (rms 0.003, 0 Punkte über 0,18) bei (-69, 73, -112), 76 von der nächsten Linie
+  Runden 0 → 10: netto bis 0.298 (0.0298 je Runde; rms 0.139) bei (-72, -31, -128), 32 von der nächsten Linie, davon längs der Normalen -0.065; im Mittel nach außen -0.0151 · FORM (längs der Normalen) bis -0.117 (0.0117 je Runde) bei (-114, -31, -93) · je Runde größte Bewegung im Mittel 1.6057 (höchstens 7.9430), davon Form im Mittel 1.6043 (höchstens 7.9367) · Rauminhalt 14157413 (-0.03 %), Oberfläche 283070 · 11.6 ms je Runde
+  die ersten Runden einzeln:
+    Runde 11: Bewegung 0.008, davon Form 0.008 (rms 0.003, 0 Punkte über 0,18) bei (-69, -69, -114), 71 von der nächsten Linie
+    Runde 12: Bewegung 0.010, davon Form 0.010 (rms 0.003, 0 Punkte über 0,18) bei (-76, -67, -111), 69 von der nächsten Linie
+  Runden 10 → 25: netto bis 0.021 (0.0014 je Runde; rms 0.007) bei (-76, -67, -111), 69 von der nächsten Linie, davon längs der Normalen -0.021; im Mittel nach außen -0.0040 · FORM (längs der Normalen) bis -0.021 (0.0014 je Runde) bei (-76, -67, -111) · je Runde größte Bewegung im Mittel 0.0036 (höchstens 0.0096), davon Form im Mittel 0.0036 (höchstens 0.0096) · Rauminhalt 14156259 (-0.04 %), Oberfläche 283054 · 5.3 ms je Runde
+  Runden 25 → 50: netto bis 0.006 (0.0002 je Runde; rms 0.003) bei (-53, 58, -128), 59 von der nächsten Linie, davon längs der Normalen 0.002; im Mittel nach außen 0.0006 · FORM (längs der Normalen) bis 0.003 (0.0001 je Runde) bei (-76, -67, -111) · je Runde größte Bewegung im Mittel 0.0025 (höchstens 0.0109), davon Form im Mittel 0.0024 (höchstens 0.0108) · Rauminhalt 14156426 (-0.04 %), Oberfläche 283057 · 4.4 ms je Runde
+=== ruhe, geometrie, 10964 Punkte, 30 Mausschritte mit je 3 Runden, dann 50 Runden ===
+  Anfang: Rauminhalt 14173019, Oberfläche 283248
+  nach dem Zug: Rauminhalt 14173019, Oberfläche 283248
+  die ersten Runden einzeln:
+    Runde 1: Bewegung 3.330, davon Form 3.325 (rms 1.459, 8536 Punkte über 0,18) bei (-68, 71, -109), 74 von der nächsten Linie
+    Runde 2: Bewegung 8.204, davon Form 8.198 (rms 3.468, 9030 Punkte über 0,18) bei (-72, 75, -115), 76 von der nächsten Linie
+    Runde 3: Bewegung 4.559, davon Form 4.557 (rms 1.852, 8304 Punkte über 0,18) bei (-72, 69, -113), 71 von der nächsten Linie
+    Runde 4: Bewegung 0.328, davon Form 0.328 (rms 0.148, 3016 Punkte über 0,18) bei (75, 75, -106), 68 von der nächsten Linie
+    Runde 5: Bewegung 0.037, davon Form 0.037 (rms 0.015, 0 Punkte über 0,18) bei (79, 53, -116), 54 von der nächsten Linie
+    Runde 6: Bewegung 0.028, davon Form 0.028 (rms 0.011, 0 Punkte über 0,18) bei (80, 47, -118), 47 von der nächsten Linie
+    Runde 7: Bewegung 0.012, davon Form 0.012 (rms 0.005, 0 Punkte über 0,18) bei (60, 34, -133), 34 von der nächsten Linie
+    Runde 8: Bewegung 0.013, davon Form 0.013 (rms 0.003, 0 Punkte über 0,18) bei (-73, 76, -107), 79 von der nächsten Linie
+    Runde 9: Bewegung 0.016, davon Form 0.016 (rms 0.005, 0 Punkte über 0,18) bei (-73, 76, -107), 79 von der nächsten Linie
+    Runde 10: Bewegung 0.013, davon Form 0.013 (rms 0.004, 0 Punkte über 0,18) bei (-73, 76, -107), 79 von der nächsten Linie
+  Runden 0 → 10: netto bis 0.358 (0.0358 je Runde; rms 0.157) bei (-86, 28, -120), 28 von der nächsten Linie, davon längs der Normalen -0.006; im Mittel nach außen -0.0033 · FORM (längs der Normalen) bis -0.044 (0.0044 je Runde) bei (20, -137, -59) · je Runde größte Bewegung im Mittel 1.6541 (höchstens 8.2045), davon Form im Mittel 1.6526 (höchstens 8.1980) · Rauminhalt 14171886 (-0.01 %), Oberfläche 283233 · 24.4 ms je Runde
+  die ersten Runden einzeln:
+    Runde 11: Bewegung 0.010, davon Form 0.010 (rms 0.003, 0 Punkte über 0,18) bei (-73, 76, -107), 79 von der nächsten Linie
+    Runde 12: Bewegung 0.008, davon Form 0.008 (rms 0.002, 0 Punkte über 0,18) bei (-72, 69, -112), 71 von der nächsten Linie
+  Runden 10 → 25: netto bis 0.025 (0.0017 je Runde; rms 0.009) bei (-60, 56, -126), 57 von der nächsten Linie, davon längs der Normalen -0.015; im Mittel nach außen -0.0007 · FORM (längs der Normalen) bis -0.015 (0.0010 je Runde) bei (-78, 49, -119) · je Runde größte Bewegung im Mittel 0.0065 (höchstens 0.0129), davon Form im Mittel 0.0064 (höchstens 0.0127) · Rauminhalt 14171684 (-0.01 %), Oberfläche 283230 · 11.4 ms je Runde
+  Runden 25 → 50: netto bis 0.027 (0.0011 je Runde; rms 0.014) bei (-57, 58, -126), 59 von der nächsten Linie, davon längs der Normalen 0.001; im Mittel nach außen -0.0006 · FORM (längs der Normalen) bis -0.008 (0.0003 je Runde) bei (-81, 96, -82) · je Runde größte Bewegung im Mittel 0.0061 (höchstens 0.0155), davon Form im Mittel 0.0059 (höchstens 0.0152) · Rauminhalt 14171529 (-0.01 %), Oberfläche 283228 · 10.3 ms je Runde
+=== ruhe, geometrie, 23406 Punkte, 30 Mausschritte mit je 3 Runden, dann 50 Runden ===
+  Anfang: Rauminhalt 14178098, Oberfläche 283301
+  nach dem Zug: Rauminhalt 14178098, Oberfläche 283301
+  die ersten Runden einzeln:
+    Runde 1: Bewegung 1.571, davon Form 1.562 (rms 0.583, 15718 Punkte über 0,18) bei (-60, 83, -108), 71 von der nächsten Linie
+    Runde 2: Bewegung 5.147, davon Form 5.134 (rms 1.799, 18510 Punkte über 0,18) bei (-62, 81, -115), 72 von der nächsten Linie
+    Runde 3: Bewegung 5.237, davon Form 5.230 (rms 1.712, 18142 Punkte über 0,18) bei (-59, 73, 115), 70 von der nächsten Linie
+    Runde 4: Bewegung 1.148, davon Form 1.147 (rms 0.343, 10074 Punkte über 0,18) bei (-60, 70, -117), 72 von der nächsten Linie
+    Runde 5: Bewegung 0.425, davon Form 0.425 (rms 0.127, 3506 Punkte über 0,18) bei (-60, 66, -121), 68 von der nächsten Linie
+    Runde 6: Bewegung 0.061, davon Form 0.061 (rms 0.019, 0 Punkte über 0,18) bei (-61, 53, -127), 54 von der nächsten Linie
+    Runde 7: Bewegung 0.021, davon Form 0.021 (rms 0.005, 0 Punkte über 0,18) bei (-61, 83, -109), 72 von der nächsten Linie
+    Runde 8: Bewegung 0.007, davon Form 0.006 (rms 0.002, 0 Punkte über 0,18) bei (95, -68, -94), 70 von der nächsten Linie
+    Runde 9: Bewegung 0.009, davon Form 0.009 (rms 0.003, 0 Punkte über 0,18) bei (94, -80, 85), 83 von der nächsten Linie
+    Runde 10: Bewegung 0.013, davon Form 0.013 (rms 0.005, 0 Punkte über 0,18) bei (-86, -91, -83), 86 von der nächsten Linie
+  Runden 0 → 10: netto bis 0.144 (0.0144 je Runde; rms 0.052) bei (-48, 31, -139), 31 von der nächsten Linie, davon längs der Normalen -0.008; im Mittel nach außen -0.0225 · FORM (längs der Normalen) bis -0.074 (0.0074 je Runde) bei (-71, -102, -85) · je Runde größte Bewegung im Mittel 1.3639 (höchstens 5.2369), davon Form im Mittel 1.3609 (höchstens 5.2305) · Rauminhalt 14171868 (-0.04 %), Oberfläche 283218 · 48.7 ms je Runde
+  die ersten Runden einzeln:
+    Runde 11: Bewegung 0.023, davon Form 0.022 (rms 0.008, 0 Punkte über 0,18) bei (-81, -89, -90), 93 von der nächsten Linie
+    Runde 12: Bewegung 0.028, davon Form 0.027 (rms 0.007, 0 Punkte über 0,18) bei (-60, 61, -123), 63 von der nächsten Linie
+  Runden 10 → 25: netto bis 0.097 (0.0065 je Runde; rms 0.041) bei (-52, 56, -129), 57 von der nächsten Linie, davon längs der Normalen -0.023; im Mittel nach außen 0.0110 · FORM (längs der Normalen) bis 0.068 (0.0046 je Runde) bei (-84, -88, -89) · je Runde größte Bewegung im Mittel 0.0355 (höchstens 0.0946), davon Form im Mittel 0.0349 (höchstens 0.0932) · Rauminhalt 14174853 (-0.02 %), Oberfläche 283258 · 31.1 ms je Runde
+  Runden 25 → 50: netto bis 0.149 (0.0060 je Runde; rms 0.067) bei (-54, 55, -129), 56 von der nächsten Linie, davon längs der Normalen 0.016; im Mittel nach außen -0.0019 · FORM (längs der Normalen) bis -0.029 (0.0012 je Runde) bei (-74, -88, -97) · je Runde größte Bewegung im Mittel 0.0346 (höchstens 0.0777), davon Form im Mittel 0.0341 (höchstens 0.0768) · Rauminhalt 14174348 (-0.03 %), Oberfläche 283251 · 28.0 ms je Runde
+=== ohr, geometrie, 23406 Punkte, 30 Mausschritte mit je 3 Runden, dann 400 Runden ===
+  Anfang: Rauminhalt 14178098, Oberfläche 283301
+  nach dem Zug: Rauminhalt 15542328, Oberfläche 322195
+  die ersten Runden einzeln:
+    Runde 1: Bewegung 0.215, davon Form 0.212 (rms 0.047, 206 Punkte über 0,18) bei (-53, 48, -162), 52 von der nächsten Linie
+    Runde 2: Bewegung 0.174, davon Form 0.173 (rms 0.042, 0 Punkte über 0,18) bei (-62, 104, -177), 90 von der nächsten Linie
+    Runde 3: Bewegung 0.170, davon Form 0.164 (rms 0.040, 0 Punkte über 0,18) bei (-73, 93, -165), 92 von der nächsten Linie
+    Runde 4: Bewegung 0.089, davon Form 0.085 (rms 0.020, 0 Punkte über 0,18) bei (-39, 149, -120), 64 von der nächsten Linie
+    Runde 5: Bewegung 0.096, davon Form 0.086 (rms 0.024, 0 Punkte über 0,18) bei (-74, 106, -162), 95 von der nächsten Linie
+    Runde 6: Bewegung 0.049, davon Form 0.026 (rms 0.005, 0 Punkte über 0,18) bei (38, 36, -132), 31 von der nächsten Linie
+    Runde 7: Bewegung 0.057, davon Form 0.043 (rms 0.010, 0 Punkte über 0,18) bei (31, 73, -120), 23 von der nächsten Linie
+    Runde 8: Bewegung 0.046, davon Form 0.028 (rms 0.004, 0 Punkte über 0,18) bei (29, 86, 114), 21 von der nächsten Linie
+    Runde 9: Bewegung 0.048, davon Form 0.023 (rms 0.005, 0 Punkte über 0,18) bei (29, 86, -114), 21 von der nächsten Linie
+    Runde 10: Bewegung 0.045, davon Form 0.019 (rms 0.003, 0 Punkte über 0,18) bei (35, 86, -106), 28 von der nächsten Linie
+  Runden 0 → 10: netto bis 0.509 (0.0509 je Runde; rms 0.163) bei (-93, 113, -111), 104 von der nächsten Linie, davon längs der Normalen -0.135; im Mittel nach außen -0.0296 · FORM (längs der Normalen) bis -0.490 (0.0490 je Runde) bei (30, 84, -116) · je Runde größte Bewegung im Mittel 0.0988 (höchstens 0.2145), davon Form im Mittel 0.0859 (höchstens 0.2121) · Rauminhalt 15531798 (-0.07 %), Oberfläche 322110 · 32.9 ms je Runde
+  die ersten Runden einzeln:
+    Runde 11: Bewegung 0.047, davon Form 0.019 (rms 0.005, 0 Punkte über 0,18) bei (-63, 129, 162), 93 von der nächsten Linie
+    Runde 12: Bewegung 0.043, davon Form 0.016 (rms 0.004, 0 Punkte über 0,18) bei (30, 89, -110), 22 von der nächsten Linie
+  Runden 10 → 25: netto bis 0.619 (0.0413 je Runde; rms 0.178) bei (-93, 113, -110), 104 von der nächsten Linie, davon längs der Normalen 0.081; im Mittel nach außen 0.0181 · FORM (längs der Normalen) bis 0.163 (0.0109 je Runde) bei (-79, -70, -99) · je Runde größte Bewegung im Mittel 0.0459 (höchstens 0.0598), davon Form im Mittel 0.0239 (höchstens 0.0500) · Rauminhalt 15537497 (-0.03 %), Oberfläche 322199 · 26.9 ms je Runde
+  Runden 25 → 50: netto bis 1.037 (0.0415 je Runde; rms 0.290) bei (-95, 113, -105), 105 von der nächsten Linie, davon längs der Normalen 0.042; im Mittel nach außen 0.0068 · FORM (längs der Normalen) bis 0.065 (0.0026 je Runde) bei (-69, 105, 169) · je Runde größte Bewegung im Mittel 0.0456 (höchstens 0.0675), davon Form im Mittel 0.0219 (höchstens 0.0532) · Rauminhalt 15540261 (-0.01 %), Oberfläche 322249 · 28.4 ms je Runde
+  Runden 50 → 100: netto bis 2.083 (0.0417 je Runde; rms 0.583) bei (-95, 113, -103), 103 von der nächsten Linie, davon längs der Normalen -0.024; im Mittel nach außen -0.0033 · FORM (längs der Normalen) bis -0.061 (0.0012 je Runde) bei (-39, 88, -187) · je Runde größte Bewegung im Mittel 0.0457 (höchstens 0.0857), davon Form im Mittel 0.0213 (höchstens 0.0722) · Rauminhalt 15538590 (-0.02 %), Oberfläche 322218 · 30.7 ms je Runde
+  Runden 100 → 200: netto bis 4.091 (0.0409 je Runde; rms 1.147) bei (-97, 112, -100), 100 von der nächsten Linie, davon längs der Normalen 0.029; im Mittel nach außen 0.0016 · FORM (längs der Normalen) bis 0.076 (0.0008 je Runde) bei (-60, 135, -158) · je Runde größte Bewegung im Mittel 0.0460 (höchstens 0.0948), davon Form im Mittel 0.0234 (höchstens 0.0902) · Rauminhalt 15538807 (-0.02 %), Oberfläche 322223 · 27.7 ms je Runde
+  Runden 200 → 400: netto bis 7.946 (0.0397 je Runde; rms 2.233) bei (-99, 110, -97), 97 von der nächsten Linie, davon längs der Normalen 0.068; im Mittel nach außen 0.0046 · FORM (längs der Normalen) bis 0.169 (0.0008 je Runde) bei (-63, 134, -154) · je Runde größte Bewegung im Mittel 0.0442 (höchstens 0.0817), davon Form im Mittel 0.0224 (höchstens 0.0768) · Rauminhalt 15539110 (-0.02 %), Oberfläche 322229 · 31.5 ms je Runde

@@ -1,0 +1,49 @@
+Florians Fall „Hörner, mit dem Griff gespielt“, je drei Läufe im Fenster (form-drei-faelle.mjs, GPU=1, ?gewichte=geometrie):
+alt = &flach=0&nadeln=0 (wie bis zum 10.11.), neu = Standard (G5: kein flaches Dreieck beim Verdichten, Nadeln fallen nach dem Einsetzen zusammen).
+Die Läufe streuen stark (die Haut verknotet an den Hornspitzen, jedes Mal anders).
+
+alt-1, Endstand laut Probe: 7382 Punkte · Volumen 20.466 Mio · Knicke über 60° 30 · umgeklappt 8 · umgestülpt 8 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240)
+alt-2, Endstand laut Probe: 7372 Punkte · Volumen 20.481 Mio · Knicke über 60° 40 · umgeklappt 14 · umgestülpt 16 Dreiecke (0.0 % der Fläche, bei 0,200,-240 | 0,200,240 | 0,240,-240 | 0,240,
+alt-3, Endstand laut Probe: 6496 Punkte · Volumen 15.748 Mio · Knicke über 60° 158 · umgeklappt 48 · umgestülpt 40 Dreiecke (0.0 % der Fläche, bei 0,200,200 | 0,200,-200 | 0,240,240 | 0,240,
+neu-1, Endstand laut Probe: 7424 Punkte · Volumen 20.572 Mio · Knicke über 60° 42 · umgeklappt 18 · umgestülpt 16 Dreiecke (0.0 % der Fläche, bei 0,240,-240 | 0,240,240 | -40,160,80 | -40,16
+neu-2, Endstand laut Probe: 6460 Punkte · Volumen 15.873 Mio · Knicke über 60° 66 · umgeklappt 10 · umgestülpt 8 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240 | 0,200,-240 | 0,200,2
+neu-3, Endstand laut Probe: 7164 Punkte · Volumen 19.214 Mio · Knicke über 60° 52 · umgeklappt 18 · umgestülpt 14 Dreiecke (0.0 % der Fläche, bei 0,240,-240 | 0,240,240 | 0,240,-200 | 0,240,
+
+== hoerner-alt-1 ==
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 8; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 2, unter 5°: 12, unter 10°: 38, unter 20°: 148 (von 14.760); Punkte mit höchstens drei Nachbarn: 4 (davon auf Linien 4), mit vier: 330
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 6; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 6; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 4
+== hoerner-alt-2 ==
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 14; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 4, unter 5°: 18, unter 10°: 64, unter 20°: 214 (von 14.740); Punkte mit höchstens drei Nachbarn: 0 (davon auf Linien 0), mit vier: 335
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 4; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 6; sonst mit einer Ecke auf einer Linie 4; ohne Ecke auf einer Linie 4
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 3
+== hoerner-alt-3 ==
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 48; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 4, unter 5°: 50, unter 10°: 142, unter 20°: 456 (von 12.988); Punkte mit höchstens drei Nachbarn: 6 (davon auf Linien 2), mit vier: 258
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 4; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 2; sonst mit einer Ecke auf einer Linie 2; ohne Ecke auf einer Linie 42
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 10
+== hoerner-neu-1 ==
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 18; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 2, unter 5°: 8, unter 10°: 40, unter 20°: 194 (von 14.844); Punkte mit höchstens drei Nachbarn: 4 (davon auf Linien 4), mit vier: 308
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 0; sonst mit einer Ecke auf einer Linie 4; ohne Ecke auf einer Linie 4
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 3
+== hoerner-neu-2 ==
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 10; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 12, unter 10°: 56, unter 20°: 288 (von 12.916); Punkte mit höchstens drei Nachbarn: 2 (davon auf Linien 2), mit vier: 248
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 2; sonst mit einer Ecke auf einer Linie 0; ohne Ecke auf einer Linie 10
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 5
+== hoerner-neu-3 ==
+5  Fehler: offene Kanten 0, Kanten mit mehr als zwei Dreiecken 0, entartete Dreiecke 0, doppelte Punkte 0, umgeklappte Dreiecke 18; Spiegel: ohne Partner 0, nicht umkehrbar 0, größte Abweichung 0,000000, Dreiecke ohne Spiegelbild 0
+   Dreiecke mit kleinstem Winkel unter 1°: 0, unter 5°: 12, unter 10°: 64, unter 20°: 264 (von 14.324); Punkte mit höchstens drei Nachbarn: 2 (davon auf Linien 2), mit vier: 346
+   die Dreiecke unter 5° nach ihrer Art: flach längs einer Linie (alle drei Ecken auf Linien, keine Kante sehr kurz) 0; Nadel an einer Linie (zwei ihrer Punkte näher als 0,11 Startkanten) 6; sonst mit einer Ecke auf einer Linie 6; ohne Ecke auf einer Linie 0
+   unruhige Stellen (Dreiecke unter 5° oder umgeklappt, Punkte mit höchstens drei Nachbarn; je Seite): 4
+== Übersicht ==
+Wesen                       Punkte gleichm.     × an Linien Dichte nah  fern  < 5° 3/4 Nb. umgekl. Stellen  genügten   (grob)  zu grob
+hoerner-alt-1                7.382    7.070  1,04    15,6 %       1,33  1,01    12     334       8       4     4.763    2.371    0,3 %
+hoerner-alt-2                7.372    7.076  1,04    15,6 %       1,33  1,00    18     335      14       3     5.191    2.541    0,5 %
+hoerner-alt-3                6.496    5.557  1,17    17,5 %       1,31  1,18    50     264      48      10     4.966    2.143    9,8 %
+hoerner-neu-1                7.424    7.108  1,04    15,5 %       1,34  1,01     8     312      18       3     4.835    2.396    0,4 %
+hoerner-neu-2                6.460    5.434  1,19    17,8 %       1,35  1,19    12     250      10       5     4.676    2.062    3,9 %
+hoerner-neu-3                7.164    6.677  1,07    16,3 %       1,37  1,04    12     348      18       4     4.882    2.315    1,0 %

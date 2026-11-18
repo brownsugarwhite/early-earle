@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Form zuerst</title>
+    <link rel="stylesheet" href="./src/form/form.css" />
+  </head>
+  <body>
+    <canvas id="leinwand"></canvas>
+    <main id="raster">
+      <section class="feld" id="feld-seite">
+        <header>Seite</header>
+        <svg class="blatt" id="zeichnung" aria-label="Seitenumriss zeichnen"></svg>
+        <div class="regler-leiste" id="teile-leiste">
+          <label class="regler"><input id="teile-auto" type="checkbox" checked /> Teile von selbst</label>
+          <label class="regler" id="teile-ab">
+            ab <input id="teile-schwelle" type="range" min="0.2" max="3" step="0.1" value="0.5" /> <span id="teile-wert"></span>
+          </label>
+          <button class="regler knopf" id="naht-knopf" type="button" aria-pressed="false">Naht ziehen</button>
+        </div>
+        <footer>
+          Umriss: Punkt ziehen · Klick auf die Linie: neuer Punkt · Doppelklick: Ecke ↔ rund<br />
+          Teile: Einbuchtung tiefer als „ab“ × Öffnung oder „Naht ziehen“ → eigenes Teil · verdeckt gestrichelt, greifbar<br />
+          Auf der Form ziehen: Linie zeichnen · Linie anklicken, dann + − oder 0–3: Strichdicke = Härte · ⌫ löschen · ⌘Z
+          zurück<br />
+          Von außen über den Umriss in die Form ziehen: Maullinie (Ende = Mundwinkel) · gewählte Maullinie anklicken: neuer Punkt ·
+          ⇧-Klick: mehrere Punkte<br />
+          „Kiefer trennen“ im 3D: Oberlippe rot, Unterlippe blau · Lippe anklicken (oder Ober/Unter) wählt den Kiefer · in der Seite
+          ihre Lage, in Front und Top ihre Breite ziehen<br />
+          „Pose“ im 3D: Maul und Kopf mit den Reglern, auf der Form ziehen = Pinsel (Größe mit [ ])
+        </footer>
+      </section>
+      <section class="feld" id="feld-front">
+        <header>Front</header>
+        <svg class="blatt" id="profil-front" aria-label="Front bearbeiten"></svg>
+        <footer>
+          Punkt ziehen · Klick auf den Umriss: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen<br />
+          Getrennte Kiefer: Punkte der gewählten Lippe nach außen oder innen = breiter oder schmaler
+        </footer>
+      </section>
+      <section class="feld" id="feld-top">
+        <header>Top</header>
+        <svg class="blatt" id="profil-top" aria-label="Top bearbeiten"></svg>
+        <footer>Punkt ziehen · Klick auf den Umriss: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen</footer>
+      </section>
+      <section class="feld" id="feld-3d">
+        <header>3D</header>
+        <div class="regler-leiste">
+          <label class="regler" id="spielnetz-schalter">
+            <input id="spielnetz" type="checkbox" /> Spielnetz <span id="spielnetz-info"></span>
+          </label>
+          <label class="regler" id="pose-schalter"><input id="pose" type="checkbox" /> Pose</label>
+          <label class="regler" id="maul-regler" hidden>
+            Maul <input id="maul-oeffnung" type="range" min="0" max="55" step="0.5" value="0" />
+          </label>
+          <label class="regler" id="kopf-regler" hidden>
+            Kopf <input id="kopf-oeffnung" type="range" min="0" max="40" step="0.5" value="0" />
+          </label>
+          <button class="regler knopf" id="kiefer-knopf" type="button" hidden>Kiefer trennen</button>
+          <span class="regler kiefer-wahl" id="kiefer-wahl" hidden>
+            <button type="button" data-kiefer="0">Ober</button><button type="button" data-kiefer="1">Unter</button>
+          </span>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./src/form/main.ts"></script>
+  </body>
+</html>

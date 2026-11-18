@@ -1,0 +1,22 @@
+
+## 5.222 Punkte: ohne Spiegelpartner 0, auf der Mittelebene 132, Kanten ohne Spiegelkante 0, ungleiche Valenz 0
+| System | Unbekannte | nnz(A) | nnz(L) | Zerlegen Mult.+Add. | Lösen je Runde Mult.+Add. | größte Spalte |
+| --- | --- | --- | --- | --- | --- | --- |
+| ganze Haut, 3 Spalten (heute) | 5.222 | 53.914 | 616.127 | 63,8 Mio. | 3,67 Mio. | 447 |
+| halbe Haut, gerade (x, y: 2 Spalten) | 2.677 | 26.928 | 213.846 | 12,5 Mio. | 0,84 Mio. | 233 |
+| halbe Haut, ungerade (z: 1 Spalte) | 2.545 | 25.572 | 201.941 | 12,0 Mio. | 0,40 Mio. | 238 |
+Summe halbe Haut: Zerlegen 24,4 Mio. (38 % von heute), Lösen je Runde 1,24 Mio. (34 % von heute), Speicher nnz(L) 415.787 (67 %)
+gleiche Lösung: größter Unterschied ganze ↔ halbe Haut 3.82e-4 Einheiten; die ganze Lösung selbst ist bis 9.27e-11 spiegelgleich
+Lösen (MIT VORBEHALT): ganze Haut Median 5.22 / Minimum 4.92 ms; halbe Haut (beide Systeme) 2.93 / 2.73 ms
+Zerlegen (ein Lauf): ganz 147 ms; halb gerade 39 ms + ungerade 27 ms
+
+## 10.964 Punkte: ohne Spiegelpartner 0, auf der Mittelebene 192, Kanten ohne Spiegelkante 0, ungleiche Valenz 0
+| System | Unbekannte | nnz(A) | nnz(L) | Zerlegen Mult.+Add. | Lösen je Runde Mult.+Add. | größte Spalte |
+| --- | --- | --- | --- | --- | --- | --- |
+| ganze Haut, 3 Spalten (heute) | 10.964 | 112.766 | 1.498.335 | 211,9 Mio. | 8,92 Mio. | 651 |
+| halbe Haut, gerade (x, y: 2 Spalten) | 5.578 | 56.350 | 529.610 | 40,9 Mio. | 2,10 Mio. | 325 |
+| halbe Haut, ungerade (z: 1 Spalte) | 5.386 | 54.397 | 513.400 | 40,1 Mio. | 1,02 Mio. | 337 |
+Summe halbe Haut: Zerlegen 81,0 Mio. (38 % von heute), Lösen je Runde 3,11 Mio. (35 % von heute), Speicher nnz(L) 1.043.010 (70 %)
+gleiche Lösung: größter Unterschied ganze ↔ halbe Haut 1.69e-3 Einheiten; die ganze Lösung selbst ist bis 5.43e-10 spiegelgleich
+Lösen (MIT VORBEHALT): ganze Haut Median 15.15 / Minimum 14.34 ms; halbe Haut (beide Systeme) 7.34 / 7.04 ms
+Zerlegen (ein Lauf): ganz 323 ms; halb gerade 75 ms + ungerade 73 ms

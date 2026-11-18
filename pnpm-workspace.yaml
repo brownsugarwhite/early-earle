@@ -4,6 +4,8 @@ packages:
   - tools/*
 allowBuilds:
   esbuild: false
+  electron: true
+  electron-winstaller: false
 minimumReleaseAgeExclude:
   - '@typescript-eslint/eslint-plugin@8.71.0'
   - '@typescript-eslint/parser@8.71.0'

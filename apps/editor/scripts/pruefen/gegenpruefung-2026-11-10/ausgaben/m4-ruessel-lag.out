@@ -1,0 +1,15 @@
+Fall ruessel, Teil lag; mittlere Kante 8.09
+
+--- Gewichte geometrie, heute: Zug in 12 Stufen, je Mausschritt eine Runde ---
+  Nachhinken je Stufe (größter Abstand): 0.91 / 0.74 / 1.12 / 1.58 / 1.29 / 0.94 / 0.91 / 0.77 / 0.63 / 0.57 / 0.54 / 0.48
+  Nachhinken je Stufe (Mittel): 0.118 / 0.058 / 0.081 / 0.107 / 0.089 / 0.072 / 0.064 / 0.057 / 0.050 / 0.044 / 0.042 / 0.036
+  Sprung je Stufe (fertig vor ↔ fertig nach dem Vernetzen): 0.20 / 0.22 / 0.33 / 0.44 / 0.97 / 0.42 / 0.59 / 0.77 / 0.70 / 0.51 / 2.11 / 1.06
+  am Ende 5996 Punkte {"offen":0,"mehr":0,"entartet":0,"doppelt":0,"umgeklappt":0}
+
+--- Gewichte geometrie, iso 1,0: Zug in 12 Stufen, je Mausschritt eine Runde ---
+  Nachhinken je Stufe (größter Abstand): 0.27 / 0.31 / 0.88 / 1.35 / 1.07 / 0.81 / 0.66 / 0.67 / 0.59 / 0.53 / 0.51 / 0.48
+  Nachhinken je Stufe (Mittel): 0.054 / 0.034 / 0.064 / 0.088 / 0.075 / 0.058 / 0.048 / 0.047 / 0.041 / 0.038 / 0.036 / 0.035
+  Sprung je Stufe (fertig vor ↔ fertig nach dem Vernetzen): 0.18 / 0.22 / 0.38 / 0.39 / 0.60 / 0.64 / 1.23 / 0.86 / 0.74 / 0.61 / 0.76 / 0.73
+  am Ende 6744 Punkte {"offen":0,"mehr":0,"entartet":0,"doppelt":0,"umgeklappt":0}
+  Endformen heute ↔ iso 1,0: bis 2.31 (99 % 0.30, Mittel 0.065; 6 Punkte über 1) bei (423, 32, 5)
+exit 0

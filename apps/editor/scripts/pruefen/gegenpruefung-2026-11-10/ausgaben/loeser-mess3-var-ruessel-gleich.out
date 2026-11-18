@@ -1,0 +1,24 @@
+
+ruessel/gleich, Variante „Original“: Bewegung je Runde nach dem Zug (größte; cos zum Schritt davor; größter Krümmungsdefekt in Längeneinheiten)
+  1: 2.151 (cos NaN, Defekt 0.246) · 2: 2.062 (cos -0.90, Defekt 0.242) · 3: 2.028 (cos -0.99, Defekt 0.241) · 4: 2.028 (cos -0.92, Defekt 0.238) · 5: 2.842 (cos -0.98, Defekt 0.236) · 6: 2.593 (cos -0.99, Defekt 0.233) · 8: 2.141 (cos -1.00, Defekt 0.224) · 10: 2.585 (cos -1.00, Defekt 0.214) · 15: 2.189 (cos -1.00, Defekt 0.180) · 20: 1.797 (cos -1.00, Defekt 0.144) · 30: 1.094 (cos -1.00, Defekt 0.085) · 50: 0.344 (cos -1.00, Defekt 0.026) · 75: 0.077 (cos -1.00, Defekt 0.006) · 100: 0.017 (cos -0.99, Defekt 0.001) · 150: 0.001 (cos 0.10, Defekt 0.000) · 200: 0.001 (cos 1.00, Defekt 0.000) · 300: 0.001 (cos 1.00, Defekt 0.000)
+  Stand nach dem letzten Mausschritt → nach 300 Runden: Fläche bis 1.34 (99 % 1.15, Mittel 0.202)
+
+ruessel/gleich, Variante „Korrektur ×0,5 (alle Punkte)“: Bewegung je Runde nach dem Zug (größte; cos zum Schritt davor; größter Krümmungsdefekt in Längeneinheiten)
+  1: 0.730 (cos NaN, Defekt 0.239) · 2: 0.847 (cos 0.20, Defekt 0.205) · 3: 0.405 (cos 0.98, Defekt 0.128) · 4: 0.094 (cos 0.09, Defekt 0.090) · 5: 0.150 (cos 0.70, Defekt 0.054) · 6: 0.111 (cos 0.98, Defekt 0.028) · 8: 0.016 (cos 0.22, Defekt 0.009) · 10: 0.016 (cos 0.98, Defekt 0.003) · 15: 0.001 (cos 0.95, Defekt 0.000) · 20: 0.001 (cos 1.00, Defekt 0.000) · 30: 0.001 (cos 1.00, Defekt 0.000) · 50: 0.001 (cos 1.00, Defekt 0.000) · 75: 0.001 (cos 1.00, Defekt 0.000) · 100: 0.001 (cos 1.00, Defekt 0.000) · 150: 0.001 (cos 1.00, Defekt 0.000) · 200: 0.001 (cos 1.00, Defekt 0.000) · 300: 0.001 (cos 1.00, Defekt 0.000)
+  Stand nach dem letzten Mausschritt → nach 300 Runden: Fläche bis 1.77 (99 % 1.21, Mittel 0.155)
+
+ruessel/gleich, Variante „Korrektur je Punkt (halbieren bei Vorzeichenwechsel, wie geometrie)“: Bewegung je Runde nach dem Zug (größte; cos zum Schritt davor; größter Krümmungsdefekt in Längeneinheiten)
+  1: 0.760 (cos NaN, Defekt 0.127) · 2: 1.112 (cos -0.16, Defekt 0.089) · 3: 0.294 (cos -0.84, Defekt 0.059) · 4: 0.492 (cos 0.87, Defekt 0.056) · 5: 0.272 (cos 0.99, Defekt 0.038) · 6: 0.040 (cos 0.57, Defekt 0.026) · 8: 0.114 (cos 0.99, Defekt 0.012) · 10: 0.008 (cos 0.17, Defekt 0.006) · 15: 0.006 (cos -0.13, Defekt 0.001) · 20: 0.002 (cos 0.98, Defekt 0.000) · 30: 0.001 (cos 1.00, Defekt 0.000) · 50: 0.001 (cos 1.00, Defekt 0.000) · 75: 0.001 (cos 0.98, Defekt 0.000) · 100: 0.001 (cos 0.97, Defekt 0.000) · 150: 0.001 (cos 0.97, Defekt 0.000) · 200: 0.001 (cos 0.97, Defekt 0.000) · 300: 0.001 (cos 0.97, Defekt 0.000)
+  Stand nach dem letzten Mausschritt → nach 300 Runden: Fläche bis 0.88 (99 % 0.60, Mittel 0.077)
+
+ruessel/gleich, Variante „Quellen nach dem Zug festgehalten“: Bewegung je Runde nach dem Zug (größte; cos zum Schritt davor; größter Krümmungsdefekt in Längeneinheiten)
+  1: 2.151 (cos NaN, Defekt 0.246) · 2: 0.758 (cos 0.63, Defekt 0.170) · 3: 0.650 (cos 0.97, Defekt 0.160) · 4: 0.629 (cos 1.00, Defekt 0.200) · 5: 0.605 (cos 1.00, Defekt 0.238) · 6: 0.596 (cos 1.00, Defekt 0.277) · 8: 0.578 (cos 1.00, Defekt 0.361) · 10: 0.562 (cos 1.00, Defekt 0.454) · 15: 0.721 (cos 1.00, Defekt 0.703) · 20: 0.902 (cos 1.00, Defekt 0.906) · 30: 0.956 (cos 1.00, Defekt 0.774) · 50: 0.435 (cos 1.00, Defekt 0.581) · 75: 0.217 (cos 1.00, Defekt 0.866) · 100: 0.169 (cos 1.00, Defekt 0.260) · 150: 0.448 (cos 0.89, Defekt 0.513) · 200: 0.132 (cos 0.98, Defekt 0.767) · 300: 0.976 (cos 0.32, Defekt 0.714)
+  Stand nach dem letzten Mausschritt → nach 300 Runden: Fläche bis 15.56 (99 % 8.42, Mittel 1.790)
+
+Endformen gegeneinander (ruessel/gleich; Fläche größter / 99 % / Mittel):
+  Original ↔ Korrektur ×0,5 (alle Punkte): 0.648 / 0.383 / 0.027
+  Original ↔ Korrektur je Punkt (halbieren bei Vorzeichenwechsel, wie geometrie): 0.309 / 0.205 / 0.022
+  Original ↔ Quellen nach dem Zug festgehalten: 15.130 / 7.567 / 1.662
+  Korrektur ×0,5 (alle Punkte) ↔ Korrektur je Punkt (halbieren bei Vorzeichenwechsel, wie geometrie): 0.401 / 0.254 / 0.014
+  Korrektur ×0,5 (alle Punkte) ↔ Quellen nach dem Zug festgehalten: 14.674 / 7.454 / 1.639
+  Korrektur je Punkt (halbieren bei Vorzeichenwechsel, wie geometrie) ↔ Quellen nach dem Zug festgehalten: 14.961 / 7.531 / 1.651

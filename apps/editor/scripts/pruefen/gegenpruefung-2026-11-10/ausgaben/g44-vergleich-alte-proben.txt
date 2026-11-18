@@ -1,0 +1,264 @@
+G4.4 (10.11.2026): ältere Proben mit ?gewichte=geometrie, je im neuen Ablauf (neu) und im Ablauf von vorher (alt, &nachlauf=0).
+Die Formen sollen dieselben sein; im neuen Ablauf steht die Haut schon vor dem ersten Zug (nach dem Setzen zu den Loops).
+
+########## haerte (neu)
+######## pilz-hart
+  Auswahl [{"l":1,"i":-1}], Kante des Rands true (Punkte true true true)
+  vorher: Knick quer über den Rand: Median 46.5°, 10 % 42.9°, größter 56.7° · über 60° 0 · umgeklappt 0 · Maße -150/150/-148/148/-148/148
+  unten +120: Knick quer über den Rand: Median 91.9°, 10 % 87.8°, größter 96.8° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+######## pilz-weich
+  Auswahl [{"l":1,"i":-1}], Kante des Rands null (Punkte – – –)
+  vorher: Knick quer über den Rand: Median 3.7°, 10 % 3.3°, größter 4.5° · über 60° 0 · umgeklappt 0 · Maße -150/150/-148/148/-148/148
+  unten +120: Knick quer über den Rand: Median 8.1°, 10 % 3.6°, größter 10.7° · über 60° 0 · umgeklappt 0 · Maße -150/150/-56/148/-148/148
+######## nachher
+  weich, unten +120: Knick quer über den Rand: Median 8.2°, 10 % 4.0°, größter 10.5° · über 60° 0 · umgeklappt 0 · Maße -150/150/-56/148/-148/148
+  Auswahl [{"l":1,"i":-1}], Kante des Rands true (Punkte true true true)
+  danach Rand hart (neu gerechnet in 24 ms): Knick quer über den Rand: Median 92.5°, 10 % 89.2°, größter 96.8° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+  und unten +2: Knick quer über den Rand: Median 92.5°, 10 % 89.2°, größter 96.8° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+######## linse-hart
+  Auswahl [{"l":1,"i":-1}], Kante des Rands true (Punkte true true true)
+  oben −70, unten +70: Knick quer über den Rand: Median 80.5°, 10 % 75.3°, größter 89.7° · über 60° 188 · umgeklappt 2 · Maße -150/150/-79/78/-148/148
+######## linse-weich
+  Auswahl [{"l":1,"i":-1}], Kante des Rands null (Punkte – – –)
+  oben −70, unten +70: Knick quer über den Rand: Median 6.3°, 10 % 3.7°, größter 8.1° · über 60° 0 · umgeklappt 0 · Maße -150/150/-83/83/-148/148
+Fehler im Fenster: keine
+
+########## haerte (alt)
+######## pilz-hart
+  Auswahl [{"l":1,"i":-1}], Kante des Rands true (Punkte true true true)
+  vorher: Knick quer über den Rand: Median 46.5°, 10 % 42.7°, größter 56.7° · über 60° 0 · umgeklappt 0 · Maße -150/150/-148/148/-148/148
+  unten +120: Knick quer über den Rand: Median 91.9°, 10 % 87.7°, größter 96.8° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+######## pilz-weich
+  Auswahl [{"l":1,"i":-1}], Kante des Rands null (Punkte – – –)
+  vorher: Knick quer über den Rand: Median 6.2°, 10 % 1.3°, größter 13.3° · über 60° 0 · umgeklappt 0 · Maße -150/150/-149/149/-149/149
+  unten +120: Knick quer über den Rand: Median 9.5°, 10 % 3.8°, größter 13.0° · über 60° 0 · umgeklappt 0 · Maße -150/150/-56/148/-148/148
+######## nachher
+  weich, unten +120: Knick quer über den Rand: Median 9.5°, 10 % 3.8°, größter 13.0° · über 60° 0 · umgeklappt 0 · Maße -150/150/-56/148/-148/148
+  Auswahl [{"l":1,"i":-1}], Kante des Rands true (Punkte true true true)
+  danach Rand hart (neu gerechnet in 200 ms): Knick quer über den Rand: Median 91.9°, 10 % 88.0°, größter 96.8° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+  und unten +2: Knick quer über den Rand: Median 91.9°, 10 % 88.0°, größter 96.8° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+######## linse-hart
+  Auswahl [{"l":1,"i":-1}], Kante des Rands true (Punkte true true true)
+  oben −70, unten +70: Knick quer über den Rand: Median 80.9°, 10 % 75.4°, größter 89.7° · über 60° 188 · umgeklappt 4 · Maße -150/150/-79/78/-148/148
+######## linse-weich
+  Auswahl [{"l":1,"i":-1}], Kante des Rands null (Punkte – – –)
+  oben −70, unten +70: Knick quer über den Rand: Median 7.0°, 10 % 3.7°, größter 9.3° · über 60° 0 · umgeklappt 0 · Maße -150/150/-83/83/-148/148
+Fehler im Fenster: keine
+
+########## boden (neu)
+Ecke 2:1 (front): kein Griff unter der Ebene [{"g":"ein","x":1265.634521484375,"y":343.75},{"g":"aus","x":1307.4708251953125,"y":229.8436737060547}]
+Ecke 3:0 (seite): kein Griff unter der Ebene [{"g":"ein","x":333.531494140625,"y":343.7583923339844},{"g":"aus","x":292.37359619140625,"y":229.90286254882812}]
+Ecke 3:2 (seite): kein Griff unter der Ebene [{"g":"ein","x":507.6757507324219,"y":229.78443908691406},{"g":"aus","x":466.46766662597656,"y":343.7416076660156}]
+Boden: tiefster Punkt 0.02 unter der Ebene, 0 Punkte darunter · umgeschlagen 0
+  Loop 2 (ring): tiefste Probe 0.00 unter der Ebene
+  Loop 3 (mitte): tiefste Probe 0.01 unter der Ebene
+keine Fehler
+
+########## boden (alt)
+Ecke 2:1 (front): kein Griff unter der Ebene [{"g":"ein","x":1265.634521484375,"y":343.75},{"g":"aus","x":1307.4708251953125,"y":229.8436737060547}]
+Ecke 3:0 (seite): kein Griff unter der Ebene [{"g":"ein","x":333.85540771484375,"y":343.7483825683594},{"g":"aus","x":292.76519775390625,"y":229.83351135253906}]
+Ecke 3:2 (seite): kein Griff unter der Ebene [{"g":"ein","x":507.1916198730469,"y":229.8538360595703},{"g":"aus","x":466.13360595703125,"y":343.7515869140625}]
+Boden: tiefster Punkt 0.01 unter der Ebene, 0 Punkte darunter · umgeschlagen 0
+  Loop 2 (ring): tiefste Probe 0.00 unter der Ebene
+  Loop 3 (mitte): tiefste Probe 0.00 unter der Ebene
+keine Fehler
+
+########## kreuzung (neu)
+waagerecht zuerst: nach 3 an der Kreuzung zu sehen als Ecke ◆
+  B Griff des Umrisses 60 px nach außen: Linie am Punkt 38.8° · umgeschlagen 0
+  C Doppelklick: Punkte an der Kreuzung Ecke [false,false] · zu sehen als glatt ● · Linie am Punkt 0.0° · Meldung "glatt: Griffe auf einer Geraden"
+  ⌘Z ×2: wie nach der 3 0.0e+0
+senkrecht zuerst: nach 3 an der Kreuzung zu sehen als Ecke ◆
+  B Griff des Umrisses 60 px nach außen: Linie am Punkt 11.3° · umgeschlagen 0
+  C Doppelklick: Punkte an der Kreuzung Ecke [false,false] · zu sehen als glatt ● · Linie am Punkt 0.0° · Meldung "glatt: Griffe auf einer Geraden"
+  ⌘Z ×2: wie nach der 3 0.0e+0
+keine Fehler in der Konsole
+
+########## kreuzung (alt)
+waagerecht zuerst: nach 3 an der Kreuzung zu sehen als Ecke ◆
+  B Griff des Umrisses 60 px nach außen: Linie am Punkt 38.8° · umgeschlagen 0
+  C Doppelklick: Punkte an der Kreuzung Ecke [false,false] · zu sehen als glatt ● · Linie am Punkt 0.0° · Meldung "glatt: Griffe auf einer Geraden"
+  ⌘Z ×2: wie nach der 3 0.0e+0
+senkrecht zuerst: nach 3 an der Kreuzung zu sehen als Ecke ◆
+  B Griff des Umrisses 60 px nach außen: Linie am Punkt 11.3° · umgeschlagen 0
+  C Doppelklick: Punkte an der Kreuzung Ecke [false,false] · zu sehen als glatt ● · Linie am Punkt 0.0° · Meldung "glatt: Griffe auf einer Geraden"
+  ⌘Z ×2: wie nach der 3 0.0e+0
+keine Fehler in der Konsole
+
+########## griffe (neu)
+A Form: paar, 8 Punkte; oberer Punkt 1
+  gewählt: Griffe zu sehen 2, Linie am Punkt 0.0°
+A1 Griff glatt 60 hoch (Faktor 1.00): je Mausbewegung 8.7 ms, zerlegen 14 ms, Bereich 4820 · Punkte bewegt 0.00 · Proben > 0,3 bewegt 13 von 57 · Linie am Punkt danach 0.0° · umgeklappt 2 · schief 0.0e+0
+A2 Doppelklick: Ecke true · Meldung "Ecke: die Linie darf hier knicken"
+  Ecke, Griff gezogen: Knick der Griffe 35.1° · Linie am Punkt 35.1° · umgeklappt 0
+A3 Doppelklick: Ecke false · Meldung "glatt: Griffe auf einer Geraden" · Linie am Punkt 0.0° · umgeklappt 0
+  ⌘Z ×3 (+1 nach A1): Form wie gezeichnet 0.0e+0, Ecke false
+B Ringe: ring 3 P, ring 3 P · Kreuzung bei {"x":0.00006320800585513098,"y":-1.1100592675409668e-16,"z":148.09474357452171} · Ecke false
+  waagerecht Kante (true): Punkt des senkrechten an der Kreuzung Ecke true (von selbst true)
+  ecke: S ×1,15 · je Mausbewegung 10.4 ms, zerlegen 5 ms, Bereich 5141 · Grat an der Kreuzung 46.7° (sonst Median 37.1°) · senkrechter Ring knickt dort 45.4° · umgeklappt 0 · schief 0.0e+0
+  Doppelklick auf die Kreuzung: Ecke false (von selbst true)
+  glatt: S ×1,15 · je Mausbewegung 9.1 ms, zerlegen 7 ms, Bereich 5032 · Grat an der Kreuzung 4.8° (sonst Median 15.9°) · senkrechter Ring knickt dort 0.0° · umgeklappt 0 · schief 0.0e+0
+Fehler im Fenster: keine
+
+########## griffe (alt)
+A Form: paar, 8 Punkte; oberer Punkt 1
+  gewählt: Griffe zu sehen 2, Linie am Punkt 0.0°
+A1 Griff glatt 60 hoch (Faktor 1.00): je Mausbewegung 9.5 ms, zerlegen 4 ms, Bereich 4820 · Punkte bewegt 0.00 · Proben > 0,3 bewegt 13 von 57 · Linie am Punkt danach 0.0° · umgeklappt 10 · schief 0.0e+0
+A2 Doppelklick: Ecke true · Meldung "Ecke: die Linie darf hier knicken"
+  Ecke, Griff gezogen: Knick der Griffe 35.1° · Linie am Punkt 35.1° · umgeklappt 0
+A3 Doppelklick: Ecke false · Meldung "glatt: Griffe auf einer Geraden" · Linie am Punkt 0.0° · umgeklappt 0
+  ⌘Z ×3 (+1 nach A1): Form wie gezeichnet 0.0e+0, Ecke false
+B Ringe: ring 3 P, ring 3 P · Kreuzung bei {"x":0.00006320800585513098,"y":-1.1100592675409668e-16,"z":148.09474357452171} · Ecke false
+  waagerecht Kante (true): Punkt des senkrechten an der Kreuzung Ecke true (von selbst true)
+  ecke: S ×1,15 · je Mausbewegung 9.6 ms, zerlegen 5 ms, Bereich 4964 · Grat an der Kreuzung 46.6° (sonst Median 37.5°) · senkrechter Ring knickt dort 45.4° · umgeklappt 0 · schief 0.0e+0
+  Doppelklick auf die Kreuzung: Ecke false (von selbst true)
+  glatt: S ×1,15 · je Mausbewegung 10.0 ms, zerlegen 2 ms, Bereich 4936 · Grat an der Kreuzung 4.8° (sonst Median 16.3°) · senkrechter Ring knickt dort 0.0° · umgeklappt 0 · schief 0.0e+0
+Fehler im Fenster: keine
+
+########## stift (neu)
+A Seite: 1 neuer Loop (paar), 4 Punkte, Ecken ◆●●●, Griffe gespeichert true
+  Linie im Blatt neben der Zeichnung: höchstens 0.34 px (Zoom 1)
+  Anker (-60, 85): Griff im Blatt 22.0/0.0 (gezogen 22/0), Richtung 0.00° daneben, Tiefe 14.9, Gegenüber 0.00° (glatt 0)
+  Anker (-22, 45): Ecke true
+  Anker (-60, 8): Griff im Blatt -22.0/0.0 (gezogen -22/0), Richtung 0.00° daneben, Tiefe -10.2, Gegenüber 0.00° (glatt 0)
+  Anker (-98, 45): Griff im Blatt 0.0/22.0 (gezogen 0/22), Richtung 0.00° daneben, Tiefe -9.0, Gegenüber 0.00° (glatt 0)
+  Haut: Maße vorher [-150.2,150.2,-150.2,150.2,-150,150], nachher [-150.2,150.2,-150.2,150.2,-150,150] · umgeklappt 0
+B oben 20 hoch: Punkt bei y 105.0 (vorher 85.0), Griff 22.0/0.0 · umgeklappt 0
+C ⌘Z ×2: Loops 0 (vorher 0), Maße [-150.2,150.2,-150.2,150.2,-150,150]
+D Front: ring, sichtbare Punkte 2, unsichtbare Enden 2, Linie im Blatt bis 0.00 px neben der Zeichnung · umgeklappt 0
+keine Fehler in der Konsole
+
+########## stift (alt)
+A Seite: 1 neuer Loop (paar), 4 Punkte, Ecken ◆●●●, Griffe gespeichert true
+  Linie im Blatt neben der Zeichnung: höchstens 0.34 px (Zoom 1)
+  Anker (-60, 85): Griff im Blatt 22.0/0.0 (gezogen 22/0), Richtung 0.00° daneben, Tiefe 14.9, Gegenüber 0.00° (glatt 0)
+  Anker (-22, 45): Ecke true
+  Anker (-60, 8): Griff im Blatt -22.0/0.0 (gezogen -22/0), Richtung 0.00° daneben, Tiefe -10.2, Gegenüber 0.00° (glatt 0)
+  Anker (-98, 45): Griff im Blatt 0.0/22.0 (gezogen 0/22), Richtung 0.00° daneben, Tiefe -9.0, Gegenüber 0.00° (glatt 0)
+  Haut: Maße vorher [-150.2,150.2,-150.2,150.2,-150,150], nachher [-150.2,150.2,-150.2,150.2,-150,150] · umgeklappt 0
+B oben 20 hoch: Punkt bei y 105.0 (vorher 85.0), Griff 22.0/0.0 · umgeklappt 0
+C ⌘Z ×2: Loops 0 (vorher 0), Maße [-150.2,150.2,-150.2,150.2,-150,150]
+D Front: ring, sichtbare Punkte 2, unsichtbare Enden 2, Linie im Blatt bis 0.00 px neben der Zeichnung · umgeklappt 0
+keine Fehler in der Konsole
+
+########## maul (neu)
+seite: Form als ring, 5 Punkte, 112 Proben · Meldung ""
+  Maul angelegt in 380 ms (samt Warten)
+  Mundwinkel: 1 Punkt, Ecke true, bei (-55.0, -20.0, 138.2)
+  0°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  20°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  40°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  55°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  Unterlippe 12 nach unten (offen 30°): offene Kanten 0, umgeschlagen Haut 0 / innen 0, Zug 2.0 ms je Bewegung
+  ⌘Z: Haut wie vor dem Zug 0.0e+0, Maul da
+  ⌘Z ×5: Maul null, Mundwinkel-Punkte 0, Regler 30
+keine Fehler in der Konsole
+
+########## maul (alt)
+seite: Form als ring, 5 Punkte, 112 Proben · Meldung ""
+  Maul angelegt in 375 ms (samt Warten)
+  Mundwinkel: 1 Punkt, Ecke true, bei (-55.0, -20.0, 138.2)
+  0°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  20°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  40°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  55°: Öffnung 516 Dreiecke, Inneres 5280, offene Kanten 0, umgeschlagen Haut 0 / innen 0
+  Unterlippe 12 nach unten (offen 30°): offene Kanten 0, umgeschlagen Haut 0 / innen 0, Zug 1.9 ms je Bewegung
+  ⌘Z: Haut wie vor dem Zug 0.0e+0, Maul da
+  ⌘Z ×5: Maul null, Mundwinkel-Punkte 0, Regler 30
+keine Fehler in der Konsole
+
+########## fressen (neu)
+1. Fressen: {"an":true,"kiefer":30,"schaedel":0,"blendshape":0,"punkte":4928}; offene Kanten 0, umgeschlagen Haut 0 / innen 0; Grundform 0
+2. Unterlippe 25 nach unten: {"an":true,"kiefer":30,"schaedel":0,"blendshape":24.998533915866098,"punkte":4757}; offene Kanten 0, umgeschlagen Haut 0 / innen 7; Grundform neu nummeriert: 4757 von 4928 alten Punkten genau an Ort, 171 weggefallen, 0 neue bis 0.00 vom nächsten alten; Zug 1.7 ms je Bewegung
+3. Maul 45°, Kopf 10°: {"an":true,"kiefer":45,"schaedel":10,"blendshape":24.998533915866098,"punkte":4757}; offene Kanten 0, umgeschlagen Haut 0 / innen 7
+   zurück auf 30°/0°: Pose wie nach dem Zug 1.7053025658242404e-13
+4. Grundform: {"an":false,"kiefer":30,"schaedel":0,"blendshape":24.998533915866084,"punkte":4757}; wie vor der Pose neu nummeriert: 4757 von 4928 alten Punkten genau an Ort, 171 weggefallen, 0 neue bis 0.00 vom nächsten alten
+   Ring geschnitten und an (60, 99) 30 hoch gezogen: oberes Ende (60.0, 137.7) → (60.0, 167.7, 0.0), Netz 4917 Punkte
+   wieder Fressen: {"an":true,"kiefer":30,"schaedel":0,"blendshape":24.998533915866084,"punkte":4917}; offene Kanten 0, umgeschlagen Haut 0 / innen 7; dasselbe Ende in der Pose (60.0, 167.7, 0.0)
+5. ⌘Z ×12: {"an":false,"kiefer":30,"schaedel":0,"blendshape":0,"punkte":4706}; Haut wie am Anfang 0, Loops 0
+keine Fehler in der Konsole
+
+########## fressen (alt)
+1. Fressen: {"an":true,"kiefer":30,"schaedel":0,"blendshape":0,"punkte":4928}; offene Kanten 0, umgeschlagen Haut 0 / innen 0; Grundform 0
+2. Unterlippe 25 nach unten: {"an":true,"kiefer":30,"schaedel":0,"blendshape":24.998533915866098,"punkte":4757}; offene Kanten 0, umgeschlagen Haut 0 / innen 7; Grundform neu nummeriert: 4757 von 4928 alten Punkten genau an Ort, 171 weggefallen, 0 neue bis 0.00 vom nächsten alten; Zug 1.8 ms je Bewegung
+3. Maul 45°, Kopf 10°: {"an":true,"kiefer":45,"schaedel":10,"blendshape":24.998533915866098,"punkte":4757}; offene Kanten 0, umgeschlagen Haut 0 / innen 7
+   zurück auf 30°/0°: Pose wie nach dem Zug 1.7053025658242404e-13
+4. Grundform: {"an":false,"kiefer":30,"schaedel":0,"blendshape":24.998533915866084,"punkte":4757}; wie vor der Pose neu nummeriert: 4757 von 4928 alten Punkten genau an Ort, 171 weggefallen, 0 neue bis 0.00 vom nächsten alten
+   Ring geschnitten und an (60, 99) 30 hoch gezogen: oberes Ende (60.0, 137.7) → (60.0, 167.7, 0.0), Netz 4915 Punkte
+   wieder Fressen: {"an":true,"kiefer":30,"schaedel":0,"blendshape":24.998533915866084,"punkte":4915}; offene Kanten 0, umgeschlagen Haut 0 / innen 7; dasselbe Ende in der Pose (60.0, 167.7, 0.0)
+5. ⌘Z ×12: {"an":false,"kiefer":30,"schaedel":0,"blendshape":0,"punkte":4706}; Haut wie am Anfang 0, Loops 0
+keine Fehler in der Konsole
+
+########## hinzurueck (neu)
+standard vorher: Mitte |r − 150| bis 2.23, Welle 0.10 · Haut bis 2.23 (Mittel 1.082) · 5222 Punkte, Mitte 132 Proben · umgeschlagen 0
+  Welle an alten Proben bis 0.13, an neuen (0) bis 0.00; größte bei (149, -22) alt
+standard 120 hinaus (1): 5483 Punkte, Mitte 131 Proben, umgeschlagen 0
+  Welle an alten Proben bis 0.28, an neuen (1) bis 0.13; größte bei (-3, 267) alt
+standard zurück (1, Punkt 0.00 neben dem alten Ort): Mitte |r − 150| bis 2.23, Welle 0.10 · Haut bis 2.23 (Mittel 1.078) · 5443 Punkte, Mitte 131 Proben · umgeschlagen 0
+  Welle an alten Proben bis 0.13, an neuen (1) bis 0.04; größte bei (149, -22) alt
+  alte Proben gewandert: links der oberen Kreuzung bis 0.00, rechts (vom Zug nicht berührt) bis 0.00
+keine Fehler im Fenster
+
+########## hinzurueck (alt)
+standard vorher: Mitte |r − 150| bis 2.23, Welle 0.10 · Haut bis 2.23 (Mittel 0.391) · 5222 Punkte, Mitte 132 Proben · umgeschlagen 0
+  Welle an alten Proben bis 0.13, an neuen (0) bis 0.00; größte bei (149, -22) alt
+standard 120 hinaus (1): 5453 Punkte, Mitte 131 Proben, umgeschlagen 0
+  Welle an alten Proben bis 0.28, an neuen (1) bis 0.13; größte bei (-3, 267) alt
+standard zurück (1, Punkt 0.00 neben dem alten Ort): Mitte |r − 150| bis 2.23, Welle 0.10 · Haut bis 2.23 (Mittel 1.057) · 5401 Punkte, Mitte 131 Proben · umgeschlagen 0
+  Welle an alten Proben bis 0.13, an neuen (1) bis 0.04; größte bei (149, -22) alt
+  alte Proben gewandert: links der oberen Kreuzung bis 0.03, rechts (vom Zug nicht berührt) bis 0.00
+keine Fehler im Fenster
+
+########## explosion-a (neu)
+Aufbau: 0 ms gesamt · Punkte 5222 · Stufen 0 (letzte 0 ms) · zerlegen 0 ms · Bereich 0 · je Bewegung 0.0 ms (max -Infinity) · Knick max 14°, p99 6.6°, über 60° 0 · umgeklappt 0 · Maße -150.2/150.2/-148.7/148.6/-148.5/148.5
+hinten +150: 5141 ms gesamt · Punkte 5396 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5396 · je Bewegung 7.8 ms (max 12) · Knick max 15°, p99 5.5°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+hinten Ecke: 0 ms gesamt · Punkte 5396 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5396 · je Bewegung 7.8 ms (max 12) · Knick max 15°, p99 5.5°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+vorn −100: 4958 ms gesamt · Punkte 5903 · Stufen 0 (letzte 0 ms) · zerlegen 6 ms · Bereich 5903 · je Bewegung 8.9 ms (max 10) · Knick max 15°, p99 5.9°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/148.3/-148.1/148.1
+oben −300: 8605 ms gesamt · Punkte 6644 · Stufen 0 (letzte 0 ms) · zerlegen 6 ms · Bereich 6644 · je Bewegung 7.4 ms (max 13) · Knick max 119°, p99 9.7°, über 60° 16 · umgeklappt 0 · Maße -316.8/300.2/-148.4/129.1/-148.1/148.1
+oben +120: 9033 ms gesamt · Punkte 6640 · Stufen 0 (letzte 0 ms) · zerlegen 7 ms · Bereich 6640 · je Bewegung 8.4 ms (max 14) · Knick max 60°, p99 7.3°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/128.4/-148.1/148.1
+oben −150: 7976 ms gesamt · Punkte 6894 · Stufen 0 (letzte 0 ms) · zerlegen 7 ms · Bereich 6894 · je Bewegung 8.7 ms (max 12) · Knick max 73°, p99 9.4°, über 60° 6 · umgeklappt 0 · Maße -342.8/300.2/-148.4/158.2/-148.1/148.1
+keine Fehler in der Konsole
+
+########## explosion-a (alt)
+Aufbau: 0 ms gesamt · Punkte 5222 · Stufen 0 (letzte 0 ms) · zerlegen 0 ms · Bereich 0 · je Bewegung 0.0 ms (max -Infinity) · Knick max 14°, p99 6.6°, über 60° 0 · umgeklappt 0 · Maße -150.2/150.2/-148.7/148.6/-148.5/148.5
+hinten +150: 5332 ms gesamt · Punkte 5759 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5394 · je Bewegung 7.7 ms (max 12) · Knick max 15°, p99 5.4°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+hinten Ecke: 0 ms gesamt · Punkte 5759 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5394 · je Bewegung 7.7 ms (max 12) · Knick max 15°, p99 5.4°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+vorn −100: 4844 ms gesamt · Punkte 6130 · Stufen 0 (letzte 0 ms) · zerlegen 6 ms · Bereich 5903 · je Bewegung 8.9 ms (max 11) · Knick max 15°, p99 5.8°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/148.3/-148.1/148.1
+oben −300: 8841 ms gesamt · Punkte 6720 · Stufen 0 (letzte 0 ms) · zerlegen 7 ms · Bereich 6661 · je Bewegung 8.3 ms (max 13) · Knick max 83°, p99 9.6°, über 60° 9 · umgeklappt 0 · Maße -316.8/300.2/-148.4/129.3/-148.1/148.1
+oben +120: 8341 ms gesamt · Punkte 6763 · Stufen 0 (letzte 0 ms) · zerlegen 7 ms · Bereich 6749 · je Bewegung 8.8 ms (max 12) · Knick max 60°, p99 7.4°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/128.4/-148.1/148.1
+oben −150: 7933 ms gesamt · Punkte 6987 · Stufen 0 (letzte 0 ms) · zerlegen 7 ms · Bereich 6945 · je Bewegung 7.9 ms (max 13) · Knick max 103°, p99 10.0°, über 60° 8 · umgeklappt 0 · Maße -342.8/300.2/-148.4/158.2/-148.1/148.1
+keine Fehler in der Konsole
+
+########## explosion-e (neu)
+Aufbau: 0 ms gesamt · Punkte 5222 · Stufen 0 (letzte 0 ms) · zerlegen 0 ms · Bereich 0 · je Bewegung 0.0 ms (max -Infinity) · Knick max 14°, p99 6.6°, über 60° 0 · umgeklappt 0 · Maße -150.2/150.2/-148.7/148.6/-148.5/148.5
+Rüssel +320/−70: 8692 ms gesamt · Punkte 5638 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5638 · je Bewegung 8.1 ms (max 13) · Knick max 121°, p99 14.4°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+Ring um den Rüssel: 294 ms gesamt · Punkte 5764 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5638 · je Bewegung 8.1 ms (max 13) · Knick max 121°, p99 14.6°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+Spitze +120: 4561 ms gesamt · Punkte 5876 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5876 · je Bewegung 9.1 ms (max 11) · Knick max 142°, p99 18.1°, über 60° 10 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+Spitze +80/−20: 1188 ms gesamt · Punkte 5915 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5876 · je Bewegung 9.1 ms (max 11) · Knick max 117°, p99 18.8°, über 60° 9 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+keine Fehler in der Konsole
+
+########## explosion-e (alt)
+Aufbau: 0 ms gesamt · Punkte 5222 · Stufen 0 (letzte 0 ms) · zerlegen 0 ms · Bereich 0 · je Bewegung 0.0 ms (max -Infinity) · Knick max 14°, p99 6.6°, über 60° 0 · umgeklappt 0 · Maße -150.2/150.2/-148.7/148.6/-148.5/148.5
+Rüssel +320/−70: 8487 ms gesamt · Punkte 5690 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5600 · je Bewegung 8.3 ms (max 11) · Knick max 118°, p99 14.4°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+Ring um den Rüssel: 394 ms gesamt · Punkte 5766 · Stufen 0 (letzte 0 ms) · zerlegen 5 ms · Bereich 5600 · je Bewegung 8.3 ms (max 11) · Knick max 118°, p99 14.4°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+Spitze +120: 4765 ms gesamt · Punkte 5919 · Stufen 0 (letzte 0 ms) · zerlegen 6 ms · Bereich 5890 · je Bewegung 9.1 ms (max 13) · Knick max 142°, p99 18.8°, über 60° 14 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+Spitze +80/−20: 1252 ms gesamt · Punkte 5919 · Stufen 0 (letzte 0 ms) · zerlegen 6 ms · Bereich 5890 · je Bewegung 9.1 ms (max 13) · Knick max 142°, p99 18.8°, über 60° 14 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+keine Fehler in der Konsole
+
+########## griff-loslassen (neu)
+http://localhost:5193/kurven.html?gewichte=geometrie
+Ring 1, neuer Punkt 1: Griffe 168.5 und 10.0 Einheiten (150.4 und 8.9 px bei 0.89 px je Einheit); gezogen wird „aus“, gezeigt 8.9 px lang
+Griffspitze ↔ Maus mit gedrückter Maus: 0.00 px
+Sprung der Griffspitze beim Loslassen: 0.00 px sofort, 0.00 px nach 2,5 s
+Linie im Zug ↔ nach dem Loslassen: 0.00 px sofort, 0.00 px nach 2,5 s
+Haut: Netz nach dem Loslassen geändert (4966 → 4821 Punkte), Endrunden bewegten 0.00 Einheiten
+je Mausbewegung (nur Löser): 9.7 9.9 9.9 10.0 10.0 10.3 9.9 4.8 10.7 10.2 10.3 10.1 ms
+
+########## griff-loslassen (alt)
+http://localhost:5193/kurven.html?gewichte=geometrie&nachlauf=0
+Ring 1, neuer Punkt 1: Griffe 168.5 und 10.0 Einheiten (150.4 und 8.9 px bei 0.89 px je Einheit); gezogen wird „aus“, gezeigt 8.9 px lang
+Griffspitze ↔ Maus mit gedrückter Maus: 0.00 px
+Sprung der Griffspitze beim Loslassen: 0.00 px sofort, 0.00 px nach 2,5 s
+Linie im Zug ↔ nach dem Loslassen: 0.00 px sofort, 0.00 px nach 2,5 s
+Haut: Netz nach dem Loslassen geändert (4966 → 4837 Punkte), Endrunden bewegten 0.00 Einheiten
+je Mausbewegung (nur Löser): 10.2 9.8 9.8 10.0 10.1 10.2 10.4 5.3 9.9 11.2 10.4 5.6 ms

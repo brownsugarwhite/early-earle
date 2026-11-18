@@ -1,0 +1,89 @@
+/**
+ * Ozzy: Kapseln für die flüssige Anzeige (`../linien/fluessig.ts`), in Gerätepunkten. Eine fertige Szene der Linien-Studie (das
+ * Blatt mit P) lässt sich übernehmen und um eigene Kapseln ergänzen (Freihand, Formen, Wände, Felder, Teiler).
+ *
+ * Aufbau je Kapsel wie in der Anzeige: x0, y0, x1, y1 | r0, r1, Gruppe, Art | z0, z1, –, –. Art = Schicht (0 Tinte, 1 verdeckt,
+ * 2 nach Tiefe) + 4 · Form (0 Linie, hart vereinigt; 1 Punkt, Tropfen, Hals, weich vereinigt) + 8 · Bereich (S17: an dessen Rand
+ * abgeschnitten, 0 = keiner; gilt für alles, was gerade angehängt wird, `bereich`).
+ */
+
+import { PRIM_FELDER, type Szene } from '../linien/fluessig';
+
+export class Kapseln {
+  puffer = new Float32Array(PRIM_FELDER * 4096);
+  n = 0;
+  /** Felder der Weichheit: je x, y, Radius, Stärke (Gerätepunkte) */
+  felder: number[] = [];
+  /** eigene Gruppen beginnen weit hinter denen einer übernommenen Szene */
+  private gruppe = 1_000_000;
+  /** S17: der Bereich (Feld der Vier Ansichten), an dessen Rand alles abgeschnitten wird, was jetzt angehängt wird; 0 = keiner */
+  bereich = 0;
+
+  leeren(): void {
+    this.n = 0;
+    this.felder = [];
+    this.gruppe = 1_000_000;
+    this.bereich = 0;
+  }
+
+  neueGruppe(): number {
+    return this.gruppe++;
+  }
+
+  private platz(mehr: number): void {
+    const noetig = (this.n + mehr) * PRIM_FELDER;
+    if (noetig <= this.puffer.length) return;
+    let laenge = this.puffer.length;
+    while (laenge < noetig) laenge *= 2;
+    const neu = new Float32Array(laenge);
+    neu.set(this.puffer.subarray(0, this.n * PRIM_FELDER));
+    this.puffer = neu;
+  }
+
+  /** die Kapseln und Felder einer fertigen Szene übernehmen (die Gruppen bleiben, wie sie sind) */
+  uebernehmen(sz: Szene): void {
+    this.platz(sz.anzahl);
+    this.puffer.set(sz.prim.subarray(0, sz.anzahl * PRIM_FELDER), this.n * PRIM_FELDER);
+    this.n += sz.anzahl;
+    for (const f of sz.felder) this.felder.push(f);
+  }
+
+  /** eine Kapsel; `weich`: Punkt, Tropfen oder Hals (weich vereinigt), sonst ein Stück Linie (hart) */
+  /**
+   * `schicht` 2: nach der Tiefe gegen den Körper (`z0`, `z1` zum Betrachter); `v0`, `v1`: so breit ist die Linie dort, wo sie hinter dem
+   * Körper liegt (fein und grün); mit einem Hauch (> 0, etwa 1e-4) verschwindet sie hinter ihm, statt durchzuscheinen
+   */
+  push(x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, weich: boolean, z0 = 0, z1 = 0, v0 = 0, v1 = 0): void {
+    if (!(r0 > 0.001 || r1 > 0.001)) return;
+    this.platz(1);
+    const o = this.n * PRIM_FELDER;
+    const b = this.puffer;
+    b[o] = x0;
+    b[o + 1] = y0;
+    b[o + 2] = x1;
+    b[o + 3] = y1;
+    b[o + 4] = r0;
+    b[o + 5] = r1;
+    b[o + 6] = gruppe;
+    b[o + 7] = schicht + 4 * (weich ? 1 : 0) + 8 * this.bereich;
+    b[o + 8] = z0;
+    b[o + 9] = z1;
+    b[o + 10] = v0;
+    b[o + 11] = v1;
+    this.n++;
+  }
+
+  /** ein Streckenzug als eine Linie (eine Gruppe); `zu`: geschlossen */
+  zug(x: ArrayLike<number>, y: ArrayLike<number>, r: number, zu: boolean, schicht = 0): void {
+    const m = Math.min(x.length, y.length);
+    if (m < 2) return;
+    const g = this.neueGruppe();
+    for (let i = 0; i + 1 < m; i++) this.push(x[i]!, y[i]!, x[i + 1]!, y[i + 1]!, r, r, g, schicht, false);
+    if (zu) this.push(x[m - 1]!, y[m - 1]!, x[0]!, y[0]!, r, r, g, schicht, false);
+  }
+
+  /** ein Punkt (weich) */
+  punkt(x: number, y: number, r: number, schicht = 0): void {
+    this.push(x, y, x, y, r, r, this.neueGruppe(), schicht, true);
+  }
+}

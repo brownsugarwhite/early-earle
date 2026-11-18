@@ -1,0 +1,90 @@
+# Elf ältere Proben: Stand vor den Änderungen (Lauf „neu“ vom 10.11. 20:27, 2be21c5b) gegen jetzt mit &vorsichtlaut=1
+# Zeiten ausgeblendet; < vorher, > jetzt. Die Vorsicht griff nur in der Griffe-Probe ein (siehe dort „Fehler im Fenster“).
+
+=== haerte
+4c4
+<   unten +120: Knick quer über den Rand: Median 92.4°, 10 % 89.1°, größter 96.7° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+---
+>   unten +120: Knick quer über den Rand: Median 92.4°, 10 % 89.1°, größter 96.8° · über 60° 188 · umgeklappt 0 · Maße -150/150/-29/148/-148/148
+16c16
+<   oben −70, unten +70: Knick quer über den Rand: Median 81.6°, 10 % 77.4°, größter 89.7° · über 60° 188 · umgeklappt 0 · Maße -150/150/-79/78/-148/148
+---
+>   oben −70, unten +70: Knick quer über den Rand: Median 81.5°, 10 % 77.4°, größter 89.7° · über 60° 188 · umgeklappt 0 · Maße -150/150/-79/78/-148/148
+19c19
+<   oben −70, unten +70: Knick quer über den Rand: Median 7.1°, 10 % 3.8°, größter 9.2° · über 60° 0 · umgeklappt 0 · Maße -150/150/-83/83/-148/148
+---
+>   oben −70, unten +70: Knick quer über den Rand: Median 6.4°, 10 % 3.7°, größter 8.1° · über 60° 0 · umgeklappt 0 · Maße -150/150/-83/83/-148/148
+
+=== boden
+
+=== kreuzung
+
+=== griffe
+10c10
+<   ecke: S ×1,15 · je Mausbewegung N ms, zerlegen N ms, Bereich 5136 · Grat an der Kreuzung 46.7° (sonst Median 37.2°) · senkrechter Ring knickt dort 45.4° · umgeklappt 0 · schief 0.0e+0
+---
+>   ecke: S ×1,15 · je Mausbewegung N ms, zerlegen N ms, Bereich 4990 · Grat an der Kreuzung 46.6° (sonst Median 37.5°) · senkrechter Ring knickt dort 45.4° · umgeklappt 0 · schief 0.0e+0
+12,13c12,17
+<   glatt: S ×1,15 · je Mausbewegung N ms, zerlegen N ms, Bereich 5052 · Grat an der Kreuzung 4.8° (sonst Median 15.9°) · senkrechter Ring knickt dort 0.0° · umgeklappt 0 · schief 0.0e+0
+< Fehler im Fenster: keine
+---
+>   glatt: S ×1,15 · je Mausbewegung N ms, zerlegen N ms, Bereich 4964 · Grat an der Kreuzung 4.8° (sonst Median 16.4°) · senkrechter Ring knickt dort 0.0° · umgeklappt 0 · schief 0.0e+0
+> Fehler im Fenster: [
+>   'Vorsicht im Fenster: Schritt 1-mal halbiert',
+>   'Vorsicht im Hintergrund: 1-mal',
+>   'Vorsicht im Hintergrund: 1-mal'
+> ]
+
+=== stift
+
+=== maul
+
+=== fressen
+
+=== hinzurueck
+3c3
+< standard 120 hinaus (1): 5485 Punkte, Mitte 131 Proben, umgeschlagen 0
+---
+> standard 120 hinaus (1): 5489 Punkte, Mitte 131 Proben, umgeschlagen 0
+5c5
+< standard zurück (1, Punkt 0.00 neben dem alten Ort): Mitte |r − 150| bis 2.23, Welle 0.10 · Haut bis 2.23 (Mittel 1.076) · 5447 Punkte, Mitte 131 Proben · umgeschlagen 0
+---
+> standard zurück (1, Punkt 0.00 neben dem alten Ort): Mitte |r − 150| bis 2.23, Welle 0.10 · Haut bis 2.23 (Mittel 1.077) · 5451 Punkte, Mitte 131 Proben · umgeschlagen 0
+
+=== explosion-a
+2,7c2,7
+< hinten +150: N ms gesamt · Punkte 5398 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5398 · je Bewegung N ms (max 12) · Knick max 13°, p99 5.4°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+< hinten Ecke: N ms gesamt · Punkte 5398 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5398 · je Bewegung N ms (max 12) · Knick max 13°, p99 5.4°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+< vorn −100: N ms gesamt · Punkte 5911 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5911 · je Bewegung N ms (max 11) · Knick max 13°, p99 5.8°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/148.3/-148.1/148.1
+< oben −300: N ms gesamt · Punkte 6656 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 6656 · je Bewegung N ms (max 12) · Knick max 119°, p99 9.3°, über 60° 4 · umgeklappt 0 · Maße -316.8/300.2/-148.4/129.1/-148.1/148.1
+< oben +120: N ms gesamt · Punkte 6648 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 6648 · je Bewegung N ms (max 13) · Knick max 42°, p99 7.2°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/128.4/-148.1/148.1
+< oben −150: N ms gesamt · Punkte 6827 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 6827 · je Bewegung N ms (max 13) · Knick max 97°, p99 9.1°, über 60° 2 · umgeklappt 0 · Maße -342.8/300.2/-148.4/158.2/-148.1/148.1
+---
+> hinten +150: N ms gesamt · Punkte 5396 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5396 · je Bewegung N ms (max 11) · Knick max 13°, p99 5.4°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+> hinten Ecke: N ms gesamt · Punkte 5396 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5396 · je Bewegung N ms (max 11) · Knick max 13°, p99 5.4°, über 60° 0 · umgeklappt 0 · Maße -150.2/300.2/-148.4/148.3/-148.1/148.1
+> vorn −100: N ms gesamt · Punkte 5915 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5915 · je Bewegung N ms (max 11) · Knick max 13°, p99 5.8°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/148.3/-148.1/148.1
+> oben −300: N ms gesamt · Punkte 6678 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 6678 · je Bewegung N ms (max 13) · Knick max 119°, p99 9.3°, über 60° 4 · umgeklappt 0 · Maße -316.8/300.2/-148.4/129.1/-148.1/148.1
+> oben +120: N ms gesamt · Punkte 6670 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 6670 · je Bewegung N ms (max 12) · Knick max 42°, p99 7.2°, über 60° 0 · umgeklappt 0 · Maße -250.2/300.2/-148.4/128.4/-148.1/148.1
+> oben −150: N ms gesamt · Punkte 6869 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 6869 · je Bewegung N ms (max 13) · Knick max 97°, p99 9.1°, über 60° 1 · umgeklappt 0 · Maße -342.8/300.2/-148.4/158.2/-148.1/148.1
+
+=== explosion-e
+2,5c2,5
+< Rüssel +320/−70: N ms gesamt · Punkte 5636 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5636 · je Bewegung N ms (max 11) · Knick max 120°, p99 14.2°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+< Ring um den Rüssel: N ms gesamt · Punkte 5754 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5636 · je Bewegung N ms (max 11) · Knick max 120°, p99 14.2°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+< Spitze +120: N ms gesamt · Punkte 5872 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5872 · je Bewegung N ms (max 12) · Knick max 144°, p99 18.5°, über 60° 9 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+< Spitze +80/−20: N ms gesamt · Punkte 5917 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5872 · je Bewegung N ms (max 12) · Knick max 144°, p99 18.9°, über 60° 9 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+---
+> Rüssel +320/−70: N ms gesamt · Punkte 5620 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5620 · je Bewegung N ms (max 11) · Knick max 118°, p99 14.1°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+> Ring um den Rüssel: N ms gesamt · Punkte 5688 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5620 · je Bewegung N ms (max 11) · Knick max 118°, p99 14.1°, über 60° 6 · umgeklappt 0 · Maße -150.2/428.9/-148.4/148.3/-148.1/148.1
+> Spitze +120: N ms gesamt · Punkte 5879 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5879 · je Bewegung N ms (max 11) · Knick max 142°, p99 18.0°, über 60° 14 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+> Spitze +80/−20: N ms gesamt · Punkte 5920 · Stufen 0 (letzte N ms) · zerlegen N ms · Bereich 5879 · je Bewegung N ms (max 11) · Knick max 142°, p99 18.6°, über 60° 14 · umgeklappt 0 · Maße -150.2/548.2/-148.4/148.3/-148.1/148.1
+
+=== griff-loslassen
+1c1
+< http://localhost:5193/kurven.html?gewichte=geometrie
+---
+> http://localhost:5193/kurven.html?gewichte=geometrie&vorsichtlaut=1
+7c7
+< je Mausbewegung (nur Löser): 10.3 10.2 10.5 9.9 10.2 10.0 10.4 10.2 10.4 10.4 10.3 N ms
+---
+> je Mausbewegung (nur Löser): 9.7 9.9 9.8 9.7 9.7 10.0 10.2 10.1 10.1 10.3 10.3 N ms

@@ -1,0 +1,4 @@
+strange bird.eewesen: 16010 Punkte, 9 Loops, größte Koordinate 542 · Züge 60/150 in 10 Schritten, dann 50 Runden
+zerlegt in 1016 ms
+284 Fälle an 29 Punkten
+Ergebnis: zur Ruhe 248, kriecht 23, schwingt 13, wächst 0, davongelaufen 0 (von 284) · Schritt verkleinert oder stehen geblieben in 22 Fällen

@@ -1,0 +1,54 @@
+
+## Kugel mit 1 Loop(s), 4.966 Punkte, 260 Linienpunkte
+Lagen (Σ aᵀa, Bindung 100): größter Eigenwert 100.75, kleinster 2.96e-6, Kondition 3.40e+7; Dämpfung 1e-9 / kleinster Eigenwert = 3.4e-4
+Lagen, Linienpunkte hart (eliminiert, 4.706 Unbekannte): größter 2.24, kleinster 2.97e-6, Kondition 7.54e+5; nnz(L) 440.055 gegen 589.997; Zerlegen 32,1 gegen 62,8 Mio. Mult.+Add.
+Krümmung quadriert (ohne HALT gemessen): größter 2.24, kleinster 2.35e-6, Kondition 9.50e+5; HALT 1e-6 / kleinster Eigenwert = 0.425 → Anteil „bleibt wie gemessen“ in der glattesten Form 29.8 %
+Nachbau der Verteilung gegen den Code (letzteKruemmung): größter Unterschied 0.00e+0 (Krümmung der Kugel im Maß des Lösers 3.33e-3)
+verteilte Krümmung (freie Punkte, ×300 = 1 auf der Kugel): rein harmonisch 0.153 … 0.701 (Spanne 0.548)
+  Code (quadriert, HALT 1e-6) gegen rein harmonisch: größter 0.2158, Mittel 0.1056
+  nicht quadriert mit HALT 1e-6·Valenz gegen rein harmonisch: größter 0.00044, Mittel 0.00024
+Gedächtnis durch HALT: gemessene Krümmung aller freien Punkte um δ angehoben → verteilte Krümmung steigt im Code um höchstens 44.5 % von δ (Mittel 21.9 %); nicht quadriert höchstens 0.091 %; rein harmonisch 0 %
+
+Zug (obere Kreuzung 160 hoch, 30 Mausschritte je 1 Runde, dann 4 Runden), Bindung 100:
+  Linienpunkte neben ihrem Ziel: nach dem letzten Mausschritt höchstens 0.002 (Mittel 0.0005), nach den 4 Runden 0.001 (0.0002), nach 40 weiteren 0.000 (0.0000) Einheiten
+  Haut bewegt sich in den 4 Runden beim Loslassen noch 18.477; danach je Runde: 20.146 15.118 13.348 9.948 8.595 6.398 5.458 4.118 … Runde 20: 0.3236, Runde 40: 0.0550
+  Bindung 1e+4: Linienpunkte neben dem Ziel nach dem Zug 2.50e-5, fertig 7.25e-8; Haut gegen Bindung 100 (beide nach 44 Runden) höchstens 0.119 Einheiten anders; Bewegung beim Loslassen 18.417; je Runde danach 20.003 15.010 13.254 9.880 … Runde 40: 0.0544
+  Bindung 1e+6: Linienpunkte neben dem Ziel nach dem Zug 2.50e-7, fertig 7.25e-10; Haut gegen Bindung 100 (beide nach 44 Runden) höchstens 0.121 Einheiten anders; Bewegung beim Loslassen 18.416; je Runde danach 20.002 15.009 13.253 9.880 … Runde 40: 0.0544
+Dämpfung, letzte rechte Seite des Zugs: Nachbau (ε 1e-9) gegen den Code 0.00e+0; ε 1e-9 gegen 1e-12: 7.58e-2 Einheiten; ε 1e-7 gegen 1e-12: 7.38e+0
+Rest der Normalgleichung (ε 1e-9): 5.28e-11 bei rechter Seite bis 1.60e+4 (relativ 3.3e-15)
+
+## Kugel mit 1 Loop(s), 10.592 Punkte, 376 Linienpunkte
+Lagen (Σ aᵀa, Bindung 100): größter Eigenwert 100.75, kleinster 6.34e-7, Kondition 1.59e+8; Dämpfung 1e-9 / kleinster Eigenwert = 1.6e-3
+Lagen, Linienpunkte hart (eliminiert, 10.216 Unbekannte): größter 2.29, kleinster 6.35e-7, Kondition 3.61e+6; nnz(L) 1.177.562 gegen 1.424.425; Zerlegen 121,7 gegen 193,5 Mio. Mult.+Add.
+Krümmung quadriert (ohne HALT gemessen): größter 2.29, kleinster 5.02e-7, Kondition 4.56e+6; HALT 1e-6 / kleinster Eigenwert = 1.991 → Anteil „bleibt wie gemessen“ in der glattesten Form 66.6 %
+Nachbau der Verteilung gegen den Code (letzteKruemmung): größter Unterschied 0.00e+0 (Krümmung der Kugel im Maß des Lösers 3.33e-3)
+verteilte Krümmung (freie Punkte, ×300 = 1 auf der Kugel): rein harmonisch 0.334 … 0.556 (Spanne 0.222)
+  Code (quadriert, HALT 1e-6) gegen rein harmonisch: größter 0.4330, Mittel 0.2237
+  nicht quadriert mit HALT 1e-6·Valenz gegen rein harmonisch: größter 0.00089, Mittel 0.00048
+Gedächtnis durch HALT: gemessene Krümmung aller freien Punkte um δ angehoben → verteilte Krümmung steigt im Code um höchstens 96.3 % von δ (Mittel 49.7 %); nicht quadriert höchstens 0.195 %; rein harmonisch 0 %
+
+Zug (obere Kreuzung 160 hoch, 30 Mausschritte je 1 Runde, dann 4 Runden), Bindung 100:
+  Linienpunkte neben ihrem Ziel: nach dem letzten Mausschritt höchstens 0.000 (Mittel 0.0002), nach den 4 Runden 0.000 (0.0000), nach 40 weiteren 0.000 (0.0000) Einheiten
+  Haut bewegt sich in den 4 Runden beim Loslassen noch 9.888; danach je Runde: 1.623 0.545 0.911 0.627 0.695 0.547 0.447 0.437 … Runde 20: 0.3486, Runde 40: 0.2046
+  Bindung 1e+4: Linienpunkte neben dem Ziel nach dem Zug 4.47e-6, fertig 1.59e-7; Haut gegen Bindung 100 (beide nach 44 Runden) höchstens 0.276 Einheiten anders; Bewegung beim Loslassen 9.426; je Runde danach 1.628 0.532 0.847 0.536 … Runde 40: 0.1983
+  Bindung 1e+6: Linienpunkte neben dem Ziel nach dem Zug 4.47e-8, fertig 1.59e-9; Haut gegen Bindung 100 (beide nach 44 Runden) höchstens 0.285 Einheiten anders; Bewegung beim Loslassen 9.423; je Runde danach 1.628 0.532 0.846 0.536 … Runde 40: 0.1980
+Dämpfung, letzte rechte Seite des Zugs: Nachbau (ε 1e-9) gegen den Code 0.00e+0; ε 1e-9 gegen 1e-12: 2.78e-1 Einheiten; ε 1e-7 gegen 1e-12: 2.45e+1
+Rest der Normalgleichung (ε 1e-9): 1.07e-10 bei rechter Seite bis 1.60e+4 (relativ 6.7e-15)
+
+## Kugel mit 3 Loop(s), 27.758 Punkte, 1508 Linienpunkte
+Lagen (Σ aᵀa, Bindung 100): größter Eigenwert 201.10, kleinster 3.48e-6, Kondition 5.78e+7; Dämpfung 1e-9 / kleinster Eigenwert = 2.9e-4
+Lagen, Linienpunkte hart (eliminiert, 26.250 Unbekannte): größter 2.25, kleinster 3.48e-6, Kondition 6.45e+5; nnz(L) 3.872.495 gegen 4.459.776; Zerlegen 673,1 gegen 868,1 Mio. Mult.+Add.
+Krümmung quadriert (ohne HALT gemessen): größter 2.25, kleinster 2.77e-6, Kondition 8.10e+5; HALT 1e-6 / kleinster Eigenwert = 0.360 → Anteil „bleibt wie gemessen“ in der glattesten Form 26.5 %
+Nachbau der Verteilung gegen den Code (letzteKruemmung): größter Unterschied 0.00e+0 (Krümmung der Kugel im Maß des Lösers 3.33e-3)
+verteilte Krümmung (freie Punkte, ×300 = 1 auf der Kugel): rein harmonisch 0.262 … 0.969 (Spanne 0.708)
+  Code (quadriert, HALT 1e-6) gegen rein harmonisch: größter 0.1171, Mittel 0.0449
+  nicht quadriert mit HALT 1e-6·Valenz gegen rein harmonisch: größter 0.00026, Mittel 0.00011
+Gedächtnis durch HALT: gemessene Krümmung aller freien Punkte um δ angehoben → verteilte Krümmung steigt im Code um höchstens 41.7 % von δ (Mittel 16.3 %); nicht quadriert höchstens 0.087 %; rein harmonisch 0 %
+
+Zug (obere Kreuzung 160 hoch, 30 Mausschritte je 1 Runde, dann 4 Runden), Bindung 100:
+  Linienpunkte neben ihrem Ziel: nach dem letzten Mausschritt höchstens 0.000 (Mittel 0.0000), nach den 4 Runden 0.000 (0.0000), nach 40 weiteren 0.000 (0.0000) Einheiten
+  Haut bewegt sich in den 4 Runden beim Loslassen noch 0.314; danach je Runde: 1.520 1.454 1.450 1.348 1.346 1.280 1.235 1.171 … Runde 20: 0.6335, Runde 40: 0.2755
+  Bindung 1e+4: Linienpunkte neben dem Ziel nach dem Zug 3.03e-6, fertig 3.09e-7; Haut gegen Bindung 100 (beide nach 44 Runden) höchstens 0.015 Einheiten anders; Bewegung beim Loslassen 0.313; je Runde danach 1.517 1.451 1.448 1.346 … Runde 40: 0.2772
+  Bindung 1e+6: Linienpunkte neben dem Ziel nach dem Zug 3.03e-8, fertig 3.09e-9; Haut gegen Bindung 100 (beide nach 44 Runden) höchstens 0.015 Einheiten anders; Bewegung beim Loslassen 0.313; je Runde danach 1.517 1.451 1.448 1.346 … Runde 40: 0.2772
+Dämpfung, letzte rechte Seite des Zugs: Nachbau (ε 1e-9) gegen den Code 0.00e+0; ε 1e-9 gegen 1e-12: 3.15e-2 Einheiten; ε 1e-7 gegen 1e-12: 3.11e+0
+Rest der Normalgleichung (ε 1e-9): 2.04e-10 bei rechter Seite bis 6.20e+4 (relativ 3.3e-15)

@@ -1,0 +1,135 @@
+# Florians Formen im Fenster (form-gesichert-zug.mjs) und im Kern (form-gesichert-tempo.ts), 10.11.2026 nachts, freie Maschine
+
+## Tempo im Kern, teat firefish
+teat firefish.eewesen: 27770 Punkte, 55536 Dreiecke, 17 Loops, mittlere Kante 8.93 (Startkante 8.64)
+1  Löser anlegen mit Zerlegen: 1675 ms
+   Löser anlegen mit fertiger Zerlegung (so beginnt ein Zug): 76 ms
+2  eine Runde im Zug (oberster Punkt -48, 582 um 0, 60, 0): im Mittel 32.3 ms (erste 64 ms)
+   Teile über 40 Runden, je Runde: vermessen 4.1 ms, intrinsisch 8.1 ms, kruemmung 4.6 ms, loesen 13.5 ms; Schritte der Krümmung je Runde 0.7
+3  größter Weg je Runde: 60.00 1.30 1.77 0.30 0.24 0.16 0.13 0.04 0.03 0.03 0.02 0.02 … Runde 40: 0.022 · unter 0,02 nach 11 Runden
+4  Verdichten nach dem Zug: 245 ms (neu 106, gelegt 15, gedreht 40)
+
+## zug-firefish-oben
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 2.6 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,118,2345,0],"gesamt":2491,"einwechseln":2,"angewendet":true,"unruhe":0}
+
+Zug 1: Punkt 4:18 bei (-48, 582, 0) um (0, 60, 0) in der seite, 40 Schritte je 16 ms, halten 400 ms
+  Greifen: erste Bewegung der Haut 327 ms nach dem Drücken
+  im Zug (5.1 s): 154 Bilder, Abstand Median 36 ms, 95 % 57 ms, längster 173 ms · je Runde 32.4 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 3) · 27816 Punkte, größte Koordinate 754
+  nach dem Loslassen: letzte Bewegung der Haut nach 2.1 s, alles ruht nach 2.1 s (ja) · Netzwechsel: 27770 → 27776 nach -2.8 s, 27776 → 27816 nach -0.8 s, 27816 → 27854 nach 2.1 s
+  Auftrag im Hintergrund: {"nr":6,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":48,"gelegt":5,"durchgaenge":1,"runden":6,"ms":[278,113,1256,331],"gesamt":2074,"einwechseln":21,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27854 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 90 Punkte (42 Kreuzungen) · Zug 30.9 ms · zerlegen 37 ms · Bereich 27816 von 27854 · verdichtet +48 −5 (278 ms)
+
+Konsole: keine Fehler
+
+## zug-firefish-neuer-punkt-jetzt
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.7 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,112,1447,0],"gesamt":1575,"einwechseln":3,"angewendet":true,"unruhe":0}
+
+neuer Punkt auf Loop 4 (unter der Maus: path l=4 i=null): 38 → 39 Punkte, gewählt [{"l":4,"i":19}], 568 ms nach dem ersten Klick · beschäftigt false
+
+Zug 1: Punkt 4:19 bei (13, 593, 0) um (0, 40, 0) in der seite, 40 Schritte je 16 ms, halten 400 ms
+  Greifen: erste Bewegung der Haut 277 ms nach dem Drücken
+  im Zug (5.3 s): 155 Bilder, Abstand Median 36 ms, 95 % 53 ms, längster 115 ms · je Runde 31.6 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 3) · 27834 Punkte, größte Koordinate 754
+  nach dem Loslassen: letzte Bewegung der Haut nach 2.2 s, alles ruht nach 2.2 s (ja) · Netzwechsel: 27770 → 27782 nach -3.1 s, 27782 → 27834 nach -1.3 s, 27834 → 27904 nach 2.2 s
+  Auftrag im Hintergrund: {"nr":6,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":74,"gelegt":2,"durchgaenge":1,"runden":7,"ms":[275,111,1366,358],"gesamt":2200,"einwechseln":21,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27904 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 91 Punkte (42 Kreuzungen) · Zug 29.5 ms · zerlegen 36 ms · Bereich 27834 von 27904 · verdichtet +74 −2 (275 ms)
+
+Konsole: keine Fehler
+
+## zug-firefish-neuer-punkt-vorher
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.7 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,114,1459,0],"gesamt":1598,"einwechseln":2,"angewendet":true,"unruhe":0}
+
+neuer Punkt auf Loop 4 (unter der Maus: path l=4 i=null): 38 → 39 Punkte, gewählt [{"l":4,"i":19}], 543 ms nach dem ersten Klick · beschäftigt true
+
+Zug 1: Punkt 4:19 bei (13, 593, 0) um (0, 40, 0) in der seite, 40 Schritte je 16 ms, halten 400 ms
+  Greifen: erste Bewegung der Haut 1036 ms nach dem Drücken
+  im Zug (3.3 s): 121 Bilder, Abstand Median 17 ms, 95 % 56 ms, längster 103 ms · je Runde 33.7 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 4) · 27834 Punkte, größte Koordinate 754
+  nach dem Loslassen: letzte Bewegung der Haut nach 4.4 s, alles ruht nach 4.5 s (ja) · Netzwechsel: 27770 → 27834 nach -0.4 s, 27834 → 27902 nach 4.4 s
+  Auftrag im Hintergrund: {"nr":5,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":74,"gelegt":3,"durchgaenge":2,"runden":15,"ms":[375,184,3136,697],"gesamt":4431,"einwechseln":22,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27902 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 91 Punkte (42 Kreuzungen) · Zug 32.1 ms · zerlegen 47 ms · Bereich 27834 von 27902 · verdichtet +74 −3 (375 ms)
+
+Konsole: keine Fehler
+
+## zug-firefish-415-schnell-vorher-1
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.9 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,113,1659,0],"gesamt":1794,"einwechseln":2,"angewendet":true,"unruhe":0}
+
+Zug 1: Punkt 4:15 bei (-290, 439, 0) um (0, 150, 0) in der seite, 12 Schritte je 16 ms, halten 5000 ms
+  Greifen: erste Bewegung der Haut 260 ms nach dem Drücken
+  im Zug (7.6 s): 161 Bilder, Abstand Median 47 ms, 95 % 79 ms, längster 171 ms · je Runde 47.6 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 60) · 27952 Punkte, größte Koordinate 754
+  nach dem Loslassen: letzte Bewegung der Haut nach 2.2 s, alles ruht nach 2.3 s (ja) · Netzwechsel: 27770 → 27780 nach -5.4 s, 27780 → 27952 nach -3.3 s, 27952 → 28026 nach 2.2 s
+  Auftrag im Hintergrund: {"nr":5,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":156,"gelegt":41,"durchgaenge":1,"runden":12,"ms":[245,120,1237,609],"gesamt":2251,"einwechseln":21,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 28026 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 90 Punkte (42 Kreuzungen) · Zug 40.9 ms · zerlegen 36 ms · Bereich 27952 von 28026 · verdichtet +156 −41 (245 ms)
+
+Konsole: keine Fehler
+
+## zug-firefish-415-schnell-jetzt-1
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.9 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,113,1641,0],"gesamt":1778,"einwechseln":2,"angewendet":true,"unruhe":0}
+
+Zug 1: Punkt 4:15 bei (-290, 439, 0) um (0, 150, 0) in der seite, 12 Schritte je 16 ms, halten 5000 ms
+  Greifen: erste Bewegung der Haut 253 ms nach dem Drücken
+  im Zug (7.6 s): 172 Bilder, Abstand Median 53 ms, 95 % 71 ms, längster 151 ms · je Runde 53.1 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 41) · 27952 Punkte, größte Koordinate 754
+  nach dem Loslassen: letzte Bewegung der Haut nach 3.9 s, alles ruht nach 3.9 s (ja) · Netzwechsel: 27770 → 27780 nach -5.5 s, 27780 → 27952 nach -3.4 s, 27952 → 27896 nach 3.9 s
+  Auftrag im Hintergrund: {"nr":5,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":50,"gelegt":53,"durchgaenge":2,"runden":16,"ms":[378,200,2382,902],"gesamt":3902,"einwechseln":24,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 1-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27896 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 90 Punkte (42 Kreuzungen) · Zug 51.8 ms · zerlegen 37 ms · Bereich 27952 von 27896 · verdichtet +50 −53 (378 ms)
+
+Konsole: keine Fehler
+
+## zug-firefish-415-schnell-vorher-2
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.9 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,115,1667,0],"gesamt":1797,"einwechseln":2,"angewendet":true,"unruhe":0}
+
+Zug 1: Punkt 4:15 bei (-290, 439, 0) um (0, 150, 0) in der seite, 12 Schritte je 16 ms, halten 5000 ms
+  Greifen: erste Bewegung der Haut 243 ms nach dem Drücken
+  im Zug (7.6 s): 229 Bilder, Abstand Median 17 ms, 95 % 79 ms, längster 162 ms · je Runde 54.4 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 16) · 27984 Punkte, größte Koordinate 754
+  nach dem Loslassen: letzte Bewegung der Haut nach 3.9 s, alles ruht nach 4.0 s (ja) · Netzwechsel: 27770 → 27780 nach -5.4 s, 27780 → 27984 nach -3.3 s, 27984 → 27880 nach 3.9 s
+  Auftrag im Hintergrund: {"nr":5,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":52,"gelegt":78,"durchgaenge":2,"runden":15,"ms":[469,229,2377,813],"gesamt":3935,"einwechseln":22,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27880 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 90 Punkte (42 Kreuzungen) · Zug 54.5 ms · zerlegen 37 ms · Bereich 27984 von 27880 · verdichtet +52 −78 (469 ms)
+
+Konsole: keine Fehler
+
+## zug-firefish-415-schnell-jetzt-2
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 1.6 s · 27770 Punkte, größte Koordinate 754 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,112,1402,0],"gesamt":1537,"einwechseln":2,"angewendet":true,"unruhe":0}
+
+Zug 1: Punkt 4:15 bei (-290, 439, 0) um (0, 150, 0) in der seite, 12 Schritte je 16 ms, halten 5000 ms
+  Greifen: erste Bewegung der Haut 260 ms nach dem Drücken
+  im Zug (7.6 s): 139 Bilder, Abstand Median 54 ms, 95 % 88 ms, längster 169 ms · je Runde 50.5 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 60) · 27970 Punkte, größte Koordinate 754
+  nach dem Loslassen: letzte Bewegung der Haut nach 3.8 s, alles ruht nach 3.9 s (ja) · Netzwechsel: 27770 → 27780 nach -5.5 s, 27780 → 27970 nach -3.4 s, 27970 → 27886 nach 3.8 s
+  Auftrag im Hintergrund: {"nr":5,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":52,"gelegt":68,"durchgaenge":2,"runden":15,"ms":[408,202,2383,801],"gesamt":3835,"einwechseln":20,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 1-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 27886 Punkte, größte Koordinate 754, nicht endliche Lagen 0 · Statuszeile: 17 Loops · 90 Punkte (42 Kreuzungen) · Zug 43.4 ms · zerlegen 36 ms · Bereich 27970 von 27886 · verdichtet +52 −68 (408 ms)
+
+Konsole: keine Fehler
+
+## zug-bird-oben-ecke
+geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+geladen und Hintergrund fertig nach 0.7 s · 16010 Punkte, größte Koordinate 542 · Auftrag: {"nr":2,"geaendert":false,"vorstufe":"keine","abgebrochen":false,"neu":0,"gelegt":0,"durchgaenge":0,"runden":0,"ms":[0,70,577,0],"gesamt":667,"einwechseln":1,"angewendet":true,"unruhe":0}
+Ecke gesetzt: true · Ecke: die Linie darf hier knicken
+
+Zug 1: Punkt 1:1 bei (46, 466, 44), Kreuzung um (0, 250, 0) in der seite, 25 Schritte je 12 ms, halten 3000 ms
+  Greifen: erste Bewegung der Haut 164 ms nach dem Drücken
+  im Zug (5.3 s): 263 Bilder, Abstand Median 17 ms, 95 % 29 ms, längster 86 ms · je Runde 20.1 ms
+  beim Loslassen: Haut steht  (Runden seit der letzten Mausbewegung 11) · 17292 Punkte, größte Koordinate 717
+  nach dem Loslassen: letzte Bewegung der Haut nach 2.1 s, alles ruht nach 2.1 s (ja) · Netzwechsel: 16010 → 16154 nach -4.2 s, 16154 → 17292 nach -3.1 s, 17292 → 18796 nach 2.1 s
+  Auftrag im Hintergrund: {"nr":6,"geaendert":true,"vorstufe":"keine","abgebrochen":false,"neu":2284,"gelegt":390,"durchgaenge":2,"runden":11,"ms":[256,120,1349,366],"gesamt":2113,"einwechseln":12,"angewendet":true,"unruhe":0}
+  Schutz: Zug zurückgenommen 0-mal, Fehler beim Rechnen 0, Löser vorsichtig 0-mal (zuletzt {"stufen":0,"fest":false}) · Meldung: ""
+  am Ende: 18796 Punkte, größte Koordinate 717, nicht endliche Lagen 0 · Statuszeile: 9 Loops · 55 Punkte (26 Kreuzungen) · Zug 19.5 ms · zerlegen 23 ms · Bereich 17292 von 18796 · verdichtet +2284 −390 (256 ms)
+
+Konsole: keine Fehler

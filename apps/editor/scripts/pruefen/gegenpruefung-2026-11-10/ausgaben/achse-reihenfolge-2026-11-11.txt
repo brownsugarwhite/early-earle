@@ -1,0 +1,48 @@
+# form-reihenfolge-probe.mjs, 11.11.2026: Florians Ablauf von der Kugel an
+
+## Stand von gestern Nacht (b72c3586, Port 5194)
+gut  drei Loops: 1 ring, 2 ring, 3 paar
+gut  nach den Zügen am Paar: 6125 Punkte, umgeschlagen 0
+FEHL Loop der Mitte eingesetzt: 258 Proben, 127 Punkte des Netzes in der Mittelebene: liegt nur auf der Haut
+FEHL Hin und Her am obersten Punkt der Mitte: umgeschlagen 16, zurückgenommen 0, Schritt verkleinert 0-mal, 6125 → 6395 Punkte
+FEHL Punkt des Paars über die Mitte und zurück: umgeschlagen 22, zurückgenommen 0, Punkt z 43.0 → 43.0
+gut  Konsole: keine Fehler
+3 FEHLER
+
+## Endgültiger Stand (Port 5193), vier Läufe
+### Lauf 1
+gut  drei Loops: 1 ring, 2 ring, 3 paar
+gut  nach den Zügen am Paar: 6111 Punkte, umgeschlagen 0
+gut  Loop der Mitte eingesetzt: 127 Proben, 127 Punkte des Netzes in der Mittelebene
+gut  Hin und Her am obersten Punkt der Mitte: umgeschlagen 0 → 0, zurückgenommen 0, Schritt verkleinert 0-mal, 6111 → 6211 Punkte
+gut  Punkt des Paars über die Mitte und zurück: umgeschlagen 0 → 0, zurückgenommen 0, Punkt z 43.0 → 43.0
+gut  Konsole: keine Fehler
+alles gut
+
+### Lauf 2
+gut  drei Loops: 1 ring, 2 ring, 3 paar
+gut  nach den Zügen am Paar: 6131 Punkte, umgeschlagen 0
+gut  Loop der Mitte eingesetzt: 127 Proben, 127 Punkte des Netzes in der Mittelebene
+gut  Hin und Her am obersten Punkt der Mitte: umgeschlagen 0 → 0, zurückgenommen 0, Schritt verkleinert 0-mal, 6131 → 6213 Punkte
+gut  Punkt des Paars über die Mitte und zurück: umgeschlagen 0 → 0, zurückgenommen 0, Punkt z 43.0 → 43.0
+gut  Konsole: keine Fehler
+alles gut
+
+### Lauf 3
+gut  drei Loops: 1 ring, 2 ring, 3 paar
+gut  nach den Zügen am Paar: 6141 Punkte, umgeschlagen 0
+gut  Loop der Mitte eingesetzt: 127 Proben, 127 Punkte des Netzes in der Mittelebene
+gut  Hin und Her am obersten Punkt der Mitte: umgeschlagen 0 → 0, zurückgenommen 0, Schritt verkleinert 0-mal, 6141 → 6259 Punkte
+gut  Punkt des Paars über die Mitte und zurück: umgeschlagen 0 → 0, zurückgenommen 0, Punkt z 43.0 → 43.0
+gut  Konsole: keine Fehler
+alles gut
+
+### Lauf 4
+gut  drei Loops: 1 ring, 2 ring, 3 paar
+gut  nach den Zügen am Paar: 6105 Punkte, umgeschlagen 0
+gut  Loop der Mitte eingesetzt: 127 Proben, 127 Punkte des Netzes in der Mittelebene
+gut  Hin und Her am obersten Punkt der Mitte: umgeschlagen 0 → 0, zurückgenommen 0, Schritt verkleinert 0-mal, 6105 → 6204 Punkte
+gut  Punkt des Paars über die Mitte und zurück: umgeschlagen 0 → 0, zurückgenommen 0, Punkt z 43.0 → 43.0
+gut  Konsole: keine Fehler
+alles gut
+
