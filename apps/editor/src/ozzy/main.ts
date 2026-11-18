@@ -434,7 +434,7 @@ let werkHaut = new WerkHaut();
  * Die Form im Werk: aus welcher Silhouette (Stand des Blatts) und wie viele Schritte für ⌘Z das Werk danach schon hatte (davor liegt
  * seine Startkugel, dorthin geht ⌘Z in Ozzy nicht).
  */
-let werkForm: { stand: number; zurueck: number; geladen?: string; ohneLinie?: boolean } | null = null;
+let werkForm: { stand: number; zurueck: number; geladen?: string; ohneLinie?: boolean; startLoops?: boolean } | null = null;
 /**
  * S9 (zur Wahl, Florian 16.11.: „Könnte ich auch ohne starten wie im editor bei der 4. session“): `?ohneLinie=1` löscht nach dem Aufblasen
  * die Linie der Mitte (ein Handgriff des Werks), sobald die Haut des Werks gezeigt wird; die Haut bleibt, wie sie ist, bis eine Linie kommt.
@@ -451,6 +451,25 @@ let mitLinie = ((): boolean => {
     return false;
   }
 })();
+/**
+ * Formen beginnen mit Edgeloops (Florian, 18.11. spät: „dass formen ab jetzt schon mit edgeloops beginnen“): nach dem Aufblasen die
+ * drei Umrisse der drei Ansichten. Die Linie der Seite ist die gezeichnete Silhouette; dazu ein Loop quer und einer längs, beide
+ * durch die dickste Stelle (`startLoopsAnlegen`). Schalter im Menü, `?loops=0|1` für Proben. Die Linie der Mitte bleibt dann immer.
+ */
+let startLoops = ((): boolean => {
+  const u = new URLSearchParams(location.search).get('loops');
+  if (u === '1') return true;
+  if (u === '0') return false;
+  // (eine Probe, die `?ohneLinie` festlegt, meint den Stand von vor den Start-Loops)
+  if (new URLSearchParams(location.search).has('ohneLinie')) return false;
+  try {
+    return localStorage.getItem('ozzy.startLoops') === '1';
+  } catch {
+    return false;
+  }
+})();
+/** Ist die frische Form des Werks fertig angelegt (ihre Linien sind, wie sie zum Start sein sollen)? */
+const startFertig = (): boolean => !!werkForm && (werkForm.geladen !== undefined || (startLoops ? !!werkForm.startLoops : mitLinie || !!werkForm.ohneLinie));
 /** Übergabe von der Blase: je Rechenpunkt des Werks drei Punkte der Blase und ihre Gewichte */
 let uebergabe: { koerper: Koerper; haut: typeof werk.haut; idx: Int32Array; gew: Float32Array; lagen: Float64Array } | null = null;
 /** zeigt die Seifenhaut die Haut des Werks; muss sie neu gerechnet werden (auch: in den Stufen der Ruhe); wann zuletzt geändert */
@@ -530,7 +549,7 @@ type Ruhend = {
   id: number;
   haut: WerkHaut;
   stand: werk.ObjektStand;
-  form: { stand: number; zurueck: number; geladen?: string; ohneLinie?: boolean };
+  form: { stand: number; zurueck: number; geladen?: string; ohneLinie?: boolean; startLoops?: boolean };
   marken: { n: number; clipping: boolean; spiegelbild: boolean }[];
   /** die Objekte, die es aufgenommen hat (verschmolzen, abgezogen): ⌘Z hinter den Schritt gibt sie wieder heraus */
   naehte: NahtMarke[];
@@ -1522,8 +1541,12 @@ function aufwaermen(): void {
  * ein Raster über den Kasten, dann dreimal um die beste Stelle verfeinert. −1 außen zählt nicht.
  */
 function groessterInnenkreis(xs: readonly number[], ys: readonly number[]): number {
+  return innenkreis(xs, ys).r;
+}
+/** dasselbe mit der Mitte des Kreises: die dickste Stelle der Silhouette */
+function innenkreis(xs: readonly number[], ys: readonly number[]): { r: number; x: number; y: number } {
   const n = xs.length;
-  if (n < 3) return 0;
+  if (n < 3) return { r: 0, x: 0, y: 0 };
   let x0 = Infinity;
   let x1 = -Infinity;
   let y0 = Infinity;
@@ -1585,7 +1608,66 @@ function groessterInnenkreis(xs: readonly number[], ys: readonly number[]): numb
         }
       }
   }
-  return best;
+  return { r: best, x: bx, y: by };
+}
+
+/**
+ * Die Start-Loops einer frischen Form: ein Loop quer und einer längs, beide rundum und durch die dickste Stelle der Silhouette (die
+ * Mitte ihres größten Innenkreises). Angelegt mit dem Handgriff für „P quer über die Form“ (`werk.vorhangSchneiden`): zwei Striche in
+ * der Seite, senkrecht und waagerecht, je vom Leeren ins Leere, mit einem Punkt an der dicksten Stelle (dort kreuzen sich die
+ * beiden). Mit der gezeichneten Silhouette sind es die Umrisse der drei Ansichten. Wahr, wenn mindestens ein Loop dazukam.
+ */
+function startLoopsAnlegen(): boolean {
+  if (!silhouette) return false;
+  const ab = abtasten(silhouette, 2);
+  const K = innenkreis(ab.x, ab.y);
+  if (!(K.r > 1)) return false;
+  const n = ab.x.length;
+  // wo die Senkrechte oder die Waagerechte durch die dickste Stelle den Umriss zuerst trifft, davor und dahinter
+  const sehne = (senkrecht: boolean): [number, number] | null => {
+    const fest = senkrecht ? K.x : K.y;
+    const mitte = senkrecht ? K.y : K.x;
+    let vor = -Infinity;
+    let nach = Infinity;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const a0 = senkrecht ? ab.x[j]! : ab.y[j]!;
+      const a1 = senkrecht ? ab.y[j]! : ab.x[j]!;
+      const b0 = senkrecht ? ab.x[i]! : ab.y[i]!;
+      const b1 = senkrecht ? ab.y[i]! : ab.x[i]!;
+      if (a0 > fest === b0 > fest) continue;
+      const w = a1 + ((fest - a0) / (b0 - a0)) * (b1 - a1);
+      if (w < mitte) vor = Math.max(vor, w);
+      else nach = Math.min(nach, w);
+    }
+    return Number.isFinite(vor) && Number.isFinite(nach) ? [vor, nach] : null;
+  };
+  const f = werkHaut.f;
+  // Blatt der Seite im Werk: X nach rechts, Y nach unten
+  const X = (x: number): number => (x - W / 2 - werkHaut.mitte.x) * f;
+  const Y = (y: number): number => -((H / 2 - y - werkHaut.mitte.y) * f);
+  // so weit vor dem Umriss beginnt und endet jeder Strich (Bildpunkte des Blatts)
+  const rand = Math.max(4, 0.12 * K.r);
+  const davor = werk.loops.length;
+  for (const senkrecht of [true, false]) {
+    const t = sehne(senkrecht);
+    if (!t) continue;
+    const [vor, nach] = t;
+    const anker: werk.StiftAnker[] = senkrecht
+      ? [
+          { X: X(K.x), Y: Y(vor - rand), aus: null },
+          { X: X(K.x), Y: Y(K.y), aus: [0, ((nach - K.y) * f) / 3] },
+          { X: X(K.x), Y: Y(nach + rand), aus: null },
+        ]
+      : [
+          { X: X(vor - rand), Y: Y(K.y), aus: null },
+          { X: X(K.x), Y: Y(K.y), aus: [((nach - K.x) * f) / 3, 0] },
+          { X: X(nach + rand), Y: Y(K.y), aus: null },
+        ];
+    werk.vorhangSchneiden('seite', anker);
+  }
+  werk.G.auswahl = [];
+  werk.G.meldung = '';
+  return werk.loops.length > davor;
 }
 
 /** eine neue Form (aufgeblasen, geladen) beginnt wie jede: Spiegel an, mit Clipping */
@@ -1918,7 +2000,7 @@ function werkBild(dt: number, m: Moment | null): boolean {
     }
     werkGezeigt = true;
     // S9: ohne Linie an der Spiegelkante (zur Wahl): nach dem Aufblasen die Linie der Mitte löschen, einmal je Form
-    if (!mitLinie && werkForm && !werkForm.ohneLinie && werkForm.geladen === undefined && !werk.zug) {
+    if (!mitLinie && !startLoops && werkForm && !werkForm.ohneLinie && werkForm.geladen === undefined && !werk.zug) {
       const m = werk.loops.find((l) => l.art === 'mitte');
       if (m) {
         werk.G.auswahl = [{ l: m.id, i: -1 }];
@@ -1930,6 +2012,15 @@ function werkBild(dt: number, m: Moment | null): boolean {
       werkForm.zurueck = werk.zurueck.length;
     }
     aktiv = aktiv || schnalz || klingt();
+  }
+  // Formen beginnen mit Edgeloops: einmal je Form, sobald sie aufgeblasen ist und ihre Haut steht (die Linie der Mitte bleibt)
+  if (startLoops && werkGezeigt && werkForm && !werkForm.startLoops && werkForm.geladen === undefined && zustand === 'ruhe' && !werk.zug && !werkBeschaeftigt() && werk.ruheOffen === null) {
+    startLoopsAnlegen();
+    werk.anzeige.allesZeigen();
+    werkForm.startLoops = true;
+    werkForm.zurueck = werk.zurueck.length;
+    werkNeu = true;
+    aktiv = true;
   }
   return aktiv;
 }
@@ -1952,7 +2043,8 @@ function werkAufsBlatt(): void {
     punkte.map((p) => p.ecke ?? p.autoEcke ?? false),
   );
   silhouette = blatt.silhouette();
-  werkForm = { stand: blatt.stand, zurueck: werk.zurueck.length };
+  // (die Form bleibt dieselbe: Was beim Start an ihr geschehen ist, die Start-Loops oder das Löschen der Linie der Mitte, geschieht nicht noch einmal)
+  werkForm = { stand: blatt.stand, zurueck: werk.zurueck.length, ...(werkForm.startLoops ? { startLoops: true } : {}), ...(werkForm.ohneLinie ? { ohneLinie: true } : {}) };
 }
 
 // ---------- Ablauf ----------
@@ -2116,7 +2208,7 @@ function neu(behalten = false): void {
 function reiheSchritt(): boolean {
   const R = reihe;
   if (!R) return false;
-  const steht = zustand === 'ruhe' && werkGezeigt && !!werkForm && !werkBeschaeftigt() && werk.ruheOffen === null && (mitLinie || !!werkForm.ohneLinie || werkForm.geladen !== undefined);
+  const steht = zustand === 'ruhe' && werkGezeigt && !!werkForm && !werkBeschaeftigt() && werk.ruheOffen === null && startFertig();
   if (!steht) return true;
   if (!R.warten.length) {
     reihe = null;
@@ -6719,6 +6811,19 @@ mitLinieSchalter.addEventListener('change', () => {
   werk.G.meldung = mitLinie ? 'Beim nächsten Aufblasen bleibt die Linie an der Spiegelkante' : 'Beim nächsten Aufblasen ohne Linie an der Spiegelkante';
 });
 
+// Formen beginnen mit Edgeloops (gilt beim nächsten Aufblasen)
+const startLoopsSchalter = $<HTMLInputElement>('start-loops');
+startLoopsSchalter.checked = startLoops;
+startLoopsSchalter.addEventListener('change', () => {
+  startLoops = startLoopsSchalter.checked;
+  try {
+    localStorage.setItem('ozzy.startLoops', startLoops ? '1' : '0');
+  } catch {
+    // ohne Speicher gilt es nur bis zum Neuladen
+  }
+  werk.G.meldung = startLoops ? 'Beim nächsten Aufblasen beginnt die Form mit drei Loops (Seite, quer, längs)' : 'Beim nächsten Aufblasen ohne die Start-Loops';
+});
+
 const regler = $<HTMLElement>('regler');
 const marke = $<HTMLButtonElement>('marke');
 /** S13 (liquid drop, Idee 1): Das Menü wächst als Tropfen aus „Ozzy“ und fließt beim Schließen dorthin zurück (CSS `#regler`, `.zu`) */
@@ -7674,6 +7779,44 @@ const haken = {
     const F = felder();
     const [x, y] = imFeld(n, new Vector3(p.x, p.y, p.z), F, feldMassstab(F));
     return { x: x / D, y: y / D };
+  },
+  /**
+   * Wie rund die Form des Werks ist (für die Probe der Start-Loops): Abstand ihrer Punkte von der Mitte ihres Kastens, im Raum:
+   * kleinster, mittlerer, größter; dazu der mittlere längs der Achsen (näher als 20° an x, y oder z) und schräg dazwischen (näher
+   * als 20° an einer Raumdiagonale).
+   */
+  radien: () => {
+    const P = werk.haut.pos;
+    const f = werkHaut.f;
+    const k = werkMasseWeltAktiv();
+    if (!k) return null;
+    const cx = (k.cx - werkHaut.mitte.x) * f;
+    const cy = (k.cy - werkHaut.mitte.y) * f;
+    let min = Infinity;
+    let max = 0;
+    let summe = 0;
+    const achse = { s: 0, n: 0 };
+    const schraeg = { s: 0, n: 0 };
+    const cos20 = Math.cos((20 * Math.PI) / 180);
+    for (let i = 0; i < P.length; i += 3) {
+      const x = P[i]! - cx;
+      const y = P[i + 1]! - cy;
+      const z = P[i + 2]!;
+      const r = Math.hypot(x, y, z);
+      min = Math.min(min, r);
+      max = Math.max(max, r);
+      summe += r;
+      const ax = Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) / (r || 1);
+      const dg = (Math.abs(x) + Math.abs(y) + Math.abs(z)) / Math.sqrt(3) / (r || 1);
+      if (ax > cos20) {
+        achse.s += r;
+        achse.n++;
+      } else if (dg > cos20) {
+        schraeg.s += r;
+        schraeg.n++;
+      }
+    }
+    return { min: min / f, mittel: summe / (P.length / 3) / f, max: max / f, achse: achse.s / Math.max(1, achse.n) / f, schraeg: schraeg.s / Math.max(1, schraeg.n) / f };
   },
   /** die Zeichnung auf dem Blatt: wie viele Linien, wie viele davon geschlossen */
   zeichnung: () => {

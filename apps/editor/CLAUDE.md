@@ -526,6 +526,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Mit eigenen Linien an den Formen hält es (die Formen gehen stark mit); an Formen ohne eigene Linien läuft die Rechnung
   auseinander, das Werk behält die Form („Hier ließ sich das Netz nicht aufräumen“). Begleitlinien halten nicht, außen festhalten
   (Halte-Loop) zeigt den Rand des Streifens. Zahlen und Offenes: Plan, Abschnitt 10.
+- **Formen beginnen mit Edgeloops (Versuch, 18.11. spät; hinter einem Schalter):** Menü „Start mit drei Loops“, `?loops=1`
+  (`startLoops` in `main.ts`; eine Adresse mit `ohneLinie=` meint den Stand davor, dort sind sie aus). Nach dem Aufblasen, sobald
+  die Form steht (`werkBild`), legt `startLoopsAnlegen` mit `werk.vorhangSchneiden` zwei Loops rundum durch die dickste Stelle
+  der Silhouette (`innenkreis`): quer und längs, je ein Strich vom Leeren ins Leere mit einem Punkt in der Mitte. `startFertig()`
+  sagt, ob die frische Form fertig angelegt ist (die Reihe wartet darauf); `werkAufsBlatt` behält die Merker `startLoops` und
+  `ohneLinie`. Gemessen: Die Form steht, K an einer Naht hält (−2,2 % statt −22 %), aber zwischen drei Loops fällt die Haut ein
+  (Kreis −9,7 % Rauminhalt). Ob das Standard wird und mit welchen Loops, entscheidet Florian (Plan „Objekte, Spiegel und Nähte“,
+  Abschnitt 11). Haken `radien()` misst die Rundheit.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

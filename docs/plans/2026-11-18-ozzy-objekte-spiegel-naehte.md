@@ -408,6 +408,47 @@ beide Hälften ganz.
 alle 33 Fenster-Proben gegen 5211 (`ozzy-silhouette` hielt in einem von drei Läufen nicht: der erste Griff an einer frischen Form
 mit einer Linie schwankt, am unveränderten Stand genauso).
 
+## 11. Formen beginnen mit Edgeloops (Versuch, 18.11. spät)
+
+Dein Wort: „Dann machen wir es jetzt so dass formen ab jetzt schon mit edgeloops beginnen. das macht am meisten sinn oder?“ (Beim
+ersten Test hattest du gefragt, „ob schon edgeloops vorgezeichnet sein sollen an den optimalen stellen“; der Bericht dazu,
+[`2026-11-18-vergleich-5197-ozzy.md`](../research/2026-11-18-vergleich-5197-ozzy.md), schlug Loops rundum längs des Körpers vor
+und versprach Bilder, bevor etwas Standard wird.)
+
+**Gebaut, hinter einem Schalter (Standard bleibt vorerst wie bisher):** im Menü „Start mit drei Loops“, in der Adresse `?loops=1`.
+Nach dem Aufblasen bekommt die Form die Umrisse der drei Ansichten: die gezeichnete Silhouette (die Linie der Seite bleibt), dazu
+einen Loop quer und einen längs, beide rundum und durch die dickste Stelle (die Mitte des größten Kreises, der in die Zeichnung
+passt). Angelegt mit dem Handgriff für „P quer über die Form“: Es sind genau die Loops, die du selbst zeichnen würdest, mit einem
+gemeinsamen Punkt an der dicksten Stelle. Jeder ist löschbar.
+
+**Gemessen** (je dieselbe Zeichnung ohne Linien wie bisher und mit den drei Start-Loops; Bilder
+[`2026-11-18-start-loops-formen-bogen.png`](../progress/ozzy/2026-11-18-start-loops-formen-bogen.png)):
+
+| Form | Rauminhalt mit Start-Loops | umgeschlagen | Rechnung |
+| --- | --- | --- | --- |
+| Kreis | −9,7 % (Abstand von der Mitte 120 bis 130 statt überall 130) | 0 | steht |
+| Birne | −6,0 % | 0 | steht |
+| Bumerang (nicht konvex) | −4,8 % | 0 | steht |
+| Bohne | −0,7 % (dafür 8 % tiefer) | 0 | steht |
+
+**Was es bringt** (zwei Kreise mit Start-Loops, Bilder
+[`2026-11-18-start-loops-naht-bogen.png`](../progress/ozzy/2026-11-18-start-loops-naht-bogen.png)):
+
+| | ohne Linien (bisher) | nur Linie der Mitte | mit drei Start-Loops |
+| --- | --- | --- | --- |
+| nach dem Verschmelzen, wenn sich die Haut setzt | +2,6 % | +0,02 % | −0,1 % |
+| K an der Naht | läuft auseinander, die Form bleibt | hält, die Form geht stark mit (−22 %) | **hält, die Form geht wenig mit (−2,2 %)** |
+
+**Was es kostet:** Die Form ist nach dem Start nicht mehr die aufgeblasene Blase. Zwischen den drei Loops fällt die Haut ein;
+von vorn und von oben wird der Umriss kissen- bis rautenförmig (am Kreis und an der Birne gut zu sehen). Das ist die heutige
+Rechnung zwischen wenigen Linien, dieselbe wie an der Startkugel deines alten Fensters; an den Loops liegt es nicht. Der Bericht
+vom ersten Test maß an einem Delfin mit fünf Loops rundum −20 %.
+
+**Offen, dein Urteil:** Ob dieser Start so Standard werden soll, oder ob erst weitere Fassungen als Bild kommen (mehr Loops,
+oder Loops rundum längs des Körpers an den dicksten und engsten Stellen, wie im Bericht vorgeschlagen). Nicht geprüft: deine
+Delfine und andere Zeichnungen mit dünnen Spitzen; Formen, bei denen die Senkrechte durch die dickste Stelle mehrere Teile trifft;
+wie sich die erste Linie anfühlt, die du selbst dazuzeichnest.
+
 ## Anhang A: Dein Auftrag (18.11.2026, wörtlich)
 
 > […] in dieser session möchte ich ein paar coole features einbauen. Aktuell geht in Ozzy der donut effekt nichtmehr. Ich
