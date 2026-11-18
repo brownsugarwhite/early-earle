@@ -27,7 +27,7 @@
 // mehr als halbiert), (2) vorhandene flache Dreiecke werden aufgelöst, indem ihre lange Kante gedreht wird (beides Option `flachSchutz`), (3) gleich nach dem
 // Einsetzen eines Loops fallen Punkte der Linie, die fast aufeinander liegen, zusammen (`nadelnZusammenlegen`).
 
-import { type Haut, type V3, hautAus } from './kurven';
+import { type Haut, type V3, hautAus, hautFrei } from './kurven';
 import { type Loop, type Probe, endeAufMitte, hatPfad, kanteBei, pfadBei } from './loops';
 
 const KEY = 2 ** 22;
@@ -1386,7 +1386,7 @@ export function verdichten(
     while (tot[w]) w = ersatz[w]!;
     return neuNr[w]!;
   };
-  const haut = hautAus(pos2, tri2);
+  const haut = hautAus(pos2, tri2, hautFrei(h));
   // Die Spiegelpartner aus der Paarung, mit der hier gerechnet wurde, nicht neu aus gerundeten Lagen (C1, 17.11.): Liegt ein Paar
   // dichter an der Mittelebene, als `hautAus` rundet, hielt es beide für denselben Ort; einer wurde sein eigenes Spiegelbild, der
   // andere verlor seines beim nächsten Mal ganz (gemessen an „maul handgemacht test“: ein Punkt bei z = −0,0012, sein Partner bei 0).

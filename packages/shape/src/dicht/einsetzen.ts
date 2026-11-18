@@ -4,7 +4,7 @@
 // Kante, die die Linie kreuzt, ein neuer Punkt; jedes durchlaufene Dreieck wird in drei geteilt. Die Proben des Loops sind dann
 // Punkte des Netzes, Härte heißt: Sie glätten nicht über die Linie hinweg.
 
-import { type Haut, type V3, hautAus, hautNormalen } from './kurven';
+import { type Haut, type V3, hautAus, hautFrei, hautNormalen } from './kurven';
 import { type Loop, type Probe, endeAufMitte, mittlereKante, spiegelProbe } from './loops';
 
 /** Ein Punkt auf einer Kante (u, v) beim Anteil f von u nach v */
@@ -445,7 +445,7 @@ function mitteKetteSchliessen(h: Haut, auf: ReadonlySet<number>): Haut | null {
     tri[t2 + 2] = d;
     gedreht++;
   }
-  return gedreht ? hautAus(h.pos, tri) : null;
+  return gedreht ? hautAus(h.pos, tri, hautFrei(h)) : null;
 }
 
 /**
@@ -519,7 +519,7 @@ function kantenTeilen(h: Haut, teile: readonly Kantenpunkt[]): { haut: Haut; get
     teilen(k.u, k.v, k.f);
     if (su !== k.u || sv !== k.v) teilen(su, sv, k.f);
   }
-  return { haut: hautAus(pos, tri), geteilt };
+  return { haut: hautAus(pos, tri, hautFrei(h)), geteilt };
 }
 
 /**
@@ -557,7 +557,7 @@ function dreieckTeilen(h: Haut, t: number, P: V3): { haut: Haut; w: number } | n
   if (ts < 0) return null;
   const w = teilen(t, P);
   teilen(ts, { x: P.x, y: P.y, z: -P.z });
-  return { haut: hautAus(pos, tri), w };
+  return { haut: hautAus(pos, tri, hautFrei(h)), w };
 }
 
 /**
@@ -672,7 +672,7 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
   function einsetzenWeg(L: Lauf, weg: readonly Kantenpunkt[]): number[] | null {
     const r = wegEinsetzen(L, weg);
     if (!r) return null;
-    haut = hautAus(r.pos, r.tri);
+    haut = hautAus(r.pos, r.tri, hautFrei(haut));
     // andere eingesetzte Loops: Punkte auf geteilten Kanten einfügen
     liste = liste.map((x, i) => {
       if (i === nr || !x.proben.every(istPunktProbe)) return x;

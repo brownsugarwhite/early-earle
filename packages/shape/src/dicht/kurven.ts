@@ -145,7 +145,20 @@ export function kurveGanz(k: Kurve, s: number): V3[] {
 /** Die Haut: Lagen (3 je Punkt), Dreiecke (nach außen), Nachbarn je Punkt, Spiegelpunkt je Punkt (z → −z; −1: keiner). */
 export type Haut = { pos: Float64Array; tri: Uint32Array; n: number; nachbarn: number[][]; spiegel: Int32Array };
 
-export function hautAus(positionen: ArrayLike<number>, indizes: ArrayLike<number>): Haut {
+/**
+ * Eine freie Haut (18.11., `frei.ts`): Kein Punkt hat ein Spiegelbild. Sie ist ein ganzes Netz für sich („Spiegel aus“ oder
+ * angewendet); was aus ihr entsteht (teilen, einsetzen, verdichten), bleibt frei (`hautAus` mit `ohnePaare`).
+ */
+export function hautFrei(h: Haut): boolean {
+  for (let v = 0; v < h.n; v++) if (h.spiegel[v]! >= 0) return false;
+  return h.n > 0;
+}
+
+/**
+ * `ohnePaare`: eine freie Haut, es werden keine Spiegelpartner gesucht (sonst fände ein Punkt nahe z = 0 sich selbst, und zufällig
+ * spiegelgleiche Lagen würden ein Paar).
+ */
+export function hautAus(positionen: ArrayLike<number>, indizes: ArrayLike<number>, ohnePaare = false): Haut {
   const n = positionen.length / 3;
   const pos = Float64Array.from(positionen);
   const tri = Uint32Array.from(indizes);
@@ -163,7 +176,7 @@ export function hautAus(positionen: ArrayLike<number>, indizes: ArrayLike<number
   const karte = new Map<string, number>();
   for (let v = 0; v < n; v++) karte.set(schluessel(pos[3 * v]!, pos[3 * v + 1]!, pos[3 * v + 2]!), v);
   const spiegel = new Int32Array(n).fill(-1);
-  for (let v = 0; v < n; v++) spiegel[v] = karte.get(schluessel(pos[3 * v]!, pos[3 * v + 1]!, -pos[3 * v + 2]!)) ?? -1;
+  if (!ohnePaare) for (let v = 0; v < n; v++) spiegel[v] = karte.get(schluessel(pos[3 * v]!, pos[3 * v + 1]!, -pos[3 * v + 2]!)) ?? -1;
   return { pos, tri, n, nachbarn: sets.map((s) => [...s]), spiegel };
 }
 
