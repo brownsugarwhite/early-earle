@@ -452,20 +452,27 @@ let mitLinie = ((): boolean => {
   }
 })();
 /**
- * Formen beginnen mit Edgeloops (Florian, 18.11. spät: „dass formen ab jetzt schon mit edgeloops beginnen“): nach dem Aufblasen die
- * drei Umrisse der drei Ansichten. Die Linie der Seite ist die gezeichnete Silhouette; dazu ein Loop quer und einer längs, beide
- * durch die dickste Stelle (`startLoopsAnlegen`). Schalter im Menü, `?loops=0|1` für Proben. Die Linie der Mitte bleibt dann immer.
+ * Formen beginnen mit Edgeloops (Florian, 18.11. spät: „dass formen ab jetzt schon mit edgeloops beginnen“; nach dem Vergleichsbild:
+ * „ok, dann starten wir mit loops. alles andere macht glaube ich keinen sinn“): **der Standard.** Nach dem Aufblasen die Umrisse der
+ * drei Ansichten: Die Linie der Seite ist die gezeichnete Silhouette; dazu ein Loop quer und einer längs, beide durch die dickste
+ * Stelle (`startLoopsAnlegen`). Die Linie der Mitte bleibt dann immer. Der Schalter im Menü schaltet sie ab (gemerkt), `?loops=0|1`
+ * legt es für eine Adresse fest. Wo die Loops genau sitzen und wie aufgeblasen wird, daran wird noch gearbeitet (sein Wort).
+ *
+ * Die Proben im Testbrowser laufen ohne Start-Loops, solange ihre Adresse nichts anderes sagt (`navigator.webdriver`, wie beim
+ * Behalten): Sie prüfen jede ihr Thema an der Form, an der ihre Kriterien gemessen sind. Den Standard prüft
+ * `ozzy-start-loops-fenster.mjs` (mit `loops=1`).
  */
 let startLoops = ((): boolean => {
-  const u = new URLSearchParams(location.search).get('loops');
+  const q = new URLSearchParams(location.search);
+  const u = q.get('loops');
   if (u === '1') return true;
   if (u === '0') return false;
-  // (eine Probe, die `?ohneLinie` festlegt, meint den Stand von vor den Start-Loops)
-  if (new URLSearchParams(location.search).has('ohneLinie')) return false;
+  // (eine Adresse, die `ohneLinie` festlegt, meint den Stand von vor den Start-Loops)
+  if (q.has('ohneLinie') || navigator.webdriver) return false;
   try {
-    return localStorage.getItem('ozzy.startLoops') === '1';
+    return localStorage.getItem('ozzy.startLoops') !== '0';
   } catch {
-    return false;
+    return true;
   }
 })();
 /** Ist die frische Form des Werks fertig angelegt (ihre Linien sind, wie sie zum Start sein sollen)? */
@@ -6821,7 +6828,7 @@ startLoopsSchalter.addEventListener('change', () => {
   } catch {
     // ohne Speicher gilt es nur bis zum Neuladen
   }
-  werk.G.meldung = startLoops ? 'Beim nächsten Aufblasen beginnt die Form mit drei Loops (Seite, quer, längs)' : 'Beim nächsten Aufblasen ohne die Start-Loops';
+  werk.G.meldung = startLoops ? 'Beim nächsten Aufblasen beginnt die Form mit drei Loops (Seite, quer, längs)' : 'Beim nächsten Aufblasen ohne die Start-Loops (wie eine Blase, ohne Linien)';
 });
 
 const regler = $<HTMLElement>('regler');
@@ -7380,7 +7387,7 @@ const haken = {
   objekte: () => ({
     aktiv: aktivId,
     name: objektName(),
-    ruhende: ruhende.map((r) => ({ id: r.id, kasten: r.kasten, punkte: r.treffer.pos.length / 3, gezeigt: (r.haut.zeigeNetz?.pos.length ?? 0) / 3, spiegelbild: r.treffer.spiegelbild, frei: werk.hautFreiVon(r.stand.stand.haut), clipping: r.stand.clipping })),
+    ruhende: ruhende.map((r) => ({ id: r.id, kasten: r.kasten, linien: r.stand.stand.loops.length, punkte: r.treffer.pos.length / 3, gezeigt: (r.haut.zeigeNetz?.pos.length ?? 0) / 3, spiegelbild: r.treffer.spiegelbild, frei: werk.hautFreiVon(r.stand.stand.haut), clipping: r.stand.clipping })),
     ruheSicht,
     kasten: werkMasseWeltAktiv(),
   }),

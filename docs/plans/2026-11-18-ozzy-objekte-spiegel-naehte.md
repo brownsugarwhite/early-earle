@@ -4,12 +4,12 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Stand 18.11., spät: Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend; die Fahrt zum Blatt beim Plus
+**Stand 18.11., nachts: Formen beginnen mit drei Loops (Abschnitt 11, dein Wort). Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend; die Fahrt zum Blatt beim Plus
 gehört nach deinem Wort zum Feinschliff: mehrere Silhouetten auf einem Blatt, der gemeinsame Rückweg, Sichern und Laden der ganzen Szene, Linien ruhender Objekte;
 Abschnitt 10, „Etappe 3, der Rest“), **von Etappe 4 die erste Fassung: Verschmelzen und Abziehen in Ozzy** (zwei Knöpfe in der
 Leiste, die Naht als Linie mit Kante, ⌘Z trennt wieder; Abschnitt 10, „Etappe 4 in Ozzy“). K an der Naht ist entschieden („Wie
-Seifenblasen“) und wirkt wie an jeder Linie; an Formen ohne eigene Linien hält die Rechnung dabei noch nicht. **Das steht aus, dein
-Wort** (du überlegst, ob Formen künftig schon mit Edgeloops beginnen; dann gäbe es den Fall nicht). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht
+Seifenblasen“) und wirkt wie an jeder Linie; mit den Start-Loops hält die Rechnung dabei (ohne eigene Linien hielt sie nicht;
+den Fall gibt es im Standard nicht mehr). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht
 es in Abschnitt 7; was offen bleibt, in Abschnitt 8 und je Etappe in Abschnitt 10.
 
 ## 1. Warum der Donut in Ozzy nicht geht
@@ -408,14 +408,24 @@ beide Hälften ganz.
 alle 33 Fenster-Proben gegen 5211 (`ozzy-silhouette` hielt in einem von drei Läufen nicht: der erste Griff an einer frischen Form
 mit einer Linie schwankt, am unveränderten Stand genauso).
 
-## 11. Formen beginnen mit Edgeloops (Versuch, 18.11. spät)
+## 11. Formen beginnen mit Edgeloops (seit dem 18.11. spät der Standard)
+
+**Entschieden (dein Wort nach dem Vergleichsbild):** „ok, dann starten wir mit loops. alles andere macht glaube ich keinen sinn. Am
+aufblasen arbeiten wir dann noch und wo genau die loops sitzen.“ Der Start mit drei Loops ist seitdem der Standard; der Schalter im
+Menü schaltet ihn ab. Die Fenster-Proben laufen weiter an der Form ohne Start-Loops, an der ihre Kriterien gemessen sind (im
+Testbrowser sind die Loops aus, solange die Adresse nichts anderes sagt); den Standard prüft `ozzy-start-loops-fenster.mjs`.
+**Steht aus, mit dir zusammen:** das Aufblasen selbst und wo genau die Loops sitzen (der Abschnitt unten nennt, was der erste
+Sitz kostet). Zu Verschmelzen und Abziehen dein Wort vom selben Abend: „gefällt mir schonmal gut. die entstehende form sieht
+meistens sauber aus.“
+
+Der Versuch, wie er dir vorlag:
 
 Dein Wort: „Dann machen wir es jetzt so dass formen ab jetzt schon mit edgeloops beginnen. das macht am meisten sinn oder?“ (Beim
 ersten Test hattest du gefragt, „ob schon edgeloops vorgezeichnet sein sollen an den optimalen stellen“; der Bericht dazu,
 [`2026-11-18-vergleich-5197-ozzy.md`](../research/2026-11-18-vergleich-5197-ozzy.md), schlug Loops rundum längs des Körpers vor
 und versprach Bilder, bevor etwas Standard wird.)
 
-**Gebaut, hinter einem Schalter (Standard bleibt vorerst wie bisher):** im Menü „Start mit drei Loops“, in der Adresse `?loops=1`.
+**Gebaut:** im Menü „Start mit drei Loops“, in der Adresse `?loops=0|1`.
 Nach dem Aufblasen bekommt die Form die Umrisse der drei Ansichten: die gezeichnete Silhouette (die Linie der Seite bleibt), dazu
 einen Loop quer und einen längs, beide rundum und durch die dickste Stelle (die Mitte des größten Kreises, der in die Zeichnung
 passt). Angelegt mit dem Handgriff für „P quer über die Form“: Es sind genau die Loops, die du selbst zeichnen würdest, mit einem
@@ -444,8 +454,8 @@ von vorn und von oben wird der Umriss kissen- bis rautenförmig (am Kreis und an
 Rechnung zwischen wenigen Linien, dieselbe wie an der Startkugel deines alten Fensters; an den Loops liegt es nicht. Der Bericht
 vom ersten Test maß an einem Delfin mit fünf Loops rundum −20 %.
 
-**Offen, dein Urteil:** Ob dieser Start so Standard werden soll, oder ob erst weitere Fassungen als Bild kommen (mehr Loops,
-oder Loops rundum längs des Körpers an den dicksten und engsten Stellen, wie im Bericht vorgeschlagen). Nicht geprüft: deine
+**Offen:** wo die Loops am besten sitzen (mehr Loops, oder Loops rundum längs des Körpers an den dicksten und engsten Stellen,
+wie im Bericht vorgeschlagen) und das Aufblasen selbst. Die Proben nach und nach auf den Standard umstellen. Nicht geprüft: deine
 Delfine und andere Zeichnungen mit dünnen Spitzen; Formen, bei denen die Senkrechte durch die dickste Stelle mehrere Teile trifft;
 wie sich die erste Linie anfühlt, die du selbst dazuzeichnest.
 
