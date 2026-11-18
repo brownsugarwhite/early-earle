@@ -315,8 +315,9 @@ Dazu 10 Tests des Bausteins (frei, gespiegelt, Teil mit und ohne Spiegelbild, Fe
 **Was an Etappe 4 offen bleibt** (die erste Fassung ist benutzbar, aber nicht fertig):
 1. **K an der Naht an Formen ohne eigene Linien hält nicht** (Tabelle). Du hast „Wie Seifenblasen“ gewählt: Die Naht ist dann eine
    weiche Linie wie jede andere, und eine einzelne weiche Linie an einem scharfen Knick hat in der heutigen Rechnung keinen festen
-   Ausgang. Mit eigenen Linien an den Formen hält es. Wie es ohne sie halten soll, gehört zu Etappe 5 (die Naht lebt) und braucht
-   einen Beweis im Kern, bevor etwas gebaut wird.
+   Ausgang. Mit eigenen Linien an den Formen hält es. **Steht aus, dein Wort (18.11. spät):** „Ich weiß noch nicht wie das gelöst
+   werden soll. Vllt starte ich auch schon mit edgeloops und es gibt dann den fall ohne gar nicht...das muss ich noch erörtern“.
+   Bis dahin wird dazu nichts bewiesen und nichts gebaut; das Werk behält in dem Fall die Form.
 2. **Nach dem Verbinden wächst eine Form ohne eigene Linien um rund 3 %** (die Haut setzt sich an ihrer ersten Linie; mit eigenen
    Linien bleibt sie stehen). Das ist dieselbe Rechnung wie nach jeder ersten Linie an einer frischen Form.
 3. **Der Spiegel:** Ein Objekt, das sein Spiegelbild zeigt, und eines ohne (beide frei) lassen sich noch nicht verbinden (Meldung:

@@ -548,6 +548,26 @@ type Ruhend = {
 type NahtMarke = { n: number; teil: Ruhend; clipping: boolean; spiegelbild: boolean };
 const ruhende: Ruhend[] = [];
 const nahtMarken: NahtMarke[] = [];
+/**
+ * Mehrere Silhouetten auf einem Blatt (Etappe 3; Florian: neue Objekte „aufgeblasen wie das erste, auch mehrere beim ersten
+ * Zeichnen“): Jede geschlossene Linie wird ein Objekt. ↩ bläst die größte auf wie immer; die anderen warten hier und folgen der
+ * Reihe nach (rascher, die Kamera bleibt dabei im Raum). `erste`: die Kennung der größten, sie ist am Ende das aktive Objekt;
+ * `imRaum`: Die erste steht schon, jetzt folgen die anderen; `zahl`: so viele Formen sind es zusammen.
+ */
+let reihe: { warten: ReturnType<Blatt['netzKopie']>[]; erste: number; imRaum: boolean; zahl: number } | null = null;
+/** so viel rascher blasen die folgenden Formen einer Reihe auf */
+const REIHE_TEMPO = 2.5;
+/** die Kästen der Formen, die in der Reihe noch warten, im Raum (die Tiefe geschätzt: eine runde Form ist so dick wie schmal) */
+function reiheKaesten(): { cx: number; cy: number; rx: number; ry: number; tiefe: number }[] {
+  if (!reihe) return [];
+  return reihe.warten.flatMap((n) => {
+    const k = Blatt.kasten(n);
+    if (!k) return [];
+    const rx = (k.x1 - k.x0) / 2;
+    const ry = (k.y1 - k.y0) / 2;
+    return [{ cx: (k.x0 + k.x1) / 2 - W / 2, cy: H / 2 - (k.y0 + k.y1) / 2, rx, ry, tiefe: Math.min(rx, ry) }];
+  });
+}
 /** läuft gerade ein Verbinden (beim ersten Mal lädt die Bibliothek einen Augenblick)? */
 let nahtLaeuft = false;
 let aktivId = 1;
@@ -1001,7 +1021,7 @@ const spiegelZustand = (): SpiegelZustand => werk.spiegelStand();
 let spiegelFahrt: { t: number; tiefe: number } | null = null;
 const SPIEGEL_FAHRT = 0.42;
 const spiegelMarken: { n: number; clipping: boolean; spiegelbild: boolean }[] = [];
-const spiegelErlaubt = (): boolean => zustand === 'ruhe' && werkGezeigt && !werk.grund && !werk.maulLauf;
+const spiegelErlaubt = (): boolean => zustand === 'ruhe' && werkGezeigt && !werk.grund && !werk.maulLauf && !reihe;
 function spiegelSetzen(ziel: SpiegelZustand): void {
   if (!spiegelErlaubt() || werk.zug || spiegelFahrt || ziel === spiegelZustand()) return;
   const frei = werk.istFrei();
@@ -1139,14 +1159,16 @@ const wandSicht = [0, 0, 0, 0, 0, 0];
 /** Maße der Form des Werks in der Welt (Mitte, halbe Ausdehnungen; die Tiefe von der Mittelebene), wenn das Werk eine hat */
 function werkMasseWelt(): { cx: number; cy: number; rx: number; ry: number; tiefe: number } | null {
   const a = werkMasseWeltAktiv();
-  if (!ruhende.length) return a;
-  // mehrere Objekte: der Kasten um alle (der Raum, seine Wände und der Maßstab richten sich nach allen)
+  // mehrere Objekte: der Kasten um alle (der Raum, seine Wände und der Maßstab richten sich nach allen, auch nach denen, die in einer
+  // Reihe noch aufs Aufblasen warten: So steht der Raum vom ersten an)
+  const andere = [...ruhende.map((r) => r.kasten), ...reiheKaesten()];
+  if (!andere.length) return a;
   let x0 = Infinity;
   let x1 = -Infinity;
   let y0 = Infinity;
   let y1 = -Infinity;
   let z = 0;
-  for (const k of a ? [a, ...ruhende.map((r) => r.kasten)] : ruhende.map((r) => r.kasten)) {
+  for (const k of a ? [a, ...andere] : andere) {
     x0 = Math.min(x0, k.cx - k.rx);
     x1 = Math.max(x1, k.cx + k.rx);
     y0 = Math.min(y0, k.cy - k.ry);
@@ -1752,6 +1774,15 @@ function werkAufsBlatt(): void {
 
 function aufblasen(): void {
   if (!blatt.geschlossen) return;
+  // mehrere geschlossene Linien auf dem Blatt: Jede wird ein Objekt. Die größte bleibt als Zeichnung dieses Objekts auf dem Blatt und
+  // bläst jetzt auf, die anderen folgen der Reihe nach (`reiheSchritt`)
+  if (!reihe) {
+    const teile = blatt.silhouettenNetze();
+    if (teile.length > 1) {
+      reihe = { warten: teile.slice(1), erste: aktivId, imRaum: false, zahl: teile.length };
+      blatt.netzSetzen(teile[0]!);
+    }
+  }
   if (!koerper || netzStand !== blatt.stand) netzBauen();
   if (!koerper) return;
   koerper.versatz.fill(0);
@@ -1850,6 +1881,7 @@ function neu(behalten = false): void {
   if (!behalten) {
     ruhende.length = 0;
     aktivId = 1;
+    reihe = null;
     ruheZeigen();
   }
   werkHaut.neueForm();
@@ -1887,6 +1919,35 @@ function neu(behalten = false): void {
   leiste.lage(false);
   leiste.zeichnenErlaubt(true);
   anstossen();
+}
+
+/**
+ * Die Reihe der Silhouetten eines Blatts: Steht die Form von eben (gezeigt, das Werk ruht), wird sie abgelegt, und die nächste bläst
+ * auf, als eigenes Objekt. Nach der letzten ist die größte wieder das aktive Objekt. Zurück: Läuft die Reihe noch?
+ */
+function reiheSchritt(): boolean {
+  const R = reihe;
+  if (!R) return false;
+  const steht = zustand === 'ruhe' && werkGezeigt && !!werkForm && !werkBeschaeftigt() && werk.ruheOffen === null && (mitLinie || !!werkForm.ohneLinie || werkForm.geladen !== undefined);
+  if (!steht) return true;
+  if (!R.warten.length) {
+    reihe = null;
+    objektAktivieren(R.erste);
+    werk.G.meldung = `${R.zahl} Formen aufgeblasen · V wählt eine Form (Klick), das Plus fügt weitere hinzu`;
+    anstossen();
+    return false;
+  }
+  if (!objektAblegenJetzt()) return true;
+  const n = R.warten.shift()!;
+  R.imRaum = true;
+  // (die Anzeige des Objekts von eben gehört ihm: Das nächste bekommt seine eigene)
+  werkHaut = new WerkHaut();
+  ruheZeigen();
+  neu(true);
+  aktivId = Math.max(...ruhende.map((x) => x.id)) + 1;
+  blatt.netzSetzen(n);
+  aufblasen();
+  return true;
 }
 
 // ---------- Kamera ----------
@@ -2933,10 +2994,11 @@ function bild(dt: number): boolean {
   if (zustand === 'blatt' && !blatt.geschlossen) film = 0;
   // Zeit des Aufblasens
   let m: Moment | null = null;
+  let mBuehne: Moment | null = null;
   if (zustand !== 'blatt' && koerper && raum) {
     const dauer = moment(0, masse(), werte).dauer;
     if (festeZeit !== null) T = festeZeit;
-    else if (zustand === 'auf') T += dt;
+    else if (zustand === 'auf') T += dt * (reihe?.imRaum ? REIHE_TEMPO : 1);
     else if (zustand === 'ab') T -= dt * 1.5;
     if (zustand === 'auf' && T >= dauer) zustand = 'ruhe';
     if (zustand === 'ab' && T <= 0) {
@@ -2949,6 +3011,8 @@ function bild(dt: number): boolean {
       leiste.zeichnenErlaubt(true);
     }
     m = moment(Math.max(0, Math.min(T, dauer)), masse(), werte);
+    // die folgenden Formen einer Reihe blasen im Raum auf: Kamera, Wände und Linien stehen wie am Ende der Fahrt
+    mBuehne = reihe?.imRaum ? moment(dauer, masse(), werte) : m;
     if (zustand !== 'ruhe' || zug) koerper.setzen(zustand === 'blatt' ? FLACH : m.lage);
     const tau = zustand === 'auf' && T < m.riss + 0.35 ? 0 : zug ? 3.5 : 1.6;
     // zeigt die Seifenhaut die Haut des Werks, ruht die Blase der Studie: nicht mehr rechnen und hochladen (S3)
@@ -2966,6 +3030,7 @@ function bild(dt: number): boolean {
   // das Werk: sein Bildtakt und, ab dem Abriss, seine Haut
   mess.teile = [0, 0, 0, 0, 0, 0];
   aktiv = werkBild(dt, m) || aktiv;
+  if (reiheSchritt()) aktiv = true;
   // C4: gewählte Felder folgen der Haut (Netzwechsel, Züge) und der Auswahl des Werks; G, S, R endet, wenn das Werk den Zug beendet hat
   werkFelder.nachfuehren();
   if (tastenZug && !(werk.zug && werk.zug.modal)) tastenZug = null;
@@ -3086,7 +3151,7 @@ function bild(dt: number): boolean {
       aktiv = true;
     }
   }
-  kameraSetzen(zustand === 'blatt' ? null : m);
+  kameraSetzen(zustand === 'blatt' ? null : mBuehne);
   faltJetzt = zustand === 'blatt' ? null : faltRechnen();
   // A3: wie groß die Haut im Bild ist (Gerätepunkte je Einheit des Werks; in den Vier Ansichten das größte Feld): danach richten sich
   // die Stufen der glatten Anzeige. Passt ihre Zahl nicht mehr (Zoomen, Wechsel der Ansicht), wird in der Ruhe neu gerechnet.
@@ -3207,7 +3272,7 @@ function bild(dt: number): boolean {
         gast.netzSetzen(zeigN, wicklungVon(zeigN));
         gastStand = { netz: zeigN, version: werkHaut.version };
       }
-      const heim = richtung(((m?.gier ?? 0) * Math.PI) / 180, ((m?.neigung ?? 0) * Math.PI) / 180);
+      const heim = richtung(((mBuehne?.gier ?? 0) * Math.PI) / 180, ((mBuehne?.neigung ?? 0) * Math.PI) / 180);
       const unruhig = gast.zeichnen(kam.aktiv, material, {
         deckung: (1 - 0.7 * roentgen) * blende,
         abstand: kam.abstand,
@@ -3275,16 +3340,16 @@ function bild(dt: number): boolean {
     werkHaut.umrissVeraltet = false;
     if (koerper && raum && m) {
       const tw = performance.now();
-      wandLinien(vp, m);
+      wandLinien(vp, mBuehne ?? m);
       if (flach > 0.01 && !einzelUebergang) linienDerAnsicht(vp);
-      if (faltJetzt) felderLinien(faltJetzt, m);
+      if (faltJetzt) felderLinien(faltJetzt, mBuehne ?? m);
       eckZeichen();
       mess.teile[5] = performance.now() - tw;
       if (werkHaut.umrissVeraltet) aktiv = true;
     }
     if (koerper && raum && m && werkGezeigt) {
       const tl = performance.now();
-      const r = werkLinien(vp, m, dt);
+      const r = werkLinien(vp, mBuehne ?? m, dt);
       mess.teile[2] = performance.now() - tl;
       zeigerBearbeiten = r.zeiger;
       aktiv = r.aktiv || aktiv;
@@ -5575,6 +5640,8 @@ function schweben(x: number, y: number): void {
 
 leinwandLinien.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
+  // (solange die Formen einer Reihe aufblasen, ruht die Bedienung: Jede Form wird gerade erst angelegt)
+  if (reihe) return;
   try {
     leinwandLinien.setPointerCapture(e.pointerId);
   } catch {
@@ -6078,6 +6145,7 @@ function werkzeugImRaum(w: Werkzeug): void {
 }
 
 function muell(): void {
+  if (reihe) return;
   if (zustand === 'blatt') blatt.leeren();
   else if (ruhende.length && zustand === 'ruhe') {
     // mit mehreren Objekten verwirft der Mülleimer das aktive (wie ⌫ im Objekt-Modus); das letzte geht wie bisher zurück aufs leere Blatt
@@ -6101,6 +6169,10 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (e.target instanceof HTMLInputElement) return;
+  if (reihe) {
+    e.preventDefault();
+    return;
+  }
   blatt.alt = e.altKey;
   blatt.umschalt = e.shiftKey;
   bearbeiten.alt = e.altKey;
@@ -6945,6 +7017,8 @@ const haken = {
   }),
   objektPlus,
   objektAktivieren,
+  /** Etappe 3: Blasen die Formen einer Reihe noch auf (mehrere Silhouetten auf einem Blatt)? */
+  reihe: () => (reihe ? { warten: reihe.warten.length, zahl: reihe.zahl, imRaum: reihe.imRaum } : null),
   /** Etappe 4: das aktive Objekt mit dem verbinden, das es berührt (wie die Knöpfe der Leiste) */
   verbinden: (art: 'vereinen' | 'abziehen') => objekteVerbindenJetzt(art),
   nahtPartner: () => nahtPartner()?.id ?? 0,
@@ -7323,6 +7397,29 @@ const haken = {
     film = 1;
     netzBauen();
     leiste.lage(true);
+    anstossen();
+  },
+  /** die Zeichnung auf dem Blatt: wie viele Linien, wie viele davon geschlossen */
+  zeichnung: () => {
+    const n = blatt.netzKopie();
+    return { linien: n.linien.length, geschlossene: n.linien.filter((l) => l.zu && l.stuecke.length >= 2).length };
+  },
+  /** eine weitere geschlossene Linie auf dasselbe Blatt (Etappe 3: mehrere Silhouetten auf einem Blatt) */
+  formDazu(anker: { x: number; y: number; ein?: [number, number]; aus?: [number, number] }[]): void {
+    const n = blatt.netzKopie();
+    const p0 = n.punkte.length;
+    const m = anker.length;
+    for (const a of anker) n.punkte.push({ x: a.x, y: a.y, sichtbar: true, verdeckt: false });
+    n.linien.push({
+      zu: true,
+      punkte: anker.map((_, i) => p0 + i),
+      knick: anker.map((a) => !a.ein && !a.aus),
+      stuecke: anker.map((a, i) => {
+        const b = anker[(i + 1) % m]!;
+        return { g1x: a.aus?.[0] ?? (b.x - a.x) / 3, g1y: a.aus?.[1] ?? (b.y - a.y) / 3, g2x: b.ein?.[0] ?? (a.x - b.x) / 3, g2y: b.ein?.[1] ?? (a.y - b.y) / 3, art: 'umriss' as const };
+      }),
+    });
+    blatt.verhalten.netzErsetzen(n);
     anstossen();
   },
   aufblasen,

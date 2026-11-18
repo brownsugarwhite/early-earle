@@ -219,6 +219,70 @@ export class Blatt {
     return this.silhouetteNr() >= 0;
   }
 
+  /**
+   * Das Blatt zerlegt (Etappe 3, 18.11.; Florian: neue Objekte „aufgeblasen wie das erste, auch mehrere beim ersten Zeichnen“): je
+   * geschlossener Linie eine Zeichnung für sich, die größte zuerst. Jede wird ein Objekt. Die offenen Linien bleiben bei der größten.
+   * Mit höchstens einer geschlossenen Linie: eine Zeichnung, das Blatt, wie es ist.
+   */
+  silhouettenNetze(): Netz[] {
+    const n = this.netz;
+    const zu: { li: number; a: number }[] = [];
+    n.linien.forEach((l, li) => {
+      if (!l.zu || l.stuecke.length < 2) return;
+      const p = linieProben(n, li, 4);
+      const a = Math.abs(flaeche(p.x, p.y));
+      if (a > 1) zu.push({ li, a });
+    });
+    if (zu.length < 2) return [this.netzKopie()];
+    zu.sort((x, y) => y.a - x.a);
+    const teil = (linien: number[]): Netz => {
+      const nr = new Map<number, number>();
+      const punkte: Netz['punkte'] = [];
+      return {
+        linien: linien.map((li) => {
+          const l = n.linien[li]!;
+          return {
+            ...l,
+            punkte: l.punkte.map((pi) => {
+              let q = nr.get(pi);
+              if (q === undefined) {
+                q = punkte.length;
+                nr.set(pi, q);
+                punkte.push({ ...n.punkte[pi]! });
+              }
+              return q;
+            }),
+            stuecke: l.stuecke.map((st) => ({ ...st })),
+            ...(l.knick ? { knick: [...l.knick] } : {}),
+          };
+        }),
+        punkte,
+      };
+    };
+    const geschlossen = new Set(zu.map((x) => x.li));
+    const offene = n.linien.map((_, li) => li).filter((li) => !geschlossen.has(li));
+    return zu.map((x, k) => teil(k === 0 ? [x.li, ...offene] : [x.li]));
+  }
+
+  /** der Kasten der geschlossenen Linien einer Zeichnung (CSS-Pixel des Blatts) oder null */
+  static kasten(n: Netz): { x0: number; x1: number; y0: number; y1: number } | null {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    n.linien.forEach((l, li) => {
+      if (!l.zu || l.stuecke.length < 2) return;
+      const p = linieProben(n, li, 4);
+      for (let i = 0; i < p.x.length; i++) {
+        x0 = Math.min(x0, p.x[i]!);
+        x1 = Math.max(x1, p.x[i]!);
+        y0 = Math.min(y0, p.y[i]!);
+        y1 = Math.max(y1, p.y[i]!);
+      }
+    });
+    return x1 > x0 ? { x0, x1, y0, y1 } : null;
+  }
+
   /** die Anker der Silhouette (CSS-Pixel des Blatts) oder null */
   silhouette(): Anker[] | null {
     const li = this.silhouetteNr();
