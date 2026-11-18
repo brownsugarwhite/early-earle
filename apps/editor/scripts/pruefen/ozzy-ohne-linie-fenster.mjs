@@ -1,6 +1,7 @@
 // Ozzy, S9 im Plan „wie es weitergeht“ (16.11.2026): Start ohne Linie an der Spiegelkante (zur Wahl, `?ohneLinie=1`), Beweis.
 // Ablauf: ein Fisch (die Form der Probe ozzy-werk-fenster), ↩ bläst auf. Gemessen:
 //   1  Nach dem Aufblasen hat das Werk keine Linie; die Haut steht (in 3 s höchstens 0,5 Einheiten bewegt).
+//   1b Sie ist noch die gezeichnete Form (18.11.): halbe Ausdehnung wie die Zeichnung (höchstens 5 daneben), höchstens so dick wie hoch.
 //   2  Die erste Linie mit P (gerade quer in der Seite, ↩): ein Ring; die Haut steht weiter (ohne Kreuzung setzt das Werk sie nicht).
 //   3  Der erste Zug an dem Ring (ein Punkt 10 px nach oben): wie weit sich die Haut bewegt (so rechnet Sitzung 4: aus einer einzigen
 //      Linie die ganze Haut). Kein Kriterium, nur gemessen.
@@ -59,6 +60,23 @@ await s.waitForTimeout(3000);
 const v1 = await O('hautVersatz');
 await bild('1-ohne-linie');
 ok('1 nach dem Aufblasen keine Linie, die Haut steht', L0.length === 0 && v1 >= 0 && v1 <= 0.5, `Linien ${L0.length}, Haut in 3 s ${z2(v1)} bewegt`);
+// 1b (18.11.): und sie ist noch die gezeichnete Form. Bis dahin prüfte die Probe nur, ob die Haut steht; nach C1 stand sie als große
+// Kugel (die Rechnung ohne Linie lief nicht mehr sichtbar davon, sondern kroch ins Falsche und wurde angenommen). Der Fisch ist im
+// Werk 150 breit (halbe Ausdehnung), 79,6 hoch und, rund aufgeblasen, höchstens so dick wie hoch.
+{
+  const R = await O('werkRoh');
+  const mm = [Infinity, -Infinity, Infinity, -Infinity, 0];
+  for (let i = 0; i < R.pos.length; i += 3) {
+    mm[0] = Math.min(mm[0], R.pos[i]);
+    mm[1] = Math.max(mm[1], R.pos[i]);
+    mm[2] = Math.min(mm[2], R.pos[i + 1]);
+    mm[3] = Math.max(mm[3], R.pos[i + 1]);
+    mm[4] = Math.max(mm[4], Math.abs(R.pos[i + 2]));
+  }
+  const bx = (mm[1] - mm[0]) / 2;
+  const by = (mm[3] - mm[2]) / 2;
+  ok('1b die Haut ist noch die gezeichnete Form', Math.abs(bx - 150) <= 5 && Math.abs(by - 79.6) <= 5 && mm[4] >= 20 && mm[4] <= 85, `halbe Ausdehnung ${z2(bx)} × ${z2(by)} × ${z2(mm[4])} (gezeichnet 150 × 79,6, rund höchstens so dick wie hoch)`);
+}
 // 2 die erste Linie mit P: gerade quer in der Seite
 await s.keyboard.press('1');
 await s.waitForTimeout(1500);

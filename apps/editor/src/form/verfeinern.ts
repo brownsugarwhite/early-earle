@@ -307,6 +307,28 @@ export function innerhalb(pos: Float64Array, grenze: number): boolean {
  * letzten Netzes. `zwischen`: bekommt den Stand nach der Vorstufe; seine Felder dürfen dem Auftrag danach entzogen sein (der Worker
  * übergibt sie ohne Kopie), der Auftrag rührt sie nicht mehr an.
  */
+/** Rauminhalt der Haut (Summe der Spate ihrer Dreiecke gegen den Ursprung) */
+function rauminhalt(h: Haut): number {
+  const P = h.pos;
+  const T = h.tri;
+  let v = 0;
+  for (let i = 0; i < T.length; i += 3) {
+    const a = 3 * T[i]!;
+    const b = 3 * T[i + 1]!;
+    const c = 3 * T[i + 2]!;
+    v += P[a]! * (P[b + 1]! * P[c + 2]! - P[b + 2]! * P[c + 1]!) - P[a + 1]! * (P[b]! * P[c + 2]! - P[b + 2]! * P[c]!) + P[a + 2]! * (P[b]! * P[c + 1]! - P[b + 1]! * P[c]!);
+  }
+  return Math.abs(v) / 6;
+}
+/**
+ * Setzt sich die Haut, ohne dass sich eine Linie bewegt, darf sich ihr Rauminhalt höchstens um diesen Anteil ändern; mehr gilt als
+ * davongelaufen (18.11.). Seit der Schrittweite im Löser (`SCHRITT_MAX`, C1) fliegt eine Rechnung ohne festen Ausgang (eine frische
+ * Form mit einer einzigen Linie) nicht mehr auseinander, sondern kriecht ruhig ins Falsche und meldete „steht“: Der Delfin aus Florians
+ * Test wurde so zum Ballon (Rauminhalt je Stufe plus 12, 33, 25, 36, 34 %). Formen, die halten, ändern sich je Stufe um höchstens
+ * 10 % (frisch aufgeblasen, erste Stufe), danach um 2 %.
+ */
+const RAUMINHALT_GRENZE = 0.2;
+
 export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => void, spur?: (schritt: string, h: Haut) => void): AufraeumErgebnis {
   const ms = [0, 0, 0, 0];
   let h = hautAusFlach(a.haut);
@@ -355,6 +377,10 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     const t = uhr();
     const z = new LoopZug(h, loops, null, a.kruemmung, 'kurven', a.gewichte, vorlage ? { vorlage, ...a.loeserOpt } : a.loeserOpt);
     const ziele = loops.map((l, li) => (a.exakt[li] ? pfadVersatz(l, z.start[li]!) : (versch?.[li] ?? null)));
+    // bewegt sich dabei eine Linie (gelöschte Punkte, ein neuer Pfad)? Dann darf die Form sich ändern, wie sie will
+    let bewegt = 0;
+    for (const d of ziele) if (d) for (let i = 0; i < d.length; i++) bewegt = Math.max(bewegt, Math.abs(d[i]!));
+    const inhaltVorher = bewegt < 0.01 * a.maxKante ? rauminhalt(h) : -1;
     const vor = new Float64Array(h.pos.length);
     // läuft die Haut beim Setzen davon (weiter draußen als das Dreifache von Haut und Zielen), gilt sie wie nicht endlich
     const grenze = hautGrenze(h.pos, z.lagen(ziele), a.maxKante);
@@ -380,8 +406,15 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
         break;
       }
     }
+    // ohne bewegte Linie hat die Haut ihren Rauminhalt stark geändert: davongelaufen, auch wenn jede Runde klein war
+    let gekrochen = false;
+    if (endlich && inhaltVorher > 0 && Math.abs(rauminhalt(h) - inhaltVorher) > RAUMINHALT_GRENZE * inhaltVorher) {
+      endlich = false;
+      steht = false;
+      gekrochen = true;
+    }
     if (endlich) loops.forEach((l, li) => festlegen(h, l, !a.exakt[li]));
-    spur?.(`setzen (bis Runde ${runden}${steht ? ', steht' : ', steht nicht'}${endlich ? '' : ', nicht endlich'})`, h);
+    spur?.(`setzen (bis Runde ${runden}${steht ? ', steht' : ', steht nicht'}${gekrochen ? ', Rauminhalt davongelaufen' : endlich ? '' : ', nicht endlich'})`, h);
     unruhe += z.unruhe.stufen + (z.unruhe.fest ? 1 : 0);
     ms[3] = ms[3]! + uhr() - t;
     return { steht, endlich };
@@ -393,7 +426,10 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
   /** die Vorstufe hat die Haut gesetzt, und niemand hat den Stand bekommen */
   let gesetzt = false;
   let vorstufe: AufraeumErgebnis['vorstufe'] = 'keine';
-  if (a.zuerstSetzen) {
+  // Ohne Linien wird nie gesetzt (18.11.): Nichts hält die Form, die Rechnung zöge sie zu einer Kugel oder zu einem Punkt zusammen.
+  // Die Haut bleibt, wie sie ist, bis eine Linie kommt; verdichtet und aufgerichtet wird trotzdem.
+  const ohneLinien = loops.length === 0;
+  if (a.zuerstSetzen && !ohneLinien) {
     z = zerlege();
     const vorher = Float64Array.from(h.pos);
     const r = setze(z ? z.vorlage : null, a.ziele, a.maxRundenZuerst);
@@ -426,7 +462,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
   let abgebrochen = false;
   /** das Netz ist ein anderes als im Auftrag (verdichtet, oder zum Schluss aufgerichtet) */
   let netzNeu = verdichtet;
-  if (verdichtet) {
+  if (verdichtet && !ohneLinien) {
     for (let k = 0; ; k++) {
       if (!setze(z ? z.vorlage : null, null, a.maxRunden).endlich) {
         abgebrochen = true;
