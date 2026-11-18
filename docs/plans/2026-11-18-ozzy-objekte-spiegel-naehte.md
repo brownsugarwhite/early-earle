@@ -459,6 +459,39 @@ wie im Bericht vorgeschlagen) und das Aufblasen selbst. Die Proben nach und nach
 Delfine und andere Zeichnungen mit dünnen Spitzen; Formen, bei denen die Senkrechte durch die dickste Stelle mehrere Teile trifft;
 wie sich die erste Linie anfühlt, die du selbst dazuzeichnest.
 
+## 12. Etappe 5: die Naht lebt (Beweis im Kern, 18.11. nachts)
+
+Dein Wort: „Mach jetzt erstmal 3 und dann würde ich mich ans maul machen, in einer neuen session.“ (Zusammengeführt wird erst am
+Schluss; über den Sitz der Loops denkst du noch nach; Seifenhaut, Tempo und Bedienung kommen, wenn Maul und Posen in Ordnung sind.)
+
+**Was du beschrieben hast (Punkt 8 deines Auftrags):** „Es soll aber nur eine art hilfsedgeloop sein, der smooth entsteht wenn ich
+objekte ineinanderschiebe. Ich kann ihn auch ein und ausschalten pro objekt. … die überschneidung ist ausgeblendet. wenn ich den
+hilfsloop bearbeite, verändert das beide meshes so dass es immer passt. ich kann objekte dann auch einfach wieder
+auseinanderschieben und der hilfsedgloop verschwindet. Das auseinanderziehen wirkt dann als würden sich zwei seifenblasen über
+einen schmaler werdenden hals trennen.“
+
+**Wie ich es lese:** Die Objekte bleiben Objekte. Der Hilfsloop gehört nicht zu einer Form, sondern zur Lage zweier Objekte
+zueinander: Er entsteht, wo sie sich überschneiden, und verschwindet, wenn sie sich trennen. Die verschmolzene Haut ist dann
+**abgeleitet**: aus den Objekten, wie sie gerade stehen, jedes Mal neu verbunden (mit dem Baustein von Etappe 4). So bleibt beim
+Auseinanderschieben nichts zurück: Die Schnittkurve wird von selbst kleiner, bis sie verschwindet. In Etappe 4 ist Verschmelzen
+dagegen ein Schritt, nach dem es eine Form gibt; das Abgeleitete wäre ein Umbau. Vor dem Umbau der Beweis.
+
+**Der Beweis (`scripts/pruefen/form-naht-ziehen.ts`):** zwei Formen mit je drei Loops (dein Standard seit heute). Die kleinere
+wandert in Schritten von der größeren weg, bis sie sich trennen. Bei jedem Schritt wird aus den zwei unveränderten Formen neu
+verbunden und gerechnet, einmal mit Kante an der Naht, einmal weich (K). Kriterien, vorher festgelegt:
+1. Bei jedem Abstand, bei dem sich die Formen überschneiden: Die Haut ist geschlossen, die Rechnung kommt zur Ruhe, kein Dreieck
+   schlägt um; mit Kante und weich.
+2. Die Naht wird mit dem Abstand stetig kleiner; sind die Formen getrennt, meldet der Baustein das, und es bleiben zwei Objekte.
+3. Kein Sprung: Fern der Naht liegt die Haut von Schritt zu Schritt an derselben Stelle (die Form, die steht, höchstens 2
+   Einheiten anders), obwohl jedes Mal von vorn gerechnet wird.
+4. Die Zeit je Schritt (verbinden und rechnen), als Zahl: Sie sagt, ob der Hals beim Ziehen mitlaufen kann oder erst beim
+   Loslassen steht.
+5. Ein Bild: die Abstände nebeneinander, weich.
+
+**Nicht Teil dieses Beweises:** den Hilfsloop selbst ziehen und beide Objekte folgen lassen (der Zug müsste in beide Objekte
+zurückgeschrieben werden); was man beim Ziehen sieht, solange noch nicht neu verbunden ist; mehr als zwei Objekte; gespiegelte
+Objekte.
+
 ## Anhang A: Dein Auftrag (18.11.2026, wörtlich)
 
 > […] in dieser session möchte ich ein paar coole features einbauen. Aktuell geht in Ozzy der donut effekt nichtmehr. Ich
