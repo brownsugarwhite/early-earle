@@ -516,6 +516,63 @@ verschieben, ohne dass die Form sich ändert. Zwei Fälle:
   „Gleiten passt so.“ (⌘ + Ziehen; eine Kante wandert mit ihrer Linie, eine weiche Linie lässt die Form stehen, soweit der Beweis es
   hergibt).
 
+**Beweis geführt (18.11., nachts): Er hält nicht. Die Bedienung ist nicht gebaut; die Frage an dich steht in der Liste für den
+Feinschliff („Gleiten“).** Was du wissen musst: Deine Linien tragen die Form. Rückt eine Linie auf der Haut an eine andere Stelle,
+verliert die alte Stelle ihren Halt, und die Haut setzt sich beim Rechnen um: bei 10 Einheiten Weg um 2 bis 6 Einheiten an der
+stärksten Stelle, bei 30 um 5 bis 19 (erlaubt waren 0,5). Bei 1 bis 2 Einheiten bleibt es unter etwa 1 Einheit. Bild:
+[`2026-11-18-gleiten-beweis.png`](../progress/ozzy/2026-11-18-gleiten-beweis.png) („strange bird“: die Linie gelöscht, um 10 und
+um 30 geglitten; „teat firefish“ um 10).
+
+- **Die Probe** (`form-gleiten.ts`, Kern; an deinen drei Formen je die zwei längsten weichen Linien): die gesicherte Form bis zur
+  Ruhe rechnen; die Linie in Schritten von höchstens 0,3 Kantenlängen längs der Haut rücken (die Punkte des Netzes unter der Linie
+  und ihre eigenen Punkte werden auf die Haut gelegt, wie sie vor dem Gleiten war; die Griffe drehen sich mit der Haut mit; eine
+  Kreuzung wandert auf der anderen Linie mit, die andere Linie bleibt genau, wie sie ist); `verdichten` räumt zwischen den Schritten
+  das Netz auf; zum Schluss die Griffe der geglittenen Linie an die Haut anpassen (je Stück nach kleinsten Quadraten: der beste
+  Fall mit denselben Punkten); wieder bis zur Ruhe; gemessen wird jeder Punkt der Haut gegen die Haut davor.
+- **Zahlen** (größter Weg eines Punkts der Haut, in Einheiten; die Formen sind 730 bis 1 480 Einheiten lang, eine Kante des Netzes
+  rund 13; bei normaler Größe sind 10 Einheiten etwa 5 Bildpunkte):
+
+  | Form, Linie | Linie gelöscht | 1 geglitten | 2 | 10 | 30 | 10 hin und zurück |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | strange bird, 4 (Paar) | 60,4 | 0,55 | 0,76 | 4,4 | 14,1 | 4,8 |
+  | strange bird, 11 (Ring) | 37,0 | 0,71 | 1,44 | 5,6 | 15,7 | 1,6 |
+  | teat firefish, 18 (Ring) | 27,4 | 0,29 | 0,59 | 2,6 | 9,0 | 1,1 |
+  | teat firefish, 7 (Ring) | 66,4 | 0,64 | 1,25 | 6,3 | 18,8 | 1,1 |
+  | maul handgemacht test, 13 (Ring) | 11,4 | 0,34 | 0,66 | 2,3 | 6,7 | 6,9 |
+  | maul handgemacht test, 12 (Ring) | 8,9 | 0,20 | 0,36 | 2,5 | 5,1 | 0,9 |
+
+  95 % der Haut bewegen sich bei 10 Einheiten um höchstens 0,6 bis 2,0, bei 30 um 1,5 bis 6,1; im Mittel 0,1 bis 0,5 und 0,3 bis
+  1,4. Die Änderung sitzt an wenigen Stellen nahe der Linie, der Rest der Form steht.
+- **Kontrollen:** Ohne Gleiten (Weite 0) bewegt sich nichts (0,00). „Hin und zurück“ (10 Einheiten und wieder an den Anfang) zeigt,
+  was Netz und Griffe unterwegs an Unschärfe sammeln: rund 1 Einheit, an zwei Linien 5 und 7. Die Zahlen bei 10 Einheiten sind also
+  auf etwa 1 Einheit genau, an diesen zwei Linien ungenauer; am Befund ändert das nichts.
+- **„Linie gelöscht“** zeigt, wie viel Form die Linie trägt: Ohne sie setzt sich die Haut um 9 bis 66 Einheiten um. So viel
+  verliert die alte Stelle höchstens, wenn die Linie weit weg gleitet.
+- **Mehr Punkte helfen kaum.** Mit viermal so vielen Punkten auf der Linie (jedes Stück vorher genau geteilt, `MEHR=4`): bei 10
+  Einheiten 1,7 bis 5,6, bei 30 Einheiten 3,6 bis 13,2. Es liegt also nicht daran, wie genau die Linie die neue Stelle beschreibt,
+  sondern daran, dass an der alten nichts mehr hält.
+- **Die Griffe müssen an die Haut angepasst werden.** Nur mitgedreht bewegt sich die Haut bei 2 Einheiten Weg um 1,4 bis 3,3 (statt
+  0,4 bis 1,4).
+- **Auch ein Punkt auf seiner eigenen Linie gleitet nicht ohne Änderung** (oben stand „Das geht sicher“; das stimmt nicht). Ein
+  Bézier-Stück lässt sich an jeder Stelle genau teilen, aber zwei Stücke lassen sich nicht genau zu einem verbinden, und an deinen
+  Linien sind die Punkte wenige, jeder trägt Form. Gemessen an den glatten Punkten ohne Kreuzung: Rückt ein Punkt 10 Einheiten
+  weiter, liegt die Linie danach 1,0 bis 4,1 Einheiten neben ihrer alten Lage (Griffe frei angepasst; mit dem Löschen des Kerns,
+  das die Richtungen der Nachbarn hält, 2,5 bis 5,1); 4 von 13 Punkten bleiben unter 0,5. Bei 30 Einheiten 1,1 bis 1,2 (5,9 bis
+  7,6), 1 von 6 unter 0,5. Genau geht nur: an der neuen Stelle einen Punkt dazu (mit P auf die Linie, wie heute), der alte bleibt.
+- **Was daraus folgt:** Mit „Kurven sind die Wahrheit“ gibt es kein Gleiten, bei dem die Form genau stehen bleibt. Sie bliebe nur
+  stehen, wenn etwas anderes als die Linien sie hielte (eine eigene Schicht für die Form; die hast du am 16.11. ausgeschlossen:
+  „kein Unterschied zwischen meinen Kurven und dem Modell“) oder wenn an der alten Stelle eine Linie bleibt. Die Wege stehen in der
+  Liste für den Feinschliff.
+- **Zwei Irrwege der Probe, damit sie niemand wiederholt:** (1) Die Kreuzungen lösen und neu suchen und die Griffe der Linie ganz neu
+  aus ihr lesen (`griffeAnlegen`): Schon bei 0,3 Einheiten Weg lag der neue Pfad an zwei von drei Linien 5 und 14 Einheiten neben
+  der Linie (das Neu-Lesen findet die Griffe deiner Linien nicht wieder), und die Haut bewegte sich um 5 Einheiten; gemessen war
+  der Aufbau der Probe, nicht das Gleiten. (2) Die geglittene Linie neu ins Netz einsetzen (`loopEinsetzen`): scheitert dicht neben ihrer alten Kette
+  („eine Kante oder ein Dreieck käme zweimal vor“). Deshalb rücken in der Probe die Punkte des Netzes selbst.
+- **Technik, falls es gebaut wird:** die Schritte der Probe (Punkte des Netzes unter der Linie längs der Haut vor dem Gleiten,
+  `verdichten` dazwischen; der Punkt des Netzes an einer Kreuzung läuft auf der Kette der anderen Linie, sie bekommt am Schluss einen
+  genau geteilten Punkt, `punktEinfuegen` mit `aufPfad`; Griffe je Stück an die Haut; danach setzen). Billiger wäre ein gewöhnlicher
+  Zug, dessen Ziele auf die Haut vom Greifen gelegt werden; er nimmt aber an jeder Kreuzung die andere Linie mit.
+
 **C4. Flächen wählen und bearbeiten (mittel; Bild zuerst).** Das ist Schritt 7 des Kern-Plans („Auswahl wie in Blender“): Punkte,
 Linienstücke und Flächen. Eine Fläche ist das Feld der Haut zwischen Linien; gewählt meint sie die Punkte auf ihrem Rand.
 - Du siehst: Ein Klick in ein Feld zwischen Linien wählt es (es tönt sich); an der gewählten Fläche ziehen bewegt sie; G, S und R

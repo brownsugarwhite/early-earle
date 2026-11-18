@@ -36,6 +36,21 @@ gebaut ist, steht im Plan je Schritt unter „Gebaut“, nicht hier.
   des Rückens), gibt es keinen Loop, nur eine Meldung. Was soll daraus werden: eine Linie auf einer Seite (und ihr Spiegelbild),
   die Linie der Mitte, oder soll es so bleiben?
 
+- **Gleiten (C3, 18.11.): Die Form bleibt dabei nicht stehen.** Deine Linien tragen die Form (löscht man eine weiche Linie, setzt
+  sich die Haut um 9 bis 66 Einheiten um). Rückt eine Linie auf der Haut weiter, verliert die alte Stelle ihren Halt: bei 1 bis 2
+  Einheiten Weg bewegt sich die Haut um weniger als etwa 1 Einheit, bei 10 um 2 bis 6, bei 30 um 5 bis 19 (an der stärksten
+  Stelle; der größte Teil der Form steht). Zum Maß: Deine Formen sind 730 bis 1 480 Einheiten lang, 10 Einheiten sind bei
+  normaler Größe etwa 5 Bildpunkte. Auch ein Punkt, der auf seiner eigenen Linie weiterrückt, ändert die Linie (bei 10
+  Einheiten um 1 bis 4). Bild [`2026-11-18-gleiten-beweis.png`](../progress/ozzy/2026-11-18-gleiten-beweis.png), Zahlen im Plan
+  unter C3. Gebaut ist deshalb nichts. Drei Wege:
+  - **A. Gleiten, die Form geht leicht mit** (wie das Verschieben einer Kante in Blender): ⌘ + Ziehen schiebt Punkt oder Linie auf
+    der Haut, du siehst dabei, wie sich die Form umsetzt, und hörst auf, wenn es dir zu viel wird. Für kleine Wege fast nichts.
+  - **B. Gleiten legt eine Kopie:** Die Linie bleibt, wo sie ist, und hält die Form; eine zweite liegt an der neuen Stelle auf der
+    Haut. Löschst du später die alte, setzt sich die Form um, so viel, wie die alte Linie trug.
+  - **C. Kein Gleiten:** An der neuen Stelle mit P zeichnen, wie heute.
+
+  Mein Vorschlag: A. Genau stehen bleibt die Form nur, wenn an der alten Stelle eine Linie bleibt (B).
+
 ## 2. Kurvennetz im Raum: Unterschiede zur Studie
 
 Er, 17.11.: „Ist erstmal ok so. Ich seh noch unterschiede zur studie in der ich es erarbeitet habe. Aber notiere das für den

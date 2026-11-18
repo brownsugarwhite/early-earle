@@ -363,6 +363,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   deren Punkt: Dort liegt der neue Loop bis einen halben Bildpunkt neben dem Strich. (4) `aufraeumen` richtet zum Schluss auch auf,
   wenn nur gesetzt wurde (`AufraeumAuftrag.aufrichten`); `aufrichtenJetzt` gleich nach dem Schnitt. Proben:
   `ozzy-p-schnitt-fenster.mjs`, `ozzy-p-ueberall-fenster.mjs` (zwölf Lagen, 160 s), Kern `form-vorhang.ts`, Test `vorhang.test.ts`.
+- **Gleiten auf der Haut (C3, 18.11.) ist nicht gebaut: Die Form bleibt dabei nicht stehen** (Kernprobe `form-gleiten.ts`, Zahlen im
+  Plan unter C3). Die Linien tragen die Form (eine weiche Linie gelöscht: 9 bis 66 Einheiten); 10 Einheiten Gleitweg ändern die Haut
+  um 2 bis 6 Einheiten. Wer es doch baut oder misst: (1) die Linie nicht neu einsetzen (`loopEinsetzen` scheitert dicht neben ihrer
+  alten Kette), sondern die Punkte des Netzes unter ihr längs der Haut rücken, in Schritten von höchstens 0,3 Kantenlängen, mit
+  `verdichten` dazwischen; (2) die Griffe nicht neu aus der Linie lesen (`griffeAnlegen` findet die Griffe seiner Linien nicht
+  wieder: 5 bis 14 Einheiten daneben), sondern mitdrehen und je Stück an die Haut anpassen; (3) eine Kreuzung wandert auf der Kette
+  der anderen Linie, die bekommt dort einen genau geteilten Punkt (`punktEinfuegen` mit `aufPfad`); (4) immer mit Kontrolle messen
+  (Weite 0 muss 0,00 geben), vom ruhenden Stand aus (die gesicherte „strange bird“ liegt bis 18 Einheiten neben ihrer Ruhe).
 - **Ein Zug mit dem Einfluss O hängt davon ab, wann das Verfeinern eingewechselt wird** (17.11.): Das Einwechseln setzt den Zug mit
   neuen Gewichten auf; mitten in der Bewegung gibt das andere Lagen der Nachbarpunkte als danach (an „teat firefish“ 1,4 Einheiten
   bei einem Zug um 119). Proben, die Ozzy mit dem Prüffenster vergleichen, ziehen rasch und halten dann, bis das Verfeinern da ist
