@@ -483,7 +483,23 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   alle ab; der Haken `form(anker, true)` zeichnet aufs Blatt eines neuen Objekts. (5) Ablegen geht nur in Ruhe (`werk.objektRuht`:
   kein Zug, nicht in der Pose); rechnet der Hintergrund noch, steht sein Auftrag wieder im Stand des Objekts. (6) `typeof werkForm`
   in einem Typ ist an der Stelle auf `null` verengt: den Typ ausschreiben. Probe: `ozzy-objekte-fenster.mjs`. Offenes: Plan,
-  Abschnitt 10 („Was an Etappe 3 offen bleibt“).
+  Abschnitt 10 („Was an Etappe 3 offen bleibt“). **Der Rest von Etappe 3 (18.11. spät):** (7) *Die Reihe* (`reihe`,
+  `reiheSchritt` in `main.ts`): mehrere geschlossene Linien auf einem Blatt (`Blatt.silhouettenNetze`) oder die Objekte einer
+  geladenen Szene werden nacheinander zum aktiven Objekt, blasen auf und werden abgelegt, sobald sie stehen; nach der ersten
+  läuft die Zeit 2,5-fach (`REIHE_TEMPO`), und Kamera, Wände und Linien nehmen den Moment vom Ende der Fahrt (`mBuehne`), nur
+  die Blase den laufenden. Der Raum rechnet die wartenden mit (`reiheKaesten` in `werkMasseWelt`). Solange `reihe` gesetzt ist,
+  ruht die Bedienung. (8) *Der gemeinsame Rückweg* (`rueckweg`, `rueckwegAbgleichen`, `rueckwegAnders`): je Schritt im Werk ein
+  Eintrag mit der Kennung seines Objekts, abgelesen an der Länge von `werk.zurueck` über `werkForm.zurueck` (je Bild und vor
+  jedem Ablegen); ein gelöschtes Objekt liegt als Eintrag mit seinem ganzen `Ruhend` bereit. Kennungen vergibt `objektZaehler`
+  und nie zweimal (ein aufgenommenes oder gelöschtes Objekt kann zurückkommen). (9) *Szene sichern und laden*: `WesenStand.ozzy`
+  (`ablage.ts`: Spiegel und Maß dieser Form, dazu die weiteren Objekte mit ihren Ständen; `werk.standAus` macht aus dem
+  Schnappschuss eines ruhenden einen Stand, `werk.wesenHolen` holt eine Datei, ohne sie zu übernehmen). `formLaden` legt die
+  Szene als Ganzes mittig aufs Blatt (alle Maße mit demselben Faktor) und lässt die Reihe laufen; das Prüffenster lädt aus der
+  Datei nur die Form selbst. (10) *Linien ruhender Objekte*: `Ruhend.linien` (Strecken im Raum samt Spiegelbildern, beim Ablegen
+  aus `l.ruhe` gelesen), gezeichnet in `wandLinien`, `linienDerAnsicht`, `felderLinien` (`ruheLinien`, `streckenZeichnen`);
+  die Umrisse der ruhenden an der Rückwand über `ruheUmrisse(2)`. Wer einen neuen Ort baut, an dem Linien stehen, zeichnet sie
+  dort mit. (11) `objektBei` schießt in einer flachen Fläche einen Strahl längs ihrer Achse (Blatt wie `werkFelder.treffer`);
+  `imFeld` gibt Gerätepunkte, Haken geben CSS-Pixel. Proben: `ozzy-reihe-fenster.mjs`, `ozzy-objekte-fenster.mjs` (8b bis 8d).
 - **Naht zwischen zwei Objekten (Etappe 4, 18.11.; erste Fassung in Ozzy):** der Baustein `src/form/naht.ts`
   (`objekteVerbinden`, wartefrei `objekteVerbindenMit` nach `manifoldLaden`; Tests `naht.test.ts`), im Werk `objektVerbinden`
   (ein Schritt für ⌘Z), in `main.ts` `nahtPartner`, `objekteVerbindenJetzt`, `nahtMarken`/`nahtNachZurueck` (⌘Z gibt das

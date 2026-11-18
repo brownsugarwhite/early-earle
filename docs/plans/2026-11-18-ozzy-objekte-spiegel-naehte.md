@@ -4,12 +4,12 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Stand 18.11., 19:15 Uhr: Etappe 0, 1 und 2 (2a und 2b) sind gebaut, von Etappe 3 die erste Scheibe** (das Plus, ein zweites Objekt,
-wählen, bewegen, Spiegel je Objekt, löschen; Abschnitt 10, mit Bildern und zwei Filmen), **von Etappe 4 die erste Fassung:
-Verschmelzen und Abziehen in Ozzy** (zwei Knöpfe in der Leiste, die Naht als Linie mit Kante, ⌘Z trennt wieder; Abschnitt 10,
-„Etappe 4 in Ozzy“). K an der Naht ist entschieden („Wie Seifenblasen“) und wirkt wie an jeder Linie; an Formen ohne eigene Linien
-hält die Rechnung dabei noch nicht (offen, steht dort). Offen bleibt auch der Rest von Etappe 3 (Liste unter „Etappe 3: wie mehrere
-Objekte gebaut werden“). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht
+**Stand 18.11., spät: Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend bis auf die Fahrt zum Blatt beim
+Plus: mehrere Silhouetten auf einem Blatt, der gemeinsame Rückweg, Sichern und Laden der ganzen Szene, Linien ruhender Objekte;
+Abschnitt 10, „Etappe 3, der Rest“), **von Etappe 4 die erste Fassung: Verschmelzen und Abziehen in Ozzy** (zwei Knöpfe in der
+Leiste, die Naht als Linie mit Kante, ⌘Z trennt wieder; Abschnitt 10, „Etappe 4 in Ozzy“). K an der Naht ist entschieden („Wie
+Seifenblasen“) und wirkt wie an jeder Linie; an Formen ohne eigene Linien hält die Rechnung dabei noch nicht. **Das steht aus, dein
+Wort** (du überlegst, ob Formen künftig schon mit Edgeloops beginnen; dann gäbe es den Fall nicht). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht
 es in Abschnitt 7; was offen bleibt, in Abschnitt 8 und je Etappe in Abschnitt 10.
 
 ## 1. Warum der Donut in Ozzy nicht geht
@@ -143,7 +143,7 @@ Jede Etappe endet mit einer sichtbaren Probe (Film oder Bild, vorher und nachher
 | **1** | **V, A, P und die zwei Zeiger; L wählt Verbundenes, Q ist das Lasso.** *(gebaut)* V wählt das Objekt; verschieben lässt es sich ab Etappe 2b und 3 (mit einem einzigen verschmolzenen Objekt sähe man es nicht: Der Raum richtet sich nach der Form aus). | `ozzy-modi-fenster.mjs`, Film der Zeiger auf Weiß und auf der Rückseite |
 | **2a** | **Der Spiegel-Knopf, erster Teil:** an mit Clipping ↔ an; die Fahrt beim Einschalten des Clippings. *(gebaut)* | `ozzy-spiegel-fenster.mjs`, Film |
 | **2b** | **Der Spiegel-Knopf, zweiter Teil:** aus und anwenden. *(gebaut; offen bleibt, was in Abschnitt 10 steht)* Dazu die freie Form im Werk: Das Netz räumt auch ohne Spiegelpaare auf (`verdichten`), Linien zeichnen ohne Spiegel (P quer, Form auf der Haut), das Spiegelbild als Anzeige, Clipping an einem ganzen Objekt, das an die Ebene geschoben wird; Verschieben mit V. | Film: Kugel, aus, einseitig formen, zur Seite, an, Clipping |
-| **3** | **Mehrere Objekte:** Plus in der Leiste, Aufblasen je Objekt, Wählen und Verschieben mit V, Bearbeiten mit A *(erste Scheibe gebaut)*; mehrere Silhouetten auf dem ersten Blatt, ⌘Z über alle Objekte, Sichern und Laden *(offen)*. | `ozzy-objekte-fenster.mjs`; Film: Körper, dann Ohr und Bein dazu (steht aus) |
+| **3** | **Mehrere Objekte:** Plus in der Leiste, Aufblasen je Objekt, Wählen und Verschieben mit V, Bearbeiten mit A; mehrere Silhouetten auf einem Blatt, ⌘Z über alle Objekte, Sichern und Laden der Szene, Linien ruhender Objekte *(gebaut; offen: die Fahrt zum Blatt beim Plus)*. | `ozzy-objekte-fenster.mjs`, `ozzy-reihe-fenster.mjs`; Bildbogen (ein Film steht aus) |
 | **4** | **Naht zwischen Objekten, fest:** Beweis im Kern *(gehalten)*, dann „verschmelzen“ und „abziehen“ *(erste Fassung gebaut: zwei Knöpfe in der Leiste)*; die Naht als Kante, mit K weich *(hält an Formen mit eigenen Linien; ohne noch nicht)*. | Kern-Probe mit Bild; `ozzy-naht-fenster.mjs`, Bildbogen (ein Film steht aus) |
 | **5** | **Naht lebt:** verschmolzene Objekte wieder verschieben und auseinanderziehen (Hals, Abriss), die Naht bearbeiten. | Film in echter Geschwindigkeit |
 | **6** | Danach, wie du geschrieben hast: Seifenhaut, Tempo und Bedienung ansehen (Liste in Abschnitt 8). | Messblatt |
@@ -165,8 +165,8 @@ die Zeichnung auf dem Blatt (für „Luft ablassen“).
 - **Luft ablassen** (zurück zur Zeichnung) gibt es, solange es ein Objekt gibt. Mit mehreren löscht ⌫ im Objekt-Modus das gewählte.
 
 Reihenfolge: (a) Plus, zweites Objekt, wählen mit V und A, bewegen, Spiegel je Objekt, löschen, alle Materialien für alle Objekte
-*(gebaut, 18.11.)*; (b) mehrere Silhouetten auf dem ersten Blatt; (c) Linien ruhender Objekte blass zeigen; (d) gemeinsamer
-Rückweg; (e) Sichern und Laden mit mehreren Objekten; (f) die Fahrt zum Blatt beim Plus.
+*(gebaut, 18.11.)*; (b) mehrere Silhouetten auf dem ersten Blatt *(gebaut)*; (c) Linien ruhender Objekte blass zeigen *(gebaut)*; (d) gemeinsamer
+Rückweg *(gebaut)*; (e) Sichern und Laden mit mehreren Objekten *(gebaut)*; (f) die Fahrt zum Blatt beim Plus *(offen)*.
 
 ## 7. Was ich für dich entschieden habe (sag, wenn du es anders willst)
 
@@ -191,6 +191,11 @@ dann frei, beide Seiten lassen sich verschieden formen (dasselbe wie „anwenden
   Zeiger an, damit die gewählte Naht zu sehen ist und K sofort wirkt. Eine Naht, an der keine Linie endet, bekommt von selbst
   vier Punkte in gleichen Abständen (wie ein Kreis mit vier Punkten), sonst wäre sie nicht zu greifen. Der Spiegel folgt einer
   Regel: Das Bild bleibt, wie es ist.
+
+- **Etappe 3, der Rest (18.11. spät):** Jede geschlossene Linie eines Blatts wird ein Objekt (auch eine, die in einer anderen
+  liegt); die größte ist „Form 1“ und am Ende gewählt, die anderen blasen danach 2,5-mal so rasch auf. ⌘Z gilt jetzt für alle
+  Objekte gemeinsam: Es nimmt den letzten Schritt zurück, wo er geschah, und wählt dafür dessen Objekt (vorher gehörte ⌘Z dem
+  gewählten Objekt). Eine Szene ist eine Datei. Die Linien ruhender Objekte sind feine Striche ohne Punkte.
 
 ## 8. Noch ausstehend (nicht in diesen Etappen)
 
@@ -259,6 +264,7 @@ Quellen: [FiberMesh](https://www-ui.is.s.u-tokyo.ac.jp/~takeo/papers/fibermesh.p
 | 2b | **Objekte bewegen mit V.** Ziehen am Objekt verschiebt es; G, S, R mit Achsen (X, Y, Z), ↩ oder Klick setzt, Esc bricht ab. Ohne Rechnung: Alle Lagen, Linien und Griffe werden abgebildet, die Form bleibt genau dieselbe. Eine verschmolzene Form bleibt in der Spiegelebene. | dritter Teil derselben Probe (`NUR=objekt`) |
 | 2b | **Linien an der freien Form.** P quer gibt einen Loop rundum, eine geschlossene Form liegt auf der Seite der Haut, die man sieht (auch in einer gewendeten Ansicht), eine Abzweigung verbindet zwei Punkte; Freihand und Formen ebenso. Jede Linie entsteht für sich. K und Löschen wirken nur an ihr. Trifft ein Strich in Front oder Top nur das gezeigte Spiegelbild, entsteht die Linie an der Form. | `ozzy-frei-linien-fenster.mjs`: alles gut. [Bilderbogen](../progress/ozzy/2026-11-18-frei-linien-bogen.png) |
 | 3 (erste Scheibe) | **Mehrere Objekte, das Plus.** Das Plus in der Leiste öffnet das leere Blatt, die vorhandenen Objekte stehen blass darin; zeichnen, ↩ bläst das neue auf (Esc führt zurück). Mit V wählt ein Klick das Objekt unter dem Zeiger (Schild „Form 1“, „Form 2“) und macht es zum aktiven; mit A genauso, dann erscheinen seine Linien und Punkte. Spiegel und ⌘Z gehören dem Objekt. ⌫ im Objekt-Modus und der Mülleimer löschen das aktive, solange es andere gibt. „Luft ablassen“ wirkt am aktiven Objekt. Jedes Objekt rechnet in seiner eigenen Größe (ein kleines hat dasselbe dichte Netz wie ein großes: 1 500 Punkte bei 80 und bei 130 Halbmesser). Der Raum, die Umrisse an den Wänden und alle Materialien zeigen alle Objekte. | `ozzy-objekte-fenster.mjs`: alles gut. [Bilderbogen](../progress/ozzy/2026-11-18-objekte-plus-bogen.png) |
+| 3 (der Rest) | **Mehrere Silhouetten, gemeinsamer Rückweg, Szene sichern und laden, Linien ruhender Objekte.** Jede geschlossene Linie auf einem Blatt wird ein Objekt (auch auf dem Blatt des Plus). ⌘Z holt ein gelöschtes Objekt zurück und nimmt den letzten Schritt dort zurück, wo er geschah. Sichern und Laden tragen die ganze Szene. Die Linien eines ruhenden Objekts stehen als feine Striche an den Wänden und in den Ansichten; in den Feldern der Vier Ansichten lässt sich ein ruhendes Objekt anklicken. | `ozzy-reihe-fenster.mjs`, `ozzy-objekte-fenster.mjs` (8b bis 8d); Bildbogen `docs/progress/ozzy/2026-11-18-etappe-3-rest-bogen.png` |
 | 4 (erste Fassung) | **Verschmelzen und Abziehen.** Sobald es mehr als ein Objekt gibt, stehen neben dem Plus zwei Knöpfe; sie sind an, wenn das gewählte Objekt ein anderes berührt. **Verschmelzen:** Die zwei werden eine Form. **Abziehen:** Das gewählte Objekt wird aus dem anderen herausgeschnitten. An der Schnittkurve liegt die Naht: eine Linie mit Kante, mit Punkten, gewählt (der weiße Zeiger ist an, K wirkt sofort). Linien, die in die andere Form liefen, enden an der Naht. ⌘Z trennt wieder und gibt das andere Objekt zurück. Der Spiegel: Das Bild bleibt, wie es ist (zwei gespiegelte bleiben gespiegelt; ein Teil mit Spiegelbild verschmilzt auf beiden Seiten; mit einem Teil ohne Spiegel wird die Form ganz und frei). | `ozzy-naht-fenster.mjs` (ohne und mit `LINIE=1`), Tests `naht.test.ts`; Bildbogen `docs/progress/ozzy/2026-11-18-naht-in-ozzy-bogen.png` |
 
 **Beweis 2 (18.11., 17:40 Uhr): die Naht zwischen zwei Objekten.** Ergebnis in Abschnitt 5 (Zeile „Naht zwischen zwei Objekten“).
@@ -338,23 +344,41 @@ Dazu 10 Tests des Bausteins (frei, gespiegelt, Teil mit und ohne Spiegelbild, Fe
 **Geprüft am 18.11., 19:10 Uhr (Etappe 4, erste Fassung):** Typen, Lint, 35 Tests des Fensters (10 neue), alle 37 Fenster-Proben
 gegen 5211, die Kern-Probe `form-naht.ts` für beide Arten. Am Kern (`packages/shape`) ist nichts geändert.
 
-**Geprüft am 18.11., 17:15 Uhr (Etappe 3, erste Scheibe):** Typen, Lint, 25 Tests des Fensters, alle 36 Fenster-Proben gegen 5211.
+**Etappe 3, der Rest (18.11., spät).** Du hast gewählt: „Mach erstmal den rest von etappe 3.“
 
-**Was an Etappe 3 offen bleibt** (die erste Scheibe ist benutzbar, aber nicht fertig):
-1. Das Plus wechselt mit einem Schnitt aufs Blatt (keine Fahrt wie beim Luftablassen). Auf dem leeren Blatt steht der Schriftzug
-   „draw something“ über den blassen Objekten.
-2. Von ruhenden Objekten sieht man die Haut und die Umrisse an den Wänden, nicht ihre Linien; die erscheinen, sobald das Objekt
-   aktiv ist (ein Klick). Die Linien des aktiven Objekts gelten hinter einem ruhenden nicht als verdeckt.
-3. ⌘Z gehört dem aktiven Objekt. „Neues Objekt“ und „Objekt gelöscht“ lassen sich noch nicht zurücknehmen (ein gelöschtes Objekt
-   ist weg). ⌘Z auf dem Blatt nach dem Plus kann die Zeichnung des vorigen Objekts zurückholen.
-4. Sichern und Laden kennen nur das aktive Objekt; Laden ersetzt alle Objekte.
-5. Mehrere Silhouetten auf dem ersten Blatt werden noch nicht zu mehreren Objekten (die größte geschlossene Linie ist die Form).
-6. In den Feldern der Vier Ansichten lässt sich ein ruhendes Objekt nicht anklicken (im Raum und eingerastet schon).
-7. Ein Objekt hat noch genau ein Teil; mehrere Teile je Objekt und „verschmelzen“ kommen mit Etappe 4.
-8. S (skalieren) mit V ändert die Punkte samt Netzmaß; besser wäre, nur das Maß des Objekts zu ändern (dann rechnet es weiter in
-   seiner gewohnten Größe). Nicht gemessen, ob ein stark verkleinertes Objekt sich anders anfühlt.
-9. Tempo mit vielen Objekten ist nicht gemessen. Ruhende Objekte kosten in der Seifenhaut nichts je Bild; die festen Materialien
+- **Mehrere Silhouetten auf einem Blatt.** Jede geschlossene Linie wird ein Objekt. ↩ bläst die größte auf wie immer; die anderen
+  folgen der Reihe nach, rascher (2,5-fach), die Kamera bleibt dabei im Raum, und der Raum richtet sich von Anfang an nach allen.
+  Am Ende ist die größte „Form 1“ und gewählt. Gilt genauso auf dem Blatt des Plus. Gemessen an drei Kreisen: 4,8 s vom ↩, bis
+  alle stehen; jede Form liegt auf 0,2 Bildpunkte, wo sie gezeichnet wurde. Solange die Reihe läuft, ruht die Bedienung.
+- **Der gemeinsame Rückweg.** ⌘Z nimmt den letzten Schritt zurück, wo er geschah: Lag er an einem anderen Objekt, wird es dafür
+  gewählt (die Meldung sagt es). Ein gelöschtes Objekt kommt mit ⌘Z zurück, mit seinem eigenen Rückweg. Eine Nummer („Form 2“)
+  wird nicht noch einmal vergeben, solange ihr Objekt zurückkommen kann.
+- **Sichern und Laden tragen die ganze Szene:** alle Objekte mit Lage, Größe und Spiegel; dasselbe Objekt ist danach gewählt.
+  Die Datei bleibt eine Wesen-Datei (das Prüffenster lädt aus ihr die gewählte Form, wie bisher), ältere Dateien laden wie
+  bisher. Gemessen: fünf Objekte gesichert und geladen, Unterschied in Lage und Größe 0,000.
+- **Linien ruhender Objekte** stehen als feine Striche an allen drei Wänden, in der eingerasteten Ansicht und in den Feldern der
+  Vier Ansichten (ohne Punkte; zu greifen sind sie, sobald das Objekt gewählt ist). An der Rückwand stehen jetzt auch die Umrisse
+  der ruhenden Objekte (sie fehlten dort).
+- **Kleines:** In den Feldern der Vier Ansichten macht ein Klick auf ein ruhendes Objekt es zum gewählten. Auf dem Blatt des Plus
+  steht der Schriftzug nicht mehr über den blassen Objekten.
+
+**Geprüft am 18.11., spät (Etappe 3, der Rest):** Typen, Lint, 35 Tests des Fensters, alle 38 Fenster-Proben gegen 5211. Am Kern
+(`packages/shape`) ist nichts geändert.
+
+**Was an Etappe 3 offen bleibt:**
+1. **Die Fahrt zum Blatt beim Plus:** Es wechselt weiter mit einem Schnitt aufs Blatt (keine Fahrt wie beim Luftablassen).
+2. **Die Reihe bläst nacheinander auf, nicht alle zugleich** (das Werk rechnet immer an einer Form). Ob das Tempo und die
+   Reihenfolge so gefallen, ist dein Urteil.
+3. **⌘Z nimmt „neues Objekt“ nicht zurück** (löschen lässt es sich mit ⌫, und das Löschen lässt sich zurücknehmen). ⌘Z auf dem
+   Blatt eines Objekts aus einer Reihe kann die Zeichnung der anderen zurückholen.
+4. Die Linien ruhender Objekte sind Striche ohne Verdeckung: An der Form selbst (Kurvennetz, Taste W) stehen nur die Linien des
+   gewählten Objekts, und seine Linien gelten hinter einem ruhenden nicht als verdeckt.
+5. Jede geschlossene Linie wird ein Objekt, auch eine, die ganz in einer anderen liegt (sie sitzt dann im Inneren).
+6. S (skalieren) mit V ändert die Punkte samt Netzmaß; besser wäre, nur das Maß des Objekts zu ändern. Nicht gemessen, ob ein
+   stark verkleinertes Objekt sich anders anfühlt.
+7. Tempo mit vielen Objekten ist nicht gemessen. Ruhende Objekte kosten in der Seifenhaut nichts je Bild; die festen Materialien
    laden bei jedem Zug das Netz aller Objekte neu hoch.
+8. Der Rückweg wird nicht gesichert (wie bisher).
 
 **Geprüft am 18.11., 16:30 Uhr:** Typen (`@ee/shape`, `@ee/editor`), Lint der geänderten Dateien, 200 Tests des Kerns, 25 des
 Fensters, alle 35 Fenster-Proben gegen 5211, dazu `form-donut-fenster.mjs` im Prüffenster mit `&clipping=0` (die Regel vom 13.11.).
