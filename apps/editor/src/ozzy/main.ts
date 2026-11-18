@@ -509,7 +509,14 @@ const objektModus = (): boolean => raumWerkzeug === 'objekt';
 /** das Objekt ist gewählt (noch gibt es eines: die Form); der letzte Klick darauf (Doppelklick) und ein Drücken im Objekt-Modus */
 let objektGewaehlt = false;
 let objektKlick = { t: 0, x: 0, y: 0 };
-let objektDruck: { x: number; y: number; getroffen: boolean } | null = null;
+let objektDruck: { x: number; y: number; getroffen: boolean; gespiegelt: boolean } | null = null;
+/**
+ * Ein Zug am ganzen Objekt (V): Ziehen am Objekt verschiebt es, G, S, R verschieben, skalieren, drehen es mit dem Zeiger (`modal`:
+ * Klick oder ↩ beendet, Esc nimmt zurück, X, Y, Z halten das Verschieben längs einer Achse). Geführt im Blatt der Fläche unter dem
+ * Zeiger (eine flache Ansicht, ein Feld) oder, im Raum, in der Ebene durch die Mitte des Objekts, die der Kamera am meisten
+ * zugewandt ist; das Werk bildet die ganze Form ab (`werk.formZug…`, kein Löser).
+ */
+let objektZug: { F: Flaeche; modal: boolean; sx: number; sy: number; gespiegelt: boolean } | null = null;
 /** Pinsel „Ziehen“ an der Blase (Phase 6): Radius in Einheiten des Werks (wie der Einfluss O, [ und ] ändern ihn) */
 let pinselRadius = 90;
 /** der Punkt einer Linie, den der Pinsel gerade fassen würde (Kennung, Nummer, Spiegelbild, Welt) */
@@ -568,7 +575,7 @@ function spiegelSetzen(ziel: SpiegelZustand): void {
   } else {
     werk.G.clipping = true;
     if (frei) werk.G.spiegelbild = true;
-    const tief = !frei && werk.ueberDerMitte() ? werk.tiefeHinterDerMitte() : 0;
+    const tief = werk.ueberDerMitte() ? werk.tiefeHinterDerMitte() : 0;
     if (tief > 0) spiegelFahrt = { t: 0, tiefe: tief / werkHaut.f };
     werk.G.meldung = tief > 0 ? 'Spiegel an, mit Clipping: Die Hälften verschmelzen an der Spiegelebene' : 'Spiegel an, mit Clipping: Was über die Mitte reicht, verschmilzt dort';
   }
@@ -586,8 +593,9 @@ function spiegelFahrtSchritt(dt: number): boolean {
   spiegelFahrt = null;
   if (!werk.zug && werk.ueberDerMitte()) {
     const n = werk.zurueck.length;
+    const bild = werk.G.spiegelbild;
     if (werk.mitteFest(false, true)) {
-      spiegelMarken.push({ n, clipping: false, spiegelbild: werk.G.spiegelbild });
+      spiegelMarken.push({ n, clipping: false, spiegelbild: bild });
       werk.G.meldung = 'Clipping: an der Spiegelebene verschmolzen · die Naht ist gewählt, K macht sie rund · ⌘Z trennt wieder';
     }
   }
@@ -628,7 +636,7 @@ const spiegelSchnittJetzt = (): number | null => {
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
-  werk.zug !== null || werk.nachlauf !== null || werk.G.aufraeumen !== null || werk.vorrechnenUhr !== null || werk.G.gegriffen !== null || werk.maulLauf !== null;
+  werk.zug !== null || werk.formZug !== null || werk.nachlauf !== null || werk.G.aufraeumen !== null || werk.vorrechnenUhr !== null || werk.G.gegriffen !== null || werk.maulLauf !== null;
 
 // Was das Werk von der Anzeige braucht (im Prüffenster tut das `kurven.ts`; `allesZeigen` dort tut auch Arbeit am Werk, die hier
 // genauso geschieht: ein gelöschtes Maul aufräumen, Ecken an Kanten, den Löser für den nächsten Griff vorbereiten)
@@ -2406,7 +2414,7 @@ function bild(dt: number): boolean {
   // A4: was unter dem Zeiger liegt, einmal je Bild (nicht, solange etwas gezogen wird: Dort gilt das Drücken)
   if (schwebenOffen) {
     schwebenOffen = false;
-    const zieht = feldWendenZug || schwenkZug || bearbeitenGedrueckt || pinselZug || feldDruck || tastenZug || wenden || raumStrich || raumAufzug || eckZug || teiler.zug || punktZug || drehen || (zug && koerper);
+    const zieht = feldWendenZug || schwenkZug || bearbeitenGedrueckt || pinselZug || feldDruck || tastenZug || objektZug || wenden || raumStrich || raumAufzug || eckZug || teiler.zug || punktZug || drehen || (zug && koerper);
     if (zustand !== 'blatt' && !zieht) schweben(zeiger.x, zeiger.y);
   }
   if (festeZeit !== null) dt = 1 / 60;
@@ -2815,8 +2823,8 @@ function bild(dt: number): boolean {
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
       : zustand === 'ruhe' && werkGezeigt && objektModus()
       ? objektGewaehlt
-        ? 'Objekt gewählt · Doppelklick oder A: seine Punkte · ⌫ löscht es · Klick daneben wählt ab · ziehen: drehen'
-        : 'Objekte: Klick auf die Form wählt sie · Doppelklick oder A: ihre Punkte · ziehen: drehen · P zeichnen'
+        ? 'Objekt gewählt · ziehen: verschieben · G S R · Spiegel in der Leiste · Doppelklick oder A: seine Punkte · ⌫ löscht es · daneben ziehen: drehen'
+        : 'Objekte: Klick auf die Form wählt sie, ziehen verschiebt sie · Doppelklick oder A: ihre Punkte · daneben ziehen: drehen'
       : zustand === 'blatt'
       ? blatt.geschlossen && !blatt.zeichnet
         ? '↩ aufblasen'
@@ -4903,6 +4911,13 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  // Objekte (V): Ziehen am Objekt verschiebt es (ab dem ersten Weg); G, S, R folgen dem Zeiger
+  if (objektDruck?.getroffen && !objektZug && Math.hypot(x - objektDruck.x, y - objektDruck.y) >= FELD_KLICK_WEG) objektZugBeginnen('g', objektDruck.x, objektDruck.y, false, objektDruck.gespiegelt);
+  if (objektZug) {
+    objektZugBewegen(x, y);
+    anstossen();
+    return;
+  }
   // C4: auf ein Feld gedrückt: Mit dem ersten Weg entscheidet sich, ob es gezogen wird (gewählt) oder ob gedreht wird (wie bisher)
   if (feldDruck) {
     const d = feldDruck;
@@ -5160,9 +5175,15 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
-  // Objekte (V): Ein Klick auf die Form wählt sie, einer daneben wählt sie ab, ein Doppelklick auf sie wechselt zu ihren Punkten (A).
-  // Gezogen wird vorerst gedreht wie ins Leere (das Verschieben kommt mit dem Spiegel-Knopf und mit mehreren Objekten)
+  // Objekte (V): Ein Klick auf die Form wählt sie, einer daneben wählt sie ab, ein Doppelklick auf sie wechselt zu ihren Punkten (A);
+  // Ziehen an ihr verschiebt sie
   if (objektModus() && werkGezeigt) {
+    // ein Zug mit G, S oder R läuft: Der Klick beendet ihn
+    if (objektZug) {
+      objektZugEnde(true);
+      anstossen();
+      return;
+    }
     const getroffen = objektUnter(x, y);
     if (getroffen && e.timeStamp - objektKlick.t < 350 && Math.hypot(x - objektKlick.x, y - objektKlick.y) < 8) {
       objektKlick = { t: 0, x, y };
@@ -5171,12 +5192,17 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
       return;
     }
     if (getroffen) objektKlick = { t: e.timeStamp, x, y };
-    objektDruck = { x, y, getroffen };
-    if (vier > 0.5 && !getroffen) {
-      const R = felder().raum;
-      if (!(x >= R.x && y >= R.y)) vierUmschalten(false);
+    // (am Spiegelbild einer freien Form gegriffen: Der Weg quer zur Spiegelebene läuft umgekehrt)
+    const gespiegelt = getroffen && werkHaut.spiegelbild && pinselHier(x, y) && werkHautTreffen(x, y) === null;
+    objektDruck = { x, y, getroffen, gespiegelt };
+    // am Objekt: Der erste Weg verschiebt es (`objektZugBeginnen` im Bewegen); daneben dreht es wie ins Leere
+    if (!getroffen) {
+      if (vier > 0.5) {
+        const R = felder().raum;
+        if (!(x >= R.x && y >= R.y)) vierUmschalten(false);
+      }
+      drehenBeginnen(x, y, e.timeStamp);
     }
-    if (!(vier > 0.5 && getroffen)) drehenBeginnen(x, y, e.timeStamp);
     anstossen();
     return;
   }
@@ -5341,6 +5367,11 @@ const loslassen = (e: PointerEvent): void => {
   if (objektDruck) {
     const d = objektDruck;
     objektDruck = null;
+    if (objektZug && !objektZug.modal) {
+      objektZugEnde(true);
+      anstossen();
+      return;
+    }
     if (Math.hypot(zeiger.x - d.x, zeiger.y - d.y) < FELD_KLICK_WEG) objektGewaehlt = d.getroffen;
   }
   if (drehen) drehenLos(e.timeStamp);
@@ -5361,7 +5392,7 @@ const loslassen = (e: PointerEvent): void => {
 leinwandLinien.addEventListener('pointerup', loslassen);
 leinwandLinien.addEventListener('pointercancel', loslassen);
 leinwandLinien.addEventListener('pointerleave', () => {
-  if (drehen || zug || punktZug || teiler.zug || bearbeitenGedrueckt || feldDruck || tastenZug) return;
+  if (drehen || zug || punktZug || teiler.zug || bearbeitenGedrueckt || feldDruck || tastenZug || objektZug) return;
   zeiger.da = false;
   bearbeiten.zeigerWeg();
   blatt.weg();
@@ -5384,6 +5415,77 @@ leinwandLinien.addEventListener(
   },
   { passive: false },
 );
+
+/** die Fläche, in deren Blatt ein Zug am Objekt geführt wird (siehe `objektZug`) */
+function objektFlaeche(x: number, y: number): Flaeche {
+  const Fu = werkBlatt.flaechen[werkBlatt.flaecheUnter(x, y)];
+  if (Fu && !Fu.raeumlich && Fu.tiefe) return Fu;
+  const blick = new Vector3();
+  kam.aktiv.getWorldDirection(blick);
+  const ax = Math.abs(blick.x) >= Math.abs(blick.y) && Math.abs(blick.x) >= Math.abs(blick.z) ? 0 : Math.abs(blick.y) >= Math.abs(blick.z) ? 1 : 2;
+  const w = werkInWelt(werk.formMitte());
+  return ebene(BLATT_DER_ACHSE[ax]!, ax === 0 ? w.x : ax === 1 ? w.y : w.z, vpJetzt(), 1, 1, false);
+}
+function objektZugBeginnen(k: 'g' | 's' | 'r', x: number, y: number, modal: boolean, gespiegelt: boolean): boolean {
+  if (!werkGezeigt || zustand !== 'ruhe' || werk.zug || werk.formZug || objektZug || spiegelFahrt || werk.maulLauf) return false;
+  const F = objektFlaeche(x, y);
+  const XY = F.her(x, y);
+  if (!XY) return false;
+  if (!werk.formZugStarten(k, F.a, XY[0], XY[1], gespiegelt)) return false;
+  objektZug = { F, modal, sx: x, sy: y, gespiegelt };
+  objektGewaehlt = true;
+  if (modal) werk.G.meldung = `${k === 'g' ? 'G: das Objekt verschieben · X, Y, Z: nur längs dieser Achse' : k === 's' ? 'S: das Objekt skalieren' : 'R: das Objekt drehen'} · Klick oder ↩: fertig · Esc: zurück`;
+  return true;
+}
+/**
+ * X, Y oder Z beim Verschieben: nur längs dieser Achse (noch einmal: wieder frei). Liegt die Achse nicht im Blatt, in dem der Zug
+ * geführt wird (im Raum: Z, wenn die Kamera vor allem längs Z schaut), beginnt er neu in dem Blatt mit dieser Achse, das der Kamera
+ * am meisten zugewandt ist; in einer flachen Ansicht bleibt eine Achse quer zum Blatt ohne Wirkung.
+ */
+function objektZugAchse(kk: 'x' | 'y' | 'z'): void {
+  const z = objektZug;
+  const fz = werk.formZug;
+  if (!z || !fz || fz.modal !== 'g') return;
+  const neu = fz.achse === kk ? null : kk;
+  const imBlatt = (a: Flaeche['a'], achse: 'x' | 'y' | 'z'): boolean => (a === 'seite' ? achse !== 'z' : a === 'front' ? achse !== 'x' : achse !== 'y');
+  if (neu && !imBlatt(z.F.a, neu)) {
+    const Fu = werkBlatt.flaechen[werkBlatt.flaecheUnter(z.sx, z.sy)];
+    if (Fu && !Fu.raeumlich && Fu.tiefe) return;
+    // die zwei Blätter mit dieser Achse: das, auf das die Kamera gerader schaut
+    const blick = new Vector3();
+    kam.aktiv.getWorldDirection(blick);
+    const b = [Math.abs(blick.x), Math.abs(blick.y), Math.abs(blick.z)];
+    const wahl = ([0, 1, 2] as const).filter((ax) => ax !== (neu === 'x' ? 0 : neu === 'y' ? 1 : 2)).sort((p, q) => b[q]! - b[p]!)[0]!;
+    werk.formZugEnde(false);
+    const w = werkInWelt(werk.formMitte());
+    const F = ebene(BLATT_DER_ACHSE[wahl]!, wahl === 0 ? w.x : wahl === 1 ? w.y : w.z, vpJetzt(), 1, 1, false);
+    const XY = F.her(z.sx, z.sy);
+    if (!XY || !werk.formZugStarten('g', F.a, XY[0], XY[1], z.gespiegelt)) {
+      objektZug = null;
+      return;
+    }
+    z.F = F;
+  }
+  if (werk.formZug) werk.formZug.achse = neu;
+  objektZugBewegen(zeiger.x, zeiger.y);
+}
+function objektZugBewegen(x: number, y: number): void {
+  const XY = objektZug?.F.her(x, y);
+  if (!XY) return;
+  werk.formZugBewegen(XY[0], XY[1]);
+  werkNeu = true;
+}
+/** Ende des Zugs; eine freie Form mit Spiegelbild und Clipping, die jetzt über die Spiegelebene reicht, verschmilzt dort (wie nach einem Zug an Punkten) */
+function objektZugEnde(ok: boolean): void {
+  if (!objektZug) return;
+  const modal = objektZug.modal;
+  objektZug = null;
+  const bewegt = !!werk.formZug?.bewegt;
+  werk.formZugEnde(ok);
+  if (ok && bewegt && werk.G.clipping && werk.ueberDerMitte()) werk.mitteFest(true);
+  else if (modal) werk.G.meldung = '';
+  werkNeu = true;
+}
 
 /** Liegt die Form unter dem Ort (CSS-Pixel)? Im Raum ein Strahl gegen ihre Haut, in einer flachen Ansicht oder einem Feld der Ort im Blatt */
 function objektUnter(x: number, y: number): boolean {
@@ -5479,6 +5581,16 @@ window.addEventListener('keydown', (e) => {
   bearbeiten.umschalt = e.shiftKey;
   bearbeiten.kippen = e.shiftKey;
   const k = e.key;
+  // Objekte (V): G, S oder R am Objekt läuft: Esc nimmt zurück, ↩ beendet, X, Y, Z halten das Verschieben längs einer Achse
+  if (objektZug) {
+    e.preventDefault();
+    const kk = k.toLowerCase();
+    if (k === 'Escape') objektZugEnde(false);
+    else if (k === 'Enter') objektZugEnde(true);
+    else if (kk === 'x' || kk === 'y' || kk === 'z') objektZugAchse(kk);
+    anstossen();
+    return;
+  }
   // C4: G, S oder R läuft: Esc nimmt zurück, ↩ beendet, X, Y, Z halten den Zug längs einer Achse (noch einmal: wieder frei)
   if (tastenZug) {
     e.preventDefault();
@@ -5579,6 +5691,10 @@ window.addEventListener('keydown', (e) => {
   else if ((k === 'g' || k === 's' || k === 'r') && zustand === 'ruhe' && werkGezeigt && bearbeitenAn && !e.repeat) {
     // C4: die Auswahl verschieben, skalieren, drehen (Punkte, Linien, Felder)
     if (!tastenZugBeginnen(k)) return;
+  } else if ((k === 'g' || k === 's' || k === 'r') && zustand === 'ruhe' && werkGezeigt && objektModus() && !e.repeat) {
+    // Objekte (V): das gewählte Objekt (oder das unter dem Zeiger) verschieben, skalieren, drehen
+    if (!zeiger.da || !(objektGewaehlt || objektUnter(zeiger.x, zeiger.y))) werk.G.meldung = 'G, S, R: erst das Objekt wählen (Klick)';
+    else objektZugBeginnen(k, zeiger.x, zeiger.y, true, false);
   }
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
@@ -6294,6 +6410,8 @@ const haken = {
     werkzeug: raumWerkzeug,
     schild: objektTropfen.hidden ? null : { text: objektTropfen.textContent, x: parseFloat(objektTropfen.style.left), y: parseFloat(objektTropfen.style.top) },
     unter: zeiger.da ? objektUnter(zeiger.x, zeiger.y) : false,
+    zug: objektZug ? (werk.formZug?.modal ?? null) : null,
+    mitte: werk.formMitte(),
   }),
   /** wo ein Punkt des Werks (Loop-Kennung, Nummer) auf den Flächen mit diesem Blatt liegt (CSS-Pixel), ohne und mit Spiegelbild */
   ankerImBild: (id: number, i: number, a?: Flaeche['a']): { x: number; y: number; fl: number; a: Flaeche['a']; m: boolean; sichtbar: boolean }[] =>

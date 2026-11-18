@@ -2070,32 +2070,61 @@ export function hinterDerMitteZahl(): number {
 /** so weit (Anteil der mittleren Kante) muss die Haut einer Hälfte hinter der Spiegelebene liegen, damit dort eine Naht entsteht */
 export const NAHT_AB = 0.05;
 /**
- * Reicht die Haut einer Hälfte über die Spiegelebene (weiter als `NAHT_AB`)? Gelesen an der Haut, nicht an den Punkten der Linien:
- * Auch ein Griff oder die Haut zwischen zwei Linien kann hinüberreichen. In der Pose nie.
+ * Die Seite der Spiegelebene, auf der eine freie Form liegt (+1: z ≥ 0, nach der Mitte ihrer Punkte): Diese Seite bleibt, wenn sie
+ * an der Ebene mit ihrem Spiegelbild verschmilzt.
  */
+export function freiSeite(): 1 | -1 {
+  let z = 0;
+  for (let v = 0; v < haut.n; v++) z += haut.pos[3 * v + 2]!;
+  return z < 0 ? -1 : 1;
+}
+/**
+ * Je Punkt der Haut die Seite, an der gemessen wird, ob er hinter der Spiegelebene liegt: verschmolzen die Seite seiner Hälfte
+ * (`hautSeite`), frei mit Spiegelbild für alle die Seite der Form (`freiSeite`); null: Es gibt nichts zu verschmelzen (in der Pose,
+ * eine freie Form ohne Spiegelbild).
+ */
+export function clipSeiten(): { von: (v: number) => number } | null {
+  if (grund) return null;
+  if (istFrei()) {
+    if (!G.spiegelbild) return null;
+    const s = freiSeite();
+    return { von: () => s };
+  }
+  const seite = hautSeite();
+  return seite ? { von: (v) => seite[v]! } : null;
+}
 /** so tief (Einheiten) reicht die Haut einer Hälfte höchstens hinter die Spiegelebene (0: gar nicht) */
 export function tiefeHinterDerMitte(): number {
-  const seite = grund ? null : hautSeite();
-  if (!seite) return 0;
+  const S = clipSeiten();
+  if (!S) return 0;
   const P = haut.pos;
   let tief = 0;
   for (let v = 0; v < haut.n; v++) {
-    const sv = seite[v]!;
+    const sv = S.von(v);
     if (sv !== 0) tief = Math.max(tief, -sv * P[3 * v + 2]!);
   }
   return tief;
 }
+/**
+ * Reicht die Haut einer Hälfte über die Spiegelebene (weiter als `NAHT_AB`)? Gelesen an der Haut, nicht an den Punkten der Linien:
+ * Auch ein Griff oder die Haut zwischen zwei Linien kann hinüberreichen. In der Pose nie. Eine freie Form mit Spiegelbild reicht
+ * hinüber, wenn sie auf beiden Seiten der Ebene liegt (ganz dahinter gibt es nichts zu verschmelzen).
+ */
 export function ueberDerMitte(): boolean {
-  if (grund) return false;
-  const seite = hautSeite();
-  if (!seite) return false;
+  const S = clipSeiten();
+  if (!S) return false;
   const P = haut.pos;
   const ab = NAHT_AB * MK;
-  for (let v = 0; v < haut.n; v++) {
-    const sv = seite[v]!;
-    if (sv !== 0 && sv * P[3 * v + 2]! < -ab) return true;
+  let hinter = false;
+  let davor = !istFrei();
+  for (let v = 0; v < haut.n && !(hinter && davor); v++) {
+    const sv = S.von(v);
+    if (sv === 0) continue;
+    const z = sv * P[3 * v + 2]!;
+    if (z < -ab) hinter = true;
+    else if (z > ab) davor = true;
   }
-  return false;
+  return hinter && davor;
 }
 
 // ---------- Ziehen und G/S/R ----------
@@ -2197,6 +2226,166 @@ export function abbildung(z: Zug, X: number, Y: number): (p: V3) => V3 {
   // spiegelgleiche Loops als Ganzes nicht aus der Mitte schieben
   if ([...z.ganze].some((li) => loops[li]!.art !== 'paar')) d.z = 0;
   return (p) => ({ x: p.x + d.x, y: p.y + d.y, z: p.z + d.z });
+}
+
+// ---------- die ganze Form abbilden (18.11., Objekte: verschieben, skalieren, drehen) ----------
+
+/**
+ * Ein Zug an der ganzen Form (Florian, 18.11.: „Ohne mirror kann ich ein objekt frei bewegen“), geführt wie G, S, R an Punkten: im
+ * Blatt `ansicht` von (x0, y0) aus. Kein Löser rechnet: Jede Lage wird abgebildet (Haut, Linien, Punkte, Griffe; beim Skalieren
+ * auch die Längen der Linien und das Maß des Netzes), die Form bleibt genau, was sie war. Eine verschmolzene Form bleibt dabei in
+ * der Spiegelebene (verschieben längs und hoch, drehen nur in der Seite, skalieren um einen Ort der Ebene); eine freie ist frei.
+ */
+export type FormZug = {
+  modal: 'g' | 's' | 'r';
+  achse: 'x' | 'y' | 'z' | null;
+  ansicht: Ansicht;
+  /** am Spiegelbild gegriffen: die Tiefe läuft umgekehrt */
+  spiegel: boolean;
+  x0: number;
+  y0: number;
+  pivot: V3;
+  vorher: Schnappschuss;
+  pos0: Float64Array;
+  loops0: Loop[];
+  mk0: number;
+  delta0: Float64Array | null;
+  bewegt: boolean;
+};
+export let formZug: FormZug | null = null;
+
+/** die Mitte der Form (Mitte ihres Kastens); verschmolzen in der Spiegelebene */
+export function formMitte(): V3 {
+  const P = haut.pos;
+  const lo = [Infinity, Infinity, Infinity];
+  const hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < P.length; i++) {
+    const k = i % 3;
+    if (P[i]! < lo[k]!) lo[k] = P[i]!;
+    if (P[i]! > hi[k]!) hi[k] = P[i]!;
+  }
+  return { x: (lo[0]! + hi[0]!) / 2, y: (lo[1]! + hi[1]!) / 2, z: istFrei() ? (lo[2]! + hi[2]!) / 2 : 0 };
+}
+
+export function formZugStarten(modal: FormZug['modal'], a: Ansicht, X: number, Y: number, spiegel: boolean): boolean {
+  if (zug || formZug) return false;
+  if (grund) {
+    G.meldung = 'In der Pose lässt sich die Form nicht als Ganzes bewegen (erst zurück in die Grundform)';
+    anzeige.statusZeigen();
+    return false;
+  }
+  if (modal === 'r' && !istFrei() && a !== 'seite') {
+    G.meldung = 'Eine verschmolzene Form dreht sich nur in der Seite (um die Achse quer zur Spiegelebene) · Spiegel aus macht sie frei';
+    anzeige.statusZeigen();
+    return false;
+  }
+  formZug = {
+    modal,
+    achse: null,
+    ansicht: a,
+    spiegel,
+    x0: X,
+    y0: Y,
+    pivot: formMitte(),
+    vorher: schnappschuss(),
+    pos0: Float64Array.from(haut.pos),
+    loops0: loops.map((l) => ({ ...kopieLoop(l), s: Float64Array.from(l.s) })),
+    mk0: MK,
+    delta0: pose.delta ? Float64Array.from(pose.delta) : null,
+    bewegt: false,
+  };
+  return true;
+}
+
+export function formZugBewegen(X: number, Y: number): void {
+  const z = formZug;
+  if (!z) return;
+  if (!z.bewegt) {
+    z.bewegt = true;
+    // was für den Stand davor noch rechnete oder bereitlag, gilt nicht mehr
+    nachlauf = null;
+    G.aufgeraeumt = null;
+    G.aufraeumen = null;
+    G.zwischenstand = null;
+    G.gegriffen = null;
+    verfeinerung = null;
+    G.eingetroffen = null;
+    nichtsZuVerfeinern = null;
+    nachLoesenOffen = null;
+    ruheOffen = null;
+    vorrechnenAus();
+  }
+  const frei = istFrei();
+  // die Abbildung wie bei G, S, R an Punkten (`abbildung`); skaliert wird immer gleichmäßig (sonst wäre die Haut nicht mehr die der Linien)
+  const f0 = abbildung({ modal: z.modal, achse: z.modal === 'g' ? z.achse : null, ansicht: z.ansicht, spiegel: z.spiegel, x0: z.x0, y0: z.y0, pivot: z.pivot, ganze: new Set<number>() } as unknown as Zug, X, Y);
+  // eine verschmolzene Form bleibt in der Spiegelebene: kein Weg quer zu ihr (Skalieren und Drehen in der Seite lassen z ohnehin, wie es ist)
+  const f = frei || z.modal !== 'g' ? f0 : (p: V3): V3 => ({ ...f0(p), z: p.z });
+  let k = 1;
+  if (z.modal === 's') {
+    const [cx, cy] = imBlatt(z.ansicht, z.pivot);
+    k = Math.hypot(X - cx, Y - cy) / Math.max(1e-6, Math.hypot(z.x0 - cx, z.y0 - cy));
+  }
+  const o = f({ x: 0, y: 0, z: 0 });
+  const vek = (v: V3): V3 => {
+    const q = f(v);
+    return { x: q.x - o.x, y: q.y - o.y, z: q.z - o.z };
+  };
+  const P = haut.pos;
+  const P0 = z.pos0;
+  for (let v = 0; v < haut.n; v++) {
+    const q = f({ x: P0[3 * v]!, y: P0[3 * v + 1]!, z: P0[3 * v + 2]! });
+    P[3 * v] = q.x;
+    P[3 * v + 1] = q.y;
+    P[3 * v + 2] = q.z;
+  }
+  loops.forEach((l, li) => {
+    const l0 = z.loops0[li]!;
+    for (let j = 0; j < l0.ruhe.length / 3; j++) {
+      const q = f(lageAus(l0.ruhe, j));
+      l.ruhe[3 * j] = q.x;
+      l.ruhe[3 * j + 1] = q.y;
+      l.ruhe[3 * j + 2] = q.z;
+    }
+    l.punkte.forEach((p, i) => {
+      const p0 = l0.punkte[i]!;
+      p.ref = f(p0.ref);
+      p.cur = { ...p.ref };
+      if (p0.ein) p.ein = vek(p0.ein);
+      if (p0.aus) p.aus = vek(p0.aus);
+      p.s = p0.s * k;
+    });
+    // (ein neues Feld: Die Stände für ⌘Z teilen sich das alte)
+    l.s = Float64Array.from(l0.s, (x) => x * k);
+    l.laenge = l0.laenge * k;
+  });
+  MK = z.mk0 * k;
+  TOL = 0.25 * MK;
+  if (pose.delta && z.delta0)
+    for (let v = 0; v < haut.n; v++) {
+      const q = vek({ x: z.delta0[3 * v]!, y: z.delta0[3 * v + 1]!, z: z.delta0[3 * v + 2]! });
+      pose.delta[3 * v] = q.x;
+      pose.delta[3 * v + 1] = q.y;
+      pose.delta[3 * v + 2] = q.z;
+    }
+  anzeige.hautZeigen();
+  anzeige.baenderZeigen();
+}
+
+export function formZugEnde(ok: boolean): void {
+  const z = formZug;
+  if (!z) return;
+  formZug = null;
+  if (!ok || !z.bewegt) {
+    if (z.bewegt) wiederherstellen(z.vorher);
+    return;
+  }
+  zurueck.push(z.vorher);
+  // dieselbe Form an einem anderen Ort: Die Haut steht (nichts zu setzen), nur die Zerlegung für den nächsten Griff ist neu zu rechnen
+  vorlageBereit = null;
+  vorlageStand = '';
+  vorlageNetz = '';
+  standFertig = '';
+  anzeige.allesZeigen();
 }
 
 /** Punkt einer Linie in der Mittelebene bzw. am Ende eines Rings: z bleibt 0; Ringe nicht unter die Mitte */
@@ -4750,7 +4939,9 @@ export function mitteFest(vonSelbst = false, mitPunkten = vonSelbst): boolean {
     anzeige.statusZeigen();
     return false;
   }
-  const r = mitteFestmachen(haut, loops, { naechsteId, naechsteKreuzung });
+  // (eine freie Form mit Spiegelbild: Die Seite, auf der sie liegt, bleibt und wird mit ihrem Spiegelbild verbunden)
+  const warFrei = istFrei();
+  const r = mitteFestmachen(haut, loops, warFrei ? { naechsteId, naechsteKreuzung, seite: freiSeite() } : { naechsteId, naechsteKreuzung });
   if ('fehler' in r) {
     G.meldung = vonSelbst ? `Hier verschmilzt die Form an der Mitte noch nicht von selbst (${r.fehler}) · ⌘Z nimmt den Zug zurück` : `Der Schnitt an der Mitte geht so nicht: ${r.fehler}`;
     anzeige.statusZeigen();
@@ -4770,6 +4961,13 @@ export function mitteFest(vonSelbst = false, mitPunkten = vonSelbst): boolean {
   naechsteId = r.naechsteId;
   naechsteKreuzung = r.naechsteKreuzung;
   netzGewachsen(nAlt, r.alt, null);
+  if (warFrei) {
+    // aus der freien Form ist eine verschmolzene geworden: Was für ihr Netz bereitlag, gilt nicht mehr
+    vorlageBereit = null;
+    vorlageStand = '';
+    vorlageNetz = '';
+    standFertig = '';
+  }
   // gewählt ist der Rand als Ganzes (so wirkt K auch an einem Rand ohne Punkte); von selbst entstanden dazu seine sichtbaren Punkte,
   // damit man die Naht sieht (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
   G.auswahl = r.rand.flatMap((id) => {

@@ -13,6 +13,13 @@
 //   an        das Spiegelbild ist da (die Anzeige zeigt doppelt so viele Punkte); aus: wieder weg
 //   P         an der freien Form lassen sich noch keine Linien zeichnen (Meldung, das Werkzeug bleibt)
 //   ⌘Z        zurück bis zur verschmolzenen Form: Der Knopf steht wieder auf Clipping
+// dritter Teil (NUR=objekt), an einer dritten frischen Kugel: das ganze Objekt bewegen (V) und an der Ebene verschmelzen
+//   aus, V    im Top am Objekt ziehen: Es liegt 200 neben der Spiegelebene (die Form ist dieselbe, nur verschoben)
+//   an        das Spiegelbild steht gegenüber; die beiden überragen sich nicht
+//   ziehen    zurück bis 60 neben die Ebene: Sie überragen sich, nichts verschmilzt
+//   Clipping  die Fahrt, dann eine Form aus zwei Kugeln mit einer Naht in der Ebene; ⌘Z trennt wieder
+//   wartend   weit weg geschoben, Clipping ein (nichts geschieht), zurückgeschoben: Beim Loslassen verschmilzt es von selbst
+//   G S R     an der verschmolzenen Form: S skaliert, R dreht nur in der Seite, G mit X nur längs
 // Aufruf aus apps/editor: OZZY_URL=http://localhost:5211/ozzy.html node scripts/pruefen/ozzy-spiegel-fenster.mjs
 //   BILD=<pfad ohne Endung>   FILM=<ziel.mp4> (die Fahrt, Bild für Bild)   MATERIAL=solid|zebra   TIEF=<hinter die Mitte> (Standard 60)
 import { execFileSync } from 'node:child_process';
@@ -45,7 +52,7 @@ const knopf = async (z) => {
 };
 const gedrueckt = () => s.getAttribute('#spiegel [aria-pressed="true"]', 'data-zustand');
 const z1 = (x) => x.toFixed(1).replace('.', ',');
-if (NUR !== 'aus') {
+if (NUR === '' || NUR === 'clip') {
 
 const L0 = await linien();
 let sp = await O('spiegel');
@@ -126,7 +133,7 @@ void p;
 }
 
 // ====================== zweiter Teil: Spiegel aus (die freie Form) ======================
-if (NUR !== 'clip') {
+if (NUR === '' || NUR === 'aus') {
   if (NUR !== 'aus') {
     await s.reload();
     await s.waitForFunction(() => !!window.__ozzy);
@@ -187,6 +194,155 @@ if (NUR !== 'clip') {
   sp = await O('spiegel');
   L = await linien();
   ok('⌘Z ⌘Z: wieder die verschmolzene Form, der Knopf steht auf Clipping', !sp.frei && sp.zustand === 'clip' && L.length === K0.length && L.map((l) => l.art).join() === K0.map((l) => l.art).join(), `${L.map((l) => `${l.id} ${l.art}`).join(', ')}`);
+}
+
+// ====================== dritter Teil: das ganze Objekt bewegen und an der Ebene verschmelzen ======================
+if (NUR === '' || NUR === 'objekt') {
+  if (NUR !== 'objekt') {
+    await s.reload();
+    await s.waitForFunction(() => !!window.__ozzy);
+    await kugelMitRingen(t);
+  }
+  /** das Werk rechnet nicht mehr (gilt auch im Objekt-Modus, in dem die Linien nicht bedient werden) */
+  const still = async () => {
+    await s.waitForTimeout(300);
+    await s.waitForFunction(() => !window.__ozzy.werk().beschaeftigt && !window.__ozzy.werk().griffWartet, null, { timeout: 90000 });
+    await s.waitForTimeout(250);
+  };
+  const grenzen = async () => {
+    const r = await O('werkRoh');
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < r.pos.length; i++) {
+      lo[i % 3] = Math.min(lo[i % 3], r.pos[i]);
+      hi[i % 3] = Math.max(hi[i % 3], r.pos[i]);
+    }
+    return { lo, hi };
+  };
+  /** im Top am Objekt ziehen: von seiner Mitte um dz quer zur Spiegelebene (Einheiten des Werks) */
+  const schieben = async (dz) => {
+    const m = (await O('objekt')).mitte;
+    const a = await O('flaecheHin', 'top', m.x, m.z);
+    const b = await O('flaecheHin', 'top', m.x, m.z + dz);
+    await t.ziehen(a.x, a.y, b.x, b.y, { schritte: 24, nach: 400 });
+    await still();
+  };
+  const g0 = await grenzen();
+  await knopf('aus');
+  await still();
+  await s.keyboard.press('v');
+  await s.keyboard.press('7');
+  await s.waitForTimeout(1600);
+  await still();
+  // ---------- zur Seite ----------
+  await schieben(200);
+  let o = await O('objekt');
+  let g = await grenzen();
+  ok('V, am Objekt gezogen: Es liegt 200 neben der Ebene, die Form ist dieselbe', o.modus && Math.abs(o.mitte.z - 200) < 4 && Math.abs(g.hi[2] - g.lo[2] - (g0.hi[2] - g0.lo[2])) < 0.01 && Math.abs(g.hi[0] - g0.hi[0]) < 0.01, `Mitte z = ${z1(o.mitte.z)}, Tiefe ${z1(g.hi[2] - g.lo[2])} (vorher ${z1(g0.hi[2] - g0.lo[2])})`);
+  await knopf('an');
+  await s.waitForTimeout(400);
+  let sp = await O('spiegel');
+  let w = await O('werk');
+  ok('an: das Spiegelbild steht gegenüber', sp.zustand === 'an' && sp.frei && sp.spiegelbild && !w.ueberDerMitte);
+  await s.keyboard.press('0');
+  await s.waitForTimeout(1800);
+  await foto('8-paar');
+  await s.keyboard.press('7');
+  await s.waitForTimeout(1600);
+  // ---------- ineinander, ohne Clipping ----------
+  await schieben(-140);
+  o = await O('objekt');
+  w = await O('werk');
+  ok('zurückgeschoben bis 60 neben die Ebene: Die beiden überragen sich, nichts verschmilzt', Math.abs(o.mitte.z - 60) < 5 && w.ueberDerMitte && !w.spiegelSchnitt && (await O('spiegel')).frei, `Mitte z = ${z1(o.mitte.z)}`);
+  await s.keyboard.press('0');
+  await s.waitForTimeout(1800);
+  await foto('9-ueberragt');
+  // ---------- Clipping: die Fahrt, dann eine Form ----------
+  const L0 = (await linien()).length;
+  await knopf('clip');
+  await s.waitForTimeout(140);
+  sp = await O('spiegel');
+  ok('Clipping ein: Die Fahrt läuft', sp.fahrt !== null && sp.fahrt > 0 && sp.fahrt < 1 && (await O('werk')).spiegelSchnitt, sp.fahrt === null ? 'keine Fahrt' : `Fahrt ${sp.fahrt.toFixed(2)}, Rand ${sp.rand.toFixed(1)}`);
+  await s.waitForTimeout(800);
+  await still();
+  sp = await O('spiegel');
+  w = await O('werk');
+  g = await grenzen();
+  let L = await linien();
+  let naht = L.filter((l) => l.art === 'mitte' && l.kante === true);
+  ok('danach: eine Form aus zwei Kugeln, verschmolzen, mit einer Naht in der Ebene', !sp.frei && sp.zustand === 'clip' && naht.length === 1 && Math.abs(g.hi[2] + g.lo[2]) < 0.01 && g.hi[2] > 200 && w.umgeschlagen === 0, `${L.map((l) => `${l.id} ${l.art}`).join(', ')}; Tiefe ±${z1(g.hi[2])}; umgeschlagen ${w.umgeschlagen}`);
+  ok('die Naht ist gewählt; P geht wieder', naht.every((l) => ` ${w.auswahl} `.includes(` ${l.id}.-1 `)) && !(await s.getAttribute('#leiste button[title^="Zeichenstift"]', 'disabled')));
+  await foto('10-verschmolzen');
+  // ---------- ⌘Z trennt wieder ----------
+  await s.keyboard.press('Meta+z');
+  await still();
+  sp = await O('spiegel');
+  ok('⌘Z: wieder zwei, die sich überragen (frei, Spiegel an)', sp.frei && sp.zustand === 'an' && (await linien()).length === L0, `Knopf: ${sp.zustand}`);
+  // ---------- wartendes Clipping: erst weg, Clipping ein, dann zurück ----------
+  await s.keyboard.press('7');
+  await s.waitForTimeout(1600);
+  await schieben(160);
+  await knopf('clip');
+  await s.waitForTimeout(600);
+  sp = await O('spiegel');
+  ok('weit weg, Clipping ein: nichts geschieht, es wartet', sp.frei && sp.zustand === 'clip' && sp.fahrt === null && !(await O('werk')).ueberDerMitte);
+  await schieben(-150);
+  sp = await O('spiegel');
+  w = await O('werk');
+  L = await linien();
+  naht = L.filter((l) => l.art === 'mitte' && l.kante === true);
+  ok('zurückgeschoben: Beim Loslassen verschmilzt es von selbst, die Naht ist gewählt', !sp.frei && naht.length === 1 && naht.every((l) => ` ${w.auswahl} `.includes(` ${l.id}.-1 `)) && w.umgeschlagen === 0, `${L.map((l) => `${l.id} ${l.art}`).join(', ')}; umgeschlagen ${w.umgeschlagen}; ${w.meldung.slice(0, 50)}`);
+  await s.keyboard.press('Meta+z');
+  await still();
+  ok('ein ⌘Z nimmt Schieben und Naht zusammen zurück', (await O('spiegel')).frei && Math.abs((await O('objekt')).mitte.z - 220) < 6, `Mitte z = ${z1((await O('objekt')).mitte.z)}`);
+  await schieben(-150);
+  // ---------- G, S, R an der verschmolzenen Form ----------
+  await s.keyboard.press('1');
+  await s.waitForTimeout(1600);
+  await still();
+  const gs = await grenzen();
+  const m = await O('flaecheHin', 'seite', 0, 0);
+  await s.mouse.move(m.x + 40, m.y, { steps: 3 });
+  await s.waitForTimeout(300);
+  await s.keyboard.press('s');
+  await s.mouse.move(m.x + 60, m.y, { steps: 6 });
+  await s.waitForTimeout(200);
+  ok('S läuft: das Objekt folgt dem Zeiger', (await O('objekt')).zug === 's');
+  await s.keyboard.press('Enter');
+  await still();
+  g = await grenzen();
+  ok('S: anderthalbmal so groß, spiegelgleich', Math.abs((g.hi[0] - g.lo[0]) / (gs.hi[0] - gs.lo[0]) - 1.5) < 0.05 && Math.abs((g.hi[2] - g.lo[2]) / (gs.hi[2] - gs.lo[2]) - 1.5) < 0.05 && Math.abs(g.hi[2] + g.lo[2]) < 0.01 && !(await O('spiegel')).frei, `Breite ${z1(gs.hi[0] - gs.lo[0])} → ${z1(g.hi[0] - g.lo[0])}, Tiefe ${z1(gs.hi[2] - gs.lo[2])} → ${z1(g.hi[2] - g.lo[2])}`);
+  ok('S: nichts umgeschlagen, Linien und Haut passen noch', (await O('werk')).umgeschlagen === 0 && (await O('standPruefen')).ohne === 0);
+  await s.keyboard.press('Meta+z');
+  await still();
+  g = await grenzen();
+  ok('⌘Z: wieder so groß wie vorher', Math.abs(g.hi[0] - gs.hi[0]) < 0.01 && Math.abs(g.hi[2] - gs.hi[2]) < 0.01);
+  // R in der Seite dreht; im Top nicht (verschmolzen)
+  await s.mouse.move(m.x + 60, m.y, { steps: 3 });
+  await s.waitForTimeout(250);
+  await s.keyboard.press('r');
+  await s.mouse.move(m.x, m.y + 60, { steps: 6 });
+  await s.waitForTimeout(200);
+  await s.keyboard.press('Enter');
+  await still();
+  g = await grenzen();
+  ok('R in der Seite: gedreht, spiegelgleich geblieben', Math.abs(g.hi[2] + g.lo[2]) < 0.01 && Math.abs(g.hi[2] - gs.hi[2]) < 0.01 && !(await O('spiegel')).frei && (await O('werk')).umgeschlagen === 0);
+  await s.keyboard.press('7');
+  await s.waitForTimeout(1600);
+  const mt = await O('flaecheHin', 'top', 0, 0);
+  await s.mouse.move(mt.x + 30, mt.y, { steps: 3 });
+  await s.waitForTimeout(250);
+  await s.keyboard.press('r');
+  await s.waitForTimeout(150);
+  ok('R im Top an der verschmolzenen Form: Meldung, kein Zug', (await O('objekt')).zug === null && (await O('werk')).meldung.includes('nur in der Seite'), (await O('werk')).meldung.slice(0, 60));
+  // G quer zur Ebene: die verschmolzene Form bleibt in der Ebene
+  await s.keyboard.press('g');
+  await s.mouse.move(mt.x + 30, mt.y + 70, { steps: 6 });
+  await s.waitForTimeout(200);
+  await s.keyboard.press('Enter');
+  await still();
+  g = await grenzen();
+  ok('G im Top quer zur Ebene: Die verschmolzene Form bleibt in der Spiegelebene', Math.abs(g.hi[2] + g.lo[2]) < 0.01 && !(await O('spiegel')).frei);
 }
 
 ok('keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));

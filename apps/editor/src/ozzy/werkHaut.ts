@@ -478,22 +478,15 @@ export class WerkHaut {
    * (Florian, 18.11.: „beim solid ist immer diese mittellinie“): Die glatte Anzeige schwingt dicht an der Mitte um die Ebene.
    */
   private spiegelSeite(g: Plan, stufen: number, z: HautNetz): void {
-    const hs = werk.G.clipping && !werk.grund ? werk.hautSeite() : null;
+    // (verschmolzen: die Seite der Hälfte jedes Punkts; frei mit Spiegelbild: die Seite, auf der die Form liegt)
+    const S = werk.G.clipping ? werk.clipSeiten() : null;
     const N = g.quelle.length;
     const L = g.lagen;
     let da = false;
     // (erst ab derselben Weite, ab der beim Loslassen eine Naht entsteht: Dicht an einer Kante in der Mitte liegt ein Punkt schon
     // einmal um Haaresbreite hinter der Ebene, dort ist nichts zu schneiden)
-    const ab = werk.NAHT_AB * werk.MK;
-    if (hs)
-      for (let d = 0; d < N; d++) {
-        const sv = hs[g.quelle[d]!]!;
-        if (sv !== 0 && sv * L[3 * d + 2]! < -ab) {
-          da = true;
-          break;
-        }
-      }
-    if (!da || !hs) {
+    if (S && werk.ueberDerMitte()) da = true;
+    if (!da || !S) {
       if (this.spiegelSchnitt) z.seite.fill(0);
       this.spiegelSchnitt = false;
       return;
@@ -505,13 +498,13 @@ export class WerkHaut {
       let hinter = false;
       for (let e = 0; e < 3; e++) {
         const d = I[t + e]!;
-        const sv = hs[g.quelle[d]!]!;
+        const sv = S.von(g.quelle[d]!);
         if (sv !== 0 && sv * L[3 * d + 2]! < 0) hinter = true;
       }
       if (!hinter) continue;
       for (let e = 0; e < 3; e++) {
         const d = I[t + e]!;
-        grob[d] = hs[g.quelle[d]!]!;
+        grob[d] = S.von(g.quelle[d]!);
       }
     }
     z.seite.set(g.plan.weiterreichen(stufen, grob));
