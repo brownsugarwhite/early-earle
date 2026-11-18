@@ -382,6 +382,15 @@ const mess = {
 
 /** Halbmesser, auf den die Silhouette im Werk kommt (Einheiten des Werks: so groß wie seine Startkugel) */
 const WERK_HALBMESSER = 150;
+/**
+ * So dick wird die dickste Stelle einer frischen Form mindestens angelegt (halbe Dicke, Einheiten des Werks; Florian, 18.11.: „Ja lege
+ * die form größer an“). Die Netzkante des Werks ist fest (rund 15 Einheiten): Ein schlanker Delfin mit halber Länge 150 ist nur 39
+ * dick und bekam 600 Rechenpunkte, Flossen und Schnabel waren dünner als eine Kante; seine von Hand geformten Formen sind 60 bis 320
+ * dick und haben 3 500 bis 11 400 Punkte. Größer angelegt wird nur, was sonst dünner wäre, höchstens `WERK_GROESSER`-fach; im Bild
+ * bleibt die Form gleich groß (`werkHaut.f`).
+ */
+const WERK_DICKE = 115;
+const WERK_GROESSER = 4;
 const werkHaut = new WerkHaut();
 /**
  * Die Form im Werk: aus welcher Silhouette (Stand des Blatts) und wie viele Schritte für ⌘Z das Werk danach schon hatte (davor liegt
@@ -698,10 +707,81 @@ function aufwaermen(): void {
 // ---------- Form im Werk ----------
 
 /**
- * Die Form im Werk aus der Silhouette anlegen: in Einheiten des Werks (größte halbe Ausdehnung `WERK_HALBMESSER`, Mitte der Silhouette
- * im Ursprung), Anker und Griffe wie gezeichnet. Hat sich die Silhouette nicht geändert, bleibt die Form, mit allem, was an ihr
+ * Die Form im Werk aus der Silhouette anlegen: in Einheiten des Werks (größte halbe Ausdehnung mindestens `WERK_HALBMESSER`, größer,
+ * solange die Form dünner als `WERK_DICKE` wäre; Mitte der Silhouette im Ursprung), Anker und Griffe wie gezeichnet. Hat sich die Silhouette nicht geändert, bleibt die Form, mit allem, was an ihr
  * geändert wurde.
  */
+/**
+ * Halbmesser des größten Kreises, der in das Vieleck passt (die dickste Stelle der Silhouette: so dick wird die runde Form dort):
+ * ein Raster über den Kasten, dann dreimal um die beste Stelle verfeinert. −1 außen zählt nicht.
+ */
+function groessterInnenkreis(xs: readonly number[], ys: readonly number[]): number {
+  const n = xs.length;
+  if (n < 3) return 0;
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < n; i++) {
+    x0 = Math.min(x0, xs[i]!);
+    x1 = Math.max(x1, xs[i]!);
+    y0 = Math.min(y0, ys[i]!);
+    y1 = Math.max(y1, ys[i]!);
+  }
+  // innen (gerade/ungerade): Abstand zum Rand; außen: −1
+  const abstand = (px: number, py: number): number => {
+    let innen = false;
+    let d2 = Infinity;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const ax = xs[j]!;
+      const ay = ys[j]!;
+      const bx = xs[i]!;
+      const by = ys[i]!;
+      if (ay > py !== by > py && px < ((bx - ax) * (py - ay)) / (by - ay) + ax) innen = !innen;
+      const ex = bx - ax;
+      const ey = by - ay;
+      const L2 = ex * ex + ey * ey;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / L2)) : 0;
+      const qx = ax + t * ex - px;
+      const qy = ay + t * ey - py;
+      const q = qx * qx + qy * qy;
+      if (q < d2) d2 = q;
+    }
+    return innen ? Math.sqrt(d2) : -1;
+  };
+  const N = 28;
+  let schritt = Math.max(x1 - x0, y1 - y0) / N;
+  let best = 0;
+  let bx = (x0 + x1) / 2;
+  let by = (y0 + y1) / 2;
+  for (let i = 0; i <= N; i++)
+    for (let j = 0; j <= N; j++) {
+      const px = x0 + (i * (x1 - x0)) / N;
+      const py = y0 + (j * (y1 - y0)) / N;
+      const d = abstand(px, py);
+      if (d > best) {
+        best = d;
+        bx = px;
+        by = py;
+      }
+    }
+  for (let runde = 0; runde < 3; runde++) {
+    schritt /= 3;
+    const mx = bx;
+    const my = by;
+    for (let i = -3; i <= 3; i++)
+      for (let j = -3; j <= 3; j++) {
+        const d = abstand(mx + i * schritt, my + j * schritt);
+        if (d > best) {
+          best = d;
+          bx = mx + i * schritt;
+          by = my + j * schritt;
+        }
+      }
+  }
+  return best;
+}
+
 function werkFormAnlegen(): void {
   if (!silhouette) return;
   if (werkForm && werkForm.stand === blatt.stand && (werkForm.geladen !== undefined || mitteLinie() || werkForm.ohneLinie)) return;
@@ -720,7 +800,10 @@ function werkFormAnlegen(): void {
   }
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
-  const f = WERK_HALBMESSER / Math.max(1, (x1 - x0) / 2, (y1 - y0) / 2);
+  // größer anlegen, was sonst dünner als `WERK_DICKE` würde (die halbe Dicke der runden Form ist der größte Kreis in der Zeichnung)
+  const f0 = WERK_HALBMESSER / Math.max(1, (x1 - x0) / 2, (y1 - y0) / 2);
+  const dick = groessterInnenkreis(ab.x, ab.y) * f0;
+  const f = f0 * Math.min(WERK_GROESSER, Math.max(1, WERK_DICKE / Math.max(1e-6, dick)));
   werkHaut.f = f;
   werkHaut.mitte = { x: cx, y: cy };
   const anker = silhouette.map((a) => ({
