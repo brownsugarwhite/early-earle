@@ -2413,7 +2413,7 @@ function bild(dt: number): boolean {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
     if (!w.blaseAus) {
       if (!festeStand || festeStand.netz !== werkHaut.netz || festeStand.version !== werkHaut.version) {
-        feste.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz), werkHaut.f);
+        feste.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
         festeStand = { netz: werkHaut.netz, version: werkHaut.version };
       }
       feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen });

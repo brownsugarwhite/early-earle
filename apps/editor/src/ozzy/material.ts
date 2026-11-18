@@ -4,7 +4,10 @@
  *
  * - **Solid:** das Material des Prüffensters `kurven.html` (Fenster von Sitzung 4, Port 5197): `hautMaterial`, `umrissMaterial` und das
  *   Licht aus `src/form/kurven.ts`, Zeile für Zeile (vier Stufen an denselben Schwellen, die Grenze einen Bildpunkt breit geglättet;
- *   Umriss 2,5 Bildpunkte aus den Rückseiten; Sonne und Himmelslicht).
+ *   Umriss 2,5 Bildpunkte aus den Rückseiten; Sonne und Himmelslicht). Weggelassen ist nur der Schnitt an der Spiegelebene: Das
+ *   Prüffenster zeigt zwei Hälften, die es dort abschneidet; Ozzy zeigt eine geschlossene Haut. Mit dem Schnitt blieb längs der
+ *   Mitte ein feiner Streifen frei, durch den der Umriss schien (Florian, 18.11.: „beim solid ist immer diese mittellinie auch bei
+ *   smoothen flächen“).
  * - **Zebra:** die Zebra-Matcap des alten Editors (`src/three/matcap.ts`, `zebraMatcap`), dort als Matcap auf dem Körper
  *   (`Renderer3D.ts`): waagerechte Streifen über der Blicknormalen.
  *
@@ -50,27 +53,13 @@ export type FestesMaterial = (typeof FESTE_MATERIALIEN)[number];
 
 const KOERPER = 0xe2b98e;
 const TINTE = 0x1f1a17;
-/** wie `SCHNITT_RAND` im Werk (Einheiten des Werks): so weit darf eine Hälfte über die Spiegelebene reichen */
-const SCHNITT_RAND = 0.02;
-
-const SCHNITT_VERTEX = 'attribute float aSeite;\nvarying vec2 vSchnitt;';
-const SCHNITT_VERTEX_MAIN = 'vSchnitt = vec2(aSeite, position.z);';
-const SCHNITT_FRAGMENT = 'uniform float uSchnittRand;\nvarying vec2 vSchnitt;';
-const SCHNITT_FRAGMENT_MAIN = 'if (vSchnitt.x * vSchnitt.y < -uSchnittRand * abs(vSchnitt.x)) discard;';
-
-/** `hautMaterial` des Prüffensters (glatte Anzeige); der Rand des Schnitts kommt als Wert, weil Ozzy in seiner Welt zeichnet */
-function hautMaterial(farbe: number, rand: { value: number }): MeshToonMaterial {
+/** `hautMaterial` des Prüffensters (glatte Anzeige), ohne den Schnitt an der Spiegelebene */
+function hautMaterial(farbe: number): MeshToonMaterial {
   const m = new MeshToonMaterial({ color: farbe });
   m.onBeforeCompile = (shader) => {
-    shader.uniforms.uSchnittRand = rand;
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\n${SCHNITT_VERTEX}`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>\n${SCHNITT_VERTEX_MAIN}`);
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${SCHNITT_FRAGMENT}`)
-      .replace(
-        '#include <gradientmap_pars_fragment>',
-        /* glsl */ `
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <gradientmap_pars_fragment>',
+      /* glsl */ `
         vec3 getGradientIrradiance( vec3 normal, vec3 lightDirection ) {
           float x = dot( normal, lightDirection ) * 0.5 + 0.5;
           float w = max( fwidth( x ), 1e-5 ) * 0.85;
@@ -79,24 +68,21 @@ function hautMaterial(farbe: number, rand: { value: number }): MeshToonMaterial 
           g = mix( g, 1.0, smoothstep( 0.75 - w, 0.75 + w, x ) );
           return vec3( g );
         }`,
-      )
-      .replace('void main() {', `void main() {\n${SCHNITT_FRAGMENT_MAIN}`);
+    );
   };
   m.customProgramCacheKey = () => 'ozzy-haut-glatt';
   return m;
 }
 
-/** `umrissMaterial` des Prüffensters */
-function umrissMaterial(rand: { value: number }): ShaderMaterial {
+/** `umrissMaterial` des Prüffensters, ohne den Schnitt an der Spiegelebene */
+function umrissMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uBreite: { value: 2.5 }, uAufloesung: { value: new Vector2(1, 1) }, uFarbe: { value: new Color(TINTE) }, uSchnittRand: rand },
+    uniforms: { uBreite: { value: 2.5 }, uAufloesung: { value: new Vector2(1, 1) }, uFarbe: { value: new Color(TINTE) } },
     vertexShader: /* glsl */ `
     uniform float uBreite;
     uniform vec2 uAufloesung;
-    ${SCHNITT_VERTEX}
     #include <clipping_planes_pars_vertex>
     void main() {
-      ${SCHNITT_VERTEX_MAIN}
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       vec4 clip = projectionMatrix * mvPosition;
       vec3 n = normalize(normalMatrix * normal);
@@ -111,11 +97,9 @@ function umrissMaterial(rand: { value: number }): ShaderMaterial {
   `,
     fragmentShader: /* glsl */ `
     uniform vec3 uFarbe;
-    ${SCHNITT_FRAGMENT}
     #include <clipping_planes_pars_fragment>
     void main() {
       #include <clipping_planes_fragment>
-      ${SCHNITT_FRAGMENT_MAIN}
       gl_FragColor = vec4(uFarbe, 1.0);
     }
   `,
@@ -174,7 +158,6 @@ export class FesteHaut {
   private readonly geo = new BufferGeometry();
   private readonly koerper: Mesh;
   private readonly umriss: Mesh;
-  private readonly rand = { value: SCHNITT_RAND };
   private readonly solid: MeshToonMaterial;
   private readonly umrissMat: ShaderMaterial;
   private readonly zebra: MeshMatcapMaterial;
@@ -189,8 +172,8 @@ export class FesteHaut {
   constructor(renderer: WebGLRenderer) {
     this.renderer = renderer;
     this.ziel = new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: true });
-    this.solid = hautMaterial(KOERPER, this.rand);
-    this.umrissMat = umrissMaterial(this.rand);
+    this.solid = hautMaterial(KOERPER);
+    this.umrissMat = umrissMaterial();
     this.zebra = new MeshMatcapMaterial({ matcap: zebraMatcap() });
     this.koerper = new Mesh(this.geo, this.solid);
     this.umriss = new Mesh(this.geo, this.umrissMat);
@@ -245,10 +228,9 @@ export class FesteHaut {
 
   /**
    * Die glatte Anzeige des Werks (dieselben Felder wie für die Seifenhaut). `wicklung`: Umlaufsinn ihrer Dreiecke von außen gesehen
-   * (1 gegen den Uhrzeiger); `f`: Einheiten des Werks je Einheit der Welt (für den Rand des Schnitts an der Spiegelebene).
+   * (1 gegen den Uhrzeiger).
    */
-  netzSetzen(netz: HautNetz | null, wicklung: number, f: number): void {
-    this.rand.value = SCHNITT_RAND / Math.max(1e-9, f);
+  netzSetzen(netz: HautNetz | null, wicklung: number): void {
     if (!netz) {
       this.netz = null;
       return;
@@ -258,7 +240,6 @@ export class FesteHaut {
       this.wicklung = wicklung;
       this.geo.setAttribute('position', new BufferAttribute(netz.pos, 3));
       this.geo.setAttribute('normal', new BufferAttribute(netz.normal, 3));
-      this.geo.setAttribute('aSeite', new BufferAttribute(netz.seite, 1));
       // Vorderseiten gegen den Uhrzeiger (so erwartet es three)
       let index = netz.index;
       if (wicklung < 0) {
@@ -270,7 +251,7 @@ export class FesteHaut {
         }
       }
       this.geo.setIndex(new BufferAttribute(index, 1));
-    } else for (const n of ['position', 'normal', 'aSeite']) (this.geo.getAttribute(n) as BufferAttribute).needsUpdate = true;
+    } else for (const n of ['position', 'normal']) (this.geo.getAttribute(n) as BufferAttribute).needsUpdate = true;
   }
 
   /** ist eine Haut da, die gezeichnet werden kann? */
