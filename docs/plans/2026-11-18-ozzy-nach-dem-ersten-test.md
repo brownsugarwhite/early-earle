@@ -1,6 +1,6 @@
 # Ozzy nach deinem ersten Test: Ursachen und Plan
 
-**Stand: 18.11.2026, nachmittags. Gebaut: der Rückschritt beim Aufblasen (Schritt 1, erster Teil), Schritt 2 (Rest), Schritt 4 (Teil 1), dazu die Materialien Solid und Zebra. Alles andere wartet (Tabellen gleich unten).** Du hast am Morgen getestet und gebeten: alles
+**Stand: 18.11.2026, abends. Gebaut: der Rückschritt beim Aufblasen und die größer angelegte frische Form (Schritt 1, erster und zweiter Teil), Schritt 2 (Rest), Schritt 4 (Teil 1), dazu alle Materialien deiner Liste (Solid, Zebra, Jelly, helles Solid, Grün ohne Bauch). Alles andere wartet (Tabellen gleich unten).** Du hast am Morgen getestet und gebeten: alles
 ansehen, die Ursachen suchen, nur einen Plan vorstellen. Deine vier Bildschirmfotos liegen in
 [`docs/look/ozzy/2026-11-18-florian-test/`](../look/ozzy/2026-11-18-florian-test/). Gemessen ist auf deinem Mac, im Testbrowser
 (Fenster 1440 × 900, doppelte Dichte, höchstens 60 Bilder je Sekunde); dein Bildschirm hat 120 Bilder, also 8,3 ms je Bild.
@@ -9,7 +9,7 @@ ansehen, die Ursachen suchen, nur einen Plan vorstellen. Deine vier Bildschirmfo
 
 | Schritt | Dein Wort | Stand |
 | --- | --- | --- |
-| 1 Aufblasen | „meine formen waren mit linie … vllt muss ich das nochmal genau testen und erörtern wie es genau ohne linie aussehen sollte … und ob schon edgeloops vorgezeichnet sein sollen an den optimalen stellen.“ Am Nachmittag: „behebe den rückschritt beim aufblasen.“ | **Der Rückschritt ist behoben** (`f933b707`, `7388b349`): Ohne Linien setzt der Hintergrund nie; ändert sich der Rauminhalt über einen Auftrag um mehr als 30 %, ohne dass sich eine Linie bewegt hat, gilt das als davongelaufen, und es bleibt der Stand davor, mit aufgeräumtem Netz. Im Fenster: kein Ballon und kein Punkt mehr, mit und ohne Linie. Die Probe „ohne Linie“ prüft jetzt auch, ob die Haut noch die gezeichnete Form ist. **Offen, wartet auf dich:** das Netz der frischen Form, die Loops, die ersten Linien. Ein Lauf zum Ansehen: Lege ich die Form dreimal so groß an (in der Größe deiner gesicherten Formen), hat sie bei gleicher Netzkante rund 3 000 statt 600 Punkte und ist glatt ([`2026-11-18-aufblasen-groesser-angelegt.png`](../progress/ozzy/2026-11-18-aufblasen-groesser-angelegt.png)); an den Spitzen bleiben Fehler. |
+| 1 Aufblasen | „meine formen waren mit linie … vllt muss ich das nochmal genau testen und erörtern wie es genau ohne linie aussehen sollte … und ob schon edgeloops vorgezeichnet sein sollen an den optimalen stellen.“ Am Nachmittag: „behebe den rückschritt beim aufblasen.“ | **Der Rückschritt ist behoben** (`f933b707`, `7388b349`): Ohne Linien setzt der Hintergrund nie; ändert sich der Rauminhalt über einen Auftrag um mehr als 30 %, ohne dass sich eine Linie bewegt hat, gilt das als davongelaufen, und es bleibt der Stand davor, mit aufgeräumtem Netz. Im Fenster: kein Ballon und kein Punkt mehr, mit und ohne Linie. Die Probe „ohne Linie“ prüft jetzt auch, ob die Haut noch die gezeichnete Form ist. **Die frische Form wird größer angelegt** (dein Wort am Abend: „Ja lege die form größer an“; `2daa27c7`): Im Werk wird größer angelegt, was sonst dünner als 115 Einheiten (halbe Dicke) wäre, höchstens vierfach; gemessen am größten Kreis, der in die Zeichnung passt. Im Bild bleibt die Form gleich groß. Deine zwei Delfine mit Linie: 661 und 574 Rechenpunkte (zwei umgeschlagene Dreiecke; einmal brach das Aufräumen ab) werden 2 794 und 2 765 ohne umgeschlagenes Dreieck ([`2026-11-18-frische-form-groesser.png`](../progress/ozzy/2026-11-18-frische-form-groesser.png)); eine Kugel bleibt, wie sie war. **Offen, wartet auf dich:** die Loops, die ersten Linien, die Spitzen (dort ist die Form weiter dünner als eine Netzkante). |
 | 2 Vier Ansichten | „schieben kannst du erstmal so lassen. … Den rest von 2 kannst du machen“ | **gebaut** (`6e8c5d00`): In den Vier Ansichten rastet das Feld des Raums nicht mehr ein. Das Schieben bleibt bei Leertaste + Ziehen. |
 | 3 Seifenhaut im Zug | „Es ist nicht nur das eckige. Das mesh wirkt einfach viel fragiler als in der version auf 5197.“ | Vergleich geliefert (oben). Die Dehnung der Seifenhaut (weicher, schneller ruhig) ist nicht gebaut und wartet auf dein Ja; sie gilt unabhängig von Schritt 1, die eckigen Flecken sind an deinen gesicherten Formen gemessen. |
 | 4 Ein Look überall | „ok bitte aber exakt. Mit ganz smooth verjüngenden outlines.“ | **Teil 1 gebaut** (`d727e24e`): Messlatte als Probe (`ozzy-look-messen.mjs`); der Umriss der eingerasteten Seite ist so breit wie in der Vorlage (1,9 gegen 1,8 Gerätepunkte, vorher 2,5; Bild [`2026-11-18-umriss-seite-vorher-nachher.png`](../progress/ozzy/2026-11-18-umriss-seite-vorher-nachher.png)). **Die Wände: Entwurf als Bild** ([`2026-11-18-waende-entwurf.png`](../progress/ozzy/2026-11-18-waende-entwurf.png)), gebaut wird zusammen mit Schritt 5, weil drei weiße Körper an den Wänden das Drehen sonst teurer machen. |
@@ -30,12 +30,25 @@ Materialien und shader exakt wie wir sie erarbeitet haben und keine eigene versi
 | Seifenhaut (dazu Irisdruck, Horizont, Höhenlinien) | `src/anfang/haut.ts` | war da, bleibt |
 | **Solid** | Prüffenster `src/form/kurven.ts` (`hautMaterial`, `umrissMaterial`, Licht) | **gebaut** (`7388b349`), Zeile für Zeile übernommen; im Menü und mit Taste M; Bild [`2026-11-18-materialien-solid-zebra.png`](../progress/ozzy/2026-11-18-materialien-solid-zebra.png). Grafikkarte je Bild an „strange bird“: im Raum 12,9 → 7,0 ms, herangezoomt 22,5 → 9,5 ms |
 | **Zebra** | alter Editor `src/three/matcap.ts` (`zebraMatcap`) | **gebaut** (`7388b349`) |
-| Jelly | Blaupause-Editor `src/form/blaupause.ts` (`BlaupauseBild`, Look `jelly`) und `lava.ts` | **offen.** Der Renderer zeichnet ein ganzes Fenster mit seinem eigenen dunklen Grund, parallel, mit Lava, Bläschen und Bodenkontakt aus `editor.ts`. Exakt geht es nur, wenn Ozzy ihn unverändert aufruft: Dann bringt Jelly seinen Grund mit, und Ozzys Linien müssen darauf hell werden. **Frage an dich unten.** |
-| Helles Solid | derselbe Renderer, Look `logo` ohne Kontur und Rand | **offen**, wie Jelly |
-| Grün mit Punkten und Bauch | alter Editor: Palette „Blob“ (`src/three/wesenLook.ts`) im Earle-Material `packages/render/src/creature2` | **offen.** Das Material ist für die andere Grafikschnittstelle (WebGPU) geschrieben und liest je Ecke 16 Werte (Lage am Körper, Bauch und Rücken), die der alte Editor aus seinem Skelett rechnete. In Ozzy braucht es dafür eine zweite Zeichenfläche und diese Werte aus der Form. |
+| **Jelly** | Blaupause-Editor `src/form/blaupause.ts` (`BlaupauseBild`, Look `jelly`) und `lava.ts` | **gebaut** (`d647d291`), auf Weiß (dein Wort: „dann auf weiß“). Derselbe Renderer läuft als Gast auf einer eigenen Fläche über dem Raum (`src/ozzy/gast.ts`), an seinem Code ist nichts geändert; sein dunkler Grund bleibt weg. Lava, Glanz, Bläschen und Bodenkontakt wie im 3D-Fenster des Editors. Bild mit dem Editor daneben: [`2026-11-18-jelly-helles-solid.png`](../progress/ozzy/2026-11-18-jelly-helles-solid.png). Ein Bild an „strange bird“: 5 ms (groß gezoomt 11 ms). |
+| **Helles Solid** | derselbe Renderer, Look `logo` | **gebaut** (`d647d291`), auf Weiß: Körper mit Verlauf, Schattenseite in Lavendel und die Kanten der Überdeckung wie im Editor; ohne dicke Kontur, Rand, Extrusion und Schatten. Dazu eine dünne Kante in Petrol um den Umriss (so breit wie seine Kanten, 4 Bildpunkte bei 100 %): Ohne sie stünde Weiß auf Weiß. Ein Bild: 7 ms (groß gezoomt 16 ms). |
+| **Grün** (ohne Bauch) | alter Editor: Palette „Blob“ (`src/three/wesenLook.ts`) im Earle-Material `packages/render/src/creature2` | **gebaut** (`bb7d8088`), ohne Bauch (dein Wort: „das grüne material dann ohne bauch. das kommt dann später“). Dasselbe Material, aufgesetzt wie im alten Editor (`src/ozzy/gruen.ts`): Stufen, Korn, Glimmer, Punkte; auf einer eigenen Fläche (WebGPU, sonst WebGL 2), erst geladen, wenn es gewählt ist. Bild neben deiner Vorlage: [`2026-11-18-material-gruen.png`](../progress/ozzy/2026-11-18-material-gruen.png). |
 
-Solid und Zebra zeigen die Haut im Raum und im Feld des Raums der Vier Ansichten. Eingerastet und in den flachen Feldern bleibt die
-Linienansicht; beim Aufblasen selbst bleibt es die Seifenhaut.
+Die Materialien zeigen die Haut im Raum und im Feld des Raums der Vier Ansichten. Eingerastet und in den flachen Feldern bleibt die
+Linienansicht; beim Aufblasen selbst bleibt es die Seifenhaut. Jelly, helles Solid und Grün blenden beim Einrasten aus (ihre Renderer
+kennen den Schnitt nicht, mit dem sich das Blatt durch Seifenhaut, Solid und Zebra schiebt).
+
+**Was an den drei neuen Materialien anders ist als in ihrer Quelle, und warum** (jedes ist eine Zeile, die du umdrehen kannst):
+
+- **Kein Auge** im Jelly (im 3D-Fenster des Editors hat das Wesen eins) und keine Augen im Grün: Sie gehören zum Wesen, nicht zum
+  Material.
+- **Die Lava steht still** (im Editor wandert sie): Sonst rechnet Ozzy in der Ruhe dauernd Bilder. Ändert sich die Form, schwimmen
+  die Blasen wie dort zu ihren neuen Stellen.
+- **Die dünne Kante um das helle Solid** gibt es im Editor nicht (dort liegt außen die dicke Kontur).
+- **Der Bauch im Grün** kommt später (deine Ansage). Dafür fehlt der Form in Ozzy noch, was im alten Editor Bauch und Rücken
+  unterschied; das gehört zu dem Schritt, in dem der Bauch kommt.
+- **Der Blick ist räumlich** (Ozzys Raum), im Editor parallel. Für Jelly und helles Solid bekommt der Renderer die Haut so verzerrt,
+  dass seine Rechnung gilt und das Bild genau auf Ozzys Linien liegt (gemessen 0,00 Gerätepunkte).
 
 ## Kurz
 
@@ -225,14 +238,14 @@ bis dahin gibt (geschätzt drei bis vier statt zwei bis drei Tage). Schritt 1 di
 beginnt jede neue Form unsicher, und angefügte Teile beginnen wie eine neue Form. Die Schritte 2 bis 5 betreffen die Anzeige von
 Ozzy, nicht den Kern; sie können auch neben der neuen Sitzung laufen.
 
-## Fragen an dich (Stand 18.11., nachmittags)
+## Fragen an dich (Stand 18.11., abends)
 
-1. **Jelly und helles Solid:** Sollen sie ihren dunklen Grund mitbringen, wie in deinem Bildschirmfoto (dann werden Ozzys Linien
-   und Wände dort hell)? Oder sollen sie auf Ozzys weißem Raum stehen (dann muss ich den Renderer der Blaupause anpassen, und es ist
-   nicht mehr Zeile für Zeile dasselbe)?
-2. **Schritt 1, das Netz der frischen Form:** Soll ich die Form beim Aufblasen größer anlegen (Bild oben)? Das ist eine Zahl; die
-   Spitzen und die Loops bleiben eigene Punkte.
-3. Schritt 3 (Seifenhaut im Zug), Schritt 5 (flüssig drehen) samt den Wänden und die Loops warten, bis du sie erörtert hast.
+Beantwortet am Abend: Jelly und helles Solid „dann auf weiß“; das Grün „ohne bauch“; „Ja lege die form größer an“. Alles gebaut
+(Tabellen oben).
+
+Es bleibt nichts, was den nächsten Schritt aufhält. Schritt 3 (Seifenhaut im Zug), Schritt 5 (flüssig drehen) samt den Wänden,
+die Loops und die Spitzen der frischen Form warten, bis du sie erörtert hast. Maul, Teile und Posen beginnst du in einer neuen
+Sitzung.
 
 ## Anhang: die nachgezeichneten Silhouetten (zum Nachstellen)
 

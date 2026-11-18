@@ -13,6 +13,9 @@
  *
  * Gezeichnet wird in ein eigenes Ziel mit Kantenglättung und von dort über den Grund der Seifenhaut gelegt (Papier, dunkle Rückseite:
  * `Haut.zeichnen` mit `leer`). Die Haut ist die glatte Anzeige des Werks (`werkHaut.netz`), wie für die Seifenhaut.
+ *
+ * Die anderen Materialien seiner Liste bringen ihren eigenen Renderer mit und liegen in eigenen Dateien: Jelly und helles Solid in
+ * `gast.ts` (der Blaupause-Renderer), Grün in `gruen.ts` (das Earle-Material des alten Editors).
  */
 import {
   BackSide,

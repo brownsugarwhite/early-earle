@@ -1,4 +1,4 @@
-# Übergabe: Ozzy (Stand 18.11.2026, nachmittags)
+# Übergabe: Ozzy (Stand 18.11.2026, abends)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“): Man zeichnet eine
 Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im Raum, in den eingerasteten Ansichten und in den Vier
@@ -9,17 +9,21 @@ ihn (bisher: C1, C2, D1).
 [`docs/plans/2026-11-18-ozzy-nach-dem-ersten-test.md`](../../plans/2026-11-18-ozzy-nach-dem-ersten-test.md) (oben die Tabelle „Stand
 nach deinen Antworten“). Vergleich mit dem Fenster von Sitzung 4:
 [`docs/research/2026-11-18-vergleich-5197-ozzy.md`](../../research/2026-11-18-vergleich-5197-ozzy.md). Seine Bildschirmfotos und Fotos:
-[`2026-11-18-florian-test/`](2026-11-18-florian-test/). **Stand 18.11., nachmittags:**
+[`2026-11-18-florian-test/`](2026-11-18-florian-test/). **Stand 18.11., abends:**
 
 - **Gebaut:** In den Vier Ansichten rastet das Feld des Raums nicht ein (`rastetEin` in `main.ts`; Schieben bleibt Leertaste +
   Ziehen, sein Wort). Schritt 4, Teil 1: die Messlatte `ozzy-look-messen.mjs` (gegen `raum.html` auf 5199, Eintrag `linien-look`) und
   der Umriss der eingerasteten Seite so breit wie in der Vorlage (`werkBlatt.ts`). **Der Rückschritt beim Aufblasen ist behoben**
   (`verfeinern.ts`: ohne Linien nie setzen; ändert sich der Rauminhalt über einen Auftrag um mehr als 30 %, ohne dass sich eine Linie
-  bewegt hat, gilt der Stand davor, verdichtet und aufgerichtet). **Materialien Solid und Zebra** (`src/ozzy/material.ts`, im Menü
-  neben den Fassungen der Seifenhaut, Taste M; Probe `ozzy-material-fenster.mjs`).
-- **Wartet auf sein Wort:** Jelly und helles Solid (Frage: mit ihrem dunklen Grund wie im Blaupause-Editor?), das grüne Material
-  (Earle, WebGPU, braucht eine zweite Zeichenfläche und Werte je Ecke); Schritt 1 (Netz der frischen Form: größer anlegen?, Loops
-  vorzeichnen, die ersten Linien), Schritt 3 (Seifenhaut im Zug), Schritt 5 (flüssig drehen) samt den Wänden aus Schritt 4.
+  bewegt hat, gilt der Stand davor, verdichtet und aufgerichtet). **Die frische Form wird größer angelegt** (`werkFormAnlegen` in
+  `main.ts`, `WERK_DICKE`: was dünner als 115 Einheiten wäre, wird im Werk größer, höchstens vierfach; im Bild gleich groß; seine
+  Delfine 2 800 statt 600 Rechenpunkte). **Alle Materialien seiner Liste** im Menü neben den Fassungen der Seifenhaut, Taste M,
+  `?material=…`, Probe `ozzy-material-fenster.mjs`: Solid und Zebra (`src/ozzy/material.ts`), Jelly und helles Solid
+  (`src/ozzy/gast.ts`: der Blaupause-Renderer unverändert als Gast auf der Fläche `#gast`, auf Weiß), Grün ohne Bauch
+  (`src/ozzy/gruen.ts`: das Earle-Material des alten Editors auf `#gast-earle`, WebGPU, erst bei Wahl geladen).
+- **Wartet auf sein Wort:** Schritt 1 (Loops vorzeichnen, die ersten Linien, die Spitzen), Schritt 3 (Seifenhaut im Zug), Schritt 5
+  (flüssig drehen) samt den Wänden aus Schritt 4. An den Materialien: der Bauch im Grün („kommt dann später“), und ob er Auge,
+  wandernde Lava oder die dünne Kante am hellen Solid anders will (Liste im Plan unter der Tabelle der Materialien).
 - **Bleibt wahr:** Mit keiner oder einer Linie hat die Rechnung keinen festen Ausgang (ein Mitschnitt: dieselbe Form läuft einmal
   ruhig aus und einmal davon). Die Sicherung fängt das Davonlaufen; die Form bleibt dann, wie sie aufgeblasen wurde, und in der
   Statuszeile steht „Hier ließ sich das Netz nicht aufräumen …“ (der Text passt nicht mehr ganz: Das Netz ist aufgeräumt, nur das

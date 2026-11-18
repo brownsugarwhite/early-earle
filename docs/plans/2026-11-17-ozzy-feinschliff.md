@@ -22,6 +22,17 @@ zu dieser Liste:
 - **Die Frage „Spitze ohne Dicke“ (C1) ist jetzt dringender:** Sein Aufblasen zeigt dieselbe Schwäche (mit keiner oder einer Linie
   hat die Rechnung keinen festen Ausgang). Sie ist Schritt 1 des neuen Plans.
 
+### Materialien (18.11., abends): sein Urteil steht aus
+
+Alle Materialien seiner Liste sind gebaut (Stand und Bilder im Plan vom 18.11., Tabelle „Materialien“). Was er sich ansehen kann,
+ohne dass es etwas aufhält:
+
+- **Helles Solid auf Weiß:** die dünne Kante in Petrol um den Umriss (im Blaupause-Editor liegt dort die dicke Kontur). Breite und
+  Farbe sind die seiner Kanten; ob sie so bleibt, entscheidet sein Auge.
+- **Jelly:** ohne Auge; die Lava steht still (im Editor wandert sie und kostet dauernd Bilder). Beides ist je eine Zeile.
+- **Grün:** der Bauch kommt später (sein Wort). Dann braucht eine Form in Ozzy, was im alten Editor Bauch und Rücken unterschied.
+- **Frische Form größer angelegt:** Die Spitzen bleiben dünner als eine Netzkante (eigener Punkt von Schritt 1).
+
 ## 1. Fragen an Florian (keine hält die Arbeit auf)
 
 - **Zeiger (B1):** Soll der Zeiger des Systems (`?zeiger=system`) Standard werden, so bleiben oder anders werden (zum Beispiel über

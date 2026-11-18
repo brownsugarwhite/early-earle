@@ -409,13 +409,34 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Flicken, der in `setze` `console.log` ruft (die Konsole des Workers kommt bei der Seite an). Der Kern-Nachbau trifft eine frische
   Form nicht genau (das Laden legt sie neu an): im Zweifel im Fenster messen. Merke: Eine Probe für „hält“ misst gegen die
   gezeichnete Form (Umriss, Ausdehnung, Rauminhalt), nie nur, ob die Haut steht; und eine frische Form hat ein zehnmal gröberes
-  Netz als seine gesicherten (650 bis 730 statt 3 500 bis 11 400 Punkte): Sie wird mit halber Länge 150 angelegt
-  (`WERK_HALBMESSER`), seine Formen sind zwei- bis dreimal so groß, die Netzkante ist fest (ein Lauf mit 450: 3 000 Punkte, glatt).
+  Netz als seine gesicherten (650 bis 730 statt 3 500 bis 11 400 Punkte), wenn sie mit halber Länge 150 angelegt wird
+  (`WERK_HALBMESSER`); die Netzkante ist fest. **Seit dem 18.11. abends legt `werkFormAnlegen` (`main.ts`) größer an, was sonst
+  dünner als `WERK_DICKE` (115, halbe Dicke) wäre**, höchstens `WERK_GROESSER`-fach (4); die Dicke ist der größte Kreis, der in die
+  Zeichnung passt (`groessterInnenkreis`). Im Bild bleibt die Form gleich groß (`werkHaut.f`). Proben, die eine frische Form
+  messen, rechnen darum im Maß des Blatts (Werk geteilt durch `werk().f`), nie mit festen Werk-Einheiten.
 - **Materialien (18.11.):** `src/ozzy/material.ts` (`FesteHaut`): Solid (aus `kurven.ts`, Zeile für Zeile) und Zebra (Matcap des
   alten Editors) zeichnen die glatte Anzeige des Werks in ein eigenes Ziel und legen es über den Grund der Seifenhaut
   (`Haut.zeichnen` mit `leer`); `material` in `main.ts` (null = Seifenhaut), Menü und Taste M, `?material=`. Florian will sie exakt
-  wie erarbeitet, keine eigene Fassung. Offen: Jelly und helles Solid (`BlaupauseBild` in `blaupause.ts` zeichnet ein ganzes Fenster
-  mit eigenem Grund und paralleler Kamera), das grüne Earle-Material (`packages/render/src/creature2`, WebGPU, 16 Werte je Ecke).
+  wie erarbeitet, keine eigene Fassung.
+- **Jelly und helles Solid (18.11., `src/ozzy/gast.ts`):** `BlaupauseBild` aus `src/form/blaupause.ts` läuft unverändert als Gast
+  auf der eigenen Fläche `#gast` (zweiter WebGL-Renderer mit Kantenglättung, über `#haut`, unter `#linien`). Was der Gast tut: (1)
+  den Grund verbergen (`Reflect.get(bild, 'hgNetz')`: ein privates Feld; benennt die Design-Sitzung es um, steht eine Warnung in der
+  Konsole und der dunkle Grund ist wieder da, die Probe fällt); (2) die Haut für Ozzys räumliche Kamera verzerren (quer zum Blick mal
+  Abstand der Mitte / eigener Abstand, Normalen mit dem transponierten Kehrwert), denn der Renderer rechnet Tiefe und Dicke nur
+  parallel; `gast().abweichung` misst das Bild gegen Ozzys Kamera (0,00 Gerätepunkte); (3) das Fenster des Renderers auf die Haut im
+  Bild beschneiden (alle seine Durchgänge kosten nach Fläche); (4) Bläschen, Bodenkontakt, Lava und Maße wie `rendern` in
+  `editor.ts` (dort kopiert; ohne Auge, Lava-Uhr steht); (5) helles Solid: Logo-Look mit `kontur: 0, rand: 0` und davor die Fläche
+  des Körpers in Petrol im Kreis versetzt (gleichmäßige Kante um den Umriss). **Falle:** In ein Ziel mit Kantenglättung (`samples`)
+  kann `zeichne` nicht umgeleitet werden: Es zeichnet ein Fenster in mehreren `render`-Aufrufen, und three gibt nach jedem die
+  Farbe des Ziels frei (`invalidateFramebuffer`). Darum die eigene Leinwand. `finish()` wartet im Browser nicht auf die
+  Grafikkarte; zum Messen einen Bildpunkt zurücklesen (`gast(true)`).
+- **Grün (18.11., `src/ozzy/gruen.ts`):** das Earle-Material (`createCreatureMaterial`, `@ee/render`) mit der Palette „Blob“
+  (`src/three/wesenLook.ts`), aufgesetzt wie `Renderer3D.ts`; auf `#gast-earle` mit dem WebGPU-Renderer von three (`?backend=webgl`
+  erzwingt WebGL 2), per `import('./gruen')` erst bei Wahl geladen. Die Kamera bekommt Ozzys Matrizen; für WebGPU wird die Zeile
+  der Tiefe umgerechnet (0 bis 1 statt −1 bis 1) und `coordinateSystem` vorab gesetzt, sonst rechnet three die Projektion neu. Die
+  16 Werte je Ecke stehen auf null bis auf `eeSpine.w = 1` (Rücken: kein Bauch, Punkte überall) und `eeRegion.y` (weit weg von einer
+  Maulkante); `eeRest` ist die Form vom Boden aus. Der Bauch kommt später (Florian); dann braucht es Bauch und Rücken je Ecke.
+  Die Konsole warnt beim Übersetzen vielfach „Return statement used in an inline 'Fn()'“ (wie im alten Editor, kein Fehler).
 - **Fenster der App (18.11.):** Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`
   ansehen, einen eigenen erst beenden, und danach prüfen, dass 5194, 5197 und 5205 laufen.
