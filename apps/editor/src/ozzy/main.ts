@@ -5771,6 +5771,13 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** C2: die Richtung des letzten Punkts eines Entwurfs mit P, im Bild (CSS-Pixel vom Punkt aus); null ohne Entwurf */
+  entwurfGriff: (): [number, number] | null => werkBlatt.entwurf()?.aus ?? null,
+  /** C2: die Linie eines Loops, wie sie auf der Haut liegt (Werk, 3 je Probe; die gespeicherte Hälfte) */
+  werkLinieLage: (id: number): number[] | null => {
+    const l = werk.loops[werk.loopNr(id)];
+    return l ? Array.from(l.ruhe) : null;
+  },
   /** S15: der Lichtring jetzt: Proben, geschlossen, gespiegelt; seine Lage im Werk (3 je Probe) */
   lichtring: () => {
     const r = werkBlatt.lichtring();
@@ -5826,7 +5833,7 @@ const haken = {
       }
     }
     const mittel = flaecheSumme / Math.max(1, t.length / 3);
-    const aus: { mitte: number[]; flaeche: number; kurz: number; lang: number; aufMitte: number; ecken: number[] }[] = [];
+    const aus: { mitte: number[]; flaeche: number; kurz: number; lang: number; aufMitte: number; ecken: number[]; linien: string[]; lagen: number[][] }[] = [];
     for (let i = 0; i < t.length; i += 3) {
       const e = [t[i]!, t[i + 1]!, t[i + 2]!];
       const [a, b, c] = e.map((v) => 3 * v) as [number, number, number];
@@ -5842,6 +5849,13 @@ const haken = {
         lang: Math.max(...k),
         aufMitte: e.filter((v) => Math.abs(P[3 * v + 2]!) < 1e-6).length,
         ecken: e,
+        // je Ecke: die Linien, auf denen sie liegt (Kennung; gespiegelt mit ')
+        linien: e.map((v) =>
+          werk.loops
+            .flatMap((l) => (l.proben.some((q) => q.ecken[0] === v && q.ecken[1] === v && q.ecken[2] === v) ? [`${l.id}`] : l.proben.some((q) => q.ecken[0] === q.ecken[1] && q.ecken[1] === q.ecken[2] && h.spiegel[q.ecken[0]] === v) ? [`${l.id}'`] : []))
+            .join('+'),
+        ),
+        lagen: e.map((v) => [P[3 * v]!, P[3 * v + 1]!, P[3 * v + 2]!]),
       });
     }
     return { zahl: aus.length, dreiecke: t.length / 3, mittel, liste: aus.slice(0, 40) };

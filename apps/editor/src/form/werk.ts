@@ -81,6 +81,11 @@ import {
   hautSeiten,
   kurveAbtasten,
   loopAusSchnitt,
+  griffeAufStrich,
+  loopAusVorhang,
+  stelleImBlatt,
+  vorhangWeg,
+  wendeStellen,
   loopEinsetzen,
   vorlageAusSystemen,
   hinterDerMitte,
@@ -3544,6 +3549,7 @@ export function aufraeumenStarten(opt: RuheOffen): void {
     loops,
     exakt: loops.map(exakt),
     verdichten: verdichtet,
+    aufrichten: VERDICHTEN && !halten,
     maxKante: 1.75 * MK,
     opt: verdichtenOptionen(false),
     optNurTeilen: verdichtenOptionen(true),
@@ -3934,6 +3940,128 @@ export function loopSchneiden(a: Ansicht, A: [number, number], B: [number, numbe
   einsetzenNachholen();
   ruheNoetig();
   G.auswahl = [{ l: l.id, i: -1 }];
+}
+
+/**
+ * Der mit P gezeichnete Strich im Blatt, dicht abgetastet, in den Koordinaten des Kerns (`uvAus`): von Anker zu Anker mit ihren
+ * Richtungen (ein Anker ohne Richtung ist eine Ecke), offen.
+ */
+export function stiftStrich(a: Ansicht, anker: readonly StiftAnker[], schritt = 0.3 * MK): [number, number][] {
+  const uv: [number, number][] = [];
+  for (let i = 0; i + 1 < anker.length; i++) {
+    const c = stiftStueck(anker[i]!, anker[i + 1]!);
+    let lang = 0;
+    for (let k = 0; k < 3; k++) lang += Math.hypot(c[k + 1]![0] - c[k]![0], c[k + 1]![1] - c[k]![1]);
+    const n = Math.max(4, Math.ceil(lang / schritt));
+    for (let k = 0; k < n; k++) {
+      const t = k / n;
+      const u = 1 - t;
+      const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      uv.push(uvAus(a, b[0]! * c[0]![0] + b[1]! * c[1]![0] + b[2]! * c[2]![0] + b[3]! * c[3]![0], b[0]! * c[0]![1] + b[1]! * c[1]![1] + b[2]! * c[2]![1] + b[3]! * c[3]![1]));
+    }
+  }
+  const z = anker[anker.length - 1];
+  if (z) uv.push(uvAus(a, z.X, z.Y));
+  return uv;
+}
+
+/**
+ * Loop schneiden mit einem Strich quer über die Form (C2, 18.11.; gerade oder gebogen, beliebig viele Punkte; Anfang und Ende im
+ * Leeren): der Loop rundum, in der Ansicht genau auf dem Strich (`loopAusVorhang`). Die gezeichneten Punkte auf der Form werden
+ * Punkte des Loops (vorn). Wahr, wenn ein Loop dazukam.
+ */
+export function vorhangSchneiden(a: Ansicht, anker: readonly StiftAnker[]): boolean {
+  if (nurInGrundform('Einen Loop schneidest du')) return false;
+  const strich = stiftStrich(a, anker);
+  const l = strich.length >= 2 ? loopAusVorhang(haut, a, strich, naechsteId, 10 / anzeige.skala(a)) : null;
+  if (!l) {
+    G.meldung =
+      strich.length >= 2 && !vorhangWeg(a, strich, 10 / anzeige.skala(a))
+        ? 'Kein Loop: Der Strich kreuzt die Mitte mehrmals. Einmal quer über die Mitte ziehen oder ganz auf einer Seite bleiben'
+        : 'Kein Loop: den Strich quer über den Körper ziehen (Anfang und Ende im Leeren)';
+    return false;
+  }
+  if (l.art === 'mitte' && loops.some((x) => x.art === 'mitte')) {
+    G.meldung = 'Den Loop in der Mitte gibt es schon';
+    return false;
+  }
+  naechsteId++;
+  zurueck.push(schnappschuss());
+  loops.push(l);
+  einsetzenLetzten(PUNKTE_NOETIG);
+  const neu = loops[loops.length - 1]!;
+  // die gezeichneten Punkte: je Anker auf der Form die Stelle des Loops, die im Blatt bei ihm liegt, vorn; läuft der Loop dort auch
+  // hinten über den Strich (in Front und Top, oder ein Loop auf einer Seite), auch hinten. Ein Strich in Front oder Top gilt auch
+  // als sein Spiegelbild (er wurde auf der Seite z < 0 gezeichnet, oder über die Mitte). Ein Anker ohne Richtung ist eine Ecke.
+  const weit = 0.5 * MK;
+  const fang = 1e-3 * Math.max(1, neu.laenge);
+  let gesetzt = 0;
+  for (const k of anker.slice(1, -1)) {
+    const [u0, v0] = uvAus(a, k.X, k.Y);
+    const orte: [number, number][] = a === 'front' ? [[u0, v0], [-u0, v0]] : a === 'top' ? [[u0, v0], [u0, -v0]] : [[u0, v0]];
+    const stellen: number[] = [];
+    for (const [u, v] of orte) {
+      for (const hinten of [false, true]) {
+        const st = stelleImBlatt(neu, a, u, v, weit, neu.ruhe, hinten);
+        if (st !== null && !stellen.some((x) => Math.abs(x - st) < fang)) stellen.push(st);
+      }
+      if (stellen.length) break;
+    }
+    for (const st of stellen) {
+      const p = punktEinfuegen(neu, st);
+      // (trifft der gezeichnete Punkt das verdeckte Ende eines Rings, ist es von jetzt an sein Punkt)
+      delete p.vonSelbst;
+      if (!k.aus && p.kreuzung === undefined) p.ecke = true;
+      gesetzt++;
+    }
+  }
+  // Hat der Loop Punkte, braucht sein Pfad auch dort einen, wo er im Blatt umkehrt (am Umriss, von vorn nach hinten): verdeckt,
+  // wie die Enden eines Rings. Dann die Griffe noch einmal aus der Linie (jedes Stück für sich angepasst) und im Blatt aus dem
+  // Strich: In dieser Ansicht liegt der Pfad auf dem Strich
+  const W = vorhangWeg(a, strich, 10 / anzeige.skala(a));
+  if (W && W.art !== 'mitte' && neu.punkte.some(istSichtbar)) {
+    for (const st of wendeStellen(neu, a, W.weg)) {
+      // (liegt dort schon ein Punkt, etwa eine Kreuzung, trägt er die Umkehr)
+      const nah = (q: LoopPunkt): boolean => {
+        const d = Math.abs(q.s - st);
+        return Math.min(d, neu.art === 'ring' ? d : neu.laenge - d) < 0.5 * MK;
+      };
+      if (neu.punkte.some(nah)) continue;
+      const p = punktEinfuegen(neu, st);
+      p.vonSelbst = true;
+      gesetzt++;
+    }
+  }
+  if (hatGriffe(neu)) {
+    if (gesetzt) griffeAnlegen(neu, neu.ruhe, !grund, 0);
+    if (W && W.art !== 'mitte') griffeAufStrich(neu, a, W.weg);
+  }
+  linienAufPfad(neu);
+  einsetzenNachholen();
+  aufrichtenJetzt();
+  ruheNoetig();
+  G.auswahl = [{ l: l.id, i: -1 }];
+  return true;
+}
+
+/**
+ * Umgeschlagene Dreiecke gleich aufrichten (C2, 18.11.): Nach dem Einsetzen eines Loops und dem Legen der Linie auf ihren Pfad
+ * rücken die Punkte der Kette um Bruchteile einer Kante, und schmale Dreiecke neben ihr können umschlagen; bis zum nächsten
+ * Aufräumen blieben sie stehen. Nur aufrichten (`verdichten` ohne Teilen, Zusammenlegen und Drehen zur Wertigkeit), nur wenn eines
+ * da ist. Was es nicht löst: Kreuzt der neue Loop eine vorhandene Linie in sehr flachem Winkel, liegen zwischen den zwei Ketten
+ * Dreiecke, deren Ecken alle auf Linien liegen (gemessen an „strange bird“: vier, Fläche 0,07 und 0,5 der mittleren); dort lässt
+ * sich nichts drehen oder rücken (Liste für den Feinschliff).
+ */
+export function aufrichtenJetzt(): void {
+  if (!VERDICHTEN || umgeschlageneZahl() === 0) return;
+  const vorher = grund ? poseKnochen() : null;
+  const nAlt = haut.n;
+  const v = verdichten(haut, loops, Infinity, { verborgen: verdichtenOptionen().verborgen ?? null, drehen: false, entspannen: false });
+  if (!v) return;
+  haut = v.haut;
+  loops = v.loops;
+  netzGewachsen(nAlt, v.alt, vorher);
+  anzeige.geometrieNeu();
 }
 
 /**

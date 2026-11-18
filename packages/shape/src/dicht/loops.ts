@@ -202,7 +202,20 @@ type Kantenpunkt = { u: number; v: number; f: number; p: V3 };
  */
 export function schnittLinien(h: Haut, n: V3, d: number): { punkte: Kantenpunkt[]; dreieck: number[] }[] {
   const P = h.pos;
-  const dist = (v: number) => n.x * P[3 * v]! + n.y * P[3 * v + 1]! + n.z * P[3 * v + 2]! - d;
+  return schnittLinienFeld(h, (v) => n.x * P[3 * v]! + n.y * P[3 * v + 1]! + n.z * P[3 * v + 2]! - d);
+}
+
+/**
+ * Schnitt der Haut mit der Nullstelle eines Felds (`dist` je Punkt; Ecken mit 0 zählen zur Seite ≥ 0): geschlossene Linien wie
+ * `schnittLinien`. `anteil(u, v, linear)`: wo auf der Kante u → v der Punkt genau liegt (0 … 1; fehlt oder null: dort, wo das Feld
+ * längs der Kante linear null wird).
+ */
+function schnittLinienFeld(
+  h: Haut,
+  dist: (v: number) => number,
+  anteil?: (u: number, v: number, linear: number) => number | null,
+): { punkte: Kantenpunkt[]; dreieck: number[] }[] {
+  const P = h.pos;
   const nummer = new Map<number, number>();
   const pkt: Kantenpunkt[] = [];
   const nachbarn: { j: number; t: number }[][] = [];
@@ -210,7 +223,8 @@ export function schnittLinien(h: Haut, n: V3, d: number): { punkte: Kantenpunkt[
     const key = u < v ? u * h.n + v : v * h.n + u;
     const da = nummer.get(key);
     if (da !== undefined) return da;
-    const f = du / (du - dv);
+    const linear = du / (du - dv);
+    const f = anteil ? (anteil(u, v, linear) ?? linear) : linear;
     const p = { x: P[3 * u]! + f * (P[3 * v]! - P[3 * u]!), y: P[3 * u + 1]! + f * (P[3 * v + 1]! - P[3 * u + 1]!), z: P[3 * u + 2]! + f * (P[3 * v + 2]! - P[3 * u + 2]!) };
     pkt.push({ u, v, f, p });
     nachbarn.push([]);
@@ -423,6 +437,363 @@ export function loopAusSchnitt(
     p = p.map((q) => ({ ...q, z: -q.z }));
   }
   return loopAus(id, art, proben, p);
+}
+
+/**
+ * Der Strich, wie er für den Vorhang gilt (C2): in der Seite, wie gezeichnet (`ring`); in Front und Top nah an der Mittelachse die
+ * Mittelebene (`mitte`), auf einer Seite der Strich auf der Seite z > 0 (`paar`; auf der anderen gezeichnet: sein Spiegelbild), quer
+ * über die Mitte von einem Ende bis zur ersten Kreuzung mit der Mittelachse, das längere der beiden Stücke, und sein Spiegelbild
+ * (`ring`). null: zu kurz, oder der Strich kreuzt die Mittelachse mehr als einmal.
+ */
+export function vorhangWeg(a: Ansicht, pfad: readonly (readonly [number, number])[], fang: number): { art: 'mitte' | 'ring' | 'paar'; weg: [number, number][] } | null {
+  if (pfad.length < 2) return null;
+  let weg: [number, number][] = pfad.map((q) => [q[0], q[1]]);
+  // die Koordinate des Blatts, die z ist (Seite: keine; der Vorhang ist dort von selbst spiegelgleich)
+  const zi: 0 | 1 = a === 'front' ? 0 : 1;
+  let art: 'mitte' | 'ring' | 'paar' = 'ring';
+  if (a !== 'seite') {
+    const spiegeln = (w: [number, number][]): [number, number][] => w.map((q) => (zi === 0 ? [-q[0], q[1]] : [q[0], -q[1]]));
+    const zs = weg.map((q) => q[zi]!);
+    if (zs.every((z) => Math.abs(z) < fang)) return { art: 'mitte', weg };
+    const vorn = zs.some((z) => z > 0);
+    const hinten = zs.some((z) => z < 0);
+    // kreuzt der Strich die Mittelachse mehr als einmal, sagt er nicht, was gemeint ist (ein Loop auf einer Seite kann die Mitte
+    // nicht kreuzen, ein Ring kreuzt sie genau einmal): kein Loop
+    let wechsel = 0;
+    let vorz = 0;
+    for (const z of zs) {
+      const v = z > 0 ? 1 : z < 0 ? -1 : 0;
+      if (v !== 0 && vorz !== 0 && v !== vorz) wechsel++;
+      if (v !== 0) vorz = v;
+    }
+    if (wechsel > 1) return null;
+    if (!(vorn && hinten)) {
+      art = 'paar';
+      // ein Strich auf der Seite z < 0 gilt als sein Spiegelbild
+      if (hinten) weg = spiegeln(weg);
+    } else {
+      const stueck = (w: [number, number][]): { k: [number, number][]; lang: number } => {
+        const k: [number, number][] = [w[0]!];
+        let lang = 0;
+        for (let i = 1; i < w.length; i++) {
+          const p = w[i - 1]!;
+          const q = w[i]!;
+          if (p[zi]! * q[zi]! < 0 || q[zi] === 0) {
+            const g = p[zi]! / (p[zi]! - q[zi]!);
+            const c: [number, number] = [p[0] + g * (q[0] - p[0]), p[1] + g * (q[1] - p[1])];
+            c[zi] = 0;
+            lang += Math.hypot(c[0] - p[0], c[1] - p[1]);
+            k.push(c);
+            break;
+          }
+          lang += Math.hypot(q[0] - p[0], q[1] - p[1]);
+          k.push(q);
+        }
+        return { k, lang };
+      };
+      const A = stueck(weg);
+      const B = stueck([...weg].reverse());
+      let k = A.lang >= B.lang ? A.k : B.k;
+      if (k[0]![zi]! < 0) k = spiegeln(k);
+      // vom Ende auf der Seite z > 0 zur Mitte, weiter als Spiegelbild
+      weg = [...k, ...spiegeln(k).reverse().slice(1)];
+    }
+  }
+  weg = weg.filter((q, i) => i === 0 || Math.hypot(q[0] - weg[i - 1]![0], q[1] - weg[i - 1]![1]) > 1e-9);
+  return weg.length >= 2 ? { art, weg } : null;
+}
+
+/**
+ * Loop schneiden mit einem gebogenen Strich (C2, 18.11.2026): der Schnitt der Haut mit dem Vorhang durch den gezeichneten Pfad längs
+ * der Blickrichtung. `pfad`: der Strich im Blatt der Ansicht, dicht abgetastet (Blattkoordinaten wie bei `loopAusSchnitt`); seine
+ * Enden liegen außerhalb der Form, hier wird er an beiden Enden gerade verlängert. In der Ansicht liegt der Loop auf dem Strich,
+ * vorn und hinten. Spiegelgleich wie `loopAusSchnitt`: in der Seite immer ein Ring; in Front und Top nah an der Mittelachse die
+ * Mittelebene selbst, quer über die Mitte ein Ring (aus der längeren Hälfte des Strichs und ihrem Spiegelbild), sonst ein Loop auf
+ * einer Seite (`paar`). Von mehreren Schnittlinien die, die dem Strich am nächsten liegt, bei Gleichstand die vorderste.
+ */
+export function loopAusVorhang(h: Haut, a: Ansicht, pfad: readonly (readonly [number, number])[], id: number, fang: number): Loop | null {
+  const W = vorhangWeg(a, pfad, fang);
+  if (!W) return null;
+  if (W.art === 'mitte') return loopAusSchnitt(h, a, W.weg[0]!, W.weg[W.weg.length - 1]!, id, fang);
+  let art: Loop['art'] = W.art;
+  const weg = W.weg;
+  // an beiden Enden gerade verlängert (weit über die Form hinaus)
+  let weit = 0;
+  for (let i = 0; i < h.pos.length; i++) weit = Math.max(weit, Math.abs(h.pos[i]!));
+  weit = 8 * weit + 100;
+  const hinaus = (p: [number, number], q: [number, number]): [number, number] => {
+    const L = Math.hypot(p[0] - q[0], p[1] - q[1]);
+    return [p[0] + ((p[0] - q[0]) / L) * weit, p[1] + ((p[1] - q[1]) / L) * weit];
+  };
+  const E: [number, number][] = [hinaus(weg[0]!, weg[1]!), ...weg, hinaus(weg[weg.length - 1]!, weg[weg.length - 2]!)];
+  const m = E.length - 1;
+  /** Abstand mit Vorzeichen (links vom Strich positiv): am nächsten Stück gemessen; an einem Knick zählt das Stück, neben dem der Punkt weiter liegt */
+  const seite = (u: number, v: number): number => {
+    let best = Infinity;
+    let quer = 0;
+    for (let i = 0; i < m; i++) {
+      const p = E[i]!;
+      const q = E[i + 1]!;
+      const dx = q[0] - p[0];
+      const dy = q[1] - p[1];
+      const L2 = dx * dx + dy * dy;
+      const t = Math.max(0, Math.min(1, ((u - p[0]) * dx + (v - p[1]) * dy) / L2));
+      const d = Math.hypot(u - p[0] - t * dx, v - p[1] - t * dy);
+      const c = (dx * (v - p[1]) - dy * (u - p[0])) / Math.sqrt(L2);
+      if (d < best - 1e-9 || (d < best + 1e-9 && Math.abs(c) > Math.abs(quer))) {
+        best = Math.min(best, d);
+        quer = c;
+      }
+    }
+    return quer >= 0 ? best : -best;
+  };
+  const P = h.pos;
+  const f = new Float64Array(h.n);
+  let aufStrich = false;
+  for (let v = 0; v < h.n; v++) {
+    const [u, w] = blickUV(a, lage(P, v));
+    f[v] = seite(u, w);
+    if (Math.abs(f[v]!) < 1e-6) aufStrich = true;
+  }
+  // liegt ein Netzpunkt genau auf dem Strich, minimal verschieben (wie die Ebene in `loopAusSchnitt`)
+  if (aufStrich) for (let v = 0; v < h.n; v++) f[v] = f[v]! + 1e-3;
+  /** wo die Kante u → v (im Blatt) den Strich wirklich kreuzt; von mehreren Kreuzungen die nächste an der linearen Schätzung */
+  const anteil = (u: number, v: number, linear: number): number | null => {
+    const [x0, y0] = blickUV(a, lage(P, u));
+    const [x1, y1] = blickUV(a, lage(P, v));
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    let best: number | null = null;
+    for (let i = 0; i < m; i++) {
+      const p = E[i]!;
+      const q = E[i + 1]!;
+      const ex = q[0] - p[0];
+      const ey = q[1] - p[1];
+      const den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-12) continue;
+      const t = ((p[0] - x0) * ey - (p[1] - y0) * ex) / den;
+      const r = ((p[0] - x0) * dy - (p[1] - y0) * dx) / den;
+      if (t < -1e-9 || t > 1 + 1e-9 || r < -1e-9 || r > 1 + 1e-9) continue;
+      if (best === null || Math.abs(t - linear) < Math.abs(best - linear)) best = t;
+    }
+    return best === null ? null : Math.max(1e-6, Math.min(1 - 1e-6, best));
+  };
+  const linien = schnittLinienFeld(h, (v) => f[v]!, aufStrich ? undefined : anteil);
+  if (linien.length === 0) return null;
+  // Abstand zum gezeichneten Strich (ohne die Verlängerungen) im Blatt
+  const zumStrich = (q: V3): number => {
+    const [u, v] = blickUV(a, q);
+    let best = Infinity;
+    for (let i = 1; i < m - 1; i++) {
+      const p = E[i]!;
+      const r = E[i + 1]!;
+      const dx = r[0] - p[0];
+      const dy = r[1] - p[1];
+      const t = Math.max(0, Math.min(1, ((u - p[0]) * dx + (v - p[1]) * dy) / (dx * dx + dy * dy)));
+      best = Math.min(best, Math.hypot(u - p[0] - t * dx, v - p[1] - t * dy));
+    }
+    return best;
+  };
+  const bewertung = linien.map((l) => {
+    let nah = Infinity;
+    let vorn = -Infinity;
+    for (const k of l.punkte) {
+      nah = Math.min(nah, zumStrich(k.p));
+      vorn = Math.max(vorn, blickTiefe(a, k.p));
+    }
+    const kreuzt = l.punkte.some((k) => k.p.z < 0) && l.punkte.some((k) => k.p.z >= 0);
+    return { l, nah, vorn, kreuzt };
+  });
+  let passend = bewertung.filter((b) => (art === 'ring' ? b.kreuzt : !b.kreuzt));
+  // quer über die Mitte gezeichnet, aber an der Mitte liegt dort nichts (zwei Teile, links und rechts): der Loop um das Teil einer Seite
+  if (passend.length === 0 && art === 'ring') {
+    art = 'paar';
+    passend = bewertung.filter((b) => !b.kreuzt);
+  }
+  if (passend.length === 0) return null;
+  const best = Math.min(...passend.map((b) => b.nah));
+  const wahl = passend.filter((b) => b.nah <= best + fang).reduce((x, y) => (y.vorn > x.vorn ? y : x));
+  const { punkte, dreieck } = wahl.l;
+  if (art === 'ring') {
+    const hl = ringHaelfte(h, wahl.l);
+    return hl ? loopAus(id, 'ring', hl.proben, hl.p) : null;
+  }
+  let proben = punkte.map((k, i) => probeIn(h, dreieck[(i - 1 + punkte.length) % punkte.length]!, k));
+  let p = punkte.map((k) => k.p);
+  if (p[0]!.z < 0) {
+    const sp = proben.map((q) => spiegelProbe(h, q));
+    if (sp.some((q) => !q)) return null;
+    proben = sp as Probe[];
+    p = p.map((q) => ({ ...q, z: -q.z }));
+  }
+  return loopAus(id, 'paar', proben, p);
+}
+
+/**
+ * Die Stelle auf dem Loop (Bogenlänge wie `Loop.s`), die im Blatt der Ansicht `a` dem Ort (u, v) am nächsten liegt (C2: die mit P
+ * gezeichneten Punkte eines Strichs quer über die Form auf dem Loop rundum). Kommt die Linie dem Ort an mehreren Stellen nahe (der
+ * Loop läuft vorn und hinten über denselben Strich), die vorderste (`hinten`: die hinterste). null: keine näher als `weit`.
+ */
+export function stelleImBlatt(l: Loop, a: Ansicht, u: number, v: number, weit: number, L: Float64Array = l.ruhe, hinten = false): number | null {
+  const n = l.proben.length;
+  const zu = geschlossen(l);
+  const m = zu ? n : n - 1;
+  // je Stück der Linie: Abstand im Blatt, Stelle, Tiefe
+  const d = new Float64Array(m);
+  const st = new Float64Array(m);
+  const tief = new Float64Array(m);
+  for (let j = 0; j < m; j++) {
+    const k = (j + 1) % n;
+    const p = lage(L, j);
+    const q = lage(L, k);
+    const [pu, pv] = blickUV(a, p);
+    const [qu, qv] = blickUV(a, q);
+    const dx = qu - pu;
+    const dy = qv - pv;
+    const L2 = dx * dx + dy * dy;
+    const g = L2 > 1e-18 ? Math.max(0, Math.min(1, ((u - pu) * dx + (v - pv) * dy) / L2)) : 0;
+    d[j] = Math.hypot(u - pu - g * dx, v - pv - g * dy);
+    const s1 = k === 0 ? l.laenge : l.s[k]!;
+    st[j] = l.s[j]! + g * (s1 - l.s[j]!);
+    tief[j] = blickTiefe(a, p) + g * (blickTiefe(a, q) - blickTiefe(a, p));
+  }
+  // jede Stelle, an der die Linie dem Ort am nächsten kommt (näher als ihre Nachbarstücke): Läuft der Loop vorn und hinten über den
+  // Strich, sind es zwei, auch wenn eine um Bruchteile weiter daneben liegt (die Linie ist zwischen ihren Proben gerade)
+  let best = -1;
+  for (let j = 0; j < m; j++) {
+    if (d[j]! > weit) continue;
+    const vor = zu ? d[(j - 1 + m) % m]! : j > 0 ? d[j - 1]! : Infinity;
+    const nach = zu ? d[(j + 1) % m]! : j + 1 < m ? d[j + 1]! : Infinity;
+    if (d[j]! > vor || d[j]! > nach) continue;
+    if (best < 0 || (hinten ? tief[j]! < tief[best]! : tief[j]! > tief[best]!)) best = j;
+  }
+  if (best < 0) return null;
+  return zu ? st[best]! % l.laenge : st[best]!;
+}
+
+/**
+ * Die Stellen, an denen ein Loop aus einem Strich quer über die Form im Blatt umkehrt (C2): Er läuft vorn den Strich entlang bis an
+ * den Umriss und hinten zurück. Dort braucht sein Pfad je einen Punkt (wie ein Ring an seinen Enden auf der Mittelebene): Ein Stück
+ * von einem Punkt vorn zu einem hinten kann dem Strich im Blatt sonst nicht folgen (gemessen an der Kugel: 18 Einheiten daneben).
+ * `weg`: der Strich, wie er gilt (`vorhangWeg`). Zurück: die Stellen (wie `Loop.s`), an denen die Linie am Strich am weitesten vorn
+ * und am weitesten hinten liegt und dabei wirklich umkehrt; die Enden eines Rings zählen nicht (dort kehrt sein Spiegelbild um).
+ */
+export function wendeStellen(l: Loop, a: Ansicht, weg: readonly (readonly [number, number])[], L: Float64Array = l.ruhe): number[] {
+  const n = l.proben.length;
+  const m = weg.length;
+  if (n < 3 || m < 2) return [];
+  const g = new Float64Array(n);
+  for (let j = 0; j < n; j++) {
+    const [u, v] = blickUV(a, lage(L, j));
+    let best = Infinity;
+    for (let i = 0; i + 1 < m; i++) {
+      const p = weg[i]!;
+      const q = weg[i + 1]!;
+      const dx = q[0] - p[0];
+      const dy = q[1] - p[1];
+      const t = Math.max(0, Math.min(1, ((u - p[0]) * dx + (v - p[1]) * dy) / (dx * dx + dy * dy)));
+      const d = Math.hypot(u - p[0] - t * dx, v - p[1] - t * dy);
+      if (d < best) {
+        best = d;
+        g[j] = i + t;
+      }
+    }
+  }
+  const ring = !geschlossen(l);
+  // eine Umkehr: Die Linie liegt dort am Strich weiter vorn (oder weiter hinten) als ihre beiden Nachbarn. Davon die äußersten;
+  // bei einem Ring nie an seinen Enden
+  let lo = -1;
+  let hi = -1;
+  for (let j = ring ? 1 : 0; j < (ring ? n - 1 : n); j++) {
+    const vor = g[(j - 1 + n) % n]!;
+    const nach = g[(j + 1) % n]!;
+    if (g[j]! <= vor && g[j]! <= nach && (lo < 0 || g[j]! < g[lo]!)) lo = j;
+    if (g[j]! >= vor && g[j]! >= nach && (hi < 0 || g[j]! > g[hi]!)) hi = j;
+  }
+  const aus: number[] = [];
+  for (const j of [lo, hi]) if (j >= 0 && !aus.includes(l.s[j]!)) aus.push(l.s[j]!);
+  return aus;
+}
+
+/**
+ * Die Griffe eines Loops, der mit einem Strich quer über die Form geschnitten wurde, im Blatt genau aus dem Strich nehmen (C2).
+ * `weg`: der Strich, wie er gilt (`vorhangWeg`), im Blatt der Ansicht; er ist je gezeichnetem Stück in gleichen Schritten des
+ * Kurvenparameters abgetastet. Das Stück des Pfads zwischen zwei Punkten des Loops ist im Blatt dann das Stück des Strichs zwischen
+ * ihnen, wenn jeder Griff im Blatt ein Drittel der Ableitung des Strichs dort ist, mal dem Abstand der zwei Stellen (so teilt de
+ * Casteljau eine Kurve). In der Tiefe bleibt jeder Griff, wie `griffeAnlegen` ihn aus der Linie gelesen hat. Es bleiben: ein Punkt,
+ * an dem der Loop im Blatt umkehrt (er läuft vorn hin und hinten zurück; in der Seite sind das die Enden eines Rings); ein Griff zu
+ * einem Nachbarn an derselben Stelle des Strichs.
+ */
+export function griffeAufStrich(l: Loop, a: Ansicht, weg: readonly (readonly [number, number])[]): void {
+  const P = l.punkte;
+  const m = weg.length;
+  if (!hatGriffe(l) || P.length < 2 || m < 2) return;
+  /** die Stelle auf dem Strich (Stück + Anteil), die einem Ort im Blatt am nächsten liegt */
+  const stelle = (u: number, v: number): number => {
+    let best = Infinity;
+    let g = 0;
+    for (let i = 0; i + 1 < m; i++) {
+      const p = weg[i]!;
+      const q = weg[i + 1]!;
+      const dx = q[0] - p[0];
+      const dy = q[1] - p[1];
+      const t = Math.max(0, Math.min(1, ((u - p[0]) * dx + (v - p[1]) * dy) / (dx * dx + dy * dy)));
+      const d = Math.hypot(u - p[0] - t * dx, v - p[1] - t * dy);
+      if (d < best) {
+        best = d;
+        g = i + t;
+      }
+    }
+    return g;
+  };
+  const G = P.map((p) => {
+    const [u, v] = blickUV(a, p.ref);
+    return stelle(u, v);
+  });
+  const stueck = (k: number): [number, number] => [weg[k + 1]![0] - weg[k]![0], weg[k + 1]![1] - weg[k]![1]];
+  /**
+   * Ableitung des Strichs nach seiner Stelle bei g, von der Seite r aus (+1: dahinter, −1: davor), nur aus Stücken dieser Seite (an
+   * einem gezeichneten Punkt treffen zwei Kurvenstücke mit verschiedenem Tempo aufeinander: gemischt lag der Pfad dort 0,6
+   * Bildpunkte neben dem Strich). Aus den zwei nächsten Stücken linear; ändert sich zwischen ihnen die Richtung (ab 15°) oder das
+   * Tempo (ab einem Fünftel), gilt das nähere allein (dahinter beginnt ein anderes Kurvenstück).
+   */
+  const ableitung = (g: number, r: 1 | -1): [number, number] => {
+    const seg = r > 0 ? Math.min(m - 2, Math.floor(g + 1e-9)) : Math.max(0, Math.ceil(g - 1e-9) - 1);
+    const d0 = stueck(seg);
+    const nb = seg + r;
+    if (nb < 0 || nb > m - 2) return d0;
+    const d1 = stueck(nb);
+    const l0 = Math.hypot(d0[0], d0[1]);
+    const l1 = Math.hypot(d1[0], d1[1]);
+    if ((d0[0] * d1[0] + d0[1] * d1[1]) / (l0 * l1 || 1) < 0.966 || l1 > 1.2 * l0 || l0 > 1.2 * l1) return d0;
+    // (die Ableitungen gelten in der Mitte ihrer Stücke: seg + 0,5 und nb + 0,5)
+    const w = r * (g - (seg + 0.5));
+    return [d0[0] + w * (d1[0] - d0[0]), d0[1] + w * (d1[1] - d0[1])];
+  };
+  const zu = geschlossen(l);
+  const n = P.length;
+  /** der Griff von Punkt i zum Nachbarn j hin */
+  const richten = (i: number, j: number, griff: V3): V3 => {
+    const d = G[j]! - G[i]!;
+    if (Math.abs(d) < 1e-6) return griff;
+    const D = ableitung(G[i]!, d > 0 ? 1 : -1);
+    return ausUV(a, (d / 3) * D[0], (d / 3) * D[1], blickTiefe(a, griff));
+  };
+  P.forEach((p, i) => {
+    if (!p.ein || !p.aus) return;
+    // das Ende eines Rings: In der Seite kehrt der Loop dort um (sein Spiegelbild läuft denselben Strich zurück), es behält seine
+    // Griffe. In Front und Top läuft er dort über die Mittelebene weiter: der Griff nach innen aus dem Strich, der andere ist sein
+    // Spiegelbild (`griffeSpiegeln`)
+    const rand = ringEnde(l, i);
+    if (rand && a === 'seite') return;
+    const vor = zu ? (i - 1 + n) % n : i - 1;
+    const nach = zu ? (i + 1) % n : i + 1;
+    // eine Umkehr im Blatt (beide Nachbarn auf derselben Seite des Strichs): Der Punkt behält seine Griffe
+    if (vor >= 0 && nach < n && vor !== i && nach !== i && (G[vor]! - G[i]!) * (G[nach]! - G[i]!) > 0) return;
+    if (vor >= 0 && vor !== i && rand !== 'anfang') p.ein = richten(i, vor, p.ein);
+    if (nach < n && nach !== i && rand !== 'ende') p.aus = richten(i, nach, p.aus);
+  });
+  griffeSpiegeln(l);
 }
 
 /** Strahl aus dem Blatt auf die Haut: vorderster Treffer an (u, v) */

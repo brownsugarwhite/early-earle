@@ -353,6 +353,16 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - **Umgeschlagene Dreiecke richtet `verdichten` auf** (18.11., `aufrichten`, Standard an; `nadelnZusammenlegen` ohne): Kante drehen,
   Ecke längs der Fläche rücken, kurze Kante zusammenlegen. Harte Punkte zählen als Bezug nicht (an einer Kante ist die Falte
   gewollt). Im Zug wechselt `verfeinern` dafür allein kein Netz ein; das Aufräumen richtet zum Schluss noch einmal auf.
+- **P quer über die Form** (C2, 18.11.): `werk.vorhangSchneiden(a, anker)` (Kern `loopAusVorhang`: Schnitt mit dem Vorhang durch
+  den Strich; `stelleImBlatt`, `wendeStellen`, `griffeAufStrich`, `vorhangWeg`). Ein Strich, der im Leeren beginnt und endet und mit
+  ↩ beendet wird (`StiftWerk.schliessen(false)`), ist ein Loop rundum; auf dem ersten Punkt geschlossen (`schliessen(true)`) eine
+  Form auf der Haut. Merke: (1) Ein Loop, der vorn und hinten über denselben Strich läuft, braucht Punkte an den Umkehrstellen
+  (verdeckt, `vonSelbst`), sonst liegt sein Pfad 10 bis 25 Einheiten daneben. (2) Der Strich ist je gezeichnetem Stück gleichmäßig
+  im Kurvenparameter abgetastet (`stiftStrich`): Nur dann stimmt die Ableitung in `griffeAufStrich`; an einem gezeichneten Punkt
+  treffen zwei Stücke mit verschiedenem Tempo aufeinander (einseitig ableiten). (3) Eine Kreuzung mit einer vorhandenen Linie teilt
+  deren Punkt: Dort liegt der neue Loop bis einen halben Bildpunkt neben dem Strich. (4) `aufraeumen` richtet zum Schluss auch auf,
+  wenn nur gesetzt wurde (`AufraeumAuftrag.aufrichten`); `aufrichtenJetzt` gleich nach dem Schnitt. Proben:
+  `ozzy-p-schnitt-fenster.mjs`, `ozzy-p-ueberall-fenster.mjs` (zwölf Lagen, 160 s), Kern `form-vorhang.ts`, Test `vorhang.test.ts`.
 - **Ein Zug mit dem Einfluss O hängt davon ab, wann das Verfeinern eingewechselt wird** (17.11.): Das Einwechseln setzt den Zug mit
   neuen Gewichten auf; mitten in der Bewegung gibt das andere Lagen der Nachbarpunkte als danach (an „teat firefish“ 1,4 Einheiten
   bei einem Zug um 119). Proben, die Ozzy mit dem Prüffenster vergleichen, ziehen rasch und halten dann, bis das Verfeinern da ist

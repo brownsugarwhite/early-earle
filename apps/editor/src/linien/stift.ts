@@ -74,7 +74,8 @@ export interface StiftWerk {
   /** den letzten Punkt verschieben (Leertaste beim Ziehen); Lage in Netz-Einheiten */
   letztenVerschieben(x: number, y: number): void;
   /** zum ersten Punkt schließen (mit seinem Griff `einErster`) */
-  schliessen(): void;
+  /** `aufErstem`: mit einem Klick auf den ersten Punkt geschlossen (sonst mit ↩ beendet) */
+  schliessen(aufErstem?: boolean): void;
   /** die Linie gehört zum Netz: wo sie Linien kreuzt, teilen beide einen Punkt; Ergebnis: ihre Nummer */
   fertig(): number;
   abbrechen(): void;

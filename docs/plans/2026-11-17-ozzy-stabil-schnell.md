@@ -457,6 +457,52 @@ und gewendet, eingerastet, im Feld und an der Wand dasselbe:
 - Bleibt wie heute, bis du es anders willst: Eine offene Linie mitten auf dem Körper, die nirgends hängt, wird geschlossen (freie
   Enden kennt die Rechnung nicht).
 
+**Gebaut (18.11., nachts; Kern und Fenster).** Was du siehst: Mit P im Leeren beginnen, über die Form zeichnen (gerade oder
+gebogen, mit so vielen Punkten, wie du willst), im Leeren enden, ↩: ein Loop rundum, „über die Kante“. In der Ansicht, in der du
+zeichnest, liegt er auf deinem Strich, vorn und hinten; die Punkte, die du auf die Form gesetzt hast, sind Punkte des Loops. Vor ↩
+zeigt der Lichtring ihn schon (auch gebogen). In Seite, Front und Top, eingerastet, gewendet, im Feld und an der Wand dasselbe.
+Bilder: [`2026-11-18-p-gebogen-fenster.png`](../progress/ozzy/2026-11-18-p-gebogen-fenster.png) (links der Strich, rechts der Loop,
+„strange bird“), [`2026-11-18-p-gebogen-kern.png`](../progress/ozzy/2026-11-18-p-gebogen-kern.png) (der Beweis im Kern).
+
+- **Der Beweis im Kern** (`form-vorhang.ts`): ein Bogen quer über die Kugel und über deine drei Formen, in Seite, Front (über die
+  Mitte und auf einer Seite) und Top (ebenso), 20 Fälle. In jedem liegt der Loop in der Ansicht 0,00 Bildpunkte neben dem Strich
+  (Kriterium 0,5), lässt sich einsetzen, keine neuen umgeschlagenen Dreiecke, kein Punkt ohne Spiegelbild.
+- **Im Kern** (`loops.ts`): `loopAusVorhang` schneidet die Haut mit dem Vorhang durch den Strich längs der Blickrichtung (bisher
+  nur mit einer Ebene); jeder Punkt des Loops liegt genau dort, wo eine Kante des Netzes den Strich im Blatt kreuzt. Spiegelgleich
+  wie der gerade Schnitt: in der Seite ein Ring; in Front und Top quer über die Mitte ein Ring (aus der längeren Hälfte des Strichs
+  und ihrem Spiegelbild), auf einer Seite ein Loop dort und sein Spiegelbild gegenüber; liegt an der Mitte nichts (zwei Teile links
+  und rechts), der Loop um das Teil einer Seite. Die gezeichneten Punkte: `stelleImBlatt` (vorn, und wo der Loop hinten über
+  denselben Strich läuft, auch hinten). Der Pfad: Wo der Loop im Blatt umkehrt (am Umriss, von vorn nach hinten), bekommt er einen
+  verdeckten Punkt (`wendeStellen`; wie ein Ring an seinen Enden, du siehst ihn nicht), und die Griffe kommen im Blatt genau aus
+  dem Strich (`griffeAufStrich`: ein Drittel seiner Ableitung mal dem Abstand der Punkte, so teilt de Casteljau eine Kurve); in der
+  Tiefe bleiben sie, wie sie aus der Linie gelesen sind.
+- **Im Fenster:** `werk.vorhangSchneiden` (auch der gerade Schnitt mit zwei Klicks läuft jetzt so), der Lichtring für jeden
+  solchen Strich (dafür gröber abgetastet). Wer auf dem ersten Punkt schließt, bekommt wie bisher eine Form auf der Haut, auch wenn
+  ihr erster Punkt im Leeren liegt. Gleich nach dem Schnitt und am Schluss des Setzens danach wird aufgerichtet, was dabei
+  umschlug.
+- **Zahlen (Fenster, „strange bird“, eingerastete Seite, Probe `ozzy-p-schnitt-fenster.mjs`):** gerade: Linie höchstens 0,11
+  Bildpunkte neben der Geraden (über den alten Weg 0,63, dort wurde nur an den Punkten gemessen); gebogen mit einem glatten Punkt:
+  höchstens 0,57 neben dem Bogen, der gezeichnete Punkt 0,00 neben dem des Loops, keine umgeschlagenen Dreiecke, ⌘Z nimmt ihn mit
+  einem Schritt zurück. Die 0,57 liegen an einer Kreuzung: Dort teilt der neue Loop einen Punkt mit einer vorhandenen Linie, und
+  der liegt auf ihrem Pfad (eine Kreuzung ist ein Punkt).
+- **Probe „auf jeder Fläche“** (`ozzy-p-ueberall-fenster.mjs`, aus der Übersicht vom 17.11.): frische Ellipse; gerade quer,
+  gebogen quer, in Front und Top auch gebogen auf einer Seite; in allen zwölf Lagen. Befund je Ansicht überall derselbe: Seite Ring
+  ohne Punkt / Ring mit 1 Punkt; Front und Top Ring ohne Punkt / Ring mit 2 Punkten (vorn und hinten) / Loop auf einer Seite mit 2
+  Punkten. Fünf Gesten passen nicht in ihr Feld der Vier Ansichten (das Feld der Front ist zu schmal für einen Anfang im Leeren).
+- Alle 29 Fenster-Proben halten, 185 Tests des Kerns (neu `vorhang.test.ts`), 25 des Fensters.
+- **Offen, in der Liste für den Feinschliff:**
+  - **Richtungen ungleich lang oder geknickt:** Der Entwurf des Werks kennt je Punkt nur eine Richtung nach beiden Seiten oder
+    eine Ecke (`StiftAnker`); eine mit ⌥ gebrochene Richtung geht beim Zeichnen weiter verloren. Für den Loop selbst ist alles
+    da (der Strich wird abgetastet, Knicke werden einseitig gelesen).
+  - **Ein Strich, der die Mitte mehrmals kreuzt** (in Front oder Top längs der Form): kein Loop, eine Meldung („einmal quer über
+    die Mitte ziehen oder ganz auf einer Seite bleiben“).
+  - **Sehr flache Kreuzung:** Streift der neue Loop eine vorhandene Linie fast längs, liegen zwischen den zwei Linien schmale
+    Dreiecke, deren Ecken alle auf Linien liegen; sie können verkehrt liegen, und dort lässt sich nichts drehen oder rücken
+    (gemessen an „strange bird“: vier, Fläche 0,07 und 0,5 der mittleren). Die Probe legt ihren Strich deshalb so, dass er keine
+    Linie streift.
+  - **Wenige Punkte:** Ein Loop mit nur einem gezeichneten Punkt und ohne Kreuzungen folgt dem Strich bis auf 0,6 bis 1,8 Einheiten
+    (die Stücke bis zum Umriss); die Haut rückt dort so weit mit. Mehr Punkte oder Kreuzungen machen es genauer.
+
 **C3. Gleiten auf der Haut (mittel; Beweis zuerst, weil es an die Grundidee rührt).** Du willst Punkte und Linien auf der Haut
 verschieben, ohne dass die Form sich ändert. Zwei Fälle:
 - **Ein Punkt gleitet auf seiner Linie:** Die Linie bleibt, wo sie ist, die Form bleibt genau. Das geht sicher.

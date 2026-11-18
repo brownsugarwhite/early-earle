@@ -28,6 +28,14 @@ gebaut ist, steht im Plan je Schritt unter „Gebaut“, nicht hier.
   (dann müsste die Form dort von selbst Dicke bekommen, etwa so breit, wie die Spitze in der Seite ist)? Mit einer Linie rundum
   bestimmst du die Dicke heute schon selbst.
 
+- **P quer über die Mitte (C2, 18.11.):** Zeichnest du in Front oder Top einen Strich quer über die Mitte, wird der Loop
+  spiegelgleich: Es gilt die längere Hälfte deines Strichs (von einem Ende bis zur Mitte) und ihr Spiegelbild. Ein schräger gerader
+  Strich wird so ein flaches V. Bis zum 17.11. wurde ein gerader Strich dort waagerecht gelegt (in der Höhe, in der er die Mitte
+  kreuzte). Passt dir die neue Regel, oder soll ein gerader Strich weiter waagerecht werden?
+- **P längs der Mitte (C2, 18.11.):** Kreuzt ein Strich die Mitte mehr als einmal (zum Beispiel im Top eine geschwungene Linie längs
+  des Rückens), gibt es keinen Loop, nur eine Meldung. Was soll daraus werden: eine Linie auf einer Seite (und ihr Spiegelbild),
+  die Linie der Mitte, oder soll es so bleiben?
+
 ## 2. Kurvennetz im Raum: Unterschiede zur Studie
 
 Er, 17.11.: „Ist erstmal ok so. Ich seh noch unterschiede zur studie in der ich es erarbeitet habe. Aber notiere das für den
@@ -57,6 +65,17 @@ durchgehen, nicht raten.
 - **C1 (18.11.), Nadeln:** An der Spitze einer flachen Flosse bleibt ein fast flächenloses Dreieck, dessen Gewicht nach der
   Geometrie riesig wird (112 gegen sonst 0,2 bis 3). Die Schrittweite fängt es auf; sauberer wäre, solche Dreiecke gar nicht
   entstehen zu lassen (das Netz teilt an stark gekrümmten, dünnen Rändern bis auf Kanten um 1 Einheit herunter).
+
+- **C2 (18.11.), Richtungen beim Zeichnen mit P:** Ungleich lange und mit ⌥ geknickte Richtungen gehen im Entwurf des Werks
+  verloren (je Punkt eine Richtung nach beiden Seiten oder eine Ecke). Zu bauen: der Entwurf (`StiftAnker`) mit eigener Richtung
+  je Seite, `werkBlatt.griffeLetzter`, `griffeErster` und `knickSetzen` füllen sie, `stiftStueck` liest sie; danach prüfen, dass
+  eine geschlossene Form (`griffeAusZeichnung`) den Knick als Ecke nimmt.
+- **C2 (18.11.), Vier Ansichten:** Im Feld der Front (und für manche Striche im Feld des Top) ist neben der Form kein Platz für
+  einen Anfang im Leeren; ein Strich quer über die Form lässt sich dort nicht beginnen. Abhilfe wäre ein Rand um die Form im Feld
+  oder ein Strich, der am Rand des Felds beginnen darf.
+- **C2 (18.11.), sehr flache Kreuzung:** Streift ein neuer Loop eine vorhandene Linie fast längs, bleiben zwischen den Linien
+  schmale Dreiecke, die verkehrt liegen können (alle Ecken auf Linien). Sauber wäre, den neuen Loop dort ein Stück auf der alten
+  Linie laufen zu lassen oder die zwei Punkte zu verschmelzen.
 
 ## 4. Beobachtungen
 

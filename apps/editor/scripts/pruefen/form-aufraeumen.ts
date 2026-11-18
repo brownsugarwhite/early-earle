@@ -63,6 +63,7 @@ for (const datei of process.argv.slice(2)) {
       loops,
       exakt: loops.map(hatPfad),
       verdichten: true,
+      aufrichten: true,
       maxKante: 1.75 * MK,
       opt: opt(false),
       optNurTeilen: opt(true),

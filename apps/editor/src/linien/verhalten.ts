@@ -702,7 +702,7 @@ export class Verhalten {
       this.stiftStart = o.art;
       art = 'erster';
     } else if (ziel.art === 'schluss') {
-      this.werk.schliessen();
+      this.werk.schliessen(true);
       art = 'schluss';
     } else if (ziel.art === 'letzter') {
       art = 'letzter';

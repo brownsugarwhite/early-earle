@@ -11,7 +11,7 @@
  * dann auf die Fläche gebracht (an einer Wand perspektivisch). Die Griffe im Netz sind die abgebildeten Spitzen, sie dienen nur dem
  * Drehen der Richtungen.
  */
-import { type Ansicht, type LoopPunkt, hatGriffe, istSichtbar, loopAusSchnitt } from '@ee/shape/dicht';
+import { type Ansicht, type LoopPunkt, hatGriffe, istSichtbar, loopAusVorhang } from '@ee/shape/dicht';
 import * as werk from '../form/werk';
 import { type Art, type Breiten, type Linie, type LinienProben, type Netz, type Punkt, type Stueck, armGriff } from '../linien/netz';
 import { Feder1 } from '../linien/feder';
@@ -70,7 +70,7 @@ const HINTEN_Z = 4e9;
  * sie auf die Haut, `stiftFertig`) oder eine Abzweigung (auf einem Punkt oder einer Linie begonnen; sie endet an einem Punkt oder einer
  * Linie, `abzweigungErstellen`). Anker im Blatt, Griffe gleich lang nach beiden Seiten (so nimmt das Werk sie).
  */
-type Entwurf = { fl: number; a: Ansicht; anker: werk.StiftAnker[]; abzweig: boolean; nach: werk.AbzweigOrt | null };
+type Entwurf = { fl: number; a: Ansicht; anker: werk.StiftAnker[]; abzweig: boolean; nach: werk.AbzweigOrt | null; zu?: boolean };
 /** S15: ein Lichtring (Lage im Werk, 3 je Probe; geschlossen; mit Spiegelbild zu zeigen) */
 export type Lichtring = { pos: Float64Array; zu: boolean; spiegeln: boolean };
 
@@ -740,30 +740,32 @@ export class WerkBlatt implements Raum {
   private lichtSpeicher: { schl: string; ring: Lichtring | null } | null = null;
 
   /**
-   * S15, Lichtring: der Loop rundum, den ↩ aus der Geraden mit P anlegen würde (im Leeren begonnen, der Zeiger oder der zweite Punkt im
-   * Leeren): seine Lage (Werk, 3 je Probe), ob er geschlossen ist und ob er gespiegelt zu zeigen ist. Gerechnet mit derselben Rechnung wie
-   * ↩ (`loopAusSchnitt`, nur gelesen). null: keiner (kein solcher Entwurf, gebogen, in der Pose, die Gerade trifft die Form nicht).
+   * S15, Lichtring: der Loop rundum, den ↩ aus dem Strich mit P anlegen würde (im Leeren begonnen, quer über die Form, gerade oder
+   * gebogen; seit C2 mit beliebig vielen Punkten). Endet der Strich noch nicht im Leeren, gilt der Zeiger als sein vorläufiges Ende.
+   * Zurück: die Lage des Loops (Werk, 3 je Probe), ob er geschlossen ist und ob er gespiegelt zu zeigen ist. Gerechnet mit derselben
+   * Rechnung wie ↩ (`loopAusVorhang`, nur gelesen; der Strich dafür gröber abgetastet). null: keiner (kein solcher Entwurf, in der
+   * Pose, der Strich endet auf der Form oder trifft sie nicht).
    */
   lichtring(): Lichtring | null {
     const E = this.ent;
-    if (!E || E.abzweig || werk.grund || E.anker.length < 1 || E.anker.length > 2) return null;
-    const A = E.anker[0]!;
-    if (E.anker.some((k) => k.aus && Math.hypot(k.aus[0], k.aus[1]) > 1e-9)) return null;
-    let B: { X: number; Y: number };
-    if (E.anker.length === 2) B = E.anker[1]!;
-    else {
+    if (!E || E.abzweig || E.zu || werk.grund || E.anker.length < 1) return null;
+    const anker: werk.StiftAnker[] = [...E.anker];
+    const ende = anker[anker.length - 1]!;
+    if (anker.length < 2 || !this.aussen(E.a, ende.X, ende.Y)) {
       const F = this.flaechen[E.fl];
       if (!F) return null;
       const [zx, zy] = this.zeiger();
       const XY = F.her(zx, zy);
       if (!XY) return null;
-      B = { X: XY[0], Y: XY[1] };
+      anker.push({ X: XY[0], Y: XY[1], aus: null });
     }
+    const A = anker[0]!;
+    const B = anker[anker.length - 1]!;
     if (Math.hypot(B.X - A.X, B.Y - A.Y) * werk.anzeige.skala(E.a) < 12) return null;
     if (!this.aussen(E.a, A.X, A.Y) || !this.aussen(E.a, B.X, B.Y)) return null;
-    const schl = `${E.a}|${A.X.toFixed(1)},${A.Y.toFixed(1)}|${B.X.toFixed(1)},${B.Y.toFixed(1)}|${werk.standZahl()}`;
+    const schl = `${E.a}|${anker.map((k) => `${k.X.toFixed(1)},${k.Y.toFixed(1)},${k.aus ? `${k.aus[0].toFixed(1)},${k.aus[1].toFixed(1)}` : ''}`).join(';')}|${werk.standZahl()}`;
     if (this.lichtSpeicher?.schl === schl) return this.lichtSpeicher.ring;
-    const l = loopAusSchnitt(werk.haut, E.a, werk.uvAus(E.a, A.X, A.Y), werk.uvAus(E.a, B.X, B.Y), -1, 10 / werk.anzeige.skala(E.a));
+    const l = loopAusVorhang(werk.haut, E.a, werk.stiftStrich(E.a, anker, 1.5 * werk.MK), -1, 10 / werk.anzeige.skala(E.a));
     const ring = l && l.ruhe.length >= 6 ? { pos: Float64Array.from(l.ruhe), zu: l.art !== 'ring', spiegeln: l.art !== 'mitte' } : null;
     this.lichtSpeicher = { schl, ring };
     return ring;
@@ -1639,8 +1641,13 @@ export class WerkBlatt implements Raum {
     this.geaendert();
   }
 
-  /** eine Form schließt immer (das Werk legt geschlossene Formen auf die Haut) */
-  schliessen(): void {}
+  /**
+   * Auf dem ersten Punkt geschlossen: eine Form auf der Haut, auch wenn ihr erster Punkt im Leeren liegt (C2: Ohne das Schließen ist
+   * ein Strich, der im Leeren beginnt und endet, ein Loop rundum)
+   */
+  schliessen(aufErstem = false): void {
+    if (this.ent && aufErstem) this.ent.zu = true;
+  }
 
   fertig(): number {
     const E = this.ent;
@@ -1653,12 +1660,12 @@ export class WerkBlatt implements Raum {
       if (!ab?.start) return -1;
       werk.abzweigungErstellen(E.a, ab.von, E.nach, ab.start, ab.vorher, E.anker);
     } else {
-      // S8 (P statt L): im Leeren begonnen, über die Form, im Leeren geendet (zwei Klicks, ↩): ein Loop rundum wie L im Prüffenster
-      if (E.anker.length === 2 && this.aussen(E.a, E.anker[0]!.X, E.anker[0]!.Y) && this.aussen(E.a, E.anker[1]!.X, E.anker[1]!.Y)) {
-        const [A, B] = E.anker as [werk.StiftAnker, werk.StiftAnker];
-        const gerade = (k: werk.StiftAnker): boolean => !k.aus || Math.hypot(k.aus[0], k.aus[1]) < 1e-9;
-        if (gerade(A) && gerade(B)) werk.loopSchneiden(E.a, werk.uvAus(E.a, A.X, A.Y), werk.uvAus(E.a, B.X, B.Y));
-        else werk.G.meldung = 'Gebogen um die Form schneiden kann das Werk noch nicht (gerade geht: zwei Klicks, ↩)';
+      // S8 und C2 (P statt L): im Leeren begonnen, über die Form, im Leeren geendet, mit ↩ beendet: ein Loop rundum, in dieser
+      // Ansicht genau auf dem Strich (gerade oder gebogen, beliebig viele Punkte; die Punkte auf der Form werden Punkte des Loops)
+      const A0 = E.anker[0];
+      const A1 = E.anker[E.anker.length - 1];
+      if (!E.zu && E.anker.length >= 2 && A0 && A1 && this.aussen(E.a, A0.X, A0.Y) && this.aussen(E.a, A1.X, A1.Y)) {
+        werk.vorhangSchneiden(E.a, E.anker);
         werk.anzeige.allesZeigen();
         this.bauen(this.flaechen);
         this.geaendert();

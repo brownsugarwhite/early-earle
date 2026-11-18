@@ -179,6 +179,11 @@ export type AufraeumAuftrag = {
   kruemmung: boolean;
   gewichte: HautGewichte;
   loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean; halb?: boolean };
+  /**
+   * zum Schluss umgeschlagene Dreiecke aufrichten, auch wenn nicht verdichtet wird (nach einem neuen Loop wird nur gesetzt); aus,
+   * wo das Netz gar nicht angefasst werden soll (`?verdichten=0`, „Form halten“). Fehlt die Angabe: nein (wie bis zum 17.11.)
+   */
+  aufrichten?: boolean;
   /** Setzen: Runden, bis sich die Form in einer Runde um weniger als `ruhe` bewegt (längs der Normalen), höchstens `maxRunden` */
   ruhe: number;
   maxRunden: number;
@@ -308,9 +313,9 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
   let runden = 0;
   let unruhe = 0;
   let verborgen = a.opt.verborgen ?? null;
-  const verdichte = (opt: VerdichtenOptionen, maxKante = a.maxKante): boolean => {
+  const verdichte = (opt: VerdichtenOptionen, maxKante = a.maxKante, immer = false): boolean => {
     const t = uhr();
-    const v = a.verdichten ? verdichten(h, loops, maxKante, { ...opt, verborgen }) : null;
+    const v = a.verdichten || immer ? verdichten(h, loops, maxKante, { ...opt, verborgen }) : null;
     ms[0] = ms[0]! + uhr() - t;
     if (!v) return false;
     // die Zuordnung zum Netz vom Auftrag: über alle Durchgänge verkettet (gebliebene Punkte stehen in jedem vorn)
@@ -412,6 +417,8 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     vergeben = false;
   }
   let abgebrochen = false;
+  /** das Netz ist ein anderes als im Auftrag (verdichtet, oder zum Schluss aufgerichtet) */
+  let netzNeu = verdichtet;
   if (verdichtet) {
     for (let k = 0; ; k++) {
       if (!setze(z ? z.vorlage : null, null, a.maxRunden).endlich) {
@@ -426,10 +433,16 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
   // Fläche gerückt, sonst nichts geteilt oder zusammengelegt); die Zerlegung muss danach zum neuen Netz passen. Gemessen an einer
   // frischen Form aus der Silhouette: vier winzige Dreiecke am stumpfen Ende einer Flosse (Kanten um 1, Fläche unter 1 % der
   // mittleren), die das Netz dort nach der Krümmung so fein teilt; ein Punkt rückt dabei um weniger als eine solche Kante.
-  if (verdichtet && !abgebrochen && verdichte({ verborgen, drehen: false, entspannen: false }, Infinity)) z = zerlege();
+  // Das gilt auch, wenn nur gesetzt wurde (nach einem neuen Loop: Die Haut setzt sich an seiner Kette, und neben ihr schlugen dabei
+  // kleine Dreiecke um, die bis zum nächsten Zug stehen blieben; `aufrichten` im Auftrag).
+  if (!abgebrochen && (verdichtet || (a.aufrichten && vorstufe === 'gesetzt')) && verdichte({ verborgen, drehen: false, entspannen: false }, Infinity, true)) {
+    z = zerlege();
+    vergeben = false;
+    netzNeu = true;
+  }
   // die Haut ist beim Aufräumen nicht endlich geblieben: Es gilt der Stand davor (ohne Zerlegung; die passte zum verworfenen Netz)
   if (abgebrochen) return { art: 'aufraeumen', id: a.id, vorstufe, abgebrochen, geaendert: false, haut: null, loops: null, alt: null, neu: 0, gelegt: 0, durchgaenge, runden, gewStart: null, gewWert: null, daten: [], struktur: '', ms, unruhe };
-  const geaendert = verdichtet || gesetzt;
+  const geaendert = netzNeu || gesetzt;
   const g = z && !vergeben ? gewichteFlach(z.vorlage.gew) : null;
   return {
     art: 'aufraeumen',
@@ -439,7 +452,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     geaendert,
     haut: geaendert ? { ...nachbarnFlach(h), pos: h.pos, tri: h.tri, n: h.n, spiegel: h.spiegel } : null,
     loops: geaendert ? loops : null,
-    alt: verdichtet ? alt : null,
+    alt: netzNeu ? alt : null,
     neu,
     gelegt,
     durchgaenge,
