@@ -69,7 +69,7 @@ export type VerfeinerAuftrag = {
 };
 
 export type VerfeinerErgebnis =
-  | { id: number; leer: true; ms: number[] }
+  | { id: number; leer: true; /** nichts geteilt, nur wenige Punkte zusammengelegt: nicht eingewechselt; später wieder fragen (D1, Teil 2) */ wenig?: true; ms: number[] }
   | {
       id: number;
       leer: false;
@@ -92,6 +92,8 @@ export type VerfeinerErgebnis =
     };
 
 const uhr = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+/** im Zug: Werden weniger als dieser Anteil der Punkte zusammengelegt und sonst nichts geändert, wird kein Netz eingewechselt */
+const WENIG_ANTEIL = 0.02;
 
 /** Der ganze Auftrag: verdichten, die neuen Punkte auf der alten Haut einbetten, Zeilen der Matrix bauen, zerlegen */
 export function verfeinern(a: VerfeinerAuftrag): VerfeinerErgebnis {
@@ -103,6 +105,11 @@ export function verfeinern(a: VerfeinerAuftrag): VerfeinerErgebnis {
   // Nur aufgerichtet (C1), sonst nichts geteilt oder zusammengelegt: Dafür wird im Zug kein Netz eingewechselt (wie bis zum 17.11.;
   // jedes Einwechseln setzt den Zug neu auf). Das Aufräumen nach dem Zug richtet auf.
   if (!v || v.gekappt || (v.neu === 0 && v.gelegt === 0 && v.geloest === 0)) return { id: a.id, leer: true, ms: [t1 - t0] };
+  // D1, Teil 2 (18.11.): nichts geteilt, nichts aufgelöst, nur wenige Punkte zusammengelegt: Auch dafür wird im Zug kein Netz
+  // eingewechselt. Jedes Einwechseln kostet ein Bild von 25 bis 55 ms (neue glatte Anzeige, neuer Umriss, der Zug setzt neu auf);
+  // gemessen an „maul handgemacht test“: am Anfang eines Zugs viermal hintereinander, je für 2 bis 16 Punkte von 3 485. Zusammengelegt
+  // wird beim Aufräumen nach dem Zug. `wenig`: Das Werk fragt nach einer Pause wieder (die Haut kann inzwischen gestreckt sein).
+  if (v.neu === 0 && v.geloest === 0 && v.gelegt < WENIG_ANTEIL * h.n) return { id: a.id, leer: true, wenig: true, ms: [t1 - t0] };
   const einbettung = einbetten(h, v.haut.pos, { nachbarn: v.haut.nachbarn, alt: v.alt });
   const t2 = uhr();
   const auftrag = new LoopZug(v.haut, v.loops, null, a.kruemmung, 'kurven', a.gewichte, { nurZeilen: true, ...a.loeserOpt }).auftrag;

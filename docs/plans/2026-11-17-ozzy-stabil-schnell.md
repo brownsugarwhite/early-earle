@@ -640,6 +640,42 @@ bird“ 5,9 → 5,1 ms (Fenster, `ozzy-zug-messen.mjs`, derselbe Lauf mit und oh
   des Fensters, alle 30 Fenster-Proben, im Prüffenster die Donut-Probe und der Zug (`form-halten-probe.mjs`: Rechnen je Bild am
   „teat firefish“ 5,9 ms).
 
+**Gebaut, Teil 2 (18.11., nachts): die einzelnen langsamen Bilder im Zug.** Was du merkst: Der Zug stockt nicht mehr in
+regelmäßigen Abständen. Gemessen im Raum an der Wand der Seite (`ozzy-zug-messen.mjs`; Rechnen je Bild, 95 %): „teat firefish“
+18,7 → 16,1 ms, „strange bird“ 18,5 → 16,7 ms, „maul handgemacht test“ 16,8 → 15,1 ms; Abstand der Bilder (95 %) am „teat
+firefish“ 23,8 → 20,8 ms.
+
+- **Ursache 1 (behoben): die Tiefenkarten für verdeckte Linien.** Im Raum liegt für jede der drei Wände eine Karte der Haut (128 ×
+  128 Zellen, alle Dreiecke hineingezeichnet). Im Zug wurden alle drei alle 150 ms im selben Bild neu gebaut: Jedes neunte Bild
+  brauchte dafür 8 ms länger (17,6 bis 20 ms statt 11) und kam zu spät. Jetzt nie zwei im selben Bild (`karteFuer`): je Bild
+  höchstens 3 ms, kein Bild kommt deshalb zu spät.
+- **Ursache 2 (begrenzt): das Einwechseln eines feineren Netzes im Zug.** Jeder Wechsel kostet ein Bild von 25 bis 55 ms (die
+  glatte Anzeige neu anlegen 11 bis 23 ms, der Zug setzt neu auf 9 bis 19 ms, Umriss 3 bis 9 ms). An „maul handgemacht test“ wurde
+  am Anfang eines Zugs viermal hintereinander gewechselt, zweimal nur, weil zwei Punkte zusammengelegt wurden. Jetzt wird im Zug
+  nicht mehr gewechselt, wenn nichts geteilt und nur wenig zusammengelegt würde (unter 2 % der Punkte; `VerfeinerErgebnis.wenig`,
+  das Werk fragt nach 400 ms wieder; zusammengelegt wird beim Aufräumen nach dem Zug). Wechsel, bei denen Punkte dazukommen,
+  bleiben, mit ihren Kosten: Den größten Posten nimmt E1 (die Haut auf der Grafikkarte braucht keine neu angelegte Anzeige).
+- **Nicht behoben, nur gemessen: das Greifen.** Das Bild beim Drücken auf einen Punkt und das erste Bild des Zugs brauchen
+  zusammen 60 bis 100 ms (am „teat firefish“: der Löser wird angelegt, 13 bis 20 ms mit fertiger Zerlegung, dazu die ersten
+  Runden; im Bild davor 20 bis 45 ms im Teil der Linien, im Profil native Zeit der Grafik, kein eigenes Rechnen). Das liegt vor der
+  Bewegung der Hand. E2 (der Löser aus dem Bildtakt) nimmt den ersten Teil.
+
+**Teil 3 und 4: gemessen, nicht gebaut; meine Empfehlung steht in der Liste für den Feinschliff.**
+
+- **Teil 3 (Verdichten und Anzeige auf der Hälfte):** Die Anzeige kostet im Zug 1,2 bis 2,6 ms je Bild (alle feinen Punkte auf dem
+  Prozessor). E1 legt sie auf die Grafikkarte; sie vorher auf die Hälfte umzubauen wäre Arbeit für wenige Tage. Das Verdichten
+  läuft im Hintergrund, nicht im Bild.
+- **Teil 4 (das Netz selbst als Hälfte):** Nach Teil 1 rechnet in einer Runde nur noch der „Rest“ (17 %: die rechte Seite
+  aufstellen) und ein Teil des Vermessens über beide Hälften. Der große Umbau brächte also höchstens noch rund ein Zehntel einer
+  Runde. Dagegen steht: Er ist der größte und heikelste Umbau im Plan (Einsetzen, Verdichten, Anzeige, Sichern, Maul, Pose), und
+  zwei Dinge, die du willst, brauchen das ganze Netz: die Pose mit zwei freien Seiten und im Spiegel-Schalter „Clipping aus“
+  (Teile durchdringen ihr Spiegelbild). Der Grund „Punkte ohne Spiegelbild kann es dann nicht mehr geben“ ist seit C1 an der
+  Ursache behoben.
+- **Die größere Prüfform** (dieselben Formen feiner vernetzt, `form-halb.ts` mit `DICHTER=0.6`; eine Runde im Kern): „teat firefish“
+  mit 43 400 Punkten 54 ms über die ganze Haut, 38 ms auf der Hälfte bis zum 18.11., 32 ms jetzt; „strange bird“ mit 56 600 Punkten
+  72 / 55 / 48 ms. Eine Runde je Bild passt heute bis rund 10 000 Rechenpunkte (deine größte Form hat 11 400). Für mehr reicht
+  kein Umbau der Hälfte: Dafür ist E2 da (der Löser rechnet neben dem Bild).
+
 **D2. Der Spiegel-Schalter: ruht** (Florian, 17.11. nachts: „Lassen wir das mit dem mirror modifier fürs erste. müssen wir noch
 genauer definieren.“). Nicht bauen, bevor er die Stellungen beschrieben hat. Der Entwurf, wie er zur Freigabe vorlag (mittel; Beweis
 im Kern zuerst): ein Tropfen in der Leiste mit drei Stellungen, reihum:

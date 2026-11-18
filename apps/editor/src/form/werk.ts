@@ -2869,6 +2869,7 @@ export function davongelaufen(vorher: Schnappschuss | null, text = 'Hier ist die
   verfeinerung = null;
   G.eingetroffen = null;
   nichtsZuVerfeinern = null;
+  verfeinernPause = 0;
   G.aufraeumen = null;
   G.aufgeraeumt = null;
   G.zwischenstand = null;
@@ -2949,7 +2950,7 @@ export function zugRechnen(): void {
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && z.loeser.art !== 'direkt' && !z.griff && !z.begrenzt && !verfeinerung && !G.eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z)) && umgeschlageneZahl() <= z.umgAnfang) {
+  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && z.loeser.art !== 'direkt' && !z.griff && !z.begrenzt && !verfeinerung && !G.eingetroffen && letzteMaus && performance.now() >= verfeinernPause && (gestreckt() || linieUngenau(z)) && umgeschlageneZahl() <= z.umgAnfang) {
     const [X, Y] = letzteMaus;
     if (HINTERGRUND) stufeImHintergrund(z, X, Y);
     else zugStufe(z, X, Y);
@@ -3136,6 +3137,12 @@ export let verfeinerung: Verfeinerung | null = null;
 export let verfeinerungsNr = 0;
 /** auf diesem Netz fand der letzte Auftrag nichts zu verfeinern (bis zum Loslassen nicht noch einmal fragen) */
 export let nichtsZuVerfeinern: Haut | null = null;
+/**
+ * D1, Teil 2 (18.11.): Der letzte Auftrag hätte nur wenige Punkte zusammengelegt (`VerfeinerErgebnis.wenig`): nicht eingewechselt;
+ * bis zu diesem Zeitpunkt (`performance.now()`) wird im Zug nicht wieder gefragt
+ */
+export let verfeinernPause = 0;
+export const VERFEINERN_PAUSE_MS = 400;
 /** die Nachbarn der Haut als flaches Feld (hängt nur am Netz; je Netz einmal gebaut) */
 export let nachbarnGemerkt: { haut: Haut; flach: ReturnType<typeof nachbarnFlach> } | null = null;
 /** das Ergebnis eines Auftrags, das im nächsten Bild eingewechselt wird */
@@ -3215,7 +3222,9 @@ export function zerleger(): Worker | null {
     }
     hintergrundTeile = d.ms.map(Math.round);
     if (d.leer) {
-      nichtsZuVerfeinern = haut;
+      // (nur wenige Punkte zusammenzulegen: kein Einwechseln; nach einer Pause wieder fragen, die Haut kann dann gestreckt sein)
+      if (d.wenig) verfeinernPause = performance.now() + VERFEINERN_PAUSE_MS;
+      else nichtsZuVerfeinern = haut;
       return;
     }
     if (f.netz !== haut) return;
@@ -3758,6 +3767,7 @@ export function zugEnde(ok: boolean): void {
   verfeinerung = null;
   G.eingetroffen = null;
   nichtsZuVerfeinern = null;
+  verfeinernPause = 0;
   if (!ok) {
     wiederherstellen(z.vorher);
     return;
@@ -5100,6 +5110,7 @@ export function standAnwenden(st: WesenStand): string {
   verfeinerung = null;
   G.eingetroffen = null;
   nichtsZuVerfeinern = null;
+  verfeinernPause = 0;
   nachLoesenOffen = null;
   vorlageBereit = null;
   vorlageStand = '';

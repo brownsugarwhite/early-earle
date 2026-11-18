@@ -5,11 +5,12 @@
 //   - wie weit die beiden Häute am Ende auseinander liegen (sie sollen dieselbe Form sein)
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-halb.ts
 //   NAME="teat firefish,strange bird,test_kaputt" (gesicherte Formen, wie das Fenster sie lädt)   ZUG="0,40,0"   SCHRITTE=20   ENDE=20
-//   MAL=3 (so oft, die schnellste Zeit zählt)   NUR=ganz|halb (nur eine der beiden Rechnungen)   ALT=0 (ohne den Vergleich mit den
+//   DICHTER=0.6 (die Form vorher feiner vernetzen: eine größere Prüfform)   MAL=3 (so oft, die schnellste Zeit zählt)   NUR=ganz|halb (nur eine der beiden Rechnungen)   ALT=0 (ohne den Vergleich mit den
 //   Gewichten über die ganze Haut, D1)
 import type { Haut } from '../../../../packages/shape/src/dicht/kurven';
 import { falten } from '../../../../packages/shape/src/dicht/kurvenFaelle';
-import { type Loop, LoopZug, istSichtbar, pfadLagen } from '../../../../packages/shape/src/dicht/loops';
+import { type Loop, LoopZug, istSichtbar, mittlereKante, pfadLagen } from '../../../../packages/shape/src/dicht/loops';
+import { verdichten } from '../../../../packages/shape/src/dicht/verdichten';
 import { formLaden } from './form-direkt-faelle';
 
 const NAMEN = (process.env.NAME ?? 'test_kaputt,strange bird,teat firefish').split(',');
@@ -69,8 +70,17 @@ function lauf(h0: Haut, loops0: readonly Loop[], halb: boolean, gewichteGanz = f
   return best!;
 }
 
+// D1: eine größere Prüfform für die Reserve: dieselbe Form feiner vernetzt (DICHTER=0.6: Kanten höchstens das 0,6-Fache der mittleren)
+const DICHTER = Number(process.env.DICHTER ?? 0);
 for (const name of NAMEN) {
-  const { h, loops } = formLaden(name);
+  let { h, loops } = formLaden(name);
+  if (DICHTER > 0) {
+    const v = verdichten(h, loops, DICHTER * mittlereKante(h), {});
+    if (v) {
+      h = v.haut;
+      loops = v.loops;
+    }
+  }
   console.log(`${name}: ${h.n} Punkte, ${loops.length} Loops; Zug (${zx}, ${zy}, ${zz}) am höchsten Punkt, ${SCHRITTE} Schritte zu 2 Runden und ${ENDE} Runden am Ende`);
   const ganz = NUR === 'halb' ? null : lauf(h, loops, false);
   if (ganz) console.log(`   ganz: Zerlegen ${z1(ganz.zerlegen)} ms, Runde ${z2(ganz.runde)} ms (${ganz.anteile})`);

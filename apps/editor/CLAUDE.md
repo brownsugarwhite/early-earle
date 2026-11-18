@@ -370,6 +370,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Verglichen wird, was der Löser liest (Summe der Gewichte je Nachbar). (3) Ein Netz mit einem verkehrt herum gespeicherten Dreieck
   hat keine Hälfte (dann wie bisher über die ganze Haut); der Fisch der C1-Probe ist so eins. (4) Die Rechnung setzt genau
   spiegelgleiche Lagen voraus, wie die Faltung des Lösers.
+- **Langsame Bilder im Zug (D1, Teil 2, 18.11.):** (1) Was im Zug nur ab und zu neu gerechnet wird, nie für mehrere Dinge im selben
+  Bild (die drei Tiefenkarten der Wände: `werkBlatt.karteFuer`, `karteZuletzt`). (2) Ein Netzwechsel im Zug kostet ein Bild von 25
+  bis 55 ms: Der Hintergrund meldet `wenig`, wenn nur zusammengelegt würde (unter 2 % der Punkte), dann wechselt das Werk nicht
+  und fragt nach `VERFEINERN_PAUSE_MS` wieder. (3) Zum Suchen: je Bild die Teile aus `__ozzy.messen` (Werk, Haut, Linien, …, Wände)
+  ansehen, nicht nur Median und 95 %; ein Profil des Hauptfadens über das Protokoll des Testbrowsers (`Profiler.start`).
 - **Felder (C4, 18.11.):** `src/ozzy/werkFelder.ts`. Ein Feld ist die Haut zwischen Linien; gewählt ist es eine Auswahl von Punkten
   des Werks (`werk.G.auswahl`: die sichtbaren Punkte auf seinem Rand) plus die Tönung. Merke: (1) Es hängt an einer Saat (Ort tief im
   Feld) und wird nach jedem Netzwechsel von dort neu gefüllt; es bleibt nur, solange alle Punkte seines Rands gewählt sind

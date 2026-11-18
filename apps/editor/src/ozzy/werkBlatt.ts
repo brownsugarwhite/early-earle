@@ -664,10 +664,14 @@ export class WerkBlatt implements Raum {
   // ---------- S7: Verdecktes grün ----------
 
   private karten = new Map<string, Karte>();
+  /** wann im Zug zuletzt eine Karte neu gebaut wurde (D1, Teil 2) */
+  private karteZuletzt = 0;
 
   /**
    * Tiefenkarte der gezeigten Haut längs der Achse einer Fläche (je Zelle die vorderste Tiefe zum Betrachter hin). Neu, wenn sich die
-   * Haut ändert; im Zug höchstens alle 150 ms. Die Haut des Werks ist ganz (beide Hälften), die Linien liegen auf ihr.
+   * Haut ändert; im Zug jede höchstens alle 150 ms, und nie zwei im selben Bild (D1, Teil 2, 18.11.: Bis dahin wurden im Raum alle
+   * drei im selben Bild neu gebaut, jedes neunte Bild im Zug brauchte dafür 8 ms länger und kam zu spät). Die Haut des Werks ist
+   * ganz (beide Hälften), die Linien liegen auf ihr.
    */
   private karteFuer(a: Ansicht, vorn: number): Karte | null {
     const achse = a === 'seite' ? 2 : a === 'front' ? 0 : 1;
@@ -675,7 +679,8 @@ export class WerkBlatt implements Raum {
     const alt = this.karten.get(schl);
     const jetzt = performance.now();
     const stand = werk.standZahl();
-    if (alt && (alt.stand === stand || (werk.zug && jetzt - alt.zeit < 150))) return alt;
+    if (alt && (alt.stand === stand || (werk.zug && (jetzt - alt.zeit < 150 || jetzt - this.karteZuletzt < 40)))) return alt;
+    if (werk.zug) this.karteZuletzt = jetzt;
     const P = werk.haut.pos;
     const T = werk.haut.tri;
     if (!P?.length || !T?.length) return null;

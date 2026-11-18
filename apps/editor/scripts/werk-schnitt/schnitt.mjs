@@ -17,6 +17,9 @@
 //      (Der Anlauf eines neuen Lösers, `ANLAUF_RUNDEN`, ist seit dem 18.11. wieder heraus: Die Ursache ist im Kern behoben, Plan C1.)
 //      Dazu (18.11., C2): `stiftStrich`, `vorhangSchneiden` und `aufrichtenJetzt` nach `loopSchneiden`, die Importe `loopAusVorhang`,
 //      `stelleImBlatt`, `griffeAufStrich`, `vorhangWeg`; im Auftrag von `aufraeumenStarten` die Angabe `aufrichten`.
+//      Dazu (18.11., D1 Teil 2): `verfeinernPause` und `VERFEINERN_PAUSE_MS` nach `nichtsZuVerfeinern` (überall mit ihm
+//      zurückgesetzt), in der Antwort des Workers `d.wenig` (dann die Pause statt `nichtsZuVerfeinern`), in `zugRechnen` die
+//      Bedingung `performance.now() >= verfeinernPause` vor `gestreckt()`.
 // Geprüft am 16.11.: Aus `kurven.ts` von 179dfa4a (mit Schritt 1) entstehen genau `werk.ts` und `kurven.ts` von 5039cead.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';

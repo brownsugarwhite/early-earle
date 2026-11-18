@@ -58,6 +58,12 @@ gebaut ist, steht im Plan je Schritt unter „Gebaut“, nicht hier.
   auch die Punkte der Mitte auf seinem Rand mit (der Umriss ändert sich). (2) In den Vier Ansichten schließt ein Klick auf die
   Form die Ansichten nicht mehr (er wählt das Feld); ein Klick ins Leere schließt sie wie bisher.
 
+- **Halbe Haut, der große Umbau (D1, Teil 4, 18.11.): bauen oder streichen?** Die Rechnung läuft jetzt fast ganz auf der Hälfte
+  (Löser seit dem 13.11., Gewichte und Vermessen seit heute). Das Netz selbst zur Hälfte umzubauen brächte noch höchstens rund ein
+  Zehntel einer Runde, ist aber der größte und heikelste Umbau im Plan, und die Pose mit zwei freien Seiten und „Clipping aus“
+  im Spiegel-Schalter brauchen das ganze Netz. Ich habe ihn nicht begonnen. Mein Vorschlag: streichen; das Tempo für große Formen
+  kommt aus E2 (der Löser rechnet neben dem Bild). Zahlen im Plan unter D1.
+
 ## 2. Kurvennetz im Raum: Unterschiede zur Studie
 
 Er, 17.11.: „Ist erstmal ok so. Ich seh noch unterschiede zur studie in der ich es erarbeitet habe. Aber notiere das für den
@@ -113,6 +119,13 @@ durchgehen, nicht raten.
 - **C4 (18.11.), Ziehen während einer Fahrt der Ansicht:** Läuft gerade eine Fahrt in eine Ansicht (nach 1, 3, 7 oder nach dem
   Wenden), dreht ein Ziehen nicht (die Fahrt setzt die Drehung in jedem Bild neu). Das war schon so; aufgefallen, weil ⇧ + Klick bis
   heute immer eine solche Fahrt auslöste (jetzt nicht mehr, wenn er ein Feld umschaltet).
+
+- **D1 (18.11.), Greifen:** Das Bild beim Drücken auf einen Punkt und das erste Bild des Zugs brauchen zusammen 60 bis 100 ms
+  (Plan, D1 Teil 2). Vor der Bewegung der Hand, aber zu spüren, wenn man es weiß.
+- **D1 (18.11.), Einwechseln im Zug:** Jeder Wechsel auf ein feineres Netz kostet ein Bild von 25 bis 55 ms. An „maul handgemacht
+  test“ kommen am Anfang eines Zugs zwei bis drei solche Wechsel (dort kommen Punkte dazu). Den größten Posten nimmt E1.
+- **D1 (18.11.), Tiefenkarten:** Im Zug baut jetzt höchstens eine Karte je Bild neu (3 ms). Halb so teuer wäre sie, wenn nur die
+  Dreiecke gezeichnet würden, die zum Betrachter zeigen.
 
 ## 4. Beobachtungen
 

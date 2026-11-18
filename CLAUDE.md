@@ -19,7 +19,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   erste ok.“ S21 (Kanten gleiten) ganz entfernt, missverstanden; ruht. **Es gilt der Plan „Ozzy stabil und schnell“** (freigegeben
   17.11.): [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md), Etappen A bis F (Tempo,
   Seifenhaut, Zeiger, Wenden, Wireframe, P, Gleiten, Flächen, halbe Haut; der Spiegel-Schalter ruht, bis Florian ihn beschreibt;
-  Maul, Posen, Teile danach). Gebaut steht dort je Schritt; Stand: A bis auf Reste, B1, B2 fast ganz, B3 (Kurvennetz, W), C1, C2 (P gebogen), C4 (Felder, G S R); C3 Gleiten: Beweis hält nicht, Frage offen. Auftrag: selbstständig bis einschließlich E; Fragen in `…-ozzy-feinschliff.md`. Die Sitzung ist auch die des
+  Maul, Posen, Teile danach). Gebaut steht dort je Schritt; Stand: A bis auf Reste, B1, B2 fast ganz, B3 (Kurvennetz, W), C1, C2, C4 (Felder, G S R), D1 Teil 1/2; C3 Gleiten: Beweis hält nicht, Frage offen. Auftrag: selbstständig bis einschließlich E; Fragen in `…-ozzy-feinschliff.md`. Die Sitzung ist auch die des
   Kerns und darf ihn ändern. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell.
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
