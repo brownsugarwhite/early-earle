@@ -532,6 +532,34 @@ eine Form gibt, die als Ganzes bearbeitet wird. Für die lebende Naht bleiben di
 zurückgeschrieben werden); was man beim Ziehen sieht, solange noch nicht neu verbunden ist; mehr als zwei Objekte; gespiegelte
 Objekte; Abziehen statt Verschmelzen; deine eigenen Formen.
 
+## 13. Etappe 5 in Ozzy: der Verbund (Bau, Nacht vom 18. auf den 19.11.)
+
+Dein Wort: „ja baue das alles ein. … Du kannst 5 selbstständig bauen. Aber mache nur die nötigsten tests. Ich will auch
+subtrahierte objekte verschieben können und die kante soll auch abgerundet live mitfahren können. … dass ich z.B auch ein
+subtrahiertes loch mit abgerundeten kanten live und flüssig verschieben und bearbeiten kann“.
+
+**Die Bauweise: Verschmelzen und Abziehen werden ein Zustand des Objekts (wie der Spiegel), kein Schritt.**
+- **Die Objekte bleiben Objekte.** Jedes behält seine Form, seine Linien, seinen Rückweg und seinen Spiegel; verschoben wird es
+  mit V, bearbeitet mit A, wie bisher. Dazu trägt es einen von drei Zuständen: frei, *verschmilzt* (mit allem, was es berührt)
+  oder *zieht ab* (von allem, was es berührt). Die zwei Knöpfe neben dem Plus schalten ihn am gewählten Objekt.
+- **Was du siehst, ist abgeleitet:** der *Verbund*, der Schnitt der gezeigten Häute. Er wird jedes Mal neu gebildet, wenn sich
+  ein Objekt bewegt oder ändert, im Hintergrund (das Bild stockt dabei nicht). Beim Ziehen auf einer gröberen Stufe derselben
+  glatten Anzeige (Vorversuch: rund 15 ms je Stand statt 150 ms), in Ruhe auf der vollen.
+- **Die Kante rund:** K am gewählten Objekt (Objekt-Modus, oder mit A ohne gewählte Punkte) rundet seine Naht, `[` und `]`
+  stellen die Breite. Die Rundung ist Geometrie am Verbund (ein weicher Streifen um die Naht, nach außen auslaufend) und fährt
+  deshalb live mit, auch am Rand eines Lochs. Das ist bewusst nicht die Rechnung der weichen Linie: Die braucht ein bis zwei
+  Sekunden je Stand (Abschnitt 12) und lässt beim Abziehen die Höhle zusammenfallen.
+- **Anwenden** (wie beim Spiegel): ⌥ + Klick auf einen der zwei Knöpfe macht aus den zwei Objekten eine Form, mit der Naht als
+  Linie (das ist Etappe 4, unverändert; dort gilt K wie an jeder Linie).
+- **Wählen:** Ein Klick trifft, was man sieht: die Wand eines Lochs gehört dem Objekt, das abzieht. Ist es gewählt, steht es blass
+  im Bild, damit man es auch außerhalb des Körpers greifen kann.
+
+**Stufen des Baus:** (1) der Verbund im Hintergrund (`verbund.worker.ts`, `verbund.ts`); (2) Zustand je Objekt, Knöpfe, K, `[ ]`;
+(3) Anzeige in allen Materialien, Wählen; (4) Sichern und Laden; (5) eine Probe (`ozzy-verbund-fenster.mjs`) und Bilder.
+
+**Nicht in diesem Bau:** den Hilfsloop selbst greifen und ziehen (Stufe 5c: bearbeitet werden die Objekte, die Naht folgt);
+die Umrisse an den Wänden zeigen weiter jedes Objekt für sich.
+
 ## Anhang A: Dein Auftrag (18.11.2026, wörtlich)
 
 > […] in dieser session möchte ich ein paar coole features einbauen. Aktuell geht in Ozzy der donut effekt nichtmehr. Ich
