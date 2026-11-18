@@ -1514,7 +1514,7 @@ export class WerkBlatt implements Raum {
     }
     if (anker.length < 3) return false;
     const vorher = werk.loops.length;
-    werk.G.stift = { a: F.a, anker, zieht: false };
+    werk.G.stift = { a: F.a, anker, zieht: false, ...(F.vorn !== undefined ? { vorn: F.vorn } : {}) };
     werk.stiftFertig();
     werk.anzeige.allesZeigen();
     this.bauen(this.flaechen);
@@ -1677,7 +1677,7 @@ export class WerkBlatt implements Raum {
       const ab = werk.G.abzweig;
       werk.G.abzweig = null;
       if (!ab?.start) return -1;
-      werk.abzweigungErstellen(E.a, ab.von, E.nach, ab.start, ab.vorher, E.anker);
+      werk.abzweigungErstellen(E.a, ab.von, E.nach, ab.start, ab.vorher, E.anker, this.flaechen[E.fl]?.vorn);
     } else {
       // S8 und C2 (P statt L): im Leeren begonnen, über die Form, im Leeren geendet, mit ↩ beendet: ein Loop rundum, in dieser
       // Ansicht genau auf dem Strich (gerade oder gebogen, beliebig viele Punkte; die Punkte auf der Form werden Punkte des Loops)
@@ -1697,7 +1697,8 @@ export class WerkBlatt implements Raum {
         this.geaendert();
         return -1;
       }
-      werk.G.stift = { a: E.a, anker: E.anker, zieht: false };
+      const vorn = this.flaechen[E.fl]?.vorn;
+      werk.G.stift = { a: E.a, anker: E.anker, zieht: false, ...(vorn !== undefined ? { vorn } : {}) };
       werk.stiftFertig();
     }
     werk.anzeige.allesZeigen();

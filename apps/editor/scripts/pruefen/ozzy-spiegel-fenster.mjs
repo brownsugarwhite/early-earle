@@ -11,7 +11,7 @@
 //   aus       die Form ist ein ganzes Netz ohne Spiegelpaare, jede Linie ein geschlossener Loop, keine Spiegelkopien mehr
 //   einseitig der Punkt an der einen Seite 60 hinaus: Der an der anderen Seite bleibt, wo er ist; nichts umgeschlagen
 //   an        das Spiegelbild ist da (die Anzeige zeigt doppelt so viele Punkte); aus: wieder weg
-//   P         an der freien Form lassen sich noch keine Linien zeichnen (Meldung, das Werkzeug bleibt)
+//   P         geht auch an der freien Form an (was es dort zeichnet: `ozzy-frei-linien-fenster.mjs`)
 //   ⌘Z        zurück bis zur verschmolzenen Form: Der Knopf steht wieder auf Clipping
 // dritter Teil (NUR=objekt), an einer dritten frischen Kugel: das ganze Objekt bewegen (V) und an der Ebene verschmelzen
 //   aus, V    im Top am Objekt ziehen: Es liegt 200 neben der Spiegelebene (die Form ist dieselbe, nur verschoben)
@@ -181,10 +181,12 @@ if (NUR === '' || NUR === 'aus') {
   sp = await O('spiegel');
   ok('aus: das Spiegelbild ist wieder weg', sp.zustand === 'aus' && !sp.spiegelbild && sp.gezeigt === einfach);
 
-  // P: an der freien Form noch nicht
+  // P geht auch an der freien Form an (seit dem zweiten Teil von 2b; was es dort zeichnet, prüft `ozzy-frei-linien-fenster.mjs`)
   await s.keyboard.press('p');
   await s.waitForTimeout(200);
-  ok('P an der freien Form: Meldung, das Werkzeug bleibt', (await O('objekt')).werkzeug === 'auswahl' && (await O('werk')).meldung.includes('freien Form'), (await O('werk')).meldung.slice(0, 70));
+  ok('P an der freien Form: das Werkzeug geht an', (await O('objekt')).werkzeug === 'p', (await O('objekt')).werkzeug);
+  await s.keyboard.press('a');
+  await s.waitForTimeout(200);
 
   // ⌘Z: der Zug, dann „aus“
   await s.keyboard.press('Meta+z');

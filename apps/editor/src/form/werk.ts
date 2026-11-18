@@ -172,7 +172,11 @@ export const G = {
   zwischenstand: null as Zwischenstand | null,
   aufgeraeumt: null as AufraeumErgebnis | null,
   gegriffen: null as { a: Ansicht; X: number; Y: number; m: boolean; griff: { id: number; i: number; seite: 'ein' | 'aus' } | null; seit: number } | null,
-  stift: null as { a: Ansicht; anker: StiftAnker[]; zieht: boolean } | null,
+  /**
+   * `vorn` (18.11.): welche Seite der Achse des Blatts zum Betrachter zeigt (+1 oder −1; Seite z, Front x, Top y), wie Ozzys Flächen
+   * sie führen. Sie zählt nur an einer freien Form (`vonHinten`): Dort liegt eine Form auf der Seite der Haut, die man sieht.
+   */
+  stift: null as { a: Ansicht; anker: StiftAnker[]; zieht: boolean; vorn?: number } | null,
   abzweig: null as {
   a: Ansicht;
   von: AbzweigOrt;
@@ -676,6 +680,14 @@ export const istFrei = (): boolean => {
   return freiGemerkt.frei;
 };
 let freiGemerkt: { spiegel: Int32Array; frei: boolean } | null = null;
+/**
+ * Sieht der Betrachter die Ansicht von der Gegenseite (der Kern sieht die Seite von +z, die Front von −x, den Top von +y)? `vorn`: die
+ * Seite der Achse, die zu ihm zeigt, wie Ozzys Flächen sie führen. Das zählt nur an einer freien Form: An einer verschmolzenen liegt,
+ * was in der Seite gezeichnet wird, auf beiden Hälften.
+ */
+export const vonHinten = (a: Ansicht, vorn: number | undefined): boolean => istFrei() && vorn !== undefined && vorn !== (a === 'front' ? -1 : 1);
+/** das Spiegelbild einer Stelle im Blatt des Kerns (`uvAus`): in Front und Top die Koordinate, die z ist; in der Seite dieselbe Stelle */
+export const uvGespiegelt = (a: Ansicht, q: readonly [number, number]): [number, number] => (a === 'front' ? [-q[0], q[1]] : a === 'top' ? [q[0], -q[1]] : [q[0], q[1]]);
 /** Hat die Form ein Spiegelbild: verschmolzen immer (die andere Hälfte ihres Netzes), frei nur als Anzeige (`G.spiegelbild`) */
 export const spiegelbildGilt = (): boolean => !istFrei() || G.spiegelbild;
 /** der Zustand des Spiegels, wie der Knopf ihn zeigt */
@@ -2054,9 +2066,11 @@ export function merke(liste: number[], ms: number): void {
 }
 export let letzteZerlegung = 0;
 export let letzterBereich = 0;
-/** so viele Punkte liegen lose hinter der Mitte (eine Kreuzung zählt einmal); in der Pose keiner */
+/** `?clipping=0` in der Adresse: die Donut-Regel vom 13.11. (der Punkt hinter der Mitte ist markiert, ihn löschen macht den Schnitt fest) */
+export const DONUT_REGEL_1311 = new URLSearchParams(location.search).get('clipping') === '0';
+/** so viele Punkte liegen lose hinter der Mitte (eine Kreuzung zählt einmal); in der Pose und an einer freien Form keiner */
 export function hinterDerMitteZahl(): number {
-  if (grund) return 0;
+  if (grund || istFrei()) return 0;
   const gesehen = new Set<string>();
   loops.forEach((l) => {
     for (const i of hinterDerMitte(l)) {
@@ -4286,11 +4300,23 @@ export function stiftStrich(a: Ansicht, anker: readonly StiftAnker[], schritt = 
  */
 export function vorhangSchneiden(a: Ansicht, anker: readonly StiftAnker[]): boolean {
   if (nurInGrundform('Einen Loop schneidest du')) return false;
-  const strich = stiftStrich(a, anker);
-  const l = strich.length >= 2 ? loopAusVorhang(haut, a, strich, naechsteId, 10 / anzeige.skala(a)) : null;
+  // An einer freien Form (18.11.) gilt der Strich, wie er gezeichnet ist: ein Loop für sich, ohne Gegenstück. Zeigt sie ihr
+  // Spiegelbild und trifft der Strich nur dieses (Front, Top), gilt er als sein Spiegelbild: Der Loop entsteht an der Form
+  const frei = istFrei();
+  let strich = stiftStrich(a, anker);
+  let l = strich.length >= 2 ? loopAusVorhang(haut, a, strich, naechsteId, 10 / anzeige.skala(a)) : null;
+  let amSpiegelbild = false;
+  if (!l && frei && G.spiegelbild && a !== 'seite' && strich.length >= 2) {
+    const drueben = strich.map((q) => uvGespiegelt(a, q));
+    l = loopAusVorhang(haut, a, drueben, naechsteId, 10 / anzeige.skala(a));
+    if (l) {
+      strich = drueben;
+      amSpiegelbild = true;
+    }
+  }
   if (!l) {
     G.meldung =
-      strich.length >= 2 && !vorhangWeg(a, strich, 10 / anzeige.skala(a))
+      strich.length >= 2 && !vorhangWeg(a, strich, 10 / anzeige.skala(a), frei)
         ? 'Kein Loop: Der Strich kreuzt die Mitte mehrmals. Einmal quer über die Mitte ziehen oder ganz auf einer Seite bleiben'
         : 'Kein Loop: den Strich quer über den Körper ziehen (Anfang und Ende im Leeren)';
     return false;
@@ -4311,8 +4337,8 @@ export function vorhangSchneiden(a: Ansicht, anker: readonly StiftAnker[]): bool
   const fang = 1e-3 * Math.max(1, neu.laenge);
   let gesetzt = 0;
   for (const k of anker.slice(1, -1)) {
-    const [u0, v0] = uvAus(a, k.X, k.Y);
-    const orte: [number, number][] = a === 'front' ? [[u0, v0], [-u0, v0]] : a === 'top' ? [[u0, v0], [u0, -v0]] : [[u0, v0]];
+    const [u0, v0] = amSpiegelbild ? uvGespiegelt(a, uvAus(a, k.X, k.Y)) : uvAus(a, k.X, k.Y);
+    const orte: [number, number][] = frei ? [[u0, v0]] : a === 'front' ? [[u0, v0], [-u0, v0]] : a === 'top' ? [[u0, v0], [u0, -v0]] : [[u0, v0]];
     const stellen: number[] = [];
     for (const [u, v] of orte) {
       for (const hinten of [false, true]) {
@@ -4332,7 +4358,7 @@ export function vorhangSchneiden(a: Ansicht, anker: readonly StiftAnker[]): bool
   // Hat der Loop Punkte, braucht sein Pfad auch dort einen, wo er im Blatt umkehrt (am Umriss, von vorn nach hinten): verdeckt,
   // wie die Enden eines Rings. Dann die Griffe noch einmal aus der Linie (jedes Stück für sich angepasst) und im Blatt aus dem
   // Strich: In dieser Ansicht liegt der Pfad auf dem Strich
-  const W = vorhangWeg(a, strich, 10 / anzeige.skala(a));
+  const W = vorhangWeg(a, strich, 10 / anzeige.skala(a), frei);
   if (W && W.art !== 'mitte' && neu.punkte.some(istSichtbar)) {
     for (const st of wendeStellen(neu, a, W.weg)) {
       // (liegt dort schon ein Punkt, etwa eine Kreuzung, trägt er die Umkehr)
@@ -4986,8 +5012,13 @@ export function mitteFest(vonSelbst = false, mitPunkten = vonSelbst): boolean {
 }
 
 export function loeschen(): void {
-  // ein gewählter Punkt hinter der Mitte: Ihn löschen macht den Schnitt fest
+  // Die Regel vom 13.11. (nur noch mit `?clipping=0` in der Adresse, im Prüffenster): Einen gewählten Punkt hinter der Mitte löschen
+  // macht den Schnitt fest. Seit dem 18.11. entfällt sie (Florian: „Die regel vom donut, dass man den rot markierten punkt dann erst
+  // löschen muss entfällt“): Löschen löscht. An einer freien Form gibt es kein „hinter der Mitte“ (gemessen am 18.11.: Dort hatte
+  // das Löschen eines Punkts auf der Seite z < 0 die ganze Form an der Ebene verschmolzen).
   if (
+    DONUT_REGEL_1311 &&
+    !istFrei() &&
     G.auswahl.some((w) => {
       const l = loops[loopNr(w.l)];
       return w.i >= 0 && l !== undefined && !grund && hinterDerMitte(l).includes(w.i);
@@ -5159,9 +5190,16 @@ export function stiftFertig(): void {
       uv.push(uvAus(a, x, y));
     }
   }
-  const l = formAusZeichnung(haut, a, uv, knoten, naechsteId);
+  // An einer freien Form (18.11.) liegt die Form auf der Seite der Haut, die man sieht (`vorn`), wo sie gezeichnet ist; trifft die
+  // Zeichnung nur das gezeigte Spiegelbild (Front, Top), gilt sie als ihr Spiegelbild
+  const frei = istFrei();
+  const hinten = vonHinten(a, st.vorn);
+  let l = formAusZeichnung(haut, a, uv, knoten, naechsteId, hinten);
+  if (!l && frei && G.spiegelbild && a !== 'seite') l = formAusZeichnung(haut, a, uv.map((q) => uvGespiegelt(a, q)), knoten, naechsteId, hinten);
   if (!l) {
-    G.meldung = 'Keine Form: ganz auf dem Körper zeichnen oder einmal über die Mitte (Front, Top) bzw. vorn über den Umriss (Seite)';
+    G.meldung = frei
+      ? 'Keine Form: ganz auf dem Körper zeichnen'
+      : 'Keine Form: ganz auf dem Körper zeichnen oder einmal über die Mitte (Front, Top) bzw. vorn über den Umriss (Seite)';
     anzeige.allesZeigen();
     return;
   }
@@ -5266,6 +5304,7 @@ export function abzweigungErstellen(
   anfang: { id: number; p: LoopPunkt; m: boolean } | null = null,
   standDavor: Schnappschuss | null = null,
   anker: readonly StiftAnker[] = [],
+  vorn?: number,
 ): void {
   const vorher = standDavor ?? schnappschuss();
   const zurueckMit = (text: string): void => {
@@ -5289,19 +5328,26 @@ export function abzweigungErstellen(
   const avJetzt = { loop: loops.indexOf(pv.l), punkt: pv.l.punkte.indexOf(pv.p) };
   const an = { loop: loops.indexOf(pn.l), punkt: pn.l.punkte.indexOf(pn.p) };
   const gleich = avJetzt.loop === an.loop && avJetzt.punkt === an.punkt;
-  const mitte = (x: { loop: number; punkt: number }): boolean => Math.abs(loops[x.loop]!.punkte[x.punkt]!.ref.z) < 1e-9;
+  // (eine freie Form, 18.11.: Sie hat keine Mitte, und ihr Spiegelbild ist nur gezeigt. Eine Abzweigung verbindet zwei Punkte der Form,
+  // oder zwei ihres Spiegelbilds: dann entsteht sie an der Form selbst)
+  const frei = istFrei();
+  const mitte = (x: { loop: number; punkt: number }): boolean => !frei && Math.abs(loops[x.loop]!.punkte[x.punkt]!.ref.z) < 1e-9;
   // über die Mitte: nur zum Spiegelbild des eigenen Anfangs (dann endet die Linie auf der Mitte); Punkte auf der Mitte sind ihr eigenes
   const vonM = anfang ? anfang.m : von.m;
-  const drueben = vonM !== nach.m && !mitte(avJetzt) && !mitte(an);
+  if (frei && vonM !== nach.m) return zurueckMit('Abzweigung: Anfang und Ende liegen nicht beide auf der Form (eines liegt auf ihrem Spiegelbild)');
+  const drueben = !frei && vonM !== nach.m && !mitte(avJetzt) && !mitte(an);
   if (gleich && !drueben) return zurueckMit('Abzweigung: Anfang und Ende sind derselbe Punkt');
   if (drueben && !gleich) return zurueckMit('Abzweigung: Über die Mitte führt sie nur zum Spiegelbild ihres Anfangs (oder sie endet an einem Punkt der Mittellinie)');
   // die gesetzten Punkte: ihr Ort auf der Haut unter dem Blatt, auf der Seite z ≥ 0
   const ueber: AbzweigPunkt[] = [];
+  // (an einer freien Form: auf der Seite der Haut, die man sieht; am Spiegelbild gesetzt, an der gespiegelten Stelle der Form)
+  const amBild = frei && vonM;
+  const hinten = vonHinten(a, vorn) !== (amBild && a === 'seite');
   for (const k of anker) {
-    const [u, v] = uvAus(a, k.X, k.Y);
-    const t = strahl(haut, a, u, v);
+    const [u, v] = amBild ? uvGespiegelt(a, uvAus(a, k.X, k.Y)) : uvAus(a, k.X, k.Y);
+    const t = strahl(haut, a, u, v, hinten);
     if (!t) return zurueckMit('Abzweigung: Ein gesetzter Punkt liegt nicht auf dem Körper');
-    ueber.push({ ort: t.p.z < 0 ? spiegeln(t.p) : t.p, ecke: k.aus === null });
+    ueber.push({ ort: !frei && t.p.z < 0 ? spiegeln(t.p) : t.p, ecke: k.aus === null });
   }
   const nAlt = haut.n;
   const r = abzweigen(haut, loops, avJetzt, drueben ? 'spiegel' : an, naechsteId, naechsteKreuzung, ueber);

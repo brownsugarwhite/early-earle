@@ -563,7 +563,6 @@ function spiegelSetzen(ziel: SpiegelZustand): void {
       // eine verschmolzene Form wird ganz und frei (ein Schritt für ⌘Z); Muster und Dehnung der Seifenhaut bleiben an ihrem Ort
       if (!werk.spiegelAus()) return;
       spiegelMarken.push(davor);
-      werkzeugFuerFreieForm();
     } else {
       werk.G.spiegelbild = false;
       werk.G.meldung = 'Spiegel aus: ein ganzes Objekt ohne Spiegelbild';
@@ -609,17 +608,8 @@ function spiegelNachZurueck(): void {
   if (!m) return;
   werk.G.clipping = m.clipping;
   werk.G.spiegelbild = m.spiegelbild;
-  werkzeugFuerFreieForm();
   werkHaut.ganzNeu();
   werkNeu = true;
-}
-/**
- * An einer freien Form lassen sich noch keine neuen Linien zeichnen (die Werkzeuge, die Linien ins Netz setzen, schneiden
- * spiegelgleich): P, Freihand und Formen sind dort aus, bis sie es können.
- */
-const zeichnenAmWerk = (): boolean => !werk.istFrei();
-function werkzeugFuerFreieForm(): void {
-  if (!zeichnenAmWerk() && (bearbeiten.stift || strichWerkzeug())) werkzeugImRaum('auswahl');
 }
 
 /**
@@ -3847,11 +3837,10 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     // im Raum zeigt die Leiste das Werkzeug des Raums (anfangs die Auswahl, kein Tropfen), nicht das des Blatts
     if (pErlaubt) leiste.setzen(raumWerkzeug);
   }
-  // (P, Freihand und Formen nur, wo das Werk neue Linien setzen kann: noch nicht an einer freien Form)
-  const zeichnen = pErlaubt && zeichnenAmWerk();
-  if (zeichnen !== zeichnenErlaubt) {
-    zeichnenErlaubt = zeichnen;
-    for (const n of ['p', 'frei', 'formen'] as const) leiste.erlauben(n, zeichnen);
+  // (P, Freihand und Formen, sobald das Werk bedient wird: auch an einer freien Form, dort entsteht jede Linie für sich)
+  if (pErlaubt !== zeichnenErlaubt) {
+    zeichnenErlaubt = pErlaubt;
+    for (const n of ['p', 'frei', 'formen'] as const) leiste.erlauben(n, pErlaubt);
   }
   if (!bearbeitenAn && bearbeitenGedrueckt) {
     bearbeiten.loslassen();
@@ -5536,12 +5525,6 @@ function stiftImRaum(an: boolean): void {
 
 /** ein Werkzeug im Raum: P geht über das Verhalten der Studie; Freihand, Ellipse und Würfel zeichnen auf der Fläche unter dem Zeiger */
 function werkzeugImRaum(w: Werkzeug): void {
-  if (!zeichnenAmWerk() && (w === 'p' || w === 'frei' || w === 'ellipse' || w === 'wuerfel')) {
-    werk.G.meldung = 'An einer freien Form (Spiegel aus oder angewendet) lassen sich noch keine neuen Linien zeichnen · ihre Punkte, Linien und Griffe lassen sich ziehen';
-    leiste.setzen(raumWerkzeug);
-    anstossen();
-    return;
-  }
   raumWerkzeug = w;
   bearbeiten.stiftSchalten(w === 'p');
   if (strichWerkzeug() || w === 'objekt') bearbeiten.zeigerWeg();
@@ -6428,6 +6411,8 @@ const haken = {
     const [x, y] = F.hin(X, Y);
     return { x, y };
   },
+  /** welche Seite der Achse des Blatts `a` gerade zum Betrachter zeigt (+1 oder −1; Seite z, Front x, Top y) */
+  flaecheVorn: (a: Flaeche['a']): number | null => werkBlatt.flaechen.find((f) => f.a === a)?.vorn ?? null,
   /** umgekehrt: welcher Ort im Blatt `a` unter dem Bildschirmpunkt liegt (S17, Probe) */
   flaecheHer: (a: Flaeche['a'], x: number, y: number): { X: number; Y: number } | null => {
     const F = werkBlatt.flaechen.find((f) => f.a === a);
