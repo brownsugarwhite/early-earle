@@ -451,6 +451,25 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   „Verbundenes wählen“ (`verbundenesWaehlen`), das Lasso liegt auf Q: Proben, die mit V „zurück zur Auswahl“ meinten, drücken jetzt A.
   Merke: Eine Regel in `werkBlatt.auswahlAbgleichen`, die Ankern mehr Auswahl gibt, als das Verhalten gesetzt hat, ändert dessen
   Zustand (ein ganz gewählter Loop zeigte alle seine Punkte gewählt; danach verlor P den ersten Klick, Probe `ozzy-p-schnitt`).
+- **Spiegel und freie Form (Etappe 2, 18.11.; Plan wie oben, Abschnitt 4):** Es gibt zwei Arten von Haut. *Verschmolzen* (wie
+  immer: Spiegelpaare, die Linien sind die Hälfte z ≥ 0) und *frei* (`hautFrei`: kein Punkt hat einen Partner, jede Linie ist ein
+  geschlossener Loop für sich, Art `paar`, dazu Abzweigungen; „Spiegel aus“). `werk.istFrei()`, `werk.spiegelStand()` (`clip`,
+  `an`, `aus`), `werk.spiegelAus()` (verschmolzen → frei, Kern `spiegelAnwenden`), `werk.mitteFest()` (frei → verschmolzen, wenn das
+  Objekt über die Ebene reicht; `freiSeite()`, `clipSeiten()`). Merke: (1) Das Spiegelbild einer freien Form ist nur Anzeige
+  (`G.spiegelbild`): Wer die Haut des Werks zeigt, nimmt `werkHaut.zeigeNetz` (Netz samt Spiegelbild), nicht `werkHaut.netz`; die
+  Linien spiegelt `werkBlatt` mit `werk.spiegelbildGilt()`. (2) Die Werkzeuge des Kerns lesen die Art an der Haut ab und setzen an
+  einer freien nichts spiegelgleich (`kantenTeilen`, `dreieckTeilen`, `loopEinsetzen`, `loopAusVorhang`, `formAusZeichnung`,
+  `abzweigen`, `verdichten`): Wer ein neues Werkzeug baut, das teilt oder einsetzt, fragt `hautFrei` und gibt es an `hautAus`
+  weiter (`ohnePaare`), sonst findet ein Punkt nahe z = 0 sich selbst als Partner. (3) An einer freien Form zählt, von welcher
+  Seite man die Ansicht sieht: `G.stift.vorn` und der letzte Parameter von `abzweigungErstellen` tragen `Flaeche.vorn`,
+  `werk.vonHinten` übersetzt es für den Kern (`strahl`, `formAusZeichnung` mit `hinten`). (4) Eine freie Form nicht weit vom
+  Ursprung weg rechnen: Der Löser hängt am Abstand (bei 3 000 Einheiten wandert eine Kugel um 13 in 400 Runden, bei 20 000 läuft
+  sie davon). (5) Die Donut-Regel vom 13.11. beim Löschen gilt nur noch mit `?clipping=0` (`DONUT_REGEL_1311`) und nie an einer
+  freien Form: Dort hatte das Löschen eines Punkts bei z < 0 die Form verschmolzen. (6) Mit V wird die Form ohne Löser abgebildet
+  (`werk.formZugStarten`, `formZugBewegen`, `formZugEnde`; in `main.ts` `objektZug…`); wer dem Werk neue Werte je Punkt gibt, muss
+  sie dort mit abbilden. (7) ⌫ ohne gewählte Punkte lässt in Ozzy die Luft ab (so gewollt): Eine Probe, die löschen will, wählt
+  vorher einen Punkt. Proben: `ozzy-spiegel-fenster.mjs` (`NUR=clip|aus|objekt`), `ozzy-frei-linien-fenster.mjs`, Tests
+  `frei.test.ts`; Film `scripts/ozzy/spiegel-film.mjs`.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`
