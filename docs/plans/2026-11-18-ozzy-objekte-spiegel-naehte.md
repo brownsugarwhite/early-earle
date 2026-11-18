@@ -255,7 +255,9 @@ Quellen: [FiberMesh](https://www-ui.is.s.u-tokyo.ac.jp/~takeo/papers/fibermesh.p
 Was daraus folgt:
 - **Verschmelzen und Abziehen mit Kante lassen sich bauen** (Etappe 4): schneiden und verbinden beim Loslassen, die Naht ist danach
   eine Linie mit Punkten, die geschnittenen Linien hängen an ihr. Gebaut ist es noch nicht; die Probe rechnet es im Kern.
-- **K an der Naht braucht eine Entscheidung und noch Arbeit.** Drei Arten zu runden sind gemessen (Kriterium für eine schmale
+- **Entschieden (Florian, 18.11. abends): „Wie Seifenblasen“.** K macht die Naht weich wie jede andere Linie, die Formen gehen mit
+  (die erste Zeile der Tabelle). Der Streifen mit festgehaltener Haut und die Begleitlinien werden nicht gebaut.
+- **K an der Naht, was gemessen wurde.** Drei Arten zu runden sind gemessen (Kriterium für eine schmale
   Rundung: außerhalb ihres Streifens bewegt sich die Haut höchstens 0,5):
 
   | Art | Knick an der Naht (mit Kante 91°) | Wie weit die Form mitgeht | Bild |
@@ -264,10 +266,7 @@ Was daraus folgt:
   | **Begleitlinien** (je eine weiche Linie auf jeder Form, 15 neben der Naht) | 27° | bis 9,9, auch außerhalb des Streifens; fern bis 1,3 | **hält das Kriterium nicht**: Eine weiche Linie hält nur ihren Ort, nicht die Richtung der Haut |
   | **außen festhalten** (alles weiter als 15 oder 30 von der Naht bleibt an seinem Ort; der Baustein ist der Halte-Loop vom „Maul formen“) | 35° (Streifen ±15), 25° (±30) | im Streifen bis 3,1 bzw. 5,5; außerhalb 0,00 | hält das Kriterium; **der Rand des Streifens ist als unruhiger Ring zu sehen** (er folgt den Punkten des Netzes) |
 
-  Was fehlt, ist ein weicher Rand für den dritten Weg (das Festhalten läuft über eine Zone aus, statt an einer Punktreihe zu enden).
-  Ungetestet; ich teste es mit dem Kriterium: außerhalb höchstens 0,5, und der Knick zwischen Nachbardreiecken ist am Rand des
-  Streifens nicht größer als auf der Kugel daneben. Die Breite des Streifens wäre die Breite der Rundung (wie der Halbmesser bei
-  Plasticity, wie „Goop“ bei Womp), einstellbar.
+  (Für den dritten Weg hätte ein weicher Rand gefehlt; mit Florians Entscheidung entfällt er.)
 - **Noch nicht geprüft:** ein verschmolzenes (gespiegeltes) Objekt als Partner; Formen mit sehr verschieden feinen Netzen; eine
   Naht aus mehreren Schnittkurven; Linien, die genau längs der Naht laufen; die lose Naht (Ausblenden je Bildpunkt beim Ziehen).
 - Die Bibliothek zieht 32 Pakete nach (für ihr Kommandozeilenwerkzeug); im Produkt braucht es nur zwei ihrer Dateien. Sie ist
