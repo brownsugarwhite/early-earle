@@ -62,12 +62,14 @@ export function vorlageSzene(d: FigurDaten, a: AnsichtName, fl: Fluessig): Szene
   return { teile: renderTeile(d.ansichten[a].teile), fluessig: fl, verdecker: [], ohrspalt: null };
 }
 
-export type Drehung = 'drehen' | 'kopf' | 'koerper';
-/** Lage einer Drehung bei t = 0 … 1 */
+export type Drehung = 'drehen' | 'kopf' | 'koerper' | 'haltung' | 'haltungP';
+/** Lage einer Drehung bei t = 0 … 1 (Haltung: 0 Stehen, 0,5 Sitzen, 1 Liegen; Kopf vorn bzw. im Profil) */
 export function drehLage(art: Drehung, t: number): Lage {
   const w = t * 90;
   if (art === 'drehen') return { psi: w, theta: w };
   if (art === 'kopf') return { psi: 90, theta: w };
+  if (art === 'haltung') return { psi: 90, theta: 0, haltung: 2 * t };
+  if (art === 'haltungP') return { psi: 90, theta: 90, haltung: 2 * t };
   return { psi: w, theta: 0 };
 }
 

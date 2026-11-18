@@ -3,11 +3,10 @@
 import { abflachen, type Form, type Punkt } from './form';
 import { type Ansicht, type Diagnose, EXAKT, type FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
 import { REGELN, type Regeln } from './szenen';
-import { koerperUrsprung } from './raster';
 import { drehLage, type Drehung, rasterVon } from './szenen';
 import { type AnsichtName, type FigurDaten } from './vorlagen/import';
 
-type SzenenName = AnsichtName | 'drehen' | 'kopf' | 'koerper';
+type SzenenName = AnsichtName | Drehung;
 export interface PruefKontext {
   daten: FigurDaten;
   renderer: FigurRenderer;
@@ -90,7 +89,7 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
       const a = drehung ? zeigen(drehung.szene, drehung.t, false, 0, w, h) : zeigen(ansicht, 0, false, 0, w, h);
       const { px } = lesen();
       // Drehungen liegen in Körperkoordinaten: die Vorlage um ihren Ursprung verschieben
-      const u = drehung ? koerperUrsprung(k.daten.ansichten[ansicht]) : [0, 0];
+      const u = drehung ? rasterVon(k.daten).ursprung(ansicht) : [0, 0];
       const ref = await svgBild(k.svgTexte[k.ansichtsDateien[ansicht]!]!, { massstab: a.massstab, x0: a.x0 + u[0]!, y0: a.y0 + u[1]! }, w, h);
       const diff = new Uint8ClampedArray(w * h * 4);
       let nurNeu = 0;

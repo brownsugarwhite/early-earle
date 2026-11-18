@@ -304,3 +304,35 @@ export function verschiebungsKosten(ref: Form, f: Form, mitDrehung = false): num
   }
   return kosten;
 }
+
+/** monotone kubische Interpolation (Fritsch–Carlson) durch (xs, ys); außerhalb festgehalten */
+export function pchip(xs: readonly number[], ys: readonly number[], x: number): number {
+  const n = xs.length;
+  if (n === 1 || x <= xs[0]!) return ys[0]!;
+  if (x >= xs[n - 1]!) return ys[n - 1]!;
+  const h: number[] = [];
+  const del: number[] = [];
+  for (let k = 0; k < n - 1; k++) {
+    h.push(xs[k + 1]! - xs[k]!);
+    del.push((ys[k + 1]! - ys[k]!) / h[k]!);
+  }
+  const m = new Array<number>(n).fill(0);
+  m[0] = del[0]!;
+  m[n - 1] = del[n - 2]!;
+  for (let k = 1; k < n - 1; k++) {
+    const a = del[k - 1]!;
+    const b = del[k]!;
+    if (a * b <= 0) m[k] = 0;
+    else {
+      const w1 = 2 * h[k]! + h[k - 1]!;
+      const w2 = h[k]! + 2 * h[k - 1]!;
+      m[k] = (w1 + w2) / (w1 / a + w2 / b);
+    }
+  }
+  let k = 0;
+  while (k < n - 2 && x > xs[k + 1]!) k++;
+  const t = (x - xs[k]!) / h[k]!;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * ys[k]! + (t3 - 2 * t2 + t) * h[k]! * m[k]! + (-2 * t3 + 3 * t2) * ys[k + 1]! + (t3 - t2) * h[k]! * m[k + 1]!;
+}

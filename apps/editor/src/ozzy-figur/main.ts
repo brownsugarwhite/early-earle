@@ -30,7 +30,7 @@ export const SVG_TEXTE: Record<string, string> = {
 const daten = importieren(SVG_TEXTE);
 
 export type SzenenName = AnsichtName | Drehung;
-const istDrehung = (n: SzenenName): n is Drehung => n === 'drehen' || n === 'kopf' || n === 'koerper';
+const istDrehung = (n: SzenenName): n is Drehung => n === 'drehen' || n === 'kopf' || n === 'koerper' || n === 'haltung' || n === 'haltungP';
 const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'logo', titel: 'Logo' },
   { name: 'profil', titel: 'Profil' },
@@ -44,6 +44,8 @@ const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'drehen', titel: 'Ozzy dreht sich' },
   { name: 'kopf', titel: 'Kopf dreht' },
   { name: 'koerper', titel: 'Körper dreht' },
+  { name: 'haltung', titel: 'Hinsetzen, Hinlegen' },
+  { name: 'haltungP', titel: 'Hinsetzen, Kopf im Profil' },
 ];
 
 export function szeneBauen(name: SzenenName, t: number, fl: Fluessig, regeln: Regeln = REGELN): Szene {
@@ -200,7 +202,7 @@ function anzeigen(): void {
   (document.getElementById('winkel') as HTMLInputElement).value = String(zustand.t * 90);
   leiste.querySelectorAll('output').forEach((o) => {
     const el = document.getElementById(o.htmlFor.value) as HTMLInputElement | null;
-    if (el) o.textContent = el.id === 'winkel' ? `${Math.round(zustand.t * 90)}°` : el.value;
+    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : `${Math.round(zustand.t * 90)}°`) : el.value;
   });
 }
 

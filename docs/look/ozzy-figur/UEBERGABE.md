@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 18.11.2026 nachts, Etappen A und B gebaut, C in drei Runden)
+# Übergabe: Ozzy-Figur (Stand 18.11.2026 nachts, A, B und C gebaut, D begonnen: Haltungen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -165,7 +165,47 @@ Florian (18.11.): „weiß weiß muss aus sein. der tropfen ins bein sieht doch 
 - **Proben** (`2026-11-18-c3-proben.json`, Bilder `2026-11-18-c3-c-*`): A, B1, B2, C1 bestanden. Tempo unter fremder Last
   schwankend (Last 7–8); Weiß – Schwarz kostet messbar nichts.
 
+## Etappe D, erster Teil (D1): Haltungen Stehen, Sitzen, Liegen (18.11. nachts)
+
+Florian: „Erst weiter mit D“ (die ferne Wange zwischen 0° und 45° wartet). Plan für D in
+[`docs/plans/2026-11-18-ozzy-figur.md`](../../plans/2026-11-18-ozzy-figur.md), Abschnitt 12.
+
+- **Befund vorab** (Messung an seinen sechs Seitenvorlagen): Der Kopf hat in allen Haltungen genau dieselbe Form, er sitzt nur woanders
+  (einzige Ausnahme: die Maske im Liegen, Abweichung 13 bzw. 5). Der Schwanz dreht starr (−22° Sitzen, +12° Liegen). Die Vorderbeine
+  bleiben beim Sitzen gleich, die Hinterbeine klappen um etwa 90°, beim Liegen alle vier; dazu Formänderungen bis 28. Die Bohne kippt
+  9–12° und verformt sich stark. In seinen beiden Liegevorlagen ist die Bohne verschieden gekippt (−9° vorn, −5° Profil).
+- **Haltungen** (`haltung.ts`, im Raster über `Lage.haltung`, nur mit ψ = 90): Jedes Körperteil hängt an einem Knochen (Drehpunkt:
+  oberes Ende des Beins, Schwanzwurzel, Mitte der Bohne; Winkel und Lage des Drehpunkts je Haltung aus einer starren Anpassung an
+  seine Zeichnung); was danach fehlt, ist eine Korrekturform im Knochen (dreht mit). Gemischt werden Winkel, Lage und Korrektur
+  (PCHIP über die Haltung). Fenster und Keile hängen am Knochen ihres Beins, das Schwanzweiß am Schwanz. Zwei Reihen (Kopf vorn:
+  Logo, sit01, laydown01; Kopf im Profil: stand02, st02, laydown02), nach dem Kopfwinkel gemischt. Der Kopf wandert mit (Versatz je
+  Haltung und Reihe), dazu die kleinen Korrekturen der Maske. Teile, die in einer Haltung fehlen (hinterer Keil im Sitzen, Keile im
+  Liegen), ziehen sich auf ihren Drehpunkt zusammen.
+- **Lage der Haltungen zueinander** (seine Zeichenflächen sind verschieden groß): Beim Hinsetzen bleiben die Vorderpfoten stehen
+  (Vorderbein rechts deckt sich), beim Hinlegen bleibt das Hinterteil liegen (hinteres Ende der Bohne wie im Sitzen), alle auf dem
+  Boden.
+- **Malreihenfolge:** ab der Hälfte zur nächsten Haltung die seiner Vorlage; der Ohrspalt liegt dabei vorn direkt unter dem nahen Ohr
+  (sonst sah man ihn im Sitzen als weiße Kerbe im Ohr).
+- **Schwanzweiß hinter der Bohne:** Liegt der Schwanz hinter der Bohne (beim Hinlegen wandert er von unten nach oben), wird sein Weiß
+  kleiner, je tiefer seine Mitte hinter dem Umriss steckt (`weissHinterSchwarz`), statt durchzuscheinen.
+- **Seite:** Szenen „Hinsetzen, Hinlegen“ (`?szene=haltung`) und „Hinsetzen, Kopf im Profil“ (`haltungP`); der Regler zeigt 0 Stehen,
+  1 Sitzen, 2 Liegen. Rote Vorlage darüber an den Haltungen.
+- **Proben** (`2026-11-18-d1-proben.json`, Bilder `2026-11-18-d1-*`): an den vier Haltungsvorlagen exakt (0,000–0,007 % deutlich);
+  kein Weiß außerhalb des Umrisses; Tests `haltung.test.ts` (Anker für Anker exakt; Vorderpfoten bleiben beim Hinsetzen stehen, das
+  ferne Vorderbein ist im Sitzen 0,45 Einheiten anders gezeichnet). Übergang Bohne–Bein beim Hinsetzen ohne Kante
+  (`2026-11-18-d1-huefte-hinsetzen.png`).
+- **Offen, sein Urteil:** Vom Sitzen ins Liegen schwenkt das Hinterbein durch die Senkrechte (es zeigt im Sitzen nach vorn, im Liegen
+  nach hinten): Ozzy kniet kurz (um 1,5, `2026-11-18-d1-huefte-hinlegen.png`). Alternativen: direkt vom Stehen hinlegen, oder das
+  Hinterbein in die Tiefe drehen (schmal werden und hinten wieder aufgehen). Kleiner Rest: Beim Hinsetzen schließt sich der Spalt
+  zwischen den Beinen mit einem winzigen hellen Punkt (um 0,3).
+- **Noch nicht:** Haltung zusammen mit Körperdrehung (ψ ≠ 90), D2 (Beine mit zwei Knochen für den Gang), D3 (Strecken, Ducken,
+  Ausdruck).
+
 ## Fallen
+
+- Seine Vorlagen haben verschieden große Zeichenflächen: Haltungen über anatomische Bezüge zueinander legen (Vorderpfote,
+  Hinterteil), nie über die Bohnenmitte (die verformt sich).
+- Der Körper hängt in den Haltungen auch vom Kopfwinkel ab (Liegen vorn und im Profil verschieden gekippt): je Reihe eigene Knochen.
 
 - `sminN` rauscht auch an Schwarz, wo eine scharfe Spitze einer Gruppe an einer anderen endet (Haarspitze am Bauch): Kopf–Körper
   deshalb ohne Kantenrichtung.

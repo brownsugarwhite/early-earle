@@ -229,3 +229,16 @@ Weiß – Schwarz (Fenster geben dem Schwarz darüber weich nach), Kopf–Körpe
 Zwischenschlüssel 67° aus seiner Übermalung und verborgene Faltschlüssel, wo zwei Anker zwischen zwei Schlüsseln aneinander
 vorbeilaufen. Damit ist das Kinnband von 63° bis 90° glatt. Weg für weitere Stellen: Florian übermalt mein Bild bei einem Winkel,
 ich lege es auf und baue daraus den Schlüssel (`scripts/ozzy-figur/zwischen67/`).
+
+## 12. Etappe D (Nachtrag 18.11. nachts, Florian: „Erst weiter mit D“)
+
+D in drei Schritten, jeder mit seiner Probe:
+
+| Schritt | Inhalt | Probe |
+| --- | --- | --- |
+| D1 | Haltungen Stehen – Sitzen – Liegen in der Seite aus seinen sechs Vorlagen: Knochen je Körperteil (Drehpunkt, Winkel, Lage) plus Korrekturform, Kopf starr am Hals | an den Haltungen exakt (wie C1); Vorderpfoten bleiben beim Hinsetzen stehen; Übergang Bohne–Bein vergrößert ohne Kante; kein Weiß außerhalb |
+| D2 | Rig im Raum für den Gang: Beine mit zwei Knochen (Hüfte, Fuß), Sohle waagrecht am Boden, das Bein schert und streckt sich; Bohnenenden an Hüfte und Schulter | Sohlen in jeder Lage flach; Übergang Bohne–Bein in 5°-Schritten vierfach vergrößert ohne Kante; Logo exakt |
+| D3 | abgeleitete Posen Strecken und Ducken (aus D2), Ausdruck der Schlitze (neugierig, entschlossen, verdutzt) | Vorschläge als Filmstreifen, er korrigiert |
+
+Stand: D1 gebaut (Übergabe, Abschnitt „Etappe D, erster Teil“). Offen für ihn: der Weg vom Sitzen ins Liegen (das Hinterbein
+schwenkt durch die Senkrechte).

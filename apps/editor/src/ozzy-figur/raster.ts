@@ -4,45 +4,16 @@
 // Winkel und Länge): an den Schlüsselwinkeln genau Florians Zeichnung. Alles liegt in Körperkoordinaten (x von der Mitte der Bohne,
 // y vom Boden). Der Kopf sitzt am Hals (Punkt im Raum, folgt ψ) plus einem Versatz, der mit θ wandert.
 // Die Enden der Bohne hängen an den äußeren Beinkanten: Lage und Winkel folgen dem Bein, der Versatz aus den Schlüsseln bleibt.
-import { abbilden, flaeche as flaecheVon, type Form, kasten, type Punkt, schwerpunkt, verschieben } from './form';
+import { abbilden, abflachen, flaeche as flaecheVon, type Form, kasten, pchip, type Punkt, schwerpunkt, verschieben } from './form';
 import type { Fluessig, RenderTeil, Szene, Verdecker } from './renderer';
 import { gruppeVon, weissGruppeVon } from './szenen';
 import { type AnsichtName, type FigurAnsicht, type FigurDaten, type TeilName, teilVon } from './vorlagen/import';
 import { ZWISCHEN } from './vorlagen/zwischen';
+import { Haltungen } from './haltung';
 
 // ---- Interpolation ------------------------------------------------------------------------------------------------------
 
-/** monotone kubische Interpolation (Fritsch–Carlson) durch (xs, ys); außerhalb festgehalten */
-export function pchip(xs: readonly number[], ys: readonly number[], x: number): number {
-  const n = xs.length;
-  if (n === 1 || x <= xs[0]!) return ys[0]!;
-  if (x >= xs[n - 1]!) return ys[n - 1]!;
-  const h: number[] = [];
-  const del: number[] = [];
-  for (let k = 0; k < n - 1; k++) {
-    h.push(xs[k + 1]! - xs[k]!);
-    del.push((ys[k + 1]! - ys[k]!) / h[k]!);
-  }
-  const m = new Array<number>(n).fill(0);
-  m[0] = del[0]!;
-  m[n - 1] = del[n - 2]!;
-  for (let k = 1; k < n - 1; k++) {
-    const a = del[k - 1]!;
-    const b = del[k]!;
-    if (a * b <= 0) m[k] = 0;
-    else {
-      const w1 = 2 * h[k]! + h[k - 1]!;
-      const w2 = h[k]! + 2 * h[k - 1]!;
-      m[k] = (w1 + w2) / (w1 / a + w2 / b);
-    }
-  }
-  let k = 0;
-  while (k < n - 2 && x > xs[k + 1]!) k++;
-  const t = (x - xs[k]!) / h[k]!;
-  const t2 = t * t;
-  const t3 = t2 * t;
-  return (2 * t3 - 3 * t2 + 1) * ys[k]! + (t3 - 2 * t2 + t) * h[k]! * m[k]! + (-2 * t3 + 3 * t2) * ys[k + 1]! + (t3 - t2) * h[k]! * m[k + 1]!;
-}
+export { pchip } from './form';
 
 export interface Schluessel {
   w: number;
@@ -171,6 +142,8 @@ export interface Lage {
   psi: number;
   /** Kopf zur Kamera: 0 vorn, 45, 90 Profil */
   theta: number;
+  /** Haltung in der Seite (nur mit ψ = 90): 0 Stehen, 1 Sitzen, 2 Liegen */
+  haltung?: number;
 }
 export interface RasterRegeln {
   /** Verdecken auf der abgewandten Kopfseite zwischen den Schlüsseln (0 = aus) */
@@ -211,6 +184,8 @@ export class FigurRaster {
   private readonly klemme = new Map<TeilName, { w: number; rand: number }[]>();
   private readonly bohnenEnde: { links: { w: number; off: Punkt; dw: number }[]; rechts: { w: number; off: Punkt; dw: number }[] };
   private readonly ansichten: Record<AnsichtName, FigurAnsicht>;
+  /** Haltungen in der Seite (Etappe D1) */
+  private haltungen: Haltungen | null = null;
 
   constructor(d: FigurDaten) {
     const { front, viertel, logo, profil } = d.ansichten;
@@ -319,6 +294,13 @@ export class FigurRaster {
         while (liste[j]!.dw - liste[j - 1]!.dw < -Math.PI) liste[j]!.dw += 2 * Math.PI;
       }
     this.bohnenEnde = { links, rechts };
+    // Haltungen aus den Seitenvorlagen: Stehen ist das Raster bei ψ = 90 (Kopf vorn und im Profil)
+    const stehen = (theta: number): Map<TeilName, Form> => new Map(this.teile({ psi: 90, theta }).map((x) => [x.name, x.form]));
+    const stehVorn = stehen(0);
+    const stehProfil = stehen(90);
+    const nurKoerper = new Map([...stehVorn].filter(([n]) => KOERPER.includes(n)));
+    const nurKopf = (m: Map<TeilName, Form>): Map<TeilName, Form> => new Map([...m].filter(([n]) => KOPF.includes(n)));
+    this.haltungen = new Haltungen(d, nurKoerper, { vorn: nurKopf(stehVorn), profil: nurKopf(stehProfil) });
   }
 
   /** Spitzen je Kopfteil (Index), die zwischen 45° und 90° im Rahmen ihrer Nachbarn geführt werden */
@@ -461,12 +443,21 @@ export class FigurRaster {
         koerper.set('schwanzW', abbilden(w, (q) => [c[0] + (q[0] - c[0]) * k, c[1] + (q[1] - c[1]) * k]));
       }
     }
-    if (mitBohnenenden) this.bohnenendenSetzen(koerper, psi);
+    // Haltung (Sitzen, Liegen): Körper aus den Knochen der Haltungen (nur in der Seite)
+    const h = this.haltungen ? Math.max(0, Math.min(2, lage.haltung ?? 0)) : 0;
+    if (h > 1e-6) {
+      for (const [n, f] of this.haltungen!.koerper(h, theta)) koerper.set(n, f);
+      FigurRaster.weissHinterSchwarz(koerper, 'schwanzW', 'bohne');
+    } else if (mitBohnenenden) this.bohnenendenSetzen(koerper, psi);
     const hals = this.halsBei(psi);
     const vx = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.x), theta);
     const vy = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.y), theta);
     const kopf = new Map<TeilName, Form>();
-    for (const [n, keys] of this.kopf) kopf.set(n, verschieben(this.spitzenFuehren(n, formAusSchluesseln(keys, theta), theta), hals[0] + vx, hals[1] + vy));
+    const dk: Punkt = h > 1e-6 ? this.haltungen!.kopfVersatz(h, theta) : [0, 0];
+    for (const [n, keys] of this.kopf) {
+      const f = verschieben(this.spitzenFuehren(n, formAusSchluesseln(keys, theta), theta), hals[0] + vx + dk[0], hals[1] + vy + dk[1]);
+      kopf.set(n, h > 1e-6 ? this.haltungen!.kopfKorrektur(n, f, h, theta) : f);
+    }
     // Malreihenfolge (an den Schlüsseln wie in Florians Dateien): Ohren, Bohne, Beine von fern nach nah, Keile, Schwanz (sein Weiß
     // liegt vorn hinter der Bohne und tritt bis 45° weich davor), Fenster, Kopfmasken, Bart, Nase. Das Fenster links vorn liegt vorn über der Haarspitze von Maske B, das rechts vorn in der
     // Seite über der Haarspitze von Maske A (so in Front und Logo gezeichnet).
@@ -481,13 +472,45 @@ export class FigurRaster {
     reihe.push('kopfA');
     if (psi > 67.5) reihe.push('fensterRV');
     reihe.push('bartA', 'bartB', 'nase');
-    return reihe.map((n) => {
+    const malen = h >= 0.5 ? this.haltungen!.reihe(h, theta, reihe) : reihe;
+    return malen.map((n) => {
       const form = koerper.get(n) ?? kopf.get(n)!;
       const t: { name: TeilName; weiss: boolean; form: Form; rand?: number } = { name: n, weiss: n.startsWith('fenster') || n === 'schwanzW' || n === 'ohrSpalt' || n.startsWith('bart'), form };
       const kl = this.klemme.get(n);
       if (kl) t.rand = pchip(kl.map((x) => x.w), kl.map((x) => x.rand), psi);
       return t;
     });
+  }
+
+  /**
+   * Weiß eines Teils, dessen Träger hinter einem schwarzen Teil liegt (Schwanz hinter der Bohne), wird kleiner, je tiefer seine Mitte
+   * hinter dem Umriss steckt, statt durch das Schwarz zu scheinen (wie Florian es beim Kopf wollte): ganz außerhalb unverändert, eine
+   * halbe Breite des Weiß drinnen verschwunden.
+   */
+  private static weissHinterSchwarz(teile: Map<TeilName, Form>, weiss: TeilName, schwarz: TeilName): void {
+    const w = teile.get(weiss);
+    const s = teile.get(schwarz);
+    if (!w || !s) return;
+    const c = schwerpunkt(w);
+    const [x0, y0, x1, y1] = kasten(w);
+    const r = Math.max(1e-6, Math.max(x1 - x0, y1 - y0) / 2);
+    // Abstand der Mitte zum Umriss, außen positiv
+    const pts = abflachen(s, (q) => q, 1);
+    let d2 = Infinity;
+    let innen = false;
+    const n = pts.length / 2;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const ax = pts[2 * i]!, ay = pts[2 * i + 1]!, bx = pts[2 * j]!, by = pts[2 * j + 1]!;
+      if (ay > c[1] !== by > c[1] && c[0] < ((bx - ax) * (c[1] - ay)) / (by - ay) + ax) innen = !innen;
+      const ex = bx - ax, ey = by - ay;
+      const t = Math.max(0, Math.min(1, ((c[0] - ax) * ex + (c[1] - ay) * ey) / (ex * ex + ey * ey || 1)));
+      d2 = Math.min(d2, (ax + ex * t - c[0]) ** 2 + (ay + ey * t - c[1]) ** 2);
+    }
+    const d = innen ? -Math.sqrt(d2) : Math.sqrt(d2);
+    const u = Math.max(0, Math.min(1, (d + r) / r));
+    const k = Math.max(0.001, u * u * (3 - 2 * u));
+    if (k >= 0.999) return;
+    teile.set(weiss, abbilden(w, (q) => [c[0] + (q[0] - c[0]) * k, c[1] + (q[1] - c[1]) * k]));
   }
 
   private bohnenendenSetzen(koerper: Map<TeilName, Form>, psi: number): void {
@@ -517,6 +540,12 @@ export class FigurRaster {
   /** die Vorlage, die an dieser Lage genau getroffen werden soll (Körperkoordinaten), sonst null */
   vorlage(lage: Lage): { ansicht: AnsichtName; formen: Form[] } | null {
     const nahe = (a: number, b: number): boolean => Math.abs(a - b) < 0.6;
+    if (this.haltungen && (lage.haltung ?? 0) > 0.5 && nahe(lage.psi, 90)) {
+      const n = this.haltungen.vorlageBei(lage.haltung!, lage.theta);
+      if (!n) return null;
+      const u = this.ursprung(n);
+      return { ansicht: n, formen: this.ansichten[n].teile.map((x) => verschieben(x.form, -u[0], -u[1])) };
+    }
     const wahl: [number, number, AnsichtName][] = [[0, 0, 'front'], [45, 45, 'viertel'], [90, 0, 'logo'], [90, 90, 'profil']];
     for (const [p, t, n] of wahl)
       if (nahe(lage.psi, p) && nahe(lage.theta, t)) {
@@ -524,6 +553,13 @@ export class FigurRaster {
         return { ansicht: n, formen: a.teile.map((x) => inKoerper(a, x.form)) };
       }
     return null;
+  }
+
+  /** Ursprung einer Vorlage in Körperkoordinaten (Haltungen: wie sie zueinander liegen; sonst Bohnenmitte und Boden) */
+  ursprung(n: AnsichtName): Punkt {
+    const v = this.haltungen?.versatz.get(n);
+    if (v && n !== 'logo' && n !== 'profil') return [-v[0], -v[1]];
+    return koerperUrsprung(this.ansichten[n]);
   }
 
   /** Szene für den Renderer */

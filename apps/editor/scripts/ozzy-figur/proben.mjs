@@ -4,7 +4,8 @@
 //       Vorlage); dazu die Kantenpixel, die nur durch andere Kantenglättung kippen
 //   B1  freie Spitzen (Ohren, Schwanz, Haarspitzen) zwischen exakt und flüssig weniger als 0,5 Bildpunkte versetzt
 //   B2  Drehungen: nirgends mehr Weiß ohne Schwarz darunter als an den gezeichneten Enden (+ Kantensaum)
-//   C1  Raster an den Schlüsselwinkeln genau Florians Vorlagen (wie A, Drehung in Körperkoordinaten)
+//   C1  Raster an den Schlüsselwinkeln genau Florians Vorlagen (wie A, Drehung in Körperkoordinaten); D1: ebenso an den Haltungen
+//       Sitzen und Liegen (Kopf vorn und im Profil)
 //   B4  Tempo je Bild (Szene bauen, zeichnen, warten) in Chrome und WebKit
 //   aus apps/editor:  node scripts/ozzy-figur/proben.mjs [ausordner]
 import { spawn } from 'node:child_process';
@@ -19,8 +20,10 @@ const TAG = process.env.TAG ?? '2026-11-18';
 mkdirSync(AUS, { recursive: true });
 const URL_SEITE = `http://localhost:${PORT}/ozzy-figur.html?modus=exakt`;
 const ANSICHTEN = ['front', 'back', 'logo', 'profil', 'viertel', 'lieg1', 'lieg2', 'sitz1', 'sitz2'];
-const DREHUNGEN = ['drehen', 'kopf', 'koerper'];
-const SCHLUESSEL = [['drehen', 0, 'front'], ['drehen', 0.5, 'viertel'], ['drehen', 1, 'profil'], ['kopf', 0, 'logo'], ['kopf', 1, 'profil'], ['koerper', 0, 'front'], ['koerper', 1, 'logo']];
+const DREHUNGEN = ['drehen', 'kopf', 'koerper', 'haltung', 'haltungP'];
+const SCHLUESSEL = [['drehen', 0, 'front'], ['drehen', 0.5, 'viertel'], ['drehen', 1, 'profil'], ['kopf', 0, 'logo'], ['kopf', 1, 'profil'], ['koerper', 0, 'front'], ['koerper', 1, 'logo'], ['haltung', 0.5, 'sitz1'], ['haltung', 1, 'lieg1'], ['haltungP', 0.5, 'sitz2'], ['haltungP', 1, 'lieg2']];
+const istHaltung = (sz) => sz.startsWith('haltung');
+const marke = (sz, t) => (istHaltung(sz) ? `h${(t * 2).toFixed(1)}` : `${Math.round(t * 90)}`);
 
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { cwd: new URL('../../', import.meta.url).pathname, env: { ...process.env, EDITOR_WEB: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverText = '';
@@ -51,7 +54,7 @@ async function blatt(browser, page, sz, fl, datei) {
     await page.evaluate(([sz, t, fl]) => window.__ozzyFigur.zeigen(sz, t, fl, 0, 600, 640), [sz, t, fl]);
     bilder.push(await page.evaluate(() => window.__ozzyFigur.bild()));
   }
-  const html = `<html><body style="margin:0;background:#fff;font:14px Helvetica"><div id="r" style="display:flex;gap:6px;padding:8px">${bilder.map((u, i) => `<div><img src="${u}" width="300" height="320" style="border:1px solid #eee"><div style="color:#888;text-align:center">${Math.round((i / 6) * 90)}°</div></div>`).join('')}</div></body></html>`;
+  const html = `<html><body style="margin:0;background:#fff;font:14px Helvetica"><div id="r" style="display:flex;gap:6px;padding:8px">${bilder.map((u, i) => `<div><img src="${u}" width="300" height="320" style="border:1px solid #eee"><div style="color:#888;text-align:center">${istHaltung(sz) ? ((i / 6) * 2).toFixed(2) : Math.round((i / 6) * 90) + '°'}</div></div>`).join('')}</div></body></html>`;
   const p2 = await browser.newPage({ viewport: { width: 2200, height: 400 } });
   await p2.setContent(html);
   await (await p2.$('#r')).screenshot({ path: AUS + datei });
@@ -73,15 +76,15 @@ async function blatt(browser, page, sz, fl, datei) {
   for (const sz of DREHUNGEN) {
     const zahlen = [];
     for (const t of T) zahlen.push(await page.evaluate(([sz, t]) => window.__ozzyFigur.zaehlen(sz, t, true, 1, 800, 800), [sz, t]));
-    const enden = Math.max(zahlen[0], zahlen[zahlen.length - 1], sz === 'drehen' ? zahlen[6] : 0);
+    const enden = Math.max(zahlen[0], zahlen[zahlen.length - 1], sz === 'drehen' || istHaltung(sz) ? zahlen[6] : 0);
     ergebnis.B2[sz] = { zahlen, enden, schlimmstes: Math.max(...zahlen.slice(1, -1)) };
   }
   ergebnis.bestanden.B2 = Object.values(ergebnis.B2).every((r) => r.schlimmstes <= r.enden + 40);
   for (const [sz, t, a] of SCHLUESSEL) {
     const r = await page.evaluate(([sz, t, a]) => window.__ozzyFigur.vergleichVorlage(a, 1000, 1000, { szene: sz, t }), [sz, t, a]);
-    bildSpeichern(r.diff, `${TAG}-c-${sz}-${Math.round(t * 90)}-unterschied.png`);
+    bildSpeichern(r.diff, `${TAG}-c-${sz}-${marke(sz, t)}-unterschied.png`);
     delete r.diff;
-    ergebnis.C1[`${sz}@${Math.round(t * 90)}=${a}`] = r;
+    ergebnis.C1[`${sz}@${marke(sz, t)}=${a}`] = r;
   }
   ergebnis.bestanden.C1 = Object.values(ergebnis.C1).every((r) => r.deutlichAnteil <= 0.003);
   ergebnis.B4.chrome = { logo: await page.evaluate(() => window.__ozzyFigur.tempo('logo', 0, true, 120, 1000, 1000)), drehen: await page.evaluate(() => window.__ozzyFigur.tempo('drehen', 0, true, 120, 1000, 1000)) };
