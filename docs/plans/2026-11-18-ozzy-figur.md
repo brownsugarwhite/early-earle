@@ -221,3 +221,11 @@ Wulst), schrumpfendes Schwanzweiß, Verschmelzen von Bart und Vorderbeinfenstern
 Felder je Teil, damit es nur etwa 1 ms kostet), Führung der Fransenspitzen zwischen 45° und 90°. Offen und als nächster Schritt
 vorgeschlagen: die Anker der fernen Kopfseite im Profil-Schlüssel in die Reihenfolge des 3/4 legen (fünf Stücke kehren sonst ihre
 Sehne um; Mischen allein hielt in fünf Versuchen nicht).
+
+## 11. Etappe C, dritter Teil (Nachtrag 18.11. nachts)
+
+Florian: Weiß – Weiß aus, dafür darf das Weiß des Beins mit dem Schwarz verschmelzen; dazu eine Übermalung für 67°. Gebaut: Regler
+Weiß – Schwarz (Fenster geben dem Schwarz darüber weich nach), Kopf–Körper ohne Kantenrichtung (kein ausgefranster Bauchspalt),
+Zwischenschlüssel 67° aus seiner Übermalung und verborgene Faltschlüssel, wo zwei Anker zwischen zwei Schlüsseln aneinander
+vorbeilaufen. Damit ist das Kinnband von 63° bis 90° glatt. Weg für weitere Stellen: Florian übermalt mein Bild bei einem Winkel,
+ich lege es auf und baue daraus den Schlüssel (`scripts/ozzy-figur/zwischen67/`).

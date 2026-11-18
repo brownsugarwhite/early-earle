@@ -53,12 +53,14 @@ export interface Fluessig {
   kopfOhr: number;
   ohrOhr: number;
   kopfNase: number;
-  /** Bartweiß und Fensterweiß fließen ineinander (0 = wie gezeichnet: Haarspitzen dürfen Fenster überdecken) */
+  /** Bartweiß und Fensterweiß fließen ineinander (0 = wie gezeichnet: Haarspitzen dürfen Fenster überdecken; Florian: aus) */
   weissWeiss: number;
+  /** Beinfenster geben dem Schwarz, das über ihnen liegt, weich nach (0 = harte Kante wie gezeichnet) */
+  weissSchwarz: number;
   klemme: number;
 }
-export const EXAKT: Fluessig = { bohneBein: 0, bohneSchwanz: 0, bohneKopf: 0, kopfOhr: 0, ohrOhr: 0, kopfNase: 0, weissWeiss: 0, klemme: 0 };
-export const FLUESSIG: Fluessig = { bohneBein: 12, bohneSchwanz: 10, bohneKopf: 10, kopfOhr: 8, ohrOhr: 4, kopfNase: 5, weissWeiss: 28, klemme: 4 };
+export const EXAKT: Fluessig = { bohneBein: 0, bohneSchwanz: 0, bohneKopf: 0, kopfOhr: 0, ohrOhr: 0, kopfNase: 0, weissWeiss: 0, weissSchwarz: 0, klemme: 0 };
+export const FLUESSIG: Fluessig = { bohneBein: 12, bohneSchwanz: 10, bohneKopf: 10, kopfOhr: 8, ohrOhr: 4, kopfNase: 5, weissWeiss: 0, weissSchwarz: 8, klemme: 4 };
 
 export interface Szene {
   teile: RenderTeil[];
@@ -156,7 +158,7 @@ export class FigurRenderer {
       KOPF + 'in vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }',
       KOPF + LESEN +
         `uniform sampler2D tAussen; uniform int anzahl; uniform int gruppe[${MAX_TEILE}]; uniform int traeger[${MAX_TEILE}]; uniform float rand[${MAX_TEILE}];
-        uniform int hinter[${MAX_TEILE}]; uniform float hinterTiefe[${MAX_TEILE}]; uniform int weissGruppe[${MAX_TEILE}]; uniform float kWeiss; uniform int fensterKanal[2];
+        uniform int hinter[${MAX_TEILE}]; uniform float hinterTiefe[${MAX_TEILE}]; uniform int weissGruppe[${MAX_TEILE}]; uniform float kWeiss; uniform int fensterKanal[2]; uniform int weichKanal[${MAX_TEILE}]; uniform float kWeissSchwarz;
         uniform float kBohneBein, kBohneSchwanz, kBohneKopf, kKopfOhr, kOhrOhr, kKopfNase, kKlemme;
         uniform int verdeckerZahl; uniform vec4 verdeckerA[4]; uniform vec2 verdeckerB[4];
         uniform int spaltNah, spaltFern; uniform float spaltBreite, spaltAuslauf; uniform int diagnose;
@@ -183,7 +185,8 @@ export class FigurRenderer {
           kopf = sminN(kopf, g[6], kKopfNase);
           float koerper = sminN(g[0], g[1], kBohneBein);
           koerper = sminN(koerper, g[2], kBohneSchwanz);
-          float schwarz = min(sminN(koerper, kopf, kBohneKopf), g[7]);
+          // Kopf und Körper ohne Kantenrichtung: wo eine Haarspitze der Maske am Bauch endet, rauschten deren Ableitungen (ausgefranste Kante)
+          float schwarz = min(smin(koerper, kopf, kBohneKopf), g[7]);
           // ueber: Schwarz, das nach dem Kanal gezeichnet wird; fuer die verschmelzenden Fenster dasselbe mit Kopf, Ohren und Nase um
           // heben zurueckgesetzt (in einem Durchgang, ohne zweite Schleife)
           float heben = 0.3 * kWeiss;
@@ -202,7 +205,8 @@ export class FigurRenderer {
             float w = d[c]; int t = traeger[c];
             if (t >= 0) w = smax(w, d[t] + rand[c], kKlemme);
             if (rv > 0.05) w = smax(w, sil + rv, min(kKlemme, rv));
-            float cw = deck(w) * (1.0 - deck(ueber[c]));
+            // Beinfenster: das Schwarz darüber (Haarspitzen, Rand der Maske) zieht sich weich hinein, statt hart abzuschneiden
+            float cw = weichKanal[c] == 1 && kWeissSchwarz > 0.0 ? deck(smax(w, -ueber[c], kWeissSchwarz)) : deck(w) * (1.0 - deck(ueber[c]));
             int hi = hinter[c]; if (hi >= 0) cw *= 1.0 - deck(d[hi] + hinterTiefe[c]);
             weiss = max(weiss, cw);
             // Bart, wie er nach der Malreihenfolge sichtbar ist (das später gezeichnete Schwarz als Abstand abgezogen)
@@ -521,6 +525,12 @@ export class FigurRenderer {
     });
     gl.uniform1iv(this.ort(this.pBild, 'fensterKanal'), fk);
     gl.uniform1f(this.ort(this.pBild, 'kWeiss'), fl.weissWeiss * s);
+    const weich = new Int32Array(MAX_TEILE);
+    teile.forEach((t, ch) => {
+      if (t.weiss && t.name.startsWith('fenster')) weich[ch] = 1;
+    });
+    gl.uniform1iv(this.ort(this.pBild, 'weichKanal'), weich);
+    gl.uniform1f(this.ort(this.pBild, 'kWeissSchwarz'), fl.weissSchwarz * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneBein'), fl.bohneBein * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneSchwanz'), fl.bohneSchwanz * s);
     gl.uniform1f(this.ort(this.pBild, 'kBohneKopf'), fl.bohneKopf * s);

@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 18.11.2026 spätabends, Etappen A und B gebaut, C in zwei Runden)
+# Übergabe: Ozzy-Figur (Stand 18.11.2026 nachts, Etappen A und B gebaut, C in drei Runden)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -131,7 +131,47 @@ Verjüngung der Outlines im Gesicht, wo das Weiß aus dem Schwarz tritt, „muss
 Offen nach C, zweiter Teil: Florians Urteil zur Verschmelzung (Stärke, Tropfen im Liegen), Kinn und Wange der fernen Seite (siehe
 oben), Rückseite 90° → 180°, Nicken, Sitzen als Pose (Etappe D), seine Messung auf dem iPhone.
 
+## Etappe C, dritter Teil (18.11. nachts, nach Florians dritter Rückmeldung)
+
+Florian (18.11.): „weiß weiß muss aus sein. der tropfen ins bein sieht doch nicht gut aus. kann aber das weiß vom bein mit dem
+äußeren schwarz vom bein verschmelzen“, dazu eine Vorlage für 67°, „nur kurz in photoshop gemacht und nicht als svg“
+([`vorlagen/ozzy_kopf67_florian.png`](vorlagen/ozzy_kopf67_florian.png): mein Bild der Kopfdrehung bei 67°, ferne Kopfseite
+übermalt).
+
+- **Weiß – Weiß aus** (Standard 0, der Regler bleibt zum Vergleich).
+- **Weiß – Schwarz** (neu, Standard 8, Regler 0–30): Beinfenster geben dem Schwarz, das über ihnen gezeichnet ist (Haarspitzen der
+  Maske, die Zickzacklinie über der Pfote im Liegen), weich nach (`smax(w, −ueber, k)` statt harter Kante): Die Haarspitze drückt
+  sich als runde Delle ins Fenster. Es entsteht nirgends neues Weiß; an den Vorlagen ändern sich nur diese Stellen (Front, 3/4,
+  Sitzen, Liegen, je unter 140 Bildpunkte bei 600 × 600). Bild `2026-11-18-c3-weiss-schwarz.png`.
+- **Bauchspalt ohne Fransen:** Der helle Spalt unter dem Bauch war bei Kopf 60–67° oben ausgefranst. Ursache war die Vereinigung
+  Kopf–Körper nach Kantenrichtung: Wo eine Haarspitze der Maske am Bauch endet, rauschen deren Ableitungen. Kopf–Körper vereinigt jetzt
+  ohne Kantenrichtung; Nacken und Brust bekommen eine weiche Rundung in der Ecke, keine Wulst (Bohne–Bein bleibt nach Kantenrichtung).
+- **Zwischenschlüssel 67° aus seiner Übermalung** (`vorlagen/zwischen.ts`, Skripte `scripts/ozzy-figur/zwischen67/`): seine Übermalung
+  auf meine Darstellung gelegt (99,7 % Deckung, wo er nichts geändert hat), seine Kontur der fernen Bartkante gelesen, `bartB` neu
+  gesetzt: Kerbe und Spitze der Franse tiefer, die Bartkante bis zur feinen Spitze des Bands an der Nase, darüber deckt der Bart die
+  Maske (kein Haken mehr), Bézier-Stücke nach kleinsten Quadraten angepasst. Bei 67° deckt sich das Bild jetzt mit seiner Übermalung
+  bis auf die Spitze der Stirnfranse (bei ihm etwas länger). Für Teile mit einem Zwischenschlüssel zwischen 45° und 90° ist die
+  Spitzenführung aus.
+- **Faltschlüssel** (verborgen, `faltSchluessel` in `raster.ts`): Kehrt ein Stück zwischen zwei Schlüsseln seine Sehne um (mehr als
+  135°), wird zum Zeitpunkt der kürzesten gemischten Sehne ein Schlüssel eingesetzt, in dem es sich auf einen Punkt zusammengezogen
+  hat (äußere Griffe auf eine gemeinsame Tangente). Davor und danach mischt alles wie sonst. Eingesetzt: `bartB` bei 79,4° (die
+  Franse und das Paar 4/5 zwischen 67° und 90°), `kopfB` bei 20,3°. Anders als das Falten beim Mischen (vierter Versuch der letzten
+  Runde) ist das ein fester Schlüssel: Die Bewegung davor und danach bleibt die gemischte.
+- **Ergebnis am Kinn:** Von 63° bis 90° läuft das Band glatt, die Franse schrumpft gleichmäßig und zieht sich bei 79° in die Kontur
+  zurück (`2026-11-18-c3-kinnband.png` gegen `2026-11-18-c2-offen-kinnband.png`; `2026-11-18-c3-kinn.png`; Abgleich mit seiner
+  Übermalung `2026-11-18-c3-vergleich67.png`). An der Nase bei 75–87° nur noch Kantenpixel.
+- **Offen:** die ferne Wange zwischen 0° und 45° (dünner Haken um 10°, kleine Stufe um 25–35°, `2026-11-18-c3-offen-wange.png`):
+  ginge auf demselben Weg, wenn Florian eine Übermalung um 22° macht; die Spitze der Stirnfranse bei 67°.
+- **Proben** (`2026-11-18-c3-proben.json`, Bilder `2026-11-18-c3-c-*`): A, B1, B2, C1 bestanden. Tempo unter fremder Last
+  schwankend (Last 7–8); Weiß – Schwarz kostet messbar nichts.
+
 ## Fallen
+
+- `sminN` rauscht auch an Schwarz, wo eine scharfe Spitze einer Gruppe an einer anderen endet (Haarspitze am Bauch): Kopf–Körper
+  deshalb ohne Kantenrichtung.
+- Ein gezeichneter Zwischenschlüssel und die Spitzenführung schließen sich aus (die Führung mischt nur zwischen 45° und 90°).
+- Übermalungen von Florian als Bild: zuerst auf die Darstellung legen (Maßstab und Versatz über die Deckung der unveränderten
+  Flächen), dann nur die Teile anpassen, die er geändert hat (Unterschiedsbild zeigt sie).
 
 - Jede weiche Vereinigung braucht Felder, die bis k reichen: Sättigt ein Feld innerhalb von k, verschiebt `smin` jede Kante
   (der Bart wuchs bei Reichweite 0,6 k überall um 2 Bildpunkte). Reichweite je Teil, nie unter k.

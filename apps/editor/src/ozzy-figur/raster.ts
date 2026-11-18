@@ -8,6 +8,7 @@ import { abbilden, flaeche as flaecheVon, type Form, kasten, type Punkt, schwerp
 import type { Fluessig, RenderTeil, Szene, Verdecker } from './renderer';
 import { gruppeVon, weissGruppeVon } from './szenen';
 import { type AnsichtName, type FigurAnsicht, type FigurDaten, type TeilName, teilVon } from './vorlagen/import';
+import { ZWISCHEN } from './vorlagen/zwischen';
 
 // ---- Interpolation ------------------------------------------------------------------------------------------------------
 
@@ -88,6 +89,79 @@ export function formAusSchluesseln(keys: readonly Schluessel[], w: number): Form
     out.push({ p: [px, py], i: griff('i'), o: griff('o') });
   }
   return out;
+}
+
+/** Kosinus der kleinsten Umkehr einer Sehne zwischen zwei Schlüsseln, ab der ein Faltschlüssel nötig ist (135°) */
+const FALTEN_COS = Math.SQRT1_2;
+
+/**
+ * Faltschlüssel: Kehrt ein Stück zwischen zwei Schlüsseln seine Sehne um (zwei Nachbaranker laufen aneinander vorbei, weil sie im
+ * späteren Schlüssel in anderer Reihenfolge auf einer Linie liegen), bleibt beim Mischen quer zur Kontur eine Stufe stehen. Dort
+ * wird ein verborgener Schlüssel eingesetzt, in dem sich das Stück auf einen Punkt zusammengezogen hat: zum Zeitpunkt der kürzesten
+ * gemischten Sehne, alle anderen Anker wie gemischt, die äußeren Griffe der beiden auf eine gemeinsame Tangente gelegt. Davor und
+ * danach mischt alles wie sonst; die Anker treffen sich, statt aneinander vorbeizulaufen.
+ */
+function faltSchluessel(keys: Schluessel[]): void {
+  const neu: Schluessel[] = [];
+  for (let z = 0; z + 1 < keys.length; z++) {
+    const k0 = keys[z]!;
+    const k1 = keys[z + 1]!;
+    const n = k0.form.length;
+    const paare: number[] = [];
+    for (let j = 0; j < n; j++) {
+      const j1 = (j + 1) % n;
+      if (paare.includes((j - 1 + n) % n) || (j1 === 0 && paare.includes(0))) continue;
+      const c0: Punkt = [k0.form[j1]!.p[0] - k0.form[j]!.p[0], k0.form[j1]!.p[1] - k0.form[j]!.p[1]];
+      const c1: Punkt = [k1.form[j1]!.p[0] - k1.form[j]!.p[0], k1.form[j1]!.p[1] - k1.form[j]!.p[1]];
+      const l0 = Math.hypot(c0[0], c0[1]);
+      const l1 = Math.hypot(c1[0], c1[1]);
+      if (l0 > 1e-6 && l1 > 1e-6 && c0[0] * c1[0] + c0[1] * c1[1] < -FALTEN_COS * l0 * l1) paare.push(j);
+    }
+    if (!paare.length) continue;
+    // kürzeste gemischte Sehne je Paar (fein abgetastet), gemittelt
+    const zeiten = paare.map((j) => {
+      const j1 = (j + 1) % n;
+      let best = (k0.w + k1.w) / 2;
+      let bestL = Infinity;
+      for (let s = 1; s < 120; s++) {
+        const w = k0.w + ((k1.w - k0.w) * s) / 120;
+        const f = formAusSchluesseln(keys, w);
+        const l = Math.hypot(f[j1]!.p[0] - f[j]!.p[0], f[j1]!.p[1] - f[j]!.p[1]);
+        if (l < bestL) {
+          bestL = l;
+          best = w;
+        }
+      }
+      return best;
+    });
+    const w = zeiten.reduce((a, b) => a + b, 0) / zeiten.length;
+    const f = formAusSchluesseln(keys, w).map((x) => ({ p: [x.p[0], x.p[1]] as Punkt, i: [x.i[0], x.i[1]] as Punkt, o: [x.o[0], x.o[1]] as Punkt }));
+    for (const j of paare) {
+      const j1 = (j + 1) % n;
+      const A = f[j]!;
+      const B = f[j1]!;
+      const m: Punkt = [(A.p[0] + B.p[0]) / 2, (A.p[1] + B.p[1]) / 2];
+      // Richtung hinein und hinaus: Griff, sonst Nachbaranker
+      const vor = f[(j - 1 + n) % n]!.p;
+      const nach = f[(j1 + 1) % n]!.p;
+      const ein: Punkt = Math.hypot(A.i[0] - A.p[0], A.i[1] - A.p[1]) > 1e-6 ? [A.i[0] - A.p[0], A.i[1] - A.p[1]] : [vor[0] - m[0], vor[1] - m[1]];
+      const aus: Punkt = Math.hypot(B.o[0] - B.p[0], B.o[1] - B.p[1]) > 1e-6 ? [B.o[0] - B.p[0], B.o[1] - B.p[1]] : [nach[0] - m[0], nach[1] - m[1]];
+      const le = Math.hypot(ein[0], ein[1]) || 1;
+      const la = Math.hypot(aus[0], aus[1]) || 1;
+      let tx = aus[0] / la - ein[0] / le;
+      let ty = aus[1] / la - ein[1] / le;
+      const lt = Math.hypot(tx, ty) || 1;
+      tx /= lt;
+      ty /= lt;
+      const li = Math.hypot(A.i[0] - A.p[0], A.i[1] - A.p[1]);
+      const lo = Math.hypot(B.o[0] - B.p[0], B.o[1] - B.p[1]);
+      f[j] = { p: m, i: [m[0] - tx * li, m[1] - ty * li], o: m };
+      f[j1] = { p: m, i: m, o: [m[0] + tx * lo, m[1] + ty * lo] };
+    }
+    neu.push({ w, form: f });
+  }
+  for (const k of neu) keys.push(k);
+  keys.sort((x, y) => x.w - y.w);
 }
 
 // ---- Figur ----------------------------------------------------------------------------------------------------------------
@@ -201,6 +275,14 @@ export class FigurRaster {
       for (const [w, a] of kopfKeys) if (hat(a, n)) keys.push({ w, form: verschieben(k(a, n), -mitten.get(w)![0], -mitten.get(w)![1]) });
       this.kopf.set(n, keys);
     }
+    // Zwischenschlüssel aus Florians Übermalungen (Kopfkoordinaten), nach Winkel einsortiert
+    for (const z of ZWISCHEN) {
+      const keys = this.kopf.get(z.teil);
+      if (!keys || keys.some((k) => k.w === z.w)) continue;
+      keys.push({ w: z.w, form: z.form });
+      keys.sort((x, y) => x.w - y.w);
+    }
+    for (const keys of this.kopf.values()) faltSchluessel(keys);
     // Ohrspalt vorn: unter dem nahen Ohr verborgen (es wird danach gezeichnet)
     {
       const keil45 = this.kopf.get('ohrSpalt')!.find((s) => s.w === 45)!.form;
@@ -267,6 +349,8 @@ export class FigurRaster {
       const k45 = keys?.find((x) => x.w === 45)?.form;
       const k90 = keys?.find((x) => x.w === 90)?.form;
       if (!k45 || !k90) continue;
+      // ein gezeichneter Zwischenschlüssel zwischen 45° und 90° legt die Form dort fest
+      if (keys!.some((x) => x.w > 45 && x.w < 90)) continue;
       const n = k45.length;
       // nur nach außen zeigende Spitzen (Kerben mitzuführen schob Anker an der Nase heraus)
       const umlauf = Math.sign(flaecheVon(k45));
