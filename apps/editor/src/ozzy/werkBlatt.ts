@@ -970,9 +970,11 @@ export class WerkBlatt implements Raum {
         });
       }
     }
+    // ein ganzer gewählter Loop (eine Linie gegriffen, eine Naht von selbst entstanden): Alle seine Punkte zeigen sich gewählt
+    const ganze = new Set(werk.G.auswahl.filter((w) => w.i < 0).map((w) => w.l));
     const neu = new Set<number>();
     this.anker.forEach((A, pi) => {
-      if (A.werk.some((w) => im.has(schl(w)))) neu.add(pi);
+      if (A.werk.some((w) => im.has(schl(w)) || ganze.has(w.id))) neu.add(pi);
     });
     this.gezeigteAuswahl = neu;
     this.auswahlStruktur = this.struktur;

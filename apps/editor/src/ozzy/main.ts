@@ -517,6 +517,13 @@ const FELD_KLICK_WEG = 4;
 const FELD_DECKUNG = 0.5;
 let feldToenung: { index: Uint32Array | null; nr: number } = { index: null, nr: 0 };
 
+/**
+ * Clipping (18.11.): Reicht in der gezeigten Haut des Werks eine Hälfte über die Spiegelebene, schneidet die Anzeige sie dort ab (der
+ * Rand in Welteinheiten, wie `SCHNITT_RAND` im Prüffenster); sonst null. Seifenhaut, Solid und Zebra; Jelly, helles Solid und Grün
+ * laufen in fremden Renderern und zeigen bis zum Loslassen beide Hälften ganz.
+ */
+const spiegelSchnittJetzt = (): number | null => (werkGezeigt && werkHaut.spiegelSchnitt ? werk.SCHNITT_RAND / werkHaut.f : null);
+
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
   werk.zug !== null || werk.nachlauf !== null || werk.G.aufraeumen !== null || werk.vorrechnenUhr !== null || werk.G.gegriffen !== null || werk.maulLauf !== null;
@@ -2524,6 +2531,7 @@ function bild(dt: number): boolean {
     dunkel: vier > 0.999 ? null : hintenJetzt,
     kanteFarbe: KANTE_FARBE,
     schnitt: schnittJetzt,
+    spiegelSchnitt: spiegelSchnittJetzt(),
     // eingerastet: Das Blatt hat die Blase ganz weggeschnitten und der Rahmen ist weg: nur der Grund
     leer: schnittGanz && zustand === 'ruhe' && vier < 1e-3 && !!m && 1 - m.schatten < 1e-3,
     netz: werkGezeigt ? netzArt : 0,
@@ -2573,7 +2581,7 @@ function bild(dt: number): boolean {
         feste.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
         festeStand = { netz: werkHaut.netz, version: werkHaut.version };
       }
-      feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen });
+      feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen, spiegelSchnitt: spiegelSchnittJetzt() });
     }
   } else {
     gast.aus();
@@ -6418,6 +6426,9 @@ const haken = {
       feinePunkte: werkHaut.netz ? werkHaut.netz.pos.length / 3 : 0,
       griffWartet: werk.griffWartet(),
       beschaeftigt: werkBeschaeftigt(),
+      /** Clipping: Reicht eine Hälfte über die Spiegelebene (Haut des Werks), und schneidet die Anzeige sie gerade ab? */
+      ueberDerMitte: werk.ueberDerMitte(),
+      spiegelSchnitt: werkHaut.spiegelSchnitt,
       schritte: werkForm ? werk.zurueck.length - werkForm.zurueck : 0,
       f: werkHaut.f,
       mitte: werkHaut.mitte,

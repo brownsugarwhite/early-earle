@@ -179,6 +179,14 @@ Quellen: [FiberMesh](https://www-ui.is.s.u-tokyo.ac.jp/~takeo/papers/fibermesh.p
 | Etappe | Was | Probe, Bild |
 | --- | --- | --- |
 | Beweis 1 | Freie Form im Kern (`frei.ts`: `spiegelAnwenden`; `hautFrei`, `hautAus` mit `ohnePaare`; Einsetzen und Verdichten geben die Freiheit weiter) | `form-frei.ts`: alles gut |
+| 0 | **Donut in Ozzy.** Im Zug schneidet die Anzeige jede Hälfte an der Spiegelebene ab (Seifenhaut, Solid, Zebra; nur dort, wo eine Hälfte wirklich über die Ebene reicht, damit längs der Mitte kein Streifen frei bleibt). Beim Loslassen entsteht die Naht von selbst (`werk.mitteFest(true)` aus `zugEnde`, Schalter `G.clipping`), ist gewählt (alle ihre Punkte zeigen sich gewählt), K macht sie rund, ein ⌘Z nimmt Zug und Naht zurück. | `ozzy-donut-fenster.mjs` (an „strange bird“ und mit `KUGEL=1` an einer frischen Kugel: alles gut). Bilder: [vorher](../progress/ozzy/2026-11-18-donut-0-vorher.png), [im Zug](../progress/ozzy/2026-11-18-donut-1-im-zug.png), [Naht](../progress/ozzy/2026-11-18-donut-2-naht.png), [rund](../progress/ozzy/2026-11-18-donut-3-rund.png) |
+
+**Was an Etappe 0 offen bleibt:** (1) Wo die Hälften flach aufeinandertreffen, ist die Naht als Kante eine Schneide; direkt an ihr
+zählt die Probe an „strange bird“ 8 sehr schmale umgeschlagene Dreiecke (das größte ein Achtel eines mittleren Dreiecks), mit K sind
+es 0. Zu sehen ist davon nichts. (2) Mit einem Maul und in der Pose entsteht keine Naht (so war es schon am 13.11.); die Form bleibt
+dann lose, und die Statuszeile sagt es. (3) Reicht das Loch bis an die Linie der Mitte (ein Zug dicht am Umriss), kann der Kern
+nicht schneiden; auch dann bleibt die Form lose. (4) Jelly, helles Solid, Grün, die Wände und der weiße Körper zeigen im Zug noch
+beide Hälften ganz.
 
 ## Anhang A: Dein Auftrag (18.11.2026, wörtlich)
 

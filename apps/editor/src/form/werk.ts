@@ -185,6 +185,14 @@ export const G = {
 } | null,
   maus: null as { a: Ansicht; X: number; Y: number } | null,
   ablageName: '',
+  /**
+   * Spiegel mit Clipping (18.11., Plan „Objekte, Spiegel und Nähte“; Florian: „Mit clipping verschmelzen die spiegelkanten zu einem
+   * edgeloop … nach dem loslassen entsteht der edgeloop an der spiegelkante von selbst und ist ausgewählt“): Was ein Zug über die
+   * Spiegelebene führt, verschmilzt dort beim Loslassen mit seinem Spiegelbild (`mitteFest`), und die Anzeige schneidet bis dahin
+   * jede Hälfte an der Ebene ab. Aus (`?clipping=0`, später der Spiegel-Knopf): Die Hälften dürfen sich überragen, nichts verschmilzt
+   * von selbst (im Prüffenster gilt dann die Regel vom 13.11.: der Punkt hinter der Mitte ist markiert, ihn löschen macht fest).
+   */
+  clipping: new URLSearchParams(location.search).get('clipping') !== '0',
 };
 
 /** Was das Werk von der Anzeige braucht; die Hülle (oder Ozzy) setzt es. Bis dahin tut es nichts (`skala`: 1). */
@@ -1983,6 +1991,25 @@ export function hinterDerMitteZahl(): number {
     }
   });
   return gesehen.size;
+}
+
+/** so weit (Anteil der mittleren Kante) muss die Haut einer Hälfte hinter der Spiegelebene liegen, damit dort eine Naht entsteht */
+export const NAHT_AB = 0.05;
+/**
+ * Reicht die Haut einer Hälfte über die Spiegelebene (weiter als `NAHT_AB`)? Gelesen an der Haut, nicht an den Punkten der Linien:
+ * Auch ein Griff oder die Haut zwischen zwei Linien kann hinüberreichen. In der Pose nie.
+ */
+export function ueberDerMitte(): boolean {
+  if (grund) return false;
+  const seite = hautSeite();
+  if (!seite) return false;
+  const P = haut.pos;
+  const ab = NAHT_AB * MK;
+  for (let v = 0; v < haut.n; v++) {
+    const sv = seite[v]!;
+    if (sv !== 0 && sv * P[3 * v + 2]! < -ab) return true;
+  }
+  return false;
 }
 
 // ---------- Ziehen und G/S/R ----------
@@ -3852,6 +3879,8 @@ export function zugEnde(ok: boolean): void {
     // „Form halten“: nur gewählt, nichts gezogen: Der Löser dieses Griffs hat nichts gerechnet und gilt weiter für den Stand
     if (z.loeser.art === 'direkt' && !direktBereit && direktGilt()) direktBereit = { stand: standZahl(), haut, loeser: z.loeser.loeser as DirektLoeser };
   }
+  // Clipping: Was der Zug über die Spiegelebene geführt hat, verschmilzt dort; die Naht entsteht von selbst und ist gewählt
+  if (z.bewegt && G.clipping && ueberDerMitte()) mitteFest(true);
   anzeige.allesZeigen();
   letztesLoslassen = Math.round(performance.now() - tLos);
 }
@@ -4625,20 +4654,30 @@ export function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: bo
  * mehr möglich“): Die Haut wird an der Mittelebene geschnitten und mit ihrem Spiegelbild verbunden, die Linien enden dort mit ihrem
  * Knick, und der Rand jedes Lochs ist ein Loop mit Kante an (`mitteFestmachen` im Kern). Was hinter der Mitte lag, ist weg; ⌘Z führt
  * zurück. Rund wird der Rand danach mit „Kante aus“ (K). Nur in der Grundform und noch nicht mit einem Maul.
+ *
+ * `vonSelbst` (18.11., Clipping): gleich nach einem Zug, ohne eigenen Schritt für ⌘Z (ein ⌘Z nimmt Zug und Naht zurück). Zurück: ob
+ * geschnitten wurde.
  */
-export function mitteFest(): void {
+export function mitteFest(vonSelbst = false): boolean {
   if (grund || G.maul) {
     G.meldung = grund ? 'In der Pose lässt sich der Schnitt an der Mitte nicht fest machen (erst zurück in die Grundform)' : 'Mit einem Maul lässt sich der Schnitt an der Mitte noch nicht fest machen';
     anzeige.statusZeigen();
-    return;
+    return false;
   }
   const r = mitteFestmachen(haut, loops, { naechsteId, naechsteKreuzung });
   if ('fehler' in r) {
-    G.meldung = `Der Schnitt an der Mitte geht so nicht: ${r.fehler}`;
+    G.meldung = vonSelbst ? `Hier verschmilzt die Form an der Mitte noch nicht von selbst (${r.fehler}) · ⌘Z nimmt den Zug zurück` : `Der Schnitt an der Mitte geht so nicht: ${r.fehler}`;
     anzeige.statusZeigen();
-    return;
+    return false;
   }
-  zurueck.push(schnappschuss());
+  if (vonSelbst) {
+    // die Naht gehört zum Zug (sein Schritt für ⌘Z liegt schon da); was nach ihm noch rechnen wollte, galt dem Stand davor
+    nachlauf = null;
+    G.aufgeraeumt = null;
+    G.aufraeumen = null;
+    G.zwischenstand = null;
+    nachLoesenOffen = null;
+  } else zurueck.push(schnappschuss());
   const nAlt = haut.n;
   haut = r.haut;
   loops = r.loops;
@@ -4646,11 +4685,15 @@ export function mitteFest(): void {
   naechsteKreuzung = r.naechsteKreuzung;
   netzGewachsen(nAlt, r.alt, null);
   G.auswahl = r.rand.map((id) => ({ l: id, i: -1 }));
-  G.meldung = `Schnitt an der Mitte fest: ${r.rand.length === 1 ? 'Der Rand des Lochs ist ein Loop' : `Die Ränder der ${r.rand.length} Löcher sind Loops`} mit Kante (K macht ihn rund, ⌘Z führt zurück)`;
+  const was = r.rand.length === 1 ? 'Der Rand des Lochs ist ein Loop' : `Die Ränder der ${r.rand.length} Löcher sind Loops`;
+  G.meldung = vonSelbst
+    ? `Naht an der Spiegelebene: ${r.rand.length === 1 ? 'ein Loop' : `${r.rand.length} Loops`} mit Kante, gewählt · K macht ${r.rand.length === 1 ? 'ihn' : 'sie'} rund · ⌘Z nimmt Zug und Naht zurück`
+    : `Schnitt an der Mitte fest: ${was} mit Kante (K macht ihn rund, ⌘Z führt zurück)`;
   // die Linien liegen auf ihren Pfaden wie vorher, aber das Netz am Rand ist neu: Die Haut setzt sich und räumt auf wie nach einer Kante
   hautNeuRechnen();
   anzeige.geometrieNeu();
   anzeige.allesZeigen();
+  return true;
 }
 
 export function loeschen(): void {

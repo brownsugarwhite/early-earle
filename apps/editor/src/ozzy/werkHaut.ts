@@ -252,6 +252,9 @@ export class WerkHaut {
   version = 0;
   /** im letzten Rechnen hat sich nur die Dehnung geändert (die Lage der Haut war dieselbe): nur sie neu hochladen */
   nurDehnung = false;
+  /** Clipping: In der gezeigten Haut reicht eine Hälfte über die Spiegelebene (`netz.seite` sagt, wo); die Anzeige schneidet dort ab */
+  spiegelSchnitt = false;
+  private seiteGrob: Float32Array | null = null;
   private letzte: { plan: Plan; voll: boolean; lagen: Float64Array } | null = null;
   private umrissSpeicher = new Map<number, { version: number; netz: HautNetz | null; seg: Float32Array; t: number }>();
   /** ein Umriss ist älter als die Haut (im Zug höchstens alle `UMRISS_MS` neu): Die Anzeige braucht noch ein Bild */
@@ -400,6 +403,53 @@ export class WerkHaut {
     for (let i = 0; i < L.length; i++) st[i] = L[i]! + feld[i]!;
     return st;
   }
+  /**
+   * Clipping (18.11.): die Seite je feinem Punkt für den Schnitt an der Spiegelebene (`HautWerte.spiegelSchnitt`). Gesetzt nur an den
+   * Dreiecken, in denen ein Punkt einer Hälfte gerade hinter der Ebene liegt (dort trifft sie ihr Spiegelbild und endet); überall
+   * sonst 0, dort wird nie geschnitten. Mit einem Schnitt überall (wie im Prüffenster) blieb längs der Mitte ein feiner Streifen frei
+   * (Florian, 18.11.: „beim solid ist immer diese mittellinie“): Die glatte Anzeige schwingt dicht an der Mitte um die Ebene.
+   */
+  private spiegelSeite(g: Plan, stufen: number, z: HautNetz): void {
+    const hs = werk.G.clipping && !werk.grund ? werk.hautSeite() : null;
+    const N = g.quelle.length;
+    const L = g.lagen;
+    let da = false;
+    // (erst ab derselben Weite, ab der beim Loslassen eine Naht entsteht: Dicht an einer Kante in der Mitte liegt ein Punkt schon
+    // einmal um Haaresbreite hinter der Ebene, dort ist nichts zu schneiden)
+    const ab = werk.NAHT_AB * werk.MK;
+    if (hs)
+      for (let d = 0; d < N; d++) {
+        const sv = hs[g.quelle[d]!]!;
+        if (sv !== 0 && sv * L[3 * d + 2]! < -ab) {
+          da = true;
+          break;
+        }
+      }
+    if (!da || !hs) {
+      if (this.spiegelSchnitt) z.seite.fill(0);
+      this.spiegelSchnitt = false;
+      return;
+    }
+    const grob = this.seiteGrob && this.seiteGrob.length === N ? this.seiteGrob : (this.seiteGrob = new Float32Array(N));
+    grob.fill(0);
+    const I = g.index;
+    for (let t = 0; t < I.length; t += 3) {
+      let hinter = false;
+      for (let e = 0; e < 3; e++) {
+        const d = I[t + e]!;
+        const sv = hs[g.quelle[d]!]!;
+        if (sv !== 0 && sv * L[3 * d + 2]! < 0) hinter = true;
+      }
+      if (!hinter) continue;
+      for (let e = 0; e < 3; e++) {
+        const d = I[t + e]!;
+        grob[d] = hs[g.quelle[d]!]!;
+      }
+    }
+    z.seite.set(g.plan.weiterreichen(stufen, grob));
+    this.spiegelSchnitt = true;
+  }
+
   /** B4: fließt die Haut gerade zurück */
   get fliesst(): boolean {
     return this.fluss !== null;
@@ -709,11 +759,11 @@ export class WerkHaut {
       z.pos[3 * v + 1] = fein.pos[3 * v + 1]! / f + this.mitte.y;
       z.pos[3 * v + 2] = wz / f;
       z.hoehe[v] = Math.abs(wz) / zMax;
-      z.seite[v] = wz >= 0 ? 1 : -1;
       z.blatt[2 * v] = bx[v]!;
       z.blatt[2 * v + 1] = by[v]!;
     }
     z.normal.set(fein.nor);
+    this.spiegelSeite(g, stufen, z);
     this.stufen = stufen;
     this.ms = performance.now() - t0;
     if (!voll) this.geaendert = performance.now();

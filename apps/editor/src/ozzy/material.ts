@@ -4,10 +4,10 @@
  *
  * - **Solid:** das Material des Prüffensters `kurven.html` (Fenster von Sitzung 4, Port 5197): `hautMaterial`, `umrissMaterial` und das
  *   Licht aus `src/form/kurven.ts`, Zeile für Zeile (vier Stufen an denselben Schwellen, die Grenze einen Bildpunkt breit geglättet;
- *   Umriss 2,5 Bildpunkte aus den Rückseiten; Sonne und Himmelslicht). Weggelassen ist nur der Schnitt an der Spiegelebene: Das
- *   Prüffenster zeigt zwei Hälften, die es dort abschneidet; Ozzy zeigt eine geschlossene Haut. Mit dem Schnitt blieb längs der
- *   Mitte ein feiner Streifen frei, durch den der Umriss schien (Florian, 18.11.: „beim solid ist immer diese mittellinie auch bei
- *   smoothen flächen“).
+ *   Umriss 2,5 Bildpunkte aus den Rückseiten; Sonne und Himmelslicht). Der Schnitt an der Spiegelebene gilt nur dort, wo eine
+ *   Hälfte gerade über die Ebene reicht (`SPIEGEL_…`, seit dem Clipping vom 18.11.): Das Prüffenster schneidet überall, und längs
+ *   der Mitte blieb davon ein feiner Streifen frei, durch den der Umriss schien (Florian, 18.11.: „beim solid ist immer diese
+ *   mittellinie auch bei smoothen flächen“).
  * - **Zebra:** die Zebra-Matcap des alten Editors (`src/three/matcap.ts`, `zebraMatcap`), dort als Matcap auf dem Körper
  *   (`Renderer3D.ts`): waagerechte Streifen über der Blicknormalen.
  *
@@ -56,10 +56,28 @@ export type FestesMaterial = (typeof FESTE_MATERIALIEN)[number];
 
 const KOERPER = 0xe2b98e;
 const TINTE = 0x1f1a17;
-/** `hautMaterial` des Prüffensters (glatte Anzeige), ohne den Schnitt an der Spiegelebene */
-function hautMaterial(farbe: number): MeshToonMaterial {
+/**
+ * Der Schnitt an der Spiegelebene (18.11., Clipping): wie `SCHNITT_…` im Prüffenster, aber nur dort, wo `aSeite` nicht 0 ist. Ozzy
+ * setzt die Seite nur an Punkten, deren Hälfte gerade über die Ebene reicht (`werkHaut.ts`); überall sonst bleibt die Haut ganz,
+ * und längs der Mitte bleibt kein Streifen frei (Florian, 18.11.: „beim solid ist immer diese mittellinie“).
+ */
+export type SpiegelSchnitt = { uSpiegel: { value: number } };
+const SPIEGEL_VERTEX = 'attribute float aSeite;\nvarying vec2 vSpiegel;';
+const SPIEGEL_VERTEX_MAIN = 'vSpiegel = vec2(aSeite, position.z);';
+const SPIEGEL_FRAGMENT = 'uniform float uSpiegel;\nvarying vec2 vSpiegel;';
+const SPIEGEL_FRAGMENT_MAIN = 'if (uSpiegel >= 0.0 && vSpiegel.x * vSpiegel.y < -uSpiegel * abs(vSpiegel.x)) discard;';
+/** den Schnitt in ein Material von three einbauen (Körper mit Toon oder Matcap) */
+function mitSpiegelSchnitt(shader: { vertexShader: string; fragmentShader: string; uniforms: Record<string, unknown> }, sp: SpiegelSchnitt): void {
+  shader.uniforms.uSpiegel = sp.uSpiegel;
+  shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>\n${SPIEGEL_VERTEX}`).replace('#include <begin_vertex>', `#include <begin_vertex>\n${SPIEGEL_VERTEX_MAIN}`);
+  shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\n${SPIEGEL_FRAGMENT}`).replace('void main() {', `void main() {\n${SPIEGEL_FRAGMENT_MAIN}`);
+}
+
+/** `hautMaterial` des Prüffensters (glatte Anzeige); der Schnitt an der Spiegelebene nur, wo eine Hälfte über sie reicht */
+function hautMaterial(farbe: number, sp: SpiegelSchnitt): MeshToonMaterial {
   const m = new MeshToonMaterial({ color: farbe });
   m.onBeforeCompile = (shader) => {
+    mitSpiegelSchnitt(shader, sp);
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <gradientmap_pars_fragment>',
       /* glsl */ `
@@ -73,19 +91,21 @@ function hautMaterial(farbe: number): MeshToonMaterial {
         }`,
     );
   };
-  m.customProgramCacheKey = () => 'ozzy-haut-glatt';
+  m.customProgramCacheKey = () => 'ozzy-haut-glatt-spiegel';
   return m;
 }
 
-/** `umrissMaterial` des Prüffensters, ohne den Schnitt an der Spiegelebene */
-function umrissMaterial(): ShaderMaterial {
+/** `umrissMaterial` des Prüffensters; der Schnitt an der Spiegelebene nur, wo eine Hälfte über sie reicht */
+function umrissMaterial(sp: SpiegelSchnitt): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uBreite: { value: 2.5 }, uAufloesung: { value: new Vector2(1, 1) }, uFarbe: { value: new Color(TINTE) } },
+    uniforms: { uBreite: { value: 2.5 }, uAufloesung: { value: new Vector2(1, 1) }, uFarbe: { value: new Color(TINTE) }, uSpiegel: sp.uSpiegel },
     vertexShader: /* glsl */ `
     uniform float uBreite;
     uniform vec2 uAufloesung;
+    ${SPIEGEL_VERTEX}
     #include <clipping_planes_pars_vertex>
     void main() {
+      ${SPIEGEL_VERTEX_MAIN}
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       vec4 clip = projectionMatrix * mvPosition;
       vec3 n = normalize(normalMatrix * normal);
@@ -100,8 +120,10 @@ function umrissMaterial(): ShaderMaterial {
   `,
     fragmentShader: /* glsl */ `
     uniform vec3 uFarbe;
+    ${SPIEGEL_FRAGMENT}
     #include <clipping_planes_pars_fragment>
     void main() {
+      ${SPIEGEL_FRAGMENT_MAIN}
       #include <clipping_planes_fragment>
       gl_FragColor = vec4(uFarbe, 1.0);
     }
@@ -152,6 +174,8 @@ export type FesteWerte = {
   schnitt: [number, number, number, number] | null;
   /** wie deckend (Röntgen nimmt zurück), 0 … 1 */
   deckung: number;
+  /** der Schnitt an der Spiegelebene, wie `HautWerte.spiegelSchnitt` (Rand in Welteinheiten; fehlt: kein Schnitt) */
+  spiegelSchnitt?: number | null;
 };
 
 export class FesteHaut {
@@ -171,13 +195,17 @@ export class FesteHaut {
   private netz: HautNetz | null = null;
   private wicklung = 0;
   private dpr = 1;
+  /** der Schnitt an der Spiegelebene, für alle drei Materialien derselbe Wert */
+  private readonly spiegel: SpiegelSchnitt = { uSpiegel: { value: -1 } };
 
   constructor(renderer: WebGLRenderer) {
     this.renderer = renderer;
     this.ziel = new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: true });
-    this.solid = hautMaterial(KOERPER);
-    this.umrissMat = umrissMaterial();
+    this.solid = hautMaterial(KOERPER, this.spiegel);
+    this.umrissMat = umrissMaterial(this.spiegel);
     this.zebra = new MeshMatcapMaterial({ matcap: zebraMatcap() });
+    this.zebra.onBeforeCompile = (shader) => mitSpiegelSchnitt(shader, this.spiegel);
+    this.zebra.customProgramCacheKey = () => 'ozzy-zebra-spiegel';
     this.koerper = new Mesh(this.geo, this.solid);
     this.umriss = new Mesh(this.geo, this.umrissMat);
     this.koerper.frustumCulled = false;
@@ -243,6 +271,7 @@ export class FesteHaut {
       this.wicklung = wicklung;
       this.geo.setAttribute('position', new BufferAttribute(netz.pos, 3));
       this.geo.setAttribute('normal', new BufferAttribute(netz.normal, 3));
+      this.geo.setAttribute('aSeite', new BufferAttribute(netz.seite, 1));
       // Vorderseiten gegen den Uhrzeiger (so erwartet es three)
       let index = netz.index;
       if (wicklung < 0) {
@@ -254,7 +283,7 @@ export class FesteHaut {
         }
       }
       this.geo.setIndex(new BufferAttribute(index, 1));
-    } else for (const n of ['position', 'normal']) (this.geo.getAttribute(n) as BufferAttribute).needsUpdate = true;
+    } else for (const n of ['position', 'normal', 'aSeite']) (this.geo.getAttribute(n) as BufferAttribute).needsUpdate = true;
   }
 
   /** ist eine Haut da, die gezeichnet werden kann? */
@@ -270,6 +299,7 @@ export class FesteHaut {
     // n · p ≥ w bleibt (ohne Schnitt: alles)
     if (sn && Math.hypot(sn[0], sn[1], sn[2]) > 1e-9) this.ebene.set(new Vector3(sn[0], sn[1], sn[2]), -sn[3]);
     else this.ebene.set(new Vector3(0, 0, 1), 1e9);
+    this.spiegel.uSpiegel.value = w.spiegelSchnitt ?? -1;
     this.koerper.material = art === 'Zebra' ? this.zebra : this.solid;
     // der Umriss gehört zum Solid des Prüffensters; die Zebra-Matcap lag im alten Editor ohne Umriss auf dem Körper
     this.umriss.visible = art === 'Solid';

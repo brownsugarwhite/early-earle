@@ -232,6 +232,8 @@ uniform float uZeit;
 uniform int uFassung;
 uniform int uNacht;
 uniform vec4 uSchnitt;
+// Ozzy: der Schnitt an der Spiegelebene (unter 0: aus; sonst der Rand in Welteinheiten), siehe HautWerte.spiegelSchnitt
+uniform float uSpiegel;
 uniform int uPass;
 uniform float uAnteil;
 uniform float uDeckung;
@@ -352,6 +354,8 @@ vec3 horizont(vec3 r, float versatz) {
 void main() {
   // Ozzy: ein Blatt schiebt sich durch die Blase (Einrasten): was dahinter liegt, ist weg
   if (dot(uSchnitt.xyz, vPos) < uSchnitt.w) discard;
+  // Ozzy: Wo eine Hälfte über die Spiegelebene reicht, endet sie dort (aSeite: ihre Seite, 0 = hier wird nicht geschnitten)
+  if (uSpiegel >= 0.0 && vSeite * vPos.z < -uSpiegel * abs(vSeite)) discard;
   vec3 N = normalize(vNormal);
   if (!gl_FrontFacing) N = -N;
   vec3 V = normalize(cameraPosition - vPos);
@@ -541,6 +545,12 @@ export interface HautWerte {
   /** Ozzy: ein Blatt in der Blase (Einrasten): Die Haut bleibt nur, wo x · nx + y · ny + z · nz ≥ w (Welt); fehlt: ganz */
   schnitt?: [number, number, number, number] | null;
   /**
+   * Ozzy (18.11., Clipping am Spiegel): Die Haut eines fremden Netzes endet an der Spiegelebene z = 0, wo `HautNetz.seite` nicht 0
+   * ist (+1: die Hälfte z ≥ 0, −1: ihr Spiegelbild): je Bildpunkt, sobald er weiter als dieser Rand (Welteinheiten) hinter der
+   * Ebene liegt. So verschmelzen die Hälften schon im Zug, ohne dass etwas gerechnet wird. Fehlt: kein Schnitt.
+   */
+  spiegelSchnitt?: number | null;
+  /**
    * Ozzy (A3): Von der Haut ist in diesem Bild nichts zu sehen (das Blatt hat sie ganz weggeschnitten, der Rahmen ist weg). Dann
    * nur der Grund (Papier und Rückseite), direkt ins Bild, ohne das Ziel der Seifenhaut (gemessen: 6,5 ms je Bild für nichts).
    */
@@ -720,6 +730,7 @@ export class Haut {
           uKanteLinks: { value: 0 },
           uAusschnitt: { value: new Vector4(1, 1, 0, 0) },
           uSchnitt: { value: new Vector4(0, 0, 0, -1) },
+          uSpiegel: { value: -1 },
           uPass: { value: 0 },
           uAnteil: { value: 1 },
           uDeckung: { value: 1 },
@@ -993,6 +1004,7 @@ void main() {
       else (u.uAusschnitt!.value as Vector4).set(1, 1, 0, 0);
       const sn = w.schnitt ?? KEIN_SCHNITT;
       (u.uSchnitt!.value as Vector4).set(sn[0], sn[1], sn[2], sn[3]);
+      u.uSpiegel!.value = w.spiegelSchnitt ?? -1;
       u.uDeckung!.value = w.deckung;
       (u.uHauch!.value as Vector3).copy(w.hauch);
       u.uHauchStaerke!.value = w.hauchStaerke;

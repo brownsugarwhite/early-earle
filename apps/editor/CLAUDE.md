@@ -70,7 +70,13 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Linie die Mitte kreuzt, und der Punkt hinter der Mitte markiert; ihn löschen macht den Schnitt fest (`mitteFest` im Fenster,
   `mitteFestmachen` in `dicht/mitteSchnitt.ts`: Der Rand des Lochs wird ein Loop mit Kante); K am Rand macht ihn rund. Nur in
   der Grundform und ohne Maul. Probe im Fenster: `GPU=1 node scripts/pruefen/form-donut-fenster.mjs` (`NAME=<Form>` für eine
-  gesicherte Form).
+  gesicherte Form). **Seit dem 18.11. (Clipping, Plan `docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`):** Mit
+  `werk.G.clipping` (Standard an) entsteht die Naht beim Loslassen von selbst (`mitteFest(true)` am Ende von `zugEnde`, sobald
+  `ueberDerMitte()`), ohne eigenen Schritt für ⌘Z, und ist gewählt. `?clipping=0` gibt die Regel vom 13.11. zurück (damit läuft
+  `form-donut-fenster.mjs`). In Ozzy schneidet die Anzeige im Zug je Bildpunkt ab: `werkHaut.spiegelSeite` setzt `netz.seite`
+  nur an den Dreiecken, in denen eine Hälfte hinter der Ebene liegt (sonst 0: Ein Schnitt überall ließ längs der Mitte einen
+  Streifen frei), `HautWerte.spiegelSchnitt` und `FesteWerte.spiegelSchnitt` schalten ihn. Wer ein neues Material baut, das die
+  Haut des Werks zeigt, braucht denselben Schnitt (`aSeite`). Probe: `ozzy-donut-fenster.mjs` (`KUGEL=1`: frische Kugel).
 - **Rechnung auf der Hälfte** (Schritt 4b, erster Teil, 13.11.; seit dem 13.11. nachmittags auch in Florians Fenster): Der Löser faltet auf die
   Hälfte (`HautOptionen.halb`, im Fenster Standard, `&halb=0` schaltet es ab); das Netz bleibt ganz. Dazu „flüssig zuerst“: eine
   weitere Runde je Bild nur, wenn sie samt Anzeige in 14,5 ms passt (`&bildms=0`: nur das feste Budget, `&budget=<ms>` stellt
