@@ -74,6 +74,8 @@ import {
   istSichtbar,
   istEckeVonSelbst,
   hautAus,
+  hautFrei,
+  spiegelAnwenden,
   hautNormalen,
   knochenDrehen,
   knochenWinkel,
@@ -193,6 +195,12 @@ export const G = {
    * von selbst (im Prüffenster gilt dann die Regel vom 13.11.: der Punkt hinter der Mitte ist markiert, ihn löschen macht fest).
    */
   clipping: new URLSearchParams(location.search).get('clipping') !== '0',
+  /**
+   * Eine freie Form (ein ganzes Netz ohne Spiegelpaare, `istFrei`) zeigt ihr Spiegelbild (18.11., „Spiegel an“ an einem ganzen
+   * Objekt): Das Spiegelbild ist nur Anzeige, gerechnet wird das eine Netz. Aus: „Spiegel aus“. Eine verschmolzene Form hat ihr
+   * Spiegelbild immer (es ist die andere Hälfte ihres Netzes).
+   */
+  spiegelbild: true,
 };
 
 /** Was das Werk von der Anzeige braucht; die Hülle (oder Ozzy) setzt es. Bis dahin tut es nichts (`skala`: 1). */
@@ -656,7 +664,73 @@ export const loopNr = (id: number): number => loops.findIndex((l) => l.id === id
 export const lageAus = (L: Float64Array, i: number): V3 => ({ x: L[3 * i]!, y: L[3 * i + 1]!, z: L[3 * i + 2]! });
 export const spiegeln = (p: V3): V3 => ({ ...p, z: -p.z });
 export const abstand = (a: V3, b: V3): number => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
-export const abstandSym = (a: V3, b: V3): number => Math.min(abstand(a, b), abstand(a, spiegeln(b)));
+/** Abstand bis auf Spiegelung (an einer freien Form ohne Spiegelbild: der Abstand selbst) */
+export const abstandSym = (a: V3, b: V3): number => (istFrei() ? abstand(a, b) : Math.min(abstand(a, b), abstand(a, spiegeln(b))));
+
+// ---------- Spiegel (18.11., Plan „Objekte, Spiegel und Nähte“) ----------
+
+/** Ist die Form frei: ein ganzes Netz ohne Spiegelpaare („Spiegel aus“ oder angewendet), jede Linie ein Loop für sich? */
+export const istFrei = (): boolean => {
+  // (je Netz einmal gelesen: Die Frage kommt je Probe einer Linie, und eine freie Haut zu lesen heißt, alle ihre Punkte anzusehen)
+  if (!freiGemerkt || freiGemerkt.spiegel !== haut.spiegel) freiGemerkt = { spiegel: haut.spiegel, frei: hautFrei(haut) };
+  return freiGemerkt.frei;
+};
+let freiGemerkt: { spiegel: Int32Array; frei: boolean } | null = null;
+/** Hat die Form ein Spiegelbild: verschmolzen immer (die andere Hälfte ihres Netzes), frei nur als Anzeige (`G.spiegelbild`) */
+export const spiegelbildGilt = (): boolean => !istFrei() || G.spiegelbild;
+/** der Zustand des Spiegels, wie der Knopf ihn zeigt */
+export type SpiegelStand = 'clip' | 'an' | 'aus';
+export const spiegelStand = (): SpiegelStand => (istFrei() && !G.spiegelbild ? 'aus' : G.clipping ? 'clip' : 'an');
+
+/**
+ * Spiegel aus (Florian, 18.11.: „dass ich mirror modifier applien kann, dann ist es nichtmehr gespiegelt sondern ein ganzes mesh und
+ * ich kann asymetrische dinge gestalten“; zur Frage, was „aus“ an einer verschmolzenen Form heißt: „Ja, so bauen“): Die Form bleibt
+ * ganz und wird frei (`spiegelAnwenden` im Kern: dieselbe Haut ohne Spiegelpaare, jede Linie ausgeschrieben). Ein Schritt für ⌘Z.
+ * Nur in der Grundform und noch nicht mit einem Maul. Eine freie Form verliert nur ihr Spiegelbild. Zurück: ob es geschehen ist.
+ */
+export function spiegelAus(): boolean {
+  if (istFrei()) {
+    G.spiegelbild = false;
+    return true;
+  }
+  if (grund || G.maul || zug) {
+    G.meldung = grund ? 'In der Pose lässt sich der Spiegel nicht ausschalten (erst zurück in die Grundform)' : 'Mit einem Maul lässt sich der Spiegel noch nicht ausschalten';
+    anzeige.statusZeigen();
+    return false;
+  }
+  const r = spiegelAnwenden(haut, loops, { naechsteId, naechsteKreuzung });
+  if ('fehler' in r) {
+    G.meldung = `Der Spiegel lässt sich hier noch nicht ausschalten: ${r.fehler}`;
+    anzeige.statusZeigen();
+    return false;
+  }
+  zurueck.push(schnappschuss());
+  // was für die verschmolzene Form bereitlag oder noch rechnete, gilt nicht mehr (dieselben Punkte, aber ein anderes Netz für den Löser)
+  nachlauf = null;
+  G.aufgeraeumt = null;
+  G.aufraeumen = null;
+  G.zwischenstand = null;
+  G.gegriffen = null;
+  verfeinerung = null;
+  G.eingetroffen = null;
+  nichtsZuVerfeinern = null;
+  nachLoesenOffen = null;
+  vorlageBereit = null;
+  vorlageStand = '';
+  vorlageNetz = '';
+  standFertig = '';
+  ruheOffen = null;
+  haut = r.haut;
+  loops = r.loops;
+  naechsteId = r.naechsteId;
+  naechsteKreuzung = r.naechsteKreuzung;
+  G.auswahl = [];
+  G.spiegelbild = false;
+  G.meldung = 'Spiegel aus: Die Form ist jetzt ein ganzes Netz, beide Seiten lassen sich verschieden formen · ⌘Z führt zurück';
+  anzeige.geometrieNeu();
+  anzeige.allesZeigen();
+  return true;
+}
 
 /**
  * Kreuzungen suchen (nur mit `nur`, sonst alle Paare); neue werden Punkte auf beiden Loops. In der Grundform ist eine Kreuzung genau

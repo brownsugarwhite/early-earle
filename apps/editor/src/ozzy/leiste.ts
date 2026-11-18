@@ -28,23 +28,25 @@ const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' 
 };
 
 /**
- * Der Spiegel-Knopf (18.11.): ein Knopf mit Zuständen, ein Klick schaltet weiter. `clip`: an mit Clipping (die Hälften sind an der
- * Spiegelebene eine Form), `an`: an ohne Clipping (zwei, die sich überragen dürfen), `aus`: kein Spiegelbild. Die feine Linie ist
- * die Spiegelebene.
+ * Der Spiegel-Knopf (18.11., Florian: „einen multifunktionsknopf für den mirrormodifier … mirror an, mirror aus, mirror an mit
+ * clipping“): ein Knopf aus drei Feldern, jedes ein Zustand, direkt zu wählen; unter dem geltenden hängt ein kleiner Tropfen, der
+ * beim Wechsel hinüberfließt. `aus`: ein ganzes Objekt ohne Spiegelbild, `an`: mit Spiegelbild, die beiden dürfen sich überragen,
+ * `clip`: an der Spiegelebene verschmelzen sie. Die feine Linie in den Zeichen ist die Spiegelebene.
  */
 export type SpiegelZustand = 'clip' | 'an' | 'aus';
+const SPIEGEL_REIHE: SpiegelZustand[] = ['aus', 'an', 'clip'];
 const SPIEGEL_ZEICHEN: Record<SpiegelZustand, string> = {
-  // verschmolzen: der gemeinsame Umriss der beiden Tropfen
-  clip: '<path d="M10 5.5A4.7 5.4 0 1 1 10 14.5A4.7 5.4 0 1 1 10 5.5z" /><path d="M10 2.8v14.4" class="duenn" />',
-  // zwei, die sich überragen
-  an: '<ellipse cx="7.4" cy="10" rx="4.7" ry="5.4" /><ellipse cx="12.6" cy="10" rx="4.7" ry="5.4" /><path d="M10 2.8v14.4" class="duenn" />',
   // einer, ohne Spiegelbild
   aus: '<ellipse cx="6.8" cy="10" rx="4.3" ry="5.4" /><path d="M11.8 2.8v14.4" class="duenn" />',
+  // zwei, die sich überragen
+  an: '<ellipse cx="7.4" cy="10" rx="4.7" ry="5.4" /><ellipse cx="12.6" cy="10" rx="4.7" ry="5.4" /><path d="M10 2.8v14.4" class="duenn" />',
+  // verschmolzen: der gemeinsame Umriss der beiden Tropfen
+  clip: '<path d="M10 5.5A4.7 5.4 0 1 1 10 14.5A4.7 5.4 0 1 1 10 5.5z" /><path d="M10 2.8v14.4" class="duenn" />',
 };
 const SPIEGEL_NAMEN: Record<SpiegelZustand, string> = {
-  clip: 'Spiegel: an mit Clipping. Was über die Mitte reicht, verschmilzt dort zu einer Naht · Klick: ohne Clipping',
-  an: 'Spiegel: an, ohne Clipping. Die Hälften dürfen sich überragen, nichts verschmilzt · Klick: mit Clipping',
-  aus: 'Spiegel: aus. Das Objekt ist ganz und frei · Klick: Spiegel an',
+  aus: 'Spiegel aus: ein ganzes Objekt ohne Spiegelbild, beide Seiten lassen sich verschieden formen (eine verschmolzene Form wird dabei ganz, wie „anwenden“)',
+  an: 'Spiegel an, ohne Clipping: Das Spiegelbild ist da; was über die Mitte reicht, überragt sich, nichts verschmilzt',
+  clip: 'Spiegel an, mit Clipping: Was über die Mitte reicht, verschmilzt dort zu einer Naht',
 };
 
 const NAMEN: Record<Werkzeug | 'muell', string> = {
@@ -107,8 +109,12 @@ export class Leiste {
   private formenZeichen: HTMLSpanElement;
   private form: 'ellipse' | 'wuerfel' = 'ellipse';
   private aktiv: Werkzeug = 'p';
-  private spiegelKnopf!: HTMLButtonElement;
+  private spiegelKnoepfe = new Map<SpiegelZustand, HTMLButtonElement>();
+  private spiegelTropfen!: HTMLDivElement;
   private spiegelStand = '';
+  private sx = new Feder(0);
+  private spiegelLaeuft = false;
+  private spiegelLetzte = 0;
   private fx = new Feder(0);
   private laeuft = false;
   private letzte = 0;
@@ -117,7 +123,7 @@ export class Leiste {
     eltern: HTMLElement,
     private wahl: (w: Werkzeug) => void,
     private muell: () => void,
-    private spiegel: (alt: boolean) => void = () => {},
+    private spiegel: (z: SpiegelZustand, alt: boolean) => void = () => {},
   ) {
     const el = document.createElement('nav');
     el.id = 'leiste';
@@ -161,13 +167,27 @@ export class Leiste {
     const vorSpiegel = document.createElement('span');
     vorSpiegel.className = 'trenner';
     el.append(vorSpiegel);
-    const sp = document.createElement('button');
-    sp.type = 'button';
-    sp.className = 'werkzeug spiegel';
-    sp.id = 'spiegel-knopf';
-    sp.addEventListener('click', (e) => this.spiegel(e.altKey));
-    el.append(sp);
-    this.spiegelKnopf = sp;
+    const gruppe = document.createElement('span');
+    gruppe.className = 'spiegel-gruppe';
+    gruppe.id = 'spiegel';
+    gruppe.setAttribute('role', 'group');
+    gruppe.setAttribute('aria-label', 'Spiegel des Objekts');
+    for (const z of SPIEGEL_REIHE) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'werkzeug spiegel';
+      b.dataset.zustand = z;
+      b.title = SPIEGEL_NAMEN[z];
+      b.setAttribute('aria-label', SPIEGEL_NAMEN[z]);
+      b.append(zeichen2(SPIEGEL_ZEICHEN[z]));
+      b.addEventListener('click', (e) => this.spiegel(z, e.altKey));
+      gruppe.append(b);
+      this.spiegelKnoepfe.set(z, b);
+    }
+    this.spiegelTropfen = document.createElement('div');
+    this.spiegelTropfen.className = 'leisten-tropfen';
+    gruppe.append(this.spiegelTropfen);
+    el.append(gruppe);
     this.spiegelZeigen('clip', false);
     const trenner = document.createElement('span');
     trenner.className = 'trenner';
@@ -250,17 +270,45 @@ export class Leiste {
     this.knoepfe.get(n)!.toggleAttribute('disabled', !an);
   }
 
-  /** den Spiegel-Knopf zeigen: sein Zustand und ob er gerade etwas schaltet (im Raum, mit einer Form) */
+  /** den Spiegel-Knopf zeigen: der geltende Zustand (der Tropfen fließt dorthin) und ob er gerade etwas schaltet (im Raum, mit einer Form) */
   spiegelZeigen(z: SpiegelZustand, erlaubt: boolean): void {
     const stand = `${z}|${erlaubt}`;
     if (stand === this.spiegelStand) return;
+    const erster = this.spiegelStand === '';
     this.spiegelStand = stand;
-    const b = this.spiegelKnopf;
-    b.replaceChildren(zeichen2(SPIEGEL_ZEICHEN[z]));
-    b.title = SPIEGEL_NAMEN[z];
-    b.setAttribute('aria-label', SPIEGEL_NAMEN[z]);
-    b.dataset.zustand = z;
-    b.toggleAttribute('disabled', !erlaubt);
+    for (const [n, b] of this.spiegelKnoepfe) {
+      b.setAttribute('aria-pressed', String(n === z));
+      b.toggleAttribute('disabled', !erlaubt);
+    }
+    this.spiegelTropfen.style.opacity = erlaubt ? '1' : '0.26';
+    const b = this.spiegelKnoepfe.get(z)!;
+    const eltern = b.parentElement!;
+    const ziel = (): number => b.getBoundingClientRect().left - eltern.getBoundingClientRect().left + b.getBoundingClientRect().width / 2;
+    this.sx.ziel = ziel();
+    if (erster || this.sx.ziel === 0) {
+      // (beim ersten Mal steht die Leiste noch nicht im Bild: nach dem Aufbau setzen)
+      requestAnimationFrame(() => {
+        this.sx.ziel = ziel();
+        this.sx.x = this.sx.ziel;
+        this.sx.v = 0;
+        this.spiegelSchritt(performance.now());
+      });
+      return;
+    }
+    if (this.spiegelLaeuft) return;
+    this.spiegelLaeuft = true;
+    this.spiegelLetzte = performance.now();
+    requestAnimationFrame((t) => this.spiegelSchritt(t));
+  }
+
+  private spiegelSchritt(t: number): void {
+    const dt = Math.min(1 / 30, Math.max(0, (t - this.spiegelLetzte) / 1000));
+    this.spiegelLetzte = t;
+    const weiter = this.sx.schritt(dt);
+    const dehnung = Math.min(2.6, 1 + Math.abs(this.sx.v) / 260);
+    this.spiegelTropfen.style.transform = `translateX(${this.sx.x.toFixed(2)}px) translateX(-50%) scale(${dehnung.toFixed(3)}, ${(1 / Math.sqrt(dehnung)).toFixed(3)})`;
+    if (weiter) requestAnimationFrame((tt) => this.spiegelSchritt(tt));
+    else this.spiegelLaeuft = false;
   }
 
   /** Lage der Leiste: unter dem Gruß in der Mitte oder oben */

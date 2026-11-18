@@ -142,10 +142,29 @@ body.wende-an #hinweis {
 #leiste .werkzeug:hover:not(:disabled) svg {
   stroke-width: 1.55;
 }
-/* der Spiegel-Knopf: kein Werkzeug (kein Tropfen darunter), ein Schalter am gewählten Objekt */
+/* der Spiegel-Knopf: drei Felder (aus, an, mit Clipping) mit einem eigenen kleinen Tropfen unter dem geltenden */
+#leiste .spiegel-gruppe {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+#leiste .werkzeug.spiegel {
+  width: 30px;
+}
 #leiste .werkzeug.spiegel svg {
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
+  opacity: 0.42;
+  transition:
+    opacity 220ms ease,
+    stroke-width 260ms var(--feder);
+}
+#leiste .werkzeug.spiegel[aria-pressed='true'] svg {
+  opacity: 1;
+}
+#leiste .spiegel-gruppe .leisten-tropfen {
+  bottom: -4px;
 }
 #leiste .werkzeug:disabled {
   opacity: 0.26;

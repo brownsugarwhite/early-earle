@@ -255,6 +255,69 @@ export class WerkHaut {
   /** Clipping: In der gezeigten Haut reicht eine Hälfte über die Spiegelebene (`netz.seite` sagt, wo); die Anzeige schneidet dort ab */
   spiegelSchnitt = false;
   private seiteGrob: Float32Array | null = null;
+  /**
+   * Das Spiegelbild einer freien Form als Anzeige (18.11., „Spiegel an“ an einem ganzen Objekt): `zeigeNetz` ist dann das Netz samt
+   * seinem Spiegelbild an der Ebene z = 0 (doppelt so viele Punkte, die zweite Hälfte gespiegelt, ihre Dreiecke andersherum). Gerechnet
+   * wird nur das eine (`netz`).
+   */
+  spiegelbild = false;
+  private doppelt: { von: HautNetz; netz: HautNetz; version: number; dehnung: number } | null = null;
+  /** zählt, wenn sich nur die Dehnung geändert hat (für das doppelte Netz) */
+  private dehnungNr = 0;
+  /** das Netz, das gezeigt wird: `netz`, mit `spiegelbild` samt seinem Spiegelbild */
+  get zeigeNetz(): HautNetz | null {
+    const n = this.netz;
+    if (!n || !this.spiegelbild) return n;
+    const N = n.pos.length / 3;
+    const I = n.index.length;
+    let d = this.doppelt;
+    if (!d || d.von !== n || d.netz.pos.length !== 6 * N || d.netz.index.length !== 2 * I) {
+      const index = new Uint32Array(2 * I);
+      index.set(n.index);
+      for (let i = 0; i < I; i += 3) {
+        index[I + i] = n.index[i]! + N;
+        index[I + i + 1] = n.index[i + 2]! + N;
+        index[I + i + 2] = n.index[i + 1]! + N;
+      }
+      d = {
+        von: n,
+        netz: { pos: new Float32Array(6 * N), normal: new Float32Array(6 * N), index, hoehe: new Float32Array(2 * N), seite: new Float32Array(2 * N), blatt: new Float32Array(4 * N), dehnung: new Float32Array(2 * N), sicht: new Float32Array(2 * N) },
+        version: -1,
+        dehnung: -1,
+      };
+      this.doppelt = d;
+    }
+    const z = d.netz;
+    if (d.version !== this.version) {
+      d.version = this.version;
+      d.dehnung = -1;
+      z.pos.set(n.pos);
+      z.normal.set(n.normal);
+      for (let v = 0; v < N; v++) {
+        z.pos[3 * (N + v)] = n.pos[3 * v]!;
+        z.pos[3 * (N + v) + 1] = n.pos[3 * v + 1]!;
+        z.pos[3 * (N + v) + 2] = -n.pos[3 * v + 2]!;
+        z.normal[3 * (N + v)] = n.normal[3 * v]!;
+        z.normal[3 * (N + v) + 1] = n.normal[3 * v + 1]!;
+        z.normal[3 * (N + v) + 2] = -n.normal[3 * v + 2]!;
+      }
+      z.hoehe.set(n.hoehe);
+      z.hoehe.set(n.hoehe, N);
+      z.blatt.set(n.blatt);
+      z.blatt.set(n.blatt, 2 * N);
+      z.sicht.set(n.sicht);
+      z.sicht.set(n.sicht, N);
+      // (die Seite für den Schnitt an der Spiegelebene: das Spiegelbild trägt die andere)
+      z.seite.set(n.seite);
+      for (let v = 0; v < N; v++) z.seite[N + v] = -n.seite[v]!;
+    }
+    if (d.dehnung !== this.dehnungNr) {
+      d.dehnung = this.dehnungNr;
+      z.dehnung.set(n.dehnung);
+      z.dehnung.set(n.dehnung, N);
+    }
+    return z;
+  }
   private letzte: { plan: Plan; voll: boolean; lagen: Float64Array } | null = null;
   private umrissSpeicher = new Map<number, { version: number; netz: HautNetz | null; seg: Float32Array; t: number }>();
   /** ein Umriss ist älter als die Haut (im Zug höchstens alle `UMRISS_MS` neu): Die Anzeige braucht noch ein Bild */
@@ -677,6 +740,7 @@ export class WerkHaut {
       if (gleich) {
         this.dehnungFolgen(g, dt, beruhigen, true);
         g.plan.mischen(this.stufen, g.dehnung, this.netz.dehnung);
+        this.dehnungNr++;
         this.nurDehnung = true;
         this.ms = performance.now() - t0;
         return false;
@@ -768,6 +832,7 @@ export class WerkHaut {
       z.blatt[2 * v + 1] = by[v]!;
     }
     z.normal.set(fein.nor);
+    this.dehnungNr++;
     this.spiegelSeite(g, stufen, z);
     this.stufen = stufen;
     this.ms = performance.now() - t0;
@@ -888,7 +953,8 @@ export class WerkHaut {
   }
 
   private umrissRechnen(achsen: (0 | 1 | 2)[]): Float32Array[] {
-    const z = this.netz;
+    // (samt Spiegelbild, wenn es gezeigt wird)
+    const z = this.zeigeNetz;
     if (!z) return achsen.map(() => new Float32Array(0));
     const I = z.index;
     const P = z.pos;

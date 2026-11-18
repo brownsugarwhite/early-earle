@@ -457,6 +457,8 @@ let werkGezeigt = false;
 /** wann (T) und bei welchem Stand der Feder der Blase die Haut des Werks übernommen hat */
 let uebergabeStart: { T: number; w0: number } | null = null;
 let werkNeu = false;
+/** das Netz, das die Seifenhaut gerade zeigt (`werkHaut.zeigeNetz`: mit Spiegelbild ein anderes als ohne) */
+let hautZeigt: unknown = null;
 let werkVoll = false;
 let werkZuletzt = 0;
 
@@ -489,6 +491,8 @@ let bearbeitenGedrueckt = false;
 let bearbeitenStruktur = '';
 let werkWarBeschaeftigt = false;
 let pErlaubt = false;
+/** P, Freihand und Formen in der Leiste an (null: beim nächsten Bild neu setzen) */
+let zeichnenErlaubt: boolean | null = null;
 /** Werkzeug im Raum (mit dem Werk): Auswahl, P (über das Verhalten), Freihand, Ellipse, Würfel */
 let raumWerkzeug: Werkzeug = 'auswahl';
 /** Freihand und Formen im Raum (Etappe 5.3): ein Strich oder ein Aufzug auf einer Fläche (Bildschirm, CSS-Pixel) */
@@ -529,32 +533,46 @@ const FELD_DECKUNG = 0.5;
 let feldToenung: { index: Uint32Array | null; nr: number } = { index: null, nr: 0 };
 
 /**
- * Der Spiegel-Knopf (18.11., Plan „Objekte, Spiegel und Nähte“; Florian: „Ich kann mirrorhälften erst ohne clipping
- * ineinanderschieben und dann clipping einschalten um sie zu verschmelzen. Gerne mit einer schönen animation“). Der Zustand des
- * Objekts ist `werk.G.clipping`: an mit Clipping (`clip`) oder an ohne (`an`); „aus“ und „anwenden“ kommen mit der freien Form.
+ * Der Spiegel-Knopf (18.11., Plan „Objekte, Spiegel und Nähte“; Florian: „mirror an, mirror aus, mirror an mit clipping … Ich kann
+ * mirrorhälften erst ohne clipping ineinanderschieben und dann clipping einschalten um sie zu verschmelzen. Gerne mit einer schönen
+ * animation“). Der Zustand gehört dem Objekt und steht im Werk (`werk.spiegelStand`): `clip` an mit Clipping, `an` ohne, `aus` ein
+ * ganzes Objekt ohne Spiegelbild (eine verschmolzene Form wird dabei frei, `werk.spiegelAus`: dasselbe wie anwenden).
  * Wird das Clipping eingeschaltet, während sich die Hälften überragen, läuft `spiegelFahrt`: Die Anzeige schneidet erst so tief
  * hinter der Ebene, wie die Überschneidung reicht (`tiefe`, Welteinheiten), und wandert in `SPIEGEL_FAHRT` Sekunden zur Ebene; dann
- * macht das Werk den Schnitt fest. `spiegelMarken`: so viele Schritte hatte das Werk vor einem solchen Verschmelzen (ein ⌘Z dahinter
- * schaltet auch das Clipping wieder aus, sonst verschmölze der nächste Zug gleich wieder).
+ * macht das Werk den Schnitt fest. `spiegelMarken`: Der Knopf hat einen Schritt für ⌘Z angelegt (verschmelzen, frei machen); `n` so
+ * viele Schritte hatte das Werk davor, dazu die Schalter von davor: Ein ⌘Z dahinter stellt auch sie zurück.
  */
-const spiegelZustand = (): SpiegelZustand => (werk.G.clipping ? 'clip' : 'an');
+const spiegelZustand = (): SpiegelZustand => werk.spiegelStand();
 let spiegelFahrt: { t: number; tiefe: number } | null = null;
 const SPIEGEL_FAHRT = 0.42;
-const spiegelMarken: number[] = [];
+const spiegelMarken: { n: number; clipping: boolean; spiegelbild: boolean }[] = [];
 const spiegelErlaubt = (): boolean => zustand === 'ruhe' && werkGezeigt && !werk.grund && !werk.maulLauf;
-function spiegelWeiter(): void {
-  if (!spiegelErlaubt() || werk.zug || spiegelFahrt) return;
-  spiegelMarken.length = 0;
-  if (werk.G.clipping) {
+function spiegelSetzen(ziel: SpiegelZustand): void {
+  if (!spiegelErlaubt() || werk.zug || spiegelFahrt || ziel === spiegelZustand()) return;
+  const frei = werk.istFrei();
+  const davor = { n: werk.zurueck.length, clipping: werk.G.clipping, spiegelbild: werk.G.spiegelbild };
+  if (ziel === 'aus') {
+    if (!frei) {
+      // eine verschmolzene Form wird ganz und frei (ein Schritt für ⌘Z); Muster und Dehnung der Seifenhaut bleiben an ihrem Ort
+      if (!werk.spiegelAus()) return;
+      spiegelMarken.push(davor);
+      werkzeugFuerFreieForm();
+    } else {
+      werk.G.spiegelbild = false;
+      werk.G.meldung = 'Spiegel aus: ein ganzes Objekt ohne Spiegelbild';
+    }
+  } else if (ziel === 'an') {
     werk.G.clipping = false;
-    werk.G.meldung = 'Spiegel an, ohne Clipping: Was du über die Mitte ziehst, überragt sich · noch ein Klick verschmilzt es';
+    if (frei) werk.G.spiegelbild = true;
+    werk.G.meldung = frei ? 'Spiegel an, ohne Clipping: Das Objekt hat sein Spiegelbild; die beiden dürfen sich überragen' : 'Spiegel an, ohne Clipping: Was du über die Mitte ziehst, überragt sich · Clipping verschmilzt es';
   } else {
     werk.G.clipping = true;
-    const tief = werk.ueberDerMitte() ? werk.tiefeHinterDerMitte() : 0;
+    if (frei) werk.G.spiegelbild = true;
+    const tief = !frei && werk.ueberDerMitte() ? werk.tiefeHinterDerMitte() : 0;
     if (tief > 0) spiegelFahrt = { t: 0, tiefe: tief / werkHaut.f };
-    werk.G.meldung = tief > 0 ? 'Spiegel an, mit Clipping: Die Hälften verschmelzen an der Spiegelebene' : 'Spiegel an, mit Clipping: Was du über die Mitte ziehst, verschmilzt dort';
+    werk.G.meldung = tief > 0 ? 'Spiegel an, mit Clipping: Die Hälften verschmelzen an der Spiegelebene' : 'Spiegel an, mit Clipping: Was über die Mitte reicht, verschmilzt dort';
   }
-  // die Anzeige liest das Clipping beim Rechnen der Haut (auch wenn sie liegt wie zuletzt)
+  // die Anzeige liest Clipping und Spiegelbild beim Rechnen der Haut (auch wenn sie liegt wie zuletzt)
   werkHaut.ganzNeu();
   werkNeu = true;
   anstossen();
@@ -569,25 +587,31 @@ function spiegelFahrtSchritt(dt: number): boolean {
   if (!werk.zug && werk.ueberDerMitte()) {
     const n = werk.zurueck.length;
     if (werk.mitteFest(false, true)) {
-      spiegelMarken.push(n);
+      spiegelMarken.push({ n, clipping: false, spiegelbild: werk.G.spiegelbild });
       werk.G.meldung = 'Clipping: an der Spiegelebene verschmolzen · die Naht ist gewählt, K macht sie rund · ⌘Z trennt wieder';
     }
   }
   werkNeu = true;
   return true;
 }
-/** nach einem ⌘Z: Ist das Verschmelzen beim Einschalten des Clippings zurückgenommen, ist auch das Clipping wieder aus */
+/** nach einem ⌘Z: Ist ein Schritt des Spiegel-Knopfs zurückgenommen, gelten auch seine Schalter von davor wieder */
 function spiegelNachZurueck(): void {
-  let aus = false;
-  while (spiegelMarken.length && werk.zurueck.length <= spiegelMarken[spiegelMarken.length - 1]!) {
-    spiegelMarken.pop();
-    aus = true;
-  }
-  if (aus && werk.G.clipping) {
-    werk.G.clipping = false;
-    werkHaut.ganzNeu();
-    werkNeu = true;
-  }
+  let m: (typeof spiegelMarken)[number] | undefined;
+  while (spiegelMarken.length && werk.zurueck.length <= spiegelMarken[spiegelMarken.length - 1]!.n) m = spiegelMarken.pop();
+  if (!m) return;
+  werk.G.clipping = m.clipping;
+  werk.G.spiegelbild = m.spiegelbild;
+  werkzeugFuerFreieForm();
+  werkHaut.ganzNeu();
+  werkNeu = true;
+}
+/**
+ * An einer freien Form lassen sich noch keine neuen Linien zeichnen (die Werkzeuge, die Linien ins Netz setzen, schneiden
+ * spiegelgleich): P, Freihand und Formen sind dort aus, bis sie es können.
+ */
+const zeichnenAmWerk = (): boolean => !werk.istFrei();
+function werkzeugFuerFreieForm(): void {
+  if (!zeichnenAmWerk() && (bearbeiten.stift || strichWerkzeug())) werkzeugImRaum('auswahl');
 }
 
 /**
@@ -909,6 +933,7 @@ function groessterInnenkreis(xs: readonly number[], ys: readonly number[]): numb
 /** eine neue Form (aufgeblasen, geladen) beginnt wie jede: Spiegel an, mit Clipping */
 function spiegelGrundstellung(): void {
   werk.G.clipping = true;
+  werk.G.spiegelbild = true;
   spiegelFahrt = null;
   spiegelMarken.length = 0;
 }
@@ -1186,11 +1211,15 @@ function werkBild(dt: number, m: Moment | null): boolean {
     werkNeu = false;
     // in der Pose die Haut, wie sie zu sehen ist (die Knochen drehen sie; wie `hautZeigen` im Prüffenster)
     const th = performance.now();
+    // eine freie Form mit „Spiegel an“ zeigt ihr Spiegelbild (nur Anzeige: `zeigeNetz` ist dann doppelt)
+    werkHaut.spiegelbild = werk.istFrei() && werk.G.spiegelbild;
     werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6, w));
     mess.teile[1] = performance.now() - th;
-    if (werkHaut.nurDehnung) haut.dehnungErneuern();
+    const zn = werkHaut.zeigeNetz;
+    if (werkHaut.nurDehnung && zn === hautZeigt) haut.dehnungErneuern();
     else {
-      haut.blaseErsetzen(werkHaut.netz);
+      hautZeigt = zn;
+      haut.blaseErsetzen(zn);
       if (netzArt) haut.netzZeigen(werkHaut.netzKanten());
     }
     werkGezeigt = true;
@@ -2633,7 +2662,8 @@ function bild(dt: number): boolean {
   const tz = performance.now();
   // ein festes Material statt der Seifenhaut (Florian, 18.11.): Die Seifenhaut zeichnet nur ihren Grund (Papier, dunkle Rückseite),
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
-  if (material !== null && werkGezeigt && zustand === 'ruhe' && werkHaut.netz && !w.leer) {
+  const zeigN = werkHaut.zeigeNetz;
+  if (material !== null && werkGezeigt && zustand === 'ruhe' && zeigN && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
     // beim Einrasten blenden die Materialien auf eigener Fläche aus, während sich das Blatt durch die Form schiebt (ihre Renderer
     // kennen keinen Schnitt)
@@ -2646,17 +2676,17 @@ function bild(dt: number): boolean {
       const g = gruenHolen();
       if (!g) aktiv = true;
       else {
-        if (!gruenStand || gruenStand.netz !== werkHaut.netz || gruenStand.version !== werkHaut.version) {
-          g.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
-          gruenStand = { netz: werkHaut.netz, version: werkHaut.version };
+        if (!gruenStand || gruenStand.netz !== zeigN || gruenStand.version !== werkHaut.version) {
+          g.netzSetzen(zeigN, wicklungVon(zeigN));
+          gruenStand = { netz: zeigN, version: werkHaut.version };
         }
         if (g.zeichnen(kam.aktiv, { deckung: (1 - 0.7 * roentgen) * blende })) aktiv = true;
       }
     } else if (istGast(material)) {
       // Jelly und helles Solid: der Blaupause-Renderer auf seiner eigenen Fläche über dem Raum (`gast.ts`)
-      if (!gastStand || gastStand.netz !== werkHaut.netz || gastStand.version !== werkHaut.version) {
-        gast.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
-        gastStand = { netz: werkHaut.netz, version: werkHaut.version };
+      if (!gastStand || gastStand.netz !== zeigN || gastStand.version !== werkHaut.version) {
+        gast.netzSetzen(zeigN, wicklungVon(zeigN));
+        gastStand = { netz: zeigN, version: werkHaut.version };
       }
       const heim = richtung(((m?.gier ?? 0) * Math.PI) / 180, ((m?.neigung ?? 0) * Math.PI) / 180);
       const unruhig = gast.zeichnen(kam.aktiv, material, {
@@ -2669,9 +2699,9 @@ function bild(dt: number): boolean {
       if (unruhig) aktiv = true;
     } else {
       gast.aus();
-      if (!festeStand || festeStand.netz !== werkHaut.netz || festeStand.version !== werkHaut.version) {
-        feste.netzSetzen(werkHaut.netz, wicklungVon(werkHaut.netz));
-        festeStand = { netz: werkHaut.netz, version: werkHaut.version };
+      if (!festeStand || festeStand.netz !== zeigN || festeStand.version !== werkHaut.version) {
+        feste.netzSetzen(zeigN, wicklungVon(zeigN));
+        festeStand = { netz: zeigN, version: werkHaut.version };
       }
       feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen, spiegelSchnitt: spiegelSchnittJetzt() });
     }
@@ -3351,7 +3381,7 @@ function wicklungVon(N: { pos: Float32Array; normal: Float32Array; index: Uint32
 /** S20: der weiße Körper für die Anzeige (die glatte Haut des Werks), eingerastet mit der Kamera; sonst null */
 function linienKoerper(): LinienKoerper | null {
   if (!koerperAn() || koerperDeckung <= 0.001) return null;
-  const N = werkHaut.netz!;
+  const N = werkHaut.zeigeNetz!;
   if (N !== koerperNetz) {
     koerperNetz = N;
     koerperNr++;
@@ -3804,9 +3834,16 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // P in der Leiste, sobald das Werk bedient wird
   if (stabil !== pErlaubt) {
     pErlaubt = stabil;
-    for (const n of ['p', 'frei', 'formen', 'lasso', 'objekt'] as const) leiste.erlauben(n, pErlaubt);
+    for (const n of ['lasso', 'objekt'] as const) leiste.erlauben(n, pErlaubt);
+    zeichnenErlaubt = null;
     // im Raum zeigt die Leiste das Werkzeug des Raums (anfangs die Auswahl, kein Tropfen), nicht das des Blatts
     if (pErlaubt) leiste.setzen(raumWerkzeug);
+  }
+  // (P, Freihand und Formen nur, wo das Werk neue Linien setzen kann: noch nicht an einer freien Form)
+  const zeichnen = pErlaubt && zeichnenAmWerk();
+  if (zeichnen !== zeichnenErlaubt) {
+    zeichnenErlaubt = zeichnen;
+    for (const n of ['p', 'frei', 'formen'] as const) leiste.erlauben(n, zeichnen);
   }
   if (!bearbeitenAn && bearbeitenGedrueckt) {
     bearbeiten.loslassen();
@@ -3993,8 +4030,13 @@ function lichtringZeichnen(): boolean {
 const werkInWelt = (q: { x: number; y: number; z: number }): Vector3 => new Vector3(q.x / werkHaut.f + werkHaut.mitte.x, q.y / werkHaut.f + werkHaut.mitte.y, q.z / werkHaut.f);
 
 /** der Strahl unter dem Zeiger trifft die Haut des Werks (wie sie zu sehen ist): Ort in Welt und Werk, oder null */
-function werkHautTreffen(x: number, y: number): { welt: Vector3; werk: { x: number; y: number; z: number } } | null {
+function werkHautTreffen(x: number, y: number, gespiegelt = false): { welt: Vector3; werk: { x: number; y: number; z: number } } | null {
   const { o, d } = kam.strahl(x, y, W, H);
+  // `gespiegelt`: gegen das Spiegelbild der Haut (der Strahl an der Ebene z = 0 gespiegelt; der Treffer liegt dann auf der Haut selbst)
+  if (gespiegelt) {
+    o.z = -o.z;
+    d.z = -d.z;
+  }
   const f = werkHaut.f;
   const ox = (o.x - werkHaut.mitte.x) * f;
   const oy = (o.y - werkHaut.mitte.y) * f;
@@ -5346,7 +5388,8 @@ leinwandLinien.addEventListener(
 /** Liegt die Form unter dem Ort (CSS-Pixel)? Im Raum ein Strahl gegen ihre Haut, in einer flachen Ansicht oder einem Feld der Ort im Blatt */
 function objektUnter(x: number, y: number): boolean {
   if (zustand !== 'ruhe' || !werkGezeigt) return false;
-  if (pinselHier(x, y)) return werkHautTreffen(x, y) !== null;
+  // (im Raum: ein Strahl gegen die Haut, an einer freien Form mit Spiegelbild auch gegen dieses)
+  if (pinselHier(x, y)) return werkHautTreffen(x, y) !== null || (werkHaut.spiegelbild && werkHautTreffen(x, y, true) !== null);
   const F = werkBlatt.flaechen[werkBlatt.flaecheUnter(x, y)];
   if (!F || F.raeumlich || !F.tiefe) return false;
   const XY = F.her(x, y);
@@ -5391,6 +5434,12 @@ function stiftImRaum(an: boolean): void {
 
 /** ein Werkzeug im Raum: P geht über das Verhalten der Studie; Freihand, Ellipse und Würfel zeichnen auf der Fläche unter dem Zeiger */
 function werkzeugImRaum(w: Werkzeug): void {
+  if (!zeichnenAmWerk() && (w === 'p' || w === 'frei' || w === 'ellipse' || w === 'wuerfel')) {
+    werk.G.meldung = 'An einer freien Form (Spiegel aus oder angewendet) lassen sich noch keine neuen Linien zeichnen · ihre Punkte, Linien und Griffe lassen sich ziehen';
+    leiste.setzen(raumWerkzeug);
+    anstossen();
+    return;
+  }
   raumWerkzeug = w;
   bearbeiten.stiftSchalten(w === 'p');
   if (strichWerkzeug() || w === 'objekt') bearbeiten.zeigerWeg();
@@ -5657,7 +5706,7 @@ function waehlenTaste(w: Werkzeug): void {
 
 // ---------- Leiste, Menü, Feinregler ----------
 
-const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, () => spiegelWeiter());
+const leiste = new Leiste(document.body, werkzeugGewaehlt, muell, (z) => spiegelSetzen(z));
 
 // S13 (liquid drop, Idee 10): der Ansichts-Tropfen unten rechts; Tippen rastet ein (⇧ die Gegenseite, die Mitte der Raum), Ziehen dreht
 const ansichtsTropfen = new AnsichtsTropfen(
@@ -6070,7 +6119,8 @@ function maulUiZeigen(): void {
   const an = zustand === 'ruhe' && werkGezeigt && bearbeitenAn;
   // der Tropfen hängt unter dem tiefsten sichtbaren Punkt der gewählten Linie
   // (nicht, wenn ein Feld gewählt ist: Dann sind die Punkte auf seinem Rand gewählt, kein Ring)
-  const l = an && !werk.grund && !werk.maulLauf && !werk.zug && !bearbeiten.stift && werkFelder.anzahl === 0 ? maulRing() : null;
+  // (ein Maul braucht noch die gespiegelte Form: an einer freien gibt es den Tropfen nicht)
+  const l = an && !werk.grund && !werk.maulLauf && !werk.zug && !bearbeiten.stift && werkFelder.anzahl === 0 && !werk.istFrei() ? maulRing() : null;
   let ort: { x: number; y: number } | null = null;
   if (l && werk.G.maul?.id !== l.id) {
     werkBlatt.anker.forEach((A, pi) => {
@@ -6226,8 +6276,17 @@ const haken = {
   /** B1: der Zeiger jetzt: Zeigt ihn das System (und mit welchem Bild), hat ihn das letzte Bild gezeichnet, seine Form */
   zeiger: () => ({ system: zeigerSystem.an, bild: zeigerSystem.wert, gezeichnet: zeigerGezeichnet, art: zustand === 'blatt' ? 'pfeil' : zeigerArtJetzt(), tempo: zeigerSystem.tempo, farbe: zustand !== 'blatt' && objektModus() ? 'dunkel' : 'weiss' }),
   /** der Spiegel-Knopf: sein Zustand, ob er etwas schaltet, die Fahrt beim Einschalten des Clippings (0 … 1) */
-  spiegel: () => ({ zustand: spiegelZustand(), erlaubt: spiegelErlaubt(), fahrt: spiegelFahrt ? Math.min(1, spiegelFahrt.t / SPIEGEL_FAHRT) : null, rand: spiegelSchnittJetzt() }),
-  spiegelWeiter,
+  spiegel: () => ({
+    zustand: spiegelZustand(),
+    erlaubt: spiegelErlaubt(),
+    fahrt: spiegelFahrt ? Math.min(1, spiegelFahrt.t / SPIEGEL_FAHRT) : null,
+    rand: spiegelSchnittJetzt(),
+    /** die Form ist frei (ein ganzes Netz ohne Spiegelpaare); ihr Spiegelbild wird gezeigt; so viele Punkte zeigt die Anzeige */
+    frei: werk.istFrei(),
+    spiegelbild: werkHaut.spiegelbild,
+    gezeigt: werkHaut.zeigeNetz ? werkHaut.zeigeNetz.pos.length / 3 : 0,
+  }),
+  spiegelSetzen,
   /** Objekte (V): der Modus, ob das Objekt gewählt ist, das Werkzeug des Raums, das Schild am Objekt (Text und Ort, CSS-Pixel) */
   objekt: () => ({
     modus: objektModus(),

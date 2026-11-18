@@ -162,19 +162,14 @@ export async function kugelMitRingen(t) {
 }
 
 /**
- * Der sichtbare Punkt einer Linie neben der Mitte, der am weitesten von ihr liegt (`werkLinienDaten`), und ein Zug an ihm an der Wand
- * des Tops bis `tief` hinter die Mitte (im Raum). `halten`: nach dem Weg so lange gedrückt bleiben (ms). Zurück: der Punkt.
+ * Einen Punkt des Werks (Loop-Kennung, Nummer) im Raum an der Wand des Tops ziehen, bis er im Werk bei z = `zielZ` liegt (x bleibt).
+ * `halten`: nach dem Weg so lange gedrückt bleiben (ms). Zurück: ob er zu greifen war.
  */
-export async function ueberDieMitteZiehen(t, tief = 40, { loslassen = true, halten = 600 } = {}) {
+export async function punktAnDerWandZiehen(t, p, zielZ, { loslassen = true, halten = 600 } = {}) {
   const { s, O } = t;
-  let p = null;
-  for (const l of await O('werkLinienDaten')) {
-    if (l.art === 'mitte') continue;
-    for (const q of l.punkte) if (q.sichtbar && (!p || Math.abs(q.z) > Math.abs(p.z))) p = { ...q, id: l.id };
-  }
-  const a = p ? (await O('ankerImBild', p.id, p.i, 'top')).filter((x) => !x.m && x.sichtbar)[0] : null;
-  const ziel = p ? await O('flaecheHin', 'top', p.x, -Math.sign(p.z) * tief) : null;
-  if (!p || !a || !ziel) return null;
+  const a = (await O('ankerImBild', p.id, p.i, 'top')).filter((x) => !x.m && x.sichtbar)[0];
+  const ziel = await O('flaecheHin', 'top', p.x, zielZ);
+  if (!a || !ziel) return false;
   await s.mouse.move(a.x, a.y, { steps: 3 });
   await s.waitForTimeout(400);
   await s.mouse.down();
@@ -185,6 +180,26 @@ export async function ueberDieMitteZiehen(t, tief = 40, { loslassen = true, halt
   }
   await s.waitForTimeout(halten);
   if (loslassen) await s.mouse.up();
+  return true;
+}
+
+/** der sichtbare Punkt einer Linie neben der Mitte, der am weitesten von ihr liegt, auf der Seite `seite` (+1: z > 0); aus `werkLinienDaten` */
+export async function seitenPunkt(t, seite = 0) {
+  let p = null;
+  for (const l of await t.O('werkLinienDaten')) {
+    if (l.art === 'mitte') continue;
+    for (const q of l.punkte) if (q.sichtbar && (seite === 0 || Math.sign(q.z) === seite) && (!p || Math.abs(q.z) > Math.abs(p.z))) p = { ...q, id: l.id };
+  }
+  return p;
+}
+
+/**
+ * Der sichtbare Punkt einer Linie neben der Mitte, der am weitesten von ihr liegt, und ein Zug an ihm an der Wand des Tops bis
+ * `tief` hinter die Mitte (im Raum). Zurück: der Punkt.
+ */
+export async function ueberDieMitteZiehen(t, tief = 40, wie = {}) {
+  const p = await seitenPunkt(t);
+  if (!p || !(await punktAnDerWandZiehen(t, p, -Math.sign(p.z) * tief, wie))) return null;
   return p;
 }
 

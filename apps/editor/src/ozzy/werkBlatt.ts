@@ -221,7 +221,7 @@ export class WerkBlatt implements Raum {
    */
   private signatur(flaechen: Flaeche[]): string | null {
     if (werk.zug || werk.grund !== null || werk.maulLauf !== null || this.fliesst) return null;
-    const teile: (string | number)[] = [werk.standZahl(), Object.values(this.breiten()).join(',')];
+    const teile: (string | number)[] = [werk.standZahl(), werk.spiegelStand(), Object.values(this.breiten()).join(',')];
     for (const F of flaechen) {
       teile.push(F.a, F.staerke, F.breite, F.vorn ?? 0, F.bereich ?? 0, F.raeumlich ? 1 : 0, ...F.hin(0, 0), ...F.hin(100, 0), ...F.hin(0, 100), ...F.hin(70, -40, 60));
       if (F.tiefe) teile.push(F.tiefe({ x: 0, y: 0, z: 0 }), F.tiefe({ x: 50, y: 30, z: 20 }));
@@ -260,6 +260,7 @@ export class WerkBlatt implements Raum {
       const L = werk.loops;
       const zug = werk.zug;
       const lagen = werk.aktuelleLagen();
+      const paarig = werk.spiegelbildGilt();
       flaechen.forEach((F, fl) => {
         const a = F.a;
         const sichtbar = F.staerke >= 0.5;
@@ -272,8 +273,9 @@ export class WerkBlatt implements Raum {
           const P = l.punkte;
           // In der Seite liegen beide Hälften im Blatt aufeinander: in Ruhe nur eine, und zwar die, die zum Betrachter zeigt (von hinten
           // die gespiegelte, sonst läge alles hinter der Haut); räumlich beide
-          for (const m of (a !== 'seite' || raeumlich) && l.art !== 'mitte' ? [false, true] : [false]) {
-            const gespiegelt = m || (a === 'seite' && !raeumlich && l.art !== 'mitte' && (F.vorn ?? 1) < 0);
+          // (eine freie Form ohne Spiegelbild, „Spiegel aus“: jede Linie nur, wo sie liegt)
+          for (const m of paarig && (a !== 'seite' || raeumlich) && l.art !== 'mitte' ? [false, true] : [false]) {
+            const gespiegelt = m || (paarig && a === 'seite' && !raeumlich && l.art !== 'mitte' && (F.vorn ?? 1) < 0);
             const zeigen = (v: V3): V3 => (gespiegelt ? werk.spiegeln(v) : v);
             const blatt = (v: V3): [number, number] => werk.imBlatt(a, zeigen(v));
             const aufBild = (v: V3): [number, number] => {
@@ -771,7 +773,7 @@ export class WerkBlatt implements Raum {
     const schl = `${E.a}|${anker.map((k) => `${k.X.toFixed(1)},${k.Y.toFixed(1)},${k.aus ? `${k.aus[0].toFixed(1)},${k.aus[1].toFixed(1)}` : ''}`).join(';')}|${werk.standZahl()}`;
     if (this.lichtSpeicher?.schl === schl) return this.lichtSpeicher.ring;
     const l = loopAusVorhang(werk.haut, E.a, werk.stiftStrich(E.a, anker, 1.5 * werk.MK), -1, 10 / werk.anzeige.skala(E.a));
-    const ring = l && l.ruhe.length >= 6 ? { pos: Float64Array.from(l.ruhe), zu: l.art !== 'ring', spiegeln: l.art !== 'mitte' } : null;
+    const ring = l && l.ruhe.length >= 6 ? { pos: Float64Array.from(l.ruhe), zu: l.art !== 'ring', spiegeln: l.art !== 'mitte' && werk.spiegelbildGilt() } : null;
     this.lichtSpeicher = { schl, ring };
     return ring;
   }
