@@ -254,6 +254,9 @@ export function mitteFestmachen(
   // der Ebene liegt (Standard z ≥ 0), bleibt und wird mit seinem Spiegelbild verbunden. Für die Seite z ≤ 0 wird vorher gespiegelt:
   // Danach ist wie sonst die Hälfte z ≥ 0 die Wahrheit.
   const frei = hautFrei(hEin);
+  // (eine Abzweigung an einer freien Form ist eine offene Linie ohne Gegenstück: Wie sie an der Naht geschnitten und gespiegelt wird,
+  // ist noch nicht gebaut)
+  if (frei && loopsEin.some((l) => l.haengt)) return { fehler: 'eine Abzweigung lässt sich noch nicht mit verschmelzen (erst die Abzweigung löschen)' };
   const um = frei && opt.seite === -1;
   const h: Haut = um ? gespiegelteHaut(hEin) : hEin;
   const loops: readonly Loop[] = um ? loopsEin.map(gespiegelterLoop) : loopsEin;

@@ -479,7 +479,8 @@ function doppeltGekreuzt(h: Haut, weg: readonly Kantenpunkt[]): Kantenpunkt[] | 
  * Kanten teilen (je Kante ein neuer Punkt bei f von u nach v; jedes Dreieck an ihr wird zu zweien), spiegelgleich: mit jeder Kante
  * auch ihr Spiegelbild; eine Kante in der Mittelebene ist ihr eigenes. Null, wenn eine Kante quer über die Mitte läuft und nicht in
  * ihrer Mitte geteilt werden soll (das Netz bliebe nicht spiegelgleich) oder eine Ecke kein Spiegelbild hat. Zurück: die neue Haut
- * und je geteilte Kante (Schlüssel im alten Netz) ihr neuer Punkt.
+ * und je geteilte Kante (Schlüssel im alten Netz) ihr neuer Punkt. An einer freien Haut (`hautFrei`, 18.11.) wird jede Kante für
+ * sich geteilt, wo sie geteilt werden soll.
  */
 function kantenTeilen(h: Haut, teile: readonly Kantenpunkt[]): { haut: Haut; geteilt: Map<number, number> } | null {
   const pos = Array.from(h.pos);
@@ -505,7 +506,12 @@ function kantenTeilen(h: Haut, teile: readonly Kantenpunkt[]): { haut: Haut; get
         break;
       }
   };
+  const frei = hautFrei(h);
   for (const k of teile) {
+    if (frei) {
+      teilen(k.u, k.v, k.f);
+      continue;
+    }
     const su = h.spiegel[k.u]!;
     const sv = h.spiegel[k.v]!;
     if (su < 0 || sv < 0) return null;
@@ -519,18 +525,20 @@ function kantenTeilen(h: Haut, teile: readonly Kantenpunkt[]): { haut: Haut; get
     teilen(k.u, k.v, k.f);
     if (su !== k.u || sv !== k.v) teilen(su, sv, k.f);
   }
-  return { haut: hautAus(pos, tri, hautFrei(h)), geteilt };
+  return { haut: hautAus(pos, tri, frei), geteilt };
 }
 
 /**
  * Ein Dreieck an einem Ort in seinem Innern in drei teilen (neuer Punkt dort), spiegelgleich mit seinem Spiegelbild. Null, wenn das
- * Dreieck sein eigenes Spiegelbild ist oder eine Ecke keins hat. Zurück: die neue Haut und der neue Punkt.
+ * Dreieck sein eigenes Spiegelbild ist oder eine Ecke keins hat. Zurück: die neue Haut und der neue Punkt. An einer freien Haut nur
+ * dieses eine Dreieck.
  */
 function dreieckTeilen(h: Haut, t: number, P: V3): { haut: Haut; w: number } | null {
   const e = ecken(h, t);
+  const frei = hautFrei(h);
   const se = e.map((v) => h.spiegel[v]!);
-  if (se.some((v) => v < 0)) return null;
-  const gleich = se.every((v) => e.includes(v));
+  if (!frei && se.some((v) => v < 0)) return null;
+  const gleich = !frei && se.every((v) => e.includes(v));
   if (gleich) return null;
   const pos = Array.from(h.pos);
   const tri = Array.from(h.tri);
@@ -544,6 +552,10 @@ function dreieckTeilen(h: Haut, t: number, P: V3): { haut: Haut; w: number } | n
     tri.push(b, c, w, c, a, w);
     return w;
   };
+  if (frei) {
+    const w = teilen(t, P);
+    return { haut: hautAus(pos, tri, true), w };
+  }
   // das Spiegelbild: das Dreieck mit den gespiegelten Ecken
   const sk = [...se].sort((x, y) => x - y).join();
   let ts = -1;
@@ -557,7 +569,7 @@ function dreieckTeilen(h: Haut, t: number, P: V3): { haut: Haut; w: number } | n
   if (ts < 0) return null;
   const w = teilen(t, P);
   teilen(ts, { x: P.x, y: P.y, z: -P.z });
-  return { haut: hautAus(pos, tri, hautFrei(h)), w };
+  return { haut: hautAus(pos, tri), w };
 }
 
 /**
@@ -647,6 +659,7 @@ export let einsetzenGrund = '';
  * Einen Loop ins Netz einsetzen (samt Spiegelbild: der Ring als ganzer Ring, das Paar mit seinem Zwilling). Danach ist jede
  * seiner Proben ein Punkt des Netzes. Andere eingesetzte Loops bekommen die Punkte auf ihren geteilten Kanten dazu. Ergebnis:
  * die neue Haut und alle Loops (in derselben Reihenfolge), null, wenn der Weg nicht aufgeht (dann bleibt alles, wie es war).
+ * An einer freien Haut (18.11.) ist jede Linie ein geschlossener Loop für sich (Art `paar`): Er wird allein eingesetzt, ohne Zwilling.
  */
 export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { haut: Haut; loops: Loop[] } | null {
   einsetzenGrund = '';
@@ -656,6 +669,8 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
   };
   const l = loops[nr];
   if (!l) return null;
+  const frei = hautFrei(h);
+  if (frei && l.art !== 'paar') return ohne('an einer freien Form ist jede Linie ein geschlossener Loop für sich');
   let haut = h;
   let liste = [...loops];
   const alleNeu: number[] = [];
@@ -922,9 +937,11 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
     const neu = einsetzen(l.proben);
     if (!neu) return null;
     liste[nr] = loopNeu(haut, l, neu);
-    // der Zwilling auf der anderen Seite (seine Dreiecke sind vom Einsetzen unberührt)
-    const sp = l.proben.map((p) => spiegelProbe(h, p));
-    if (sp.some((p) => !p) || !einsetzen(sp as Probe[])) return null;
+    if (!frei) {
+      // der Zwilling auf der anderen Seite (seine Dreiecke sind vom Einsetzen unberührt)
+      const sp = l.proben.map((p) => spiegelProbe(h, p));
+      if (sp.some((p) => !p) || !einsetzen(sp as Probe[])) return null;
+    }
   }
   // Splitter neben der neuen Linie entspannen; Punkte aller Linien (samt Spiegelbild) bleiben
   const fest = new Set<number>();
@@ -1012,6 +1029,9 @@ export function abzweigen(
     }
     return 'der Punkt liegt nicht auf der Kette seiner Linie';
   };
+  // (eine freie Haut hat keine Mittelebene: Punkte bei z = 0 sind dort Punkte wie alle anderen, und zum Spiegelbild führt kein Weg)
+  const frei = hautFrei(h);
+  if (frei && nach === 'spiegel') return { fehler: 'eine freie Form hat ihr Spiegelbild nicht im Netz (dorthin führt keine Linie)' };
   const a = eckeAm(von);
   if (typeof a === 'string') return { fehler: `Anfang: ${a}` };
   const zurMitte = nach === 'spiegel';
@@ -1019,7 +1039,7 @@ export function abzweigen(
   if (typeof c === 'string') return { fehler: `Ende: ${c}` };
   if (zurMitte && (c < 0 || c === a)) return { fehler: 'der Punkt liegt auf der Mitte (er ist sein eigenes Spiegelbild)' };
   if (a === c) return { fehler: 'Anfang und Ende sind derselbe Punkt' };
-  const aufMitte = (v: number): boolean => Math.abs(haut.pos[3 * v + 2]!) < 1e-9;
+  const aufMitte = (v: number): boolean => !frei && Math.abs(haut.pos[3 * v + 2]!) < 1e-9;
   if (ueber.length === 0 && aufMitte(a) && aufMitte(c)) return { fehler: 'beide Punkte liegen auf der Mitte (zwischen ihnen läuft die Mittellinie)' };
 
   // ---------- der Schnitt von Punkt zu Punkt ----------

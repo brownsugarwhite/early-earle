@@ -12,7 +12,7 @@
 
 import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, type HautVorlage, halbMoeglich, strukturSchluessel } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
-import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, hautNormalenMax, kantenSchluessel } from './kurven';
+import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautFrei, hautNormalen, hautNormalenMax, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 import { DirektLoeser } from './direktZug';
 import { type KnickFuehrung, knickFuehrungen, knickZiele } from './kantenWinkel';
@@ -444,14 +444,22 @@ export function loopAusSchnitt(
  * Mittelebene (`mitte`), auf einer Seite der Strich auf der Seite z > 0 (`paar`; auf der anderen gezeichnet: sein Spiegelbild), quer
  * über die Mitte von einem Ende bis zur ersten Kreuzung mit der Mittelachse, das längere der beiden Stücke, und sein Spiegelbild
  * (`ring`). null: zu kurz, oder der Strich kreuzt die Mittelachse mehr als einmal.
+ *
+ * `frei` (18.11.): an einer freien Form (ohne Spiegelpaare) gilt der Strich in jeder Ansicht, wie er gezeichnet ist; der Loop ist
+ * einer für sich (`paar`).
  */
-export function vorhangWeg(a: Ansicht, pfad: readonly (readonly [number, number])[], fang: number): { art: 'mitte' | 'ring' | 'paar'; weg: [number, number][] } | null {
+export function vorhangWeg(
+  a: Ansicht,
+  pfad: readonly (readonly [number, number])[],
+  fang: number,
+  frei = false,
+): { art: 'mitte' | 'ring' | 'paar'; weg: [number, number][] } | null {
   if (pfad.length < 2) return null;
   let weg: [number, number][] = pfad.map((q) => [q[0], q[1]]);
   // die Koordinate des Blatts, die z ist (Seite: keine; der Vorhang ist dort von selbst spiegelgleich)
   const zi: 0 | 1 = a === 'front' ? 0 : 1;
-  let art: 'mitte' | 'ring' | 'paar' = 'ring';
-  if (a !== 'seite') {
+  let art: 'mitte' | 'ring' | 'paar' = frei ? 'paar' : 'ring';
+  if (a !== 'seite' && !frei) {
     const spiegeln = (w: [number, number][]): [number, number][] => w.map((q) => (zi === 0 ? [-q[0], q[1]] : [q[0], -q[1]]));
     const zs = weg.map((q) => q[zi]!);
     if (zs.every((z) => Math.abs(z) < fang)) return { art: 'mitte', weg };
@@ -510,9 +518,11 @@ export function vorhangWeg(a: Ansicht, pfad: readonly (readonly [number, number]
  * vorn und hinten. Spiegelgleich wie `loopAusSchnitt`: in der Seite immer ein Ring; in Front und Top nah an der Mittelachse die
  * Mittelebene selbst, quer über die Mitte ein Ring (aus der längeren Hälfte des Strichs und ihrem Spiegelbild), sonst ein Loop auf
  * einer Seite (`paar`). Von mehreren Schnittlinien die, die dem Strich am nächsten liegt, bei Gleichstand die vorderste.
+ * An einer freien Haut (18.11.) gilt der Strich, wie er gezeichnet ist: der Loop rundum, einer für sich (`paar`), auch quer über z = 0.
  */
 export function loopAusVorhang(h: Haut, a: Ansicht, pfad: readonly (readonly [number, number])[], id: number, fang: number): Loop | null {
-  const W = vorhangWeg(a, pfad, fang);
+  const frei = hautFrei(h);
+  const W = vorhangWeg(a, pfad, fang, frei);
   if (!W) return null;
   if (W.art === 'mitte') return loopAusSchnitt(h, a, W.weg[0]!, W.weg[W.weg.length - 1]!, id, fang);
   let art: Loop['art'] = W.art;
@@ -604,7 +614,7 @@ export function loopAusVorhang(h: Haut, a: Ansicht, pfad: readonly (readonly [nu
     const kreuzt = l.punkte.some((k) => k.p.z < 0) && l.punkte.some((k) => k.p.z >= 0);
     return { l, nah, vorn, kreuzt };
   });
-  let passend = bewertung.filter((b) => (art === 'ring' ? b.kreuzt : !b.kreuzt));
+  let passend = frei ? bewertung : bewertung.filter((b) => (art === 'ring' ? b.kreuzt : !b.kreuzt));
   // quer über die Mitte gezeichnet, aber an der Mitte liegt dort nichts (zwei Teile, links und rechts): der Loop um das Teil einer Seite
   if (passend.length === 0 && art === 'ring') {
     art = 'paar';
@@ -620,7 +630,7 @@ export function loopAusVorhang(h: Haut, a: Ansicht, pfad: readonly (readonly [nu
   }
   let proben = punkte.map((k, i) => probeIn(h, dreieck[(i - 1 + punkte.length) % punkte.length]!, k));
   let p = punkte.map((k) => k.p);
-  if (p[0]!.z < 0) {
+  if (!frei && p[0]!.z < 0) {
     const sp = proben.map((q) => spiegelProbe(h, q));
     if (sp.some((q) => !q)) return null;
     proben = sp as Probe[];
@@ -796,8 +806,8 @@ export function griffeAufStrich(l: Loop, a: Ansicht, weg: readonly (readonly [nu
   griffeSpiegeln(l);
 }
 
-/** Strahl aus dem Blatt auf die Haut: vorderster Treffer an (u, v) */
-export function strahl(h: Haut, a: Ansicht, u: number, v: number): { probe: Probe; p: V3 } | null {
+/** Strahl aus dem Blatt auf die Haut: vorderster Treffer an (u, v); `hinten`: der hinterste (die Ansicht von der Gegenseite gesehen) */
+export function strahl(h: Haut, a: Ansicht, u: number, v: number, hinten = false): { probe: Probe; p: V3 } | null {
   let best = -Infinity;
   let treffer: { probe: Probe; p: V3 } | null = null;
   const P = h.pos;
@@ -825,7 +835,7 @@ export function strahl(h: Haut, a: Ansicht, u: number, v: number): { probe: Prob
       y: b0 * q[0]!.y + b1 * q[1]!.y + b2 * q[2]!.y,
       z: b0 * q[0]!.z + b1 * q[1]!.z + b2 * q[2]!.z,
     };
-    const tiefe = blickTiefe(a, p);
+    const tiefe = hinten ? -blickTiefe(a, p) : blickTiefe(a, p);
     if (tiefe > best) {
       best = tiefe;
       treffer = { probe: { ecken: e, b: [b0, b1, b2] }, p };
@@ -838,10 +848,16 @@ export function strahl(h: Haut, a: Ansicht, u: number, v: number): { probe: Prob
  * Eine gezeichnete geschlossene Form auf die Haut legen (dicht abgetastet, `knoten` = Stellen, die Punkte werden). In Front und
  * Top über die Mittelachse gezeichnet wird sie spiegelgleich (ihre Hälfte z ≥ 0), ebenso in der Seite über den Umriss (vorn aus
  * dem Körper hinaus, etwa ums Maul); sonst ein Loop auf einer Seite.
+ *
+ * An einer freien Haut (18.11.) liegt die Form, wo sie gezeichnet ist, ganz auf dem Körper (ein Loop für sich, `paar`); über den
+ * Umriss hinaus gezeichnet gibt es keine. `hinten`: Die Ansicht wird von der Gegenseite gesehen, die Form liegt auf der Seite der
+ * Haut, die dorthin zeigt (nur an einer freien Haut: An einer spiegelgleichen liegt eine Form der Seite auf beiden).
  */
-export function formAusZeichnung(h: Haut, a: Ansicht, uv: readonly [number, number][], knoten: readonly number[], id: number): Loop | null {
+export function formAusZeichnung(h: Haut, a: Ansicht, uv: readonly [number, number][], knoten: readonly number[], id: number, hinten = false): Loop | null {
   const m = uv.length;
   if (m < 6) return null;
+  const frei = hautFrei(h);
+  const hi = frei && hinten;
   const zKoord = (q: readonly [number, number]) => (a === 'front' ? q[0] : a === 'top' ? q[1] : 1);
   const wechsel: number[] = [];
   for (let i = 0; i < m; i++) if (zKoord(uv[i]!) < 0 !== zKoord(uv[(i + 1) % m]!) < 0) wechsel.push(i);
@@ -850,15 +866,19 @@ export function formAusZeichnung(h: Haut, a: Ansicht, uv: readonly [number, numb
   const p: V3[] = [];
   const marken: number[] = [];
   // in der Seite je Probe der Treffer auf der Haut (null: außerhalb des Umrisses)
-  const treffer = a === 'seite' ? uv.map((q) => strahl(h, a, q[0], q[1])) : null;
-  const dazu = (q: readonly [number, number], knoten: boolean, t = strahl(h, a, q[0], q[1])) => {
+  const treffer = a === 'seite' ? uv.map((q) => strahl(h, a, q[0], q[1], hi)) : null;
+  const dazu = (q: readonly [number, number], knoten: boolean, t = strahl(h, a, q[0], q[1], hi)) => {
     if (!t) return;
     if (knoten) marken.push(p.length);
     proben.push(t.probe);
     p.push(t.p);
   };
   let art: Loop['art'];
-  if (a !== 'seite' && wechsel.length === 2) {
+  if (frei) {
+    art = 'paar';
+    uv.forEach((q, i) => dazu(q, knotenMenge.has(i), treffer ? treffer[i] : undefined));
+    if (p.length < 0.7 * m) return null;
+  } else if (a !== 'seite' && wechsel.length === 2) {
     // die Hälfte auf der Seite z ≥ 0, von Kreuzung zu Kreuzung, Enden genau auf der Mittelachse
     art = 'ring';
     const start = wechsel.find((i) => zKoord(uv[i]!) < 0)!;

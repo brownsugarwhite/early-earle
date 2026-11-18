@@ -4,7 +4,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { spiegelAnwenden } from './frei';
 import { type Haut, type V3, hautFrei } from './kurven';
 import { dreiLoops, falten } from './kurvenFaelle';
-import { type Loop, LoopZug, festlegen, griffeAnlegen, hatPfad, mittlereKante, pfadLagen } from './loops';
+import { abzweigen, loopEinsetzen } from './einsetzen';
+import { type Loop, LoopZug, festlegen, formAusZeichnung, griffeAnlegen, hatPfad, kreuzungenZwischen, loopAusVorhang, mittlereKante, pfadLagen, punktEinfuegen } from './loops';
 import { mitteFestmachen } from './mitteSchnitt';
 import { verdichten } from './verdichten';
 
@@ -184,4 +185,129 @@ describe('freie Form, an der Spiegelebene verschmolzen (Clipping)', () => {
       expect(falten(r.haut).umgeklappt).toBe(0);
       for (let v = 0; v < r.haut.n; v++) expect(Number.isFinite(r.haut.pos[3 * v]!)).toBe(true);
     }, 120_000);
+});
+
+describe('Linien an einer freien Form (18.11.)', () => {
+  let h0: Haut;
+  let loops0: Loop[];
+  const istPunkt = (l: Loop): boolean => l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]);
+  const strich = (von: [number, number], nach: [number, number], n = 40): [number, number][] =>
+    Array.from({ length: n + 1 }, (_, i): [number, number] => [von[0] + ((nach[0] - von[0]) * i) / n, von[1] + ((nach[1] - von[1]) * i) / n]);
+  const zBereich = (l: Loop): [number, number] => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let j = 0; j < l.ruhe.length / 3; j++) {
+      lo = Math.min(lo, l.ruhe[3 * j + 2]!);
+      hi = Math.max(hi, l.ruhe[3 * j + 2]!);
+    }
+    return [lo, hi];
+  };
+
+  beforeAll(() => {
+    const d = dreiLoops();
+    for (const l of d.loops) griffeAnlegen(l, l.ruhe, true);
+    rechnen(d.h, d.loops, pfade(d.loops), 4, 12);
+    const f = spiegelAnwenden(d.h, d.loops, { naechsteId: 10, naechsteKreuzung: 100 });
+    if ('fehler' in f) throw new Error(f.fehler);
+    h0 = f.haut;
+    loops0 = f.loops;
+  }, 120_000);
+
+  it('Strich in der Front neben der Mitte: der Loop rundum liegt nur auf der gezeichneten Seite und sitzt im Netz', () => {
+    // Front: Blatt (z, y). Ein senkrechter Strich bei z = 70: der Kreis in der Ebene z = 70, Halbmesser √(150² − 70²) ≈ 132,7
+    const l = loopAusVorhang(h0, 'front', strich([70, 220], [70, -220]), 20, 4)!;
+    expect(l).not.toBeNull();
+    expect(l.art).toBe('paar');
+    const [lo, hi] = zBereich(l);
+    expect(lo).toBeGreaterThan(69);
+    expect(hi).toBeLessThan(71);
+    const r = loopEinsetzen(h0, [...loops0, l], loops0.length)!;
+    expect(r).not.toBeNull();
+    expect(hautFrei(r.haut)).toBe(true);
+    const neu = r.loops[loops0.length]!;
+    expect(istPunkt(neu)).toBe(true);
+    for (let j = 0; j < neu.ruhe.length / 3; j++) expect(Math.abs(Math.hypot(neu.ruhe[3 * j]!, neu.ruhe[3 * j + 1]!) - Math.sqrt(150 * 150 - 70 * 70))).toBeLessThan(4);
+    // auf der anderen Seite ist nichts entstanden: Dort hat das Netz so viele Punkte wie vorher
+    const hinter = (x: Haut): number => {
+      let n = 0;
+      for (let v = 0; v < x.n; v++) if (x.pos[3 * v + 2]! < -20) n++;
+      return n;
+    };
+    expect(hinter(r.haut)).toBe(hinter(h0));
+    expect(r.haut.n).toBeGreaterThan(h0.n);
+    // er kreuzt den Ring in der Ebene y = 0 und den in der Ebene x = 10 je zweimal, die Linie der Ebene z = 0 nicht
+    const tol = 0.25 * mittlereKante(r.haut);
+    const zahl = (i: number): number => kreuzungenZwischen(r.loops[i]!, r.loops[i]!.ruhe, neu, neu.ruhe, tol).length;
+    expect([zahl(0), zahl(1), zahl(2)]).toEqual([2, 0, 2]);
+    expect(falten(r.haut).umgeklappt).toBe(0);
+  });
+
+  it('Strich in der Seite: der Loop läuft rundum über beide Seiten, ein Loop für sich', () => {
+    // Seite: Blatt (x, y). Ein senkrechter Strich bei x = −60: der Kreis in der Ebene x = −60
+    const l = loopAusVorhang(h0, 'seite', strich([-60, 220], [-60, -220]), 21, 4)!;
+    expect(l).not.toBeNull();
+    expect(l.art).toBe('paar');
+    const [lo, hi] = zBereich(l);
+    expect(lo).toBeLessThan(-130);
+    expect(hi).toBeGreaterThan(130);
+    const r = loopEinsetzen(h0, [...loops0, l], loops0.length)!;
+    expect(r).not.toBeNull();
+    expect(hautFrei(r.haut)).toBe(true);
+    const neu = r.loops[loops0.length]!;
+    expect(istPunkt(neu)).toBe(true);
+    for (let j = 0; j < neu.ruhe.length / 3; j++) expect(Math.abs(neu.ruhe[3 * j]! + 60)).toBeLessThan(2);
+    expect(falten(r.haut).umgeklappt).toBe(0);
+  });
+
+  it('eine Form auf der Haut liegt auf der Seite, von der sie gezeichnet ist', () => {
+    // Seite: ein Kreis um (60, 60), Halbmesser 35; von vorn gesehen liegt er auf z > 0, von der Gegenseite auf z < 0
+    const kreis: [number, number][] = Array.from({ length: 48 }, (_, i): [number, number] => [60 + 35 * Math.cos((i * Math.PI) / 24), 60 + 35 * Math.sin((i * Math.PI) / 24)]);
+    const vorn = formAusZeichnung(h0, 'seite', kreis, [0, 12, 24, 36], 22)!;
+    const hinten = formAusZeichnung(h0, 'seite', kreis, [0, 12, 24, 36], 22, true)!;
+    expect(vorn.art).toBe('paar');
+    expect(hinten.art).toBe('paar');
+    expect(zBereich(vorn)[0]).toBeGreaterThan(60);
+    expect(zBereich(hinten)[1]).toBeLessThan(-60);
+    expect(vorn.punkte).toHaveLength(4);
+    for (const l of [vorn, hinten]) {
+      const r = loopEinsetzen(h0, [...loops0, l], loops0.length)!;
+      expect(r).not.toBeNull();
+      expect(hautFrei(r.haut)).toBe(true);
+      expect(istPunkt(r.loops[loops0.length]!)).toBe(true);
+    }
+    // über den Umriss hinaus gezeichnet (ein Kreis um den Rand der Kugel): keine Form
+    const rand: [number, number][] = kreis.map(([u, v]): [number, number] => [u + 90, v]);
+    expect(formAusZeichnung(h0, 'seite', rand, [0, 12, 24, 36], 23)).toBeNull();
+  });
+
+  it('eine Abzweigung verbindet zwei Punkte auf der Seite z < 0, ohne Gegenstück auf der anderen', () => {
+    // je ein neuer Punkt auf dem Ring in der Ebene y = 0 und auf dem in der Ebene x = 10, beide bei z < 0
+    const loops = loops0.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) }));
+    const stelle = (l: Loop, ziel: V3): number => {
+      let best = 0;
+      let d = Infinity;
+      for (let j = 0; j < l.ruhe.length / 3; j++) {
+        const e = Math.hypot(l.ruhe[3 * j]! - ziel.x, l.ruhe[3 * j + 1]! - ziel.y, l.ruhe[3 * j + 2]! - ziel.z);
+        if (e < d) {
+          d = e;
+          best = l.s[j]!;
+        }
+      }
+      return best;
+    };
+    const w = 150 / Math.SQRT2;
+    const pa = punktEinfuegen(loops[0]!, stelle(loops[0]!, { x: w, y: 0, z: -w }), undefined, true);
+    const pb = punktEinfuegen(loops[2]!, stelle(loops[2]!, { x: 10, y: w, z: -w }), undefined, true);
+    const r = abzweigen(h0, loops, { loop: 0, punkt: loops[0]!.punkte.indexOf(pa) }, { loop: 2, punkt: loops[2]!.punkte.indexOf(pb) }, 24, 200);
+    if ('fehler' in r) throw new Error(r.fehler);
+    expect(hautFrei(r.haut)).toBe(true);
+    const neu = r.loops[r.loops.length - 1]!;
+    expect(neu.art).toBe('ring');
+    expect(neu.haengt).toEqual([true, true]);
+    expect(istPunkt(neu)).toBe(true);
+    expect(zBereich(neu)[1]).toBeLessThan(-60);
+    // zum Spiegelbild führt an einer freien Form keine Linie
+    const s = abzweigen(h0, loops, { loop: 0, punkt: loops[0]!.punkte.indexOf(pa) }, 'spiegel', 25, 300);
+    expect('fehler' in s).toBe(true);
+  });
 });
