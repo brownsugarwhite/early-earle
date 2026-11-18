@@ -919,7 +919,9 @@ export class WerkBlatt implements Raum {
     for (let i = 0; i < n; i++) {
       const st = stuecke[sis[i]!]!;
       let h = br.innen / 2;
-      if (st.art === 'umriss') h = br.umriss / 2;
+      // die Linie der Mitte ist in der Seite der Umriss. Zeichnet der weiße Körper den Umriss schon selbst (seine Hülle: eingerastet,
+      // im Feld), bleibt sie fein wie in der Vorlage `raum.html`; sonst lagen beide übereinander (gemessen: 2,5 statt 1,8 Gerätepunkte)
+      if (st.art === 'umriss') h = (F.tiefe ? br.innen : br.umriss) / 2;
       else if (st.art === 'kante') {
         const s0 = lauf[sis[i]! * 2]!;
         const s1 = lauf[sis[i]! * 2 + 1]!;
