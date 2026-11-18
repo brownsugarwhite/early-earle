@@ -17,8 +17,8 @@
 // Gemessen in der Probe `apps/editor/scripts/pruefen/form-donut-regel.ts` (`docs/UEBERGABE.md`, Abschnitt 7): Wird dicht neben einem
 // Punkt des Netzes geschnitten, bleiben schmale Dreiecke, an denen die Rechnung auf einem feinen Netz nicht zur Ruhe kommt (152
 // umgestülpte Dreiecke). Deshalb kommt ein Punkt, neben dem näher als `fangen` einer Kante geschnitten würde, selbst auf die Ebene.
-import { type Haut, type V3, hautAus, hautSeiten } from './kurven';
-import { type Loop, type LoopPunkt, eckenAuto, griffeAnlegen, hatPfad, pfadParameter } from './loops';
+import { type Haut, type V3, hautAus, hautFrei, hautSeiten } from './kurven';
+import { type Loop, type LoopPunkt, eckenAuto, griffeAnlegen, hatPfad, pfadParameter, punktEinfuegen } from './loops';
 
 type Kubik = [V3, V3, V3, V3];
 const plus = (a: V3, b: V3): V3 => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z });
@@ -117,13 +117,41 @@ export function hinterDerMitte(l: Loop, P?: readonly V3[]): number[] {
   return aus;
 }
 
+/** eine freie Haut an der Ebene z = 0 gespiegelt (die Dreiecke andersherum, damit sie nach außen zeigen) */
+function gespiegelteHaut(h: Haut): Haut {
+  const pos = Float64Array.from(h.pos);
+  for (let v = 0; v < h.n; v++) pos[3 * v + 2] = -pos[3 * v + 2]!;
+  const tri = Uint32Array.from(h.tri);
+  for (let t = 0; t < tri.length; t += 3) {
+    const b = tri[t + 1]!;
+    tri[t + 1] = tri[t + 2]!;
+    tri[t + 2] = b;
+  }
+  return { ...h, pos, tri };
+}
+/** ein Loop einer freien Form, gespiegelt (Lagen, Punkte, Griffe) */
+function gespiegelterLoop(l: Loop): Loop {
+  const ruhe = Float64Array.from(l.ruhe);
+  for (let j = 0; j < ruhe.length / 3; j++) ruhe[3 * j + 2] = -ruhe[3 * j + 2]!;
+  return {
+    ...l,
+    ruhe,
+    punkte: l.punkte.map((p) => {
+      const q: LoopPunkt = { ...p, ref: gespiegelt(p.ref), cur: gespiegelt(p.cur) };
+      if (p.ein) q.ein = gespiegelt(p.ein);
+      if (p.aus) q.aus = gespiegelt(p.aus);
+      return q;
+    }),
+  };
+}
+
 type Teil = { k: Kubik; von: number | null; bis: number | null; oben: boolean };
 
 /**
  * Die Teile des Pfads eines Loops über der Ebene: je Teil seine Punkte mit Griffen, Anfang und Ende auf der Ebene. `neu`: die Enden,
  * die beim Teilen entstanden sind. Ein Punkt hinter der Ebene fällt weg. null: Der Pfad kreuzt die Ebene nicht.
  */
-function pfadUeberDerEbene(l: Loop): { teile: LoopPunkt[][]; neu: Set<LoopPunkt> } | null {
+function pfadUeberDerEbene(l: Loop): { teile: LoopPunkt[][]; neu: Set<LoopPunkt>; enden: Set<LoopPunkt> } | null {
   const teile: Teil[] = [];
   let kreuzt = false;
   for (const st of pfadStuecke(l)) {
@@ -141,7 +169,9 @@ function pfadUeberDerEbene(l: Loop): { teile: LoopPunkt[][]; neu: Set<LoopPunkt>
     }
     teile.push({ k: rest, von, bis: st.b, oben: hoehe(rest, 0.5) > 0 });
   }
-  if (!kreuzt) return null;
+  // (auch wenn kein Stück die Ebene in seinem Inneren kreuzt: Die Linie kann genau an einem ihrer Punkte hindurchgehen, so liegt sie
+  // an einer freien Form, deren Spiegel gerade angewendet wurde)
+  if (!kreuzt && !(teile.some((t) => t.oben) && teile.some((t) => !t.oben))) return null;
   // Läufe aufeinanderfolgender Teile über der Ebene; ein geschlossener Loop läuft über sein Ende hinaus weiter
   const laeufe: Teil[][] = [];
   let jetzt: Teil[] = [];
@@ -186,7 +216,13 @@ function pfadUeberDerEbene(l: Loop): { teile: LoopPunkt[][]; neu: Set<LoopPunkt>
     letzter.aus = gespiegelt(letzter.ein!);
     return P;
   });
-  return { teile: aus, neu };
+  // alle Enden der Läufe liegen auf der Ebene: die neu geteilten und Punkte der Linie, die schon dort lagen
+  const enden = new Set<LoopPunkt>();
+  for (const P of aus) {
+    enden.add(P[0]!);
+    enden.add(P[P.length - 1]!);
+  }
+  return { teile: aus, neu, enden };
 }
 
 /** Was `mitteFestmachen` zurückgibt */
@@ -209,25 +245,39 @@ export type MitteSchnitt = {
  * warum es nicht geht (dann ist nichts geändert).
  */
 export function mitteFestmachen(
-  h: Haut,
-  loops: readonly Loop[],
-  opt: { naechsteId: number; naechsteKreuzung: number; fangen?: number },
+  hEin: Haut,
+  loopsEin: readonly Loop[],
+  opt: { naechsteId: number; naechsteKreuzung: number; fangen?: number; seite?: 1 | -1 },
 ): MitteSchnitt | { fehler: string } {
   const fangen = opt.fangen ?? 0.25;
+  // Eine freie Form (18.11., Clipping an einem ganzen Objekt): Die ganze Haut ist „die Hälfte“; was von ihr auf der Seite `seite`
+  // der Ebene liegt (Standard z ≥ 0), bleibt und wird mit seinem Spiegelbild verbunden. Für die Seite z ≤ 0 wird vorher gespiegelt:
+  // Danach ist wie sonst die Hälfte z ≥ 0 die Wahrheit.
+  const frei = hautFrei(hEin);
+  const um = frei && opt.seite === -1;
+  const h: Haut = um ? gespiegelteHaut(hEin) : hEin;
+  const loops: readonly Loop[] = um ? loopsEin.map(gespiegelterLoop) : loopsEin;
   const n = h.n;
-  const seite = hautSeiten(h);
+  const seite = frei ? new Int8Array(n).fill(1) : hautSeiten(h);
   if (!seite) return { fehler: 'die Mittellinie trennt das Netz nicht' };
-  for (let v = 0; v < n; v++) if (h.spiegel[v]! < 0) return { fehler: 'die Haut ist nicht spiegelgleich' };
+  if (!frei) for (let v = 0; v < n; v++) if (h.spiegel[v]! < 0) return { fehler: 'die Haut ist nicht spiegelgleich' };
   const Z = (v: number): number => h.pos[3 * v + 2]!;
+  /** der Punkt liegt schon auf der Ebene: verschmolzen die Mittelkante, frei jeder Punkt genau bei z = 0 */
+  const aufMitte = (v: number): boolean => (frei ? Math.abs(Z(v)) < 1e-9 : h.spiegel[v] === v);
   let hinter = false;
-  for (let v = 0; v < n && !hinter; v++) if (seite[v]! > 0 && Z(v) < 0) hinter = true;
-  if (!hinter) return { fehler: 'nichts liegt hinter der Mitte' };
+  let davor = false;
+  for (let v = 0; v < n; v++) {
+    if (seite[v]! > 0 && !aufMitte(v) && Z(v) < 0) hinter = true;
+    if (seite[v]! > 0 && !aufMitte(v) && Z(v) > 0) davor = true;
+  }
+  if (!hinter) return { fehler: frei ? 'das Objekt reicht nicht über die Spiegelebene' : 'nichts liegt hinter der Mitte' };
+  if (!davor) return { fehler: 'das Objekt liegt ganz hinter der Spiegelebene' };
 
   // Punkte der Hälfte, neben denen dicht geschnitten würde, kommen selbst auf die Ebene; kein Dreieck darf dabei ganz in ihr liegen
   const gefangen = new Uint8Array(n);
   if (fangen > 0) {
     for (let v = 0; v < n; v++) {
-      if (!(seite[v]! > 0)) continue;
+      if (!(seite[v]! > 0) || aufMitte(v)) continue;
       const z = Z(v);
       if (h.nachbarn[v]!.some((j) => seite[j]! > 0 && (z > 0 ? Z(j) < 0 : Z(j) > 0) && Math.abs(z) < fangen * (Math.abs(z) + Math.abs(Z(j))))) gefangen[v] = 1;
     }
@@ -235,7 +285,7 @@ export function mitteFestmachen(
       nochmal = false;
       for (let t = 0; t < h.tri.length; t += 3) {
         const e = [h.tri[t]!, h.tri[t + 1]!, h.tri[t + 2]!];
-        if (!e.every((v) => h.spiegel[v] === v || gefangen[v]) || !e.some((v) => gefangen[v])) continue;
+        if (!e.every((v) => aufMitte(v) || gefangen[v]) || !e.some((v) => gefangen[v])) continue;
         let weit = -1;
         for (const v of e) if (gefangen[v] && (weit < 0 || Math.abs(Z(v)) > Math.abs(Z(weit)))) weit = v;
         gefangen[weit] = 0;
@@ -243,7 +293,7 @@ export function mitteFestmachen(
       }
     }
   }
-  const aufEbene = (v: number): boolean => h.spiegel[v] === v || gefangen[v] === 1;
+  const aufEbene = (v: number): boolean => aufMitte(v) || gefangen[v] === 1;
   /** der Punkt der Hälfte bleibt: auf der Ebene oder über ihr */
   const oben = (v: number): boolean => seite[v]! >= 0 && (aufEbene(v) || Z(v) > 0);
 
@@ -298,7 +348,8 @@ export function mitteFestmachen(
   for (let v = 0; v < n; v++) {
     if (!benutzt[v] || aufEbene(v)) continue;
     nrMinus[v] = alt.length;
-    alt.push(h.spiegel[v]!);
+    // (an einer freien Form ist das Spiegelbild neu: Es gab dort keinen Punkt)
+    alt.push(frei ? -1 : h.spiegel[v]!);
     pos.push(h.pos[3 * v]!, h.pos[3 * v + 1]!, -Z(v));
   }
   for (let c = 0; c < schnittVon.length; c++) {
@@ -321,7 +372,8 @@ export function mitteFestmachen(
   // der Rand der Löcher: die neuen Punkte auf der Ebene (Schnittpunkte und auf die Ebene gelegte), der Reihe nach über die Kanten der
   // Hälfte, an denen nur ein Dreieck liegt
   const randPunkte = new Set<number>();
-  for (let v = 0; v < n; v++) if (gefangen[v] && nrPlus[v]! >= 0) randPunkte.add(nrPlus[v]!);
+  // (an einer freien Form ist jeder Punkt auf der Ebene ein Punkt der Naht: Eine Mittelkante hatte sie nicht)
+  for (let v = 0; v < n; v++) if ((gefangen[v] || (frei && aufMitte(v))) && nrPlus[v]! >= 0) randPunkte.add(nrPlus[v]!);
   for (let c = 0; c < schnittVon.length; c++) if (nrPlus[n + c]! >= 0) randPunkte.add(nrPlus[n + c]!);
   const kantenZahl = new Map<number, number>();
   for (let t = 0; t < halb.length; t += 3)
@@ -391,6 +443,8 @@ export function mitteFestmachen(
   });
   /** neue Enden der Linien auf der Ebene: Punkt der neuen Haut → sein Punkt im Loop */
   const enden: { v: number; l: Loop; p: LoopPunkt }[] = [];
+  /** Loops einer freien Form, die ganz in der Ebene liegen (jetzt Linien der Mitte), mit den Punkten ihrer Kette */
+  const inEbene: { l: Loop; punkte: Set<number> }[] = [];
   let wegPunkte = 0;
   for (const l of loops) {
     if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) {
@@ -406,12 +460,24 @@ export function mitteFestmachen(
     const kette = l.proben.map((p) => p.ecken[0]);
     if (kette.every(bleibt)) {
       // der Loop liegt ganz diesseits: Er bleibt, wie er ist (auf den neuen Nummern)
-      aus.push(
-        kopie(
-          l,
-          kette.map((v) => ({ ecken: [nrPlus[v]!, nrPlus[v]!, nrPlus[v]!], b: [1, 0, 0] })),
-        ),
+      const k = kopie(
+        l,
+        kette.map((v) => ({ ecken: [nrPlus[v]!, nrPlus[v]!, nrPlus[v]!], b: [1, 0, 0] })),
       );
+      // ein geschlossener Loop einer freien Form, der ganz in der Ebene liegt, wird eine Linie der Mitte (so lag die Linie der Mitte,
+      // bevor der Spiegel angewendet wurde): Er ist die Naht dort, wo er läuft
+      if (frei && l.art !== 'ring' && kette.every(aufEbene)) {
+        k.art = 'mitte';
+        for (let j = 0; j < k.ruhe.length / 3; j++) k.ruhe[3 * j + 2] = 0;
+        for (const q of k.punkte) {
+          q.ref.z = 0;
+          q.cur.z = 0;
+          if (q.ein) q.ein.z = 0;
+          if (q.aus) q.aus.z = 0;
+        }
+        inEbene.push({ l: k, punkte: new Set(kette.map((v) => nrPlus[v]!)) });
+      }
+      aus.push(k);
       continue;
     }
     if (l.art === 'mitte') return { fehler: 'ein Loch reicht bis an eine Linie der Mitte' };
@@ -449,13 +515,13 @@ export function mitteFestmachen(
     }
     if (pfad.teile.length !== ketten.length) return { fehler: 'eine Linie und die Haut kreuzen die Mitte nicht an denselben Stellen' };
     // jedem Stück der Kette der Teil des Pfads mit den nächsten Enden
-    const frei = pfad.teile.map((_, i) => i);
+    const offen = pfad.teile.map((_, i) => i);
     for (const k of ketten) {
       const a = lage(k[0]!);
       const b = lage(k[k.length - 1]!);
       let best = -1;
       let weit = Infinity;
-      for (const i of frei) {
+      for (const i of offen) {
         const T = pfad.teile[i]!;
         const d = abstand(a, T[0]!.ref) + abstand(b, T[T.length - 1]!.ref);
         if (d < weit) {
@@ -463,7 +529,7 @@ export function mitteFestmachen(
           best = i;
         }
       }
-      frei.splice(frei.indexOf(best), 1);
+      offen.splice(offen.indexOf(best), 1);
       const teil = pfad.teile[best]!;
       const stueck: Loop = { id: id++, art: 'ring', ...ausKette('ring', k), punkte: teil, pfad: true };
       if (l.kante !== undefined) stueck.kante = l.kante;
@@ -477,7 +543,8 @@ export function mitteFestmachen(
           for (let j = 1; j < k.length; j++) if (abstand(lage(k[j]!), p.ref) < abstand(lage(k[nah]!), p.ref)) nah = j;
           p.s = stueck.s[nah]!;
         }
-        if (pfad.neu.has(p)) enden.push({ v: pi === 0 ? k[0]! : k[k.length - 1]!, l: stueck, p });
+        // (an einer freien Form endet ein Stück auch an einem Punkt der Linie, der schon auf der Ebene lag: Auch er trifft die Naht)
+        if (pfad.neu.has(p) || (frei && pfad.enden.has(p) && (pi === 0 || pi === teil.length - 1))) enden.push({ v: pi === 0 ? k[0]! : k[k.length - 1]!, l: stueck, p });
       });
       pfadParameter(stueck, stueck.ruhe);
       aus.push(stueck);
@@ -486,9 +553,36 @@ export function mitteFestmachen(
   // der Rand jedes Lochs: ein Loop der Mittelebene mit Kante an, mit Punkten an den Kreuzungen mit den neuen Enden
   const rand: number[] = [];
   for (const kette of raender) {
-    const r: Loop = { id: id++, art: 'mitte', ...ausKette('mitte', kette), punkte: [], kante: true };
     const stelle = new Map<number, number>();
     kette.forEach((v, i) => stelle.set(v, i));
+    // läuft hier schon eine Linie der Mitte (ein Loop der freien Form in der Ebene), ist sie die Naht: Sie bekommt, wo ein neues Ende
+    // sie trifft und noch kein gemeinsamer Punkt liegt, einen Punkt auf ihrem Pfad
+    const da = inEbene.find((x) => x.punkte.size === kette.length && kette.every((v) => x.punkte.has(v)));
+    if (da) {
+      const r = da.l;
+      const wo = new Map<number, number>();
+      r.proben.forEach((q, i) => wo.set(q.ecken[0], i));
+      for (const e of enden) {
+        const i = wo.get(e.v);
+        if (i === undefined) continue;
+        if (e.p.kreuzung !== undefined && r.punkte.some((q) => q.kreuzung === e.p.kreuzung)) continue;
+        // ein Punkt der Naht am selben Ort (so lag eine Kreuzung, deren Kennung verloren ging): Er wird die Kreuzung
+        const ort = lage(e.v);
+        const nah = r.punkte.find((q) => abstand(q.ref, ort) < 1e-6);
+        if (nah) {
+          if (nah.kreuzung === undefined) nah.kreuzung = kreuzung++;
+          e.p.kreuzung = nah.kreuzung;
+        } else {
+          e.p.kreuzung = kreuzung;
+          punktEinfuegen(r, r.s[i]!, kreuzung, hatPfad(r));
+          kreuzung++;
+        }
+        delete e.p.vonSelbst;
+      }
+      rand.push(r.id);
+      continue;
+    }
+    const r: Loop = { id: id++, art: 'mitte', ...ausKette('mitte', kette), punkte: [], kante: true };
     for (const e of enden) {
       const i = stelle.get(e.v);
       if (i === undefined) continue;

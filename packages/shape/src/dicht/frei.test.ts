@@ -5,6 +5,7 @@ import { spiegelAnwenden } from './frei';
 import { type Haut, type V3, hautFrei } from './kurven';
 import { dreiLoops, falten } from './kurvenFaelle';
 import { type Loop, LoopZug, festlegen, griffeAnlegen, hatPfad, mittlereKante, pfadLagen } from './loops';
+import { mitteFestmachen } from './mitteSchnitt';
 import { verdichten } from './verdichten';
 
 const pfade = (loops: readonly Loop[]): Float64Array[] => loops.map((l) => pfadLagen(l) ?? Float64Array.from(l.ruhe));
@@ -85,4 +86,102 @@ describe('freie Form (Spiegel angewendet)', () => {
     rechnen(v.haut, v.loops, pfade(v.loops), 1, 30);
     expect(falten(v.haut).umgeklappt).toBe(0);
   }, 120_000);
+});
+
+// Clipping an einem freien Objekt (18.11.): Die freie Haut wird an der Spiegelebene geschnitten und mit ihrem Spiegelbild verbunden
+// (`mitteFestmachen` nimmt dafür die ganze Haut als „die Hälfte“).
+describe('freie Form, an der Spiegelebene verschmolzen (Clipping)', () => {
+  const geschlossen = (h: Haut): boolean => {
+    const zahl = new Map<number, number>();
+    for (let t = 0; t < h.tri.length; t += 3)
+      for (let e = 0; e < 3; e++) {
+        const a = h.tri[t + e]!;
+        const b = h.tri[t + ((e + 1) % 3)]!;
+        const k = Math.min(a, b) * h.n + Math.max(a, b);
+        zahl.set(k, (zahl.get(k) ?? 0) + 1);
+      }
+    for (const z of zahl.values()) if (z !== 2) return false;
+    return true;
+  };
+  const kugel = (): { h: Haut; loops: Loop[] } => {
+    const d = dreiLoops();
+    for (const l of d.loops) griffeAnlegen(l, l.ruhe, true);
+    rechnen(d.h, d.loops, pfade(d.loops), 4, 12);
+    return d;
+  };
+
+  it('hin und zurück: Spiegel anwenden und gleich wieder verschmelzen gibt die Form von vorher', () => {
+    const d = kugel();
+    const f = spiegelAnwenden(d.h, d.loops, { naechsteId: 10, naechsteKreuzung: 100 });
+    if ('fehler' in f) throw new Error(f.fehler);
+    const r = mitteFestmachen(f.haut, f.loops, { naechsteId: f.naechsteId, naechsteKreuzung: f.naechsteKreuzung });
+    if ('fehler' in r) throw new Error(r.fehler);
+    expect(r.haut.n).toBe(d.h.n);
+    expect(hautFrei(r.haut)).toBe(false);
+    expect(r.haut.spiegel.every((x) => x >= 0)).toBe(true);
+    expect(geschlossen(r.haut)).toBe(true);
+    // dieselben Linien wie vorher: die Mitte (sie ist die Naht), zwei Ringe; nichts Neues
+    expect(r.loops.map((l) => l.art).sort()).toEqual(['mitte', 'ring', 'ring']);
+    expect(r.loops.map((l) => l.punkte.length).sort()).toEqual(d.loops.map((l) => l.punkte.length).sort());
+    const mitte = r.loops.find((l) => l.art === 'mitte')!;
+    expect(r.rand).toEqual([mitte.id]);
+    // jede Lage der neuen Haut ist eine Lage der alten (kein Punkt hat sich bewegt)
+    const alt = new Set<string>();
+    for (let v = 0; v < d.h.n; v++) alt.add([0, 1, 2].map((k) => d.h.pos[3 * v + k]!.toFixed(6)).join());
+    let fremd = 0;
+    for (let v = 0; v < r.haut.n; v++) if (!alt.has([0, 1, 2].map((k) => r.haut.pos[3 * v + k]!.toFixed(6)).join())) fremd++;
+    expect(fremd).toBe(0);
+    // die Enden der Ringe teilen ihre Kreuzung mit der Mitte
+    for (const l of r.loops.filter((x) => x.art === 'ring')) {
+      for (const p of [l.punkte[0]!, l.punkte[l.punkte.length - 1]!]) {
+        expect(Math.abs(p.ref.z)).toBeLessThan(1e-9);
+        expect(mitte.punkte.some((q) => q.kreuzung !== undefined && q.kreuzung === p.kreuzung)).toBe(true);
+      }
+    }
+    // und die Rechnung hält sie, wo sie ist
+    const vor = Float64Array.from(r.haut.pos);
+    rechnen(r.haut, r.loops, pfade(r.loops), 1, 20);
+    expect(weg(r.haut.pos, vor, () => true)).toBeLessThan(0.5);
+  }, 120_000);
+
+  for (const seite of [1, -1] as const)
+    it(`zur Seite geschoben (${seite > 0 ? 'vor' : 'hinter'} die Ebene) und verschmolzen: zwei Kugeln mit einer Naht in der Ebene`, () => {
+      const d = kugel();
+      const f = spiegelAnwenden(d.h, d.loops, { naechsteId: 10, naechsteKreuzung: 100, dz: seite * 80 });
+      if ('fehler' in f) throw new Error(f.fehler);
+      const r = mitteFestmachen(f.haut, f.loops, { naechsteId: f.naechsteId, naechsteKreuzung: f.naechsteKreuzung, seite });
+      if ('fehler' in r) throw new Error(r.fehler);
+      expect(hautFrei(r.haut)).toBe(false);
+      expect(r.haut.spiegel.every((x) => x >= 0)).toBe(true);
+      expect(geschlossen(r.haut)).toBe(true);
+      // die Form reicht jetzt von −230 bis 230 quer zur Ebene (Kugel 150, um 80 geschoben), spiegelgleich
+      let zMax = 0;
+      for (let v = 0; v < r.haut.n; v++) zMax = Math.max(zMax, Math.abs(r.haut.pos[3 * v + 2]!));
+      expect(zMax).toBeGreaterThan(225);
+      expect(zMax).toBeLessThan(235);
+      // die Naht: ein neuer Loop der Mitte mit Kante, ein Kreis mit Halbmesser √(150² − 80²) ≈ 127
+      expect(r.rand).toHaveLength(1);
+      const naht = r.loops.find((l) => l.id === r.rand[0])!;
+      expect(naht.art).toBe('mitte');
+      expect(naht.kante).toBe(true);
+      for (let j = 0; j < naht.ruhe.length / 3; j++) {
+        expect(Math.abs(naht.ruhe[3 * j + 2]!)).toBeLessThan(1e-9);
+        expect(Math.abs(Math.hypot(naht.ruhe[3 * j]!, naht.ruhe[3 * j + 1]!) - Math.sqrt(150 * 150 - 80 * 80))).toBeLessThan(6);
+      }
+      // die frühere Linie der Mitte liegt jetzt neben der Ebene und bleibt ein geschlossener Loop (mit Zwilling); die zwei Ringe
+      // sind an der Naht geschnitten (Enden auf der Ebene, dort Punkte der Naht)
+      expect(r.loops.filter((l) => l.art === 'paar')).toHaveLength(1);
+      const ringe = r.loops.filter((l) => l.art === 'ring');
+      expect(ringe).toHaveLength(2);
+      for (const l of ringe)
+        for (const p of [l.punkte[0]!, l.punkte[l.punkte.length - 1]!]) {
+          expect(Math.abs(p.ref.z)).toBeLessThan(1e-9);
+          expect(naht.punkte.some((q) => q.kreuzung === p.kreuzung)).toBe(true);
+        }
+      expect(naht.punkte).toHaveLength(4);
+      // die Rechnung kommt an ihr zur Ruhe, nichts schlägt um
+      rechnen(r.haut, r.loops, pfade(r.loops), 1, 40);
+      expect(falten(r.haut).umgeklappt).toBe(0);
+      for (let v = 0; v < r.haut.n; v++) expect(Number.isFinite(r.haut.pos[3 * v]!)).toBe(true);
+    }, 120_000);
 });
