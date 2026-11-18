@@ -11,6 +11,8 @@
 //   6  A: Klick auf das ruhende Objekt macht es zum aktiven; ein Punkt seiner Linie lässt sich ziehen, das andere Objekt bleibt.
 //   7  ⌘Z nimmt den Zug am aktiven Objekt zurück.
 //   8  V, ⌫ am gewählten zweiten Objekt: Es ist weg, die Kugel ist das aktive und einzige Objekt.
+//   8b ⌘Z holt das gelöschte Objekt zurück (der gemeinsame Rückweg). 8c ⌘Z nimmt den letzten Schritt dort zurück, wo er geschah
+//      (das Objekt wird dafür das aktive). 8d Eine Kennung wird nicht noch einmal vergeben, solange ihr Objekt zurückkommen kann.
 //   9  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: OZZY_URL=http://localhost:5211/ozzy.html node scripts/pruefen/ozzy-objekte-fenster.mjs [ordner für Bilder]
 import { auf, z1 } from './ozzy-teile.mjs';
@@ -198,6 +200,70 @@ const o8 = await O('objekte');
 const w8 = await O('werk');
 await bild('objekte-6-geloescht');
 ok('8 ⌫ am gewählten zweiten Objekt: nur die Kugel bleibt', vor8.aktiv === 2 && o8.aktiv === 1 && o8.ruhende.length === 0 && (await O('zustand')) === 'ruhe' && w8.punkte === w0.punkte, `vorher aktiv ${vor8.aktiv}; danach aktiv ${o8.aktiv}, ruhend ${o8.ruhende.length}, ${w8.punkte} Punkte`);
+
+// ---------- 8b ⌘Z holt das gelöschte Objekt zurück (der gemeinsame Rückweg) ----------
+const weg8 = await O('rueckweg');
+await s.keyboard.press('Meta+z');
+await still();
+const o8b = await O('objekte');
+const w8b = await O('werk');
+ok('8b ⌘Z: Das gelöschte Objekt ist wieder da und das aktive', /x2$/.test(weg8) && o8b.aktiv === 2 && o8b.ruhende.length === 1 && o8b.ruhende[0].id === 1 && w8b.punkte === w3.punkte && !/x2/.test(await O('rueckweg')), `Rückweg vorher „${weg8}“, danach „${await O('rueckweg')}“; aktiv ${o8b.aktiv}, ruhend ${o8b.ruhende.map((r) => r.id)}, ${w8b.punkte} Punkte (vorher ${w3.punkte})`);
+
+// ---------- 8c ⌘Z nimmt den letzten Schritt dort zurück, wo er geschah ----------
+await s.keyboard.press('a');
+await s.waitForTimeout(300);
+const vor8c = (await O('objekte')).kasten;
+let gezogen8 = false;
+{
+  const L = await O('werkLinienDaten');
+  const m = L[0];
+  const p = m.punkte.filter((q) => q.sichtbar).reduce((a, b) => (b.y > a.y ? b : a));
+  const A = (await O('ankerImBild', m.id, p.i)).filter((x) => !x.m && x.sichtbar)[0];
+  if (A) {
+    await s.mouse.move(A.x + 20, A.y + 16, { steps: 3 });
+    await s.mouse.move(A.x, A.y, { steps: 6 });
+    await s.waitForTimeout(400);
+    await s.mouse.down();
+    for (let k = 1; k <= 14; k++) {
+      await s.mouse.move(A.x, A.y - 3 * k);
+      await s.waitForTimeout(20);
+    }
+    await s.waitForTimeout(400);
+    await s.mouse.up();
+    gezogen8 = true;
+  }
+}
+await ruhig();
+const nach8c = (await O('objekte')).kasten;
+const weg8c = await O('rueckweg');
+await O('objektAktivieren', 1);
+await still();
+await s.keyboard.press('Meta+z');
+await still();
+const o8c = await O('objekte');
+ok(
+  '8c ⌘Z bei gewählter Form 1: Der letzte Schritt lag an Form 2, sie wird gewählt und ihr Zug geht zurück',
+  gezogen8 && nach8c.ry > vor8c.ry + 3 && /s2$/.test(weg8c) && o8c.aktiv === 2 && Math.abs(o8c.kasten.ry - vor8c.ry) < 1 && (await O('rueckweg')).split(' ').filter(Boolean).length === weg8c.split(' ').length - 1,
+  `Höhe von Form 2: ${z1(vor8c.ry)} → ${z1(nach8c.ry)} → ${z1(o8c.kasten.ry)}; Rückweg „${weg8c}“ → „${await O('rueckweg')}“; aktiv ${o8c.aktiv}`,
+);
+
+// ---------- 8d eine Kennung wird nicht noch einmal vergeben, solange ihr Objekt zurückkommen kann ----------
+await s.keyboard.press('v');
+await s.waitForTimeout(300);
+const B2c = await imBild((await O('objekte')).kasten);
+await klick(B2c.x, B2c.y);
+await still();
+await s.keyboard.press('Backspace');
+await s.waitForTimeout(600);
+await still();
+await s.click('#plus');
+await s.waitForTimeout(700);
+const o8d = await O('objekte');
+await s.keyboard.press('Escape');
+await s.waitForTimeout(600);
+await geladen();
+const o8e = await O('objekte');
+ok('8d nach dem Löschen von Form 2 heißt ein neues Objekt Form 3; Esc gibt die Nummer zurück', o8d.aktiv === 3 && o8e.aktiv === 1 && o8e.ruhende.length === 0, `auf dem Blatt des Plus: aktiv ${o8d.aktiv}; nach Esc aktiv ${o8e.aktiv}, ruhend ${o8e.ruhende.length}`);
 ok('9 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 await browser.close();
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');

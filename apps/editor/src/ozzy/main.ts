@@ -571,6 +571,79 @@ function reiheKaesten(): { cx: number; cy: number; rx: number; ry: number; tiefe
 /** läuft gerade ein Verbinden (beim ersten Mal lädt die Bibliothek einen Augenblick)? */
 let nahtLaeuft = false;
 let aktivId = 1;
+/**
+ * Die höchste Kennung, die vergeben ist. Eine Kennung wird nicht noch einmal vergeben, solange ihr Objekt zurückkommen kann (ein
+ * gelöschtes mit ⌘Z, ein aufgenommenes, wenn das Verbinden zurückgenommen wird); nur ein abgebrochenes Plus gibt seine zurück.
+ */
+let objektZaehler = 1;
+
+/**
+ * Der gemeinsame Rückweg (Etappe 3; bis dahin gehörte ⌘Z dem aktiven Objekt, und ein gelöschtes war weg). Hier steht in der
+ * Reihenfolge, in der es geschah: jeder Schritt im Werk mit der Kennung seines Objekts, und jedes gelöschte Objekt. ⌘Z nimmt den
+ * letzten Eintrag zurück: einen Schritt an dem Objekt, an dem er geschah (es wird dafür das aktive), oder ein Löschen (das Objekt
+ * ist wieder da und aktiv). Die Schritte selbst liegen wie bisher im Rückweg jedes Objekts (`werk.zurueck`); `rueckwegAbgleichen`
+ * liest daran ab, was dazugekommen oder schon zurückgenommen ist.
+ */
+type RueckEintrag = { art: 'schritt'; id: number } | { art: 'geloescht'; teil: Ruhend };
+const rueckweg: RueckEintrag[] = [];
+/** je Objekt: so viele seiner Schritte stehen im gemeinsamen Rückweg */
+const rueckZahl = new Map<number, number>();
+function rueckwegAbgleichen(): void {
+  if (!werkForm) return;
+  const ist = Math.max(0, werk.zurueck.length - werkForm.zurueck);
+  let soll = rueckZahl.get(aktivId) ?? 0;
+  if (soll === ist) return;
+  for (; soll < ist; soll++) rueckweg.push({ art: 'schritt', id: aktivId });
+  for (; soll > ist; soll--) {
+    // (ein Schritt ist zurückgenommen: Sein letzter Eintrag geht)
+    for (let i = rueckweg.length - 1; i >= 0; i--) {
+      const e = rueckweg[i]!;
+      if (e.art === 'schritt' && e.id === aktivId) {
+        rueckweg.splice(i, 1);
+        break;
+      }
+    }
+  }
+  rueckZahl.set(aktivId, ist);
+}
+/**
+ * ⌘Z, wenn der letzte Eintrag kein Schritt am aktiven Objekt ist: ein gelöschtes Objekt kommt zurück, oder der Schritt lag an einem
+ * anderen Objekt (es wird das aktive, dann geht sein Schritt zurück). Wahr, wenn ⌘Z damit erledigt ist.
+ */
+function rueckwegAnders(): boolean {
+  rueckwegAbgleichen();
+  for (;;) {
+    const e = rueckweg[rueckweg.length - 1];
+    if (!e) return false;
+    if (e.art === 'geloescht') {
+      if (!objektAblegenJetzt()) {
+        werk.G.meldung = '⌘Z: erst den laufenden Handgriff beenden';
+        return true;
+      }
+      rueckweg.pop();
+      objektAufnehmenJetzt(e.teil);
+      objektGewaehlt = false;
+      werk.G.meldung = `Form ${e.teil.id} ist wieder da`;
+      return true;
+    }
+    if (e.id === aktivId) return false;
+    if (!ruhende.some((r) => r.id === e.id)) {
+      // (das Objekt dieses Schritts gibt es nicht mehr: Der Eintrag ist verwaist)
+      rueckweg.pop();
+      continue;
+    }
+    if (!objektAktivieren(e.id)) return true;
+    const s = werkForm && werk.zurueck.length > werkForm.zurueck ? werk.zurueck.pop() : undefined;
+    if (s) {
+      werkBlatt.rueckfluss();
+      werk.wiederherstellen(s);
+    }
+    werk.anzeige.allesZeigen();
+    werk.G.meldung = `⌘Z: Der letzte Schritt lag an Form ${e.id}; sie ist jetzt gewählt`;
+    return true;
+  }
+}
+
 /** wie deutlich die ruhenden Objekte zu sehen sind (auf dem Blatt blass), weich nachgeführt */
 let ruheSicht = 1;
 const RUHE_AUF_DEM_BLATT = 0.38;
@@ -650,6 +723,7 @@ function ruheZeigen(): void {
 /** das aktive Objekt ablegen: Es ruht von jetzt an (bis ein anderes aufgenommen oder eine neue Form angelegt wird, steht es noch im Werk) */
 function objektAblegenJetzt(): Ruhend | null {
   if (!werkForm || !werkGezeigt || !werkHaut.zeigeNetz || tastenZug || objektZug || spiegelFahrt) return null;
+  rueckwegAbgleichen();
   const k = werkMasseWeltAktiv();
   const stand = k ? werk.objektAblegen() : null;
   if (!stand || !k) return null;
@@ -809,8 +883,8 @@ function objektPlus(): void {
   werkHaut = new WerkHaut();
   ruheZeigen();
   neu(true);
-  // (die nächste freie Nummer: Ein abgebrochenes Plus oder ein gelöschtes Objekt hinterlässt keine Lücke am Ende)
-  aktivId = Math.max(...ruhende.map((x) => x.id)) + 1;
+  // (eine neue Kennung; nur ein abgebrochenes Plus gibt seine zurück, `objektPlusAbbrechen`)
+  aktivId = ++objektZaehler;
   werk.G.meldung = 'Neues Objekt: seine Form zeichnen, ↩ bläst es auf · Esc: zurück';
   anstossen();
 }
@@ -819,6 +893,7 @@ function objektPlus(): void {
 function objektPlusAbbrechen(): boolean {
   const r = ruhende[ruhende.length - 1];
   if (zustand !== 'blatt' || !r || !blatt.leer) return false;
+  if (aktivId === objektZaehler) objektZaehler--;
   objektAufnehmenJetzt(r);
   raumRechnen();
   massstab.jetzt = massstab.ziel;
@@ -834,10 +909,14 @@ function objektPlusAbbrechen(): boolean {
 function objektLoeschen(): boolean {
   const r = ruhende[ruhende.length - 1];
   if (!r || zustand !== 'ruhe' || !werk.objektRuht() || tastenZug || objektZug) return false;
-  const weg = aktivId;
+  // das gelöschte Objekt bleibt für ⌘Z liegen: sein Stand, seine Anzeige, sein eigener Rückweg
+  const weg = objektAblegenJetzt();
+  if (!weg) return false;
+  ruhende.splice(ruhende.indexOf(weg), 1);
+  rueckweg.push({ art: 'geloescht', teil: weg });
   objektAufnehmenJetzt(r);
   objektGewaehlt = false;
-  werk.G.meldung = `Form ${weg} gelöscht`;
+  werk.G.meldung = `Form ${weg.id} gelöscht · ⌘Z holt sie zurück`;
   return true;
 }
 
@@ -1881,6 +1960,9 @@ function neu(behalten = false): void {
   if (!behalten) {
     ruhende.length = 0;
     aktivId = 1;
+    objektZaehler = 1;
+    rueckweg.length = 0;
+    rueckZahl.clear();
     reihe = null;
     ruheZeigen();
   }
@@ -1944,7 +2026,7 @@ function reiheSchritt(): boolean {
   werkHaut = new WerkHaut();
   ruheZeigen();
   neu(true);
-  aktivId = Math.max(...ruhende.map((x) => x.id)) + 1;
+  aktivId = ++objektZaehler;
   blatt.netzSetzen(n);
   aufblasen();
   return true;
@@ -3388,6 +3470,7 @@ function bild(dt: number): boolean {
   hintenZeigen();
   maulUiZeigen();
   objektUiZeigen();
+  if (zustand === 'ruhe' && !werk.zug) rueckwegAbgleichen();
   leiste.spiegelZeigen(spiegelZustand(), spiegelErlaubt());
   // das Plus: ein neues Objekt gibt es im Raum, sobald eine Form steht (wie der Spiegel)
   leiste.plusErlauben(spiegelErlaubt());
@@ -6211,6 +6294,7 @@ window.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'z') {
     e.preventDefault();
     if (zustand === 'blatt' && blatt.rueckgaengig()) anstossen();
+    else if (zustand === 'ruhe' && !werk.zug && !tastenZug && !objektZug && rueckwegAnders()) anstossen();
     else if (zustand === 'ruhe' && bearbeitenAn) {
       // über das Verhalten (es räumt Tropfen und Auswahl auf), das im Werk zurückgeht
       if (bearbeiten.rueckgaengig()) anstossen();
@@ -7017,6 +7101,11 @@ const haken = {
   }),
   objektPlus,
   objektAktivieren,
+  /** der gemeinsame Rückweg: seine Einträge der Reihe nach (für die Probe) */
+  rueckweg: () => {
+    rueckwegAbgleichen();
+    return rueckweg.map((e) => (e.art === 'schritt' ? `s${e.id}` : `x${e.teil.id}`)).join(' ');
+  },
   /** Etappe 3: Blasen die Formen einer Reihe noch auf (mehrere Silhouetten auf einem Blatt)? */
   reihe: () => (reihe ? { warten: reihe.warten.length, zahl: reihe.zahl, imRaum: reihe.imRaum } : null),
   /** Etappe 4: das aktive Objekt mit dem verbinden, das es berührt (wie die Knöpfe der Leiste) */
