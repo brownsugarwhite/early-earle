@@ -20,8 +20,11 @@ export const PUNKTE = [
 ];
 export const PUNKT_R = 9;
 
-/** das Fenster öffnen (mit `film`: den Mitschnitt in diesen Ordner), die Form laden, den Blick setzen, den Paint-Modus einschalten */
-export async function oeffnen({ film = null, fuellen = '0', dichte = 2 } = {}) {
+/**
+ * das Fenster öffnen (mit `film`: den Mitschnitt in diesen Ordner), die Form laden, den Blick setzen, den Paint-Modus einschalten;
+ * `material`: der Grund, auf dem gemalt wird (wie in der Adresse: 'wachs' oder 'helles solid')
+ */
+export async function oeffnen({ film = null, fuellen = '0', dichte = 2, material = 'wachs' } = {}) {
   const browser = await chromium.launch({ args: GPU_ARGS });
   const kontext = await browser.newContext({ viewport: FENSTER, deviceScaleFactor: dichte, ...(film ? { recordVideo: { dir: film, size: FENSTER } } : {}) });
   const s = await kontext.newPage();
@@ -31,7 +34,7 @@ export async function oeffnen({ film = null, fuellen = '0', dichte = 2 } = {}) {
   s.on('console', (m) => {
     if (m.type() === 'error') fehler.push(m.text());
   });
-  await s.goto(`${process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html'}?form=${encodeURIComponent('strange bird')}&material=wachs&fuellen=${fuellen}`);
+  await s.goto(`${process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html'}?form=${encodeURIComponent('strange bird')}&material=${encodeURIComponent(material)}&fuellen=${fuellen}`);
   await s.waitForFunction(() => !!window.__ozzy);
   const O = (f, ...a) => s.evaluate(([f2, a2]) => window.__ozzy[f2](...a2), [f, a]);
   await s.waitForFunction(() => window.__ozzy.werk().gezeigt && window.__ozzy.bearbeiten().an, null, { timeout: 90000 });

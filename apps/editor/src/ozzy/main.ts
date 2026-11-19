@@ -4328,7 +4328,7 @@ function bild(dt: number): boolean {
           ? 'Ebenen-Ansicht · P: auf die vordere Kopie klicken setzt Punkte, ziehen rundet · auf dem ersten Punkt schließen · ↩ beendet offen · ⌫ letzter Punkt · Esc'
           : raumWerkzeug === 'pipette'
           ? 'Ebenen-Ansicht · Pipette: Klick auf eine Kopie nimmt die Farbe ihrer Ebene auf · A: zurück zu den Punkten'
-          : 'Ebenen-Ansicht · je Ebene eine Kopie · gemalt wird an der vorderen, mit allen Werkzeugen · eine andere antippen: Sie tritt vor · ziehen dreht alle zugleich · Rad zoomt · der Knopf über dem Stapel: wieder eine Form'
+          : 'Ebenen-Ansicht · je Ebene eine Kopie · gemalt wird an der vorderen, mit allen Werkzeugen · eine andere antippen: Sie tritt vor · ziehen dreht alle zugleich · Rad zoomt · X oder der Knopf über dem Stapel: wieder eine Form'
         : bearbeiten.stift
         ? 'Paint-Modus · P: auf die Form klicken setzt Punkte, ziehen rundet · auf dem ersten Punkt schließen · ↩ beendet offen · ⌫ letzter Punkt · Esc'
         : raumWerkzeug === 'tropfen'
@@ -4337,7 +4337,7 @@ function bild(dt: number): boolean {
         ? 'Pipette · Klick auf die Form nimmt die Farbe dort auf · A: zurück zu den Punkten'
         : farbAn && raumWerkzeug === 'auswahl' && bearbeiten.auswahl.size > 0
         ? 'Punkt gewählt · den Tropfen am Faden wegziehen: Die Kante wird dort weich, zurückschieben: hart · K weich oder hart · [ ] schmaler, breiter · ⌫ löscht den Punkt · Esc'
-        : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · F Farbtropfen: Klick auf die Form füllt bis an die Farblinien · I Pipette · Ebenen: der Stapel rechts · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
+        : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · F Farbtropfen: Klick auf die Form füllt bis an die Farblinien · I Pipette · Ebenen: der Stapel rechts, X fächert sie auf · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
       : zustand === 'ruhe' && werkGezeigt && objektModus()
@@ -7480,6 +7480,8 @@ window.addEventListener('keydown', (e) => {
   // Paint-Modus, Etappe 3: F ist der Farbtropfen, I die Pipette (noch einmal dieselbe Taste: zurück zu den Punkten)
   else if ((k === 'f' || k === 'F') && zustand === 'ruhe' && werkGezeigt && !e.repeat) farbWerkzeugTaste('tropfen');
   else if ((k === 'i' || k === 'I') && zustand === 'ruhe' && werkGezeigt && !e.repeat) farbWerkzeugTaste('pipette');
+  // Paint-Modus, Etappe 6: X fächert die Ebenen auf und schiebt sie wieder zusammen (wie der Knopf über dem Stapel)
+  else if ((k === 'x' || k === 'X') && zustand === 'ruhe' && werkGezeigt && malModus && !e.repeat) faecherSetzen(faecher.ziel < 0.5);
   else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && (objektModus() || !werk.G.auswahl.length) && verbundRundSchalten()) {
     // Etappe 5: am Objekt (V, oder mit A ohne gewählte Punkte) schaltet K die Naht seines Verbunds zwischen rund und Kante
   } else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && !objektModus()) {
@@ -7734,9 +7736,12 @@ function farbTropfenZeigen(): void {
   }
   if (!faellt) t.classList.remove('zieht');
   // (nicht über dem Tropfen eines gewählten Punkts, Etappe 4: Dort stellt das Ziehen die Breite des Verlaufs, ein Klick füllt nicht)
-  const da = malModus && zustand === 'ruhe' && werkGezeigt && farbAn && (raumWerkzeug === 'auswahl' || farbWerkzeug()) && zeiger.da && !drehen && !bearbeiten.haengt && !bearbeitenGedrueckt && !weichZug && farbBlatt.ortFrei(zeiger.x, zeiger.y) !== null && !weichGriffBei(zeiger.x, zeiger.y);
   // (mit dem Farbtropfen nimmt ⌥ die Farbe auf, wie die Pipette)
-  const pipette = da && !faellt && (raumWerkzeug === 'pipette' || (raumWerkzeug === 'tropfen' && altGehalten));
+  const nimmt = raumWerkzeug === 'pipette' || (raumWerkzeug === 'tropfen' && altGehalten);
+  // (Etappe 6: Aufgefächert nimmt die Pipette von jeder Kopie; über einer anderen als der vorderen hängt sie dort, wo Farbe liegt)
+  const amOrt = farbBlatt.ortFrei(zeiger.x, zeiger.y) !== null || (nimmt && faecherBild.length > 0 && farbUnterZeiger() !== null);
+  const da = malModus && zustand === 'ruhe' && werkGezeigt && farbAn && (raumWerkzeug === 'auswahl' || farbWerkzeug()) && zeiger.da && !drehen && !bearbeiten.haengt && !bearbeitenGedrueckt && !weichZug && amOrt && !weichGriffBei(zeiger.x, zeiger.y);
+  const pipette = da && !faellt && nimmt;
   t.hidden = !(da || faellt);
   if (t.hidden) return;
   if (!faellt) {

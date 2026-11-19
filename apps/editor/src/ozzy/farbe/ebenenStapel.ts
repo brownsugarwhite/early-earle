@@ -99,7 +99,7 @@ export class EbenenStapel {
   /** der Knopf der Ebenen-Ansicht: gedrückt, solange aufgefächert ist, und was er dann tut */
   private faecherTitel(offen: boolean): void {
     this.faecher.setAttribute('aria-pressed', String(offen));
-    const titel = offen ? 'Ebenen-Ansicht: wieder zu einer Form zusammenschieben (Esc)' : 'Ebenen-Ansicht: auffächern, je Ebene eine Kopie';
+    const titel = offen ? 'Ebenen-Ansicht: wieder zu einer Form zusammenschieben (X)' : 'Ebenen-Ansicht: auffächern, je Ebene eine Kopie (X)';
     this.faecher.title = titel;
     this.faecher.setAttribute('aria-label', titel);
   }
