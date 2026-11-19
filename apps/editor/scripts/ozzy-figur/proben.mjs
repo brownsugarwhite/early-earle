@@ -6,8 +6,9 @@
 //   B2  Drehungen: nirgends mehr Weiß ohne Schwarz darunter als an den gezeichneten Enden (+ Kantensaum)
 //   C1  Raster an den Schlüsselwinkeln genau Florians Vorlagen (wie A, Drehung in Körperkoordinaten); D1: ebenso an den Haltungen
 //       Sitzen und Liegen (Kopf vorn und im Profil)
-//   D2  Haltungswechsel (Hinsetzen über die Hocke, Hinlegen, Umlegen) ohne Sprung: an Anfang, Ende, Hocke und Wechsel der führenden
-//       Haltung klappt ein Schritt von 1/1000 des Wegs höchstens 20 Bildpunkte um (600 × 600)
+//   D2  Abläufe (Hinsetzen, mit Hüpfer, Rutschen, gemütlich, Umlegen, Aufsetzen, Aufstehen) ohne Sprung: an Anfang, Ende, Grenzen und
+//       Mitten ihrer Abschnitte klappt ein Schritt von 1/4000 der Dauer höchstens 20 Bildpunkte um (600 × 600), oder deutlich weniger als
+//       ein Schritt von 1/1000 (dann ist es schnelle Bewegung, etwa beim Absprung, kein Sprung)
 //   B4  Tempo je Bild (Szene bauen, zeichnen, warten) in Chrome und WebKit
 //   aus apps/editor:  node scripts/ozzy-figur/proben.mjs [ausordner]
 import { spawn } from 'node:child_process';
@@ -93,14 +94,20 @@ async function blatt(browser, page, sz, fl, datei) {
   ergebnis.bestanden.C1 = Object.values(ergebnis.C1).every((r) => r.deutlichAnteil <= 0.003);
   // D2: Haltungswechsel ohne Sprung. An Anfang, Ende, Wegpunkten (Hocke) und dort, wo die führende Haltung wechselt, ein Schritt von
   // 1/1000 des Wegs: Was stetig läuft, klappt dabei kaum einen Bildpunkt um; ein Sprung (Malreihenfolge, Teil taucht auf) bliebe groß
-  const STELLEN = { hinsetzen: [0, 0.125, 0.25, 0.375, 0.5, 0.75, 1], hinlegen: [0, 0.5, 1], umlegen: [0, 0.5, 1] };
+  // je Ablauf: Anfang, Ende, Grenzen und Mitten der Abschnitte (dort wechselt die führende Haltung), Anteile der ganzen Dauer
+  const STELLEN = await page.evaluate(() => window.__ozzyFigur.ablaufStellen());
   ergebnis.D2 = {};
   for (const [sz, ts] of Object.entries(STELLEN)) {
     const zahlen = [];
-    for (const t of ts) zahlen.push(await page.evaluate(([sz, a, b]) => window.__ozzyFigur.sprung(sz, a, b, 600, 600), [sz, Math.max(0, t - 0.0005), Math.min(1, t + 0.0005)]));
+    for (const t of ts) {
+      // zwei Schrittweiten (1/1000 und 1/4000 der Dauer): Bewegung schrumpft mit dem Schritt, ein Sprung nicht
+      const n = [];
+      for (const h of [0.0005, 0.000125]) n.push(await page.evaluate(([sz, a, b]) => window.__ozzyFigur.sprung(sz, a, b, 600, 600), [sz, Math.max(0, t - h), Math.min(1, t + h)]));
+      zahlen.push(n);
+    }
     ergebnis.D2[sz] = { stellen: ts, zahlen };
   }
-  ergebnis.bestanden.D2 = Object.values(ergebnis.D2).every((r) => Math.max(...r.zahlen) <= 20);
+  ergebnis.bestanden.D2 = Object.values(ergebnis.D2).every((r) => r.zahlen.every(([grob, fein]) => fein <= 20 || fein < grob / 2.5));
   ergebnis.B4.chrome = { logo: await page.evaluate(() => window.__ozzyFigur.tempo('logo', 0, true, 120, 1000, 1000)), drehen: await page.evaluate(() => window.__ozzyFigur.tempo('drehen', 0, true, 120, 1000, 1000)) };
   for (const sz of DREHUNGEN) for (const fl of [false, true]) await blatt(browser, page, sz, fl, `${TAG}-c-${sz}-${fl ? 'fluessig' : 'exakt'}.png`);
   ergebnis.fehlerChrome = fehler;
@@ -125,7 +132,7 @@ console.log('A    ', Object.entries(ergebnis.A).map(([k, v]) => `${k} ${pz(v)}`)
 console.log('B1   ', Object.entries(ergebnis.B1).map(([k, v]) => `${k} ${v.spitzen.length}/${v.groesster.toFixed(2)} px`).join(' · '), ergebnis.bestanden.B1 ? '✓' : '✗');
 console.log('B2   ', Object.entries(ergebnis.B2).map(([k, v]) => `${k} Enden ${v.enden}, schlimmstes ${v.schlimmstes} [${v.zahlen.join(' ')}]`).join(' · '), ergebnis.bestanden.B2 ? '✓' : '✗');
 console.log('C1   ', Object.entries(ergebnis.C1).map(([k, v]) => `${k} ${pz(v)}`).join(' · '), ergebnis.bestanden.C1 ? '✓' : '✗');
-console.log('D2   ', Object.entries(ergebnis.D2).map(([k, v]) => `${k} [${v.zahlen.join(' ')}]`).join(' · '), ergebnis.bestanden.D2 ? '✓' : '✗');
+console.log('D2   ', Object.entries(ergebnis.D2).map(([k, v]) => `${k} [${v.zahlen.map(([a, b]) => `${a}/${b}`).join(' ')}]`).join(' · '), ergebnis.bestanden.D2 ? '✓' : '✗');
 console.log('B4   ', JSON.stringify(Object.fromEntries(Object.entries(ergebnis.B4).map(([m, x]) => [m, Object.fromEntries(Object.entries(x).map(([s, v]) => [s, `${v.median.toFixed(1)}/${v.p95.toFixed(1)} ms`]))]))));
 console.log('Fehler', JSON.stringify({ chrome: ergebnis.fehlerChrome, webkit: ergebnis.fehlerWebKit }));
 process.exit(0);

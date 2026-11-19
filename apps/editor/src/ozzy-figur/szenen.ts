@@ -2,7 +2,8 @@
 // (Etappe C, raster.ts): „Ozzy dreht sich“ (Körper und Kopf zusammen: Front → 3/4 → Profil), „Kopf dreht“ (Seite, Kopf vorn → Profil),
 // „Körper dreht“ (Kopf schaut zu uns, Körper vorn → Seite).
 import type { Form } from './form';
-import { weg, wegGewichte } from './haltung';
+import { ABLAEUFE, type AblaufName, ablaufBei, dauerVon } from './ablauf';
+import type { HaltungName } from './haltung';
 import { FigurRaster, type Lage } from './raster';
 import type { Fluessig, Gruppe, RenderTeil, Szene } from './renderer';
 import type { AnsichtName, FigurDaten, TeilName } from './vorlagen/import';
@@ -63,10 +64,22 @@ export function vorlageSzene(d: FigurDaten, a: AnsichtName, fl: Fluessig): Szene
   return { teile: renderTeile(d.ansichten[a].teile), fluessig: fl, verdecker: [], ohrspalt: null };
 }
 
-export type Drehung = 'drehen' | 'kopf' | 'koerper' | 'haltung' | 'haltungP' | 'hinsetzen' | 'hinlegen' | 'umlegen';
+/** Abläufe als Szenen (t = 0 … 1 über ihre ganze Dauer, ohne Feder), mit der Haltung, in der sie beginnen */
+export const ABLAUF_START: Record<AblaufName, HaltungName> = {
+  hinsetzen: 'stehen',
+  huepfer: 'stehen',
+  rutschen: 'stehen',
+  gemuetlich: 'stehen',
+  umlegen: 'sitzen',
+  aufsetzen: 'liegen',
+  aufstehen: 'liegen',
+  aufstehenSitz: 'sitzen',
+};
+export type Drehung = 'drehen' | 'kopf' | 'koerper' | 'haltung' | 'haltungP' | AblaufName;
+export const istAblauf = (n: string): n is AblaufName => n in ABLAEUFE;
 /**
  * Lage einer Drehung bei t = 0 … 1. Haltungen: „haltung“/„haltungP“ die Kette Stehen (0) – Sitzen (0,5) – Liegen (1), Kopf vorn bzw.
- * im Profil; „hinsetzen“ Stehen → Hocke → Sitzen, „hinlegen“ Stehen → Liegen direkt (alle viere von sich), „umlegen“ Sitzen → Liegen
+ * im Profil; die Abläufe (ablauf.ts) über ihre ganze Dauer mit Zusatzbewegungen
  */
 export function drehLage(art: Drehung, t: number): Lage {
   const w = t * 90;
@@ -74,9 +87,11 @@ export function drehLage(art: Drehung, t: number): Lage {
   if (art === 'kopf') return { psi: 90, theta: w };
   if (art === 'haltung') return { psi: 90, theta: 0, haltung: 2 * t };
   if (art === 'haltungP') return { psi: 90, theta: 90, haltung: 2 * t };
-  if (art === 'hinsetzen') return { psi: 90, theta: 0, posen: wegGewichte(weg('stehen', 'sitzen'), t) };
-  if (art === 'hinlegen') return { psi: 90, theta: 0, posen: { stehen: 1 - t, liegen: t } };
-  if (art === 'umlegen') return { psi: 90, theta: 0, posen: { sitzen: 1 - t, liegen: t } };
+  if (istAblauf(art)) {
+    const a = ABLAEUFE[art];
+    const l = ablaufBei(a, { [ABLAUF_START[art]]: 1 }, Math.max(0, Math.min(1, t)) * dauerVon(a));
+    return { psi: 90, theta: 0, posen: l.gewichte, effekte: l.effekte };
+  }
   return { psi: w, theta: 0 };
 }
 

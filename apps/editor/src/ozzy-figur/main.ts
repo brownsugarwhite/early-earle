@@ -11,12 +11,13 @@ import sitz1Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_sit01.svg?r
 import sitz2Svg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_st02.svg?raw';
 import viertelSvg from '../../../../docs/look/ozzy-figur/vorlagen/ozzy_viertel.svg?raw';
 import { abflachen, type Form } from './form';
+import { ABLAEUFE, type Art, dauerVon } from './ablauf';
 import { HALTUNGEN, type HaltungName } from './haltung';
 import { pruefhakenAnlegen } from './pruefen';
 import type { Lage } from './raster';
 import { type Ansicht, type Diagnose, EXAKT, FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
 import { HaltungsSteuerung } from './steuerung';
-import { drehLage, drehSzene, type Drehung, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
+import { drehLage, drehSzene, type Drehung, istAblauf, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
 import { ANSICHTEN, type AnsichtName, importieren } from './vorlagen/import';
 
 export const SVG_TEXTE: Record<string, string> = {
@@ -32,9 +33,9 @@ export const SVG_TEXTE: Record<string, string> = {
 };
 const daten = importieren(SVG_TEXTE);
 
-/** „steuern“: Ozzy per Knopf (Stehen, Sitzen, Liegen) und Kopfwinkel, weich ineinander (steuerung.ts) */
+/** „steuern“: Ozzy per Knopf (Stehen, Sitzen, Liegen, je in Florians Arten) und Kopfwinkel, weich ineinander (steuerung.ts) */
 export type SzenenName = AnsichtName | Drehung | 'steuern';
-const istDrehung = (n: SzenenName): n is Drehung => ['drehen', 'kopf', 'koerper', 'haltung', 'haltungP', 'hinsetzen', 'hinlegen', 'umlegen'].includes(n);
+const istDrehung = (n: SzenenName): n is Drehung => ['drehen', 'kopf', 'koerper', 'haltung', 'haltungP'].includes(n) || istAblauf(n);
 const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'steuern', titel: 'Ozzy steuern' },
   { name: 'logo', titel: 'Logo' },
@@ -50,14 +51,27 @@ const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'kopf', titel: 'Kopf dreht' },
   { name: 'koerper', titel: 'Körper dreht' },
   { name: 'hinsetzen', titel: 'Hinsetzen' },
-  { name: 'hinlegen', titel: 'Hinlegen (direkt)' },
+  { name: 'huepfer', titel: 'Hinsetzen mit Hüpfer' },
+  { name: 'rutschen', titel: 'Hinlegen: auf den Bauch rutschen' },
+  { name: 'gemuetlich', titel: 'Gemütlich hinlegen' },
   { name: 'umlegen', titel: 'Vom Sitzen hinlegen' },
+  { name: 'aufsetzen', titel: 'Vom Liegen aufsetzen' },
+  { name: 'aufstehen', titel: 'Vom Liegen aufstehen' },
+  { name: 'aufstehenSitz', titel: 'Vom Sitzen aufstehen' },
   { name: 'haltung', titel: 'Sitzen, dann Liegen' },
   { name: 'haltungP', titel: 'Sitzen, dann Liegen (Profil)' },
 ];
 
 const steuerung = new HaltungsSteuerung('stehen');
-const steuerLage = (): Lage => ({ psi: 90, theta: steuerung.kopfWinkel, posen: steuerung.gewichte() });
+/** Knöpfe der Steuerung (Tasten 1 bis 5) */
+const STEUER_KNOEPFE: { haltung: HaltungName; art: Art; titel: string }[] = [
+  { haltung: 'stehen', art: 'normal', titel: 'Stehen' },
+  { haltung: 'sitzen', art: 'normal', titel: 'Sitzen' },
+  { haltung: 'sitzen', art: 'huepfer', titel: 'Sitzen mit Hüpfer' },
+  { haltung: 'liegen', art: 'normal', titel: 'Liegen (rutschen)' },
+  { haltung: 'liegen', art: 'gemuetlich', titel: 'Liegen gemütlich' },
+];
+const steuerLage = (): Lage => ({ psi: 90, theta: steuerung.kopfWinkel, posen: steuerung.gewichte(), effekte: steuerung.effekte() });
 
 export function szeneBauen(name: SzenenName, t: number, fl: Fluessig, regeln: Regeln = REGELN): Szene {
   if (name === 'steuern') return rasterVon(daten).szene(steuerLage(), fl, { verdecken: regeln.verdecken }, regeln.bohnenenden);
@@ -117,9 +131,9 @@ function aufbauen(): void {
   const knoepfe = SZENEN.map((s) => `<button type="button" class="knopf" data-szene="${s.name}">${s.titel}</button>`).join('');
   const regler = (id: string, titel: string, max: number, wert: number, schritt = 0.5): string =>
     `<label class="regler"><span>${titel}</span><input type="range" id="${id}" min="0" max="${max}" step="${schritt}" value="${wert}"><output for="${id}">${wert}</output></label>`;
-  const haltungKnoepfe = (['stehen', 'sitzen', 'liegen'] as HaltungName[])
-    .map((h, i) => `<button type="button" class="knopf" data-haltung="${h}" title="Taste ${i + 1}">${h[0]!.toUpperCase() + h.slice(1)}</button>`)
-    .join('');
+  const haltungKnoepfe = STEUER_KNOEPFE.map(
+    (k, i) => `<button type="button" class="knopf" data-haltung="${k.haltung}" data-art="${k.art}" title="Taste ${i + 1}">${k.titel}</button>`,
+  ).join('');
   leiste.innerHTML = `
     <h2>Ansicht</h2>
     <div class="knoepfe" id="szenen">${knoepfe}</div>
@@ -127,7 +141,7 @@ function aufbauen(): void {
       <div class="knoepfe">${haltungKnoepfe}</div>
       ${regler('kopfwinkel', 'Kopf', 90, 0, 1)}
       ${regler('steuerTempo', 'Tempo', 3, steuerung.tempo.tempo, 0.1)}
-      <p class="hinweis">Aus dem Stehen ins Liegen streckt er alle viere von sich; aus dem Sitzen dreht sich das Hinterbein zur Kamera nach hinten. Hinsetzen über die Hocke. Jeder Knopf wirkt auch mitten im Wechsel (Tasten 1, 2, 3).</p>
+      <p class="hinweis">Hinsetzen: Hinterbeine biegen sich, bis der Hintern am Boden ist, dann streckt sich das Hinterbein nach vorn; oder mit Hüpfer auf den Hintern. Hinlegen: auf den Bauch rutschen oder gemütlich über den Diener. Vom Sitzen ins Liegen vorn runtergleiten, dann rutschen die Hinterbeine nach hinten. Jeder Knopf wirkt auch mitten im Wechsel (Tasten 1 bis 5).</p>
     </div>
     <div id="drehen">
       <label class="regler"><span>Winkel</span><input type="range" id="winkel" min="0" max="90" step="0.5" value="${zustand.t * 90}"><output for="winkel"></output></label>
@@ -164,16 +178,18 @@ function aufbauen(): void {
       neu();
     }),
   );
-  const haltungSetzen = (h: HaltungName): void => {
+  const haltungSetzen = (h: HaltungName, art: Art): void => {
     zustand.szene = 'steuern';
-    steuerung.setzen(h);
+    steuerung.setzen(h, art);
     neu();
   };
-  leiste.querySelectorAll<HTMLButtonElement>('[data-haltung]').forEach((b) => b.addEventListener('click', () => haltungSetzen(b.dataset.haltung as HaltungName)));
+  leiste
+    .querySelectorAll<HTMLButtonElement>('[data-haltung]')
+    .forEach((b) => b.addEventListener('click', () => haltungSetzen(b.dataset.haltung as HaltungName, (b.dataset.art as Art) ?? 'normal')));
   window.addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
-    const h = ({ '1': 'stehen', '2': 'sitzen', '3': 'liegen' } as Record<string, HaltungName>)[e.key];
-    if (h) haltungSetzen(h);
+    const k = STEUER_KNOEPFE[Number(e.key) - 1];
+    if (k) haltungSetzen(k.haltung, k.art);
   });
   const kopfwinkel = document.getElementById('kopfwinkel') as HTMLInputElement;
   kopfwinkel.addEventListener('input', () => {
@@ -244,7 +260,7 @@ function aufbauen(): void {
 
 function anzeigen(): void {
   leiste.querySelectorAll<HTMLButtonElement>('[data-szene]').forEach((b) => b.classList.toggle('an', b.dataset.szene === zustand.szene));
-  leiste.querySelectorAll<HTMLButtonElement>('[data-haltung]').forEach((b) => b.classList.toggle('an', b.dataset.haltung === steuerung.ziel));
+  leiste.querySelectorAll<HTMLButtonElement>('[data-haltung]').forEach((b) => b.classList.toggle('an', b.dataset.haltung === steuerung.ziel && b.dataset.art === steuerung.art));
   const dreht = istDrehung(zustand.szene);
   const steuert = zustand.szene === 'steuern';
   document.getElementById('steuern')!.style.display = steuert ? '' : 'none';
@@ -257,7 +273,7 @@ function anzeigen(): void {
   (document.getElementById('winkel') as HTMLInputElement).value = String(zustand.t * 90);
   leiste.querySelectorAll('output').forEach((o) => {
     const el = document.getElementById(o.htmlFor.value) as HTMLInputElement | null;
-    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : ['hinsetzen', 'hinlegen', 'umlegen'].includes(zustand.szene) ? `${Math.round(zustand.t * 100)} %` : `${Math.round(zustand.t * 90)}°`) : el.id === 'kopfwinkel' ? `${el.value}°` : el.value;
+    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : istAblauf(zustand.szene) ? `${Math.round(zustand.t * 100)} %` : `${Math.round(zustand.t * 90)}°`) : el.id === 'kopfwinkel' ? `${el.value}°` : el.value;
   });
 }
 
@@ -324,9 +340,16 @@ function neu(): void {
 function bild(jetzt: number): void {
   wartet = false;
   if (zustand.laeuft) {
-    if (!tStart) tStart = jetzt - zustand.t * 2000;
-    const u = ((jetzt - tStart) / 2000) % 2;
-    zustand.t = u < 1 ? u : 2 - u;
+    if (istAblauf(zustand.szene)) {
+      // Abläufe in ihrer echten Zeit, vorwärts, am Ende kurz stehen bleiben
+      const d = dauerVon(ABLAEUFE[zustand.szene]) * 1000;
+      if (!tStart) tStart = jetzt - zustand.t * d;
+      zustand.t = Math.min(1, ((jetzt - tStart) % (d + 900)) / d);
+    } else {
+      if (!tStart) tStart = jetzt - zustand.t * 2000;
+      const u = ((jetzt - tStart) / 2000) % 2;
+      zustand.t = u < 1 ? u : 2 - u;
+    }
     anzeigen();
   } else tStart = 0;
   // Steuerung: je Bild um die vergangene Zeit weiter (nach einer Pause höchstens ein Bild)

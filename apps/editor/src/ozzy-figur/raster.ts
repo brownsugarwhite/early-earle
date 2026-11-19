@@ -146,6 +146,22 @@ export interface Lage {
   haltung?: number;
   /** Haltung in der Seite als Gewichte (geht vor `haltung`) */
   posen?: Gewichte;
+  /** Zusatzbewegungen der Abläufe (nur mit Haltung) */
+  effekte?: Effekte;
+}
+/**
+ * Zusatzbewegungen der Abläufe (Florian, 19.11.: „witziger und schöner“), über die Haltung gelegt: Sie ändern Florians Formen nicht,
+ * sie bewegen sie (bei 0 genau die Haltung).
+ */
+export interface Effekte {
+  /** Hüpfer: Ozzy dreht sich um seine vorderste Pfote am Boden, das Hinterteil hebt ab (rad, positiv = hinten hoch) */
+  hub?: number;
+  /** Stauchen am Boden: um diesen Anteil flacher und halb so viel breiter (negativ: gestreckt) */
+  stauchung?: number;
+  /** Kopf federt nach (Figur-Einheiten, positiv = nach unten) */
+  kopf?: number;
+  /** Schwanz wedelt (rad, positiv = hoch) */
+  wedeln?: number;
 }
 export interface RasterRegeln {
   /** Verdecken auf der abgewandten Kopfseite zwischen den Schlüsseln (0 = aus) */
@@ -307,7 +323,8 @@ export class FigurRaster {
     this.haltungen = new Haltungen(d, nurKoerper, { vorn: nurKopf(stehVorn), profil: nurKopf(stehProfil) });
     // tiefster Punkt jeder Haltung (vorn, Profil) ohne Bodenregel: Bezug der Regel, damit sie an den Vorlagen nichts ändert
     for (const [reihe, theta] of [['vorn', 0], ['profil', 90]] as const)
-      this.haltungen.boden[reihe] = HALTUNGEN.map((x, i) => (i === 0 ? 0 : FigurRaster.tiefster(this.teile({ psi: 90, theta, posen: { [x.name]: 1 } }, true, true))));
+      // gezeichnete Haltungen: der tiefste Punkt seiner Vorlage; gebaute (Hocke, Diener) stehen auf dem Boden
+      this.haltungen.boden[reihe] = HALTUNGEN.map((x, i) => (i === 0 || !x.vorn ? 0 : FigurRaster.tiefster(this.teile({ psi: 90, theta, posen: { [x.name]: 1 } }, true, true))));
   }
 
   /** tiefster Punkt (größtes y) der schwarzen Teile */
@@ -470,7 +487,7 @@ export class FigurRaster {
     const g: Gewichte | null = !this.haltungen ? null : (lage.posen ?? (lage.haltung ? gewichteAus(lage.haltung) : null));
     const pose = !!g && !Haltungen.stehtNur(g);
     if (pose) {
-      for (const [n, f] of this.haltungen!.koerper(g!, theta)) koerper.set(n, f);
+      for (const [n, f] of this.haltungen!.koerper(g!, theta, lage.effekte?.wedeln ?? 0)) koerper.set(n, f);
       FigurRaster.weissHinterSchwarz(koerper, 'schwanzW', 'bohne');
     } else if (mitBohnenenden) this.bohnenendenSetzen(koerper, psi);
     const hals = this.halsBei(psi);
@@ -478,6 +495,7 @@ export class FigurRaster {
     const vy = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.y), theta);
     const kopf = new Map<TeilName, Form>();
     const dk: Punkt = pose ? this.haltungen!.kopfVersatz(g!, theta) : [0, 0];
+    if (pose && lage.effekte?.kopf) dk[1] += lage.effekte.kopf;
     for (const [n, keys] of this.kopf) {
       const f = verschieben(this.spitzenFuehren(n, formAusSchluesseln(keys, theta), theta), hals[0] + vx + dk[0], hals[1] + vy + dk[1]);
       kopf.set(n, pose ? this.haltungen!.kopfKorrektur(n, f, g!, theta) : f);
@@ -519,7 +537,39 @@ export class FigurRaster {
       const tief = FigurRaster.tiefster(liste) - this.haltungen!.bodenBei(g!, theta);
       if (Number.isFinite(tief) && Math.abs(tief) > 1e-9) for (const t of liste) t.form = verschieben(t.form, 0, -tief);
     }
+    if (pose && lage.effekte) FigurRaster.effekteAnwenden(liste, lage.effekte);
     return liste;
+  }
+
+  /**
+   * Zusatzbewegungen nach der Bodenregel: Hüpfer (Drehung um die vorderste Pfote, die am Boden steht: das Hinterteil hebt ab, die
+   * Vorderpfoten bleiben stehen) und Stauchen am Boden (alles wird flacher und breiter, der Boden bleibt Boden).
+   */
+  private static effekteAnwenden(liste: { name: TeilName; weiss: boolean; form: Form }[], e: Effekte): void {
+    const hub = e.hub ?? 0;
+    if (Math.abs(hub) > 1e-9) {
+      let px = -Infinity;
+      for (const t of liste) if (!t.weiss && t.name.startsWith('bein')) for (const a of t.form) if (a.p[1] > -3) px = Math.max(px, a.p[0]);
+      if (Number.isFinite(px)) {
+        const c = Math.cos(hub);
+        const s = Math.sin(hub);
+        const dreh = (q: Punkt): Punkt => [px + c * (q[0] - px) - s * q[1], s * (q[0] - px) + c * q[1]];
+        for (const t of liste) t.form = abbilden(t.form, dreh);
+      }
+    }
+    const st = e.stauchung ?? 0;
+    if (Math.abs(st) > 1e-9) {
+      let x0 = Infinity;
+      let x1 = -Infinity;
+      for (const t of liste) for (const a of t.form) {
+        x0 = Math.min(x0, a.p[0]);
+        x1 = Math.max(x1, a.p[0]);
+      }
+      const cx = (x0 + x1) / 2;
+      const quer = 1 + 0.5 * st;
+      const hoch = 1 - st;
+      for (const t of liste) t.form = abbilden(t.form, (q) => [cx + (q[0] - cx) * quer, q[1] * hoch]);
+    }
   }
 
   /**

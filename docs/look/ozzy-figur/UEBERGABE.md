@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 18.11.2026 nachts: A, B, C gebaut; D: Haltungen frei und weich ineinander, Steuerung per Knopf)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026: A, B, C gebaut; D: Abläufe mit Charakter zwischen den Haltungen, Steuerung per Knopf)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -246,7 +246,54 @@ Wechsel der Malreihenfolge; die offene Frage zum Knien ist mit der Drehung zur K
   Wegdrehen und Wiederkommen kurz zum Punkt (um 30 % und 70 %).
 - **Noch nicht:** Haltung zusammen mit Körperdrehung (ψ ≠ 90), D2 (Gang), D3 (Strecken, Ducken, Ausdruck).
 
+## Etappe D, dritter Teil: Abläufe mit Charakter (19.11.)
+
+Florian (19.11.): „Erstmal musst du das sitzen und liegen und vor allem das liegen aus dem sitzen und umgekehrt anpassen. Es sieht
+nicht gut aus! Vor allem die drehung des hinterbeins.“ Zwei Arten Hinsetzen (mit Hüpfer auf den Hintern; wie bisher, aber deutlich
+gebogen, erst am Boden nach vorn strecken), Rutschen feilen, gemütlich hinlegen, vom Sitzen ins Liegen vorn runtergleiten, Hintern
+hoch, Hinterbein gebogen aufstellen, nach hinten durchrutschen; „witziger und schöner“. Plan: Abschnitt 12b. Die Drehung des
+Hinterbeins zur Kamera kommt auf keinem Weg mehr vor (nur noch Rückfall für freie Mischungen, ab 120° Unterschied).
+
+- **Bein biegt sich mit fester Länge** (`rueckgratBauen`): Bézier von der Hüfte zum Fuß nach Bogenlänge abgelaufen; ist der Abstand
+  kürzer als das Bein, werden die Griffe in gedämpften Schritten länger, bis die Länge stimmt, und die Biegung wird sanft
+  zurückgenommen, je näher sie dem Falten kommt (Knick der Abtastung je Länge, Umkehr zählt als starker Knick). Alles ohne
+  Verzweigung, damit das Ergebnis stetig mitwandert. Biegung und Sohle gelten gegen die Linie Hüfte–Fuß, wie sie nach Stehenbleiben
+  und Boden wirklich liegt.
+- **Zwei gebaute Haltungen** (`zwischenhaltungenBauen`): *tiefe Hocke* (Körper, Kopf, Schwanz wie im Sitzen: Hintern am Boden;
+  Hinterbeine mit der Hüfte am Körper wie im Stehen, Pfote 22 vor der Hüfte, kräftig gebogen, Knie nach vorn, Sohle flach) und
+  *Diener* (Bohne um die Hüften der Vorderbeine gekippt, bis die Hinterbeine bei 0,76 ihrer Länge leicht gebogen stehen; Vorderbeine
+  und Kopf wie im Liegen, nach vorn gestreckt; Schwanz 20° hoch). Ein Teil ist dort nur da, wenn es in beiden Ausgangshaltungen da
+  ist (der Keil zwischen den Hinterbeinen zieht sich so schon beim Einknicken zurück). Malreihenfolge: Hocke wie Sitzen, Diener wie
+  Liegen.
+- **Abläufe** (`ablauf.ts`): Folge von Abschnitten (Ziel, Dauer, Zeitkurve weich/fallen/auf/linear) mit Zusatzbewegungen: Hüpfer
+  (Drehung um die vorderste Pfote am Boden, Bogen in der Zeit), Aufprall (Stauchen am Boden mit gedämpfter Schwingung, der Kopf
+  federt nach), Seufzer (langsames Stauchen, Kopf sinkt nach), Wedeln (3 Hz). Reine Funktion der Zeit; als Szenen ohne Feder
+  (`hinsetzen`, `huepfer`, `rutschen`, `gemuetlich`, `umlegen`, `aufsetzen`, `aufstehen`, `aufstehenSitz`; ▶ spielt sie in echter
+  Zeit). Zeiten bei Tempo 1: Hinsetzen 1,2 s, Hüpfer 0,54 s + 0,7 s Nachfedern, Rutschen 0,8 s + 0,7 s, gemütlich 2,1 s + 1,1 s,
+  Umlegen 1,4 s + 0,6 s.
+- **Steuerung** (`steuerung.ts`): fünf Knöpfe (Stehen, Sitzen, Sitzen mit Hüpfer, Liegen rutschen, Liegen gemütlich; Tasten 1 bis 5),
+  Kopf, Tempo. Sie spielt den Ablauf von der Haltung, die gerade führt, ab dem Leitpunkt; die Gewichte folgen an der Feder;
+  Zusatzbewegungen eines unterbrochenen Ablaufs klingen in 0,25 s aus.
+- **Prüfungen:** 44 Tests (`haltung.test.ts`: Vorlagen exakt, zufällige Mischungen auf dem Boden, neun Wechsel stetig, alle acht
+  Abläufe in 1/240-Sekunden-Schritten stetig und nichts im Boden, Ende genau in der Zielhaltung; `steuerung.test.ts`: Hocke im
+  Hinsetzen, Hüpfer hebt ab und plumpst, alle Wege genau am Ziel, Unterbrechungen und 300 Zufallsklicks ohne Sprung). Proben A, B1,
+  B2, C1 bestanden wie bisher; D2 jetzt je Ablauf an Anfang, Ende, Grenzen und Mitten der Abschnitte mit zwei Schrittweiten (bei
+  1/4000 überall 0 Bildpunkte). Tempo 2,5–3 ms je Bild. Bilder `docs/progress/ozzy-figur/2026-11-19-d-*.png`, Video
+  `2026-11-19-d-ablaeufe.mp4` (alle Abläufe nacheinander, echte Zeit).
+- **Kleine Reste (sein Auge entscheidet):** Beim Hüpfer kippt der Kopf mit der Drehung um die Vorderpfote leicht nach vorn (bis rund
+  40 Einheiten am höchsten Punkt). In der tiefen Hocke ist das Hinterbein zum Teil vom Körper verdeckt, die Biegung liest sich vor
+  allem auf dem Weg dorthin. Zahlen (Biegung, Höhe im Diener, Zeiten, Stärke von Aufprall und Wedeln) sind Konstanten am Kopf von
+  `haltung.ts` und `ablauf.ts`.
+
 ## Fallen
+
+- Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
+  feste Schrittzahl und sanftes Zurücknehmen statt Halbierungssuche mit Verzweigung. Prüfen mit Schritten von 1/200 und feiner.
+- Griffe ohne Biegerichtung (gerades Bein, Abstand knapp unter der Länge) laufen bei langer Grifflänge auf der Geraden hin und her;
+  die Krümmung aus Ableitungen sieht das nicht (sie ist dort 0).
+- Ein Rückgrat gegen die gemischte Richtung statt gegen die tatsächliche Linie Hüfte–Fuß schlägt eine S-Kurve unter den Boden, sobald
+  der Boden den Fuß anhebt.
+- Eine Sprungprobe mit einer einzigen Schrittweite hält schnelle Bewegung (Absprung, Aufprall) für Sprünge: zwei Schrittweiten.
 
 - Teile, die in einer Haltung fehlen, nie zu einem fernen Punkt ziehen (sie wandern sichtbar durch anderes): dort zurückziehen, wo
   sie verdeckt sind, und früh im Weg.

@@ -272,4 +272,41 @@ Mischungen und Kopfwinkel ohne Fehler; Malreihenfolge ohne sichtbares Springen.
 **Stand (18.11. nachts): 1 bis 6 gebaut**, Proben bestanden (Einzelheiten in `docs/look/ozzy-figur/UEBERGABE.md`, Etappe D, zweiter
 Teil). Dazu gekommen, weil die Proben es verlangten: Knochenkette (Beine, Schwanz, Kopf hängen an der Bohne; was steht, bleibt
 stehen), fehlende Teile ziehen sich ins Bein zurück, weiche Malreihenfolge (Schwarz schiebt sich von innen über Weiß, statt beim
-Wechsel der führenden Haltung umzuklappen). Florians Urteil steht aus.
+Wechsel der führenden Haltung umzuklappen).
+
+### 12b. Florians Rückmeldung zu den Wechseln (19.11.): Abläufe mit Charakter
+
+Florian: „Erstmal musst du das sitzen und liegen und vor allem das liegen aus dem sitzen und umgekehrt anpassen. Es sieht nicht gut
+aus! Vor allem die drehung des hinterbeins. Es soll 2 verschiedene hinsetzen geben. Einmal soll er mit den hinterbeinen leicht
+springen und auf den hintern knallen. Einmal soll es so sein wie jetzt aber das biegen der hinterbeine muss viel deutlicher sein.
+Erst wenn der hintern den boden berührt streckt er das hinterbein dann nach vorne. Beim liegen noch am, auf den bauch rutschen,
+feilen und ein gemütliches hinlegen. Beim sitzen zum liegen bitte vorne runtergleiten mit den vorderpfoten, dabei stellt er den
+hintern leicht in die höhe und das hinterbein stellt sich mit leichter biegung auf und dann rutscht es nach hinten durch zur
+liegeposition. Es soll witziger und schöner sein.“
+
+Umsetzung (die Drehung des Hinterbeins zur Kamera entfällt auf allen Wegen; sie bleibt nur als Rückfall für freie Mischungen):
+
+1. **Bein biegt sich mit fester Länge:** Das Rückgrat des Beins wird nach Bogenlänge abgelaufen, seine Griffe so lang, dass das Bein
+   seine Länge behält; biegt es sich so stark, dass es innen falten würde, schiebt es sich den Rest in den Körper.
+2. **Zwei gebaute Zwischenhaltungen:** *tiefe Hocke* (Körper wie im Sitzen, Hintern am Boden, Hinterpfoten stehen, Hinterbeine
+   deutlich gebogen, Knie nach vorn) und *Diener* (Vorderpfoten nach vorn geglitten wie im Liegen, Brust tief, Hintern leicht hoch,
+   Hinterbeine stehen leicht gebogen, Schwanz hoch).
+3. **Abläufe mit eigener Zeit** statt eines Wegs mit gleichem Tempo:
+   - *Hinsetzen:* Stehen → tiefe Hocke (Hinterbeine biegen sich, der Hintern sinkt bis auf den Boden) → Sitzen (erst dann streckt
+     sich das Hinterbein nach vorn).
+   - *Hinsetzen mit Hüpfer:* kurz ausholen, mit den Hinterbeinen hüpfen (das Hinterteil hebt ab, die Hinterbeine schwingen in der
+     Luft nach vorn), auf den Hintern plumpsen (Ozzy staucht sich, der Kopf federt nach).
+   - *Hinlegen, auf den Bauch rutschen:* die Beine rutschen weg, der Körper fällt immer schneller, der Bauch plumpst auf.
+   - *Gemütlich hinlegen:* Stehen → Diener → Liegen, langsam, am Ende ein Seufzer (sanftes Stauchen).
+   - *Sitzen → Liegen:* Sitzen → Diener (vorn runtergleiten, Hintern leicht hoch, Hinterbein stellt sich gebogen auf) → Liegen
+     (das Hinterbein rutscht nach hinten durch); im Diener wedelt der Schwanz.
+   - *Rückwege:* Liegen → Sitzen über Diener und Hocke, Liegen → Stehen über den Diener (Hintern zuerst), Sitzen → Stehen über die
+     Hocke.
+4. **Steuerung:** Knöpfe Stehen, Sitzen, Sitzen mit Hüpfer, Liegen (rutschen), Liegen gemütlich; jeder wirkt jederzeit, ohne
+   Sprung (Gewichte und Zusatzbewegungen gleiten über).
+
+Proben: an den Vorlagen exakt; kein Fuß unter dem Boden (außer in der Luft beim Hüpfer, dann darüber); Abläufe stetig ohne
+Bildsprung; Filmstreifen je Ablauf für Florian.
+
+**Stand (19.11.): 1 bis 4 gebaut**, Tests und Proben bestanden (`docs/look/ozzy-figur/UEBERGABE.md`, Etappe D, dritter Teil; Bilder
+und Video `docs/progress/ozzy-figur/2026-11-19-d-*`). Florians Urteil steht aus.

@@ -2,8 +2,10 @@
 // Hinsetzen bleiben die Vorderpfoten stehen.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { ABLAEUFE, type AblaufName, dauerVon } from './ablauf';
 import { HALTUNGEN } from './haltung';
 import { FigurRaster, type Lage } from './raster';
+import { drehLage } from './szenen';
 import { ANSICHT_NAMEN, ANSICHTEN, importieren } from './vorlagen/import';
 
 const ORDNER = new URL('../../../../docs/look/ozzy-figur/vorlagen/', import.meta.url);
@@ -50,13 +52,18 @@ describe('Ozzy-Figur: Haltungen', () => {
     }
   });
 
+  // die Abschnitte der Abläufe (Hocke und Diener als Wegpunkte), dazu die direkten Mischungen Stehen–Sitzen (Hüpfer) und Sitzen–Liegen
+  // (Rückfall für freie Mischungen: das Hinterbein geht durch die Kamera)
   it.each([
     ['stehen', 'hocke'],
     ['hocke', 'sitzen'],
-    ['stehen', 'sitzen'],
+    ['sitzen', 'diener'],
+    ['diener', 'liegen'],
+    ['stehen', 'diener'],
+    ['diener', 'hocke'],
     ['stehen', 'liegen'],
+    ['stehen', 'sitzen'],
     ['sitzen', 'liegen'],
-    ['hocke', 'liegen'],
   ] as const)('%s → %s geht stetig (Kopf vorn, 3/4, Profil): kein Anker springt', (a, b) => {
     for (const theta of [0, 45, 90]) {
       let vor: Map<string, { p: [number, number] }[]> | null = null;
@@ -75,6 +82,31 @@ describe('Ozzy-Figur: Haltungen', () => {
       // Am schnellsten ist das Hinterbein, das hinter der Kamera wieder auftaucht (rund 4).
       expect(groesster).toBeLessThan(6);
     }
+  });
+
+  it.each(Object.keys(ABLAEUFE) as AblaufName[])('Ablauf %s: stetig in der Zeit, nichts unter dem Boden, endet in seiner Haltung', (name) => {
+    const dauer = dauerVon(ABLAEUFE[name]);
+    const schritte = Math.ceil(dauer * 240);
+    let vor: Map<string, { p: [number, number] }[]> | null = null;
+    let groesster = 0;
+    let tiefster = -Infinity;
+    for (let i = 0; i <= schritte; i++) {
+      const teile = raster.teile(drehLage(name, i / schritte));
+      tiefster = Math.max(tiefster, FigurRaster.tiefster(teile));
+      const jetzt = new Map(teile.map((x) => [x.name, x.form]));
+      if (vor)
+        for (const [n, f] of jetzt) {
+          const alt = vor.get(n);
+          if (alt && alt.length === f.length) f.forEach((q, k) => (groesster = Math.max(groesster, Math.hypot(q.p[0] - alt[k]!.p[0], q.p[1] - alt[k]!.p[1]))));
+        }
+      vor = jetzt;
+    }
+    // je 1/240 Sekunde höchstens 6 Einheiten (Aufprall und Hüpfer sind die schnellsten), nichts sinkt in den Boden
+    expect(groesster).toBeLessThan(6);
+    expect(tiefster).toBeLessThan(0.05);
+    const ende = drehLage(name, 1);
+    const ziel = name === 'hinsetzen' || name === 'huepfer' || name === 'aufsetzen' ? 'sitzen' : name === 'aufstehen' || name === 'aufstehenSitz' ? 'stehen' : 'liegen';
+    expect(ende.posen?.[ziel]).toBeCloseTo(1, 9);
   });
 
   it('weiche Malreihenfolge: an den Vorlagen keine, dazwischen Anteile zwischen 0 und 1', () => {

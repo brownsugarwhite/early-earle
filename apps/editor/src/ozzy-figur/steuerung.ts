@@ -1,50 +1,54 @@
-// Ozzy-Figur, Etappe D: Steuerung der Haltungen per Knopf (Stehen, Sitzen, Liegen) und des Kopfwinkels. Florian (18.11.): „er soll
-// beides können. alle posen müssen smooth ineinanderlaufen. das system muss sehr stabil und robust sein.“
+// Ozzy-Figur, Etappe D: Steuerung der Haltungen per Knopf (Stehen, Sitzen, Sitzen mit Hüpfer, Liegen, gemütlich Liegen) und des
+// Kopfwinkels. Florian (18.11.): „alle posen müssen smooth ineinanderlaufen. das system muss sehr stabil und robust sein.“ – (19.11.)
+// „Es soll witziger und schöner sein.“
 //
-// Ein Knopf setzt ein Ziel. Ein Leitpunkt fährt den Weg dorthin im Raum der Gewichte ab (Hinsetzen über die Hocke, siehe `weg`; aus
-// dem Stehen ins Liegen direkt, aus dem Sitzen ins Liegen mit der Drehung des Hinterbeins), mit weichem Anfahren und Bremsen und ohne
-// an den Wegpunkten anzuhalten. Die gezeigten Gewichte folgen ihm wie an einer kritisch gedämpften Feder. Ein neues Ziel mitten im
-// Wechsel beginnt dort, wo der Leitpunkt gerade ist, und behält vom Schwung, was in die neue Richtung zeigt: kein Sprung, kein Ruck.
-// Der Kopfwinkel folgt seinem Ziel genauso. Ohne DOM und ohne Uhr: Wer zeichnet, ruft `schritt(dt)` je Bild.
-import { type Gewichte, gewichtsliste, HALTUNGEN, type HaltungName, weg } from './haltung';
+// Ein Knopf setzt ein Ziel. Die Steuerung spielt den passenden Ablauf (ablauf.ts) von dort, wo Ozzy gerade ist: Ist er in einer
+// Haltung, den ganzen Ablauf; mitten in einem Wechsel geht sie von der Haltung aus, die gerade führt, ohne zu ihr zurückzukehren.
+// Die gezeigten Gewichte folgen dem Ablauf an einer kritisch gedämpften Feder; Zusatzbewegungen eines unterbrochenen Ablaufs klingen
+// in kurzer Zeit aus. So springt nichts, auch nicht bei vielen Klicks. Der Kopfwinkel folgt seinem Ziel genauso.
+// Ohne DOM und ohne Uhr: Wer zeichnet, ruft `schritt(dt)` je Bild.
+import { type Ablauf, ablaufBei, ablaufFuer, type Art, dauerVon } from './ablauf';
+import { type Gewichte, gewichtsliste, HALTUNGEN, type HaltungName } from './haltung';
+import type { Effekte } from './raster';
 
 export interface SteuerTempo {
-  /** Höchsttempo des Leitpunkts (Haltungswechsel je Sekunde; Hinsetzen sind zwei: Stehen → Hocke → Sitzen) */
+  /** Tempo der Abläufe (1 = Florians Zeiten) */
   tempo: number;
-  /** Anfahren und Bremsen (Haltungswechsel je Sekunde²) */
-  beschleunigung: number;
   /** Feder der Gewichte und des Kopfs (1/s): höher folgt enger, kleiner weicher */
   feder: number;
   /** Höchsttempo des Kopfs (Grad je Sekunde) */
   kopfTempo: number;
 }
-export const STEUER_TEMPO: SteuerTempo = { tempo: 1.4, beschleunigung: 4.5, feder: 14, kopfTempo: 160 };
+export const STEUER_TEMPO: SteuerTempo = { tempo: 1, feder: 16, kopfTempo: 160 };
 
 type Liste = number[];
 const N = HALTUNGEN.length;
 /** Teilschritt der Rechnung (Sekunden) */
 const TEIL = 1 / 240;
+/** so lange klingen die Zusatzbewegungen eines unterbrochenen Ablaufs aus (Sekunden) */
+const AUSKLANG = 0.25;
+const KEINE: Required<Effekte> = { hub: 0, stauchung: 0, kopf: 0, wedeln: 0 };
+const alsListe = (g: Gewichte): Liste => gewichtsliste(g);
+const alsGewichte = (w: Liste): Gewichte => Object.fromEntries(HALTUNGEN.map((x, i) => [x.name, w[i]!])) as Gewichte;
 const einsVon = (h: HaltungName): Liste => HALTUNGEN.map((x) => (x.name === h ? 1 : 0));
 /** Abstand zweier Mischungen: halbe Summe der Unterschiede (zwischen zwei Haltungen genau 1) */
 const abstand = (a: Liste, b: Liste): number => a.reduce((s, v, i) => s + Math.abs(v - b[i]!), 0) / 2;
-const hin = (a: Liste, b: Liste, s: number): Liste => a.map((v, i) => v + (b[i]! - v) * s);
-const einheit = (a: Liste, b: Liste): Liste | null => {
-  const d = b.map((v, i) => v - a[i]!);
-  const l = Math.hypot(...d);
-  return l > 1e-12 ? d.map((v) => v / l) : null;
-};
-const groesster = (a: Liste): number => a.reduce((best, v, i) => (v > a[best]! + 1e-9 ? i : best), 0);
+const fuehrend = (a: Liste): HaltungName => HALTUNGEN[a.reduce((best, v, i) => (v > a[best]! + 1e-9 ? i : best), 0)]!.name;
 
 export class HaltungsSteuerung {
   /** gezeigte Gewichte (Feder) und ihr Tempo */
   private g: Liste;
   private v: Liste;
-  /** Leitpunkt, verbleibende Wegpunkte, Tempo längs des Wegs und Richtung des letzten Stücks */
+  /** laufender Ablauf: Start, Zeit darin (Sekunden bei Tempo 1), Leitpunkt und Zusatzbewegungen nach dem Ablauf */
+  private ablauf: Ablauf | null = null;
+  private start: Liste;
+  private zeit = 0;
   private leit: Liste;
-  private pfad: Liste[] = [];
-  private fahrt = 0;
-  private richtung: Liste | null = null;
+  private eff: Required<Effekte> = { ...KEINE };
+  /** Zusatzbewegungen des unterbrochenen Ablaufs, die ausklingen */
+  private alt: { eff: Required<Effekte>; rest: number } | null = null;
   private zielName: HaltungName;
+  private artName: Art = 'normal';
   /** Kopf: gezeigter Winkel und Tempo, Leitwinkel, Ziel */
   private kopf = { w: 0, v: 0, leit: 0, ziel: 0 };
 
@@ -54,6 +58,7 @@ export class HaltungsSteuerung {
   ) {
     this.g = einsVon(start);
     this.v = new Array<number>(N).fill(0);
+    this.start = einsVon(start);
     this.leit = einsVon(start);
     this.zielName = start;
   }
@@ -61,16 +66,29 @@ export class HaltungsSteuerung {
   get ziel(): HaltungName {
     return this.zielName;
   }
+  get art(): Art {
+    return this.artName;
+  }
 
-  /** ruht alles (Gewichte und Kopf am Ziel, ohne Bewegung)? */
+  /** ruht alles (Ablauf zu Ende, Gewichte und Kopf am Ziel, ohne Bewegung)? */
   get ruht(): boolean {
-    return this.pfad.length === 0 && this.kopf.leit === this.kopf.ziel && this.gewichteRuhen() && this.kopfRuht();
+    return !this.ablauf && !this.alt && this.kopf.leit === this.kopf.ziel && this.gewichteRuhen() && this.kopfRuht();
   }
 
   /** gezeigte Gewichte (nie negativ, Summe 1) */
   gewichte(): Gewichte {
-    const w = gewichtsliste(Object.fromEntries(HALTUNGEN.map((x, i) => [x.name, this.g[i]!])) as Gewichte);
-    return Object.fromEntries(HALTUNGEN.map((x, i) => [x.name, w[i]!])) as Gewichte;
+    return alsGewichte(gewichtsliste(alsGewichte(this.g)));
+  }
+
+  /** Zusatzbewegungen jetzt (Ablauf und Ausklang des unterbrochenen) */
+  effekte(): Effekte {
+    const e = { ...this.eff };
+    if (this.alt) {
+      const k = this.alt.rest / AUSKLANG;
+      const f = k * k * (3 - 2 * k);
+      for (const n of Object.keys(e) as (keyof Effekte)[]) e[n] += this.alt.eff[n] * f;
+    }
+    return e;
   }
 
   /** gezeigter Kopfwinkel (0 vorn … 90 Profil) */
@@ -83,19 +101,36 @@ export class HaltungsSteuerung {
     this.kopf.ziel = Number.isFinite(w) ? Math.max(0, Math.min(90, w)) : this.kopf.ziel;
   }
 
-  /** neues Ziel: Weg von der Haltung, die am Leitpunkt gerade führt, ohne zu ihr zurückzugehen */
-  setzen(ziel: HaltungName): void {
+  /**
+   * Neues Ziel: Ablauf von der Haltung, die am Leitpunkt gerade führt, zum Ziel (nach Art: Hinsetzen normal oder mit Hüpfer, Liegen
+   * rutschend oder gemütlich). Beginnt am Leitpunkt; liegt er schon auf dem Weg, überspringt er, was hinter ihm liegt.
+   */
+  setzen(ziel: HaltungName, art: Art = 'normal'): void {
     if (!HALTUNGEN.some((x) => x.name === ziel)) return;
+    if (ziel === this.zielName && art === this.artName && this.ablauf) return;
     this.zielName = ziel;
-    const fuehrend = HALTUNGEN[groesster(this.leit)]!.name;
-    let punkte = weg(fuehrend, ziel).slice(1).map(einsVon);
-    // Ziel ist die führende Haltung: zurück zu ihr
-    if (!punkte.length) punkte = [einsVon(ziel)];
-    // Schwung nur, soweit er in die neue Richtung zeigt
-    const neu = einheit(this.leit, punkte[0]!);
-    const cos = neu && this.richtung ? neu.reduce((s, v, i) => s + v * this.richtung![i]!, 0) : 0;
-    this.fahrt *= Math.max(0, cos);
-    this.pfad = punkte.filter((p, i) => i > 0 || abstand(this.leit, p) > 1e-9);
+    this.artName = art;
+    // Zusatzbewegungen des laufenden Ablaufs klingen aus
+    const jetzt = this.effekte();
+    this.alt = Object.values(jetzt).some((x) => Math.abs(x ?? 0) > 1e-6) ? { eff: { ...KEINE, ...jetzt }, rest: AUSKLANG } : null;
+    this.eff = { ...KEINE };
+    const von = fuehrend(this.leit);
+    const da = this.leit.slice();
+    if (abstand(da, einsVon(ziel)) < 1e-6) {
+      this.ablauf = null;
+      this.leit = einsVon(ziel);
+      return;
+    }
+    const a = von === ziel ? null : ablaufFuer(von, ziel, art);
+    let ablauf: Ablauf = a ?? { abschnitte: [{ nach: { [ziel]: 1 }, dauer: 0.7, kurve: 'weich' }], nachlauf: 0 };
+    // mitten in einem Wechsel: der erste Abschnitt beginnt am Leitpunkt, so lang wie sein Rest
+    const erster = ablauf.abschnitte[0]!;
+    const rest = abstand(da, alsListe(erster.nach));
+    const voll = abstand(einsVon(von), alsListe(erster.nach));
+    if (voll > 1e-6 && rest < voll - 1e-6) ablauf = { ...ablauf, abschnitte: [{ ...erster, dauer: erster.dauer * Math.max(0.25, rest / voll) }, ...ablauf.abschnitte.slice(1)] };
+    this.ablauf = ablauf;
+    this.start = da;
+    this.zeit = 0;
   }
 
   /** einen Zeitschritt weiter (Sekunden); große Schritte werden in Teilschritte zerlegt, ungültige ignoriert */
@@ -108,27 +143,20 @@ export class HaltungsSteuerung {
 
   private teilschritt(h: number): void {
     const t = this.tempo;
-    // Leitpunkt längs des Wegs: anfahren, höchstens `tempo`, rechtzeitig bremsen; kommt sicher an
-    if (this.pfad.length) {
-      let rest = abstand(this.leit, this.pfad[0]!);
-      for (let i = 1; i < this.pfad.length; i++) rest += abstand(this.pfad[i - 1]!, this.pfad[i]!);
-      this.fahrt = Math.min(this.fahrt + t.beschleunigung * h, t.tempo, Math.sqrt(2 * t.beschleunigung * rest));
-      this.fahrt = Math.max(this.fahrt, 0.05);
-      let s = this.fahrt * h;
-      while (s > 0 && this.pfad.length) {
-        const ziel = this.pfad[0]!;
-        const d = abstand(this.leit, ziel);
-        this.richtung = einheit(this.leit, ziel) ?? this.richtung;
-        if (d <= s) {
-          this.leit = ziel.slice();
-          this.pfad.shift();
-          s -= d;
-        } else {
-          this.leit = hin(this.leit, ziel, s / d);
-          s = 0;
-        }
+    // Ablauf: Leitpunkt und Zusatzbewegungen aus der Zeit
+    if (this.ablauf) {
+      this.zeit += h * Math.max(0.05, t.tempo);
+      const l = ablaufBei(this.ablauf, alsGewichte(this.start), this.zeit);
+      this.leit = alsListe(l.gewichte);
+      this.eff = { ...KEINE, ...l.effekte };
+      if (this.zeit >= dauerVon(this.ablauf)) {
+        this.ablauf = null;
+        this.eff = { ...KEINE };
       }
-      if (!this.pfad.length) this.fahrt = 0;
+    }
+    if (this.alt) {
+      this.alt.rest -= h;
+      if (this.alt.rest <= 0) this.alt = null;
     }
     // Gewichte an der Feder (kritisch gedämpft)
     const w = t.feder;
@@ -138,7 +166,7 @@ export class HaltungsSteuerung {
       this.g[i]! += this.v[i]! * h;
     }
     // am Ziel genau einrasten (an den Vorlagen gilt dann genau Florians Zeichnung)
-    if (!this.pfad.length && this.gewichteRuhen()) {
+    if (!this.ablauf && this.gewichteRuhen()) {
       this.g = this.leit.slice();
       this.v.fill(0);
     }

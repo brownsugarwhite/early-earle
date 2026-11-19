@@ -2,7 +2,9 @@
 // apps/editor/scripts/ozzy-figur/proben.mjs. Jede Messung zeichnet selbst und liest das Bild sofort (preserveDrawingBuffer).
 import { abflachen, type Form, type Punkt } from './form';
 import { type Ansicht, type Diagnose, EXAKT, type FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
+import { ABLAEUFE, type Art, dauerVon } from './ablauf';
 import type { HaltungName } from './haltung';
+import type { Lage } from './raster';
 import type { HaltungsSteuerung } from './steuerung';
 import { REGELN, type Regeln } from './szenen';
 import { drehLage, type Drehung, rasterVon } from './szenen';
@@ -74,6 +76,35 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     daten: k.daten,
     zeigen,
     bild: (): string => r.canvas.toDataURL('image/png'),
+    /** beliebige Lage (Haltungsgewichte, Kopfwinkel) zeichnen, eingepasst wie die Steuerung */
+    zeigenLage(lage: Lage, fluessig: boolean, w: number, h: number): Ansicht {
+      r.groesse(w, h);
+      const a = k.einpassen('steuern', w, h, 0, Math.round(w * 0.03));
+      r.zeichne(rasterVon(k.daten).szene(lage, fluessig ? FLUESSIG : EXAKT), a, 0);
+      return a;
+    },
+    /** Dauer eines Ablaufs (Sekunden bei Tempo 1) */
+    ablaufDauer: (name: string): number => dauerVon(ABLAEUFE[name as keyof typeof ABLAEUFE]),
+    /** Lage einer Szene bei t (Abläufe: Gewichte und Zusatzbewegungen) */
+    szenenLage: (name: Drehung, t: number): Lage => drehLage(name, t),
+    /** Teile einer beliebigen Lage (Körperkoordinaten, Malreihenfolge) */
+    lageTeile: (lage: Lage) => rasterVon(k.daten).teile(lage).map((x) => ({ name: x.name, weiss: x.weiss, form: x.form })),
+    /** je Ablauf die Stellen (Anteile der Dauer), an denen ein Sprung am ehesten säße: Anfang, Ende, Grenzen und Mitten der Abschnitte */
+    ablaufStellen(): Record<string, number[]> {
+      const out: Record<string, number[]> = {};
+      for (const [name, a] of Object.entries(ABLAEUFE)) {
+        const d = dauerVon(a);
+        const s = new Set<number>([0, 1]);
+        let t = 0;
+        for (const x of a.abschnitte) {
+          s.add((t + x.dauer / 2) / d);
+          t += x.dauer;
+          s.add(t / d);
+        }
+        out[name] = [...s].map((v) => Math.round(v * 1e4) / 1e4).sort((p, q) => p - q);
+      }
+      return out;
+    },
     /** umklappende Bildpunkte zwischen zwei Stellen einer Szene (flüssig): Bei winzigem Schritt bleibt nur ein Sprung groß */
     sprung(name: SzenenName, t0: number, t1: number, w = 600, h = 600): number {
       zeigen(name, t0, true, 0, w, h);
@@ -85,10 +116,10 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
       return n;
     },
     /** Steuerung der Haltungen: Ziel setzen, Kopfwinkel, Zeit weiter (Sekunden), Zustand */
-    steuern: (ziel: HaltungName): void => k.steuerung.setzen(ziel),
+    steuern: (ziel: HaltungName, art?: Art): void => k.steuerung.setzen(ziel, art),
     steuerKopf: (w: number): void => k.steuerung.kopfZiel(w),
     steuerSchritt: (dt: number): void => k.steuerung.schritt(dt),
-    steuerZustand: () => ({ gewichte: k.steuerung.gewichte(), kopf: k.steuerung.kopfWinkel, ruht: k.steuerung.ruht, ziel: k.steuerung.ziel }),
+    steuerZustand: () => ({ gewichte: k.steuerung.gewichte(), effekte: k.steuerung.effekte(), kopf: k.steuerung.kopfWinkel, ruht: k.steuerung.ruht, ziel: k.steuerung.ziel, art: k.steuerung.art }),
     /** Teile einer Drehung (Körperkoordinaten, Malreihenfolge) für Prüfbilder ohne Grafikkarte */
     rasterTeile: (art: Drehung, t: number) => rasterVon(k.daten).teile(drehLage(art, t)).map((x) => ({ name: x.name, weiss: x.weiss, form: x.form })),
     /** Ausschnitt des letzten Bilds in Figur-Einheiten, vergrößert */
