@@ -241,6 +241,14 @@ const GESICHT_WEG_BIS = 156;
  */
 const HINTERKOPF_ZOEGERN = 2;
 /**
+ * Rechts unten ohne Klumpen (Florian, 19.11.: „zwischen 156 bis 180 verklumpen rechts unten die schwarzen zacken“): Bei diesem Winkel liegen
+ * die Anker der nahen Maske zwischen ihrer rechten Seite und ihrer tiefsten Spitze auf einem glatten Bogen. Davor ziehen sich die Zacken
+ * des Kiefers ein, danach wachsen die des Rückens heraus (vorher wanderte die Kieferspitze quer durch die Zacken)
+ */
+const RECHTS_GLATT = 160;
+/** der Unterschied des Rückens zu seinem Spiegelbild ist in der zweiten Hälfte bei 360° − ASYM_BIS verteilt (vor dem Gesicht) */
+const ASYM_BIS = 144;
+/**
  * Ohren (Florian, 19.11.: „die ohren sollten auch etwas weiter zusammen sein von der seite, dass der drehungseffekt besser wirkt“): Das
  * mittlere Ohr liegt von der Seite (bis 125°) auf einem gleichmäßig beschleunigten Weg zu seinem Platz im Rücken (Anteil des Wegs = Anteil
  * der Drehung hoch OHR_ZOEGERN) und holt danach weich auf
@@ -281,6 +289,38 @@ function umnummerieren(f: Form, b: (j: number, n: number) => number, andersherum
 function kopfGespiegelt(name: TeilName, f: Form): Form {
   const m = abbilden(f, (q) => [-q[0], q[1]]);
   return name === 'nase' ? umnummerieren(m, (j) => NASE_SPIEGEL[j]!, true) : m;
+}
+
+/** Unterschied zweier Formen gleicher Ankerzahl (a − b je Anker und Griff), sonst null */
+function formUnterschied(a: Form, b: Form): Form | null {
+  if (a.length !== b.length) return null;
+  const minus = (q: Punkt, r: Punkt): Punkt => [q[0] - r[0], q[1] - r[1]];
+  return a.map((x, j) => ({ p: minus(x.p, b[j]!.p), i: minus(x.i, b[j]!.i), o: minus(x.o, b[j]!.o) }));
+}
+
+/** Form plus k-mal ein Unterschied */
+function formPlus(f: Form, d: Form, k: number): Form {
+  const plus = (q: Punkt, r: Punkt): Punkt => [q[0] + k * r[0], q[1] + k * r[1]];
+  return f.map((x, j) => ({ p: plus(x.p, d[j]!.p), i: plus(x.i, d[j]!.i), o: plus(x.o, d[j]!.o) }));
+}
+
+/** kubisches Stück (Anfang, Griff, Griff, Ende) an den Anteilen ts (aufsteigend) geteilt, je Teilstück dieselbe Kurve */
+function stueckTeilen(c: [Punkt, Punkt, Punkt, Punkt], ts: number[]): [Punkt, Punkt, Punkt, Punkt][] {
+  const mitte = (q: Punkt, r: Punkt, u: number): Punkt => [q[0] + (r[0] - q[0]) * u, q[1] + (r[1] - q[1]) * u];
+  const aus: [Punkt, Punkt, Punkt, Punkt][] = [];
+  let rest = c;
+  let t0 = 0;
+  for (const t of ts) {
+    const u = (t - t0) / (1 - t0);
+    const q0 = mitte(rest[0], rest[1], u), q1 = mitte(rest[1], rest[2], u), q2 = mitte(rest[2], rest[3], u);
+    const r0 = mitte(q0, q1, u), r1 = mitte(q1, q2, u);
+    const s = mitte(r0, r1, u);
+    aus.push([rest[0], q0, r0, s]);
+    rest = [s, r1, q2, rest[3]];
+    t0 = t;
+  }
+  aus.push(rest);
+  return aus;
 }
 
 /** Teil verschwindet: alle Anker und Griffe auf einem Punkt (keine Fläche, auch keine Linie) */
@@ -612,8 +652,10 @@ export class FigurRaster {
     const b90 = keyBei('kopfB', 90)!;
     let x0 = -Infinity;
     for (const q of punkteVon(b90)) x0 = Math.max(x0, q[0]);
+    // an der Kurve gemessen, nicht an den Ankern: Die Wange des Rückens wölbt sich zwischen zwei Ankern weiter hinaus (sonst lag das
+    // weggedrehte Gesicht gespiegelt hinter 180° im Schwarz und zeichnete sich als weißer Faden)
     let xAus = xr;
-    for (const n of ['kopfA', 'kopfB'] as TeilName[]) for (const a of keyBei(n, 180)!) xAus = Math.max(xAus, Math.abs(a.p[0]));
+    for (const n of ['kopfA', 'kopfB'] as TeilName[]) for (const q of punkteVon(keyBei(n, 180)!)) xAus = Math.max(xAus, Math.abs(q[0]));
     const weg = (f: Form, w: number): Form => wegGedreht(f, w, x0, xr + GESICHT_AUSSEN, xAus + 2 * GESICHT_AUSSEN);
     // die Maske selbst gleitet nicht über den Rand hinaus (das wäre ein schwarzer Kasten am rechten Rand)
     const wegMaske = (f: Form, w: number): Form => wegGedreht(f, w, x0, xr + GESICHT_AUSSEN);
@@ -692,6 +734,44 @@ export class FigurRaster {
         neu.push({ w, form: basis });
       }
       dazu('kopfA', ...neu);
+      // rechts unten ein glatter Bogen (RECHTS_GLATT): von der rechten Seite (der rechteste Anker der unteren Hälfte im Rücken) zur tiefsten
+      // Spitze, die Anker dazwischen gleichmäßig darauf
+      const r180 = keyBei('kopfA', 180)!;
+      const kr = kasten(r180);
+      let tief = 0;
+      let rechts = -1;
+      r180.forEach((x, j) => {
+        if (x.p[1] > r180[tief]!.p[1]) tief = j;
+        if (x.p[1] > (kr[1] + kr[3]) / 2 && (rechts < 0 || x.p[0] > r180[rechts]!.p[0])) rechts = j;
+      });
+      const zwischenAnker: number[] = [];
+      for (let j = (rechts + 1) % n; j !== tief; j = (j + 1) % n) zwischenAnker.push(j);
+      if (rechts >= 0 && rechts !== tief && zwischenAnker.length > 0 && zwischenAnker.length < n - 2) {
+        const k = kopie(zwischen('kopfA', RECHTS_GLATT));
+        const a0 = k[rechts]!;
+        const a1 = k[tief]!;
+        const richtung = (v: Punkt, sonst: Punkt): Punkt => {
+          const l = Math.hypot(v[0], v[1]);
+          if (l > 1e-6) return [v[0] / l, v[1] / l];
+          const m = Math.hypot(sonst[0], sonst[1]);
+          return [sonst[0] / m, sonst[1] / m];
+        };
+        const sehne: Punkt = [a1.p[0] - a0.p[0], a1.p[1] - a0.p[1]];
+        const L = Math.hypot(sehne[0], sehne[1]);
+        const t0 = richtung([a0.p[0] - a0.i[0], a0.p[1] - a0.i[1]], sehne);
+        const t1 = richtung([a1.p[0] - a1.i[0], a1.p[1] - a1.i[1]], sehne);
+        const m = zwischenAnker.length + 1;
+        const stuecke = stueckTeilen(
+          [a0.p, [a0.p[0] + (t0[0] * L) / 3, a0.p[1] + (t0[1] * L) / 3], [a1.p[0] - (t1[0] * L) / 3, a1.p[1] - (t1[1] * L) / 3], a1.p],
+          zwischenAnker.map((_, q) => (q + 1) / m),
+        );
+        a0.o = stuecke[0]![1];
+        zwischenAnker.forEach((j, q) => {
+          k[j] = { p: stuecke[q + 1]![0], i: stuecke[q]![2], o: stuecke[q + 1]![1] };
+        });
+        a1.i = stuecke[m - 1]![2];
+        dazu('kopfA', { w: RECHTS_GLATT, form: k });
+      }
     }
     // Nase: kommt im Profil zur Ruhe, wird dann am rechten Rand schmaler und kleiner wie ein Knubbel, der sich wegdreht (Florian: „sie muss
     // schmaler werden und die form dann ausskalieren, bevor sie hinter den kopf dreht“, bei 36 % „noch ein wenig der nase“), verschwindet
@@ -738,7 +818,20 @@ export class FigurRaster {
     for (const keys of this.kopf.values()) keys.sort((x, y) => x.w - y.w);
     const erste = new Map([...this.kopf].map(([n, keys]) => [n, keys.map((x) => ({ w: x.w, form: x.form }))]));
     for (const [n, keys] of this.kopf) {
-      for (const x of erste.get(PARTNER_KOPF[n]!)!) if (x.w > 0 && x.w < 180) keys.push({ w: 360 - x.w, form: kopfGespiegelt(n, x.form) });
+      // Florians Rücken ist nicht spiegelgleich (links breiter als rechts): Die gespiegelten Schlüssel des Partners bekommen den Unterschied
+      // des Rückens zu seinem Spiegelbild dazu, voll bei 180°, weich auslaufend bis 360° − ASYM_BIS (sonst holte jedes Teil ihn zwischen
+      // 180° und dem ersten gespiegelten Schlüssel nach, ein Sprung, wo der nah an 180° liegt). Danach ist die zweite Hälfte wieder genau
+      // gespiegelt: Das Gesicht (Bart ohne Rücken, immer genau gespiegelt) liegt dann wie in der ersten Hälfte auf der Maske
+      const eigen180 = erste.get(n)!.find((x) => x.w === 180)?.form;
+      const partner180 = erste.get(PARTNER_KOPF[n]!)!.find((x) => x.w === 180)?.form;
+      const asym = eigen180 && partner180 ? formUnterschied(eigen180, kopfGespiegelt(n, partner180)) : null;
+      for (const x of erste.get(PARTNER_KOPF[n]!)!) {
+        if (x.w <= 0 || x.w >= 180) continue;
+        const m = kopfGespiegelt(n, x.form);
+        const u = Math.min(1, Math.max(0, (x.w - ASYM_BIS) / (180 - ASYM_BIS)));
+        const anteil = u * u * (3 - 2 * u);
+        keys.push({ w: 360 - x.w, form: asym && anteil > 0 ? formPlus(m, asym, anteil) : m });
+      }
       const vorn = erste.get(n)!.find((x) => x.w === 0)!.form;
       keys.push({ w: 360, form: n === 'ohrSpalt' ? kopfGespiegelt(n, vorn) : vorn });
       keys.sort((x, y) => x.w - y.w);

@@ -92,6 +92,8 @@ export type Diagnose = 0 | 1 | 2;
 export const MAX_TEILE = 24;
 /** höchstens so viele weiße Teile mit weicher Malreihenfolge */
 const MAX_WEISS = 8;
+/** Durchbruch: ein Rest Schwarz zwischen Bart und Umriss, dünner als so viele Bildpunkte, geht mit ins Weiß (Florian: sauber ausverjüngen) */
+const DURCH_REST = 0.75;
 const NT = 6;
 
 const KOPF = '#version 300 es\nprecision highp float;\nprecision highp int;\n';
@@ -176,6 +178,7 @@ export class FigurRenderer {
         uniform float kBohneBein, kBohneSchwanz, kBohneKopf, kKopfOhr, kOhrOhr, kKopfNase, kKlemme;
         uniform int verdeckerZahl; uniform vec4 verdeckerA[4]; uniform vec2 verdeckerB[4];
         uniform int spaltNah, spaltFern; uniform float spaltBreite, spaltAuslauf; uniform int diagnose; uniform float durchA, durchB;
+        const float durchRest = ${DURCH_REST.toFixed(2)};
         uniform int weichOrdnung; uniform int weissNr[${MAX_TEILE}]; uniform vec4 anteil[${(MAX_WEISS * MAX_TEILE) / 4}];
         out vec4 farbe;
         float smin(float a, float b, float k){ if (k < 1e-4) return min(a, b); float h = max(k - abs(a - b), 0.0) / k; return min(a, b) - h * h * k * 0.25; }
@@ -235,10 +238,13 @@ export class FigurRenderer {
             if (weissGruppe[c] == 1) { wBart = min(wBart, max(w, -uc)); ueberBart = min(ueberBart, uc); wRoh = min(wRoh, w); } }
           // Durchbruch: Schwarz zwischen Bart und Umriss, das hier dünner als durchA ist, nimmt das Weiß ganz; bis durchB nimmt es nur
           // den inneren Teil (der Rand läuft spitz aus), dickeres bleibt. Dicke = Abstand zum Weiß + Abstand zum Umriss; Schwarz, das
-          // nach dem Bart gezeichnet wird (Nase), bleibt
-          if (durchB > 0.0 && schwarz < 0.0 && wRoh > 0.0 && ueberBart > 0.5) {
+          // nach dem Bart gezeichnet wird (Nase), bleibt. Gilt auch in den geglätteten Säumen am Umriss und an der Kante des Barts (sonst
+          // blieb vom genommenen Schwarz eine graue, gepunktete Haarlinie), und ein Rest, dünner als durchRest Bildpunkte, geht mit (sonst
+          // lief die Spitze als lange blasse Linie aus)
+          if (durchB > 0.0 && schwarz < 0.5 && wRoh > -0.5 && ueberBart > 0.5) {
             float tr = wRoh + u;
             float e = tr <= durchA ? tr + 1.0 : durchA * clamp((durchB - tr) / max(durchB - durchA, 1e-3), 0.0, 1.0);
+            if (tr - e < durchRest) e = tr + 1.0;
             weiss = max(weiss, clamp(0.5 - (wRoh - e), 0.0, 1.0)); }
           // Bart und Vorderbeinfenster verschmelzen wie Tropfen, sobald sie sich nahekommen (Florian, 18.11.). Das Fenster schiebt
           // sich dafür bis 0,3 k unter Kopf, Ohren und Nase (schmale Haarspitzen und der Rand der Maske trennen dann nicht mehr);
@@ -261,8 +267,10 @@ export class FigurRenderer {
             float b = spaltBreite * (1.0 - smoothstep(0.0, spaltAuslauf, -fern));
             spalt = clamp(deck(nah - b) - deck(nah), 0.0, 1.0) * deck(fern) * (1.0 - deck(ueber[spaltNah])); }
           float sw = deck(schwarz);
-          vec3 col = mix(vec3(1.0), vec3(0.0), sw);
-          col = mix(col, vec3(1.0), max(weiss, spalt));
+          // sichtbar ist das Schwarz außerhalb des Weißen: Enden beide an derselben Kante (Bart am Umriss), bleibt sie weiß, statt als
+          // graue Linie der Kantenglättung zu stehen (Schwarz halb, darüber Weiß halb gab 75 % Grau); sonst wie Weiß über Schwarz
+          float hell = max(weiss, spalt);
+          vec3 col = vec3(1.0 - max(sw - hell, 0.0));
           if (diagnose == 1) col = mix(col, vec3(1.0, 0.0, 0.0), step(0.5, max(weiss, spalt) * (1.0 - sw)));
           else if (diagnose == 2) col = mix(col, vec3(0.0, 0.4, 1.0), step(0.5, spalt));
           farbe = vec4(col, 1.0); }`,

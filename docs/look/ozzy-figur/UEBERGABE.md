@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in fünfter Fassung nach Florians Skizzen; 3D-Wege ruhen)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in sechster Fassung nach Florians Skizzen; 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -549,12 +549,48 @@ dann 30 Bildpunkte zurück). `raster.ts` steht deshalb wieder auf der dritten Fa
 - **Offen:** sein Urteil. Bei 144° (40 %) ist noch ein schmaler Streifen Gesicht zu sehen, in seiner Skizze schon der ganze Rücken. Ganz nach
   der Skizze hieße: Rücken bei 144° fertig, dann steht der Kopf bis 216° still oder rutscht (vierte Fassung). Stirnfranse bei 52°–82°.
 
+### Sechste Fassung: Zacken rechts unten, saubere Spitzen (19.11. nachts)
+
+Florian zur fünften Fassung: „ok, besser. Ich finde zwischen 156 bis 180 verklumpen rechts unten die schwarzen zacken nicht schön. Und
+bekommst du das „ausverjüngen“ der schwarzen kontur noch sauberer hin. Vorallem bei der unteren Gesichtshälfte“. Vorher und nachher:
+`docs/progress/ozzy-figur/2026-11-19-kopf360-6-gesicht.png` (untere Gesichtshälfte 102°–132°, groß), `…-kopf360-6-zacken.png` (rechts unten
+150°–180°), Video `…-kopf360-6.mp4`.
+
+- **Saubere Spitzen** (Renderer): Unter der Nase blieb vom Durchbruch eine blasse, gepunktete Linie, an den Spitzen der Stirnfranse ebenso.
+  Drei Ursachen, gemessen an den Grauwerten quer über den Rand (bei 120° unter der Nase 128 und 204 statt 255): Der Durchbruch nahm nur
+  Bildpunkte mit der Mitte im Schwarz und außerhalb des Barts; die geglätteten Säume am Umriss und an der Kante des Barts blieben grau
+  (jetzt `schwarz < 0.5`, `wRoh > -0.5`). Ein Rest dünner als `DURCH_REST` (0,75 Bildpunkte) geht mit. Und wo Bart und Umriss an derselben
+  Kante enden, gab „Schwarz halb, darüber Weiß halb“ 75 % Grau: Sichtbar ist jetzt nur das Schwarz außerhalb des Weißen
+  (`1 − max(sw − hell, 0)`, sonst unverändert). Alle neun Vorlagen weiter 0,000–0,006 % deutlich abweichend.
+- **Rechts unten ohne Klumpen** (`RECHTS_GLATT` 160°): Die Kieferspitze der nahen Maske (im Profil unten unter dem Bart) wird im Rücken eine
+  Kerbe an der rechten Seite; auf dem Weg dorthin beulte sich das Stück davor zum Klumpen aus, zwischen ihr und dem Kinn stand ein Spalt oder
+  Haken. Jetzt liegen bei 160° die Anker zwischen der rechten Seite (rechtester Anker der unteren Hälfte im Rücken) und der tiefsten Spitze auf
+  einem glatten Bogen: Die Zacken des Kiefers ziehen sich davor ein, die des Rückens wachsen danach heraus. Bei 156° ist die Unterkante kurz
+  fast gerade.
+- **Asymmetrie des Rückens weich verteilt** (`ASYM_BIS` 144°): Gespiegelte Schlüssel der zweiten Hälfte bekommen den Unterschied des Rückens
+  zu seinem Spiegelbild dazu (voll bei 180°, weich auslaufend bis 216°). Nötig für den Bogen bei 160° (gespiegelt bei 200°). Versucht und
+  verworfen: bis 270° auslaufen lassen (Bart und Ohrspalt werden ohne Ausgleich gespiegelt; links stand bei 216°–234° ein dicker schwarzer Rand
+  ums Gesicht).
+- **Weißer Faden links bei 181°–187° weg** (stand schon in der dritten Fassung): Das weggedrehte Gesicht (Bart ohne Breite) lag gespiegelt im
+  Schwarz, weil sein Abstand „außerhalb des Rückens“ an den Ankern gemessen war; die Wange wölbt sich zwischen zwei Ankern weiter hinaus.
+  Jetzt an der Kurve gemessen (`xAus`); der Bart liegt von 154° bis 206° ganz außerhalb des Kopfs.
+- **Geprüft:** an 0°, 45°, 90°, 180° jede Form 0,00; 52 Tests grün; keine Sprünge (2°-Schritte, 88°–272°); Vorlagen wie oben; Schwerpunkt des
+  Schwarz glatt (am höchsten bei 150°–156°, wie vorher).
+- **Offen:** sein Urteil, auch zur fast geraden Unterkante bei 156°. Bei 144° noch ein Streifen Gesicht (seine Antwort steht aus). Stirnfranse
+  bei 52°–82°.
+
 ## Fallen
 
 - Schlüssel kurz vor 180° werden in die zweite Hälfte gespiegelt (Teil n bei 360° − w ist der gespiegelte Partner bei w). Florians Rücken ist
-  nicht spiegelgleich: Zwischen 180° und dem ersten gespiegelten Schlüssel holt jedes Teil die Abweichung nach. Liegt dieser Schlüssel nah an
-  180°, springt es dort (Zwischenschlüssel des mittleren Ohrs bis 170°: das linke Ohr lief hinter 180° 37 Einheiten in 10°). Zwischenschlüssel
-  nicht näher als rund 40° an 180° setzen und die Ohren um 180° prüfen (`npx vite-node scripts/ozzy-figur/teil-weg.ts ohrA 170 196 2`).
+  nicht spiegelgleich. Seit der sechsten Fassung bekommen gespiegelte Schlüssel über `ASYM_BIS` den Unterschied weich dazu; vorher holte jedes
+  Teil ihn zwischen 180° und dem ersten gespiegelten Schlüssel nach (Zwischenschlüssel des mittleren Ohrs bis 170°: das linke Ohr lief hinter
+  180° 37 Einheiten in 10°). Der Ausgleich muss vor dem Gesicht auslaufen (Bart und Ohrspalt werden ohne ihn gespiegelt). Die Ohren um 180°
+  prüfen: `npx vite-node scripts/ozzy-figur/teil-weg.ts ohrA 170 196 2`.
+- Weiß über Schwarz an derselben Kante: Mit Kantenglättung ergibt „Schwarz halb, darüber Weiß halb“ 75 % Grau, eine Linie, die niemand
+  gezeichnet hat. Der Renderer zeigt deshalb nur das Schwarz außerhalb des Weißen. Blasse Linien am Bildpunkt nachmessen (Grauwerte quer
+  über den Rand), bevor man an der Form ändert.
+- Teile ohne Breite (weggedrehtes Gesicht, Bart bei 0) zeichnen sich im Schwarz als Faden. Ihr Abstand „außerhalb“ an der Kurve messen, nicht
+  an den Ankern.
 - Wer Anker eines Teils verzögert, nimmt nur die am Umriss, der stehen bleiben soll. Verzögerte Anker an der Unterkante ziehen zwischen sich
   und den mitgehenden eine gerade Kante.
 
