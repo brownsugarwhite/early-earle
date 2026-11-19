@@ -35,7 +35,7 @@ const daten = importieren(SVG_TEXTE);
 
 /** „steuern“: Ozzy per Knopf (Stehen, Sitzen, Liegen, je in Florians Arten) und Kopfwinkel, weich ineinander (steuerung.ts) */
 export type SzenenName = AnsichtName | Drehung | 'steuern';
-const istDrehung = (n: SzenenName): n is Drehung => ['drehen', 'kopf', 'koerper', 'haltung', 'haltungP'].includes(n) || istAblauf(n);
+const istDrehung = (n: SzenenName): n is Drehung => ['drehen', 'kopf', 'kopf360', 'koerper', 'haltung', 'haltungP'].includes(n) || istAblauf(n);
 const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'steuern', titel: 'Ozzy steuern' },
   { name: 'logo', titel: 'Logo' },
@@ -49,6 +49,7 @@ const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'sitz2', titel: 'Sitzen 2' },
   { name: 'drehen', titel: 'Ozzy dreht sich' },
   { name: 'kopf', titel: 'Kopf dreht' },
+  { name: 'kopf360', titel: 'Kopf dreht 360°' },
   { name: 'koerper', titel: 'Körper dreht' },
   { name: 'hinsetzen', titel: 'Hinsetzen' },
   { name: 'huepfer', titel: 'Hinsetzen mit Hüpfer' },
@@ -94,7 +95,7 @@ export function rahmen(name: SzenenName): [number, number, number, number] {
   const ks =
     name === 'steuern'
       ? HALTUNGEN.flatMap((h) => [0, 90].map((theta) => szenenKasten(rasterVon(daten).szene({ psi: 90, theta, posen: { [h.name]: 1 } }, EXAKT))))
-      : (istAblauf(name) ? [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1] : istDrehung(name) ? [0, 0.5, 1] : [0]).map((t) => szenenKasten(szeneBauen(name, t, EXAKT)));
+      : (name === 'kopf360' ? Array.from({ length: 49 }, (_, i) => i / 48) : istAblauf(name) ? [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1] : istDrehung(name) ? [0, 0.5, 1] : [0]).map((t) => szenenKasten(szeneBauen(name, t, EXAKT)));
   const k: [number, number, number, number] = [Math.min(...ks.map((x) => x[0])), Math.min(...ks.map((x) => x[1])), Math.max(...ks.map((x) => x[2])), Math.max(...ks.map((x) => x[3]))];
   rahmenSpeicher.set(name, k);
   return k;

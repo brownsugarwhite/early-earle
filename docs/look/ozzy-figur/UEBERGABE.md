@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026: 2,5D A–D gebaut; Beweis 3D und Rohmodell verworfen; Modell aus der Front aufgeblasen, ozzy-modell.html, zuerst der Kopf)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachmittags: zurück im 2D; Kopf dreht 360°, Szene kopf360; 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -397,6 +397,32 @@ dass es es 100% trifft. aber es war ja komplett daneben und unschön“. Plan: [
 - **Offen (sein Auge):** Seine Seite zeigt den Bart rund 200 tief, sein 3/4 ein flacheres Gesicht; das Modell folgt der Seite.
 - **Urteil Florian (19.11.) zu Stand 2:** „ups, das ist ni. Sieht ja wieder komplett anders ud ganz verzogen aus. Ich dachte das kannst du aber scheinbar siehst du niht wie es aussehen soll und machst das einfach nach deckungswerten...das ist ja überhaupt nicht aussagekräftig. Du kannst es nicht machen wenn du nicht verstehst wie es aussehen soll.“ Nicht weiterbauen. Vorschlag an ihn: Er formt Ozzy in Blender, ich bereite die Datei mit seinen Zeichnungen als Hintergrund und dem fertigen Look live im Fenster vor und übernehme danach Export, Look im Spiel, Skelett, Animation, Physik; oder 2D mit weiteren gezeichneten Zwischenansichten. Seine Wahl steht aus.
 
+## Kopf dreht 360° in 2D (19.11. nachmittags)
+
+Florian nach dem 3D-Modell: „versuch mal die 360 grad drehung vom kopf in 2d fertig zu machen. dann machen wir den körper. die ersten
+90grad waren schon ganz gut. die brauchen nur feinschliff und waren der schwerste teil.“
+
+- **Szene** „Kopf dreht 360°“ (`?szene=kopf360`, nur der Kopf; `t` 0 → 1 ist 0° → 360°). Bilder `docs/progress/ozzy-figur/2026-11-19-kopf360-blatt.png`
+  (15°-Schritte), Video `2026-11-19-kopf360.mp4`.
+- **Schlüssel** (`raster.ts`, Kopf über θ von 0° bis 360°, `Lage.theta` nicht mehr auf 90° begrenzt, `Lage.nurKopf`): 0° Logo, 45° 3/4,
+  67° (Bart B, seine Übermalung), 90° Profil, **180° Rücken** (wie eingelesen: läuft gleichsinnig mit dem Profil; nach der Front
+  umnummeriert fiel der Kopf bei 135° zu einem Streifen zusammen). **180°–360° gespiegelt:** je Teil die Schlüssel des Partners (A ↔ B)
+  gespiegelt (`kopfGespiegelt`, die Nase umnummeriert), bei 360° wieder seine Front; Malreihenfolge der Kopfteile in der zweiten Hälfte
+  A ↔ B getauscht; Versatz des Kopfs gespiegelt (`versatzBei`).
+- **90° → 180° (ohne Zeichnung von ihm, gebaut):** Bart zieht sich bis 150° (fern bis 112°) auf einen Punkt am rechten Kopfrand zusammen,
+  Nase gleitet an der Vorderkante der Schnauze (104°) dahinter und verschwindet (118°), Ohrspalt bis 140°; ferne Maske taucht im Kopf unter
+  (102°), liegt zusammengeschoben im Kopf (112°) und wächst mit ihren Zacken zur linken Hälfte (140°); der Scheitel der nahen Maske
+  wird bis 112° zur runden Wange; fernes Ohr früh hinter das nahe (105°). Bart bleibt dabei mit Rand 8 in seiner Maske (Klemme über
+  den Träger, `BART_KLEMME`).
+- **Verdecken 8 als Standard** (`REGELN.verdecken`; die Regel „abgewandte Seite wird verdeckt, nicht gequetscht“ vom 16.11.): zwischen
+  den Schlüsselwinkeln behält die abgewandte Wange ihren schwarzen Rand (bei 10°–20° stach das Weiß sonst durch); an 0°, 45°, 90°, 180°
+  ohne Wirkung. In der zweiten Hälfte liegt die abgewandte Seite links.
+- **Geprüft:** an 0°, 45°, 90°, 180° deckt sich jeder Anker mit seiner Zeichnung (0,00); 52 Tests grün.
+- **Offen:** Stirnfranse der fernen Seite bei 52°–82° (und gespiegelt 278°–308°): ein runder Knubbel an einem Stiel, in seiner
+  Übermalung bei 67° eine dünne, spitze Locke → Zwischenschlüssel der fernen Maske bei 67° aus seiner Übermalung (Werkzeuge in
+  `scripts/ozzy-figur/zwischen67/`). 90°–150° ist gebaut, nicht gezeichnet: eine Übermalung um 120° von ihm wäre der nächste Schlüssel.
+  Danach der Körper.
+
 ## Fallen
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
@@ -429,6 +455,12 @@ dass es es 100% trifft. aber es war ja komplett daneben und unschön“. Plan: [
 - Abstandsfelder aus Masken haben Treppen von einer halben Zelle; bilinear gelesen flackern die Flächenrichtungen von Zelle zu Zelle
   (Streifen, durchstechender Rand): weichzeichnen (σ = 1) und bikubisch lesen.
 - Aufblasen mit einem Maß je Zeile macht aus schmalen Zeilen (Bartzacken) flache Finnen: Maß nur langsam ändern (Glättung 25).
+- Eine Form, die auf eine Linie ohne Breite zusammenläuft, zeichnet der Renderer als Haarlinie: Verschwindendes immer auf einen Punkt
+  ziehen. Die weiche Deckung (`deckung`) deckt das Innere einer großen Fläche sofort ganz (das Feld ist innen gesättigt): nur für kleine
+  Überlappungen.
+- Ein Teil, das in einer Drehung von einer Seite zur anderen muss (ferne Maske: Streifen vorn im Profil, linke Hälfte im Rücken), läuft
+  verdeckt: erst untertauchen, dann am Zielrand zusammengeschoben bereitlegen und von dort wachsen. Quer durch den Kopf gemischt fällt
+  der Umriss ein.
 - Teile, die in einer Haltung fehlen, nie zu einem fernen Punkt ziehen (sie wandern sichtbar durch anderes): dort zurückziehen, wo
   sie verdeckt sind, und früh im Weg.
 - Gelenke in der Welt mischen, wenn sie stehen bleiben, sonst im Knochen der Bohne: Eine Hüfte, die geradlinig zwischen zwei

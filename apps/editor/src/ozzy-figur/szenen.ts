@@ -17,7 +17,8 @@ export interface Regeln {
   /** Bohnenenden an den äußeren Beinkanten */
   bohnenenden: boolean;
 }
-export const REGELN: Regeln = { verdecken: 0, bohnenenden: true };
+/** Verdecken 8 (19.11.): zwischen den Schlüsselwinkeln behält die abgewandte Wange ihren schwarzen Rand (an den Schlüsseln ohne Wirkung) */
+export const REGELN: Regeln = { verdecken: 8, bohnenenden: true };
 
 export function gruppeVon(name: TeilName): Gruppe {
   if (name === 'bohne') return 'bohne';
@@ -75,7 +76,7 @@ export const ABLAUF_START: Record<AblaufName, HaltungName> = {
   aufstehen: 'liegen',
   aufstehenSitz: 'sitzen',
 };
-export type Drehung = 'drehen' | 'kopf' | 'koerper' | 'haltung' | 'haltungP' | AblaufName;
+export type Drehung = 'drehen' | 'kopf' | 'kopf360' | 'koerper' | 'haltung' | 'haltungP' | AblaufName;
 export const istAblauf = (n: string): n is AblaufName => n in ABLAEUFE;
 /**
  * Lage einer Drehung bei t = 0 … 1. Haltungen: „haltung“/„haltungP“ die Kette Stehen (0) – Sitzen (0,5) – Liegen (1), Kopf vorn bzw.
@@ -85,6 +86,8 @@ export function drehLage(art: Drehung, t: number, anker?: AnkerOrt): Lage {
   const w = t * 90;
   if (art === 'drehen') return { psi: w, theta: w };
   if (art === 'kopf') return { psi: 90, theta: w };
+  // nur der Kopf, einmal ganz herum (0° vorn, 90° Profil, 180° Rücken, 270° Profil nach links)
+  if (art === 'kopf360') return { psi: 90, theta: t * 360, nurKopf: true };
   if (art === 'haltung') return { psi: 90, theta: 0, haltung: 2 * t };
   if (art === 'haltungP') return { psi: 90, theta: 90, haltung: 2 * t };
   if (istAblauf(art)) {
