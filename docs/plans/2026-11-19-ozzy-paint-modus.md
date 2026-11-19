@@ -1,5 +1,10 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
+**Der Strang ruht seit dem 19.11. abends.** Dein Wort: „Das hast du alles heute wirklich sehr gut umgesetzt. … Morgen möchte ich
+erstmal mit posen und maul weitermachen.“ **Alles, was übrig bleibt, steht in
+[`2026-11-19-ozzy-paint-was-bleibt.md`](2026-11-19-ozzy-paint-was-bleibt.md)** (was bei dir liegt, was nicht gebaut ist, was nicht
+hält, was nicht geprüft ist, Zusammenführen, was die Sitzung „Posen und Maul“ wissen muss).
+
 **Stand (19.11., 22:00 Uhr): Etappe 6 ist gebaut (deine Worte: „Etappe 6 starten“, dann „dann fassung b“).** Die Ebenen-Ansicht
 steht schräg versetzt: Der Knopf über dem Stapel oder die Taste X fächert die Form auf, je Ebene eine Kopie. Vorn steht die Kopie
 der Ebene, an der du malst; eine andere antippen, und sie tritt vor. An der vorderen malst du mit allen Werkzeugen wie an der

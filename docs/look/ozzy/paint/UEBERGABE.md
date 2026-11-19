@@ -1,7 +1,14 @@
-# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 22:00 Uhr)
+# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 22:30 Uhr: der Strang ruht)
 
 Florian will in Ozzy einen Paint-Modus mit Ebenen, einer Ebenen-Ansicht und einem neuen Material (sein Auftrag wörtlich im Plan).
-Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende jedes Blocks überschrieben.
+Diese Übergabe wird am Ende jedes Blocks überschrieben.
+
+**Der Strang ruht seit dem 19.11. abends.** Florian: „Das hast du alles heute wirklich sehr gut umgesetzt. Ich mache morgen in
+einer neuen session weiter. kannst du alles was übrig bleibt dokumentieren, damit es nicht vergessen wird. Morgen möchte ich
+erstmal mit posen und maul weitermachen.“ **Alles, was übrig bleibt, steht in
+[`docs/plans/2026-11-19-ozzy-paint-was-bleibt.md`](../../../plans/2026-11-19-ozzy-paint-was-bleibt.md)**: was bei ihm liegt
+(A), was nicht gebaut ist (B), was nicht hält (C), was nicht geprüft ist (D), Zusammenführen (E), was die Sitzung „Posen und
+Maul“ vom Paint-Modus wissen muss (F). Wer hier weiterbaut, liest zuerst diese Liste und baut nichts daraus ohne sein Wort.
 
 ## 1. Einstieg
 
@@ -9,6 +16,7 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | --- | --- |
 | Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`, Stand `3a091f14`). **Nicht zusammengeführt**, weder mit ihm noch mit `claude/ozzy` noch mit `main`; erst auf sein Wort, am Schluss. |
 | Fenster | `http://localhost:5215/ozzy.html`, Eintrag `ozzy-paint` in `.claude/launch.json`. Proben: `OZZY_URL=http://localhost:5215/ozzy.html`. Nie unter seinen Fenstern bauen (5205, 5211, 5194). |
+| Was übrig bleibt | [`docs/plans/2026-11-19-ozzy-paint-was-bleibt.md`](../../../plans/2026-11-19-ozzy-paint-was-bleibt.md) (nummerierte Liste, Stand 19.11. abends) |
 | Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (Abschnitt 13), Etappe 4, das Bild der Bedienung in zwei Fassungen (Abschnitt 14), Abschnitt 15: Etappe 4, gebaut (Fassung 1, der Tropfen am Faden), Abschnitt 16: Etappe 5, gebaut (Ebenen), Abschnitt 17: Etappe 6, erster Schritt (die Ebenen-Ansicht, zwei Fassungen zur Wahl), **Abschnitt 18: Etappe 6, gebaut (Fassung B: was er sieht, gemessen, für ihn entschieden, was fehlt, Bauweise)** |
 | Recherche | [`docs/research/2026-11-19-zbrush-grundmaterial.md`](../../../research/2026-11-19-zbrush-grundmaterial.md) |
 | Seine Vorlagen | [`2026-11-19-zbrush-matcap-red-wax.png`](2026-11-19-zbrush-matcap-red-wax.png), [`2026-11-19-zbrush-red-wax-vierecke.webp`](2026-11-19-zbrush-red-wax-vierecke.webp) |
@@ -25,12 +33,13 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | **3 Füllen mit dem Farbtropfen** | **gebaut (19.11.), sein Urteil steht aus.** Erster Schritt: Die Farbe läuft ein; sein Wort dazu: „Tinte“ (eingestellt; „Honig“ bleibt über `?fuellen=honig`). Zweiter Schritt: Farben als Tropfen unter der Leiste (antippen, ziehen und fallen lassen, Plus, Mülleimer), Farbtropfen (F), Pipette (I). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Was fehlt: Plan 13.4. Sein Wort danach: „Etappe 4 starten“ (kein Urteil in Worten). |
 | 4 Weichheit an Linien und Punkten | gebaut (19.11.). Zuerst das Bild der Bedienung in zwei Fassungen; sein Wort: „Fassung 1“. Gebaut: Jeder Punkt einer Farblinie kann eine Breite tragen; an gewählten Punkten sitzt quer zur Farblinie ein Tropfen an einem Faden (wegziehen: weich, zurückschieben: hart), K und `[` `]` an mehreren Punkten. Alle sieben Kriterien halten (Plan 15.2). Was fehlt: Plan 15.4. Fassung 2 („Wasser“) ist nicht gebaut. Sein Wort danach: „Etappe 5 starten“ (kein Urteil in Worten). |
 | 5 Ebenen | gebaut (19.11.). Sein Wort danach: „Etappe 6 starten“ (kein Urteil in Worten). Am rechten Rand ein Stapel liegender Tropfen, je Ebene eine Linse: Plus legt an, antippen wählt, wo gemalt wird, der Punkt daneben blendet aus und ein, ziehen ordnet, auf den Mülleimer gezogen ist die Ebene gelöscht. Oben deckt unten, auf Wachs und auf hellem Solid. Alle zehn Kriterien halten (Plan 16.2). Ihm vorgelegt mit Bildblatt und Film an „strange bird“ (ein Verlauf auf Ebene 1, Punkte auf Ebene 2). Für ihn entschieden: Plan 16.3. Was fehlt: Plan 16.4. |
-| **6 Ebenen-Ansicht** | **gebaut (19.11.), sein Urteil steht aus.** Zuerst zwei Fassungen zur Wahl (A nebeneinander, B schräg versetzt); sein Wort: „dann fassung b“. Gebaut: Der Knopf über dem Stapel oder X fächert auf, je Ebene, die zu sehen ist, eine Kopie; vorn steht die Kopie der Ebene, an der gemalt wird (eine andere antippen: Sie tritt vor); an ihr malt man mit A, P, Lasso, Farbtropfen, Pipette wie an der einen Form; ziehen dreht alle zugleich, das Rad zoomt zum Zeiger hin; ordnen, aus- und einblenden, anlegen lassen die Kopien rücken und wachsen. Auf Wachs und auf hellem Solid. Alle neun Kriterien halten (Plan 18.2). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Für ihn entschieden: Plan 18.3. Was fehlt: Plan 18.4 (Freihand, Formen, Objekte aufgefächert; das Tempo des hellen Solids beim Drehen; iPad). |
+| **6 Ebenen-Ansicht** | **gebaut (19.11.).** Sein Wort am Abend gilt dem ganzen Tag („wirklich sehr gut umgesetzt“); ein Urteil zu den Einzelheiten der Ebenen-Ansicht liegt nicht vor. Zuerst zwei Fassungen zur Wahl (A nebeneinander, B schräg versetzt); sein Wort: „dann fassung b“. Gebaut: Der Knopf über dem Stapel oder X fächert auf, je Ebene, die zu sehen ist, eine Kopie; vorn steht die Kopie der Ebene, an der gemalt wird (eine andere antippen: Sie tritt vor); an ihr malt man mit A, P, Lasso, Farbtropfen, Pipette wie an der einen Form; ziehen dreht alle zugleich, das Rad zoomt zum Zeiger hin; ordnen, aus- und einblenden, anlegen lassen die Kopien rücken und wachsen. Auf Wachs und auf hellem Solid. Alle neun Kriterien halten (Plan 18.2). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Für ihn entschieden: Plan 18.3. Was fehlt: Plan 18.4 (Freihand, Formen, Objekte aufgefächert; das Tempo des hellen Solids beim Drehen; iPad). |
 | 7 | nicht begonnen. **Nicht ohne sein Wort bauen.** |
 
-**Die Frage, die bei ihm liegt:** sein Urteil zur Ebenen-Ansicht (passt sie, was soll anders), und ob Etappe 7 beginnt (mehrere
-Objekte, Spiegel, Verbund; vor ihr steht eine Frage an ihn: die Farben im Verbund, Plan 5.3). Dazu, ohne dass es aufhält: sein
-Urteil zu Etappe 5; ob das Füllen mit A bleiben soll (Plan 13.3).
+**Was bei ihm liegt:** die Liste A in „Was übrig bleibt“ (Etappe 7 und davor die Farben im Verbund; die Einzelheiten der
+Ebenen-Ansicht; ob ein Klick mit A weiter füllt; das Kriechen bei weiten Zügen; „Dreiecke zeigen“; Tasten; Palette;
+Zusammenführen). Er hat am 19.11. abends keine davon beantwortet und will am 20.11. zuerst mit Posen und Maul weitermachen, in
+einer neuen Sitzung.
 
 ## 3. Was gebaut ist
 

@@ -20,21 +20,21 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   größer angelegt, kein Einrasten in den Vier Ansichten, Umriss der Seite, alle Materialien (Solid, Zebra, Jelly, helles Solid,
   Grün ohne Bauch; `material.ts`, `gast.ts`, `gruen.ts`). Vergleich mit Sitzung 4:
   `docs/research/2026-11-18-vergleich-5197-ozzy.md`. Offene Fragen und Urteile: `docs/plans/2026-11-17-ozzy-feinschliff.md`. Die
-  Sitzung ist auch die des Kerns. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell. Das Maul kommt später in
-  eigener Sitzung.
+  Sitzung ist auch die des Kerns. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell.
+- **Als Nächstes (Florian, 19.11. abends): Posen und Maul, in neuer Sitzung.**
 - **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11.):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211
   (`ozzy-objekte`), nicht zusammengeführt. Plan und Stand:
   [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0 bis 5;
   **Formen beginnen mit drei Loops**, Abschnitt 11; Etappe 5 als Verbund, Abschnitt 13; offen: Sitz der Loops, Hilfsloop greifen).
-- **Sitzung „Paint-Modus“ (seit 19.11.):** Zweig `claude/reverent-feynman-1efdd3` (auf dem Stand der Objekte, nicht
+- **Sitzung „Paint-Modus“ (19.11., ruht):** Zweig `claude/reverent-feynman-1efdd3` (auf dem Stand der Objekte, nicht
   zusammengeführt), Fenster 5215 (`ozzy-paint`). Einstieg: [`docs/look/ozzy/paint/UEBERGABE.md`](docs/look/ozzy/paint/UEBERGABE.md)
-  (gebaut: „Wachs“, Etappe 1 bis 6; sein Urteil zur Ebenen-Ansicht steht aus).
+  (gebaut: „Wachs“, Etappe 1 bis 6). Was bleibt: `docs/plans/2026-11-19-ozzy-paint-was-bleibt.md`.
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)
   bleibt Prüffenster. Plan „schnell, glatt, exakt“ mit seinen offenen Punkten (Rest von 4c, Pose Etappe 4 und 5, Griff bei
   Abzweigungen): [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), Übergabe von
-  Sitzung 4 (Stand 14.11.) in [`docs/UEBERGABE.md`](docs/UEBERGABE.md). Das Maul-System bekommt später eine eigene Sitzung.
+  Sitzung 4 (Stand 14.11.) in [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 - **Studien (abgeschlossen, Feinschliff jetzt in Ozzy):** Linien `src/linien/` (`linien.html`, `raum.html`,
   `docs/look/linien/UEBERGABE.md`); Aufblasen `src/anfang/` (`anfang.html`, `docs/look/anfang/UEBERGABE.md`); Ecke/Werft nur als
   Konzept im Cloud-Zweig `claude/meme-curves-editor-concept-s65kq1`; Bleistift-Kern `packages/shape/src/zeichnen/`.

@@ -13,7 +13,10 @@ harte Kante), Etappe 2 (Farblinien bedienen wie Linien: P direkt auf der Form, P
 Kanten: an gewählten Punkten einer Farblinie ein Tropfen am Faden, sein Wort: „Fassung 1“) und Etappe 5 (Ebenen: am rechten Rand
 ein Stapel liegender Tropfen, je Ebene eine Linse; oben deckt unten) und Etappe 6 (die Ebenen-Ansicht, sein Wort: „dann fassung
 b“: X oder der Knopf über dem Stapel fächert die Form auf, je Ebene eine Kopie, schräg versetzt; an der vorderen wird gemalt;
-auf Wachs und hellem Solid). Sein Urteil zur Ebenen-Ansicht steht aus; Etappe 7 nur auf sein Wort. Alles dazu:
+auf Wachs und hellem Solid). **Der Strang ruht seit dem 19.11. abends** (Florian: „Das hast du alles heute wirklich sehr gut
+umgesetzt“; am 20.11. will er „erstmal mit posen und maul weitermachen“, in einer neuen Sitzung). Etappe 7 nur auf sein Wort. Was
+übrig bleibt, auch für die Sitzung „Posen und Maul“:
+[`docs/plans/2026-11-19-ozzy-paint-was-bleibt.md`](../../plans/2026-11-19-ozzy-paint-was-bleibt.md). Alles dazu:
 [`paint/UEBERGABE.md`](paint/UEBERGABE.md).
 
 **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11. mittags, eigener Zweig).** Zweig `claude/ozzy-donut-mirror-system-7a31b7`
