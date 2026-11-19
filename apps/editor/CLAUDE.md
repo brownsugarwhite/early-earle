@@ -491,6 +491,21 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   das Zeichen des Farbtropfens sind derselbe Pfad; wer einen ändert, ändert alle drei. (6) Mit dem Farbtropfen gilt ⌥ der
   Farbe: `roentgenZiel` nimmt `farbWerkzeug()` aus. Probe `ozzy-farbe-tropfen-fenster.mjs`, Film
   `scripts/ozzy/paint-farben-film.mjs`.
+- **Paint-Modus, Etappe 4 (19.11.; Plan, Abschnitt 15): weiche Kanten, der Tropfen am Faden.** Jeder Punkt einer Farblinie kann
+  eine Breite tragen (`FarbPunkt.breite`); `weich.ts` rechnet daraus je Punkt des Rechennetzes Abstand, Breite und Füllung
+  jenseits, `anzeige.ts` mischt sie in jedem Dreieck aus seinen drei Ecken. Merke: (1) Eine Farblinie ist keine Punktquelle:
+  Mit der Quelle hinter der Kante (`quelle` in `fliessen.ts`) kommt der Abstand nahe an der Farblinie zu kurz heraus (2 von 15
+  Einheiten); hier gilt die ebene Front (`ueber` in `weich.ts`). (2) Die Breite an einer Stelle ist die der Farblinie an ihrem
+  nächsten Punkt, auch wenn sie dort null ist: Das Feld geht darum auch von den harten Stücken einer weichen Farblinie aus,
+  sonst stehen neben ihnen Zacken (ein Verlauf, der vom weichen Stück herüberreicht). (3) Rand und Inneres müssen mit denselben
+  Werten rechnen: Der Rand rechnete erst seinen eigenen Abstand je Bildpunkt, an jeder Kante zum Nachbardreieck stand eine
+  Stufe. Jetzt trägt jede Kette den Abstand der drei Ecken mit Vorzeichen (links positiv), linear gemischt wie innen; die
+  harte Kante selbst bleibt die genaue je Bildpunkt. (4) Ohne Breite läuft der alte Zweig der Zeichenprogramme (`uWeich` 0, die
+  reinen Materialien): So bleibt das Bild Bildpunkt für Bildpunkt gleich. Wer dort umräumt, prüft das mit Probe 50. (5) Die
+  Datentextur hat je Kette fünf Zeilen vor den Punkten (Kopf, zwei Weiten für das Einlaufen, zwei für die weiche Kante). (6) Der
+  Tropfen am Faden wird vor dem Verhalten der Linien gegriffen (`weichGriffBei` im Drücken); beim Ziehen bekommt das Verhalten
+  trotzdem den Zeiger (`zeigerSetzen`), sonst bleibt sein Pfeil stehen. (7) ⌘Z leert die Auswahl: Danach gibt es keine Tropfen,
+  eine Probe liest die Breite dann über `farbPunkte`. Probe `ozzy-farbe-weich-fenster.mjs`, Tests `weich.test.ts`.
 - **Bilder und Filme: den Blick setzen, nicht mit der Maus drehen (19.11.).** Beim Loslassen läuft die Form mit Schwung nach
   (`schwung`), je nach Takt verschieden weit: Dieselben Schritte geben jedes Mal ein etwas anderes Bild, und feste Stellen im
   Skript treffen dann daneben. `__ozzy.blickSetzen({ gier, neigung, zoom, schwenkX, schwenkY })` setzt den Blick ohne Schwung

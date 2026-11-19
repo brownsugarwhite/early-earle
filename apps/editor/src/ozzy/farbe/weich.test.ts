@@ -223,6 +223,47 @@ describe('Farbe, Etappe 4: weiche Kanten', () => {
     expect(zahl).toBeGreaterThan(100);
   });
 
+  it('kein Verlauf schlägt durch ein dünnes Teil auf die Rückseite: Der Abstand zählt über die Haut, nicht durch die Form', () => {
+    // eine flache Linse: die Kugel auf ein Zwanzigstel gedrückt. Oben ein weicher Kreis (Breite 30) beim Halbmesser 60; die
+    // Unterseite liegt nur rund 8 Einheiten darunter, über die Haut aber 80 entfernt (bis zum Rand und zurück)
+    const flach = kugel(5);
+    for (let v = 0; v < flach.n; v++) flach.pos[3 * v + 2] = flach.pos[3 * v + 2]! * 0.05;
+    const kf = karteVon(flach);
+    const nahF = naechsterAuf(flach);
+    const bei = (x: number, y: number, z: number): Ort => {
+      const r = nahF(x, y, z);
+      return ortIn(flach, r.t, r.wa, r.wb, r.wc);
+    };
+    const hoch = (rho: number): number => 0.05 * Math.sqrt(1e4 - rho * rho);
+    const stuetzen = Array.from({ length: 96 }, (_, j) => bei(60 * Math.cos((2 * Math.PI * j) / 96), 60 * Math.sin((2 * Math.PI * j) / 96), hoch(60)));
+    const l: Farblinie = { id: 1, zu: true, stuetzen, punkte: [0, 24, 48, 72].map((i) => ({ i, ein: null, aus: null, knick: false, breite: 30 })) };
+    const { ketten, fehl } = kettenAller(kf, [l], false, (x) => breitenLaengs(flach.pos, x as Farblinie));
+    expect(fehl).toEqual([]);
+    const fl = flaechenRechnen(kf, ketten, [
+      { ort: bei(0, 0, 5), farbe: 0 },
+      { ort: bei(0, 0, -5), farbe: 1 },
+    ]);
+    const F = weichFeld(kf, fl)!;
+    let oben = 0;
+    let unten = 0;
+    for (let v = 0; v < flach.n; v++) {
+      const [x, y, z] = [flach.pos[3 * v]!, flach.pos[3 * v + 1]!, flach.pos[3 * v + 2]!];
+      const rho = Math.hypot(x, y);
+      if (Math.abs(rho - 60) > 12) continue;
+      if (z > 0.5) {
+        // oben, nah an der Farblinie: im Verlauf
+        expect(weichAnteil(F.d[v]!, F.w[v]!)).toBeGreaterThan(0.1);
+        oben++;
+      } else if (z < -0.5) {
+        // genau darunter, auf der Rückseite: nichts
+        expect(weichAnteil(F.d[v]!, F.w[v]!)).toBe(0);
+        unten++;
+      }
+    }
+    expect(oben).toBeGreaterThan(40);
+    expect(unten).toBeGreaterThan(40);
+  });
+
   it('ohne weiche Farblinie gibt es kein Feld', () => {
     const { ketten } = kettenAller(k, [kreis(60, [0, 0, 0, 0])], false, breiten);
     expect(weichFeld(k, flaechenRechnen(k, ketten, [{ ort: ortBei(0, 0, 100), farbe: 0 }]))).toBeNull();

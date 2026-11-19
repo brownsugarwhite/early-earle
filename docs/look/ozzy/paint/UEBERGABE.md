@@ -1,4 +1,4 @@
-# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 17:05 Uhr)
+# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 18:10 Uhr)
 
 Florian will in Ozzy einen Paint-Modus mit Ebenen, einer Ebenen-Ansicht und einem neuen Material (sein Auftrag wörtlich im Plan).
 Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende jedes Blocks überschrieben.
@@ -9,10 +9,10 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | --- | --- |
 | Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`, Stand `3a091f14`). **Nicht zusammengeführt**, weder mit ihm noch mit `claude/ozzy` noch mit `main`; erst auf sein Wort, am Schluss. |
 | Fenster | `http://localhost:5215/ozzy.html`, Eintrag `ozzy-paint` in `.claude/launch.json`. Proben: `OZZY_URL=http://localhost:5215/ozzy.html`. Nie unter seinen Fenstern bauen (5205, 5211, 5194). |
-| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (Abschnitt 13), **Abschnitt 14: Etappe 4, das Bild der Bedienung in zwei Fassungen** |
+| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (Abschnitt 13), Etappe 4, das Bild der Bedienung in zwei Fassungen (Abschnitt 14), **Abschnitt 15: Etappe 4, gebaut (Fassung 1, der Tropfen am Faden)** |
 | Recherche | [`docs/research/2026-11-19-zbrush-grundmaterial.md`](../../../research/2026-11-19-zbrush-grundmaterial.md) |
 | Seine Vorlagen | [`2026-11-19-zbrush-matcap-red-wax.png`](2026-11-19-zbrush-matcap-red-wax.png), [`2026-11-19-zbrush-red-wax-vierecke.webp`](2026-11-19-zbrush-red-wax-vierecke.webp) |
-| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-4-bedienung-bogen.jpg` (zusammengesetzt, nicht gebaut); `…-paint-etappe-3-farben-bogen.jpg`, `…-paint-etappe-3-farben.mp4` (an „strange bird“); `…-paint-etappe-3-bogen.jpg`, `…-paint-etappe-3-tinte.mp4`, `…-paint-etappe-3-honig.mp4`; `…-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
+| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-4-bogen.jpg`, `…-paint-etappe-4.mp4` (gebaut, an „strange bird“); `…-paint-etappe-4-bedienung-bogen.jpg` (das Bild davor, zusammengesetzt); `…-paint-etappe-3-farben-bogen.jpg`, `…-paint-etappe-3-farben.mp4` (an „strange bird“); `…-paint-etappe-3-bogen.jpg`, `…-paint-etappe-3-tinte.mp4`, `…-paint-etappe-3-honig.mp4`; `…-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
 
 ## 2. Stand
 
@@ -23,11 +23,12 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | 1 Der Beweis | gebaut (19.11.). Vier von fünf Kriterien halten; die Bemalung kriecht bei weiten Zügen an der Form (Plan 9.3). Sein Wort danach: „Etappe 2 starten“. |
 | 2 Farblinien bedienen wie Linien | gebaut (19.11.). P direkt auf der Form, Punkte und Richtungen mit A, offen und gekreuzt, die Mitte. Beide Proben halten, an der Kugel und an „strange bird“. Was fehlt: Plan 11.4. Sein Wort danach: „Etappe 3 starten“ (kein Urteil in Worten). |
 | **3 Füllen mit dem Farbtropfen** | **gebaut (19.11.), sein Urteil steht aus.** Erster Schritt: Die Farbe läuft ein; sein Wort dazu: „Tinte“ (eingestellt; „Honig“ bleibt über `?fuellen=honig`). Zweiter Schritt: Farben als Tropfen unter der Leiste (antippen, ziehen und fallen lassen, Plus, Mülleimer), Farbtropfen (F), Pipette (I). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Was fehlt: Plan 13.4. Sein Wort danach: „Etappe 4 starten“ (kein Urteil in Worten). |
-| **4 Weichheit an Linien und Punkten** | **begonnen (19.11.), seine Wahl steht aus. Gebaut ist nichts.** Vorgelegt: ein Bildblatt mit zwei Fassungen der Bedienung (Fassung 1 „Tropfen ziehen“: ein Tropfen am Faden quer zur Farblinie an jedem gewählten Punkt; Fassung 2 „Wasser“: ein Werkzeug mit Ring, das längs der Kante malt). Mein Vorschlag: Fassung 1 zuerst. Bauweise und Kriterien: Plan 14.6. |
+| **4 Weichheit an Linien und Punkten** | **gebaut (19.11.), sein Urteil steht aus.** Zuerst das Bild der Bedienung in zwei Fassungen; sein Wort: „Fassung 1“. Gebaut: Jeder Punkt einer Farblinie kann eine Breite tragen; an gewählten Punkten sitzt quer zur Farblinie ein Tropfen an einem Faden (wegziehen: weich, zurückschieben: hart), K und `[` `]` an mehreren Punkten. Alle sieben Kriterien halten (Plan 15.2). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Was fehlt: Plan 15.4. Fassung 2 („Wasser“) ist nicht gebaut. |
 | 5 bis 7 | nicht begonnen. **Nichts davon ohne sein Wort bauen.** |
 
-**Die Frage, die bei ihm liegt:** welche Fassung der Bedienung gilt (1, 2, beide, oder anders). Erst danach wird Etappe 4
-gebaut. Dazu, ohne dass es aufhält: sein Urteil zu Etappe 3, und ob das Füllen mit A bleiben soll (Plan 13.3).
+**Die Frage, die bei ihm liegt:** sein Urteil zu Etappe 4 (er zieht Tropfen an einer seiner Formen) und was als Nächstes
+kommt: Etappe 5 (Ebenen), zuerst eine Lücke (Plan 15.4, 13.4, 11.4), oder Fassung 2 („Wasser“) dazu. Dazu, ohne dass es
+aufhält: ob das Füllen mit A bleiben soll (Plan 13.3).
 
 ## 3. Was gebaut ist
 
@@ -69,6 +70,10 @@ gebaut. Dazu, ohne dass es aufhält: sein Urteil zu Etappe 3, und ob das Füllen
   das unsichtbare Farbfeld `#farbe-farbe` öffnet den Farbwähler, Proben und Filme setzen darüber die gewählte Farbe), `leiste.ts`
   (`LeistenWerkzeug` mit `tropfen` und `pipette`, `malZeigen`, `farbeZeigen`), `main.ts` (`farbWerkzeug()`: Der Zeiger geht dann
   nicht an das Verhalten der Linien; `farbAufnehmenBei`, `farbUnter`, `farbZug`), `farbwerk.ts` (`farbeBei`).
+- **Etappe 4, weiche Kanten:** `kurve.ts` (`FarbPunkt.breite`), `bemalung.ts` (`breitenLaengs`, Datei Version 3), `ketten.ts`
+  (Breite je Punkt der Kette), `weich.ts` (das Feld: Abstand zur weichen Farblinie über die Haut, Breite dort, Füllung
+  jenseits), `anzeige.ts` (`WeichBild`: der Verlauf innen je Ecke, am Rand je Kette), `farbBlatt.ts` (`breitenGriffe`), `main.ts`
+  (`weichGriffe`, `weichZug`, `weichTaste`). Bedienung: Punkt wählen, den Tropfen am Faden ziehen; K; `[` `]`.
 - **Am Werk und am Rechenkern ist nichts geändert** (Proben: Prüfsumme der Form).
 
 ### Messwerte und Lücken
@@ -105,11 +110,14 @@ Farbtropfen; mit dem Farbtropfen nimmt ⌥ die Farbe auf (kein Röntgen).
 
 - Typen: `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`. Lint nur geänderte Dateien:
   `pnpm --filter @ee/editor exec eslint <dateien>`.
-- Tests, aus `apps/editor`: `npx vitest run src/ozzy/` (41 Tests: Bemalung, Kurven, Einlaufen, Kugelbild des Wachses, Rechner des
-  Verbunds).
+- Tests, aus `apps/editor`: `npx vitest run src/ozzy/` (51 Tests: Bemalung, Kurven, Einlaufen, weiche Kanten, Kugelbild des
+  Wachses, Rechner des Verbunds).
 - Proben, aus `apps/editor`, immer mit `GPU=1 OZZY_URL=http://localhost:5215/ozzy.html`; Stand 19.11., 16:30 Uhr: alle halten
   (die Zeile zum Tempo beim Drehen in `ozzy-farbe-fenster.mjs` riss einmal, als drei Proben hintereinander liefen, und hielt
   allein wiederholt).
+  - `node scripts/pruefen/ozzy-farbe-weich-fenster.mjs [ordner]`: Etappe 4 an einer Kugel und an „strange bird“ (50 Breite null
+    ist das Bild von vorher, 51 Breite bei 1-, 4-, 16-fach, 52 Fließen zur harten Kante, 53 nicht über eine andere Farblinie,
+    54 der Tropfen am Faden, 55 K und die Klammern, 56 Sichern und Laden, 57 Tempo). Dauert rund zweieinhalb Minuten (drei Seiten).
   - `node scripts/pruefen/ozzy-farbe-tropfen-fenster.mjs [ordner]`: Etappe 3, zweiter Schritt, an einer Kugel mit echten Klicks
     (30 nur im Paint-Modus, 31 F greift nichts, 32 antippen und füllen, 33 Pipette, 34 ⌥ + Klick, 35 ziehen, fallen lassen,
     Mülleimer, 36 Farbe ändern und Neuladen, 37 B).
@@ -124,7 +132,9 @@ Farbtropfen; mit dem Farbtropfen nimmt ⌥ die Farbe auf (kein Röntgen).
     `WEITE=15`, nicht bei 55. `DIAG=1`, `PROFIL=1`.
   - `[NAME=<Form>] [WEITE=20] node scripts/pruefen/ozzy-farbe-form.mjs [ordner]`: Etappe 1 an einer gesicherten Form.
   - `node scripts/pruefen/ozzy-material-fenster.mjs [ordner]`: die Materialien (2b Wachs, 2c Dreiecke zeigen).
-- Bildblatt der Etappe 4 (zusammengesetzt): `GPU=1 OZZY_URL=… node scripts/ozzy/paint-weich-szene.mjs <ordner>` nimmt die Szene
+- Film der Etappe 4: `OZZY_URL=… node scripts/ozzy/paint-weich-film.mjs <ziel.mp4>` (Tasten zeigt der Film als kleines Feld);
+  Standbilder: `GPU=1 OZZY_URL=… node scripts/ozzy/paint-weich-blick.mjs <ordner>`.
+- Bildblatt der Bedienung vor dem Bau (zusammengesetzt): `GPU=1 OZZY_URL=… node scripts/ozzy/paint-weich-szene.mjs <ordner>` nimmt die Szene
   auf (Haut und Linien getrennt, `szene.js`), `node scripts/ozzy/paint-weich-bogen.mjs <ordner>` setzt das Blatt.
 - Filme: `OZZY_URL=… node scripts/ozzy/paint-farben-film.mjs <ziel.mp4>` (Etappe 3: Tropfen, Farbtropfen, Pipette; über der
   Leiste zeichnet der Film einen eigenen Pfeil, weil ein Mitschnitt den Zeiger des Systems nicht zeigt),
@@ -142,6 +152,12 @@ Farbtropfen; mit dem Farbtropfen nimmt ⌥ die Farbe auf (kein Röntgen).
   gemalt war, galt die Verdeckung der Linien nicht. Er heißt jetzt `farbeDa`. Wer dort einen Namen vergibt: vorher suchen.
 - **Was verdeckt ist, entscheidet die Anzeige der Linien je Bildpunkt** über die Tiefe des Körpers (er steht im Paint-Modus mit
   Deckung 0 in der Szene). Sieht man Linien durch die Form, zuerst `__ozzy.farbVerdeckung()` lesen (soll 0,02 sein).
+- **Den Anteil zweier Farben an einem Bildpunkt messen** (für Verläufe): die eine Füllung rein rot, die andere rein blau. Rot
+  minus Grün und Blau minus Grün hängen dann nicht mehr an Licht und Glanz des Wachses; ihr Verhältnis gibt den Anteil (gemischt
+  wird in Bildschirmwerten, erst danach hell und dunkel: `rot` in `ozzy-farbe-weich-fenster.mjs`).
+- **Der Blick ist perspektivisch:** Was im Bild wie groß ist, wächst nicht einfach mit dem Zoom. Wie viele Pixel eine Einheit an
+  einer Stelle misst, sagt der Tropfen eines gewählten Punkts (`farbWeichGriffe`, `jeEinheit`). Über Zoom 4 hinaus (nur über den
+  Haken erreichbar) lassen sich Punkte nicht mehr greifen.
 - **Der Blick steht nach dem Drehen mit der Maus nicht jedes Mal gleich:** Beim Loslassen läuft die Form mit Schwung nach, je
   nach Takt verschieden weit (so fielen die Szenen der Filme verschieden aus). Für Bilder und Filme den Blick setzen:
   `__ozzy.blickSetzen({ gier, neigung, zoom })`; oder vor dem Loslassen eine halbe Sekunde ruhen. Der Zoom mit dem Mausrad endet
@@ -170,5 +186,5 @@ Farbtropfen; mit dem Farbtropfen nimmt ⌥ die Farbe auf (kein Röntgen).
   der Form (schon vor dieser Sitzung; im Bildblatt der Etappe 2, Bild 6, am linken Flügel zu sehen). Nicht behoben.
 - **Ein Ziel mit linearen Farben braucht mehr als 8 Bit,** sobald weiche dunkle Verläufe darin stehen.
 - **Zusammenführen später:** Dieser Zweig ändert `main.ts` an schmalen Nahtstellen (Suchwörter `farbWerk`, `farbBlatt`, `malModus`,
-  `farbAn`, `farbWerkzeug`, `farbLeiste`), dazu `leiste.ts` (zwei Werkzeuge, `LeistenWerkzeug`), `material.ts`, `gast.ts`
+  `farbAn`, `farbWerkzeug`, `farbLeiste`, `weichZug`, `weichGriffe`), dazu `leiste.ts` (zwei Werkzeuge, `LeistenWerkzeug`), `material.ts`, `gast.ts`
   (`ueberzug`), `werkBlatt.ts` (`stiftZiel`), `ablage.ts` (`farbe`), `ozzy.html`, `ozzy.css` und beide `CLAUDE.md`. Der Stand in `CLAUDE.md` wird beim Zusammenführen ohnehin neu geschrieben.

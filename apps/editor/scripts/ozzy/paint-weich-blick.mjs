@@ -53,13 +53,60 @@ const bild = async (name) => {
   fs.writeFileSync(`${ordner}/${name}-ganz.png`, await s.screenshot({ clip: { x: 170, y: 50, width: 1100, height: 733 } }));
   fs.writeFileSync(`${ordner}/${name}-nah.png`, await s.screenshot({ clip: AUS }));
 };
+// ---------- die Bilder für das Bildblatt ----------
+const wahlWeg = async () => {
+  await s.keyboard.press('Escape');
+  await s.mouse.move(1380, 80);
+  await s.waitForTimeout(300);
+};
+// die harte Kante, ohne Farblinien (Paint-Modus aus) und mit ihnen
+await s.keyboard.press('b');
+await bild('hart-ohne');
+await s.keyboard.press('b');
+await s.waitForTimeout(600);
 await bild('0-hart');
+// ein Punkt gewählt: sein hohler Tropfen
+const P = (await O('farbPunkte', 0)).punkte;
+await klick(P[0].x, P[0].y);
+{
+  // (der Zeiger auf dem Tropfen)
+  const g = (await O('farbWeichGriffe'))[0];
+  const lang = Math.hypot(g.gx - g.x, g.gy - g.y);
+  await s.mouse.move(g.gx + ((g.gx - g.x) / lang) * 5, g.gy + ((g.gy - g.y) / lang) * 5, { steps: 4 });
+}
+await bild('a1');
+// den Tropfen 30 Pixel wegziehen (der Zeiger bleibt an ihm)
+{
+  const g = (await O('farbWeichGriffe'))[0];
+  const lang = Math.hypot(g.gx - g.x, g.gy - g.y);
+  const [ux, uy] = [(g.gx - g.x) / lang, (g.gy - g.y) / lang];
+  await s.mouse.move(g.gx + ux * 4, g.gy + uy * 4, { steps: 5 });
+  await s.waitForTimeout(250);
+  await s.mouse.down();
+  for (let i = 1; i <= 10; i++) {
+    await s.mouse.move(g.gx + ux * (4 + 3 * i), g.gy + uy * (4 + 3 * i));
+    await s.waitForTimeout(25);
+  }
+  await bild('a2');
+  await s.mouse.up();
+  await s.waitForTimeout(300);
+}
 const setzen = async (B) => {
   for (let k = 0; k < 4; k++) await O('farbBreite', 0, k, B[k] * jePixel);
 };
+// oben breit, an den Seiten schmaler, unten hart; alle Punkte gewählt: jeder zeigt seinen Tropfen
+await wahlWeg();
 await setzen([24, 0, 14, 36]);
-await bild('1-ziel');
+await s.keyboard.press('Meta+a');
+await s.waitForTimeout(300);
+await bild('a3');
 console.log('Ziel:', JSON.stringify(await O('farbWeich')), JSON.stringify((await O('farbe')).anzeige));
+await wahlWeg();
+await bild('1-ziel');
+await s.keyboard.press('b');
+await bild('ziel-ohne');
+await s.keyboard.press('b');
+await s.waitForTimeout(600);
 await setzen([30, 0, 0, 0]);
 await bild('2-ein-punkt');
 await setzen([16, 16, 16, 16]);

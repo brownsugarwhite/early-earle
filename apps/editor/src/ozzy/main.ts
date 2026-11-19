@@ -6490,6 +6490,8 @@ leinwandLinien.addEventListener('pointermove', (e) => {
   }
   // Paint-Modus, Etappe 4: der Tropfen am Faden folgt dem Zeiger quer zur Farblinie
   if (weichZug) {
+    // (der Zeiger des Verhaltens geht mit, sonst bliebe sein Pfeil stehen, wo der Zug begann)
+    bearbeiten.zeigerSetzen(x, y, x, y, dt);
     weichZugBewegen(x, y);
     anstossen();
     return;
