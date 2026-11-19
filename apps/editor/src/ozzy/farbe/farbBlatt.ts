@@ -1010,6 +1010,71 @@ export class FarbBlatt implements Raum {
     return o ? { x: o.x, y: o.y, mitte: o.mitte } : null;
   }
 
+  // ---------- Etappe 4: die Breite des Verlaufs an einem Punkt ----------
+
+  /**
+   * Die Anfasser der Breite an den gewählten Punkten (`auswahl`: ihre Nummern im Netz): je Punkt seine Stelle im Bild, die Richtung
+   * quer zur Farblinie auf der Haut (im Bild, Länge eins; bei einer geschlossenen Farblinie von ihr weg nach außen), wie viele
+   * Bildpunkte dort eine Einheit des Werks misst, und seine Breite. `linie`, `punkt`: welcher Punkt welcher Farblinie der aktiven
+   * Ebene (an einem Spiegelbild: der Punkt, dessen Spiegelbild es ist). Punkte, die nicht zu sehen sind, haben keinen Anfasser.
+   */
+  breitenGriffe(auswahl: Iterable<number>): { netz: number; linie: number; punkt: number; x: number; y: number; ux: number; uy: number; jeEinheit: number; breite: number }[] {
+    const h = this.h;
+    if (!h) return [];
+    const linien = aktiveEbene(this.fw.bemalung).linien;
+    const aus: ReturnType<FarbBlatt['breitenGriffe']> = [];
+    for (const i of auswahl) {
+      const A = this.anker[i];
+      const P = this.netz.punkte[i];
+      const z = A ? this.zeilen[A.z] : undefined;
+      if (!A || !P || !z || z.id < 0 || !P.sichtbar) continue;
+      const linie = linien.findIndex((l) => l.id === z.id);
+      if (linie < 0) continue;
+      const m = z.punkte.length;
+      const p = z.punkte[A.k]!;
+      // die Richtung der Farblinie am Punkt: vom Ort davor zum Ort danach
+      const vorT = z.teile[(A.k - 1 + m) % m];
+      const nachT = z.teile[A.k];
+      const davor = A.k > 0 || z.zu ? (vorT && vorT.length ? vorT[vorT.length - 1]! : z.punkte[(A.k - 1 + m) % m]!.ort) : p.ort;
+      const danach = A.k < m - 1 || z.zu ? (nachT && nachT.length ? nachT[0]! : z.punkte[(A.k + 1) % m]!.ort) : p.ort;
+      const w0 = this.welt(p.ort);
+      const wa = this.welt(davor);
+      const wb = this.welt(danach);
+      const t: V3 = [wb[0] - wa[0], wb[1] - wa[1], wb[2] - wa[2]];
+      const n = dreieckNormale(h.haut.pos, h.haut.tri, p.ort.t);
+      // quer zur Farblinie, in der Haut
+      const q: V3 = [n[1] * t[2] - n[2] * t[1], n[2] * t[0] - n[0] * t[2], n[0] * t[1] - n[1] * t[0]];
+      const ql = Math.hypot(q[0], q[1], q[2]);
+      if (ql < 1e-12) continue;
+      // eine Einheit des Werks in der Welt, quer zur Farblinie, und wohin das im Bild führt
+      const e = 1 / (ql * h.f);
+      const s0 = this.schirm(w0);
+      const s1 = this.schirm([w0[0] + q[0] * e, w0[1] + q[1] * e, w0[2] + q[2] * e]);
+      let ux = s1[0] - s0[0];
+      let uy = s1[1] - s0[1];
+      const jeEinheit = Math.hypot(ux, uy);
+      if (jeEinheit < 1e-9) continue;
+      ux /= jeEinheit;
+      uy /= jeEinheit;
+      if (z.zu) {
+        // von der Mitte der Farblinie im Bild weg
+        let mx = 0;
+        let my = 0;
+        for (const b of z.punkte) {
+          const sb = this.schirm(this.welt(b.ort));
+          mx += sb[0] / m;
+          my += sb[1] / m;
+        }
+        if ((s0[0] - mx) * ux + (s0[1] - my) * uy < 0) {
+          ux = -ux;
+          uy = -uy;
+        }
+      }
+      aus.push({ netz: i, linie, punkt: A.k, x: s0[0], y: s0[1], ux, uy, jeEinheit, breite: p.breite ?? 0 });
+    }
+    return aus;
+  }
+
   private mitteBildGemerkt: { haut: object; version: number; schluessel: string; punkte: Float32Array } | null = null;
   /** die Mitte im Bild dieser Ansicht: je Kante der Spiegelebene, die zum Betrachter zeigt, ihre Mitte (x, y, Tiefe) */
   private mitteImBild(): Float32Array {

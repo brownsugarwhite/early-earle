@@ -3,15 +3,21 @@
  * Farbe der einen Seite weich in die der anderen, zu jeder Seite so weit wie die Breite. An der Farblinie selbst steht die Mitte
  * zwischen beiden Farben.
  *
- * In den Dreiecken, durch die die Farblinie läuft, rechnet die Anzeige den Abstand je Bildpunkt selbst (`anzeige.ts`). Für alles,
- * was weiter weg liegt, steht hier je Punkt des Rechennetzes: wie weit er von der nächsten weichen Farblinie am Rand seiner Fläche
- * liegt (über die Haut gemessen, nie über eine Farblinie hinweg), wie breit der Verlauf dort ist und welche Füllung jenseits
- * liegt. Gerechnet wird wie beim Einlaufen (`fliessen.ts`), nur von den Farblinien aus statt von einer Saat, und nur so weit, wie
- * der Verlauf reicht.
+ * Hier steht je Punkt des Rechennetzes: wie weit er von der nächsten weichen Farblinie am Rand seiner Fläche liegt (über die Haut
+ * gemessen, nie über eine Farblinie hinweg), wie breit der Verlauf dort ist und welche Füllung jenseits liegt. Die Anzeige mischt
+ * diese Werte in jedem Dreieck aus seinen drei Ecken. In den Dreiecken, durch die eine Farblinie läuft, gilt dasselbe je Kette
+ * (`rand`): der Abstand der drei Ecken zu ihr, auf der einen Seite positiv, auf der anderen negativ; die Farblinie liegt dann,
+ * wo der gemischte Abstand null ist. So passen die Dreiecke an jeder gemeinsamen Kante zusammen. Gerechnet wird wie beim Einlaufen (`fliessen.ts`), nur von den Farblinien aus statt von einer Saat, und nur so weit, wie
+ * der breiteste Verlauf reicht.
+ *
+ * Es gilt überall dieselbe Regel wie am Rand: Die Breite an einer Stelle ist die Breite der Farblinie an dem Punkt, der ihr am
+ * nächsten liegt, auch wenn sie dort null ist. Darum geht das Feld von jeder Stelle einer Farblinie aus, die irgendwo eine Breite
+ * hat, auch von ihren harten Stücken: Neben einem harten Stück steht dann kein Verlauf, der von einem weichen herüberreicht. Eine
+ * Farblinie ganz ohne Breite geht nicht ein; an ihr endet ein Verlauf einfach.
  *
  * Ohne DOM und ohne three: Die Tests laufen in Node.
  */
-import type { Flaechen, RandKette } from './flaechen';
+import { type Flaechen, type RandKette, naechsteSeite } from './flaechen';
 import { FERN } from './fliessen';
 import type { Karte } from './ort';
 
@@ -24,6 +30,11 @@ export type WeichFeld = {
   fremd: Int32Array;
   /** die größte Breite überhaupt */
   groesst: number;
+  /**
+   * Für die Dreiecke mit Farblinien (in der Reihenfolge von `Flaechen.rand`), je Kette sechs Zahlen: der Abstand der drei Ecken zu
+   * ihr (links von ihr positiv, rechts negativ) und die Breite des Verlaufs an den drei Ecken.
+   */
+  rand: Float32Array[];
 };
 
 /** wie viel von der Farbe jenseits der Farblinie an einer Stelle steht: an der Farblinie die Hälfte, im Abstand der Breite nichts mehr */
@@ -161,11 +172,12 @@ export function weichFeld(k: Karte, fl: Flaechen): WeichFeld | null {
         // (um ein freies Ende herum ist es dieselbe Zelle und dieselbe Farbe: kein Verlauf)
         if (!c.w || c.zl === c.zr || (c.zl !== zelle && c.zr !== zelle)) continue;
         const s = naechsterAufKette(P, 3 * E[0]!, 3 * E[1]!, 3 * E[2]!, c, P[3 * v]!, P[3 * v + 1]!, P[3 * v + 2]!);
-        if (s.w > 0) setzen(v, s.d, s.w, c.zl === zelle ? c.rechts : c.links);
+        // (auch mit Breite null: Der nächste Punkt der Farblinie entscheidet)
+        setzen(v, s.d, s.w, c.zl === zelle ? c.rechts : c.links);
       }
     }
   }
-  if (H.leer) return { d: new Float32Array(n).fill(FERN), w: new Float32Array(n), fremd, groesst };
+  if (H.leer) return { d: new Float32Array(n).fill(FERN), w: new Float32Array(n), fremd, groesst, rand: fl.rand.map((r) => new Float32Array(6 * r.ketten.length)) };
   // je Punkt seine Dreiecke
   const zahl = new Int32Array(n + 1);
   for (let t = 0; t < T; t++) for (let e = 0; e < 3; e++) zahl[I[3 * t + e]! + 1] = zahl[I[3 * t + e]! + 1]! + 1;
@@ -215,8 +227,8 @@ export function weichFeld(k: Karte, fl: Flaechen): WeichFeld | null {
     const [abstand, v] = H.nehmen();
     if (fest[v] || abstand > d[v]!) continue;
     fest[v] = 1;
-    // (jenseits seines Verlaufs trägt ein Punkt nichts weiter: Dort steht schon die reine Farbe)
-    if (abstand >= w[v]!) continue;
+    // (weiter als der breiteste Verlauf reicht nichts)
+    if (abstand >= groesst) continue;
     for (let q = zahl[v]!; q < zahl[v + 1]!; q++) {
       const t = liste[q]!;
       const i = I[3 * t]! === v ? 0 : I[3 * t + 1]! === v ? 1 : 2;
@@ -249,5 +261,38 @@ export function weichFeld(k: Karte, fl: Flaechen): WeichFeld | null {
   }
   const aus = new Float32Array(n).fill(FERN);
   for (let v = 0; v < n; v++) if (d[v]! < Infinity) aus[v] = d[v]!;
-  return { d: aus, w: Float32Array.from(w), fremd, groesst };
+  // die Dreiecke mit Farblinien: je Kette die Werte an den drei Ecken. Eine Ecke in einer der zwei Zellen an der Kette trägt den Wert
+  // des Felds (denselben, mit dem ihre anderen Dreiecke rechnen), solange er von dieser Farblinie stammt; sonst gilt ihr Abstand
+  // zu dieser Kette allein.
+  const rand = fl.rand.map((r) => {
+    const feld = new Float32Array(6 * r.ketten.length);
+    if (r.t >= T) return feld;
+    const E = [I[3 * r.t]!, I[3 * r.t + 1]!, I[3 * r.t + 2]!];
+    r.ketten.forEach((c, ki) => {
+      if (!c.w || c.zl === c.zr) return;
+      for (let e = 0; e < 3; e++) {
+        const v = E[e]!;
+        const s = naechsterAufKette(P, 3 * E[0]!, 3 * E[1]!, 3 * E[2]!, c, P[3 * v]!, P[3 * v + 1]!, P[3 * v + 2]!);
+        const zelle = r.ecken[e];
+        let seite = zelle === c.zl ? 1 : zelle === c.zr ? -1 : 0;
+        let abstand = s.d;
+        let breite = s.w;
+        if (seite !== 0 && d[v]! < Infinity && Math.abs(d[v]! - s.d) < 0.35 * s.d + 1) {
+          abstand = d[v]!;
+          breite = w[v]!;
+        }
+        if (seite === 0) {
+          // (eine Ecke in einer dritten Zelle, hinter einer anderen Kette: auf welcher Seite dieser Kette liegt sie?)
+          const b = e === 1 ? 1 : 0;
+          const g = e === 2 ? 1 : 0;
+          const n1 = naechsteSeite([c], b, g);
+          seite = n1.seite === 0 ? 1 : -1;
+        }
+        feld[6 * ki + e] = seite * abstand;
+        feld[6 * ki + 3 + e] = breite;
+      }
+    });
+    return feld;
+  });
+  return { d: aus, w: Float32Array.from(w), fremd, groesst, rand };
 }

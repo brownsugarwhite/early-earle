@@ -260,6 +260,17 @@ let malModus = false;
 let farbWahl: Farbe = [0.965, 0.769, 0.271];
 /** auf die Form gedrückt (Paint-Modus): Ohne Weg wird gefüllt, mit dem ersten Weg gedreht */
 let farbDruck: { x: number; y: number; zeit: number } | null = null;
+/**
+ * Paint-Modus, Etappe 4: der laufende Zug am Tropfen eines gewählten Punkts (die Breite des Verlaufs dort). `x`, `y`: der Punkt im
+ * Bild; `ux`, `uy`: quer zur Farblinie; `jeEinheit`: Bildpunkte je Einheit des Werks; `versatz`: so weit hinter dem Ende des Fadens
+ * wurde der Tropfen gegriffen (er bleibt unter dem Zeiger); `gemerkt`: Der Schritt für ⌘Z ist angelegt.
+ */
+let weichZug: { linie: number; punkt: number; x: number; y: number; ux: number; uy: number; jeEinheit: number; versatz: number; gemerkt: boolean } | null = null;
+/** die zuletzt eingestellte Breite (Einheiten des Werks): Damit macht K eine harte Kante weich */
+let weichBreite = 16;
+/** so weit vom Punkt sitzt der Tropfen mindestens (CSS-Pixel), auch an einer harten Kante; darunter gilt beim Ziehen: hart */
+const WEICH_GRIFF_MIN = 12;
+const WEICH_HART_AB = 7;
 /** zählt jede Änderung am Bild der Bemalung (für Zeichenflächen, die nur bei Änderungen neu zeichnen) */
 let farbBild = 0;
 /** so breit steht eine Farblinie im Paint-Modus auf der Form (CSS-Pixel) */
@@ -4301,6 +4312,8 @@ function bild(dt: number): boolean {
         ? 'Farbtropfen · Klick auf die Form füllt bis an die Farblinien · ⌥ + Klick nimmt die Farbe dort auf · Farben: die Tropfen unter der Leiste, auch zum Ziehen auf die Form · A: zurück zu den Punkten'
         : raumWerkzeug === 'pipette'
         ? 'Pipette · Klick auf die Form nimmt die Farbe dort auf · A: zurück zu den Punkten'
+        : farbAn && raumWerkzeug === 'auswahl' && bearbeiten.auswahl.size > 0
+        ? 'Punkt gewählt · den Tropfen am Faden wegziehen: Die Kante wird dort weich, zurückschieben: hart · K weich oder hart · [ ] schmaler, breiter · ⌫ löscht den Punkt · Esc'
         : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · F Farbtropfen: Klick auf die Form füllt bis an die Farblinien · I Pipette · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
@@ -5453,6 +5466,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     const aktiv = bearbeiten.schritt(dt) || !!raumStrich || !!raumAufzug || werkBlatt.fliesst;
     const sz = bearbeiten.szene(bearbeitenAnsicht);
     K.uebernehmen(sz);
+    if (farbAn) weichGriffeZeichnen();
     // S13 (4): Tropfen, die zu neuen Kreuzungen fließen und dort verschmelzen
     for (const t of werkBlatt.verschmelzenTropfen(linienWerte.punktRadius * linienWerte.tropfen)) K.punkt(t.x * D, t.y * D, t.r * D);
     ordnungslinien();
@@ -6474,6 +6488,12 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  // Paint-Modus, Etappe 4: der Tropfen am Faden folgt dem Zeiger quer zur Farblinie
+  if (weichZug) {
+    weichZugBewegen(x, y);
+    anstossen();
+    return;
+  }
   // das Verhalten der Studie (Linien des Werks): Zeiger, Tropfen, Zug
   if (zustand === 'ruhe' && werkGezeigt) {
     bearbeiten.alt = e.altKey;
@@ -6795,6 +6815,16 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // Paint-Modus, Etappe 4: der Tropfen am Faden eines gewählten Punkts: Ziehen stellt die Breite des Verlaufs dort
+  if (farbAn && raumWerkzeug === 'auswahl' && !bearbeiten.stift) {
+    const g = weichGriffBei(x, y);
+    if (g) {
+      const versatz = (x - g.gx) * g.ux + (y - g.gy) * g.uy;
+      weichZug = { linie: g.linie, punkt: g.punkt, x: g.x, y: g.y, ux: g.ux, uy: g.uy, jeEinheit: g.jeEinheit, versatz, gemerkt: false };
+      anstossen();
+      return;
+    }
+  }
   // Paint-Modus (Etappe 1): Ein Klick auf die Form füllt die Farbfläche dort; mit dem ersten Weg wird stattdessen gedreht
   // (Etappe 2: Hängt ein Punkt oder eine Farblinie am Zeiger, greift das Drücken sie)
   // (Etappe 3: mit dem Farbtropfen ebenso, dort hängt nie etwas am Zeiger; mit der Pipette nimmt der Klick die Farbe auf)
@@ -6926,6 +6956,11 @@ const loslassen = (e: PointerEvent): void => {
   if (leinwandLinien.hasPointerCapture(e.pointerId)) leinwandLinien.releasePointerCapture(e.pointerId);
   if (zustand === 'blatt') {
     blatt.loslassen();
+    anstossen();
+    return;
+  }
+  if (weichZug) {
+    weichZug = null;
     anstossen();
     return;
   }
@@ -7318,6 +7353,8 @@ window.addEventListener('keydown', (e) => {
       // (gibt es noch andere Objekte, geht nur das gewählte; das letzte Objekt lässt wie bisher die Luft ab)
       if (objektGewaehlt && !objektLoeschen()) ablassen();
     } else ablassen();
+  } else if ((k === '[' || k === ']' || k === 'k' || k === 'K') && zustand === 'ruhe' && farbAn && raumWerkzeug === 'auswahl' && weichTaste(k)) {
+    // Paint-Modus, Etappe 4: an gewählten Punkten einer Farblinie schaltet K weich und hart, [ und ] stellen die Breite des Verlaufs
   } else if ((k === '[' || k === ']') && zustand === 'ruhe' && werkGezeigt && objektModus() && verbundBreiteStellen(k === ']')) {
     // Etappe 5: am Objekt (V) die Breite der Rundung seiner Naht (gesetzt in `verbundBreiteStellen`)
   } else if ((k === '[' || k === ']') && zustand === 'ruhe' && werkGezeigt) {
@@ -7588,7 +7625,8 @@ function farbTropfenZeigen(): void {
     return;
   }
   if (!faellt) t.classList.remove('zieht');
-  const da = malModus && zustand === 'ruhe' && werkGezeigt && farbAn && (raumWerkzeug === 'auswahl' || farbWerkzeug()) && zeiger.da && !drehen && !bearbeiten.haengt && !bearbeitenGedrueckt && farbBlatt.ortFrei(zeiger.x, zeiger.y) !== null;
+  // (nicht über dem Tropfen eines gewählten Punkts, Etappe 4: Dort stellt das Ziehen die Breite des Verlaufs, ein Klick füllt nicht)
+  const da = malModus && zustand === 'ruhe' && werkGezeigt && farbAn && (raumWerkzeug === 'auswahl' || farbWerkzeug()) && zeiger.da && !drehen && !bearbeiten.haengt && !bearbeitenGedrueckt && !weichZug && farbBlatt.ortFrei(zeiger.x, zeiger.y) !== null && !weichGriffBei(zeiger.x, zeiger.y);
   // (mit dem Farbtropfen nimmt ⌥ die Farbe auf, wie die Pipette)
   const pipette = da && !faellt && (raumWerkzeug === 'pipette' || (raumWerkzeug === 'tropfen' && altGehalten));
   t.hidden = !(da || faellt);
@@ -7641,6 +7679,109 @@ const farbLeiste = new FarbLeiste(document.body, $<HTMLInputElement>('farbe-farb
 });
 farbWahl = farbLeiste.farbe;
 leiste.farbeZeigen(farbCss(farbWahl));
+// ---------- Paint-Modus, Etappe 4: weiche Kanten (Fassung 1: der Tropfen am Faden) ----------
+
+/** die Anfasser der Breite an den gewählten Punkten, samt der Stelle ihres Tropfens im Bild (CSS-Pixel) */
+function weichGriffe(): (ReturnType<FarbBlatt['breitenGriffe']>[number] & { gx: number; gy: number })[] {
+  if (!farbAn || raumWerkzeug !== 'auswahl' || bearbeiten.stift || !bearbeiten.auswahl.size) return [];
+  return farbBlatt.breitenGriffe(bearbeiten.auswahl).map((g) => {
+    const lang = Math.max(WEICH_GRIFF_MIN, g.breite * g.jeEinheit);
+    return { ...g, gx: g.x + g.ux * lang, gy: g.y + g.uy * lang };
+  });
+}
+/** der Tropfen unter einem Ort des Bilds (der nächste im Umkreis von 9 Pixeln um seine Mitte) */
+function weichGriffBei(x: number, y: number): ReturnType<typeof weichGriffe>[number] | null {
+  let best: ReturnType<typeof weichGriffe>[number] | null = null;
+  let nah = 9;
+  for (const g of weichGriffe()) {
+    // (die Mitte des Tropfens liegt ein Stück hinter dem Ende des Fadens)
+    const d = Math.hypot(x - g.gx - g.ux * 4, y - g.gy - g.uy * 4);
+    if (d < nah) {
+      nah = d;
+      best = g;
+    }
+  }
+  return best;
+}
+/**
+ * Die Tropfen zeichnen: vom Punkt quer zur Farblinie ein Faden, an seinem Ende ein Tropfen, die Spitze zur Farblinie. Gefüllt: Dort
+ * ist die Kante weich, und der Faden reicht so weit wie der Verlauf. Hohl: Die Kante ist hart.
+ */
+function weichGriffeZeichnen(): void {
+  const haar = Math.max(0.35, linienWerte.umriss / 2) * D;
+  for (const g of weichGriffe()) {
+    const nah = zeiger.da && !weichZug && Math.hypot(zeiger.x - g.gx - g.ux * 4, zeiger.y - g.gy - g.uy * 4) < 9;
+    const zieht = weichZug !== null && weichZug.linie === g.linie && weichZug.punkt === g.punkt;
+    const gross = nah || zieht ? 1.3 : 1;
+    const gruppe = K.neueGruppe();
+    K.push(g.x * D, g.y * D, g.gx * D, g.gy * D, haar, haar, gruppe, 0, false);
+    if (g.breite > 0) {
+      // gefüllt: eine Kapsel, die vom Faden weg dicker wird
+      K.push(g.gx * D, g.gy * D, (g.gx + g.ux * 5.4 * gross) * D, (g.gy + g.uy * 5.4 * gross) * D, haar, 3 * gross * D, gruppe, 0, true);
+    } else {
+      // hohl: der Umriss eines Tropfens
+      const R = 3 * gross;
+      const cx = g.gx + g.ux * 6.2 * gross;
+      const cy = g.gy + g.uy * 6.2 * gross;
+      const [vx, vy] = [-g.uy, g.ux];
+      const xs: number[] = [g.gx * D];
+      const ys: number[] = [g.gy * D];
+      for (let i = 0; i <= 10; i++) {
+        // (der Bogen des Tropfens, von der einen Flanke über das runde Ende zur anderen)
+        const a = (-2 / 3 + (4 / 3) * (i / 10)) * Math.PI;
+        xs.push((cx + R * (g.ux * Math.cos(a) + vx * Math.sin(a))) * D);
+        ys.push((cy + R * (g.uy * Math.cos(a) + vy * Math.sin(a))) * D);
+      }
+      K.zug(xs, ys, haar, true);
+    }
+  }
+}
+/** der Tropfen folgt dem Zeiger quer zur Farblinie: so weit reicht der Verlauf; nah an der Farblinie ist die Kante wieder hart */
+function weichZugBewegen(x: number, y: number): void {
+  const z = weichZug;
+  if (!z) return;
+  const lang = (x - z.x) * z.ux + (y - z.y) * z.uy - z.versatz;
+  const breite = lang < WEICH_HART_AB ? 0 : lang / z.jeEinheit;
+  const l = farbWerk.bemalung.ebenen.find((e) => e.id === farbWerk.bemalung.aktiv)?.linien[z.linie];
+  if (!l || (l.punkte[z.punkt]?.breite ?? 0) === breite) return;
+  if (!z.gemerkt) {
+    farbSchritt(() => farbWerk.merken(hautJetzt()));
+    z.gemerkt = true;
+  }
+  farbWerk.breiteSetzen(z.linie, z.punkt, breite);
+  if (breite > 0) weichBreite = breite;
+  farbBild++;
+}
+/**
+ * K, [ und ] an den gewählten Punkten einer Farblinie: K schaltet weich und hart (hart, wenn einer von ihnen weich ist; sonst
+ * weich, mit der zuletzt eingestellten Breite), [ und ] machen den Verlauf schmaler und breiter. Falsch: Kein Punkt ist gewählt.
+ */
+function weichTaste(k: string): boolean {
+  const G = weichGriffe();
+  if (!G.length) return false;
+  const l = farbWerk.bemalung.ebenen.find((e) => e.id === farbWerk.bemalung.aktiv)?.linien;
+  // (ein Punkt und sein Spiegelbild sind derselbe)
+  const punkte = new Map<string, { linie: number; punkt: number; breite: number }>();
+  for (const g of G) punkte.set(`${g.linie}.${g.punkt}`, { linie: g.linie, punkt: g.punkt, breite: l?.[g.linie]?.punkte[g.punkt]?.breite ?? 0 });
+  const einerWeich = [...punkte.values()].some((q) => q.breite > 0);
+  const neu = (alt: number): number => {
+    if (k === 'k' || k === 'K') return einerWeich ? 0 : weichBreite;
+    if (k === ']') return alt > 0 ? alt * 1.25 : weichBreite;
+    const w = alt / 1.25;
+    return w < 1.5 ? 0 : w;
+  };
+  farbSchritt(() => {
+    farbWerk.merken(hautJetzt());
+    for (const q of punkte.values()) {
+      const w = neu(q.breite);
+      farbWerk.breiteSetzen(q.linie, q.punkt, w);
+      if (w > 0 && k !== 'k' && k !== 'K') weichBreite = w;
+    }
+  });
+  werk.G.meldung = k === 'k' || k === 'K' ? (einerWeich ? 'Harte Kante an den gewählten Punkten' : 'Weiche Kante an den gewählten Punkten · [ ] schmaler, breiter') : 'Breite des Verlaufs an den gewählten Punkten';
+  return true;
+}
+
 /** F und I: Farbtropfen und Pipette (noch einmal dieselbe Taste: zurück zu den Punkten); sie gelten im Paint-Modus */
 function farbWerkzeugTaste(w: 'tropfen' | 'pipette'): void {
   if (!malModus) {
@@ -8600,7 +8741,7 @@ const haken = {
     schwung = null;
     if (b.gier !== undefined) nutzer.gier = b.gier;
     if (b.neigung !== undefined) nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, b.neigung));
-    if (b.zoom !== undefined) nutzer.zoom = Math.max(0.3, Math.min(12, b.zoom));
+    if (b.zoom !== undefined) nutzer.zoom = Math.max(0.3, Math.min(16, b.zoom));
     if (b.schwenkX !== undefined) nutzer.schwenkX = b.schwenkX;
     if (b.schwenkY !== undefined) nutzer.schwenkY = b.schwenkY;
     anstossen();
@@ -8936,6 +9077,24 @@ const haken = {
     const f = farbUnter(x, y);
     return f ? farbeAlsHex(f) : null;
   },
+  /**
+   * Etappe 4: die Breite des Verlaufs an einem Punkt einer Farblinie setzen (Einheiten des Werks; 0: harte Kante), als ein Schritt
+   * für ⌘Z; `punkt` −1: an allen Punkten der Farblinie. Zurück: die Breiten ihrer Punkte danach (null: keine solche Farblinie).
+   */
+  farbBreite: (linie: number, punkt: number, breite: number): number[] | null => {
+    const l = farbWerk.bemalung.ebenen[0]?.linien[linie];
+    if (!l) return null;
+    farbSchritt(() => {
+      farbWerk.merken(hautJetzt());
+      for (let q = 0; q < l.punkte.length; q++) if (punkt < 0 || q === punkt) farbWerk.breiteSetzen(linie, q, breite);
+    });
+    return l.punkte.map((q) => q.breite ?? 0);
+  },
+  /** Etappe 4: die Tropfen an den gewählten Punkten: der Punkt (x, y) und sein Tropfen (gx, gy) im Bild, die Breite, Bildpunkte je Einheit */
+  farbWeichGriffe: (): { linie: number; punkt: number; x: number; y: number; gx: number; gy: number; breite: number; jeEinheit: number }[] =>
+    weichGriffe().map((g) => ({ linie: g.linie, punkt: g.punkt, x: g.x, y: g.y, gx: g.gx, gy: g.gy, breite: g.breite, jeEinheit: g.jeEinheit })),
+  /** Etappe 4: was die weichen Kanten und das ganze Ableiten zuletzt gekostet haben (ms), und wie viele Dreiecke innen im Verlauf liegen */
+  farbWeich: (): { weichMs: number; ableitenMs: number; dreiecke: number } => ({ weichMs: farbWerk.weichMs, ableitenMs: farbWerk.ableitenMs, dreiecke: farbWerk.anzeige.zahlen.weich }),
   /** Etappe 3: eine der zwei Fassungen des Einlaufens wählen oder es abschalten */
   farbFliessen: (art: 'tinte' | 'honig' | 'aus'): void => {
     if (art === 'aus') fuellWerte.an = 0;
@@ -8947,7 +9106,7 @@ const haken = {
   /** Etappe 2: Liegt unter der Stelle des Bilds (CSS-Pixel) die Form, sodass P dort einen Punkt setzen könnte? */
   farbOrtFrei: (x: number, y: number): boolean => farbAn && farbBlatt.ortFrei(x, y) !== null,
   /** Etappe 2: die Punkte der Farblinie `nr` im Bild (CSS-Pixel), mit Knick und ob sie Richtungen tragen; dazu, ob sie geschlossen ist */
-  farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: [number, number] | null; aus: [number, number] | null; z: number }[] } | null => {
+  farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: [number, number] | null; aus: [number, number] | null; z: number; breite: number }[] } | null => {
     const h = hautJetzt();
     const l = farbWerk.bemalung.ebenen[0]?.linien[nr];
     if (!l) return null;
@@ -8970,7 +9129,8 @@ const haken = {
           return [s2[0] - x, s2[1] - y];
         };
         // (z: wie weit der Punkt von der Spiegelebene entfernt ist, in Einheiten des Werks; genau 0: Er liegt auf der Mitte)
-        return { x, y, i: q.i, knick: q.knick, ein: griff(q.ein), aus: griff(q.aus), z: o.w[0] * h.haut.pos[3 * o.e[0] + 2]! + o.w[1] * h.haut.pos[3 * o.e[1] + 2]! + o.w[2] * h.haut.pos[3 * o.e[2] + 2]! };
+        // (breite, Etappe 4: so weit reicht der Verlauf an diesem Punkt, Einheiten des Werks; 0: harte Kante)
+        return { x, y, i: q.i, knick: q.knick, ein: griff(q.ein), aus: griff(q.aus), z: o.w[0] * h.haut.pos[3 * o.e[0] + 2]! + o.w[1] * h.haut.pos[3 * o.e[1] + 2]! + o.w[2] * h.haut.pos[3 * o.e[2] + 2]!, breite: q.breite ?? 0 };
       }),
     };
   },

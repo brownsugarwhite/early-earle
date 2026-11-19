@@ -14,6 +14,12 @@
  * was vorher dort lag. Die Front ist eine flüssige Kante: ein wenig wellig, mit einem Wulst dahinter. Je Bild ändern sich nur
  * Zahlen (`flussSetzen`), nichts wird neu gebaut.
  *
+ * Etappe 4: weiche Kanten (`WeichBild`). Trägt eine Farblinie eine Breite, läuft die Farbe der einen Seite weich in die der
+ * anderen: an der Farblinie die Mitte, im Abstand der Breite die reine Farbe. Abstand und Breite stehen je Punkt des Rechennetzes
+ * (`weich.ts`) und werden in jedem Dreieck aus seinen drei Ecken gemischt: innen als Werte je Ecke der Anzeige (dazu die Farbe von
+ * jenseits), am Rand je Kette in der Datentextur (der Abstand mit Vorzeichen: Die Farblinie liegt, wo er null ist). Die harte Kante
+ * selbst bleibt die genaue je Bildpunkt; ohne Breite bleibt jede Rechnung, wie sie war.
+ *
  * Zwei Arten, die Farbe mit dem Grund zu verrechnen: `wachs` (die Farbe mit Hell, Dunkel und Glanz des Wachses, deckend über dem
  * Wachs; lineare Werte, für das Ziel der festen Materialien) und `hell` (die reine Farbe, mit dem Bild darunter multipliziert: Das
  * helle Solid bringt sein Hell und Dunkel selbst mit).
@@ -50,6 +56,7 @@ import type { Farbe } from './bemalung';
 import { feinEcken } from './fein';
 import type { Flaechen } from './flaechen';
 import { FERN, weiteImDreieck } from './fliessen';
+import type { WeichFeld } from './weich';
 
 export type FarbModus = 'wachs' | 'hell';
 
@@ -68,6 +75,12 @@ const VERTEX = /* glsl */ `
   attribute float aWeite;
   varying float vWeite;
   #endif
+  #ifdef WEICH
+  attribute vec2 aWeich;
+  attribute vec4 aFremd;
+  varying vec2 vWeich;
+  varying vec4 vFremd;
+  #endif
   varying vec3 vBlick;
   varying vec3 vNormale;
   varying vec2 vSpiegel;
@@ -79,6 +92,10 @@ const VERTEX = /* glsl */ `
     #endif
     #ifdef FLUSS
     vWeite = aWeite;
+    #endif
+    #ifdef WEICH
+    vWeich = aWeich;
+    vFremd = aFremd;
     #endif
     vWelt = position;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
@@ -105,6 +122,14 @@ const FRAGMENT = /* glsl */ `
   #ifdef FLUSS
   varying float vWeite;
   #endif
+  #ifdef WEICH
+  // Etappe 4, innen: x der Abstand zur weichen Farblinie, y die Breite des Verlaufs dort; die Farbe von jenseits (mal ihre Deckung)
+  varying vec2 vWeich;
+  varying vec4 vFremd;
+  #endif
+  // Etappe 4: 1, wenn eine Farblinie eine Breite hat. uDeckung: 0 für Flächen ohne Füllung
+  uniform float uWeich;
+  uniform float uDeckung;
   varying vec3 vBlick;
   varying vec3 vNormale;
   varying vec2 vSpiegel;
@@ -202,12 +227,13 @@ const FRAGMENT = /* glsl */ `
     vec2 bestFarben = vec2(-1.0);
     int bestZ = z;
     for (int k = 0; k < nK; k++) {
-      // je Kette: Kopf (Zahl der Punkte, Füllung links, rechts), zwei Zeilen Weiten (links, rechts: an den drei Ecken), ihre Punkte
+      // je Kette: Kopf (Zahl der Punkte, Füllung links, rechts, ob sie eine Breite trägt), zwei Zeilen Weiten für das Einlaufen
+      // (links, rechts: an den drei Ecken), zwei Zeilen für die weiche Kante (Abstand und Breite an den drei Ecken), ihre Punkte
       vec4 kette = daten(z);
       int nP = int(kette.x + 0.5);
-      vec2 a = daten(z + 3).xy;
+      vec2 a = daten(z + 5).xy;
       for (int j = 1; j < nP; j++) {
-        vec2 b = daten(z + 3 + j).xy;
+        vec2 b = daten(z + 5 + j).xy;
         vec2 pg = vB - a;
         vec2 eg = b - a;
         // in Bildpunkte
@@ -227,7 +253,7 @@ const FRAGMENT = /* glsl */ `
         }
         a = b;
       }
-      z += 3 + nP;
+      z += 5 + nP;
     }
     float d = sqrt(best);
     float nrEigen = bestQuer > 0.0 ? bestFarben.x : bestFarben.y;
@@ -249,8 +275,28 @@ const FRAGMENT = /* glsl */ `
     }
     // an der Kante: einen Bildpunkt breit von der einen in die andere Füllung
     float t = clamp(0.5 + d, 0.0, 1.0);
-    vec3 farbe = eigen.a + fremd.a > 0.0 ? (eigen.rgb * eigen.a * t + fremd.rgb * fremd.a * (1.0 - t)) / max(1e-6, eigen.a * t + fremd.a * (1.0 - t)) : vec3(1.0);
-    float deckung = eigen.a * t + fremd.a * (1.0 - t);
+    vec3 farbe;
+    float deckung;
+    if (uWeich > 0.5) {
+      // Etappe 4: Trägt die nächste Kette eine Breite, läuft die Farbe von jenseits weich herein. Abstand zur Farblinie und Breite
+      // des Verlaufs: aus den drei Ecken des Dreiecks gemischt (dieselben Werte, mit denen die Nachbardreiecke rechnen)
+      float jenseits = 0.0;
+      if (daten(bestZ).w > 0.5) {
+        vec3 g = vec3(1.0 - vB.x - vB.y, vB.x, vB.y);
+        float weg = abs(dot(g, daten(bestZ + 3).xyz));
+        float breite = dot(g, daten(bestZ + 4).xyz);
+        jenseits = breite > 1e-6 ? 1.0 - smoothstep(-breite, breite, weg) : 0.0;
+      }
+      // beide Seiten laufen aufeinander zu: An der Farblinie stehen sie gleich, darum bleibt die Kante dort ohne Stufe
+      vec4 E = vec4(eigen.rgb * eigen.a, eigen.a);
+      vec4 F = vec4(fremd.rgb * fremd.a, fremd.a);
+      vec4 R = mix(E, F, jenseits) * t + mix(F, E, jenseits) * (1.0 - t);
+      farbe = R.a > 1e-6 ? R.rgb / R.a : vec3(1.0);
+      deckung = R.a;
+    } else {
+      farbe = eigen.a + fremd.a > 0.0 ? (eigen.rgb * eigen.a * t + fremd.rgb * fremd.a * (1.0 - t)) / max(1e-6, eigen.a * t + fremd.a * (1.0 - t)) : vec3(1.0);
+      deckung = eigen.a * t + fremd.a * (1.0 - t);
+    }
     // die Farblinie selbst (nur im Paint-Modus zu sehen), uLinie Bildpunkte breit
     float linie = uLinie > 0.0 ? clamp(0.5 * uLinie + 0.5 - d, 0.0, 1.0) : 0.0;
     farbe = mix(farbe, uTinte, linie);
@@ -258,11 +304,22 @@ const FRAGMENT = /* glsl */ `
     if (deckung < 0.002) discard;
     gl_FragColor = aus(farbe, deckung, wulst * (1.0 - linie));
     #else
+    #if defined(FLUSS) || defined(WEICH)
+    vec4 c = vec4(uFarbe, uDeckung);
+    float wulst = 0.0;
     #ifdef FLUSS
     vec2 fl = fluss(vWeite);
-    vec4 c = uFlussAlt.a > 0.0 ? vec4(mix(uFlussAlt.rgb, uFarbe, fl.x), 1.0) : vec4(uFarbe, fl.x);
+    c = uFlussAlt.a > 0.0 ? vec4(mix(uFlussAlt.rgb, uFarbe, fl.x), 1.0) : vec4(uFarbe, fl.x);
+    wulst = fl.y;
+    #endif
+    #ifdef WEICH
+    // der Verlauf: an der Farblinie die Hälfte der Farbe von jenseits, im Abstand der Breite nichts mehr
+    float jenseits = vWeich.y > 1e-6 ? 1.0 - smoothstep(-vWeich.y, vWeich.y, vWeich.x) : 0.0;
+    vec4 R = mix(vec4(c.rgb * c.a, c.a), vFremd, jenseits);
+    c = vec4(R.a > 1e-6 ? R.rgb / R.a : c.rgb, R.a);
+    #endif
     if (c.a < 0.002) discard;
-    gl_FragColor = aus(c.rgb, c.a, fl.y);
+    gl_FragColor = aus(c.rgb, c.a, wulst);
     #else
     gl_FragColor = aus(uFarbe, 1.0, 0.0);
     #endif
@@ -285,6 +342,11 @@ export type FarbWerte = {
  * `weite`, `rand`: die Weiten von der Saat (`flussWeiten`); `tri`, `pos`: die Dreiecke und Lagen des Rechennetzes.
  */
 export type FlussBild = { fuell: number; alt: Farbe | null; weite: Float32Array; rand: Float32Array[]; tri: ArrayLike<number>; pos: ArrayLike<number> };
+/**
+ * Etappe 4: die weichen Kanten. `feld`: je Punkt des Rechennetzes Abstand, Breite und Füllung jenseits (`weichFeld`); `tri`: die
+ * Dreiecke des Rechennetzes.
+ */
+export type WeichBild = { feld: WeichFeld; tri: ArrayLike<number> };
 /** was sich je Bild ändert: die Front, ihre Welle, Breite und Stärke des Wulstes (Einheiten des Werks), die Zeit seit dem Klick, Werk je Welt */
 export type FlussWerte = { front: number; welle: number; wulst: number; staerke: number; zeit: number; mass: number };
 
@@ -298,17 +360,21 @@ export class FarbAnzeige {
   private innenMat: ShaderMaterial[] = [];
   /** das Material der Füllung, die gerade einläuft (ihre Dreiecke innen) */
   private flussMat: ShaderMaterial | null = null;
+  /** Etappe 4: je Füllung das Material ihrer Dreiecke im Verlauf einer weichen Kante; `leerMat`: für Flächen ohne Füllung dort */
+  private weichMat: ShaderMaterial[] = [];
+  private leerMat: ShaderMaterial | null = null;
+  private flussWeichMat: ShaderMaterial | null = null;
   private readonly randMat: ShaderMaterial;
   private readonly licht: DataTexture;
   private daten: DataTexture;
   private farben: DataTexture;
   private modus: FarbModus = 'wachs';
   /** woraus die Geometrie gebaut ist */
-  private stand: { netz: HautNetz; index: Uint32Array; pos: Float32Array; stufen: number; flaechen: Flaechen; fluss: FlussBild | null } | null = null;
+  private stand: { netz: HautNetz; index: Uint32Array; pos: Float32Array; stufen: number; flaechen: Flaechen; fluss: FlussBild | null; weich: WeichBild | null } | null = null;
   /** je Ecke des Rands: ihr Punkt in der Anzeige */
   private randQuelle = new Uint32Array(0);
   /** zählt, was gezeichnet wird (für Proben) */
-  zahlen = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0 };
+  zahlen = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
 
   constructor() {
     const G = 256;
@@ -321,7 +387,7 @@ export class FarbAnzeige {
     this.licht.needsUpdate = true;
     this.daten = this.datenTextur(new Float32Array(4 * DB));
     this.farben = this.farbenTextur([]);
-    this.randMat = this.material(true, false);
+    this.randMat = this.material(true, false, false);
     this.innen = new Mesh(this.innenGeo, this.innenMat);
     this.rand = new Mesh(this.randGeo, this.randMat);
     this.innen.frustumCulled = false;
@@ -351,10 +417,12 @@ export class FarbAnzeige {
     return t;
   }
 
-  private material(rand: boolean, fluss: boolean): ShaderMaterial {
+  private material(rand: boolean, fluss: boolean, weich: boolean): ShaderMaterial {
     const m = new ShaderMaterial({
-      defines: rand ? { RAND: 1 } : fluss ? { FLUSS: 1 } : {},
+      defines: rand ? { RAND: 1 } : { ...(fluss ? { FLUSS: 1 } : {}), ...(weich ? { WEICH: 1 } : {}) },
       uniforms: {
+        uWeich: { value: 0 },
+        uDeckung: { value: 1 },
         uFluss: { value: [-1, 0, 0, 1] },
         uFlussAlt: { value: [0, 0, 0, 0] },
         uFlussMass: { value: [1, 0, 0] },
@@ -379,8 +447,13 @@ export class FarbAnzeige {
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -2,
     });
-    this.blenden(m, this.modus, rand || fluss);
+    this.blenden(m, this.modus, rand || fluss || weich);
     return m;
+  }
+
+  /** alle Materialien, die innen zeichnen */
+  private innenAlle(): ShaderMaterial[] {
+    return [...this.innenMat, ...this.weichMat, ...[this.flussMat, this.leerMat, this.flussWeichMat].filter((m): m is ShaderMaterial => m !== null)];
   }
 
   private blenden(m: ShaderMaterial, modus: FarbModus, rand: boolean): void {
@@ -417,7 +490,7 @@ export class FarbAnzeige {
     this.stand = null;
     this.innen.visible = false;
     this.rand.visible = false;
-    this.zahlen = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0 };
+    this.zahlen = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
   }
 
   /**
@@ -426,10 +499,10 @@ export class FarbAnzeige {
    * je Füllung (Bildschirmwerte 0 … 1). Neu gebaut wird nur, wenn sich Netz, Stufe oder Flächen geändert haben; `bewegt`: Die Lagen
    * haben sich geändert (dann gehen die Ecken des Rands mit).
    */
-  setzen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[], bewegt: boolean, fluss: FlussBild | null = null): void {
+  setzen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[], bewegt: boolean, fluss: FlussBild | null = null, weich: WeichBild | null = null): void {
     const st = this.stand;
-    const neu = !st || st.netz !== netz || st.index !== netz.index || st.pos !== netz.pos || st.stufen !== stufen || st.flaechen !== flaechen || st.fluss !== fluss;
-    if (neu) this.bauen(netz, stufen, flaechen, farben, fluss);
+    const neu = !st || st.netz !== netz || st.index !== netz.index || st.pos !== netz.pos || st.stufen !== stufen || st.flaechen !== flaechen || st.fluss !== fluss || st.weich !== weich;
+    if (neu) this.bauen(netz, stufen, flaechen, farben, fluss, weich);
     else if (bewegt) this.bewegen(netz);
   }
 
@@ -440,7 +513,7 @@ export class FarbAnzeige {
     const u1 = an ? [fl.fuell, w.front, w.welle, Math.max(1e-6, w.wulst)] : [-1, 0, 0, 1];
     const u2 = an && fl.alt ? [fl.alt[0], fl.alt[1], fl.alt[2], 1] : [0, 0, 0, 0];
     const u3 = an ? [w.mass, w.zeit, w.staerke] : [1, 0, 0];
-    for (const m of [this.randMat, this.flussMat]) {
+    for (const m of [this.randMat, this.flussMat, this.flussWeichMat]) {
       if (!m) continue;
       m.uniforms.uFluss!.value = u1;
       m.uniforms.uFlussAlt!.value = u2;
@@ -448,15 +521,79 @@ export class FarbAnzeige {
     }
   }
 
-  private bauen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[], fluss: FlussBild | null): void {
+  private bauen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[], fluss: FlussBild | null, weich: WeichBild | null): void {
     const je = 4 ** stufen;
     const T = netz.index.length / 3 / je;
-    this.stand = { netz, index: netz.index, pos: netz.pos, stufen, flaechen, fluss };
-    // ---- innen: je Füllung die feinen Dreiecke ihrer ganzen Dreiecke ----
-    const zahl = new Array<number>(farben.length).fill(0);
+    this.stand = { netz, index: netz.index, pos: netz.pos, stufen, flaechen, fluss, weich };
     const ganz = flaechen.ganz;
     const Tg = Math.min(T, ganz.length);
-    for (let t = 0; t < Tg; t++) if (ganz[t]! >= 0) zahl[ganz[t]!] = zahl[ganz[t]!]! + 1;
+    const I = netz.index;
+    const ecken = feinEcken(stufen);
+    const g = this.innenGeo;
+    g.setAttribute('position', new BufferAttribute(netz.pos, 3));
+    g.setAttribute('normal', new BufferAttribute(netz.normal, 3));
+    g.setAttribute('aSeite', new BufferAttribute(netz.seite, 1));
+    // ---- Etappe 4: welche ganzen Dreiecke im Verlauf einer weichen Kante liegen; ihre Ecken tragen Abstand, Breite, Farbe jenseits ----
+    const imVerlauf = new Uint8Array(Tg);
+    let weichZahl = 0;
+    if (weich) {
+      // (die Dreiecke mit Farblinien rechnet der Rand je Bildpunkt)
+      const amRand = new Uint8Array(Tg);
+      for (const r of flaechen.rand) if (r.t < Tg) amRand[r.t] = 1;
+      const nV = netz.pos.length / 3;
+      const aWeich = new Float32Array(2 * nV);
+      for (let v = 0; v < nV; v++) aWeich[2 * v] = 1;
+      const aFremd = new Float32Array(4 * nV);
+      const F = weich.feld;
+      const R = weich.tri;
+      const d = [0, 0, 0];
+      const w = [0, 0, 0];
+      const c: [number, number, number, number][] = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+      for (let t = 0; t < Tg; t++) {
+        if (amRand[t]) continue;
+        let bezug = -1;
+        for (let e = 0; e < 3; e++) {
+          const v = R[3 * t + e]!;
+          d[e] = F.d[v]!;
+          w[e] = F.w[v]!;
+          if (w[e]! > 0 && d[e]! < w[e]! && (bezug < 0 || d[e]! < d[bezug]!)) bezug = e;
+        }
+        if (bezug < 0) continue;
+        for (let e = 0; e < 3; e++) {
+          // (eine Ecke ohne Wert liegt jenseits des Verlaufs: Dort steht die reine Farbe)
+          const ohne = !(w[e]! > 0) || !(d[e]! < FERN);
+          const q = ohne ? bezug : e;
+          if (ohne) {
+            w[e] = w[bezug]!;
+            d[e] = w[bezug]!;
+          }
+          const f = farben[F.fremd[R[3 * t + q]!]!];
+          c[e] = f ? [f[0], f[1], f[2], 1] : [0, 0, 0, 0];
+        }
+        for (let q = 0; q < 3 * je; q++) {
+          const v = I[3 * je * t + q]!;
+          const gb = ecken[2 * q]!;
+          const gc = ecken[2 * q + 1]!;
+          const ga = 1 - gb - gc;
+          aWeich[2 * v] = ga * d[0]! + gb * d[1]! + gc * d[2]!;
+          aWeich[2 * v + 1] = ga * w[0]! + gb * w[1]! + gc * w[2]!;
+          for (let k = 0; k < 4; k++) aFremd[4 * v + k] = ga * c[0]![k]! + gb * c[1]![k]! + gc * c[2]![k]!;
+        }
+        imVerlauf[t] = 1;
+        weichZahl++;
+      }
+      g.setAttribute('aWeich', new BufferAttribute(aWeich, 2));
+      g.setAttribute('aFremd', new BufferAttribute(aFremd, 4));
+    }
+    // ---- innen: je Füllung die feinen Dreiecke ihrer ganzen Dreiecke; zuerst die mit der reinen Farbe, dann die im Verlauf; am
+    // Schluss die Dreiecke ohne Füllung, in die ein Verlauf hineinreicht ----
+    const nF = farben.length;
+    const zahl = new Array<number>(2 * nF + 1).fill(0);
+    const fach = (t: number): number => (ganz[t]! >= 0 ? (imVerlauf[t] ? nF + ganz[t]! : ganz[t]!) : imVerlauf[t] ? 2 * nF : -1);
+    for (let t = 0; t < Tg; t++) {
+      const f = fach(t);
+      if (f >= 0) zahl[f] = zahl[f]! + 1;
+    }
     const start: number[] = [];
     let summe = 0;
     for (const z of zahl) {
@@ -465,28 +602,40 @@ export class FarbAnzeige {
     }
     const index = new Uint32Array(summe);
     const platz = start.slice();
-    const I = netz.index;
     for (let t = 0; t < Tg; t++) {
-      const f = ganz[t]!;
+      const f = fach(t);
       if (f < 0) continue;
       index.set(I.subarray(3 * je * t, 3 * je * (t + 1)), platz[f]!);
       platz[f] = platz[f]! + 3 * je;
     }
-    const g = this.innenGeo;
-    g.setAttribute('position', new BufferAttribute(netz.pos, 3));
-    g.setAttribute('normal', new BufferAttribute(netz.normal, 3));
-    g.setAttribute('aSeite', new BufferAttribute(netz.seite, 1));
     g.setIndex(new BufferAttribute(index, 1));
     g.clearGroups();
-    while (this.innenMat.length < farben.length) this.innenMat.push(this.material(false, false));
+    while (this.innenMat.length < nF) this.innenMat.push(this.material(false, false, false));
+    if (weich) {
+      while (this.weichMat.length < nF) this.weichMat.push(this.material(false, false, true));
+      if (!this.leerMat) {
+        this.leerMat = this.material(false, false, true);
+        this.leerMat.uniforms.uDeckung!.value = 0;
+      }
+    }
+    // die Materialien in der Reihenfolge der Fächer: rein je Füllung, im Verlauf je Füllung, ohne Füllung
+    const mat: ShaderMaterial[] = [];
     farben.forEach((f, i) => {
       this.innenMat[i]!.uniforms.uFarbe!.value = [f[0], f[1], f[2]];
-      if (zahl[i]! > 0) g.addGroup(start[i]!, zahl[i]! * je * 3, i);
+      mat.push(this.innenMat[i]!);
     });
-    const ecken = feinEcken(stufen);
+    farben.forEach((f, i) => {
+      const m = weich ? this.weichMat[i]! : this.innenMat[i]!;
+      m.uniforms.uFarbe!.value = [f[0], f[1], f[2]];
+      mat.push(m);
+    });
+    mat.push(this.leerMat ?? this.innenMat[0] ?? this.randMat);
+    zahl.forEach((z, f) => {
+      if (z > 0) g.addGroup(start[f]!, z * je * 3, f);
+    });
     /** eine Weite für die Grafikkarte (unendlich: nie erreicht) */
     const endlich = (w: number | undefined): number => (w !== undefined && w < FERN ? w : FERN);
-    if (fluss && fluss.fuell < farben.length) {
+    if (fluss && fluss.fuell < nF) {
       // die Füllung, die einläuft: ihre Dreiecke innen mit eigenem Material, jede Ecke der Anzeige mit ihrer Weite (aus den drei
       // Ecken ihres Dreiecks im Rechennetz gemischt)
       const weite = new Float32Array(netz.pos.length / 3).fill(FERN);
@@ -498,14 +647,20 @@ export class FarbAnzeige {
         for (let q = 0; q < 3 * je; q++) weite[I[3 * je * t + q]!] = w(ecken[2 * q]!, ecken[2 * q + 1]!);
       }
       g.setAttribute('aWeite', new BufferAttribute(weite, 1));
-      this.flussMat ??= this.material(false, true);
+      this.flussMat ??= this.material(false, true, false);
       this.blenden(this.flussMat, this.modus, true);
       const f = farben[fluss.fuell]!;
       this.flussMat.uniforms.uFarbe!.value = [f[0], f[1], f[2]];
-      const mat = this.innenMat.slice(0, farben.length);
       mat[fluss.fuell] = this.flussMat;
-      this.innen.material = mat;
-    } else this.innen.material = this.innenMat;
+      if (weich) {
+        // (ihre Dreiecke im Verlauf einer weichen Kante: einlaufen und verlaufen zugleich)
+        this.flussWeichMat ??= this.material(false, true, true);
+        this.blenden(this.flussWeichMat, this.modus, true);
+        this.flussWeichMat.uniforms.uFarbe!.value = [f[0], f[1], f[2]];
+        mat[nF + fluss.fuell] = this.flussWeichMat;
+      }
+    }
+    this.innen.material = mat;
     this.innen.visible = summe > 0;
     // ---- Rand: die feinen Dreiecke der Dreiecke mit Ketten, jede Ecke mit ihren Gewichten; die Ketten in der Datentextur ----
     const R = flaechen.rand.map((r, ri) => ({ ...r, ri })).filter((r) => r.t < T);
@@ -514,7 +669,7 @@ export class FarbAnzeige {
     const bary = new Float32Array(2 * nE);
     const slot = new Float32Array(nE);
     let texel = 0;
-    for (const r of R) texel += 1 + r.ketten.reduce((s, c) => s + 3 + c.p.length / 2, 0);
+    for (const r of R) texel += 1 + r.ketten.reduce((s, c) => s + 5 + c.p.length / 2, 0);
     const feld = new Float32Array(4 * DB * Math.max(1, Math.ceil(texel / DB)));
     let z = 0;
     let ketten = 0;
@@ -547,9 +702,16 @@ export class FarbAnzeige {
         feld[4 * z] = nP;
         feld[4 * z + 1] = c.links;
         feld[4 * z + 2] = c.rechts;
+        // (Etappe 4: Sie trägt eine Breite, und zu ihren zwei Seiten liegen verschiedene Zellen)
+        const breit = !!weich && !!c.w && c.zl !== c.zr;
+        feld[4 * z + 3] = breit ? 1 : 0;
         z++;
         // (zwei Zeilen: die Weiten der einlaufenden Füllung links und rechts der Kette, an den drei Ecken des Dreiecks)
         for (let q = 0; q < 6; q++) feld[4 * (z + (q < 3 ? 0 : 1)) + (q % 3)] = endlich(wr?.[6 * ki + q]);
+        z += 2;
+        // (zwei Zeilen: der Abstand der drei Ecken zu dieser Kette, mit Vorzeichen, und die Breite des Verlaufs an den drei Ecken)
+        const ww = breit ? weich.feld.rand[r.ri] : undefined;
+        for (let q = 0; q < 6; q++) feld[4 * (z + (q < 3 ? 0 : 1)) + (q % 3)] = ww?.[6 * ki + q] ?? 0;
         z += 2;
         for (let j = 0; j < nP; j++) {
           feld[4 * z] = c.p[2 * j]!;
@@ -571,6 +733,7 @@ export class FarbAnzeige {
     this.farben = this.farbenTextur(farben);
     this.randMat.uniforms.tDaten!.value = this.daten;
     this.randMat.uniforms.tFarben!.value = this.farben;
+    this.randMat.uniforms.uWeich!.value = weich ? 1 : 0;
     const h = this.randGeo;
     const lage = new BufferAttribute(new Float32Array(3 * nE), 3);
     const normale = new BufferAttribute(new Float32Array(3 * nE), 3);
@@ -584,7 +747,7 @@ export class FarbAnzeige {
     h.setAttribute('aBary', new BufferAttribute(bary, 2));
     h.setAttribute('aSlot', new BufferAttribute(slot, 1));
     this.rand.visible = nE > 0;
-    this.zahlen = { innen: summe / 3, rand: nE / 3, ketten, punkte, fuellungen: farben.length };
+    this.zahlen = { innen: summe / 3, rand: nE / 3, ketten, punkte, fuellungen: farben.length, weich: weichZahl };
     this.bewegen(netz);
   }
 
@@ -664,11 +827,10 @@ export class FarbAnzeige {
     if (w.modus !== this.modus) {
       this.modus = w.modus;
       this.blenden(this.randMat, w.modus, true);
-      for (const m of this.innenMat) this.blenden(m, w.modus, false);
-      if (this.flussMat) this.blenden(this.flussMat, w.modus, true);
+      for (const m of this.innenAlle()) this.blenden(m, w.modus, !this.innenMat.includes(m));
     }
     const sn = w.schnitt && Math.hypot(w.schnitt[0], w.schnitt[1], w.schnitt[2]) > 1e-9 ? w.schnitt : [0, 0, 1, -1e9];
-    for (const m of [this.randMat, ...this.innenMat, ...(this.flussMat ? [this.flussMat] : [])]) {
+    for (const m of [this.randMat, ...this.innenAlle()]) {
       m.uniforms.uSchnitt!.value = sn;
       m.uniforms.uSpiegel!.value = w.spiegelSchnitt ?? -1;
       m.uniforms.uModus!.value = w.modus === 'hell' ? 1 : 0;

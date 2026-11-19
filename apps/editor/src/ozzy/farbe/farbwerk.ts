@@ -8,14 +8,15 @@
  * einen Schritt zurück und stellt dabei ein älteres Netz wieder her, kommt die Bemalung zurück, wie sie auf diesem Netz war (`jeNetz`).
  */
 import type { HautNetz } from '../../anfang/haut';
-import { FarbAnzeige, type FlussBild } from './anzeige';
-import { type Bemalung, type BemalungDatei, type Farbe, type TrefferPunkt, aktiveEbene, alleOrte, alsDatei, ausDatei, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, ortZahl, uebergeben } from './bemalung';
+import { FarbAnzeige, type FlussBild, type WeichBild } from './anzeige';
+import { type Bemalung, type BemalungDatei, type Farbe, type Farblinie, type TrefferPunkt, aktiveEbene, alleOrte, alsDatei, ausDatei, breitenLaengs, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, ortZahl, uebergeben } from './bemalung';
 import { feinBei } from './fein';
 import { type Flaechen, type Saat, flaechenRechnen } from './flaechen';
 import { flussWeiten, fuellungBei } from './fliessen';
 import { kettenAller, stueckeVon } from './ketten';
 import { type Karte, type Naechster, type Netz, type Ort, type V3, dreieckNormale, karteVon, ortGespiegelt, ortLage } from './ort';
 import { ParallelTreffer, ortAusFein, strahlAufNetz } from './treffer';
+import { weichFeld } from './weich';
 
 /** die Haut des Werks, wie das Farbwerk sie je Bild sieht */
 export type HautJetzt = {
@@ -74,6 +75,11 @@ export class FarbWerk {
   private fluss: { bild: FlussBild; zeit: number; dauer: number; tempo: number; groesst: number } | null = null;
   /** was das Vorbereiten des letzten Einlaufens gekostet hat (ms, für Proben) */
   flussMs = 0;
+  /** Etappe 4: die weichen Kanten, wie sie zu den Flächen gehören (null: Keine Farblinie hat eine Breite); `weichMs`: was sie zuletzt kosteten */
+  private weich: WeichBild | null = null;
+  weichMs = 0;
+  /** was das letzte Ableiten im Ganzen gekostet hat (Ketten, Flächen, weiche Kanten; ms, für Proben) */
+  ableitenMs = 0;
   private haut: HautJetzt['haut'] | null = null;
   private tri: ArrayLike<number> | null = null;
   private karte: Karte | null = null;
@@ -121,6 +127,7 @@ export class FarbWerk {
     this.flaechen = null;
     this.fluss = null;
     this.flussWunsch = null;
+    this.weich = null;
     this.anzeige.leeren();
     this.streckenGemerkt = null;
     this.lagenVor = null;
@@ -238,7 +245,7 @@ export class FarbWerk {
     // (die Anzeige des Werks zeigt alle Dreiecke der Haut in ihrer Reihenfolge, je 4^stufen feine: nur dann passt die Bemalung darauf)
     const f = this.fluss;
     if (h.netz.index.length === h.haut.tri.length * 4 ** h.stufen) {
-      this.anzeige.setzen(h.netz, h.stufen, this.flaechen, this.farben, bewegt, f?.bild ?? null);
+      this.anzeige.setzen(h.netz, h.stufen, this.flaechen, this.farben, bewegt, f?.bild ?? null, this.weich);
       const W = this.fliessWerte;
       const x = f ? Math.min(1, f.zeit / f.dauer) : 1;
       // (der Wulst vergeht, wenn die Farbe ankommt)
@@ -289,12 +296,14 @@ export class FarbWerk {
   }
 
   private ableiten(h: HautJetzt): void {
+    const tAnfang = performance.now();
     this.alt = false;
     this.streckenGemerkt = null;
     // (jede Änderung beendet eine einlaufende Füllung; nur eine eben gesetzte läuft neu ein)
     this.fluss = null;
     const wunsch = this.flussWunsch;
     this.flussWunsch = null;
+    this.weich = null;
     if (this.leer) {
       this.flaechen = null;
       this.farben = [];
@@ -305,7 +314,8 @@ export class FarbWerk {
     const spiegeln = h.gespiegelt && k.spiegel !== null;
     // (Etappe 1: eine Ebene; mehrere liegen später übereinander, jede mit ihren eigenen Flächen)
     const ebene = aktiveEbene(this.bemalung);
-    const { ketten, fehl } = kettenAller(k, ebene.linien, spiegeln);
+    // (Etappe 4: Die Ketten tragen die Breite des Verlaufs, wie sie längs der Farblinie von Punkt zu Punkt fließt)
+    const { ketten, fehl } = kettenAller(k, ebene.linien, spiegeln, (l) => breitenLaengs(k.netz.pos, l as Farblinie));
     this.fehl = fehl;
     const saaten: Saat[] = [];
     this.farben = [];
@@ -319,6 +329,12 @@ export class FarbWerk {
       }
     }
     this.flaechen = flaechenRechnen(k, ketten, saaten);
+    // Etappe 4: die weichen Kanten zu diesen Flächen
+    const tWeich = performance.now();
+    const feld = weichFeld(k, this.flaechen);
+    this.weich = feld ? { feld, tri: h.haut.tri } : null;
+    this.weichMs = performance.now() - tWeich;
+    this.ableitenMs = performance.now() - tAnfang;
     // Etappe 3: die eben gesetzte Füllung läuft ein, von ihrer Saat (und deren Spiegelbild) über die Haut bis an die Farblinien
     const nr = ebene.fuellungen.length - 1;
     if (wunsch !== null && this.fliessWerte.an && nr >= 0 && ebene.fuellungen[nr]!.id === wunsch) {
@@ -501,6 +517,22 @@ export class FarbWerk {
     this.alt = true;
     // (Etappe 3: Diese Füllung läuft ein, sobald die Flächen neu gerechnet sind)
     this.flussWunsch = id;
+  }
+
+  /**
+   * Etappe 4: die Breite des Verlaufs an einem Punkt einer Farblinie setzen (Einheiten des Werks; 0: harte Kante). `linie`: ihre
+   * Nummer in der aktiven Ebene. Ohne Schritt für ⌘Z: Den legt an, wer den Handgriff beginnt (`merken`). Zurück: Hat sich etwas geändert?
+   */
+  breiteSetzen(linie: number, punkt: number, breite: number): boolean {
+    const q = aktiveEbene(this.bemalung).linien[linie]?.punkte[punkt];
+    if (!q) return false;
+    const neu = Number.isFinite(breite) && breite > 1e-6 ? breite : 0;
+    if ((q.breite ?? 0) === neu) return false;
+    if (neu > 0) q.breite = neu;
+    else delete q.breite;
+    this.alt = true;
+    this.streckenGemerkt = null;
+    return true;
   }
 
   /** die Farbe der Füllung, die an diesem Ort gilt (für die Pipette); null: Dort liegt keine Farbe */
