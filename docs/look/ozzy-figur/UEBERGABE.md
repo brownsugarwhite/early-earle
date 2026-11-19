@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 mittags: 2,5D A–D gebaut; Beweis 3D aus seinen Zeichnungen, ozzy-raum.html)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026: 2,5D A–D gebaut; Beweis 3D durchgefallen; Rohmodell aus Blender, ozzy-3d.html)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -353,6 +353,28 @@ weitergebaut, bis er entscheidet.
 - **Was nicht trägt:** das Weiß zwischen den Ansichten (zwei Zeichnungen legen verschiedenes Weiß an dieselbe Stelle, gemischt wird
   es unruhig) und der Rücken (seine Rückansicht ist kein Spiegelbild der Front). Weiterer Weg: das Weiß einmal im Raum festlegen
   (auf den Körper gemalt, etwa in Blender auf diesem Netz, oder je Merkmal aus einer Ansicht), die Rückansicht als Spiegel der Front.
+
+## Rohmodell aus Blender (19.11. nachmittags)
+
+Florian zum Beweis 3D: „das schlechteste aus beiden welten … ein völlig zerrissenes 3d model“. Dann: „Ja blender klingt besser. das
+weiß kann auch gerne aus einem shader kommen. Im gesicht vllt nicht aber am körper bzw den beinen schon. Die ansichten sind nicht
+100%ig exakt. es sind recht schnelle drafts gewesen“. Plan: Abschnitt 7 von `docs/plans/2026-11-19-ozzy-figur-3d.md`.
+
+- **Bauen:** `/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup --python tools/ozzy-figur/ozzy_roh.py --
+  docs/look/ozzy-figur/3d` (rund 2 s; Blender muss nicht offen sein). Schreibt `ozzy-roh.blend` und `ozzy-roh.glb`, druckt die Maße
+  jedes Netzes in Figur-Einheiten (Zeilen `MASS`).
+- **Maße** stehen als Zahlen am Kopf des Skripts (Bohne, Beine, Schwanz, Kopf, Nase, Ohren), gelesen aus seinen Zeichnungen Zeile für
+  Zeile (Skript der Messung im Verlauf: Breiten je Höhe in Front, Seite, Rücken).
+- **Seite** `ozzy-3d.html` (Port 5213): Winkel, „Drehen ▶“, Regler „Fenster“, seine Zeichnung rot darüber. Prüfhaken `__ozzy3d`
+  (`zeigen`, `bild`, `vergleich`, `tempo`).
+- **Weiß:** Beine und Schwanz per Shader (Weiß, wo die Fläche zur Kamera schaut; Gewicht aus der Eckfarbe „fenster“, die das Skript aus
+  dem Abstand zu Beinen und Bohne setzt; Sohle schwarz). Gesicht: seine Frontzeichnung fest aufgemalt, scharfe Kanten, nie bis an den
+  Umriss.
+- **Stand:** Front 79 %, Rücken 85 % Deckung; von der Seite fehlt der weiße Bart an der Wange (Seite 50 %). Dreht ohne Risse. Bilder
+  `docs/progress/ozzy-figur/2026-11-19-3d-vergleich.png`, `-umlauf.png`, Video `-umlauf.mp4`.
+- **Metaball-Fallen:** Blender begrenzt `size_x/y/z` auf 20 (größte Achse über den Radius, die anderen als Anteil). Sichtbarer Radius
+  einer Kugel = 0,5748 × Radius bei Schwelle 0,6 und Steifheit 2. Bei Kapseln ist `size_x` die halbe Länge (absolut). Metaballs mit
+  demselben Grundnamen verschmelzen über Objekte hinweg (Koerper und Kopf getrennt halten).
 
 ## Fallen
 

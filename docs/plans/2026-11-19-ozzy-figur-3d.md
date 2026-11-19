@@ -89,3 +89,23 @@ Bilder und Video `docs/progress/ozzy-figur/2026-11-19-raum-*`.
 - **Weiß:** Das Weiß kommt aus seinen Zeichnungen und wird zwischen zwei Ansichten gemischt. Wo zwei Zeichnungen verschiedenes Weiß
   an dieselbe Stelle legen (Beinfenster vorn und von der Seite), wird es zwischen den Ansichten unruhig. Sauber wird es erst, wenn das
   Weiß einmal im Raum liegt (auf den Körper gemalt), statt aus mehreren Zeichnungen gemischt zu werden.
+
+## 7. Nach dem Beweis: Rohmodell in Blender (19.11.)
+
+Florian: „dein beweis sieht aus wie das schlechteste aus beiden welten“, dann: „Ja blender klingt besser. das weiß kann auch gerne aus
+einem shader kommen. Im gesicht vllt nicht aber am körper bzw den beinen schon. Die ansichten sind nicht 100%ig exakt. es sind recht
+schnelle drafts gewesen … Mach mal und wir schauen wie gut es rankommt.“
+
+- **Modell** (`tools/ozzy-figur/ozzy_roh.py`, läuft im Hintergrund: `Blender -b --factory-startup --python tools/ozzy-figur/ozzy_roh.py
+  -- docs/look/ozzy-figur/3d`): Metaballs (weich ineinanderfließende Kugeln und Kapseln) nach seinen Maßen, Zeile für Zeile aus Front
+  und Seite gelesen: Bohne, vier Beine, Schwanz (eine Familie), Kopf als fast runde Kugel mit Bart unten vorn, Nase, Ohren als oben
+  spitz zulaufende Eier. Ergebnis `docs/look/ozzy-figur/3d/ozzy-roh.blend` (Metaballs zum Formen ausgeblendet, Netze sichtbar) und
+  `ozzy-roh.glb` (Netze: koerper mit Eckfarbe „fenster“, kopf, nase, ohrR, ohrL).
+- **Zeichnen** (`apps/editor/ozzy-3d.html`, `src/ozzy-figur/drei/main.ts`, three.js): flach schwarz. Beine und Schwanz: Weiß, wo die
+  Fläche zur Kamera schaut (Regler „Fenster“, Standard 0,85: ein schwarzer Rand von rund 20 bleibt), die Sohle bleibt schwarz. Gesicht:
+  sein Weiß aus der Frontzeichnung, fest auf den Kopf gemalt, nur auf Flächen, die nach vorn schauen, und nie bis an den Umriss.
+  `?seitenWeiss=1` malt zusätzlich die Seitenzeichnung auf seitliche Flächen (Versuch: Brauen und Augen verwischen, Front 67 statt 80 %).
+- **Deckung des Schwarz** (seine Zeichnungen sind Entwürfe; nur zur Orientierung): Front 79 %, Rücken 85 %, Seite 50 % (dort fehlt das
+  Weiß des Barts an der Wange), 3/4 52 % (seine 3/4 zeigt den Kopf stärker von vorn). Bilder `docs/progress/ozzy-figur/2026-11-19-3d-*`.
+- **Offen für ihn:** wie das Gesicht von der Seite aussehen soll (Bart an der Wange als eigene Form oder Bemalung), Proportionen am
+  Modell nach seinem Auge (in Blender), dann Skelett und Haltungen.
