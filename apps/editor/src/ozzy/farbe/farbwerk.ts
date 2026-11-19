@@ -8,8 +8,32 @@
  * einen Schritt zurück und stellt dabei ein älteres Netz wieder her, kommt die Bemalung zurück, wie sie auf diesem Netz war (`jeNetz`).
  */
 import type { HautNetz } from '../../anfang/haut';
-import { FarbAnzeige, type FlussBild, type WeichBild } from './anzeige';
-import { type Bemalung, type BemalungDatei, type Farbe, type Farblinie, type TrefferPunkt, aktiveEbene, alleOrte, alsDatei, ausDatei, breitenLaengs, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, ortZahl, uebergeben } from './bemalung';
+import { type FarbAnzeige, FarbStapel, type FlussBild, type WeichBild } from './anzeige';
+import {
+  EBENEN_HOECHSTENS,
+  type Bemalung,
+  type BemalungDatei,
+  type Ebene,
+  type Farbe,
+  type Farblinie,
+  type TrefferPunkt,
+  aktiveEbene,
+  alleOrte,
+  alsDatei,
+  ausDatei,
+  breitenLaengs,
+  ebeneLoeschen,
+  ebeneNeu,
+  ebeneOrdnen,
+  giltFuer,
+  istLeer,
+  kopie,
+  leereBemalung,
+  linienAusTreffern,
+  ortZahl,
+  sichtUebernehmen,
+  uebergeben,
+} from './bemalung';
 import { feinBei } from './fein';
 import { type Flaechen, type Saat, flaechenRechnen } from './flaechen';
 import { flussWeiten, fuellungBei } from './fliessen';
@@ -42,6 +66,11 @@ export type FarbStand = { bemalung: Bemalung; haut: HautJetzt['haut'] | null };
 
 type Schritt = { vorher: Bemalung; haut: HautJetzt['haut'] };
 
+/** Etappe 5: was aus einer Ebene abgeleitet ist (ihre Flächen, die Farben ihrer Füllungen, ihre weichen Kanten, was sich nicht finden ließ) */
+type EbeneStand = { flaechen: Flaechen; farben: Farbe[]; weich: WeichBild | null; fehl: number[] };
+/** eine Ebene, wie der Stapel am Rand sie zeigt: von oben nach unten gezählt */
+export type EbeneZeile = { id: number; name: string; aktiv: boolean; aus: boolean; leer: boolean; farben: Farbe[] };
+
 /** dieselben Dreiecke (dann gelten die Orte weiter, auch wenn das Werk ein anderes Objekt für die Haut hat: Pose, ⌘Z ohne Netzwechsel) */
 function gleicheDreiecke(a: ArrayLike<number>, b: ArrayLike<number>): boolean {
   if (a === b) return true;
@@ -66,17 +95,17 @@ export const FLIESSEN: Record<'tinte' | 'honig', FliessWerte> = {
 
 export class FarbWerk {
   bemalung: Bemalung = leereBemalung();
-  readonly anzeige = new FarbAnzeige();
+  /** Etappe 5: der Stapel der Ebenen im Bild (je Ebene ihre Anzeige) */
+  readonly anzeige = new FarbStapel();
   /** Etappe 3: wie eine Füllung einläuft (von Ozzy gesetzt: Adresse, Feinregler) */
   fliessWerte: FliessWerte = { ...FLIESSEN.tinte };
   /** die Füllung (ihre Kennung), die beim nächsten Ableiten einlaufen soll */
   private flussWunsch: number | null = null;
-  /** die Füllung, die gerade einläuft: ihr Bild für die Anzeige, die Zeit seit dem Klick, ihre Dauer, ihr Tempo, die größte Weite */
-  private fluss: { bild: FlussBild; zeit: number; dauer: number; tempo: number; groesst: number } | null = null;
+  /** die Füllung, die gerade einläuft: ihre Ebene, ihr Bild für die Anzeige, die Zeit seit dem Klick, ihre Dauer, ihr Tempo, die größte Weite */
+  private fluss: { ebene: number; bild: FlussBild; zeit: number; dauer: number; tempo: number; groesst: number } | null = null;
   /** was das Vorbereiten des letzten Einlaufens gekostet hat (ms, für Proben) */
   flussMs = 0;
-  /** Etappe 4: die weichen Kanten, wie sie zu den Flächen gehören (null: Keine Farblinie hat eine Breite); `weichMs`: was sie zuletzt kosteten */
-  private weich: WeichBild | null = null;
+  /** Etappe 4: was die weichen Kanten zuletzt kosteten (ms, für Proben) */
   weichMs = 0;
   /** was das letzte Ableiten im Ganzen gekostet hat (Ketten, Flächen, weiche Kanten; ms, für Proben) */
   ableitenMs = 0;
@@ -84,10 +113,14 @@ export class FarbWerk {
   private tri: ArrayLike<number> | null = null;
   private karte: Karte | null = null;
   private gespiegelt = false;
-  /** abgeleitet: neu zu rechnen */
+  /** abgeleitet: neu zu rechnen (alle Ebenen) */
   private alt = true;
-  private flaechen: Flaechen | null = null;
-  private farben: Farbe[] = [];
+  /** Etappe 5: nur diese Ebenen sind neu zu rechnen (ein Handgriff an einer Ebene lässt die anderen stehen) */
+  private altNur = new Set<number>();
+  /** was aus jeder Ebene abgeleitet ist, die gezeichnet wird (eine ausgeblendete oder leere hat keinen Stand: Sie wird gerechnet, sobald es etwas zu zeigen gibt) */
+  private staende = new Map<number, EbeneStand>();
+  /** wie viele Ebenen das letzte Ableiten neu gerechnet hat (für Proben) */
+  abgeleitet = 0;
   private gezeigt = -1;
   /** im Bild davor lief noch eine Füllung ein (das Bild danach ist das erste ohne sie) */
   private flussEben = false;
@@ -124,10 +157,10 @@ export class FarbWerk {
     this.karte = null;
     this.schritte = [];
     this.alt = true;
-    this.flaechen = null;
+    this.altNur.clear();
+    this.staende.clear();
     this.fluss = null;
     this.flussWunsch = null;
-    this.weich = null;
     this.anzeige.leeren();
     this.streckenGemerkt = null;
     this.lagenVor = null;
@@ -207,7 +240,9 @@ export class FarbWerk {
         const gemerkt = this.jeNetz.get(h.haut);
         if (gemerkt && giltFuer(h.haut, gemerkt)) {
           // ⌘Z im Werk: zurück auf ein Netz, das es schon gab, mit der Bemalung von damals
-          this.bemalung = kopie(gemerkt);
+          const damals = kopie(gemerkt);
+          sichtUebernehmen(this.bemalung, damals);
+          this.bemalung = damals;
           this.wechsel.zurueckgeholt++;
         } else {
           const r = uebergeben(alt.pos, alt.n, k, this.naechsterFuer(h.haut), this.bemalung);
@@ -228,11 +263,11 @@ export class FarbWerk {
       this.gespiegelt = h.gespiegelt;
       this.alt = true;
     }
-    if (this.alt) {
+    if (this.alt || this.altNur.size || this.sichtAlt()) {
       this.ableiten(h);
       neu = true;
     }
-    if (!h.netz || !this.flaechen || this.leer) {
+    if (!h.netz || !this.staende.size || this.leer) {
       if (!this.anzeige.leer) {
         this.anzeige.leeren();
         neu = true;
@@ -245,12 +280,25 @@ export class FarbWerk {
     // (die Anzeige des Werks zeigt alle Dreiecke der Haut in ihrer Reihenfolge, je 4^stufen feine: nur dann passt die Bemalung darauf)
     const f = this.fluss;
     if (h.netz.index.length === h.haut.tri.length * 4 ** h.stufen) {
-      this.anzeige.setzen(h.netz, h.stufen, this.flaechen, this.farben, bewegt, f?.bild ?? null, this.weich);
+      // Etappe 5: jede sichtbare Ebene mit ihren Flächen, von unten nach oben
+      const E = this.bemalung.ebenen;
+      this.anzeige.ordnen(
+        E.filter((e) => this.staende.has(e.id)).map((e) => e.id),
+        aktiveEbene(this.bemalung).id,
+        E.map((e) => e.id),
+      );
       const W = this.fliessWerte;
       const x = f ? Math.min(1, f.zeit / f.dauer) : 1;
       // (der Wulst vergeht, wenn die Farbe ankommt)
       const aus = 1 - Math.min(1, Math.max(0, (x - 0.78) / 0.22)) ** 2;
-      this.anzeige.flussSetzen(f ? { front: this.front(f), welle: W.welle, wulst: W.wulst, staerke: W.staerke * aus, zeit: f.zeit, mass: h.f } : null);
+      for (const e of E) {
+        const st = this.staende.get(e.id);
+        if (!st) continue;
+        const hier = f && f.ebene === e.id ? f : null;
+        const a = this.anzeige.fuer(e.id);
+        a.setzen(h.netz, h.stufen, st.flaechen, st.farben, bewegt, hier?.bild ?? null, st.weich);
+        a.flussSetzen(hier ? { front: this.front(hier), welle: W.welle, wulst: W.wulst, staerke: W.staerke * aus, zeit: hier.zeit, mass: h.f } : null);
+      }
     } else this.anzeige.leeren();
     // (solange eine Füllung einläuft, ändert sich das Bild)
     if (f || this.flussEben) neu = true;
@@ -295,46 +343,78 @@ export class FarbWerk {
     this.lagenVor = jetzt;
   }
 
+  /** wird diese Ebene gezeichnet (zu sehen, und es liegt etwas auf ihr)? */
+  private static zuZeichnen(e: Ebene): boolean {
+    return !e.aus && (e.linien.length > 0 || e.fuellungen.length > 0);
+  }
+
+  /** Stehen die abgeleiteten Stände nicht mehr für genau die Ebenen, die gezeichnet werden (eine ist aus- oder eingeblendet, gelöscht)? */
+  private sichtAlt(): boolean {
+    let zahl = 0;
+    for (const e of this.bemalung.ebenen) {
+      if (!FarbWerk.zuZeichnen(e)) continue;
+      zahl++;
+      if (!this.staende.has(e.id)) return true;
+    }
+    return zahl !== this.staende.size;
+  }
+
   private ableiten(h: HautJetzt): void {
     const tAnfang = performance.now();
+    const alle = this.alt;
+    const nur = this.altNur;
     this.alt = false;
+    this.altNur = new Set();
     this.streckenGemerkt = null;
     // (jede Änderung beendet eine einlaufende Füllung; nur eine eben gesetzte läuft neu ein)
     this.fluss = null;
     const wunsch = this.flussWunsch;
     this.flussWunsch = null;
-    this.weich = null;
+    this.abgeleitet = 0;
+    this.weichMs = 0;
     if (this.leer) {
-      this.flaechen = null;
-      this.farben = [];
+      this.staende.clear();
       this.fehl = [];
       return;
     }
     const k = this.karteJetzt(h);
     const spiegeln = h.gespiegelt && k.spiegel !== null;
-    // (Etappe 1: eine Ebene; mehrere liegen später übereinander, jede mit ihren eigenen Flächen)
-    const ebene = aktiveEbene(this.bemalung);
+    // Etappe 5: jede Ebene, die gezeichnet wird, für sich (ihre eigenen Farblinien, Flächen und weichen Kanten); neu gerechnet
+    // wird nur, was sich geändert hat
+    const da = new Set<number>();
+    for (const e of this.bemalung.ebenen) {
+      if (!FarbWerk.zuZeichnen(e)) continue;
+      da.add(e.id);
+      if (alle || nur.has(e.id) || !this.staende.has(e.id)) this.ebeneAbleiten(h, k, spiegeln, e, wunsch);
+    }
+    for (const id of [...this.staende.keys()]) if (!da.has(id)) this.staende.delete(id);
+    // (für Proben und für das Blatt der Farblinien: was sich an der aktiven Ebene nicht finden ließ)
+    this.fehl = this.staende.get(aktiveEbene(this.bemalung).id)?.fehl ?? [];
+    this.ableitenMs = performance.now() - tAnfang;
+  }
+
+  /** eine Ebene: ihre Ketten, Flächen und weichen Kanten; läuft ihre letzte Füllung gerade ein (`wunsch`), auch deren Weiten */
+  private ebeneAbleiten(h: HautJetzt, k: Karte, spiegeln: boolean, ebene: Ebene, wunsch: number | null): void {
+    this.abgeleitet++;
     // (Etappe 4: Die Ketten tragen die Breite des Verlaufs, wie sie längs der Farblinie von Punkt zu Punkt fließt)
     const { ketten, fehl } = kettenAller(k, ebene.linien, spiegeln, (l) => breitenLaengs(k.netz.pos, l as Farblinie));
-    this.fehl = fehl;
     const saaten: Saat[] = [];
-    this.farben = [];
+    const farben: Farbe[] = [];
     for (const f of ebene.fuellungen) {
-      const nr = this.farben.length;
-      this.farben.push(f.farbe);
+      const nr = farben.length;
+      farben.push(f.farbe);
       saaten.push({ ort: f.saat, farbe: nr });
       if (spiegeln) {
         const g = ortGespiegelt(k, f.saat);
         if (g) saaten.push({ ort: g, farbe: nr });
       }
     }
-    this.flaechen = flaechenRechnen(k, ketten, saaten);
+    const flaechen = flaechenRechnen(k, ketten, saaten);
     // Etappe 4: die weichen Kanten zu diesen Flächen
     const tWeich = performance.now();
-    const feld = weichFeld(k, this.flaechen);
-    this.weich = feld ? { feld, tri: h.haut.tri } : null;
-    this.weichMs = performance.now() - tWeich;
-    this.ableitenMs = performance.now() - tAnfang;
+    const feld = weichFeld(k, flaechen);
+    this.weichMs += performance.now() - tWeich;
+    this.staende.set(ebene.id, { flaechen, farben, weich: feld ? { feld, tri: h.haut.tri } : null, fehl });
     // Etappe 3: die eben gesetzte Füllung läuft ein, von ihrer Saat (und deren Spiegelbild) über die Haut bis an die Farblinien
     const nr = ebene.fuellungen.length - 1;
     if (wunsch !== null && this.fliessWerte.an && nr >= 0 && ebene.fuellungen[nr]!.id === wunsch) {
@@ -342,14 +422,15 @@ export class FarbWerk {
       const eigene = saaten.filter((s) => s.farbe === nr).map((s) => s.ort);
       // (was vorher in dieser Fläche lag: die Flächen ohne diese Füllung)
       const vorher = fuellungBei(flaechenRechnen(k, ketten, saaten.filter((s) => s.farbe !== nr)), ebene.fuellungen[nr]!.saat);
-      const w = flussWeiten(k, this.flaechen, nr, eigene);
+      const w = flussWeiten(k, flaechen, nr, eigene);
       const W = this.fliessWerte;
       if (w.groesst > 0) {
         // so weit muss die Front kommen (die Welle zieht sie stellenweise zurück); daraus Dauer und Tempo
         const ziel = w.groesst + 1.4 * W.welle + 1;
         const dauer = Math.min(W.dauerMax, Math.max(W.dauerMin, Math.max(0, ziel - W.stoss) / Math.max(1, W.tempo)));
         this.fluss = {
-          bild: { fuell: nr, alt: vorher >= 0 ? (this.farben[vorher] ?? null) : null, weite: w.weite, rand: w.rand, tri: h.haut.tri, pos: h.haut.pos },
+          ebene: ebene.id,
+          bild: { fuell: nr, alt: vorher >= 0 ? (farben[vorher] ?? null) : null, weite: w.weite, rand: w.rand, tri: h.haut.tri, pos: h.haut.pos },
           zeit: 0,
           dauer,
           tempo: Math.max(0, ziel - FarbWerk.stossWeg(W.stoss, dauer)) / dauer,
@@ -360,9 +441,9 @@ export class FarbWerk {
     }
   }
 
-  /** die Bemalung ist von außen geändert worden (ein Handgriff an einer Farblinie, `farbBlatt.ts`): alles Abgeleitete neu */
+  /** die aktive Ebene ist von außen geändert worden (ein Handgriff an einer Farblinie, `farbBlatt.ts`): was aus ihr abgeleitet ist, neu */
   geaendert(): void {
-    this.alt = true;
+    this.altNur.add(aktiveEbene(this.bemalung).id);
     this.streckenGemerkt = null;
   }
 
@@ -376,10 +457,14 @@ export class FarbWerk {
     return f;
   }
 
-  /** vor einem Handgriff am Bemalen: den Stand merken (ein Schritt für ⌘Z) */
-  merken(h: HautJetzt): void {
+  /**
+   * Vor einem Handgriff am Bemalen: den Stand merken (ein Schritt für ⌘Z). Wer an einer ausgeblendeten Ebene malt, blendet sie
+   * damit ein (`zeigen`: falsch für Handgriffe am Stapel selbst, die nichts auf die Ebene malen).
+   */
+  merken(h: HautJetzt, zeigen = true): void {
     this.schritt(h);
     this.schritte.push({ vorher: kopie(this.bemalung), haut: h.haut });
+    if (zeigen) delete aktiveEbene(this.bemalung).aus;
   }
 
   /** den letzten Handgriff am Bemalen zurücknehmen; falsch: Es gibt keinen */
@@ -387,6 +472,8 @@ export class FarbWerk {
     const s = this.schritte.pop();
     if (!s) return false;
     this.schritt(h);
+    // (welche Ebene aktiv ist und welche ausgeblendet sind, bleibt, wie es jetzt ist: Das sind keine Schritte)
+    sichtUebernehmen(this.bemalung, s.vorher);
     this.bemalung = s.vorher;
     // (hat das Netz seitdem gewechselt, ohne dass sich die Form geändert hätte, geht der Stand von damals mit)
     if (s.haut !== h.haut && !istLeer(s.vorher) && !gleicheDreiecke(s.haut.tri, h.haut.tri)) uebergeben(s.haut.pos, s.haut.n, this.karteJetzt(h), this.naechsterFuer(h.haut), this.bemalung);
@@ -505,7 +592,7 @@ export class FarbWerk {
     if (!gut.length) return 0;
     this.merken(h);
     aktiveEbene(this.bemalung).linien.push(...gut);
-    this.alt = true;
+    this.geaendert();
     return gut.length;
   }
 
@@ -514,7 +601,7 @@ export class FarbWerk {
     this.merken(h);
     const id = this.bemalung.naechste++;
     aktiveEbene(this.bemalung).fuellungen.push({ id, saat: ort, farbe: [farbe[0], farbe[1], farbe[2]] });
-    this.alt = true;
+    this.geaendert();
     // (Etappe 3: Diese Füllung läuft ein, sobald die Flächen neu gerechnet sind)
     this.flussWunsch = id;
   }
@@ -530,19 +617,96 @@ export class FarbWerk {
     if ((q.breite ?? 0) === neu) return false;
     if (neu > 0) q.breite = neu;
     else delete q.breite;
-    this.alt = true;
+    this.geaendert();
+    return true;
+  }
+
+  /**
+   * Die Farbe der Füllung, die an diesem Ort zu sehen ist (für die Pipette): die der obersten sichtbaren Ebene, die dort eine
+   * Füllung hat. null: Dort liegt keine Farbe.
+   */
+  farbeBei(h: HautJetzt, ort: Ort): Farbe | null {
+    // (steht noch etwas aus, zuerst nachziehen; sonst gilt, was das letzte Bild gerechnet hat)
+    if (this.alt || this.altNur.size || this.haut !== h.haut || this.sichtAlt()) this.schritt(h);
+    const E = this.bemalung.ebenen;
+    for (let i = E.length - 1; i >= 0; i--) {
+      const st = this.staende.get(E[i]!.id);
+      if (!st) continue;
+      const nr = fuellungBei(st.flaechen, ort);
+      const f = nr >= 0 ? st.farben[nr] : undefined;
+      if (f) return [f[0], f[1], f[2]];
+    }
+    return null;
+  }
+
+  // ---------- Etappe 5: der Stapel der Ebenen ----------
+
+  /** die Farblinien, die gerade bedient werden: die der aktiven Ebene, solange sie zu sehen ist */
+  get bedienbar(): Farblinie[] {
+    const e = aktiveEbene(this.bemalung);
+    return e.aus ? [] : e.linien;
+  }
+
+  /** die Ebenen, wie der Stapel am Rand sie zeigt: von oben nach unten, je Ebene die Farben ihrer Füllungen (jede einmal, höchstens vier) */
+  ebenenStand(): EbeneZeile[] {
+    const aktiv = aktiveEbene(this.bemalung).id;
+    const aus: EbeneZeile[] = [];
+    for (let i = this.bemalung.ebenen.length - 1; i >= 0; i--) {
+      const e = this.bemalung.ebenen[i]!;
+      const farben: Farbe[] = [];
+      for (let j = e.fuellungen.length - 1; j >= 0 && farben.length < 4; j--) {
+        const f = e.fuellungen[j]!.farbe;
+        if (!farben.some((g) => g[0] === f[0] && g[1] === f[1] && g[2] === f[2])) farben.push([f[0], f[1], f[2]]);
+      }
+      aus.push({ id: e.id, name: e.name, aktiv: e.id === aktiv, aus: !!e.aus, leer: !e.linien.length && !e.fuellungen.length, farben });
+    }
+    return aus;
+  }
+
+  /** eine neue, leere Ebene über der aktiven; sie wird die aktive (ein Schritt für ⌘Z). Zurück: ihre Kennung, oder null (schon zu viele) */
+  ebeneNeu(h: HautJetzt): number | null {
+    if (this.bemalung.ebenen.length >= EBENEN_HOECHSTENS) return null;
+    this.merken(h, false);
+    return ebeneNeu(this.bemalung)?.id ?? null;
+  }
+
+  /** eine Ebene mit allem, was auf ihr liegt, löschen (ein Schritt für ⌘Z; die letzte bleibt). Zurück: gelöscht? */
+  ebeneLoeschen(h: HautJetzt, id: number): boolean {
+    if (this.bemalung.ebenen.length < 2 || !this.bemalung.ebenen.some((e) => e.id === id)) return false;
+    this.merken(h, false);
+    ebeneLoeschen(this.bemalung, id);
     this.streckenGemerkt = null;
     return true;
   }
 
-  /** die Farbe der Füllung, die an diesem Ort gilt (für die Pipette); null: Dort liegt keine Farbe */
-  farbeBei(h: HautJetzt, ort: Ort): Farbe | null {
-    // (steht noch etwas aus, zuerst nachziehen; sonst gilt, was das letzte Bild gerechnet hat)
-    if (this.alt || this.haut !== h.haut) this.schritt(h);
-    if (!this.flaechen) return null;
-    const nr = fuellungBei(this.flaechen, ort);
-    const f = nr >= 0 ? this.farben[nr] : undefined;
-    return f ? [f[0], f[1], f[2]] : null;
+  /**
+   * Eine Ebene an einen anderen Platz legen (`platz`: von unten gezählt, 0 ganz unten). `schritt`: einen Schritt für ⌘Z anlegen
+   * (beim Ziehen im Stapel nur beim ersten Tausch: Ein Zug ist ein Schritt). Zurück: Liegt sie jetzt woanders?
+   */
+  ebeneOrdnen(h: HautJetzt, id: number, platz: number, schritt = true): boolean {
+    const i = this.bemalung.ebenen.findIndex((e) => e.id === id);
+    const nach = Math.max(0, Math.min(this.bemalung.ebenen.length - 1, Math.round(platz)));
+    if (i < 0 || i === nach) return false;
+    if (schritt) this.merken(h, false);
+    return ebeneOrdnen(this.bemalung, id, nach);
+  }
+
+  /** an dieser Ebene wird von jetzt an gemalt (kein Schritt für ⌘Z). Zurück: Ist es eine andere als bisher? */
+  ebeneWaehlen(id: number): boolean {
+    if (aktiveEbene(this.bemalung).id === id || !this.bemalung.ebenen.some((e) => e.id === id)) return false;
+    this.bemalung.aktiv = id;
+    this.streckenGemerkt = null;
+    return true;
+  }
+
+  /** eine Ebene aus- oder einblenden (kein Schritt für ⌘Z). Zurück: Hat sich etwas geändert? */
+  ebeneZeigen(id: number, an: boolean): boolean {
+    const e = this.bemalung.ebenen.find((x) => x.id === id);
+    if (!e || !e.aus === an) return false;
+    if (an) delete e.aus;
+    else e.aus = true;
+    this.streckenGemerkt = null;
+    return true;
   }
 
   /** die Lage eines Orts auf der glatten Anzeige (Welt) oder, ohne Anzeige, auf dem Rechennetz */
@@ -573,7 +737,7 @@ export class FarbWerk {
     this.schritt(h);
     if (!this.leer && this.haut === h.haut) {
       const spiegeln = h.gespiegelt;
-      for (const l of aktiveEbene(this.bemalung).linien) {
+      for (const l of this.bedienbar) {
         const P = l.stuetzen.map((o) => this.lageImRaum(h, o));
         const n = P.length;
         for (let i = 0; i < (l.zu ? n : n - 1); i++) {
@@ -611,16 +775,28 @@ export class FarbWerk {
   }
 
   /** was gerade gilt, für Proben */
-  auskunft(h: HautJetzt): { linien: number; orte: number; fuellungen: number; schritte: number; fehl: number; anzeige: FarbAnzeige['zahlen']; wechsel: FarbWerk['wechsel']; lagen: number[][] } {
+  auskunft(h: HautJetzt): {
+    linien: number;
+    orte: number;
+    fuellungen: number;
+    schritte: number;
+    fehl: number;
+    anzeige: FarbAnzeige['zahlen'];
+    wechsel: FarbWerk['wechsel'];
+    lagen: number[][];
+    ebenen: { id: number; name: string; aktiv: boolean; aus: boolean; linien: number; fuellungen: number }[];
+  } {
     this.schritt(h);
     const e = aktiveEbene(this.bemalung);
     return {
+      // (die Zahlen der aktiven Ebene; alle Ebenen, von unten nach oben, in `ebenen`)
+      ebenen: this.bemalung.ebenen.map((x) => ({ id: x.id, name: x.name, aktiv: x.id === e.id, aus: !!x.aus, linien: x.linien.length, fuellungen: x.fuellungen.length })),
       linien: e.linien.length,
       orte: e.linien.reduce((s, l) => s + l.stuetzen.length, 0),
       fuellungen: e.fuellungen.length,
       schritte: this.schritte.length,
       fehl: this.fehl.length,
-      anzeige: { ...this.anzeige.zahlen },
+      anzeige: this.anzeige.zahlen,
       wechsel: { ...this.wechsel },
       // die Orte jeder Farblinie in Einheiten des Werks, auf dem Rechennetz (daran misst die Probe das Mitgehen)
       lagen: e.linien.map((l) => l.stuetzen.flatMap((o) => Array.from(ortLage(h.haut.pos, o)))),

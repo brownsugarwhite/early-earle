@@ -23,11 +23,18 @@
  * Zwei Arten, die Farbe mit dem Grund zu verrechnen: `wachs` (die Farbe mit Hell, Dunkel und Glanz des Wachses, deckend über dem
  * Wachs; lineare Werte, für das Ziel der festen Materialien) und `hell` (die reine Farbe, mit dem Bild darunter multipliziert: Das
  * helle Solid bringt sein Hell und Dunkel selbst mit).
+ *
+ * Etappe 5: mehrere Ebenen (`FarbStapel`). Jede Ebene ist eine `FarbAnzeige` mit ihren eigenen Flächen; gezeichnet werden alle in
+ * einem Durchgang, von unten nach oben (`renderOrder`), jede deckt, was unter ihr liegt. Auf Wachs deckt das Überlagern selbst. Auf
+ * dem hellen Solid geht das nicht (multipliziert deckt nichts): Liegen dort mehrere Ebenen, werden sie zuerst zu einem Bild
+ * gesammelt (die reinen Farben, oben deckt unten, auf Weiß), und dieses Bild wird einmal mit dem Grund multipliziert. Mit einer
+ * Ebene bleibt jede Rechnung, wie sie war.
  */
 import {
   BufferAttribute,
   BufferGeometry,
   type Camera,
+  Color,
   CustomBlending,
   DataTexture,
   DataUtils,
@@ -43,10 +50,14 @@ import {
   NoBlending,
   OneFactor,
   OneMinusSrcAlphaFactor,
+  OrthographicCamera,
+  PlaneGeometry,
   RGBAFormat,
   RGFormat,
   Scene,
   ShaderMaterial,
+  Vector2,
+  WebGLRenderTarget,
   type WebGLRenderer,
   ZeroFactor,
 } from 'three';
@@ -59,6 +70,10 @@ import { FERN, weiteImDreieck } from './fliessen';
 import type { WeichFeld } from './weich';
 
 export type FarbModus = 'wachs' | 'hell';
+/** wie eine Ebene gerade zeichnet: wie `FarbModus`, dazu `sammel` (Etappe 5: die reine Farbe mal ihre Deckung, für das Sammelbild mehrerer Ebenen über dem hellen Solid) */
+type ZeichenArt = FarbModus | 'sammel';
+/** die Felder der glatten Anzeige, die alle Ebenen teilen (ein Puffer auf der Grafikkarte, einmal je Bild nachgezogen) */
+type Gemeinsam = { position: BufferAttribute; normal: BufferAttribute; seite: BufferAttribute };
 
 /** Breite der Datentextur (Texel je Zeile) */
 const DB = 1024;
@@ -146,6 +161,11 @@ const FRAGMENT = /* glsl */ `
 
   /** die Farbe einer Fläche (Bildschirmwerte) mit dem Grund verrechnet; a: Deckung; wulst: der Wulst an der Front einer einlaufenden Füllung (0 … 1) */
   vec4 aus(vec3 farbe, float a, float wulst) {
+    if (uModus > 1.5) {
+      // Etappe 5, mehrere Ebenen über dem hellen Solid: die reine Farbe mal ihre Deckung ins Sammelbild (oben deckt unten); mit
+      // dem Bild darunter wird es am Schluss einmal multipliziert
+      return vec4(farbe * (1.0 - 0.16 * wulst) * a, a);
+    }
     if (uModus > 0.5) {
       // helles Solid: die reine Farbe, multipliziert mit dem Bild darunter (wo nichts deckt: mal Weiß); der Wulst ein wenig satter
       return vec4(mix(vec3(1.0), farbe * (1.0 - 0.16 * wulst), a), 1.0);
@@ -335,6 +355,11 @@ export type FarbWerte = {
   spiegelSchnitt?: number | null;
   /** das Blatt, das sich beim Einrasten durch die Form schiebt (Welt: n · p ≥ w bleibt), wie bei den festen Materialien */
   schnitt?: [number, number, number, number] | null;
+  /**
+   * Nur `hell`: alles, was verdeckt (die glatte Anzeige aller Objekte). Die Zeichenfläche des hellen Solids hat keine Tiefe von
+   * Ozzys Kamera: Sie wird vor der Farbe geschrieben.
+   */
+  verdeckt?: HautNetz | null;
 };
 
 /**
@@ -350,9 +375,9 @@ export type WeichBild = { feld: WeichFeld; tri: ArrayLike<number> };
 /** was sich je Bild ändert: die Front, ihre Welle, Breite und Stärke des Wulstes (Einheiten des Werks), die Zeit seit dem Klick, Werk je Welt */
 export type FlussWerte = { front: number; welle: number; wulst: number; staerke: number; zeit: number; mass: number };
 
+/** die Bemalung einer Ebene (seit Etappe 5 eine von mehreren: `FarbStapel` hält sie, ordnet sie und zeichnet alle zusammen) */
 export class FarbAnzeige {
-  private readonly szene = new Scene();
-  private readonly gruppe = new Group();
+  readonly gruppe = new Group();
   private readonly innenGeo = new BufferGeometry();
   private readonly randGeo = new BufferGeometry();
   private readonly innen: Mesh;
@@ -365,10 +390,9 @@ export class FarbAnzeige {
   private leerMat: ShaderMaterial | null = null;
   private flussWeichMat: ShaderMaterial | null = null;
   private readonly randMat: ShaderMaterial;
-  private readonly licht: DataTexture;
   private daten: DataTexture;
   private farben: DataTexture;
-  private modus: FarbModus = 'wachs';
+  private modus: ZeichenArt = 'wachs';
   /** woraus die Geometrie gebaut ist */
   private stand: { netz: HautNetz; index: Uint32Array; pos: Float32Array; stufen: number; flaechen: Flaechen; fluss: FlussBild | null; weich: WeichBild | null } | null = null;
   /** je Ecke des Rands: ihr Punkt in der Anzeige */
@@ -376,15 +400,11 @@ export class FarbAnzeige {
   /** zählt, was gezeichnet wird (für Proben) */
   zahlen = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
 
-  constructor() {
-    const G = 256;
-    const roh = wachsLichtBild(G);
-    const halb = new Uint16Array(roh.length);
-    for (let i = 0; i < roh.length; i++) halb[i] = DataUtils.toHalfFloat(roh[i]!);
-    this.licht = new DataTexture(halb, G, G, RGFormat, HalfFloatType);
-    this.licht.magFilter = LinearFilter;
-    this.licht.minFilter = LinearFilter;
-    this.licht.needsUpdate = true;
+  /** `licht`: Hell, Dunkel und Glanz des Wachses (für alle Ebenen dasselbe Bild); `gemeinsam`: die geteilten Felder der glatten Anzeige */
+  constructor(
+    private readonly licht: DataTexture,
+    private readonly gemeinsam: (netz: HautNetz) => Gemeinsam,
+  ) {
     this.daten = this.datenTextur(new Float32Array(4 * DB));
     this.farben = this.farbenTextur([]);
     this.randMat = this.material(true, false, false);
@@ -395,7 +415,22 @@ export class FarbAnzeige {
     this.innen.visible = false;
     this.rand.visible = false;
     this.gruppe.add(this.innen, this.rand);
-    this.szene.add(this.gruppe);
+  }
+
+  /** der Platz im Stapel: Was eine höhere Zahl hat, wird später gezeichnet und deckt */
+  ordnung(n: number): void {
+    this.innen.renderOrder = n;
+    this.rand.renderOrder = n;
+  }
+
+  /** die Ebene gibt es nicht mehr: alles freigeben, was auf der Grafikkarte liegt */
+  weg(): void {
+    this.gruppe.removeFromParent();
+    this.innenGeo.dispose();
+    this.randGeo.dispose();
+    for (const m of [this.randMat, ...this.innenAlle()]) m.dispose();
+    this.daten.dispose();
+    this.farben.dispose();
   }
 
   private datenTextur(feld: Float32Array): DataTexture {
@@ -438,6 +473,8 @@ export class FarbAnzeige {
       },
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
+      // (immer in der Reihe der durchscheinenden Dinge: Nur dort gilt die Reihenfolge der Ebenen für alles, auch für das, was ganz deckt)
+      transparent: true,
       depthWrite: false,
       // beide Seiten in einem Durchgang: Der Umlaufsinn der Anzeige ist je Form verschieden, und was hinten liegt, verdeckt die Tiefe der Haut
       side: DoubleSide,
@@ -456,27 +493,23 @@ export class FarbAnzeige {
     return [...this.innenMat, ...this.weichMat, ...[this.flussMat, this.leerMat, this.flussWeichMat].filter((m): m is ShaderMaterial => m !== null)];
   }
 
-  private blenden(m: ShaderMaterial, modus: FarbModus, rand: boolean): void {
-    m.uniforms.uModus!.value = modus === 'hell' ? 1 : 0;
+  private blenden(m: ShaderMaterial, modus: ZeichenArt, rand: boolean): void {
+    m.uniforms.uModus!.value = modus === 'hell' ? 1 : modus === 'sammel' ? 2 : 0;
     if (modus === 'hell') {
       // multiplizieren: Bild darunter mal Farbe (die Deckung des Bilds bleibt)
-      m.transparent = true;
       m.blending = CustomBlending;
       m.blendSrc = DstColorFactor;
       m.blendDst = ZeroFactor;
       m.blendSrcAlpha = ZeroFactor;
       m.blendDstAlpha = OneFactor;
     } else if (rand) {
-      m.transparent = true;
+      // überlagern (Wachs und Sammelbild): Die Farbe steht schon mal ihre Deckung
       m.blending = CustomBlending;
       m.blendSrc = OneFactor;
       m.blendDst = OneMinusSrcAlphaFactor;
       m.blendSrcAlpha = OneFactor;
       m.blendDstAlpha = OneMinusSrcAlphaFactor;
-    } else {
-      m.transparent = false;
-      m.blending = NoBlending;
-    }
+    } else m.blending = NoBlending;
     m.needsUpdate = true;
   }
 
@@ -530,9 +563,10 @@ export class FarbAnzeige {
     const I = netz.index;
     const ecken = feinEcken(stufen);
     const g = this.innenGeo;
-    g.setAttribute('position', new BufferAttribute(netz.pos, 3));
-    g.setAttribute('normal', new BufferAttribute(netz.normal, 3));
-    g.setAttribute('aSeite', new BufferAttribute(netz.seite, 1));
+    const G = this.gemeinsam(netz);
+    g.setAttribute('position', G.position);
+    g.setAttribute('normal', G.normal);
+    g.setAttribute('aSeite', G.seite);
     // ---- Etappe 4: welche ganzen Dreiecke im Verlauf einer weichen Kante liegen; ihre Ecken tragen Abstand, Breite, Farbe jenseits ----
     const imVerlauf = new Uint8Array(Tg);
     let weichZahl = 0;
@@ -783,12 +817,119 @@ export class FarbAnzeige {
     seite.needsUpdate = true;
   }
 
-  private tiefe: { szene: Scene; geo: BufferGeometry; netz: HautNetz | null; index: Uint32Array | null; pos: Float32Array | null } | null = null;
   /**
-   * Die Tiefe der Haut in das gebundene Ziel schreiben, ohne Farbe (für eine Zeichenfläche, deren Tiefe nicht von Ozzys Kamera
-   * stammt: die des hellen Solids). `netz`: alles, was verdeckt (alle Objekte); `bewegt`: Die Lagen haben sich geändert.
+   * Vor dem Zeichnen: wie die Farbe mit dem Grund verrechnet wird, die Schnitte, und wie breit die Farblinien selbst zu sehen sind
+   * (`linie`, Gerätepunkte; 0: nicht)
    */
-  tiefeSchreiben(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz, bewegt: boolean): void {
+  werte(art: ZeichenArt, w: FarbWerte, linie: number): void {
+    if (art !== this.modus) {
+      this.modus = art;
+      this.blenden(this.randMat, art, true);
+      for (const m of this.innenAlle()) this.blenden(m, art, !this.innenMat.includes(m));
+    }
+    const sn = w.schnitt && Math.hypot(w.schnitt[0], w.schnitt[1], w.schnitt[2]) > 1e-9 ? w.schnitt : [0, 0, 1, -1e9];
+    const nr = art === 'hell' ? 1 : art === 'sammel' ? 2 : 0;
+    for (const m of [this.randMat, ...this.innenAlle()]) {
+      m.uniforms.uSchnitt!.value = sn;
+      m.uniforms.uSpiegel!.value = w.spiegelSchnitt ?? -1;
+      m.uniforms.uModus!.value = nr;
+    }
+    this.randMat.uniforms.uLinie!.value = linie;
+  }
+}
+
+const NULL_ZAHLEN = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
+
+/**
+ * Etappe 5: der Stapel der Ebenen im Bild. Er hält je Ebene ihre `FarbAnzeige`, weiß, welche gezeichnet werden und in welcher
+ * Reihenfolge, und zeichnet sie zusammen über das, was im gebundenen Ziel steht.
+ */
+export class FarbStapel {
+  private readonly szene = new Scene();
+  private readonly licht: DataTexture;
+  private readonly jeEbene = new Map<number, FarbAnzeige>();
+  /** die Ebenen, die gezeichnet werden, von unten nach oben; `aktive`: die, an der gemalt wird (nur sie zeigt ihre Farblinien) */
+  private reihe: FarbAnzeige[] = [];
+  private aktive: FarbAnzeige | null = null;
+  private geteilt: { pos: Float32Array; normal: Float32Array; seite: Float32Array; felder: Gemeinsam } | null = null;
+  private readonly groesse = new Vector2();
+  private readonly merkFarbe = new Color();
+
+  constructor() {
+    const G = 256;
+    const roh = wachsLichtBild(G);
+    const halb = new Uint16Array(roh.length);
+    for (let i = 0; i < roh.length; i++) halb[i] = DataUtils.toHalfFloat(roh[i]!);
+    this.licht = new DataTexture(halb, G, G, RGFormat, HalfFloatType);
+    this.licht.magFilter = LinearFilter;
+    this.licht.minFilter = LinearFilter;
+    this.licht.needsUpdate = true;
+  }
+
+  /** die Felder der glatten Anzeige, von allen Ebenen geteilt (ändert sich das Netz, neue) */
+  private gemeinsam = (netz: HautNetz): Gemeinsam => {
+    const g = this.geteilt;
+    if (g && g.pos === netz.pos && g.normal === netz.normal && g.seite === netz.seite) return g.felder;
+    const felder = { position: new BufferAttribute(netz.pos, 3), normal: new BufferAttribute(netz.normal, 3), seite: new BufferAttribute(netz.seite, 1) };
+    this.geteilt = { pos: netz.pos, normal: netz.normal, seite: netz.seite, felder };
+    return felder;
+  };
+
+  /** die Anzeige einer Ebene (angelegt, wenn es sie noch nicht gibt) */
+  fuer(id: number): FarbAnzeige {
+    let a = this.jeEbene.get(id);
+    if (!a) {
+      a = new FarbAnzeige(this.licht, this.gemeinsam);
+      a.gruppe.visible = false;
+      this.szene.add(a.gruppe);
+      this.jeEbene.set(id, a);
+    }
+    return a;
+  }
+
+  /**
+   * Was gezeichnet wird: `sichtbar`, die Ebenen von unten nach oben; `aktiv`: an welcher gemalt wird; `alle`: die es gibt (die
+   * Anzeige jeder anderen wird freigegeben). Eine ausgeblendete Ebene behält, was sie zuletzt zeigte, bis sie wieder dran ist.
+   */
+  ordnen(sichtbar: readonly number[], aktiv: number, alle: readonly number[]): void {
+    for (const [id, a] of this.jeEbene) {
+      if (alle.includes(id)) continue;
+      a.weg();
+      this.jeEbene.delete(id);
+    }
+    for (const a of this.jeEbene.values()) a.gruppe.visible = false;
+    this.reihe = sichtbar.map((id, n) => {
+      const a = this.fuer(id);
+      a.gruppe.visible = true;
+      a.ordnung(n);
+      return a;
+    });
+    this.aktive = sichtbar.includes(aktiv) ? this.fuer(aktiv) : null;
+  }
+
+  /** ist etwas zu zeichnen? */
+  get leer(): boolean {
+    return this.reihe.every((a) => a.leer);
+  }
+
+  /** nichts mehr zeigen (keine Bemalung, oder kein Netz) */
+  leeren(): void {
+    for (const a of this.jeEbene.values()) a.leeren();
+  }
+
+  /** zählt, was gezeichnet wird, über alle Ebenen (für Proben) */
+  get zahlen(): FarbAnzeige['zahlen'] {
+    const z = { ...NULL_ZAHLEN };
+    for (const a of this.reihe) for (const k of Object.keys(z) as (keyof typeof z)[]) z[k] += a.zahlen[k];
+    return z;
+  }
+
+  /** wie viele Ebenen gerade etwas zeichnen, und ob sie zuletzt gesammelt wurden (helles Solid mit mehreren Ebenen; für Proben) */
+  stand = { ebenen: 0, gesammelt: false };
+
+  private tiefe: { szene: Scene; geo: BufferGeometry; netz: HautNetz | null; index: Uint32Array | null; pos: Float32Array | null } | null = null;
+  /** die Dreiecke von allem, was verdeckt (`netz`: alle Objekte); `bewegt`: Die Lagen haben sich geändert */
+  private tiefeFuer(netz: HautNetz, bewegt: boolean): NonNullable<FarbStapel['tiefe']> {
     if (!this.tiefe) {
       const geo = new BufferGeometry();
       const mat = new ShaderMaterial({
@@ -811,6 +952,15 @@ export class FarbAnzeige {
       T.index = netz.index;
       T.pos = netz.pos;
     } else if (bewegt) (T.geo.getAttribute('position') as BufferAttribute).needsUpdate = true;
+    return T;
+  }
+
+  /**
+   * Die Tiefe der Haut in das gebundene Ziel schreiben, ohne Farbe (für eine Zeichenfläche, deren Tiefe nicht von Ozzys Kamera
+   * stammt: die des hellen Solids). `netz`: alles, was verdeckt (alle Objekte); `bewegt`: Die Lagen haben sich geändert.
+   */
+  tiefeSchreiben(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz, bewegt: boolean): void {
+    const T = this.tiefeFuer(netz, bewegt);
     const auto = renderer.autoClear;
     renderer.autoClear = false;
     renderer.clearDepth();
@@ -818,27 +968,85 @@ export class FarbAnzeige {
     renderer.autoClear = auto;
   }
 
+  private sammel: { ziel: WebGLRenderTarget; weiss: Mesh; ende: { szene: Scene; kamera: OrthographicCamera } } | null = null;
   /**
-   * Über das zeichnen, was im gebundenen Ziel steht (die Haut mit ihrem Grund und ihrer Tiefe). `wicklung`: Umlaufsinn der Dreiecke
-   * der Anzeige von außen gesehen (1 gegen den Uhrzeiger), wie bei den festen Materialien.
+   * Helles Solid mit mehreren Ebenen: alle Ebenen in ein eigenes Bild (auf dem weißen Körper, oben deckt unten), dann dieses Bild
+   * einmal mit dem multiplizieren, was im gebundenen Ziel steht. In einem Durchgang gezeichnet: Ein Ziel mit Kantenglättung gibt
+   * nach jedem Durchgang seine Farbe frei. An einem Bildpunkt, den der Körper nur zum Teil deckt, steht im Sammelbild die Farbe mal
+   * diesen Teil; geteilt durch ihn ist es wieder die Farbe (so bleibt am Umriss kein heller Saum).
+   */
+  private sammeln(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz): void {
+    const T = this.tiefeFuer(netz, true);
+    if (!this.sammel) {
+      const ziel = new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: true });
+      const weiss = new Mesh(
+        T.geo,
+        new ShaderMaterial({
+          vertexShader: 'void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+          fragmentShader: 'void main() { gl_FragColor = vec4(1.0); }',
+          side: DoubleSide,
+        }),
+      );
+      weiss.frustumCulled = false;
+      weiss.visible = false;
+      weiss.renderOrder = -1;
+      this.szene.add(weiss);
+      const material = new ShaderMaterial({
+        uniforms: { tBild: { value: ziel.texture } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: 'uniform sampler2D tBild; varying vec2 vUv; void main() { vec4 c = texture2D(tBild, vUv); gl_FragColor = vec4(c.a > 0.002 ? c.rgb / c.a : vec3(1.0), 1.0); }',
+        depthTest: false,
+        depthWrite: false,
+        transparent: true,
+        // multiplizieren, wie eine einzelne Ebene über dem hellen Solid (die Deckung des Bilds bleibt)
+        blending: CustomBlending,
+        blendSrc: DstColorFactor,
+        blendDst: ZeroFactor,
+        blendSrcAlpha: ZeroFactor,
+        blendDstAlpha: OneFactor,
+      });
+      const flaeche = new Mesh(new PlaneGeometry(2, 2), material);
+      flaeche.frustumCulled = false;
+      const szene = new Scene();
+      szene.add(flaeche);
+      this.sammel = { ziel, weiss, ende: { szene, kamera: new OrthographicCamera(-1, 1, 1, -1, 0, 1) } };
+    }
+    const S = this.sammel;
+    const g = renderer.getDrawingBufferSize(this.groesse);
+    if (S.ziel.width !== g.x || S.ziel.height !== g.y) S.ziel.setSize(g.x, g.y);
+    const farbe = renderer.getClearColor(this.merkFarbe);
+    const alpha = renderer.getClearAlpha();
+    const vorher = renderer.getRenderTarget();
+    S.weiss.visible = true;
+    renderer.setRenderTarget(S.ziel);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear(true, true, true);
+    renderer.render(this.szene, kamera);
+    S.weiss.visible = false;
+    renderer.setRenderTarget(vorher);
+    renderer.setClearColor(farbe, alpha);
+    renderer.render(S.ende.szene, S.ende.kamera);
+  }
+
+  /**
+   * Über das zeichnen, was im gebundenen Ziel steht (die Haut mit ihrem Grund; auf Wachs auch mit ihrer Tiefe, auf dem hellen
+   * Solid wird sie hier geschrieben: `w.verdeckt`). Die Ebenen von unten nach oben, jede deckt, was unter ihr liegt.
    */
   zeichnen(renderer: WebGLRenderer, kamera: Camera, w: FarbWerte): void {
-    if (this.leer) return;
-    if (w.modus !== this.modus) {
-      this.modus = w.modus;
-      this.blenden(this.randMat, w.modus, true);
-      for (const m of this.innenAlle()) this.blenden(m, w.modus, !this.innenMat.includes(m));
-    }
-    const sn = w.schnitt && Math.hypot(w.schnitt[0], w.schnitt[1], w.schnitt[2]) > 1e-9 ? w.schnitt : [0, 0, 1, -1e9];
-    for (const m of [this.randMat, ...this.innenAlle()]) {
-      m.uniforms.uSchnitt!.value = sn;
-      m.uniforms.uSpiegel!.value = w.spiegelSchnitt ?? -1;
-      m.uniforms.uModus!.value = w.modus === 'hell' ? 1 : 0;
-    }
-    this.randMat.uniforms.uLinie!.value = w.linie;
+    const da = this.reihe.filter((a) => !a.leer);
+    this.stand = { ebenen: da.length, gesammelt: false };
+    if (!da.length) return;
+    // (multipliziert deckt nichts: Mehrere Ebenen über dem hellen Solid werden erst gesammelt)
+    const gesammelt = w.modus === 'hell' && da.length > 1 && !!w.verdeckt;
+    this.stand.gesammelt = gesammelt;
+    for (const a of this.reihe) a.werte(gesammelt ? 'sammel' : w.modus, w, a === this.aktive ? w.linie : 0);
     const auto = renderer.autoClear;
     renderer.autoClear = false;
-    renderer.render(this.szene, kamera);
+    if (gesammelt) this.sammeln(renderer, kamera, w.verdeckt!);
+    else {
+      if (w.modus === 'hell' && w.verdeckt) this.tiefeSchreiben(renderer, kamera, w.verdeckt, true);
+      renderer.render(this.szene, kamera);
+    }
     renderer.autoClear = auto;
   }
 }

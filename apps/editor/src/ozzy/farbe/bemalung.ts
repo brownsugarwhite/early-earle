@@ -18,12 +18,71 @@ export type Farbe = [number, number, number];
  */
 export type Farblinie = LinieOrte & { punkte: FarbPunkt[] };
 export type Fuellung = { id: number; saat: Ort; farbe: Farbe };
-export type Ebene = { id: number; name: string; linien: Farblinie[]; fuellungen: Fuellung[] };
+/**
+ * Eine Ebene: ihre eigenen Farblinien und Füllungen. `aus`: ausgeblendet (sie bleibt, wird aber nicht gezeichnet). Seit Etappe 5
+ * liegen mehrere übereinander: `Bemalung.ebenen` zählt von unten nach oben, was weiter hinten steht, deckt, was davor steht.
+ */
+export type Ebene = { id: number; name: string; linien: Farblinie[]; fuellungen: Fuellung[]; aus?: boolean };
 export type Bemalung = { ebenen: Ebene[]; aktiv: number; naechste: number };
 
 export const leereBemalung = (): Bemalung => ({ ebenen: [{ id: 1, name: 'Ebene 1', linien: [], fuellungen: [] }], aktiv: 1, naechste: 2 });
 export const istLeer = (b: Bemalung): boolean => b.ebenen.every((e) => !e.linien.length && !e.fuellungen.length);
 export const aktiveEbene = (b: Bemalung): Ebene => b.ebenen.find((e) => e.id === b.aktiv) ?? b.ebenen[0]!;
+
+/** so viele Ebenen hat eine Bemalung höchstens (jede kostet beim Zeichnen und beim Neurechnen) */
+export const EBENEN_HOECHSTENS = 12;
+
+/**
+ * Etappe 5: eine neue, leere Ebene, gleich über der aktiven; sie wird die aktive. Ihr Name zählt weiter (eins mehr als die höchste
+ * Nummer, die es gibt). Zurück: die neue Ebene, oder null, wenn es schon `EBENEN_HOECHSTENS` sind.
+ */
+export function ebeneNeu(b: Bemalung): Ebene | null {
+  if (b.ebenen.length >= EBENEN_HOECHSTENS) return null;
+  let nr = b.ebenen.length;
+  for (const e of b.ebenen) {
+    const m = /^Ebene (\d+)$/.exec(e.name);
+    if (m) nr = Math.max(nr, Number(m[1]));
+  }
+  const neu: Ebene = { id: b.naechste++, name: `Ebene ${nr + 1}`, linien: [], fuellungen: [] };
+  const platz = b.ebenen.findIndex((e) => e.id === aktiveEbene(b).id);
+  b.ebenen.splice(platz + 1, 0, neu);
+  b.aktiv = neu.id;
+  return neu;
+}
+
+/** eine Ebene samt allem, was auf ihr liegt, löschen (die letzte bleibt). War sie die aktive, wird es die darunter (sonst die darüber). Zurück: gelöscht? */
+export function ebeneLoeschen(b: Bemalung, id: number): boolean {
+  const i = b.ebenen.findIndex((e) => e.id === id);
+  if (i < 0 || b.ebenen.length < 2) return false;
+  const warAktiv = aktiveEbene(b).id === id;
+  b.ebenen.splice(i, 1);
+  if (warAktiv) b.aktiv = b.ebenen[Math.max(0, i - 1)]!.id;
+  return true;
+}
+
+/** eine Ebene an einen anderen Platz im Stapel legen (0: ganz unten). Zurück: Liegt sie jetzt woanders? */
+export function ebeneOrdnen(b: Bemalung, id: number, platz: number): boolean {
+  const i = b.ebenen.findIndex((e) => e.id === id);
+  const nach = Math.max(0, Math.min(b.ebenen.length - 1, Math.round(platz)));
+  if (i < 0 || i === nach) return false;
+  const [e] = b.ebenen.splice(i, 1);
+  b.ebenen.splice(nach, 0, e!);
+  return true;
+}
+
+/**
+ * Was man sieht und woran man arbeitet (welche Ebene aktiv ist, welche ausgeblendet sind), gehört nicht zu den Schritten für ⌘Z:
+ * Kommt ein früherer Stand zurück, behält jede Ebene, die es dann noch gibt, wie sie jetzt steht.
+ */
+export function sichtUebernehmen(von: Bemalung, nach: Bemalung): void {
+  for (const e of nach.ebenen) {
+    const jetzt = von.ebenen.find((x) => x.id === e.id);
+    if (!jetzt) continue;
+    if (jetzt.aus) e.aus = true;
+    else delete e.aus;
+  }
+  if (nach.ebenen.some((e) => e.id === von.aktiv)) nach.aktiv = von.aktiv;
+}
 
 const ortKopie = (o: Ort): Ort => ({ t: o.t, e: [o.e[0], o.e[1], o.e[2]], w: [o.w[0], o.w[1], o.w[2]] });
 const richtungKopie = (g: Richtung | null): Richtung | null => (g ? [g[0], g[1], g[2]] : null);
@@ -77,6 +136,7 @@ export function kopie(b: Bemalung): Bemalung {
       name: e.name,
       linien: e.linien.map((l) => ({ id: l.id, zu: l.zu, stuetzen: l.stuetzen.map(ortKopie), punkte: l.punkte.map(punktKopie) })),
       fuellungen: e.fuellungen.map((f) => ({ id: f.id, saat: ortKopie(f.saat), farbe: [f.farbe[0], f.farbe[1], f.farbe[2]] })),
+      ...(e.aus ? { aus: true } : {}),
     })),
   };
 }
@@ -342,7 +402,8 @@ export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean
  * Was gespeichert wird (`WesenStand.farbe`): Orte als Punkte des Netzes und Gewichte, Farben als Zahlen 0 … 1. Version 2 (Etappe 2)
  * trägt je Farblinie ihre Punkte: `p` die Nummern ihrer Orte, `g` je Punkt sechs Zahlen (Richtung „ein“, Richtung „aus“, zu den
  * Ecken in der Reihenfolge von `e`; NaN: keine), `k` je Punkt 1 für geknickt. Version 1 (Etappe 1) hat nur die Orte. Version 3
- * (Etappe 4) trägt dazu `b`: je Punkt die Breite seines Verlaufs (0: harte Kante).
+ * (Etappe 4) trägt dazu `b`: je Punkt die Breite seines Verlaufs (0: harte Kante). Seit Etappe 5 stehen mehrere Ebenen darin, von
+ * unten nach oben; `aus`: ausgeblendet (das Feld fehlt, wenn sie zu sehen ist; die Version bleibt 3, das Format ist dasselbe).
  */
 export type BemalungDatei = {
   version: 1 | 2 | 3;
@@ -353,6 +414,7 @@ export type BemalungDatei = {
     name: string;
     linien: { id: number; zu: boolean; e: Int32Array; w: Float64Array; p?: Int32Array; g?: Float64Array; k?: Uint8Array; b?: Float64Array }[];
     fuellungen: { id: number; e: [number, number, number]; w: [number, number, number]; farbe: Farbe }[];
+    aus?: boolean;
   }[];
 };
 
@@ -375,6 +437,7 @@ export function alsDatei(b: Bemalung): BemalungDatei {
         b: Float64Array.from(l.punkte.map((q) => q.breite ?? 0)),
       })),
       fuellungen: e.fuellungen.map((f) => ({ id: f.id, e: [...f.saat.e], w: [...f.saat.w], farbe: [...f.farbe] })),
+      ...(e.aus ? { aus: true } : {}),
     })),
   };
 }
@@ -442,7 +505,7 @@ export function ausDatei(k: Karte, d: BemalungDatei | null | undefined): Bemalun
       if (!o) return null;
       fuellungen.push({ id: f.id, saat: o.o, farbe: [f.farbe[0], f.farbe[1], f.farbe[2]] });
     }
-    ebenen.push({ id: e.id, name: e.name, linien, fuellungen });
+    ebenen.push({ id: e.id, name: e.name, linien, fuellungen, ...(e.aus === true ? { aus: true } : {}) });
   }
   if (!ebenen.length) return null;
   return { ebenen, aktiv: d.aktiv, naechste: d.naechste };

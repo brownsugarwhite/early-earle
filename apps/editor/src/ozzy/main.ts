@@ -37,7 +37,8 @@ import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
 import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND } from './wachs';
-import { type Farbe, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
+import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
+import { EbenenStapel } from './farbe/ebenenStapel';
 import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
 import { FarbLeiste, alsHex as farbeAlsHex } from './farbe/farbLeiste';
 import { richtungVektor } from './farbe/kurve';
@@ -4150,8 +4151,8 @@ function bild(dt: number): boolean {
           farbeDa && material === 'Helles Solid'
             ? (r) => {
                 const t0 = performance.now();
-                farbWerk.anzeige.tiefeSchreiben(r, kam.aktiv, zeigN, true);
-                farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt() });
+                // (die Zeichenfläche des hellen Solids hat keine Tiefe von Ozzys Kamera: Die Anzeige schreibt sie vor der Farbe)
+                farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), verdeckt: zeigN });
                 farbKostenBild += performance.now() - t0;
               }
             : null,
@@ -4298,6 +4299,8 @@ function bild(dt: number): boolean {
   const malt = malModus && zustand === 'ruhe' && werkGezeigt;
   leiste.malZeigen(malt);
   farbLeiste.zeigen(malt);
+  // Etappe 5: der Stapel der Ebenen am Rand
+  ebenenStapel.zeigen(malt, malt ? farbWerk.ebenenStand() : [], farbWerk.bemalung.ebenen.length >= EBENEN_HOECHSTENS);
   tastenStand();
   // Text
   // (auf dem Blatt eines weiteren Objekts stehen die vorhandenen blass: Dort schweigt der Schriftzug)
@@ -7681,6 +7684,68 @@ const farbLeiste = new FarbLeiste(document.body, $<HTMLInputElement>('farbe-farb
 });
 farbWahl = farbLeiste.farbe;
 leiste.farbeZeigen(farbCss(farbWahl));
+// ---------- Paint-Modus, Etappe 5: Ebenen (der Stapel am Rand, `farbe/ebenenStapel.ts`) ----------
+
+/** der Name einer Ebene (für Meldungen) */
+const ebeneName = (id: number): string => farbWerk.bemalung.ebenen.find((e) => e.id === id)?.name ?? 'Ebene';
+/** nach einem Handgriff am Stapel: Was an den Farblinien gewählt war, gilt nicht mehr; das Bild ist ein anderes */
+function ebenenGeaendert(): void {
+  bearbeiten.auswahlLeeren();
+  weichZug = null;
+  farbBild++;
+  anstossen();
+}
+/** an dieser Ebene wird von jetzt an gemalt */
+function ebeneWaehlen(id: number): boolean {
+  if (!farbWerk.ebeneWaehlen(id)) return false;
+  werk.G.meldung = `${ebeneName(id)}: Hier malst du jetzt`;
+  ebenenGeaendert();
+  return true;
+}
+/** eine Ebene aus- oder einblenden */
+function ebeneZeigen(id: number, an: boolean): boolean {
+  if (!farbWerk.ebeneZeigen(id, an)) return false;
+  werk.G.meldung = `${ebeneName(id)} ${an ? 'eingeblendet' : 'ausgeblendet'}`;
+  ebenenGeaendert();
+  return true;
+}
+/** eine neue Ebene über der aktiven; sie wird die aktive */
+function ebeneNeu(): number | null {
+  const id = farbSchritt(() => farbWerk.ebeneNeu(hautJetzt()));
+  werk.G.meldung = id === null ? `Mehr als ${EBENEN_HOECHSTENS} Ebenen gehen nicht` : `${ebeneName(id)}: neu, über der letzten · Hier malst du jetzt · ⌘Z nimmt sie zurück`;
+  if (id !== null) ebenenGeaendert();
+  return id;
+}
+/** eine Ebene an einen anderen Platz legen (`platz`: von oben gezählt); `schritt`: als Schritt für ⌘Z */
+function ebeneOrdnen(id: number, platz: number, schritt: boolean): boolean {
+  const nach = farbWerk.bemalung.ebenen.length - 1 - platz;
+  const h = hautJetzt();
+  const gelegt = schritt ? farbSchritt(() => farbWerk.ebeneOrdnen(h, id, nach, true)) : farbWerk.ebeneOrdnen(h, id, nach, false);
+  if (!gelegt) return false;
+  werk.G.meldung = `${ebeneName(id)} liegt jetzt ${platz === 0 ? 'ganz oben' : nach === 0 ? 'ganz unten' : `an Platz ${platz + 1} von oben`}`;
+  farbBild++;
+  anstossen();
+  return true;
+}
+/** eine Ebene mit allem, was auf ihr liegt, löschen */
+function ebeneLoeschen(id: number): boolean {
+  const name = ebeneName(id);
+  if (!farbSchritt(() => farbWerk.ebeneLoeschen(hautJetzt(), id))) {
+    werk.G.meldung = 'Die letzte Ebene bleibt';
+    return false;
+  }
+  werk.G.meldung = `${name} gelöscht · ⌘Z holt sie zurück`;
+  ebenenGeaendert();
+  return true;
+}
+const ebenenStapel = new EbenenStapel(document.body, {
+  waehlen: (id) => void ebeneWaehlen(id),
+  zeigen: (id, an) => void ebeneZeigen(id, an),
+  neu: () => void ebeneNeu(),
+  ordnen: (id, platz, erster) => void ebeneOrdnen(id, platz, erster),
+  loeschen: (id) => void ebeneLoeschen(id),
+  muell: (x, y) => document.elementFromPoint(x, y)?.closest('button') === leiste.muellKnopf,
+});
 // ---------- Paint-Modus, Etappe 4: weiche Kanten (Fassung 1: der Tropfen am Faden) ----------
 
 /** die Anfasser der Breite an den gewählten Punkten, samt der Stelle ihres Tropfens im Bild (CSS-Pixel) */
@@ -7744,7 +7809,7 @@ function weichZugBewegen(x: number, y: number): void {
   if (!z) return;
   const lang = (x - z.x) * z.ux + (y - z.y) * z.uy - z.versatz;
   const breite = lang < WEICH_HART_AB ? 0 : lang / z.jeEinheit;
-  const l = farbWerk.bemalung.ebenen.find((e) => e.id === farbWerk.bemalung.aktiv)?.linien[z.linie];
+  const l = aktiveEbene(farbWerk.bemalung).linien[z.linie];
   if (!l || (l.punkte[z.punkt]?.breite ?? 0) === breite) return;
   if (!z.gemerkt) {
     farbSchritt(() => farbWerk.merken(hautJetzt()));
@@ -7761,7 +7826,7 @@ function weichZugBewegen(x: number, y: number): void {
 function weichTaste(k: string): boolean {
   const G = weichGriffe();
   if (!G.length) return false;
-  const l = farbWerk.bemalung.ebenen.find((e) => e.id === farbWerk.bemalung.aktiv)?.linien;
+  const l = aktiveEbene(farbWerk.bemalung).linien;
   // (ein Punkt und sein Spiegelbild sind derselbe)
   const punkte = new Map<string, { linie: number; punkt: number; breite: number }>();
   for (const g of G) punkte.set(`${g.linie}.${g.punkt}`, { linie: g.linie, punkt: g.punkt, breite: l?.[g.linie]?.punkte[g.punkt]?.breite ?? 0 });
@@ -9044,7 +9109,7 @@ const haken = {
   /** die Orte der Farblinie `nr` im Raum (Welt), auf der glatten Anzeige */
   farbLinieImRaum: (nr = 0): number[][] => {
     const h = hautJetzt();
-    return (farbWerk.bemalung.ebenen[0]?.linien[nr]?.stuetzen ?? []).map((o) => farbWerk.lageImRaum(h, o));
+    return (aktiveEbene(farbWerk.bemalung).linien[nr]?.stuetzen ?? []).map((o) => farbWerk.lageImRaum(h, o));
   },
   /** Etappe 2: unter einem Bildpunkt (CSS-Pixel) der Treffer des Rasters im Bild gegen den des Strahls (Abstand in Einheiten des Werks; −1: einer fehlt, −2: beide) */
   farbRaster: (x: number, y: number): number => (farbAn ? farbBlatt.rasterGegenStrahl(x, y) : -2),
@@ -9084,7 +9149,7 @@ const haken = {
    * für ⌘Z; `punkt` −1: an allen Punkten der Farblinie. Zurück: die Breiten ihrer Punkte danach (null: keine solche Farblinie).
    */
   farbBreite: (linie: number, punkt: number, breite: number): number[] | null => {
-    const l = farbWerk.bemalung.ebenen[0]?.linien[linie];
+    const l = aktiveEbene(farbWerk.bemalung).linien[linie];
     if (!l) return null;
     farbSchritt(() => {
       farbWerk.merken(hautJetzt());
@@ -9095,6 +9160,20 @@ const haken = {
   /** Etappe 4: die Tropfen an den gewählten Punkten: der Punkt (x, y) und sein Tropfen (gx, gy) im Bild, die Breite, Bildpunkte je Einheit */
   farbWeichGriffe: (): { linie: number; punkt: number; x: number; y: number; gx: number; gy: number; breite: number; jeEinheit: number }[] =>
     weichGriffe().map((g) => ({ linie: g.linie, punkt: g.punkt, x: g.x, y: g.y, gx: g.gx, gy: g.gy, breite: g.breite, jeEinheit: g.jeEinheit })),
+  /**
+   * Etappe 5: die Ebenen von oben nach unten (wie der Stapel am Rand sie zeigt), dazu was die Anzeige zuletzt tat (wie viele
+   * Ebenen etwas zeichneten, ob sie über dem hellen Solid gesammelt wurden) und wie viele Ebenen das letzte Ableiten neu rechnete
+   */
+  farbEbenen: (): { ebenen: ReturnType<FarbWerk['ebenenStand']>; stapel: number[]; zu_sehen: boolean; anzeige: { ebenen: number; gesammelt: boolean }; abgeleitet: number } => ({
+    ebenen: farbWerk.ebenenStand(),
+    stapel: ebenenStapel.stand,
+    zu_sehen: !ebenenStapel.el.hidden,
+    anzeige: { ...farbWerk.anzeige.stand },
+    abgeleitet: farbWerk.abgeleitet,
+  }),
+  /** Etappe 5: ein Handgriff am Stapel, wie ein Klick dort: `neu`; `waehlen`, `loeschen` (Kennung); `zeigen` (Kennung, an?); `ordnen` (Kennung, Platz von oben) */
+  farbEbene: (was: 'neu' | 'waehlen' | 'zeigen' | 'ordnen' | 'loeschen', id = -1, wert: number | boolean = 0): number | boolean | null =>
+    was === 'neu' ? ebeneNeu() : was === 'waehlen' ? ebeneWaehlen(id) : was === 'zeigen' ? ebeneZeigen(id, !!wert) : was === 'ordnen' ? ebeneOrdnen(id, Number(wert), true) : ebeneLoeschen(id),
   /** Etappe 4: was die weichen Kanten und das ganze Ableiten zuletzt gekostet haben (ms), und wie viele Dreiecke innen im Verlauf liegen */
   farbWeich: (): { weichMs: number; ableitenMs: number; dreiecke: number } => ({ weichMs: farbWerk.weichMs, ableitenMs: farbWerk.ableitenMs, dreiecke: farbWerk.anzeige.zahlen.weich }),
   /** Etappe 3: eine der zwei Fassungen des Einlaufens wählen oder es abschalten */
@@ -9110,7 +9189,7 @@ const haken = {
   /** Etappe 2: die Punkte der Farblinie `nr` im Bild (CSS-Pixel), mit Knick und ob sie Richtungen tragen; dazu, ob sie geschlossen ist */
   farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: [number, number] | null; aus: [number, number] | null; z: number; breite: number }[] } | null => {
     const h = hautJetzt();
-    const l = farbWerk.bemalung.ebenen[0]?.linien[nr];
+    const l = aktiveEbene(farbWerk.bemalung).linien[nr];
     if (!l) return null;
     const imBild = (p: [number, number, number]): [number, number] => {
       const v = new Vector3(p[0], p[1], p[2]).project(kam.aktiv as Camera);
@@ -9172,7 +9251,7 @@ const haken = {
   /** die Orte der Farblinie `nr` im Bild (CSS-Pixel), auf der glatten Anzeige; dazu die Tiefe (kleiner: näher) */
   farbLinieImBild: (nr = 0): { x: number; y: number; z: number }[] => {
     const h = hautJetzt();
-    const l = farbWerk.bemalung.ebenen[0]?.linien[nr];
+    const l = aktiveEbene(farbWerk.bemalung).linien[nr];
     if (!l) return [];
     return l.stuetzen.map((o) => {
       const p = farbWerk.lageImRaum(h, o);

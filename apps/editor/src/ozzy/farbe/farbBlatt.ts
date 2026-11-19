@@ -460,7 +460,8 @@ export class FarbBlatt implements Raum {
     const h = this.h!;
     const k = h.gespiegelt ? this.fw.karteFuer(h) : null;
     const aus: Zeile[] = [];
-    for (const l of aktiveEbene(this.fw.bemalung).linien) {
+    // (Etappe 5: die Farblinien der aktiven Ebene, solange sie zu sehen ist)
+    for (const l of this.fw.bedienbar) {
       const z = this.zeileVon(l);
       aus.push(z);
       const g = k?.spiegel ? this.gespiegelt(z, k) : null;

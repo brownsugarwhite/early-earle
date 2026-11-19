@@ -468,6 +468,164 @@ body.wende-an #hinweis {
   opacity: 0;
   pointer-events: none;
 }
+/* Paint-Modus, Etappe 5: die Ebenen als Stapel liegender Tropfen am rechten Rand (`farbe/ebenenStapel.ts`). Oben liegt, was
+   deckt. Jede Linse trägt die Farben ihrer Ebene; die der Ebene, an der gemalt wird, ist größer und steht vor; eine ausgeblendete
+   ist hohl. Der Punkt daneben blendet aus und ein, die hohle Linse mit dem Plus legt eine Ebene an. */
+#ebenen {
+  position: fixed;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  z-index: 3;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#ebenen[hidden] {
+  display: none;
+}
+#ebenen .stapel {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+#ebenen .zeile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 20px;
+  transition: transform 300ms var(--feder);
+}
+/* gezogen: Sie liegt unter dem Zeiger, ohne Nachlauf, vor den anderen */
+#ebenen .zeile.zieht {
+  transition: none;
+  z-index: 2;
+}
+#ebenen .zeile.heraus {
+  pointer-events: none;
+}
+#ebenen button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#ebenen button[hidden] {
+  display: none;
+}
+#ebenen .ebene {
+  width: 48px;
+  height: 20px;
+  display: grid;
+  align-items: center;
+  justify-items: end;
+}
+#ebenen .linse {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 30px;
+  height: 12px;
+  border: 0.9px solid var(--tinte);
+  border-radius: 50%;
+  background: var(--fuellung, var(--papier));
+  /* (sie wächst von der Seite des Rands her, an dem der Stapel steht) */
+  transform-origin: 100% 50%;
+  transition:
+    transform 380ms var(--feder),
+    opacity 160ms ease,
+    border-color 160ms ease;
+  animation: ebene-kommt 420ms var(--feder) backwards;
+}
+@keyframes ebene-kommt {
+  from {
+    transform: scale(0);
+  }
+}
+#ebenen .ebene:hover .linse {
+  transform: scale(1.12);
+}
+#ebenen .ebene[aria-pressed='true'] .linse {
+  transform: scale(1.45);
+  border-width: 0.65px;
+}
+#ebenen .zeile.zieht .linse {
+  transform: scale(1.45);
+  border-width: 0.65px;
+  box-shadow: 0 2px 6px rgba(31, 26, 23, 0.18);
+}
+#ebenen .zeile.aus .linse {
+  background: transparent;
+  border-color: var(--leise);
+  border-style: dashed;
+}
+/* der Punkt neben der Linse: voll, solange die Ebene zu sehen ist; ein Ring, wenn sie ausgeblendet ist */
+#ebenen .auge {
+  width: 17px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+#ebenen .auge::before {
+  content: '';
+  box-sizing: border-box;
+  width: 5px;
+  height: 5px;
+  border: 0.9px solid var(--tinte);
+  border-radius: 50%;
+  background: var(--tinte);
+  transition:
+    transform 300ms var(--feder),
+    background 160ms ease;
+}
+#ebenen .auge:hover::before {
+  transform: scale(1.5);
+}
+#ebenen .zeile.aus .auge::before {
+  background: transparent;
+  border-color: var(--leise);
+}
+/* die hohle Linse mit dem Plus: eine neue Ebene (sie steht über dem Stapel, bündig mit den Linsen) */
+#ebenen .ebene.neu {
+  margin-right: 17px;
+  margin-bottom: 3px;
+}
+#ebenen .ebene.neu .linse {
+  background: transparent;
+  border-color: var(--leise);
+  border-width: 0.7px;
+  animation: none;
+}
+#ebenen .ebene.neu:hover .linse {
+  border-color: var(--tinte);
+}
+#ebenen .ebene.neu .linse::before,
+#ebenen .ebene.neu .linse::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 0.7px;
+  margin: -0.35px 0 0 -3px;
+  background: var(--leise);
+}
+#ebenen .ebene.neu .linse::after {
+  transform: rotate(90deg);
+}
+#ebenen .ebene.neu:hover .linse::before,
+#ebenen .ebene.neu:hover .linse::after {
+  background: var(--tinte);
+}
 /* Farbtropfen und Pipette stehen nur im Paint-Modus in der Leiste; der Farbtropfen trägt die gewählte Farbe */
 #leiste .mal-gruppe {
   display: inline-flex;
