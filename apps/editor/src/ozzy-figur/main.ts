@@ -17,7 +17,7 @@ import { pruefhakenAnlegen } from './pruefen';
 import type { Lage } from './raster';
 import { type Ansicht, type Diagnose, EXAKT, FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
 import { HaltungsSteuerung } from './steuerung';
-import { drehLage, drehSzene, type Drehung, istAblauf, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
+import { ankerVon, drehLage, drehSzene, type Drehung, istAblauf, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
 import { ANSICHTEN, type AnsichtName, importieren } from './vorlagen/import';
 
 export const SVG_TEXTE: Record<string, string> = {
@@ -62,7 +62,7 @@ const SZENEN: { name: SzenenName; titel: string }[] = [
   { name: 'haltungP', titel: 'Sitzen, dann Liegen (Profil)' },
 ];
 
-const steuerung = new HaltungsSteuerung('stehen');
+const steuerung = new HaltungsSteuerung('stehen', undefined, ankerVon(daten));
 /** Knöpfe der Steuerung (Tasten 1 bis 5) */
 const STEUER_KNOEPFE: { haltung: HaltungName; art: Art; titel: string }[] = [
   { haltung: 'stehen', art: 'normal', titel: 'Stehen' },
@@ -83,7 +83,7 @@ export function szeneBauen(name: SzenenName, t: number, fl: Fluessig, regeln: Re
 export function vorlageFuer(name: SzenenName, t: number): Form[] | null {
   if (name === 'steuern') return rasterVon(daten).vorlage(steuerLage())?.formen ?? null;
   if (!istDrehung(name)) return daten.ansichten[name].teile.map((x) => x.form);
-  return rasterVon(daten).vorlage(drehLage(name, t))?.formen ?? null;
+  return rasterVon(daten).vorlage(drehLage(name, t, ankerVon(daten)))?.formen ?? null;
 }
 
 /** fester Rahmen je Szene (Vereinigung über beide Enden bzw. alle Haltungen mit Kopf vorn und im Profil), damit nichts springt */
@@ -94,7 +94,7 @@ export function rahmen(name: SzenenName): [number, number, number, number] {
   const ks =
     name === 'steuern'
       ? HALTUNGEN.flatMap((h) => [0, 90].map((theta) => szenenKasten(rasterVon(daten).szene({ psi: 90, theta, posen: { [h.name]: 1 } }, EXAKT))))
-      : (istDrehung(name) ? [0, 0.5, 1] : [0]).map((t) => szenenKasten(szeneBauen(name, t, EXAKT)));
+      : (istAblauf(name) ? [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1] : istDrehung(name) ? [0, 0.5, 1] : [0]).map((t) => szenenKasten(szeneBauen(name, t, EXAKT)));
   const k: [number, number, number, number] = [Math.min(...ks.map((x) => x[0])), Math.min(...ks.map((x) => x[1])), Math.max(...ks.map((x) => x[2])), Math.max(...ks.map((x) => x[3]))];
   rahmenSpeicher.set(name, k);
   return k;
@@ -288,9 +288,28 @@ function zeichnen(): void {
     oben.height = renderer.hoehe;
   }
   ansicht = einpassen(zustand.szene, renderer.breite, renderer.hoehe, 56 * dpr, 24 * dpr);
+  // Steuerung: Das Bild folgt Ozzys Lage in der Welt (er verschiebt sich, damit Pfoten und Hintern stehen bleiben)
+  if (zustand.szene === 'steuern') ansicht = { ...ansicht, x0: ansicht.x0 + kamera.x };
   const szene = szeneBauen(zustand.szene, zustand.t, zustand.fluessig ? zustand.fl : EXAKT, zustand.regeln);
   renderer.zeichne(szene, ansicht, zustand.diagnose);
   ctx.clearRect(0, 0, oben.width, oben.height);
+  // Boden mit Marken in der Welt: Folgt das Bild Ozzy, sieht man am Boden, dass er sich bewegt und nicht rutscht
+  if (zustand.szene === 'steuern') {
+    const y = (0 - ansicht.y0) * ansicht.massstab;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.lineWidth = Math.max(1, dpr);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(oben.width, y);
+    const abstand = 40;
+    const x0 = Math.floor(ansicht.x0 / abstand) * abstand;
+    for (let x = x0; (x - ansicht.x0) * ansicht.massstab < oben.width; x += abstand) {
+      const px = (x - ansicht.x0) * ansicht.massstab;
+      ctx.moveTo(px, y);
+      ctx.lineTo(px, y + 6 * dpr);
+    }
+    ctx.stroke();
+  }
   const vorlage = zustand.vorlage ? vorlageFuer(zustand.szene, zustand.t) : null;
   if (vorlage) {
     ctx.strokeStyle = 'rgba(230, 30, 30, 0.85)';
@@ -330,6 +349,9 @@ let wartet = false;
 let tStart = 0;
 /** Zeit des letzten Bilds der Steuerung (0 = ruht) */
 let steuerZeit = 0;
+/** Bildausschnitt der Steuerung folgt Ozzys Lage in der Welt (Zeitkonstante in Sekunden) */
+const kamera = { x: 0 };
+const KAMERA_ZEIT = 0.9;
 function neu(): void {
   anzeigen();
   if (!wartet) {
@@ -352,16 +374,22 @@ function bild(jetzt: number): void {
     }
     anzeigen();
   } else tStart = 0;
-  // Steuerung: je Bild um die vergangene Zeit weiter (nach einer Pause höchstens ein Bild)
-  const steuert = zustand.szene === 'steuern' && !steuerung.ruht;
+  // Steuerung: je Bild um die vergangene Zeit weiter (nach einer Pause höchstens ein Bild); das Bild folgt Ozzy, bis es ihn eingeholt hat
+  const kameraFolgt = (): boolean => Math.abs(steuerung.weltX - kamera.x) > 0.05;
+  const steuert = zustand.szene === 'steuern' && (!steuerung.ruht || kameraFolgt());
   if (steuert) {
-    steuerung.schritt(steuerZeit ? Math.min(0.1, (jetzt - steuerZeit) / 1000) : 1 / 60);
+    const dt = steuerZeit ? Math.min(0.1, (jetzt - steuerZeit) / 1000) : 1 / 60;
+    if (!steuerung.ruht) {
+      steuerung.schritt(dt);
+      if (steuerung.ruht) anzeigen();
+    }
+    kamera.x += (steuerung.weltX - kamera.x) * (1 - Math.exp(-dt / KAMERA_ZEIT));
+    if (!kameraFolgt()) kamera.x = steuerung.weltX;
     steuerZeit = jetzt;
-    if (steuerung.ruht) anzeigen();
   } else steuerZeit = 0;
   zeichnen();
   tempoZeigen(jetzt);
-  if (zustand.laeuft || zustand.dauer || (steuert && !steuerung.ruht)) {
+  if (zustand.laeuft || zustand.dauer || (zustand.szene === 'steuern' && (!steuerung.ruht || kameraFolgt()))) {
     wartet = true;
     requestAnimationFrame(bild);
   } else {

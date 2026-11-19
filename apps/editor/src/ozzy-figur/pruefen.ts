@@ -3,12 +3,12 @@
 import { abflachen, type Form, type Punkt } from './form';
 import { type Ansicht, type Diagnose, EXAKT, type FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
 import { ABLAEUFE, type Art, dauerVon } from './ablauf';
-import type { HaltungName } from './haltung';
+import { type HaltungName, Haltungen } from './haltung';
 import type { Lage } from './raster';
 import type { HaltungsSteuerung } from './steuerung';
 import { REGELN, type Regeln } from './szenen';
-import { drehLage, type Drehung, rasterVon } from './szenen';
-import { type AnsichtName, type FigurDaten } from './vorlagen/import';
+import { ankerVon, drehLage, type Drehung, rasterVon } from './szenen';
+import { ANSICHTEN, type AnsichtName, type FigurDaten } from './vorlagen/import';
 
 type SzenenName = AnsichtName | Drehung | 'steuern';
 export interface PruefKontext {
@@ -42,6 +42,16 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     const basis = fluessig ? FLUESSIG : EXAKT;
     r.zeichne(k.szeneBauen(name, t, { ...basis, ...(fl ?? {}) }, regeln ? ({ ...REGELN, ...regeln } as Regeln) : undefined), a, diagnose);
     return a;
+  };
+  /** Florians Änderung einer Vorlage im SVG nachziehen: die Kopfteile der Sitzvorlagen verschoben (Kopf im Sitzen zurück, 19.11.) */
+  const KOPF = new Set(['ohrA', 'ohrB', 'ohrSpalt', 'kopfA', 'kopfB', 'bartA', 'bartB', 'nase']);
+  const geaendert = (text: string, ansicht: AnsichtName): string => {
+    const [dx, dy] = Haltungen.kopfVersatzVorlage(ansicht);
+    if (!dx && !dy) return text;
+    const namen = ANSICHTEN[ansicht].teile;
+    let k = 0;
+    // dieselben Teile in derselben Reihenfolge wie beim Einlesen (svgLesen)
+    return text.replace(/<metadata>[\s\S]*?<\/metadata>/g, '').replace(/<(path|polyline|polygon)\b/g, (m) => (KOPF.has(namen[k++]!) ? `${m} transform="translate(${dx} ${dy})"` : m));
   };
   const svgBild = async (text: string, a: Ansicht, w: number, h: number): Promise<Uint8ClampedArray> => {
     const ohneMeta = text.replace(/<\?xml[^>]*>/, '').replace(/<metadata>[\s\S]*?<\/metadata>/, '');
@@ -85,8 +95,19 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     },
     /** Dauer eines Ablaufs (Sekunden bei Tempo 1) */
     ablaufDauer: (name: string): number => dauerVon(ABLAEUFE[name as keyof typeof ABLAEUFE]),
+    /** Abschnitte eines Ablaufs als Anteile der Dauer, mit dem, was in ihnen stehen bleibt */
+    ablaufAbschnitte: (name: string): { von: number; bis: number; steht: string | null }[] => {
+      const a = ABLAEUFE[name as keyof typeof ABLAEUFE];
+      const d = dauerVon(a);
+      let t0 = 0;
+      return a.abschnitte.map((x) => {
+        const r = { von: t0 / d, bis: (t0 + x.dauer) / d, steht: x.steht ?? null };
+        t0 += x.dauer;
+        return r;
+      });
+    },
     /** Lage einer Szene bei t (Abläufe: Gewichte und Zusatzbewegungen) */
-    szenenLage: (name: Drehung, t: number): Lage => drehLage(name, t),
+    szenenLage: (name: Drehung, t: number): Lage => drehLage(name, t, ankerVon(k.daten)),
     /** Teile einer beliebigen Lage (Körperkoordinaten, Malreihenfolge) */
     lageTeile: (lage: Lage) => rasterVon(k.daten).teile(lage).map((x) => ({ name: x.name, weiss: x.weiss, form: x.form })),
     /** je Ablauf die Stellen (Anteile der Dauer), an denen ein Sprung am ehesten säße: Anfang, Ende, Grenzen und Mitten der Abschnitte */
@@ -121,7 +142,7 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
     steuerSchritt: (dt: number): void => k.steuerung.schritt(dt),
     steuerZustand: () => ({ gewichte: k.steuerung.gewichte(), effekte: k.steuerung.effekte(), kopf: k.steuerung.kopfWinkel, ruht: k.steuerung.ruht, ziel: k.steuerung.ziel, art: k.steuerung.art }),
     /** Teile einer Drehung (Körperkoordinaten, Malreihenfolge) für Prüfbilder ohne Grafikkarte */
-    rasterTeile: (art: Drehung, t: number) => rasterVon(k.daten).teile(drehLage(art, t)).map((x) => ({ name: x.name, weiss: x.weiss, form: x.form })),
+    rasterTeile: (art: Drehung, t: number) => rasterVon(k.daten).teile(drehLage(art, t, ankerVon(k.daten))).map((x) => ({ name: x.name, weiss: x.weiss, form: x.form })),
     /** Ausschnitt des letzten Bilds in Figur-Einheiten, vergrößert */
     ausschnitt(a: Ansicht, x0: number, y0: number, x1: number, y1: number, faktor = 4): string {
       const sx = (x0 - a.x0) * a.massstab, sy = (y0 - a.y0) * a.massstab, sw = (x1 - x0) * a.massstab, sh = (y1 - y0) * a.massstab;
@@ -140,7 +161,9 @@ export function pruefhakenAnlegen(k: PruefKontext): void {
       const { px } = lesen();
       // Drehungen liegen in Körperkoordinaten: die Vorlage um ihren Ursprung verschieben
       const u = drehung ? rasterVon(k.daten).ursprung(ansicht) : [0, 0];
-      const ref = await svgBild(k.svgTexte[k.ansichtsDateien[ansicht]!]!, { massstab: a.massstab, x0: a.x0 + u[0]!, y0: a.y0 + u[1]! }, w, h);
+      // Drehungen und Haltungen zeigen das Raster: dort gilt die Vorlage mit Florians Änderungen
+      const text = k.svgTexte[k.ansichtsDateien[ansicht]!]!;
+      const ref = await svgBild(drehung ? geaendert(text, ansicht) : text, { massstab: a.massstab, x0: a.x0 + u[0]!, y0: a.y0 + u[1]! }, w, h);
       const diff = new Uint8ClampedArray(w * h * 4);
       let nurNeu = 0;
       let nurVorlage = 0;

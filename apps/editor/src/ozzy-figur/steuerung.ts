@@ -7,7 +7,7 @@
 // Die gezeigten Gewichte folgen dem Ablauf an einer kritisch gedämpften Feder; Zusatzbewegungen eines unterbrochenen Ablaufs klingen
 // in kurzer Zeit aus. So springt nichts, auch nicht bei vielen Klicks. Der Kopfwinkel folgt seinem Ziel genauso.
 // Ohne DOM und ohne Uhr: Wer zeichnet, ruft `schritt(dt)` je Bild.
-import { type Ablauf, ablaufBei, ablaufFuer, type Art, dauerVon } from './ablauf';
+import { type Ablauf, ablaufBei, ablaufFuer, type AnkerOrt, type Art, dauerVon } from './ablauf';
 import { type Gewichte, gewichtsliste, HALTUNGEN, type HaltungName } from './haltung';
 import type { Effekte } from './raster';
 
@@ -27,7 +27,7 @@ const N = HALTUNGEN.length;
 const TEIL = 1 / 240;
 /** so lange klingen die Zusatzbewegungen eines unterbrochenen Ablaufs aus (Sekunden) */
 const AUSKLANG = 0.25;
-const KEINE: Required<Effekte> = { hub: 0, stauchung: 0, kopf: 0, wedeln: 0 };
+const KEINE: Required<Effekte> = { hub: 0, stauchung: 0, kopf: 0, wedeln: 0, versatz: 0 };
 const alsListe = (g: Gewichte): Liste => gewichtsliste(g);
 const alsGewichte = (w: Liste): Gewichte => Object.fromEntries(HALTUNGEN.map((x, i) => [x.name, w[i]!])) as Gewichte;
 const einsVon = (h: HaltungName): Liste => HALTUNGEN.map((x) => (x.name === h ? 1 : 0));
@@ -51,10 +51,24 @@ export class HaltungsSteuerung {
   private artName: Art = 'normal';
   /** Kopf: gezeigter Winkel und Tempo, Leitwinkel, Ziel */
   private kopf = { w: 0, v: 0, leit: 0, ziel: 0 };
+  /** Ozzys Lage in der Welt (x, Figur-Einheiten): Was in einem Abschnitt stehen bleibt (Pfoten, Hintern), bleibt in der Welt stehen; er
+   * verschiebt sich als Ganzes. Die Verschiebung kommt aus dem Ablauf (am Leitpunkt, wie die Gewichte) und läuft an derselben Feder wie
+   * die Gewichte: So passt sie zu dem, was gezeigt wird (am Leitpunkt gemessen und erst danach geglättet, statt an den gezeigten Gewichten
+   * mit dem Anker des Abschnitts, in dem der Leitpunkt schon ist). basis: Verschiebung der beendeten und unterbrochenen Abläufe */
+  private welt = 0;
+  private weltV = 0;
+  private weltBasis = 0;
+  private weltAblauf = 0;
+  /** Zusatzbewegungen des Ablaufs (Hüpfer, Plumpsen, Wedeln) kommen so viel später, wie die Gewichte an der Feder dem Ablauf nachgehen
+   * (rund 2/feder): Sonst hebt der Hüpfer das Hinterteil, bevor die gezeigten Beine abspringen, und die Hinterbeine schleifen. uhr: Zeit
+   * der Steuerung, verlauf: die Zusatzbewegungen dieser Verzögerung */
+  private uhr = 0;
+  private verlauf: { t: number; e: Required<Effekte> }[] = [];
 
   constructor(
     start: HaltungName = 'stehen',
     readonly tempo: SteuerTempo = { ...STEUER_TEMPO },
+    private readonly anker?: AnkerOrt,
   ) {
     this.g = einsVon(start);
     this.v = new Array<number>(N).fill(0);
@@ -72,7 +86,7 @@ export class HaltungsSteuerung {
 
   /** ruht alles (Ablauf zu Ende, Gewichte und Kopf am Ziel, ohne Bewegung)? */
   get ruht(): boolean {
-    return !this.ablauf && !this.alt && this.kopf.leit === this.kopf.ziel && this.gewichteRuhen() && this.kopfRuht();
+    return !this.ablauf && !this.alt && this.kopf.leit === this.kopf.ziel && this.gewichteRuhen() && this.kopfRuht() && this.weltRuht() && this.effekteRuhen();
   }
 
   /** gezeigte Gewichte (nie negativ, Summe 1) */
@@ -80,13 +94,18 @@ export class HaltungsSteuerung {
     return alsGewichte(gewichtsliste(alsGewichte(this.g)));
   }
 
-  /** Zusatzbewegungen jetzt (Ablauf und Ausklang des unterbrochenen) */
+  /** Ozzys Lage in der Welt (x) */
+  get weltX(): number {
+    return this.welt;
+  }
+
+  /** Zusatzbewegungen jetzt (Ablauf und Ausklang des unterbrochenen), dazu die Lage in der Welt */
   effekte(): Effekte {
-    const e = { ...this.eff };
+    const e = { ...this.eff, versatz: this.welt };
     if (this.alt) {
       const k = this.alt.rest / AUSKLANG;
       const f = k * k * (3 - 2 * k);
-      for (const n of Object.keys(e) as (keyof Effekte)[]) e[n] += this.alt.eff[n] * f;
+      for (const n of Object.keys(e) as (keyof Effekte)[]) if (n !== 'versatz') e[n] += this.alt.eff[n] * f;
     }
     return e;
   }
@@ -112,8 +131,12 @@ export class HaltungsSteuerung {
     this.artName = art;
     // Zusatzbewegungen des laufenden Ablaufs klingen aus
     const jetzt = this.effekte();
-    this.alt = Object.values(jetzt).some((x) => Math.abs(x ?? 0) > 1e-6) ? { eff: { ...KEINE, ...jetzt }, rest: AUSKLANG } : null;
+    this.alt = Object.entries(jetzt).some(([n, x]) => n !== 'versatz' && Math.abs(x ?? 0) > 1e-6) ? { eff: { ...KEINE, ...jetzt }, rest: AUSKLANG } : null;
     this.eff = { ...KEINE };
+    this.verlauf = [];
+    // was der unterbrochene Ablauf schon verschoben hat, bleibt (das Ziel der Lage springt nicht)
+    this.weltBasis += this.weltAblauf;
+    this.weltAblauf = 0;
     const von = fuehrend(this.leit);
     const da = this.leit.slice();
     if (abstand(da, einsVon(ziel)) < 1e-6) {
@@ -122,7 +145,7 @@ export class HaltungsSteuerung {
       return;
     }
     const a = von === ziel ? null : ablaufFuer(von, ziel, art);
-    let ablauf: Ablauf = a ?? { abschnitte: [{ nach: { [ziel]: 1 }, dauer: 0.7, kurve: 'weich' }], nachlauf: 0 };
+    let ablauf: Ablauf = a ?? { abschnitte: [{ nach: { [ziel]: 1 }, dauer: 0.7, kurve: 'weich', steht: 'alle' }], nachlauf: 0 };
     // mitten in einem Wechsel: der erste Abschnitt beginnt am Leitpunkt, so lang wie sein Rest
     const erster = ablauf.abschnitte[0]!;
     const rest = abstand(da, alsListe(erster.nach));
@@ -144,16 +167,25 @@ export class HaltungsSteuerung {
   private teilschritt(h: number): void {
     const t = this.tempo;
     // Ablauf: Leitpunkt und Zusatzbewegungen aus der Zeit
+    let roh: Required<Effekte> = { ...KEINE };
     if (this.ablauf) {
       this.zeit += h * Math.max(0.05, t.tempo);
-      const l = ablaufBei(this.ablauf, alsGewichte(this.start), this.zeit);
+      const l = ablaufBei(this.ablauf, alsGewichte(this.start), this.zeit, this.anker);
       this.leit = alsListe(l.gewichte);
-      this.eff = { ...KEINE, ...l.effekte };
+      this.weltAblauf = l.effekte.versatz ?? 0;
+      roh = { ...KEINE, ...l.effekte, versatz: 0 };
       if (this.zeit >= dauerVon(this.ablauf)) {
         this.ablauf = null;
-        this.eff = { ...KEINE };
+        this.weltBasis += this.weltAblauf;
+        this.weltAblauf = 0;
       }
     }
+    // Zusatzbewegungen um die Verzögerung der Feder später
+    this.uhr += h;
+    this.verlauf.push({ t: this.uhr, e: roh });
+    const spaet = this.uhr - 2 / Math.max(1e-3, t.feder);
+    while (this.verlauf.length > 1 && this.verlauf[1]!.t <= spaet) this.verlauf.shift();
+    this.eff = this.verlauf[0]!.t <= spaet ? this.verlauf[0]!.e : { ...KEINE };
     if (this.alt) {
       this.alt.rest -= h;
       if (this.alt.rest <= 0) this.alt = null;
@@ -170,6 +202,14 @@ export class HaltungsSteuerung {
       this.g = this.leit.slice();
       this.v.fill(0);
     }
+    // Lage in der Welt an derselben Feder
+    const ziel = this.weltBasis + this.weltAblauf;
+    this.weltV += (w * w * (ziel - this.welt) - 2 * w * this.weltV) * h;
+    this.welt += this.weltV * h;
+    if (!this.ablauf && this.weltRuht()) {
+      this.welt = ziel;
+      this.weltV = 0;
+    }
     // Kopf: Leitwinkel mit Höchsttempo zum Ziel, gezeigter Winkel an der Feder
     const k = this.kopf;
     const schritt = t.kopfTempo * h;
@@ -184,6 +224,14 @@ export class HaltungsSteuerung {
 
   private gewichteRuhen(): boolean {
     return abstand(this.g, this.leit) < 1e-5 && this.v.every((x) => Math.abs(x) < 1e-4);
+  }
+
+  private effekteRuhen(): boolean {
+    return this.verlauf.every((x) => Object.values(x.e).every((v) => Math.abs(v) < 1e-9));
+  }
+
+  private weltRuht(): boolean {
+    return Math.abs(this.weltBasis + this.weltAblauf - this.welt) < 1e-3 && Math.abs(this.weltV) < 1e-2;
   }
 
   private kopfRuht(): boolean {

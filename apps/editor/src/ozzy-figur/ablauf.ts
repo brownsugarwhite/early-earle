@@ -8,7 +8,7 @@
 // Ein Ablauf ist eine Folge von Abschnitten: Ziel (Mischung der Haltungen), Dauer, Kurve der Zeit und Zusatzbewegungen (Hüpfer,
 // Aufprall, Seufzer, Wedeln). Er ist eine reine Funktion der Zeit: Die Szenen zeigen ihn ohne Feder, die Steuerung legt ihre Feder
 // darüber. Ohne DOM und ohne Uhr.
-import { type Gewichte, gewichtsliste, HALTUNGEN, type HaltungName } from './haltung';
+import { type Anker, type Gewichte, gewichtsliste, HALTUNGEN, type HaltungName } from './haltung';
 import type { Effekte } from './raster';
 
 export type Kurve = 'weich' | 'fallen' | 'auf' | 'linear';
@@ -27,7 +27,11 @@ export interface Abschnitt {
   plumps?: number;
   /** Seufzer am Ende (Stärke 0 … 1): sanftes Stauchen und Nachsinken des Kopfs */
   seufzer?: number;
+  /** was in diesem Abschnitt stehen bleibt (Ozzy verschiebt sich als Ganzes, statt dass es rutscht): Vorder-, Hinterpfoten, alle, Hintern */
+  steht?: Anker;
 }
+/** Ort dessen, was stehen bleibt, bei bestimmten Gewichten (vom Raster) */
+export type AnkerOrt = (g: Gewichte, anker: Anker) => number;
 export type AblaufName = 'hinsetzen' | 'huepfer' | 'rutschen' | 'gemuetlich' | 'umlegen' | 'aufsetzen' | 'aufstehen' | 'aufstehenSitz';
 export interface Ablauf {
   abschnitte: Abschnitt[];
@@ -45,8 +49,8 @@ export const ABLAEUFE: Record<AblaufName, Ablauf> = {
   // Stehen → Sitzen: die Hinterbeine biegen sich, bis der Hintern am Boden ist; erst dann streckt sich das Hinterbein nach vorn
   hinsetzen: {
     abschnitte: [
-      { nach: eins('hocke'), dauer: 0.75, kurve: 'weich' },
-      { nach: eins('sitzen'), dauer: 0.45, kurve: 'weich' },
+      { nach: eins('hocke'), dauer: 0.75, kurve: 'weich', steht: 'hinten' },
+      { nach: eins('sitzen'), dauer: 0.45, kurve: 'weich', steht: 'koerper' },
     ],
     nachlauf: 0,
   },
@@ -54,21 +58,21 @@ export const ABLAEUFE: Record<AblaufName, Ablauf> = {
   // plumpsen
   huepfer: {
     abschnitte: [
-      { nach: { stehen: 0.72, hocke: 0.28 }, dauer: 0.2, kurve: 'weich' },
-      { nach: eins('sitzen'), dauer: 0.34, kurve: 'linear', hub: 0.12, plumps: 1 },
+      { nach: { stehen: 0.72, hocke: 0.28 }, dauer: 0.2, kurve: 'weich', steht: 'alle' },
+      { nach: eins('sitzen'), dauer: 0.34, kurve: 'linear', hub: 0.12, plumps: 1, steht: 'vorn' },
     ],
     nachlauf: 0.7,
   },
   // Stehen → Liegen: die Beine rutschen weg, der Körper fällt immer schneller, der Bauch plumpst auf
   rutschen: {
-    abschnitte: [{ nach: eins('liegen'), dauer: 0.8, kurve: 'fallen', plumps: 0.8 }],
+    abschnitte: [{ nach: eins('liegen'), dauer: 0.8, kurve: 'fallen', plumps: 0.8, steht: 'alle' }],
     nachlauf: 0.7,
   },
   // Stehen → Liegen gemütlich: vorn runter (Diener, ein wenig wedeln), dann sinkt das Hinterteil, am Ende ein Seufzer
   gemuetlich: {
     abschnitte: [
-      { nach: eins('diener'), dauer: 1.0, kurve: 'weich', wedeln: 0.22 },
-      { nach: eins('liegen'), dauer: 1.1, kurve: 'weich', seufzer: 1 },
+      { nach: eins('diener'), dauer: 1.0, kurve: 'weich', wedeln: 0.22, steht: 'hinten' },
+      { nach: eins('liegen'), dauer: 1.1, kurve: 'weich', seufzer: 1, steht: 'vorn' },
     ],
     nachlauf: 1.1,
   },
@@ -76,33 +80,33 @@ export const ABLAEUFE: Record<AblaufName, Ablauf> = {
   // hinten durch
   umlegen: {
     abschnitte: [
-      { nach: eins('diener'), dauer: 0.8, kurve: 'weich', wedeln: 0.32 },
-      { nach: eins('liegen'), dauer: 0.6, kurve: 'fallen', plumps: 0.4 },
+      { nach: eins('diener'), dauer: 0.8, kurve: 'weich', wedeln: 0.32, steht: 'koerper' },
+      { nach: eins('liegen'), dauer: 0.6, kurve: 'fallen', plumps: 0.4, steht: 'vorn' },
     ],
     nachlauf: 0.6,
   },
   // Liegen → Sitzen: Hinterbeine unter den Körper (Diener), Hintern runter (Hocke), Hinterbein nach vorn
   aufsetzen: {
     abschnitte: [
-      { nach: eins('diener'), dauer: 0.6, kurve: 'weich' },
-      { nach: eins('hocke'), dauer: 0.5, kurve: 'weich' },
-      { nach: eins('sitzen'), dauer: 0.4, kurve: 'weich' },
+      { nach: eins('diener'), dauer: 0.6, kurve: 'weich', steht: 'vorn' },
+      { nach: eins('hocke'), dauer: 0.5, kurve: 'weich', steht: 'hinten' },
+      { nach: eins('sitzen'), dauer: 0.4, kurve: 'weich', steht: 'koerper' },
     ],
     nachlauf: 0,
   },
   // Liegen → Stehen: Hintern zuerst (Diener), dann vorn hoch
   aufstehen: {
     abschnitte: [
-      { nach: eins('diener'), dauer: 0.65, kurve: 'weich', wedeln: 0.18 },
-      { nach: eins('stehen'), dauer: 0.6, kurve: 'weich' },
+      { nach: eins('diener'), dauer: 0.65, kurve: 'weich', wedeln: 0.18, steht: 'vorn' },
+      { nach: eins('stehen'), dauer: 0.6, kurve: 'weich', steht: 'hinten' },
     ],
     nachlauf: 0,
   },
   // Sitzen → Stehen: Hinterbein unter den Körper (Hocke), dann hoch
   aufstehenSitz: {
     abschnitte: [
-      { nach: eins('hocke'), dauer: 0.4, kurve: 'weich' },
-      { nach: eins('stehen'), dauer: 0.6, kurve: 'weich' },
+      { nach: eins('hocke'), dauer: 0.4, kurve: 'weich', steht: 'koerper' },
+      { nach: eins('stehen'), dauer: 0.6, kurve: 'weich', steht: 'hinten' },
     ],
     nachlauf: 0,
   },
@@ -135,7 +139,7 @@ export function ablaufFuer(von: HaltungName, nach: HaltungName, art: Art = 'norm
     'diener>sitzen': ['hocke', 'sitzen'],
   };
   const w = wege[`${von}>${nach}`];
-  return w ? { abschnitte: w.map((h) => ({ nach: eins(h), dauer: 0.55, kurve: 'weich' as const })), nachlauf: 0 } : null;
+  return w ? { abschnitte: w.map((h) => ({ nach: eins(h), dauer: 0.55, kurve: 'weich' as const, steht: 'alle' as const })), nachlauf: 0 } : null;
 }
 
 const kurve = (k: Kurve | undefined, u: number): number => {
@@ -172,11 +176,12 @@ export function dauerVon(a: Ablauf): number {
  * Lage eines Ablaufs nach `zeit` Sekunden (bei Tempo 1), ausgehend von den Gewichten `start`: Gewichte und Zusatzbewegungen. Stetig in
  * der Zeit (Abschnitte beginnen, wo der vorige endet; Hub, Wedeln, Aufprall und Seufzer beginnen und enden bei 0).
  */
-export function ablaufBei(a: Ablauf, start: Gewichte, zeit: number): { gewichte: Gewichte; effekte: Effekte; fertig: boolean } {
+export function ablaufBei(a: Ablauf, start: Gewichte, zeit: number, anker?: AnkerOrt): { gewichte: Gewichte; effekte: Effekte; fertig: boolean; steht?: Anker } {
   let von = liste(start);
   let t0 = 0;
   let w = von;
-  const e: Required<Effekte> = { hub: 0, stauchung: 0, kopf: 0, wedeln: 0 };
+  let steht: Anker | undefined;
+  const e: Required<Effekte> = { hub: 0, stauchung: 0, kopf: 0, wedeln: 0, versatz: 0 };
   for (const x of a.abschnitte) {
     const nach = liste(x.nach);
     const u = x.dauer > 0 ? (zeit - t0) / x.dauer : 1;
@@ -186,6 +191,11 @@ export function ablaufBei(a: Ablauf, start: Gewichte, zeit: number): { gewichte:
       if (x.hub) e.hub += x.hub * 4 * u * (1 - u);
       if (x.wedeln) e.wedeln += x.wedeln * Math.sin(2 * Math.PI * 3 * (zeit - t0)) * Math.sin(Math.PI * u);
     } else if (u > 1) w = nach;
+    // was stehen bleibt: Ozzy verschiebt sich um das, was es sonst wanderte (vom Anfang des Abschnitts bis jetzt)
+    if (x.steht && zeit >= t0) {
+      if (anker) e.versatz += anker(ausListe(von), x.steht) - anker(ausListe(w), x.steht);
+      steht = x.steht;
+    }
     const ende = t0 + x.dauer;
     if (x.plumps) {
       const p = aufprall(zeit - ende, x.plumps);
@@ -201,5 +211,7 @@ export function ablaufBei(a: Ablauf, start: Gewichte, zeit: number): { gewichte:
     von = nach;
     t0 = ende;
   }
-  return { gewichte: ausListe(w), effekte: e, fertig: zeit >= dauerVon(a) };
+  const out: { gewichte: Gewichte; effekte: Effekte; fertig: boolean; steht?: Anker } = { gewichte: ausListe(w), effekte: e, fertig: zeit >= dauerVon(a) };
+  if (steht) out.steht = steht;
+  return out;
 }

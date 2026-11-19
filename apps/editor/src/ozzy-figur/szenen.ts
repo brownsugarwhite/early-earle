@@ -2,7 +2,7 @@
 // (Etappe C, raster.ts): „Ozzy dreht sich“ (Körper und Kopf zusammen: Front → 3/4 → Profil), „Kopf dreht“ (Seite, Kopf vorn → Profil),
 // „Körper dreht“ (Kopf schaut zu uns, Körper vorn → Seite).
 import type { Form } from './form';
-import { ABLAEUFE, type AblaufName, ablaufBei, dauerVon } from './ablauf';
+import { ABLAEUFE, type AblaufName, ablaufBei, type AnkerOrt, dauerVon } from './ablauf';
 import type { HaltungName } from './haltung';
 import { FigurRaster, type Lage } from './raster';
 import type { Fluessig, Gruppe, RenderTeil, Szene } from './renderer';
@@ -81,7 +81,7 @@ export const istAblauf = (n: string): n is AblaufName => n in ABLAEUFE;
  * Lage einer Drehung bei t = 0 … 1. Haltungen: „haltung“/„haltungP“ die Kette Stehen (0) – Sitzen (0,5) – Liegen (1), Kopf vorn bzw.
  * im Profil; die Abläufe (ablauf.ts) über ihre ganze Dauer mit Zusatzbewegungen
  */
-export function drehLage(art: Drehung, t: number): Lage {
+export function drehLage(art: Drehung, t: number, anker?: AnkerOrt): Lage {
   const w = t * 90;
   if (art === 'drehen') return { psi: w, theta: w };
   if (art === 'kopf') return { psi: 90, theta: w };
@@ -89,13 +89,18 @@ export function drehLage(art: Drehung, t: number): Lage {
   if (art === 'haltungP') return { psi: 90, theta: 90, haltung: 2 * t };
   if (istAblauf(art)) {
     const a = ABLAEUFE[art];
-    const l = ablaufBei(a, { [ABLAUF_START[art]]: 1 }, Math.max(0, Math.min(1, t)) * dauerVon(a));
+    const l = ablaufBei(a, { [ABLAUF_START[art]]: 1 }, Math.max(0, Math.min(1, t)) * dauerVon(a), anker);
     return { psi: 90, theta: 0, posen: l.gewichte, effekte: l.effekte };
   }
   return { psi: w, theta: 0 };
 }
 
 const raster = new WeakMap<FigurDaten, FigurRaster>();
+/** Ort dessen, was in einem Abschnitt stehen bleibt, aus dem Raster der Figur (Kopf vorn) */
+export function ankerVon(d: FigurDaten): AnkerOrt {
+  const r = rasterVon(d);
+  return (g, anker) => r.ankerX(g, 0, anker);
+}
 export function rasterVon(d: FigurDaten): FigurRaster {
   let r = raster.get(d);
   if (!r) raster.set(d, (r = new FigurRaster(d)));
@@ -103,7 +108,7 @@ export function rasterVon(d: FigurDaten): FigurRaster {
 }
 
 export function drehSzene(d: FigurDaten, art: Drehung, t: number, fl: Fluessig, regeln: Regeln = REGELN): Szene {
-  return rasterVon(d).szene(drehLage(art, t), fl, { verdecken: regeln.verdecken }, regeln.bohnenenden);
+  return rasterVon(d).szene(drehLage(art, t, ankerVon(d)), fl, { verdecken: regeln.verdecken }, regeln.bohnenenden);
 }
 
 /** Kasten einer Szene in Figur-Einheiten (für das Einpassen ins Bild) */

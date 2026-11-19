@@ -1,0 +1,855 @@
+{
+ "zeit": "2026-11-19T08:06:25.981Z",
+ "A": {
+  "front": {
+   "ansicht": "front",
+   "nurNeu": 523,
+   "nurVorlage": 435,
+   "schwarz": 254280,
+   "anteil": 0.0037675003932672643,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019408509803908252
+  },
+  "back": {
+   "ansicht": "back",
+   "nurNeu": 543,
+   "nurVorlage": 10,
+   "schwarz": 427575,
+   "anteil": 0.001293340349646261,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0003817254901960791
+  },
+  "logo": {
+   "ansicht": "logo",
+   "nurNeu": 676,
+   "nurVorlage": 471,
+   "schwarz": 297720,
+   "anteil": 0.0038526131936047294,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.00202208627450848
+  },
+  "profil": {
+   "ansicht": "profil",
+   "nurNeu": 595,
+   "nurVorlage": 393,
+   "schwarz": 307197,
+   "anteil": 0.0032161772413142053,
+   "deutlich": 1,
+   "deutlichAnteil": 0.0000032552401227876575,
+   "mittel": 0.0016394823529401307
+  },
+  "viertel": {
+   "ansicht": "viertel",
+   "nurNeu": 551,
+   "nurVorlage": 480,
+   "schwarz": 304414,
+   "anteil": 0.0033868350338683503,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019413686274497041
+  },
+  "lieg1": {
+   "ansicht": "lieg1",
+   "nurNeu": 537,
+   "nurVorlage": 478,
+   "schwarz": 266844,
+   "anteil": 0.0038037205258503095,
+   "deutlich": 13,
+   "deutlichAnteil": 0.000048717602794141894,
+   "mittel": 0.0018240666666654824
+  },
+  "lieg2": {
+   "ansicht": "lieg2",
+   "nurNeu": 673,
+   "nurVorlage": 429,
+   "schwarz": 329520,
+   "anteil": 0.0033442583151250304,
+   "deutlich": 19,
+   "deutlichAnteil": 0.00005765962612284535,
+   "mittel": 0.0018315843137243141
+  },
+  "sitz1": {
+   "ansicht": "sitz1",
+   "nurNeu": 638,
+   "nurVorlage": 440,
+   "schwarz": 286094,
+   "anteil": 0.0037679923381825553,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019277176470575393
+  },
+  "sitz2": {
+   "ansicht": "sitz2",
+   "nurNeu": 605,
+   "nurVorlage": 351,
+   "schwarz": 290588,
+   "anteil": 0.0032898812063815435,
+   "deutlich": 1,
+   "deutlichAnteil": 0.0000034412983330350877,
+   "mittel": 0.0015794235294107862
+  },
+  "logoWebKit": {
+   "ansicht": "logo",
+   "nurNeu": 86,
+   "nurVorlage": 283,
+   "schwarz": 298122,
+   "anteil": 0.001237748304385453,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0017277803921555116
+  },
+  "viertelWebKit": {
+   "ansicht": "viertel",
+   "nurNeu": 70,
+   "nurVorlage": 253,
+   "schwarz": 304668,
+   "anteil": 0.0010601704150091248,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0016375843137241808
+  }
+ },
+ "B1": {
+  "front": {
+   "ansicht": "front",
+   "spitzen": [
+    {
+     "teil": "keilV",
+     "anker": 0,
+     "versatz": -0.004
+    },
+    {
+     "teil": "keilV",
+     "anker": 1,
+     "versatz": 0.002
+    }
+   ],
+   "ausgelassen": 8,
+   "groesster": 0.004
+  },
+  "back": {
+   "ansicht": "back",
+   "spitzen": [
+    {
+     "teil": "keilH",
+     "anker": 0,
+     "versatz": -0.036
+    },
+    {
+     "teil": "keilH",
+     "anker": 1,
+     "versatz": 0.009
+    },
+    {
+     "teil": "kopfA",
+     "anker": 0,
+     "versatz": 0
+    },
+    {
+     "teil": "kopfB",
+     "anker": 0,
+     "versatz": 0.017
+    }
+   ],
+   "ausgelassen": 8,
+   "groesster": 0.036
+  },
+  "logo": {
+   "ansicht": "logo",
+   "spitzen": [
+    {
+     "teil": "schwanz",
+     "anker": 2,
+     "versatz": -0.001
+    },
+    {
+     "teil": "keilV",
+     "anker": 0,
+     "versatz": -0.012
+    },
+    {
+     "teil": "keilV",
+     "anker": 1,
+     "versatz": -0.085
+    },
+    {
+     "teil": "keilH",
+     "anker": 0,
+     "versatz": -0.135
+    },
+    {
+     "teil": "keilH",
+     "anker": 1,
+     "versatz": 0.112
+    },
+    {
+     "teil": "kopfB",
+     "anker": 5,
+     "versatz": -0.02
+    }
+   ],
+   "ausgelassen": 7,
+   "groesster": 0.135
+  },
+  "profil": {
+   "ansicht": "profil",
+   "spitzen": [
+    {
+     "teil": "schwanz",
+     "anker": 2,
+     "versatz": 0.006
+    },
+    {
+     "teil": "keilV",
+     "anker": 0,
+     "versatz": -0.014
+    },
+    {
+     "teil": "keilV",
+     "anker": 1,
+     "versatz": -0.066
+    },
+    {
+     "teil": "keilH",
+     "anker": 0,
+     "versatz": -0.191
+    },
+    {
+     "teil": "keilH",
+     "anker": 1,
+     "versatz": -0.057
+    }
+   ],
+   "ausgelassen": 6,
+   "groesster": 0.191
+  },
+  "viertel": {
+   "ansicht": "viertel",
+   "spitzen": [
+    {
+     "teil": "keilV",
+     "anker": 0,
+     "versatz": -0.009
+    },
+    {
+     "teil": "keilV",
+     "anker": 1,
+     "versatz": -0.008
+    },
+    {
+     "teil": "kopfB",
+     "anker": 4,
+     "versatz": -0.055
+    },
+    {
+     "teil": "schwanz",
+     "anker": 2,
+     "versatz": 0.007
+    }
+   ],
+   "ausgelassen": 8,
+   "groesster": 0.055
+  },
+  "lieg1": {
+   "ansicht": "lieg1",
+   "spitzen": [
+    {
+     "teil": "kopfB",
+     "anker": 5,
+     "versatz": -0.007
+    }
+   ],
+   "ausgelassen": 9,
+   "groesster": 0.007
+  },
+  "lieg2": {
+   "ansicht": "lieg2",
+   "spitzen": [],
+   "ausgelassen": 8,
+   "groesster": 0
+  },
+  "sitz1": {
+   "ansicht": "sitz1",
+   "spitzen": [
+    {
+     "teil": "schwanz",
+     "anker": 2,
+     "versatz": 0.007
+    },
+    {
+     "teil": "keilV",
+     "anker": 0,
+     "versatz": 0.006
+    },
+    {
+     "teil": "keilV",
+     "anker": 1,
+     "versatz": -0.016
+    },
+    {
+     "teil": "kopfB",
+     "anker": 5,
+     "versatz": -0.015
+    }
+   ],
+   "ausgelassen": 7,
+   "groesster": 0.016
+  },
+  "sitz2": {
+   "ansicht": "sitz2",
+   "spitzen": [
+    {
+     "teil": "schwanz",
+     "anker": 2,
+     "versatz": 0.007
+    },
+    {
+     "teil": "keilV",
+     "anker": 0,
+     "versatz": -0.004
+    },
+    {
+     "teil": "keilV",
+     "anker": 1,
+     "versatz": -0.028
+    },
+    {
+     "teil": "kopfB",
+     "anker": 1,
+     "versatz": 0.028
+    }
+   ],
+   "ausgelassen": 6,
+   "groesster": 0.028
+  }
+ },
+ "B2": {
+  "drehen": {
+   "zahlen": [
+    2646,
+    1213,
+    1067,
+    1061,
+    1116,
+    1374,
+    1601,
+    1564,
+    1207,
+    1545,
+    2430,
+    2952,
+    3661
+   ],
+   "enden": 3661,
+   "schlimmstes": 2952
+  },
+  "kopf": {
+   "zahlen": [
+    3101,
+    1232,
+    1065,
+    1059,
+    1120,
+    1379,
+    1595,
+    1572,
+    1206,
+    1537,
+    2423,
+    2952,
+    3661
+   ],
+   "enden": 3661,
+   "schlimmstes": 2952
+  },
+  "koerper": {
+   "zahlen": [
+    2743,
+    2809,
+    2816,
+    2877,
+    2880,
+    2931,
+    3008,
+    3185,
+    3241,
+    3249,
+    3278,
+    3274,
+    3259
+   ],
+   "enden": 3259,
+   "schlimmstes": 3278
+  },
+  "haltung": {
+   "zahlen": [
+    2514,
+    2551,
+    2522,
+    2596,
+    2591,
+    2573,
+    2609,
+    2531,
+    2429,
+    2364,
+    2382,
+    2432,
+    2468
+   ],
+   "enden": 2609,
+   "schlimmstes": 2609
+  },
+  "haltungP": {
+   "zahlen": [
+    3548,
+    3542,
+    3554,
+    3552,
+    3548,
+    3551,
+    3557,
+    3556,
+    3550,
+    3552,
+    3550,
+    3541,
+    3558
+   ],
+   "enden": 3558,
+   "schlimmstes": 3557
+  }
+ },
+ "C1": {
+  "drehen@0=front": {
+   "ansicht": "front",
+   "nurNeu": 392,
+   "nurVorlage": 566,
+   "schwarz": 241096,
+   "anteil": 0.003973520921126854,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0018782235294105526
+  },
+  "drehen@45=viertel": {
+   "ansicht": "viertel",
+   "nurNeu": 592,
+   "nurVorlage": 481,
+   "schwarz": 290546,
+   "anteil": 0.00369304688414227,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0018686431372536587
+  },
+  "drehen@90=profil": {
+   "ansicht": "profil",
+   "nurNeu": 505,
+   "nurVorlage": 452,
+   "schwarz": 307197,
+   "anteil": 0.003115264797507788,
+   "deutlich": 2,
+   "deutlichAnteil": 0.000006510480245575315,
+   "mittel": 0.001646003921567656
+  },
+  "kopf@0=logo": {
+   "ansicht": "logo",
+   "nurNeu": 561,
+   "nurVorlage": 539,
+   "schwarz": 285138,
+   "anteil": 0.0038577811445685947,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019726705882340857
+  },
+  "kopf@90=profil": {
+   "ansicht": "profil",
+   "nurNeu": 532,
+   "nurVorlage": 431,
+   "schwarz": 307164,
+   "anteil": 0.00313513302340118,
+   "deutlich": 1,
+   "deutlichAnteil": 0.000003255589847768619,
+   "mittel": 0.0016481450980382524
+  },
+  "koerper@0=front": {
+   "ansicht": "front",
+   "nurNeu": 394,
+   "nurVorlage": 577,
+   "schwarz": 251699,
+   "anteil": 0.003857782510061621,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0019480039215672973
+  },
+  "koerper@90=logo": {
+   "ansicht": "logo",
+   "nurNeu": 558,
+   "nurVorlage": 548,
+   "schwarz": 297720,
+   "anteil": 0.003714899905951901,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.002041847058822184
+  },
+  "haltung@h1.0=sitz1": {
+   "ansicht": "sitz1",
+   "nurNeu": 474,
+   "nurVorlage": 464,
+   "schwarz": 224856,
+   "anteil": 0.004171558686448216,
+   "deutlich": 0,
+   "deutlichAnteil": 0,
+   "mittel": 0.0016332588235283667
+  },
+  "haltung@h2.0=lieg1": {
+   "ansicht": "lieg1",
+   "nurNeu": 464,
+   "nurVorlage": 540,
+   "schwarz": 236242,
+   "anteil": 0.004249879360994234,
+   "deutlich": 5,
+   "deutlichAnteil": 0.000021164737853556946,
+   "mittel": 0.0016688156862734577
+  },
+  "haltungP@h1.0=sitz2": {
+   "ansicht": "sitz2",
+   "nurNeu": 493,
+   "nurVorlage": 433,
+   "schwarz": 281755,
+   "anteil": 0.003286543273411297,
+   "deutlich": 1,
+   "deutlichAnteil": 0.000003549182800660148,
+   "mittel": 0.001569568627450018
+  },
+  "haltungP@h2.0=lieg2": {
+   "ansicht": "lieg2",
+   "nurNeu": 449,
+   "nurVorlage": 518,
+   "schwarz": 286368,
+   "anteil": 0.0033767739412224828,
+   "deutlich": 23,
+   "deutlichAnteil": 0.00008031623645100012,
+   "mittel": 0.0016342274509794287
+  }
+ },
+ "B4": {
+  "chrome": {
+   "logo": {
+    "median": 2.5999999046325684,
+    "p95": 3.799999713897705,
+    "gpuMedian": 0.923291,
+    "strecken": 1901,
+    "R": 37.798360419962606,
+    "renderer": "WebKit WebGL"
+   },
+   "drehen": {
+    "median": 2.9000000953674316,
+    "p95": 4.199999809265137,
+    "gpuMedian": 3.977207,
+    "strecken": 2045,
+    "R": 37.0752990851513,
+    "renderer": "WebKit WebGL"
+   }
+  },
+  "webkit": {
+   "logo": {
+    "median": 3,
+    "p95": 4,
+    "gpuMedian": null,
+    "strecken": 1901,
+    "R": 37.798360419962606,
+    "renderer": "WebKit WebGL"
+   },
+   "drehen": {
+    "median": 3,
+    "p95": 5,
+    "gpuMedian": null,
+    "strecken": 2045,
+    "R": 37.0752990851513,
+    "renderer": "WebKit WebGL"
+   }
+  }
+ },
+ "bestanden": {
+  "A": true,
+  "B1": true,
+  "B2": true,
+  "C1": true,
+  "D2": true
+ },
+ "D2": {
+  "hinsetzen": {
+   "stellen": [
+    0,
+    0.3125,
+    0.625,
+    0.8125,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     90,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "huepfer": {
+   "stellen": [
+    0,
+    0.0806,
+    0.1613,
+    0.2984,
+    0.4355,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     304,
+     28
+    ],
+    [
+     64,
+     0
+    ],
+    [
+     109,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "rutschen": {
+   "stellen": [
+    0,
+    0.2667,
+    0.5333,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     53,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "gemuetlich": {
+   "stellen": [
+    0,
+    0.1563,
+    0.3125,
+    0.4844,
+    0.6563,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     166,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     87,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "umlegen": {
+   "stellen": [
+    0,
+    0.2,
+    0.4,
+    0.55,
+    0.7,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     149,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "aufsetzen": {
+   "stellen": [
+    0,
+    0.2,
+    0.4,
+    0.5667,
+    0.7333,
+    0.8667,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     29,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     12,
+     0
+    ],
+    [
+     3,
+     0
+    ],
+    [
+     143,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "aufstehen": {
+   "stellen": [
+    0,
+    0.26,
+    0.52,
+    0.76,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "aufstehenSitz": {
+   "stellen": [
+    0,
+    0.2,
+    0.4,
+    0.7,
+    1
+   ],
+   "zahlen": [
+    [
+     0,
+     0
+    ],
+    [
+     75,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  }
+ },
+ "fehlerChrome": [],
+ "fehlerWebKit": []
+}

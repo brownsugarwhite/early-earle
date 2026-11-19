@@ -310,3 +310,23 @@ Bildsprung; Filmstreifen je Ablauf für Florian.
 
 **Stand (19.11.): 1 bis 4 gebaut**, Tests und Proben bestanden (`docs/look/ozzy-figur/UEBERGABE.md`, Etappe D, dritter Teil; Bilder
 und Video `docs/progress/ozzy-figur/2026-11-19-d-*`). Florians Urteil steht aus.
+
+### 12c. Florians Rückmeldung (19.11. vormittags): Biegung, Kopf im Sitzen, nichts rutscht
+
+„bein stärker biegen, und achte darauf dass die weiße fläche am bein immer etwa das gleiche volumen hat. Kannst du beim sitzen den
+kopf etwas weiter zurück machen? Das ist eine änderung meiner grundpose … Und in den posen hat ozzy verschiedene positionen und
+skalierungen. Die beine rutchen bei manchen animationen weil die posen verschiedenen positionierungen haben.“
+
+1. **Biegen ohne Stauchen:** Ein Bein, dessen Rückgrat kürzer ist als das Bein, schiebt sich von der Sohle aus in den Körper; das
+   Fenster behält Form und Fläche. Hocke: Ferse nach hinten, Körper 28 hinter dem Sitzen.
+2. **Kopf im Sitzen zurück:** 18 zurück, 4 tiefer (nur zurück blieb an der Ohrwurzel eine weiße Sichel). Vorlage und Probe C1 ziehen
+   seine Änderung mit.
+3. **Nichts rutscht, was stehen soll:** Jeder Abschnitt eines Ablaufs nennt, was steht (Vorder-, Hinterpfoten, alle, Hintern); Ozzy
+   verschiebt sich als Ganzes, damit es in der Welt stehen bleibt. Die Vorderpfoten heben sich in der Hocke und setzen den Weg zum
+   Sitzen als Schritt. In der Steuerung folgt das Bild Ozzy.
+4. **Größen seiner Vorlagen:** gemessen, nicht angeglichen (sein Wort).
+
+**Stand (19.11. vormittags): 1 bis 3 gebaut**, Tests und Proben bestanden (`docs/look/ozzy-figur/UEBERGABE.md`, Etappe D, vierter
+Teil; Bilder und Video `docs/progress/ozzy-figur/2026-11-19-e-*`). Offen: sein Urteil; ob die Wege der Beine, die sich bewegen
+sollen (Hinterbein strecken, unter den Körper holen), als Schritte in der Luft gehen sollen; ob die Größen der Vorlagen angeglichen
+werden.

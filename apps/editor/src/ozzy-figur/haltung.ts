@@ -20,6 +20,8 @@ import { type Form, kasten, type Punkt, schwerpunkt } from './form';
 import { type AnsichtName, type FigurDaten, type TeilName, teilVon, WEISS } from './vorlagen/import';
 
 export type HaltungName = 'stehen' | 'hocke' | 'sitzen' | 'liegen' | 'diener';
+/** Was in einem Abschnitt eines Ablaufs stehen bleibt: Vorderpfoten, Hinterpfoten, die Mitte aller Pfoten oder der Hintern */
+export type Anker = 'vorn' | 'hinten' | 'alle' | 'koerper';
 /** Gewichte der Haltungen (fehlende = 0; werden auf die Summe 1 gebracht, ohne Gewicht: Stehen) */
 export type Gewichte = Partial<Record<HaltungName, number>>;
 
@@ -38,9 +40,16 @@ const I_LIEGEN = 3;
 const I_DIENER = 4;
 /** gebaute Haltungen (ohne Vorlage) */
 const GEBAUT = [I_HOCKE, I_DIENER];
-/** Biegung der Hinterbeine in der tiefen Hocke an der Hüfte (rad, Knie nach vorn) und wie weit ihre Pfoten dort vor der Hüfte stehen */
-const HOCKE_BIEGUNG = 1.2;
-const HOCKE_VOR = 22;
+/** Biegung der Hinterbeine in der tiefen Hocke an der Hüfte (rad, Knie nach vorn) und wie weit der Körper dort gegen das Sitzen nach
+ * hinten geht (der Hintern landet hinter den Hinterpfoten, nicht auf ihnen) */
+const HOCKE_BIEGUNG = -1.0;
+const HOCKE_ZURUECK = 28;
+/** In der Hocke ruht das Gewicht auf dem Hintern: Die Vorderpfoten heben sich so weit (Figur-Einheiten). Sie stehen dort noch, wo sie im
+ * Stehen standen, im Sitzen aber HOCKE_ZURUECK weiter hinten (vom Hintern aus gesehen): Den Weg dorthin machen sie als kleinen Schritt
+ * in der Luft, statt über den Boden zu rutschen */
+const HOCKE_HEBEN = 10;
+/** Florians Änderung seiner Sitzvorlage (19.11.): der Kopf im Sitzen so viel weiter hinten (Figur-Einheiten) */
+export const KOPF_SITZEN: Punkt = [-18, 4];
 /** Diener: Biegung der aufgestellten Hinterbeine (rad, Knie nach vorn), Höhe ihrer Hüften über dem Boden (Anteil der Beinlänge),
  * Pfote so weit hinter der Hüfte, Schwanz so weit hoch (rad) */
 const DIENER_BIEGUNG = 0.45;
@@ -54,6 +63,9 @@ const KAMERA_SCHWELLE = 0.5;
 const RUECKZUG = 0.3;
 /** Streuung der Orte eines Gelenks (Fuß, Hüfte, Schulter; Figur-Einheiten), bis zu der es in den gemischten Haltungen stehen bleibt */
 const STEHT = 4;
+/** Ein Bein biegt sich, bis sein Krümmungsradius so viel der halben Beinbreite misst (darunter faltete es sich innen: Die inneren
+ * Kanten schnitten schwarze Spitzen ins Weiß). Was dann fehlt, schiebt sich in den Körper (beinOrt) */
+const FALTEN = 1;
 /** Verkürzung eines Beins zur Kamera, unter der sein Weiß ganz fort ist (1 = volle Länge) */
 const KURZ_WEG = 0.45;
 /** Verkürzung, unter der die Seitenansicht des Beins auch quer in seine Sohle einläuft (bei 0 ist nur die Sohle übrig) */
@@ -147,6 +159,8 @@ interface Bein {
   /** je Haltung: Ort des Fußes (Körperkoordinaten); liegt er in den gemischten Haltungen an derselben Stelle, bleibt er dort stehen */
   fuss: Punkt[];
 }
+/** Zustand eines Knochens bei bestimmten Gewichten; halb: halbe Breite des Beins quer zur Achse, wie es gerade gemischt ist */
+type Zustand = { k: Knochen; w: number; p: Punkt; h?: Punkt; f?: Punkt; th?: Punkt; tf?: Punkt; r?: Rueckgrat; kurz: number; halb?: number };
 interface Teilhaltung {
   knochen: TeilName;
   /** Korrektur je Haltung: je Punkt (Anker, Griff ein, Griff aus) dx, dy im Knochen (bei Beinen längs und quer zur Achse) */
@@ -238,8 +252,11 @@ const ABTASTUNG = 24;
  * höchstens bis zur Krümmung 1/rMin (sonst faltete es sich innen); was dann noch fehlt, schiebt sich in den Körper. Mit gleicher
  * Richtung an beiden Enden ist es gerade, an den Vorlagen genau die gezeichnete Form.
  */
-export function rueckgratBauen(h: Punkt, f: Punkt, th: Punkt, tf: Punkt, laenge: number, rMin: number): Rueckgrat {
+export function rueckgratBauen(h: Punkt, f: Punkt, thGewollt: Punkt, tfGewollt: Punkt, laenge: number, rMin: number): Rueckgrat {
   const c = Math.hypot(f[0] - h[0], f[1] - h[1]);
+  // Richtungen an Hüfte und Sohle; die Biegung wird zurückgenommen (zur Sehne hin gedreht), wenn schon kurze Griffe falten würden
+  let th: Punkt = thGewollt;
+  let tf: Punkt = tfGewollt;
   const pts = new Float64Array((ABTASTUNG + 1) * 2);
   const kum = new Float64Array(ABTASTUNG + 1);
   let lam = c / 3;
@@ -273,6 +290,25 @@ export function rueckgratBauen(h: Punkt, f: Punkt, th: Punkt, tf: Punkt, laenge:
     }
     return { S, k };
   };
+  if (c > 1e-6) {
+    // Biegung zurücknehmen, solange schon die kurzen Griffe falten würden (stetig: Faktor 1 an der Grenze, feste Schrittzahl)
+    const sehne = Math.atan2(f[1] - h[1], f[0] - h[0]);
+    const zuSehne = (t: Punkt, b: number): Punkt => {
+      let d = Math.atan2(t[1], t[0]) - sehne;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      return [Math.cos(sehne + b * d), Math.sin(sehne + b * d)];
+    };
+    let beta = 1;
+    for (let i = 0; i < 10; i++) {
+      th = zuSehne(thGewollt, beta);
+      tf = zuSehne(tfGewollt, beta);
+      const k = abtasten(c / 3).k * rMin;
+      beta *= Math.min(1, Math.max(0.5, 1 / Math.max(k, 1e-9)));
+    }
+    th = zuSehne(thGewollt, beta);
+    tf = zuSehne(tfGewollt, beta);
+  }
   let m = abtasten(lam);
   if (c > 1e-6) {
     // Griffe länger, bis das Bein seine Länge hat (gedämpfte Schritte, ohne Verzweigung: das Ergebnis wandert stetig mit) …
@@ -307,6 +343,24 @@ export function rueckgratBauen(h: Punkt, f: Punkt, th: Punkt, tf: Punkt, laenge:
       return { s: punkt(l, t), t: n > 1e-9 ? [d[0] / n, d[1] / n] : th };
     },
   };
+}
+
+/**
+ * Ort und Richtung eines Beins bei u (0 Hüfte, 1 Sohle). Florian (19.11.): „achte darauf dass die weiße fläche am bein immer etwa das
+ * gleiche volumen hat“: Ist das Rückgrat kürzer als das Bein (es biegt sich so stark, wie es ohne Falten geht, und reicht doch nicht),
+ * wird das Bein nicht gestaucht: Es steht mit der Sohle auf dem Fuß und schiebt sich oben in den Körper (über der Hüfte gerade weiter,
+ * im Schwarz der Bohne; das Weiß liegt dort über ihr wie in seiner Sitzvorlage). So behalten Bein und Weiß Form und Fläche. Nur ein Bein,
+ * das zur Kamera zeigt, wird kürzer (verkürzt gesehen).
+ */
+function beinOrt(z: Zustand, b: Bein, u: number): { s: Punkt; t: Punkt } {
+  const r = z.r!;
+  const S = r.laenge;
+  const L = b.laenge * z.kurz;
+  // zur Kamera verkürzt: gestaucht; sonst von der Sohle aus in voller Länge
+  const x = Math.max(0, Math.min(1, (z.kurz - 0.6) / 0.4));
+  const tele = x * x * (3 - 2 * x);
+  const bogen = u * S * (1 - tele) + (S - (1 - u) * L) * tele;
+  return r.bei(S > 1e-9 ? bogen / S : u);
 }
 
 export class Haltungen {
@@ -504,22 +558,9 @@ export class Haltungen {
       this.kopfVorn.push([mv[0] - sv[0], mv[1] - sv[1]]);
       this.kopfProfil.push([mp[0] - sp[0], mp[1] - sp[1]]);
     });
-    // Der Kopf hängt an der Bohne wie die Beine: seine Mitte je Haltung im Knochen der Bohne. In der Hocke wie im Sitzen, im Diener
-    // wie im Liegen (tief über den Vorderpfoten; er kippt nicht mit dem Körper nach vorn)
     this.kopfMitte.vorn = sv;
     this.kopfMitte.profil = sp;
-    this.kopfVorn[I_HOCKE] = this.kopfVorn[I_SITZEN]!;
-    this.kopfProfil[I_HOCKE] = this.kopfProfil[I_SITZEN]!;
-    this.kopfVorn[I_DIENER] = this.kopfVorn[I_LIEGEN]!;
-    this.kopfProfil[I_DIENER] = this.kopfProfil[I_LIEGEN]!;
-    for (const reihe of ['vorn', 'profil'] as const) {
-      const kb = this.knochen[reihe].get('bohne');
-      const versatz = reihe === 'vorn' ? this.kopfVorn : this.kopfProfil;
-      const c = this.kopfMitte[reihe];
-      this.kopfAmKoerper[reihe] = kb
-        ? HALTUNGEN.map((_, i) => drehen([c[0] + versatz[i]![0] - kb.lage[i]![0], c[1] + versatz[i]![1] - kb.lage[i]![1]], -kb.winkel[i]!))
-        : [];
-    }
+    // Korrekturen der Kopfteile gegen den Versatz, wie Florian die Vorlagen gezeichnet hat
     for (const n of KOPFTEILE) {
       const korrektur = (stand: Form | undefined, a: AnsichtName | undefined, v: Punkt, i: number): number[] => {
         if (!stand) return [];
@@ -538,6 +579,23 @@ export class Haltungen {
       vorn[I_DIENER] = vorn[I_LIEGEN]!.slice();
       profil[I_DIENER] = profil[I_LIEGEN]!.slice();
       if ([...vorn, ...profil].some((r) => r.some((v) => Math.abs(v) > 1e-6))) this.kopfRest.set(n, { vorn, profil });
+    }
+    // Florian (19.11.): „Kannst du beim sitzen den kopf etwas weiter zurück machen? Das ist eine änderung meiner grundpose, aber aktuell
+    // ist er im vergleich zu anderen posen etwas zu weit vorne“: Im Sitzen sitzt der ganze Kopf um KOPF_SITZEN weiter hinten
+    for (const v of [this.kopfVorn, this.kopfProfil]) v[I_SITZEN] = [v[I_SITZEN]![0] + KOPF_SITZEN[0], v[I_SITZEN]![1] + KOPF_SITZEN[1]];
+    // Der Kopf hängt an der Bohne wie die Beine: seine Mitte je Haltung im Knochen der Bohne. In der Hocke wie im Sitzen (mit dem Körper
+    // zurück), im Diener wie im Liegen (tief über den Vorderpfoten; er kippt nicht mit dem Körper nach vorn)
+    this.kopfVorn[I_HOCKE] = [this.kopfVorn[I_SITZEN]![0] - HOCKE_ZURUECK, this.kopfVorn[I_SITZEN]![1]];
+    this.kopfProfil[I_HOCKE] = [this.kopfProfil[I_SITZEN]![0] - HOCKE_ZURUECK, this.kopfProfil[I_SITZEN]![1]];
+    this.kopfVorn[I_DIENER] = this.kopfVorn[I_LIEGEN]!;
+    this.kopfProfil[I_DIENER] = this.kopfProfil[I_LIEGEN]!;
+    for (const reihe of ['vorn', 'profil'] as const) {
+      const kb = this.knochen[reihe].get('bohne');
+      const versatz = reihe === 'vorn' ? this.kopfVorn : this.kopfProfil;
+      const c = this.kopfMitte[reihe];
+      this.kopfAmKoerper[reihe] = kb
+        ? HALTUNGEN.map((_, i) => drehen([c[0] + versatz[i]![0] - kb.lage[i]![0], c[1] + versatz[i]![1] - kb.lage[i]![1]], -kb.winkel[i]!))
+        : [];
     }
     for (const { vorn, profil } of HALTUNGEN) this.reihen.push(vorn && profil ? { vorn: d.ansichten[vorn].def.teile.slice(), profil: d.ansichten[profil].def.teile.slice() } : null);
     // Malreihenfolge der gebauten Haltungen: Hocke wie Sitzen, Diener wie Liegen
@@ -591,11 +649,16 @@ export class Haltungen {
         b.biegF[I_HOCKE] = b.biegF[I_SITZEN]!;
       }
     }
-    // Der Hintern landet, wo die Hinterpfoten standen: Sie rutschen beim Einknicken unter den Bauch, vor die Hüfte
+    // In Florians Vorlagen landet der sitzende Hintern genau dort, wo die Hinterpfoten stehen. In der Hocke geht der Körper deshalb ein
+    // Stück nach hinten (der Hintern landet hinter den Pfoten); die Hinterpfoten bleiben stehen, wo sie im Stehen sind, und die
+    // Hinterbeine biegen sich deutlich (Sohle flach). Die Vorderbeine neigen sich nach vorn, ihre Pfoten heben sich ein wenig über ihren
+    // Orten im Stehen (das Gewicht ist hinten; zum Sitzen setzen sie einen kleinen Schritt zurück)
+    for (const k of kn.values()) if (!k.bein) k.lage[I_HOCKE] = [k.lage[I_SITZEN]![0] - HOCKE_ZURUECK, k.lage[I_SITZEN]![1]];
     for (const k of kn.values()) {
-      if (!hinten(k)) continue;
-      const huefte = ausBohne(inBohne(k.lage[I_STEHEN]!, I_STEHEN), I_HOCKE);
-      beinSetzen(k, I_HOCKE, huefte, [huefte[0] + HOCKE_VOR, 0], -HOCKE_BIEGUNG, true);
+      if (!k.bein) continue;
+      const huefte: Punkt = hinten(k) ? ausBohne(inBohne(k.lage[I_STEHEN]!, I_STEHEN), I_HOCKE) : [k.lage[I_SITZEN]![0] - HOCKE_ZURUECK, k.lage[I_SITZEN]![1]];
+      const pfote = pfoteIn(k, I_STEHEN);
+      beinSetzen(k, I_HOCKE, huefte, hinten(k) ? pfote : [pfote[0], pfote[1] - HOCKE_HEBEN], hinten(k) ? -HOCKE_BIEGUNG : 0, true);
     }
     // ---- Diener ----
     // Die Bohne liegt vorn wie im Liegen und kippt um die Hüften der Vorderbeine nach vorn (Brust und Vorderpfoten bleiben, wo sie im
@@ -665,12 +728,8 @@ export class Haltungen {
     return out;
   }
 
-  /** @param wedeln Zusatzwinkel (rad) der Teile, die frei am Körper hängen (Schwanz): Wedeln, positiv nach oben */
-  private koerperReihe(reihe: Reihe, w: number[], wedeln = 0): Map<TeilName, Form> {
-    const out = new Map<TeilName, Form>();
-    // Zustand je Knochen; bei Beinen das Rückgrat (Hüfte, Fuß, Richtungen an beiden Enden) und die Verkürzung zur Kamera
-    // halb: halbe Breite des Beins quer zur Achse, wie es gerade gemischt ist (für die Sohle)
-    type Zustand = { k: Knochen; w: number; p: Punkt; h?: Punkt; f?: Punkt; th?: Punkt; tf?: Punkt; r?: Rueckgrat; kurz: number; halb?: number };
+  /** Zustand jedes Knochens bei den Gewichten w: Drehpunkt und Winkel, bei Beinen Hüfte, Fuß, Richtungen, Rückgrat und Verkürzung */
+  private zustandReihe(reihe: Reihe, w: number[], wedeln: number, mitRueckgrat: boolean): Map<TeilName, Zustand> {
     const zustand = new Map<TeilName, Zustand>();
     const bohne = this.bohneBei(reihe, w);
     for (const [n, k] of this.knochen[reihe]) {
@@ -716,8 +775,19 @@ export class Haltungen {
       const tf = richtung(sw + wf - ws);
       // das Bein behält seine Länge (zur Kamera verkürzt) und biegt sich, statt kürzer zu werden
       if (Haltungen.mitschreiben) Haltungen.mitschreiben.set(`${reihe}:${n}`, { h: p, f: [f[0], f[1]], th, tf, laenge: b.laenge * kurz, rMin: b.breite / 2 });
-      zustand.set(n, { k, w: sehne, p, h: p, f, th, tf, r: rueckgratBauen(p, f, th, tf, b.laenge * kurz, b.breite / 2), kurz });
+      const z: Zustand = { k, w: sehne, p, h: p, f, th, tf, kurz };
+      if (mitRueckgrat) z.r = rueckgratBauen(p, f, th, tf, b.laenge * kurz, (b.breite / 2) * FALTEN);
+      zustand.set(n, z);
     }
+    return zustand;
+  }
+
+  /** @param wedeln Zusatzwinkel (rad) der Teile, die frei am Körper hängen (Schwanz): Wedeln, positiv nach oben */
+  private koerperReihe(reihe: Reihe, w: number[], wedeln = 0): Map<TeilName, Form> {
+    const out = new Map<TeilName, Form>();
+    // Zustand je Knochen; bei Beinen das Rückgrat (Hüfte, Fuß, Richtungen an beiden Enden) und die Verkürzung zur Kamera
+    // halb: halbe Breite des Beins quer zur Achse, wie es gerade gemischt ist (für die Sohle)
+    const zustand = this.zustandReihe(reihe, w, wedeln, true);
     for (const [n, t] of this.teile[reihe]) {
       const f0 = this.stand.get(n)!;
       const z = zustand.get(t.knochen)!;
@@ -738,7 +808,7 @@ export class Haltungen {
           const v = -r[0] * a[1] + r[1] * a[0] + rest[2 * j + 1]!;
           uMitte += u;
           if (n === t.knochen) z.halb = Math.max(z.halb ?? 0, Math.abs(v));
-          const { s, t: tg } = z.r!.bei(u);
+          const { s, t: tg } = beinOrt(z, b, u);
           return [s[0] - v * breit * tg[1], s[1] + v * breit * tg[0]];
         });
         uMitte /= q.length;
@@ -755,7 +825,7 @@ export class Haltungen {
       if (da < 1 - 1e-6) {
         const x = Math.max(0, Math.min(1, (da - (1 - RUECKZUG)) / RUECKZUG));
         const k = Math.max(0.01, x * x * (3 - 2 * x));
-        const c = b && z.r && n !== t.knochen ? z.r.bei(uMitte).s : schwerpunkt(form);
+        const c = b && z.r && n !== t.knochen ? beinOrt(z, b, uMitte).s : schwerpunkt(form);
         form = form.map((y) => ({ p: lerp(c, y.p, k), i: lerp(c, y.i, k), o: lerp(c, y.o, k) }));
       }
       // Weiß an einem Bein, das zur Kamera zeigt, wird klein (die Seite des Beins ist dann nicht zu sehen); unter KURZ_WEG ist es
@@ -776,7 +846,7 @@ export class Haltungen {
       // 1 − kurz² (eine Wurzel davon schösse am Anfang aus dem Fuß). Ihre Mitte liegt eine halbe Beinbreite vor dem Fußende: Auf
       // dem Fußende selbst ragte sie, solange sie klein ist, als Punkt aus dem Bein
       const r = Math.max(b.breite / 2, z.halb ?? 0) * (1 - z.kurz * z.kurz);
-      const c = z.r!.bei(1 - b.breite / 2 / b.laenge).s;
+      const c = beinOrt(z, b, 1 - b.breite / 2 / b.laenge).s;
       out.set(('sohle' + n.slice(4)) as TeilName, kreis(c, r));
     }
     return out;
@@ -790,6 +860,41 @@ export class Haltungen {
   }
 
   /** gemischte Lage und Winkel des Knochens der Bohne in einer Reihe */
+  /**
+   * Ort (x) dessen, was in einem Abschnitt stehen bleiben soll (Florian, 19.11.: „Die beine rutschen bei manchen animationen weil die
+   * posen verschiedenen positionierungen haben“): Mitte der Vorder- oder Hinterpfoten, aller Pfoten, oder das hintere Ende der Bohne am
+   * Boden (der Hintern). Die Abläufe verschieben Ozzy als Ganzes so, dass dieser Ort stehen bleibt.
+   */
+  ankerX(g: Gewichte, theta: number, anker: Anker): number {
+    const w = gewichtsliste(g);
+    const s = Math.max(0, Math.min(1, theta / 90));
+    const x = (reihe: Reihe): number => {
+      const z = this.zustandReihe(reihe, w, 0, false);
+      if (anker === 'koerper') {
+        const kb = z.get('bohne');
+        if (!kb) return 0;
+        const [x0, y0, x1, y1] = kasten(this.stand.get('bohne')!);
+        const q = drehen([x0 + 0.2 * (x1 - x0) - kb.k.dreh[0], y1 - 0.15 * (y1 - y0) - kb.k.dreh[1]], kb.w);
+        return kb.p[0] + q[0];
+      }
+      let summe = 0;
+      let n = 0;
+      for (const zz of z.values()) {
+        const k = zz.k;
+        if (!k.bein || !zz.f) continue;
+        const hint = Math.abs(k.winkel[I_SITZEN]!) > Math.PI / 4;
+        if (anker === 'alle' || (anker === 'hinten') === hint) {
+          summe += zz.f[0];
+          n++;
+        }
+      }
+      return n ? summe / n : 0;
+    };
+    if (s <= 1e-6) return x('vorn');
+    if (s >= 1 - 1e-6) return x('profil');
+    return x('vorn') * (1 - s) + x('profil') * s;
+  }
+
   private bohneBei(reihe: Reihe, w: number[]): { p: Punkt; w: number } | null {
     const kb = this.knochen[reihe].get('bohne');
     if (!kb) return null;
@@ -904,6 +1009,11 @@ export class Haltungen {
   }
 
   /** Vorlage, wenn genau eine gezeichnete Haltung außer dem Stehen gilt (θ 0 oder 90), sonst null */
+  /** Versatz der Kopfteile einer Haltungsvorlage, wie Florian sie geändert hat (Kopf im Sitzen zurück) */
+  static kopfVersatzVorlage(a: AnsichtName): Punkt {
+    return HALTUNGEN[I_SITZEN]!.vorn === a || HALTUNGEN[I_SITZEN]!.profil === a ? KOPF_SITZEN : [0, 0];
+  }
+
   vorlageBei(g: Gewichte, theta: number): AnsichtName | null {
     const w = gewichtsliste(g);
     const i = w.findIndex((v) => v > 1 - 1e-3);

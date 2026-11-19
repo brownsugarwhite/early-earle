@@ -9,7 +9,7 @@ import type { Fluessig, RenderTeil, Szene, Verdecker } from './renderer';
 import { gruppeVon, weissGruppeVon } from './szenen';
 import { type AnsichtName, type FigurAnsicht, type FigurDaten, type TeilName, teilVon } from './vorlagen/import';
 import { ZWISCHEN } from './vorlagen/zwischen';
-import { type Gewichte, gewichteAus, HALTUNGEN, Haltungen } from './haltung';
+import { type Anker, type Gewichte, gewichteAus, HALTUNGEN, Haltungen } from './haltung';
 
 // ---- Interpolation ------------------------------------------------------------------------------------------------------
 
@@ -162,6 +162,9 @@ export interface Effekte {
   kopf?: number;
   /** Schwanz wedelt (rad, positiv = hoch) */
   wedeln?: number;
+  /** Ozzy als Ganzes verschoben (Figur-Einheiten, nach vorn positiv): So bleiben die Pfoten oder der Hintern stehen, die in einem
+   * Abschnitt eines Ablaufs stehen bleiben sollen */
+  versatz?: number;
 }
 export interface RasterRegeln {
   /** Verdecken auf der abgewandten Kopfseite zwischen den Schlüsseln (0 = aus) */
@@ -169,7 +172,7 @@ export interface RasterRegeln {
 }
 
 /** Rand der Fenster in ihrem Bein während eines Haltungswechsels (Figur-Einheiten) */
-const FENSTER_RAND_WECHSEL = 3;
+const FENSTER_RAND_WECHSEL = 0;
 const KOERPER: TeilName[] = ['bohne', 'beinRV', 'beinRH', 'beinLV', 'beinLH', 'keilV', 'keilH', 'fensterRV', 'fensterRH', 'fensterLV', 'schwanz', 'schwanzW'];
 const KOPF: TeilName[] = ['ohrB', 'ohrSpalt', 'ohrA', 'kopfB', 'kopfA', 'bartA', 'bartB', 'nase'];
 const BEINE: TeilName[] = ['beinRV', 'beinRH', 'beinLV', 'beinLH'];
@@ -495,7 +498,7 @@ export class FigurRaster {
     const vy = pchip(this.kopfVersatz.map((v) => v.w), this.kopfVersatz.map((v) => v.y), theta);
     const kopf = new Map<TeilName, Form>();
     const dk: Punkt = pose ? this.haltungen!.kopfVersatz(g!, theta) : [0, 0];
-    if (pose && lage.effekte?.kopf) dk[1] += lage.effekte.kopf;
+    if (lage.effekte?.kopf) dk[1] += lage.effekte.kopf;
     for (const [n, keys] of this.kopf) {
       const f = verschieben(this.spitzenFuehren(n, formAusSchluesseln(keys, theta), theta), hals[0] + vx + dk[0], hals[1] + vy + dk[1]);
       kopf.set(n, pose ? this.haltungen!.kopfKorrektur(n, f, g!, theta) : f);
@@ -537,7 +540,8 @@ export class FigurRaster {
       const tief = FigurRaster.tiefster(liste) - this.haltungen!.bodenBei(g!, theta);
       if (Number.isFinite(tief) && Math.abs(tief) > 1e-9) for (const t of liste) t.form = verschieben(t.form, 0, -tief);
     }
-    if (pose && lage.effekte) FigurRaster.effekteAnwenden(liste, lage.effekte);
+    // Zusatzbewegungen auch im reinen Stehen: Am Ende eines Ablaufs (und in der Steuerung) steht Ozzy dort, wohin er sich verschoben hat
+    if (lage.effekte) FigurRaster.effekteAnwenden(liste, lage.effekte);
     return liste;
   }
 
@@ -546,6 +550,8 @@ export class FigurRaster {
    * Vorderpfoten bleiben stehen) und Stauchen am Boden (alles wird flacher und breiter, der Boden bleibt Boden).
    */
   private static effekteAnwenden(liste: { name: TeilName; weiss: boolean; form: Form }[], e: Effekte): void {
+    const dx = e.versatz ?? 0;
+    if (Math.abs(dx) > 1e-9) for (const t of liste) t.form = verschieben(t.form, dx, 0);
     const hub = e.hub ?? 0;
     if (Math.abs(hub) > 1e-9) {
       let px = -Infinity;
@@ -635,7 +641,10 @@ export class FigurRaster {
       const n = this.haltungen.vorlageBei(g, lage.theta);
       if (!n) return null;
       const u = this.ursprung(n);
-      return { ansicht: n, formen: this.ansichten[n].teile.map((x) => verschieben(x.form, -u[0], -u[1])) };
+      // mit Florians Änderung seiner Vorlage (Kopf im Sitzen zurück)
+      const dk = Haltungen.kopfVersatzVorlage(n);
+      const kopfteil = (t: TeilName): boolean => this.kopf.has(t);
+      return { ansicht: n, formen: this.ansichten[n].teile.map((x) => verschieben(x.form, -u[0] + (kopfteil(x.name) ? dk[0] : 0), -u[1] + (kopfteil(x.name) ? dk[1] : 0))) };
     }
     const wahl: [number, number, AnsichtName][] = [[0, 0, 'front'], [45, 45, 'viertel'], [90, 0, 'logo'], [90, 90, 'profil']];
     for (const [p, t, n] of wahl)
@@ -651,6 +660,11 @@ export class FigurRaster {
     const v = this.haltungen?.versatz.get(n);
     if (v && n !== 'logo' && n !== 'profil') return [-v[0], -v[1]];
     return koerperUrsprung(this.ansichten[n]);
+  }
+
+  /** Ort dessen, was in einem Abschnitt eines Ablaufs stehen bleibt (siehe Haltungen.ankerX) */
+  ankerX(g: Gewichte, theta: number, anker: Anker): number {
+    return this.haltungen ? this.haltungen.ankerX(g, theta, anker) : 0;
   }
 
   /** Szene für den Renderer */

@@ -1,9 +1,13 @@
 // Etappe D: Die Steuerung spielt Florians Abläufe (19.11.) immer weich (kein Sprung, kein Ruck), auch wenn mitten im Wechsel ein
 // neues Ziel kommt, kommt genau an, nimmt beim Hinsetzen den Weg über die Hocke, beim Hüpfer hebt das Hinterteil ab und plumpst.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Art } from './ablauf';
-import { HALTUNGEN, type HaltungName } from './haltung';
+import { type Anker, type Gewichte, HALTUNGEN, type HaltungName } from './haltung';
+import { FigurRaster } from './raster';
 import { HaltungsSteuerung } from './steuerung';
+import { drehLage } from './szenen';
+import { ANSICHT_NAMEN, ANSICHTEN, importieren } from './vorlagen/import';
 
 const BILD = 1 / 60;
 /**
@@ -161,6 +165,41 @@ describe('Ozzy-Figur: Steuerung der Haltungen', () => {
     const { sprung, ruck } = weich(spur);
     expect(sprung).toBeLessThan(SPRUNG);
     expect(ruck).toBeLessThan(RUCK * 2);
+  });
+
+  it('mit Ankern: Ozzy verschiebt sich wie im Ablauf, weich, und die stehenden Hinterpfoten rutschen beim Einknicken nicht', () => {
+    const texte: Record<string, string> = {};
+    const ordner = new URL('../../../../docs/look/ozzy-figur/vorlagen/', import.meta.url);
+    for (const a of ANSICHT_NAMEN) texte[ANSICHTEN[a].datei] = readFileSync(new URL(ANSICHTEN[a].datei, ordner), 'utf8');
+    const raster = new FigurRaster(importieren(texte));
+    const anker = (g: Gewichte, a: Anker): number => raster.ankerX(g, 0, a);
+    const s = new HaltungsSteuerung('stehen', undefined, anker);
+    const pfote = (): number => {
+      const f = raster.teile({ psi: 90, theta: 0, posen: s.gewichte(), effekte: s.effekte() }).find((t) => t.name === 'beinRH' && !t.weiss)!.form;
+      const y = Math.max(...f.map((a) => a.p[1]));
+      const unten = f.filter((a) => a.p[1] > y - 3);
+      return unten.reduce((x, a) => x + a.p[0], 0) / unten.length;
+    };
+    const p0 = pfote();
+    s.setzen('sitzen');
+    let vor = 0;
+    let groesster = 0;
+    for (let t = 0; t < 3; t += BILD) {
+      s.schritt(BILD);
+      const x = s.effekte().versatz ?? 0;
+      groesster = Math.max(groesster, Math.abs(x - vor));
+      vor = x;
+      // bis der Hintern am Boden ist (Hocke), steht das Hinterbein
+      if (t < 0.6) expect(Math.abs(pfote() - p0)).toBeLessThan(1.5);
+    }
+    expect(s.ruht).toBe(true);
+    // am Ende genau so weit wie der Ablauf selbst (der Hintern ist dort, wo er gelandet ist), unterwegs nie mehr als 2 je Bild
+    expect(Math.abs(s.weltX - (drehLage('hinsetzen', 1, anker).effekte?.versatz ?? 0))).toBeLessThan(0.05);
+    expect(groesster).toBeLessThan(2);
+    // wieder aufstehen: zurück an den Anfang (Aufstehen aus dem Sitzen ist das Hinsetzen rückwärts)
+    s.setzen('stehen');
+    for (let t = 0; t < 3; t += BILD) s.schritt(BILD);
+    expect(Math.abs(s.weltX)).toBeLessThan(0.5);
   });
 
   it('ungültige Eingaben ändern nichts', () => {

@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026: A, B, C gebaut; D: Abläufe mit Charakter zwischen den Haltungen, Steuerung per Knopf)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 vormittags: A, B, C gebaut; D: Abläufe mit Charakter, nichts rutscht, Steuerung per Knopf)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -285,6 +285,46 @@ Hinterbeins zur Kamera kommt auf keinem Weg mehr vor (nur noch Rückfall für fr
   allem auf dem Weg dorthin. Zahlen (Biegung, Höhe im Diener, Zeiten, Stärke von Aufprall und Wedeln) sind Konstanten am Kopf von
   `haltung.ts` und `ablauf.ts`.
 
+## Etappe D, vierter Teil: stärker gebogen, Kopf im Sitzen zurück, nichts rutscht (19.11. vormittags)
+
+Florian (19.11.): „bein stärker biegen, und achte darauf dass die weiße fläche am bein immer etwa das gleiche volumen hat. Kannst du
+beim sitzen den kopf etwas weiter zurück machen? … Die beine rutchen bei manchen animationen weil die posen verschiedenen
+positionierungen haben.“ Plan: Abschnitt 12c.
+
+- **Bein stärker gebogen, das Weiß bleibt gleich groß:** Ist das Rückgrat kürzer als das Bein, wird das Bein nicht gestaucht oder
+  verbreitert, sondern liegt von der Sohle aus in voller Länge auf dem Rückgrat; der Rest schiebt sich in den Körper (`beinOrt`). Das
+  Fenster behält Form und Fläche. In der tiefen Hocke biegt sich das Hinterbein mit der Ferse nach hinten (`HOCKE_BIEGUNG` −1), der
+  Körper geht 28 hinter das Sitzen (`HOCKE_ZURUECK`): Der Hintern landet hinter den Pfoten. `rueckgratBauen` nimmt die Biegung
+  zurück, bis die Kurve nicht faltet (`FALTEN` 1, sonst schneiden die inneren Kanten schwarze Spitzen ins Weiß).
+- **Kopf im Sitzen 18 zurück und 4 tiefer** (`KOPF_SITZEN`, Kopf vorn und im Profil): Nur zurück stand die Ohrwurzel knapp neben dem
+  Rücken, dazwischen blieb eine feine weiße Sichel; mit 4 tiefer geht der Kopf auf dem Hals nach hinten wie bei einer Drehung um die
+  Schultern. Rote Vorlage und Probe C1 zeigen seine geänderte Vorlage (`kopfVersatzVorlage`; C1 verschiebt die Kopfpfade im SVG).
+  Bild `2026-11-19-e-kopf-sitzen.png` (links seine Vorlage, rechts neu; oben Kopf vorn, unten im Profil).
+- **Nichts rutscht, was stehen soll:** Jeder Abschnitt eines Ablaufs nennt, was dort steht (`steht`: Vorderpfoten, Hinterpfoten,
+  alle, oder der Hintern). Ozzy verschiebt sich je Abschnitt als Ganzes um das, was dieser Ort sonst wanderte (`ankerX` in
+  `haltung.ts`, Effekt `versatz` aus `ablaufBei`). Seine Vorlagen liegen verschieden (die Hinterpfoten im Sitzen weit vorn, im
+  Liegen weit hinten); dagegen hilft nur das. Zuordnung: Hinsetzen (Hocke auf den Hinterpfoten, Sitzen auf dem Hintern), Hüpfer
+  (Ausholen auf allen, Sprung auf den Vorderpfoten), Rutschen (alle, sie rutschen mit Absicht weg), gemütlich (Diener auf den
+  Hinterpfoten, Liegen auf den Vorderpfoten), Umlegen (Diener auf dem Hintern, Liegen vorn), Aufsetzen (Diener vorn, Hocke hinten,
+  Sitzen Hintern), Aufstehen (Diener vorn, Stehen hinten), Aufstehen aus dem Sitzen (Hocke Hintern, Stehen hinten).
+  - **Vorderpfoten machen einen Schritt:** Vom Hintern aus stehen sie im Sitzen 28 weiter hinten als in der Hocke. Sie heben sich
+    deshalb in der Hocke um 10 (`HOCKE_HEBEN`, das Gewicht ist hinten) und setzen den Weg zum Sitzen in der Luft.
+  - **Steuerung:** Das Bild folgt Ozzy (Zeitkonstante 0,9 s), der Boden hat Marken alle 40 Einheiten. Die Verschiebung kommt aus dem
+    Ablauf am Leitpunkt und läuft an derselben Feder wie die Gewichte; die Zusatzbewegungen kommen um die Verzögerung der Feder
+    (2/feder) später.
+  - Im reinen Stehen gelten die Zusatzbewegungen jetzt auch (vorher sprang Ozzy am Ende vom Aufstehen um 22 bis 28 zurück).
+- **Gemessen:** Was stehen soll, bleibt auf 0,5 genau stehen, solange es den Boden berührt (alle Abläufe außer Rutschen). Was sich
+  bewegen soll, geht weiter über den Boden: das Hinterbein, das sich beim Hinsetzen nach vorn streckt (rund 75), beim Aufsetzen unter
+  den Körper kommt (rund 100) und beim Umlegen nach hinten durchrutscht, die Vorderpfoten beim gemütlichen Hinlegen und Umlegen nach
+  vorn. Diese Wege könnten als kleine Schritte in der Luft gehen (sein Wort).
+- **Prüfungen:** 52 Tests (neu: in jedem Abschnitt rutscht nicht, was stehen soll; Kette Stehen–Hocke–Sitzen mit gehobenen
+  Vorderpfoten; Steuerung mit Ankern: Verschiebung wie im Ablauf, weich, Hinterpfoten stehen beim Einknicken). Proben A, B1, B2, C1
+  (Sitzen gegen die geänderte Vorlage), D2 bestanden, Tempo 2,6–3 ms je Bild (`2026-11-19-e-proben.json`). Bilder
+  `2026-11-19-e-<ablauf>.png` (Boden rot, Marken in der Welt blau), Video `2026-11-19-e-ablaeufe.mp4`.
+- **Größen seiner Vorlagen (gemessen, nicht angeglichen):** Kopf, Ohren und Schwanz sind überall gleich groß. Die Beine im Liegen
+  sind 9 bis 15 % größer (Fläche) als im Stehen, das nahe Hinterbein im Sitzen 21 %; die Fenster im Liegen bis 150 %, im Sitzen 118
+  bis 123 %; die Bohne im Sitzen 83 %, im Liegen 109 %. Beim Wechsel wachsen und schrumpfen sie deshalb. Angleichen nur auf sein Wort.
+
 ## Fallen
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
@@ -294,6 +334,12 @@ Hinterbeins zur Kamera kommt auf keinem Weg mehr vor (nur noch Rückfall für fr
 - Ein Rückgrat gegen die gemischte Richtung statt gegen die tatsächliche Linie Hüfte–Fuß schlägt eine S-Kurve unter den Boden, sobald
   der Boden den Fuß anhebt.
 - Eine Sprungprobe mit einer einzigen Schrittweite hält schnelle Bewegung (Absprung, Aufprall) für Sprünge: zwei Schrittweiten.
+- Den Ort einer Pfote an den Ankern ihrer Sohle messen, nicht an der Kontaktfläche (Punkte bis 1 über dem tiefsten): Hebt sich die
+  Zehe um 2, wandert die Mitte der Kontaktfläche um 10, ohne dass etwas rutscht.
+- Die Verschiebung in der Steuerung nie an den gezeigten Gewichten mit dem Anker des Abschnitts messen, in dem der Leitpunkt schon
+  ist: Die Feder hinkt nach, ein Bein, das noch wandert, gilt dann als stehend (Aufstehen verschob sich um 60 statt 28).
+- Eine steife Pfote (Gerade aus dem Fuß, weich ins Rückgrat übergehend) knickt den Umriss, wenn das Rückgrat kurz und stark gebogen
+  ist; sie half auch nicht (gemessen an den Ankern stand die Pfote schon).
 
 - Teile, die in einer Haltung fehlen, nie zu einem fernen Punkt ziehen (sie wandern sichtbar durch anderes): dort zurückziehen, wo
   sie verdeckt sind, und früh im Weg.
