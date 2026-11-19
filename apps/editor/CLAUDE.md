@@ -526,7 +526,7 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Mit eigenen Linien an den Formen hält es (die Formen gehen stark mit); an Formen ohne eigene Linien läuft die Rechnung
   auseinander, das Werk behält die Form („Hier ließ sich das Netz nicht aufräumen“). Begleitlinien halten nicht, außen festhalten
   (Halte-Loop) zeigt den Rand des Streifens. Zahlen und Offenes: Plan, Abschnitt 10.
-- **Die Naht lebt (Etappe 5, Beweis im Kern, 18.11. nachts; in Ozzy nicht gebaut):** `scripts/pruefen/form-naht-ziehen.ts` (aus
+- **Die Naht lebt (Etappe 5, Beweis im Kern, 18.11. nachts):** `scripts/pruefen/form-naht-ziehen.ts` (aus
   `packages/shape`: `[BLATT=<pfad>] [ABSTAENDE=150,180,…] [RICHTUNG=x,y,z] [RAMPE=30] [NACH=0] npx vite-node …`). Die kleine Form
   wandert weg; bei jedem Abstand wird aus den zwei unveränderten Formen neu verbunden (`objekteVerbinden`) und gerechnet. Ergebnis:
   Die Naht schrumpft stetig und verschwindet, nichts springt; mit Kante ist der Schnitt allein die Form (46 bis 78 ms je Stand),
@@ -534,7 +534,36 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   gefaltet ist (über 120° mitteln die Ecken der Naht über beide Seiten): dort Falten gegen Nachbardreiecke zählen (`gefaltet` in
   der Probe). (2) Läuft die Naht genau durch eine Kreuzung zweier Linien (weniger als eine halbe Netzkante daneben), entstehen
   sehr kurze Linienstücke, und die weiche Naht faltet dort 2 bis 10 Dreiecke; feinere Stufen oder weiteres Aufräumen ändern es
-  nicht (offen). Der Bau wäre ein Umbau (die Objekte bleiben Objekte, die verschmolzene Haut ist abgeleitet): Plan, Abschnitt 12.
+  nicht (offen). Plan, Abschnitt 12.
+- **Der Verbund (Etappe 5 in Ozzy, 19.11.; Plan, Abschnitt 13):** Verschmelzen und Abziehen sind ein Zustand des Objekts
+  (`verbundVon` in `main.ts`: `art`, `rund`, `breite`), kein Schritt; die Objekte bleiben Objekte. Was zu sehen ist, wird
+  abgeleitet: `verbundSoll()` bildet je Bild die Körper (was verschmilzt, abzüglich der Objekte, die abziehen; nach den Kästen),
+  `verbund.ts` gibt dem Rechner im Hintergrund (`verbund.worker.ts`) den neuesten Stand, `verbundRechnen.ts` schneidet die
+  **gezeigten** Häute (`manifold-3d`), findet die Naht, rundet und liefert ein Netz, die Naht als Strecken und die Umrisse.
+  Proben: `ozzy-verbund-fenster.mjs` (Standard `loops=1`), Tests `src/ozzy/verbundRechnen.test.ts` (laufen in Node, ohne Fenster).
+  Merke: (1) **Zwei Rechner:** einer für das Ziehen (`eilig`, grobe Stufe: `WerkHaut.stufeMitHoechstens`, die ersten Punkte des
+  gezeigten Netzes sind die Punkte der gröberen Stufe, `netzAufStufe`), einer für die Ruhe; ein Ergebnis gilt nur, wenn kein
+  neueres zu sehen ist. Der Rechner behält je Objekt zwei Stände; fehlt einer, meldet er `fehlt`, und das Netz kommt noch einmal.
+  (2) **Ein Zug am ganzen Objekt schickt nur die Abbildung** (`verbundZugMerken` in `objektZugBeginnen`, `verbundZugAbbildung`
+  aus vier Punkten der Haut des Werks): Das Anlegen eines Körpers kostet so viel wie der halbe Schnitt. Wer einen neuen Zug baut,
+  der die Haut nur abbildet, kann denselben Weg nehmen; alles andere schickt das Netz. (3) **Die Bibliothek richtet die Normalen
+  nicht:** Sie kommen, wie sie hineingingen (am Spiegelbild ungespiegelt, an der Wand eines Lochs nach außen); `nachbearbeiten`
+  bildet sie mit `runTransform` ab und dreht je Lauf nach den Dreiecken um. `getMesh(3)` tat in dieser Fassung (3.5.5) nichts.
+  Ein Lauf ohne Dreiecke steht trotzdem in `runOriginalID` (ob ein Abzieher beißt, an `runIndex` ablesen). Die Anzeige führt
+  Dreiecke je nach Form andersherum: vor dem Schnitt nach dem Rauminhalt drehen. (4) **Die Rundung** ist die weiche Vereinigung
+  an der Naht (Kopf von `verbundRechnen.ts`). An der Naht liegen Punkte in jedem Abstand und hauchdünne Dreiecke: Richtungen nie
+  aus der Lage einzelner Punkte nehmen (aus den zwei Normalen der Naht), Krümmungen längs der Naht nach Länge glätten, und
+  Punkte dicht an der Naht genau mit ihr mitführen (ihr Weg = der der Naht + der Unterschied der eigenen Rechnung zur Rechnung an
+  der Naht), sonst klappen diese Dreiecke um. Die Tests zählen das (`umgeklappt`, `nahtUnruhe`). In inneren Schleifen kein
+  `Math.hypot` (um ein Vielfaches langsamer als die Wurzel). (5) **Anzeige:** Die Seifenhaut hat zwei Plätze für ruhende Netze
+  (`ruheSetzen(netz, platz)`: 0 die Objekte für sich, 1 der Verbund); das aktive Netz wird mit `aktivAus` nicht gezeichnet, ein
+  aktives Objekt, das abzieht, mit `blaseSicht` blass. `verbundVerdeckt(id)` sagt, ob ein Objekt im gezeigten Verbund aufgeht:
+  Wer Netze, Umrisse oder Linien aller Objekte zusammensetzt (`zeigeNetzAlle`, `umrissJetzt`, `ruheUmrissTeile`, `ruheLinien`),
+  fragt es. Ruhende Netze tragen Dehnung 1 (nicht 0: Das liest die Anzeige als gestaucht). (6) **Wählen** (`objektBei`): alle
+  Durchgänge des Strahls durch alle Häute der Reihe nach; getroffen ist die erste Stelle, an der er in den Körper tritt (tritt er
+  dort aus einem Abzieher aus, gehört die Wand ihm). (7) Die zwei Knöpfe schalten (`verbundKnopf`), ⌥ + Klick wendet an
+  (`objekteVerbindenJetzt`, Etappe 4); Proben, die anwenden wollen: `s.click('#naht-vereinen', { modifiers: ['Alt'] })`.
+  (8) Offen: den Hilfsloop greifen; der Farbsprung zweier Schichtmuster an der Naht; die Rundung an stark geformten Stellen.
 - **Formen beginnen mit Edgeloops (seit dem 18.11. spät der Standard; Florian: „ok, dann starten wir mit loops“):** `startLoops`
   in `main.ts`, Menü „Start mit drei Loops“ (gemerkt), `?loops=0|1`. **Im Testbrowser (`navigator.webdriver`) und mit `ohneLinie=`
   in der Adresse sind sie aus:** Die Proben prüfen ihr Thema an der Form ohne Start-Loops, an der ihre Kriterien gemessen sind;

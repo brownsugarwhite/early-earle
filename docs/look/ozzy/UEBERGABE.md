@@ -1,4 +1,4 @@
-# Übergabe: Ozzy (Stand 18.11.2026, abends)
+# Übergabe: Ozzy (Stand 19.11.2026, früh)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“): Man zeichnet eine
 Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im Raum, in den eingerasteten Ansichten und in den Vier
@@ -9,7 +9,7 @@ ihn (bisher: C1, C2, D1).
 (von `claude/ozzy`, Stand `6bef9f17`), Arbeitsbaum `.claude/worktrees/ozzy-donut-mirror-system-7a31b7`, Fenster
 `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). **Noch nicht in `claude/ozzy` zusammengeführt** (das entscheidet Florian
 oder die Leitung). Plan mit Auftrag, Idee, Beweisen, Etappen und allem Offenen:
-[`docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`](../../plans/2026-11-18-ozzy-objekte-spiegel-naehte.md). Stand 18.11., spät:
+[`docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md`](../../plans/2026-11-18-ozzy-objekte-spiegel-naehte.md). Stand 19.11., früh:
 
 | Etappe | Stand | Probe |
 | --- | --- | --- |
@@ -21,12 +21,12 @@ oder die Leitung). Plan mit Auftrag, Idee, Beweisen, Etappen und allem Offenen:
 | 3 Rest | für den Feinschliff: die Fahrt zum Blatt beim Plus (es wechselt mit einem Schnitt; Florian, 18.11.: „Das gehört dann zum feinschliff“). Offen: die Formen einer Reihe blasen nacheinander auf, nicht zugleich; ⌘Z nimmt „neues Objekt“ nicht zurück; Linien ruhender Objekte ohne Verdeckung | Plan, Abschnitt 10, „Was an Etappe 3 offen bleibt“ |
 | 4 Naht zwischen Objekten (verschmelzen, abziehen) | **erste Fassung gebaut:** zwei Knöpfe neben dem Plus (ab zwei Objekten), die Naht ist eine Linie mit Kante und gewählt, ⌘Z trennt wieder; der Spiegel bleibt, wie das Bild ist. K an der Naht („Wie Seifenblasen“) hält an Formen mit eigenen Linien, ohne sie noch nicht (das Werk behält dann die Form). Offenes: Plan, Abschnitt 10, „Was an Etappe 4 offen bleibt“ | `ozzy-naht-fenster.mjs` (`LINIE=1`), `naht.test.ts`, Kern `form-naht.ts`; Bildbogen `docs/progress/ozzy/2026-11-18-naht-in-ozzy-bogen.png` |
 | Start mit Edgeloops | **Standard seit dem 18.11. spät** (Florian: „ok, dann starten wir mit loops“): Nach dem Aufblasen hat die Form drei Loops (die gezeichnete Silhouette, einen quer, einen längs durch die dickste Stelle); der Schalter im Menü schaltet es ab. Damit hält K an einer Naht. Offen, mit ihm: wo die Loops sitzen und das Aufblasen (zwischen drei Loops fällt die Haut ein: Kreis −9,7 %) | `ozzy-start-loops-fenster.mjs`; Plan, Abschnitt 11 |
-| 5 Naht lebt (auseinanderziehen, Hals) | **im Kern bewiesen** (18.11. nachts): Aus den zwei unveränderten Formen bei jedem Abstand neu verbunden, schrumpft die Naht stetig und verschwindet, nichts springt; mit Kante 46 bis 78 ms je Stand, weich 1,2 bis 1,7 s dazu. Offen: Wo die Naht durch eine Kreuzung zweier Linien läuft, falten sich weich einige Dreiecke. **In Ozzy nicht gebaut** (ein Umbau: Die Objekte bleiben Objekte) | `form-naht-ziehen.ts`; Plan, Abschnitt 12; Bild `docs/progress/ozzy/2026-11-18-naht-lebt-beweis.jpg` |
+| 5 Die Naht lebt: der Verbund | **gebaut (19.11. früh, selbstständig nach Florians Wort):** Verschmelzen und Abziehen sind Schalter am Objekt (die zwei Knöpfe neben dem Plus; ⌥ + Klick wendet an wie Etappe 4). Die Objekte bleiben Objekte; was zu sehen ist, wird aus ihren gezeigten Häuten im Hintergrund geschnitten und fährt beim Ziehen mit (grob im Zug, fein in Ruhe), auch ein Loch, auch gerundet (K rund oder Kante, [ ] Breite). Ein Klick in ein Loch wählt das Objekt, das abzieht. Sichern und Laden nehmen die Schalter mit. **Nicht gebaut:** den Hilfsloop selbst greifen. Entscheidungen für ihn und Offenes: Plan, Abschnitt 13. **Sein Urteil steht aus.** | `ozzy-verbund-fenster.mjs`, `verbundRechnen.test.ts`; Beweis im Kern `form-naht-ziehen.ts`; Bildbogen `docs/progress/ozzy/2026-11-19-verbund-bogen.jpg` |
 
 Florian hat am 18.11. auf die Frage zu „Spiegel aus“ geantwortet („Ja, so bauen“); seine Urteile zu den gebauten Etappen stehen aus.
 Was sich an der Bedienung geändert hat: V ist der Objekt-Modus (vorher „Auswahl“; die Punkte liegen auf A), das Lasso liegt auf Q
-(vorher L), L wählt alle Punkte des Teils unter dem Zeiger; in der Leiste stehen das Plus (neues Objekt) und die Gruppe für den
-Spiegel (aus, an, Clipping). Mit mehreren Objekten löscht der Mülleimer das aktive Objekt (mit einem geht er wie bisher zurück aufs
+(vorher L), L wählt alle Punkte des Teils unter dem Zeiger; in der Leiste stehen das Plus (neues Objekt), mit mehr als einem Objekt
+die zwei Schalter Verschmelzen und Abziehen, und die Gruppe für den Spiegel (aus, an, Clipping). Mit mehreren Objekten löscht der Mülleimer das aktive Objekt (mit einem geht er wie bisher zurück aufs
 leere Blatt).
 Was offen bleibt, steht im Plan in Abschnitt 8 („Aus dieser Sitzung“). Wie die freie Form innen aussieht und was man dabei nicht
 verletzen darf: `apps/editor/CLAUDE.md`, Eintrag „Spiegel und freie Form“.

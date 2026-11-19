@@ -4,14 +4,14 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Stand 18.11., nachts: Formen beginnen mit drei Loops (Abschnitt 11, dein Wort). Etappe 5 (die Naht lebt) ist im Kern bewiesen
-(Abschnitt 12), in Ozzy nicht gebaut. Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (Etappe 3 seit heute Abend; die Fahrt zum Blatt beim Plus
-gehört nach deinem Wort zum Feinschliff: mehrere Silhouetten auf einem Blatt, der gemeinsame Rückweg, Sichern und Laden der ganzen Szene, Linien ruhender Objekte;
-Abschnitt 10, „Etappe 3, der Rest“), **von Etappe 4 die erste Fassung: Verschmelzen und Abziehen in Ozzy** (zwei Knöpfe in der
-Leiste, die Naht als Linie mit Kante, ⌘Z trennt wieder; Abschnitt 10, „Etappe 4 in Ozzy“). K an der Naht ist entschieden („Wie
-Seifenblasen“) und wirkt wie an jeder Linie; mit den Start-Loops hält die Rechnung dabei (ohne eigene Linien hielt sie nicht;
-den Fall gibt es im Standard nicht mehr). Gebaut wird der Reihe nach (Abschnitt 6). Wo ich etwas für dich entschieden habe, steht
-es in Abschnitt 7; was offen bleibt, in Abschnitt 8 und je Etappe in Abschnitt 10.
+**Stand 19.11., früh: Etappe 5 (die Naht lebt) ist in Ozzy gebaut: der Verbund (Abschnitt 13).** Verschmelzen und Abziehen sind
+jetzt Schalter am Objekt; die Objekte bleiben Objekte, Naht und Loch fahren beim Ziehen mit, auch gerundet. Nicht gebaut: den
+Hilfsloop selbst greifen (Abschnitt 13, „Was offen bleibt“). **Formen beginnen mit drei Loops** (Abschnitt 11, dein Wort).
+**Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (die Fahrt zum Blatt beim Plus gehört nach deinem Wort zum Feinschliff),
+**von Etappe 4 die erste Fassung** (aus zwei Objekten eine Form, die Naht als Linie mit Kante, ⌘Z trennt wieder; seit Etappe 5
+ist das „anwenden“: ⌥ + Klick auf denselben Knopf). K an einer solchen Naht ist entschieden („Wie Seifenblasen“) und wirkt wie an
+jeder Linie. Wo ich etwas für dich entschieden habe, steht es in Abschnitt 7 und für Etappe 5 in Abschnitt 13; was offen bleibt,
+in Abschnitt 8 und je Etappe in Abschnitt 10 und 13.
 
 ## 1. Warum der Donut in Ozzy nicht geht
 
@@ -197,6 +197,9 @@ dann frei, beide Seiten lassen sich verschieden formen (dasselbe wie „anwenden
   liegt); die größte ist „Form 1“ und am Ende gewählt, die anderen blasen danach 2,5-mal so rasch auf. ⌘Z gilt jetzt für alle
   Objekte gemeinsam: Es nimmt den letzten Schritt zurück, wo er geschah, und wählt dafür dessen Objekt (vorher gehörte ⌘Z dem
   gewählten Objekt). Eine Szene ist eine Datei. Die Linien ruhender Objekte sind feine Striche ohne Punkte.
+
+- **Etappe 5 (19.11. früh):** siehe Abschnitt 13, „Was ich dabei für dich entschieden habe“ (Verschmelzen beginnt rund, Abziehen
+  mit Kante; ein Objekt, das abzieht, steht blass im Bild oder gar nicht; der Schalter liegt nicht auf ⌘Z; anwenden mit ⌥ + Klick).
 
 ## 8. Noch ausstehend (nicht in diesen Etappen)
 
@@ -544,7 +547,7 @@ subtrahiertes loch mit abgerundeten kanten live und flüssig verschieben und bea
   oder *zieht ab* (von allem, was es berührt). Die zwei Knöpfe neben dem Plus schalten ihn am gewählten Objekt.
 - **Was du siehst, ist abgeleitet:** der *Verbund*, der Schnitt der gezeigten Häute. Er wird jedes Mal neu gebildet, wenn sich
   ein Objekt bewegt oder ändert, im Hintergrund (das Bild stockt dabei nicht). Beim Ziehen auf einer gröberen Stufe derselben
-  glatten Anzeige (Vorversuch: rund 15 ms je Stand statt 150 ms), in Ruhe auf der vollen.
+  glatten Anzeige (gemessen: 17 bis 26 ms je Stand statt 280 bis 400 ms), in Ruhe auf der vollen.
 - **Die Kante rund:** K am gewählten Objekt (Objekt-Modus, oder mit A ohne gewählte Punkte) rundet seine Naht, `[` und `]`
   stellen die Breite. Die Rundung ist Geometrie am Verbund (ein weicher Streifen um die Naht, nach außen auslaufend) und fährt
   deshalb live mit, auch am Rand eines Lochs. Das ist bewusst nicht die Rechnung der weichen Linie: Die braucht ein bis zwei
@@ -554,11 +557,89 @@ subtrahiertes loch mit abgerundeten kanten live und flüssig verschieben und bea
 - **Wählen:** Ein Klick trifft, was man sieht: die Wand eines Lochs gehört dem Objekt, das abzieht. Ist es gewählt, steht es blass
   im Bild, damit man es auch außerhalb des Körpers greifen kann.
 
-**Stufen des Baus:** (1) der Verbund im Hintergrund (`verbund.worker.ts`, `verbund.ts`); (2) Zustand je Objekt, Knöpfe, K, `[ ]`;
-(3) Anzeige in allen Materialien, Wählen; (4) Sichern und Laden; (5) eine Probe (`ozzy-verbund-fenster.mjs`) und Bilder.
+### Gebaut (19.11., früh; Commits `30c81498`, `32cbb238`)
 
-**Nicht in diesem Bau:** den Hilfsloop selbst greifen und ziehen (Stufe 5c: bearbeitet werden die Objekte, die Naht folgt);
-die Umrisse an den Wänden zeigen weiter jedes Objekt für sich.
+Bild: [`2026-11-19-verbund-bogen.jpg`](../progress/ozzy/2026-11-19-verbund-bogen.jpg) (zwei Objekte; verschmolzen; auseinander
+gezogen; Loch mit Kante; Loch rund; drei Objekte).
+
+**So bedienst du es** (Fenster 5211, mit mindestens zwei Objekten im Raum):
+1. Ein Objekt wählen (Klick mit V oder A) und einen der zwei Knöpfe neben dem Plus drücken: **Verschmelzen** oder **Abziehen**.
+   Der Knopf bleibt gedrückt (ein kleiner Tropfen darunter), am Objekt steht mit V „verschmilzt, rund“ oder „zieht ab, Kante“.
+   Noch einmal drücken: Das Objekt steht wieder für sich.
+2. Mit **V ziehen**: Naht oder Loch fahren mit. Auseinandergezogen wird der Hals schmaler und verschwindet; wieder
+   zusammengeschoben, ist er wieder da (nichts ist dafür zu schalten). G, S, R gehen genauso.
+3. **K** (mit V, oder mit A ohne gewählte Punkte): die Naht oder der Rand des Lochs rund oder mit Kante. **[ und ]** (mit V):
+   schmaler und breiter.
+4. Mit **A** die Punkte und Linien des Objekts bearbeiten: Der Verbund folgt beim Ziehen.
+5. Ein Loch wählst du, indem du **in das Loch klickst** (seine Wand gehört dem Objekt, das abzieht). Gewählt steht dieses Objekt
+   blass im Bild; nicht gewählt ist nur das Loch zu sehen.
+6. **⌥ + Klick** auf einen der zwei Knöpfe wendet an wie bisher (Etappe 4): Aus den zwei Objekten wird eine Form, die Naht eine
+   Linie mit Kante; ⌘Z nimmt es zurück.
+7. Sichern und Laden nehmen die Schalter mit.
+
+**Wie es gebaut ist:**
+- `verbundRechnen.ts`: Die Bibliothek Manifold schneidet die *gezeigten* Häute der Objekte (nicht die Rechennetze); daraus wird ein
+  Netz für die Anzeige, mit der Naht (als feine Linie an Wänden und in den Ansichten: der Hilfsloop), der Rundung und den
+  Umrissen für die Wände. Ein Körper ist, was verschmilzt (Objekte, deren Kästen sich berühren und von denen eines verschmilzt),
+  abzüglich aller Objekte, die abziehen und ihn berühren. Mehrere Körper und mehr als zwei Objekte gehen.
+- **Die Rundung** ist die weiche Vereinigung der zwei Flächen an der Naht (jeder Punkt nahe der Naht gleitet auf seiner Fläche
+  von der Naht weg und rückt dann heraus oder hinein). Sie hängt nicht von der Feinheit des Netzes ab: beim Ziehen grob, in Ruhe
+  fein, dieselbe Form. Ihre Weite ist an die Größe der Naht gebunden: Wo sich zwei Blasen nur noch wenig überschneiden, ist der
+  Hals doppelt so dick wie ihr Schnittkreis und schrumpft mit ihm stetig auf null (kein Sprung beim Trennen).
+- `verbund.worker.ts`, `verbund.ts`: zwei Rechner im Hintergrund, einer für das Ziehen (grobe Stufe der glatten Anzeige, höchstens
+  16 000 Dreiecke je Objekt), einer für die Ruhe (volle Feinheit). Gerechnet wird immer nur der neueste Stand. Ein Zug am ganzen
+  Objekt schickt nur die Abbildung (verschieben, drehen, skalieren); der Körper des Objekts wird dafür einmal angelegt.
+- `main.ts`: der Zustand je Objekt (`verbundVon`), die Körper aus den Berührungen (`verbundSoll`), das Bild auf einem eigenen Platz
+  der Seifenhaut (`verbundPflegen`), in den festen Materialien und im weißen Körper der flachen Ansichten (`zeigeNetzAlle`),
+  Wählen nach dem, was man sieht (`objektBei`).
+
+**Gemessen** (zwei Formen mit drei Loops, Halbmesser 130 und 80; Probe `ozzy-verbund-fenster.mjs`, zehn Kriterien halten):
+- Beim Ziehen bleibt das Bild bei 16,7 ms je Bild (99 % unter 16,8 ms): Der Verbund rechnet nie im Bildtakt.
+- Ein grober Stand braucht im Rechner: Loch rund 17 bis 20 ms, verschmolzen mit Kante 22 ms, verschmolzen rund 26 ms. Der Verbund
+  folgt dem Zeiger also mit ein bis zwei Bildern Abstand.
+- Ein feiner Stand nach dem Loslassen (135 000 Punkte): 280 bis 400 ms; bis dahin steht der grobe.
+- Rauminhalt: Loch mit Kante = Verbund mit Kante minus das Objekt (auf 1 %); rund ist beim Verschmelzen 1,1 % mehr (die Kehle
+  ist gefüllt), am Loch 1,2 % weniger (der Rand ist weggenommen). Umgeklappte Dreiecke: 1 bis 3 von 270 000.
+- Der Rechner allein: sieben Tests (`verbundRechnen.test.ts`), darunter „grob und fein geben dieselbe Rundung“ und „kein Dreieck
+  klappt um“.
+
+**Was ich dabei für dich entschieden habe (sag, wenn du es anders willst):**
+- **Verschmelzen beginnt rund, Abziehen mit Kante.** Dein Wort zum Verschmelzen war „bedienbar und rund“, zum Abziehen „eine
+  saubere kante“. K schaltet beides um.
+- **Die Rundung ist ein Streifen um die Naht, keine Rechnung der Haut.** Du hattest am 18.11. für K an einer Naht „Wie
+  Seifenblasen“ gewählt (die Formen gehen mit) und gegen „Schmal, Form bleibt“. Live geht nur der Streifen: Die Rechnung braucht
+  ein bis zwei Sekunden je Stand, und ein Loch fiele dabei zusammen. Der Streifen ist deshalb breit angelegt (die halbe kleinste
+  Ausdehnung des Objekts, mit [ und ] zu stellen) und läuft weich aus. Wer die Rechnung will, wendet an (⌥ + Klick) und drückt K
+  an der Linie.
+- **Ein Objekt, das abzieht, ist nur gewählt zu sehen** (blass). Nicht gewählt sieht man nur das Loch. Solange es nirgends beißt,
+  steht es blass im Bild, damit es nicht verloren geht.
+- **Ein freies Objekt gehört zum Körper, sobald ein verschmelzendes es berührt** (der Schalter sitzt an dem Objekt, das du
+  dazuschiebst, nicht an beiden).
+- **Der Schalter liegt nicht auf ⌘Z** (wie ein Werkzeug, nicht wie ein Schritt); das Anwenden schon.
+- **Ruhende Objekte haben jetzt dieselben Farben wie das gewählte.** Bisher stand ihre Dehnung auf 0 statt auf 1 (mein Fehler aus
+  Etappe 3): Ihre Schicht war dicker, die Farben anders. Im Verbund wäre das als Sprung zu sehen gewesen.
+
+**Was offen bleibt:**
+- **Den Hilfsloop selbst greifen und ziehen** (dein Satz: „wenn ich den hilfsloop bearbeite, verändert das beide meshes so dass es
+  immer passt“). Heute ist er zu sehen, bearbeitet werden die Objekte, und die Naht folgt. Unbewiesen; ich würde zuerst an einem
+  Bild klären, was ein Zug an der Naht mit den zwei Formen tun soll.
+- **An der Naht treffen zwei Schichtmuster aufeinander:** Die Farben der Seifenhaut springen dort leicht (eine feine helle Linie),
+  auch wenn die Naht rund ist. Für ein gemeinsames Muster im Verbund braucht es eine Idee (gehört zur Seifenhaut, die du nach Maul
+  und Posen angehen willst).
+- **Die Rundung rechnet mit einer Kugel als Bild jeder Fläche** (Lage, Richtung, Krümmung an der Naht). An stark geformten Stellen
+  (Spitzen, Knicke, Linien mit Kante quer durch die Naht) ist sie ungeprüft; an deinen Formen habe ich nichts gemessen.
+- **Anwenden übernimmt die Rundung nicht:** Die angewendete Naht ist eine Linie mit Kante; K rundet sie dann mit der Rechnung der
+  Haut (anders als der Streifen).
+- **Beim Ziehen eines Punkts über die Mitte** (Clipping, bevor die Naht dort fest ist) schneidet der Verbund die Hälften nicht ab.
+- **Gewählte Felder** (C4) sind an einem Objekt im Verbund nicht getönt; die Wände zeigen die Linien jedes Objekts weiter für sich
+  (auch im Inneren des Körpers).
+- **⌥ gibt es am iPad nicht:** Anwenden braucht dort einen eigenen Weg.
+- **Tempo mit vielen oder sehr feinen Objekten** und am iPhone: nicht gemessen. Der Schnitt läuft im Hintergrund, das Bild stockt
+  nicht; der Verbund folgt dann nur später.
+- **Posen und Maul** an einem Objekt im Verbund: nicht geprüft.
+- Die Probe von Etappe 4 läuft weiter (`ozzy-naht-fenster.mjs`, mit ⌥ + Klick). Gelaufen sind 13 Fenster-Proben (Verbund, Naht,
+  Objekte, Reihe, Sichern, Material, Spiegel, Start-Loops, Ansichten, Ansichts-Tropfen, Pinsel, Werk, Zurück) und 42 Tests des
+  Fensters: alle halten. Die ganze Reihe von 40 Proben habe ich nach deinem Wort („nur die nötigsten tests“) nicht laufen lassen.
 
 ## Anhang A: Dein Auftrag (18.11.2026, wörtlich)
 

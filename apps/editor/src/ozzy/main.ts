@@ -4641,7 +4641,9 @@ function wicklungVon(N: { pos: Float32Array; normal: Float32Array; index: Uint32
 /** S20: der weiße Körper für die Anzeige (die glatte Haut des Werks), eingerastet mit der Kamera; sonst null */
 function linienKoerper(): LinienKoerper | null {
   if (!koerperAn() || koerperDeckung <= 0.001) return null;
-  const N = zeigeNetzAlle()!;
+  // (nichts zu zeigen: etwa, wenn ein Objekt, das abzieht, den ganzen Körper weggenommen hat)
+  const N = zeigeNetzAlle();
+  if (!N) return null;
   if (N !== koerperNetz) {
     koerperNetz = N;
     koerperNr++;
