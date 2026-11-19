@@ -119,10 +119,14 @@ export function drehSzene(d: FigurDaten, art: Drehung, t: number, fl: Fluessig, 
   return rasterVon(d).szene(drehLage(art, t, ankerVon(d)), fl, { verdecken: regeln.verdecken, durchbruch: regeln.durchbruch }, regeln.bohnenenden);
 }
 
-/** Kasten einer Szene in Figur-Einheiten (für das Einpassen ins Bild) */
+/**
+ * Kasten einer Szene in Figur-Einheiten (für das Einpassen ins Bild): nur das Schwarz (Weiß liegt darin oder ist auf weißem Grund nicht zu
+ * sehen, wie das weggedrehte Gesicht)
+ */
 export function szenenKasten(sz: Szene): [number, number, number, number] {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const t of sz.teile)
+  for (const t of sz.teile) {
+    if (t.weiss) continue;
     for (const a of t.form)
       for (const q of [a.p, a.i, a.o]) {
         x0 = Math.min(x0, q[0]);
@@ -130,5 +134,6 @@ export function szenenKasten(sz: Szene): [number, number, number, number] {
         x1 = Math.max(x1, q[0]);
         y1 = Math.max(y1, q[1]);
       }
+  }
   return [x0, y0, x1, y1];
 }

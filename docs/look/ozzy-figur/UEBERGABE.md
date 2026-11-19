@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 spätabends: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° nach Florians Skizzen; 3D-Wege ruhen)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° nach Florians Skizzen 6–42 %; 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -496,6 +496,29 @@ Winkel: `docs/progress/ozzy-figur/2026-11-19-kopf360-3-skizzen.png`, Blatt `…-
 - **Offen:** sein Urteil. Stirnfranse bei 52°–82° wie oben. Unten rechts bei 145°–165° wandern die Zacken der nahen Maske weiter zum Rand des
   Rückens (kleine Stufen).
 
+### Vierte Fassung nach den Skizzen bei 30 % und 40 % (19.11. nachts)
+
+Florian: „hier noch eine ergänzung für 30 und 40%. es wird schon deutlich besser. Die Ohren sollten auch etwas weiter zusammen sein von der
+seite, dass der drehungseffekt besser wirkt. Feile weiter“ (Skizzen `vorlagen/ozzy_kopf_skizze_30prozent.png`, `…_40prozent.png`; 30 % = 108°,
+40 % = 144°). Bei 40 % ist der Kopf schon der Rücken, nur unten rechts beißen Barthaare in den Umriss; seine ältere Skizze bei 42 % (ein Streifen
+Gesicht am Rand) passt dazu nicht, gebaut ist nach der neueren. Skizze, vorher und nachher bei 108°, 129°, 144°:
+`docs/progress/ozzy-figur/2026-11-19-kopf360-4-skizzen.png`, Blatt `…-kopf360-4-blatt.png`, Video `…-kopf360-4.mp4`.
+
+- **Gesicht:** Breite nach den Skizzen (`GESICHT_BREITE`: 0,8 bei 108°, 0,67 bei 130°). Ab 130° wird es zum rechten Rand hin schmal und ist bis
+  146° darin verschwunden (`SCHWINDEN_*`); nur das unterste Viertel (die Barthaare) 6° später, zuletzt 45 außerhalb des Rands (dort ist es auch
+  gespiegelt am breiteren linken Rand und am linken Ohr nicht zu sehen). Versucht und verworfen: hinter den Rand gleiten lassen (das Gesicht
+  lag dabei halb über dem Kopf, durch den Augenkeil schien die Maske als Horn), unten 8° und das untere Drittel später (der untere Teil deckte
+  den Kopf schräg ab, der Augenkeil blieb als Strich).
+- **Nahe Maske:** bis 130° wie vorher mit dem Gesicht, bei 148° (`RUECKEN_DA`) wie im Rücken. Ebenso die Ohren.
+- **Nase:** Breite und Höhe 0,8/0,96, 0,62/0,9, 0,5/0,78, 0,4/0,65 bei 100°, 108°, 120°, 130°; bei 137° weg.
+- **Ohren:** Das mittlere bleibt von der Seite nah am linken (Anteil seines Wegs zum Rücken: 0,03, 0,06, 0,12, 0,6 bei 110°, 120°, 130°,
+  140°; `OHR_WEG`). Abstand der Spitzen zur Kopfbreite bei 130° 0,40 (Skizze 0,38), bei 144° 0,68 (Skizze 0,69).
+- **Bildausschnitt:** nur das Schwarz (`szenenKasten`); sonst rechnete die Seite das unsichtbar weggedrehte Gesicht mit und zeigte den Kopf
+  kleiner.
+- **Geprüft:** an 0°, 45°, 90°, 180° jede Form 0,00; 52 Tests grün; keine Sprünge (0,5°-Schritte, je vier Viertel); am schnellsten bei
+  136°–138° (Gesicht verschwindet, Ohr geht an seinen Platz), wie seine Skizzen von 36 % zu 40 %.
+- **Offen:** sein Urteil. Stirnfranse bei 52°–82°.
+
 ## Fallen
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
@@ -595,3 +618,8 @@ Winkel: `docs/progress/ozzy-figur/2026-11-19-kopf360-3-skizzen.png`, Blatt `…-
 - Ohren, die im Rücken gespiegelt ankommen, drehen sich gemischt wie Zeiger; umgeklappt über die Breite 0 stehen sie kurz als dünne Spitze.
   Silhouetten mit gleicher Lehne verbinden (`RUECKEN_OHR`). Proben, die den Rücken Anker für Anker nach Namen vergleichen, nehmen dort die
   Ohren als Formen (getauscht, andersherum).
+- Ein Gesicht, das zum Verschwinden seitlich hinausgleitet, liegt dabei halb über dem Kopf: Durch seine Kerben scheint die Maske als Horn. Zum
+  Rand hin schmal werden lassen.
+- Der Bildausschnitt der Seite zählt nur das Schwarz; Weiß außerhalb ist auf weißem Grund nicht zu sehen und darf ihn nicht vergrößern.
+- Die Sprungprobe meldet hin und wieder einen einzelnen Schritt, der sich beim direkten Rendern (umklappende Bildpunkte zwischen beiden Winkeln als
+  Kasten) nicht zeigt: erst nachrendern, dann suchen.

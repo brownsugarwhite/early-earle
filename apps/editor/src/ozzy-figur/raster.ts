@@ -225,27 +225,54 @@ const RUECKEN_ANKER: Partial<Record<TeilName, (j: number, n: number) => number>>
  */
 const RUECKEN_OHR: Partial<Record<TeilName, TeilName>> = { ohrA: 'ohrB', ohrB: 'ohrA' };
 /**
- * Gesicht beim Wegdrehen (Florian, 19.11. abends, mit Skizzen bei 6 %, 36 % und 42 % der Drehung): Das Weiß läuft über die schwarze
- * Outline und verschwindet am Rand; Bart (nah und fern) mit seinen Haaren wie im Profil, nur schmaler (`wegGedreht`), in voller Höhe
+ * Gesicht beim Wegdrehen (Florian, 19.11. abends, Skizzen bei 6 %, 30 %, 36 %, 40 % und 42 % der Drehung): Das Weiß läuft über die
+ * schwarze Outline; der Bart (nah und fern) mit seinen Haaren wie im Profil, nur schmaler (`wegGedreht`), in voller Höhe. Ab SCHWINDEN_VON
+ * wird es zum rechten Rand des Kopfs hin schmal, bis es dort verschwunden ist (SCHWINDEN_BIS), oben zuerst, der Bart unten zuletzt (bei 40 %
+ * beißen nur noch die Barthaare unten rechts in den Umriss)
  */
-const GESICHT_WEG = [100, 110, 120, 130, 140, 150, 156, 162, 168, 180];
-/** die nahe Maske übernimmt bis zum ersten Winkel unter dem Weiß Stirnfranse und Kiefer der Schnauze, bis zum letzten mit dem Gesicht */
-const WICKEL = [96, 100, 110, 120, 130, 140, 150];
+const GESICHT_WEG = [100, 108, 120, 130, 134, 138, 142, 146, 150, 154, 160, 180];
+/** Breite des Gesichts beim Wegdrehen (Anteil; nach den Skizzen bei 108° rund 0,8, bei 130° rund zwei Drittel) */
+const GESICHT_BREITE: { w: number; s: number }[] = [
+  { w: 90, s: 1 },
+  { w: 108, s: 0.8 },
+  { w: 130, s: 0.67 },
+  { w: 150, s: 0.45 },
+  { w: 180, s: 0.2 },
+];
+const SCHWINDEN_VON = 130;
+const SCHWINDEN_BIS = 146;
+/** die Barthaare ganz unten verschwinden so viel später (Grad) */
+const SCHWINDEN_UNTEN = 6;
+/** zuletzt so weit über den rechten Rand hinaus (dort ist das Gesicht ohne Breite nicht zu sehen, auch gespiegelt am breiteren linken Rand
+ * und am linken Ohr des Rückens, das weiter hinausreicht) */
+const SCHWINDEN_HINAUS = 45;
+/** die nahe Maske übernimmt bis zum ersten Winkel unter dem Weiß Stirnfranse und Kiefer der Schnauze und geht bis zum letzten mit dem Gesicht */
+const WICKEL = [96, 100, 110, 120, 130];
+/** dort ist der Kopf schon der Rücken (Skizze bei 40 %): nahe Maske wie im Rücken, das ferne Ohr an seinem Platz */
+const RUECKEN_DA = 148;
 /** Nase: in voller Größe im Profil, dann schmaler und kleiner am Rand (Breite, Höhe), verschwindet bei NASE_WEG und liegt danach hinter dem Weiß */
 const NASE_FORM: { w: number; breite: number; hoehe: number }[] = [
-  { w: 100, breite: 0.85, hoehe: 0.97 },
-  { w: 115, breite: 0.6, hoehe: 0.85 },
+  { w: 100, breite: 0.8, hoehe: 0.96 },
+  { w: 108, breite: 0.62, hoehe: 0.9 },
+  { w: 120, breite: 0.5, hoehe: 0.78 },
   { w: 130, breite: 0.4, hoehe: 0.65 },
 ];
-const NASE_WEG = 140;
+const NASE_WEG = 137;
 const SPALT_WEG = 140;
+/**
+ * Ohren (Florian, 19.11.: „die ohren sollten auch etwas weiter zusammen sein von der seite, dass der drehungseffekt besser wirkt“): Das
+ * mittlere Ohr wandert nach rechts zu seinem Platz im Rücken, bleibt dabei bis 130° nah am linken und geht erst dann schnell (Anteil des Wegs)
+ */
+const OHR_WEG: { w: number; u: number }[] = [
+  { w: 110, u: 0.03 },
+  { w: 120, u: 0.06 },
+  { w: 130, u: 0.12 },
+  { w: 140, u: 0.6 },
+];
 /** ferne Maske: bleibt bis zum ersten Wickelwinkel an der Schnauze, taucht dann im Kopf unter, liegt zusammengeschoben links, ganz da */
 const MASKE_UNTER = 104;
 const MASKE_LINKS = 112;
 const MASKE_DA = 140;
-
-/** so weit außerhalb des rechten Kopfrands (im Rücken) liegt das ganz weggedrehte Gesicht (dort ist es nicht zu sehen) */
-const GESICHT_AUSSEN = 6;
 /** so weit innerhalb des rechten Kopfrands lagen Bart und Nase im Anschluss der ersten Hälfte (`anschlussBauen`) */
 const RUECKEN_GESICHT_RAND = 6;
 /** Nase gespiegelt: Anker j liegt dann dort, wo Anker NASE_SPIEGEL[j] lag (oben links ↔ oben rechts, links ↔ rechts, unten) */
@@ -273,20 +300,31 @@ function punktForm(f: Form, p: Punkt): Form {
 
 /**
  * Gesicht beim Wegdrehen (90° → 180°): Es wird schmaler wie bei einer Drehung (die Barthaare werden kürzer, statt zu einem Punkt gezogen
- * zu werden), schneller als mit dem Kosinus (Florians Skizzen: bei 130° rund zwei Drittel so breit, bei 151° ein Streifen am Rand, bei
- * 162° weg), in voller Höhe. Die Vorderkante der Schnauze (x0) bleibt der rechte Rand des Kopfs und rückt bis x1; ganz weggedreht liegt das
- * Gesicht bei xAus, außerhalb des Rückens auf beiden Seiten (er ist links breiter als rechts; die zweite Hälfte ist gespiegelt).
+ * zu werden; `GESICHT_BREITE`), in voller Höhe. Die Vorderkante der Schnauze (x0) bleibt der rechte Rand des Kopfs und rückt bis x1.
+ * Mit `schwinden` (Höhe des Gesichts von y0 bis y1) wird es zwischen SCHWINDEN_VON und SCHWINDEN_BIS zu diesem Rand hin schmal, unten
+ * später, und liegt zuletzt knapp außerhalb.
  */
 export function wegBreite(w: number): number {
-  const phi = Math.max(0, w - 90) * 1.25;
-  return phi >= 90 ? 0 : Math.cos((phi * Math.PI) / 180);
+  return Math.max(0, pchip(GESICHT_BREITE.map((x) => x.w), GESICHT_BREITE.map((x) => x.s), w));
 }
-function wegGedreht(f: Form, w: number, x0: number, x1: number, xAus = x1): Form {
-  const s = wegBreite(w);
-  // als schmaler Streifen gleitet es über den Rand hinaus (sein sichtbarer Teil wird gleichmäßig weniger, keine Linie bleibt stehen)
-  const g = s < 0.3 ? (1 - s / 0.3) ** 2 : 0;
-  const x = x0 + (x1 - x0) * Math.sin((Math.min(90, Math.max(0, w - 90)) * Math.PI) / 180) + (xAus - x1) * g;
-  return abbilden(f, (q) => [x + (q[0] - x0) * s, q[1]]);
+function wegGedreht(f: Form, w: number, x0: number, x1: number, schwinden?: { y0: number; y1: number }): Form {
+  const sb = wegBreite(w);
+  const x = x0 + (x1 - x0) * Math.sin((Math.min(90, Math.max(0, w - 90)) * Math.PI) / 180);
+  return abbilden(f, (q) => {
+    let s = sb;
+    let d = 0;
+    if (schwinden) {
+      // nur die Barthaare ganz unten (unteres Viertel) verschwinden später; darüber alles zugleich (sonst bliebe der Augenkeil als Strich
+      // stehen, und der untere Teil des Gesichts deckte den Kopf schräg ab)
+      const h = Math.max(0, Math.min(1, ((q[1] - schwinden.y0) / (schwinden.y1 - schwinden.y0) - 0.75) / 0.25));
+      const spaeter = SCHWINDEN_UNTEN * h * h * (3 - 2 * h);
+      const t = Math.max(0, Math.min(1, (w - SCHWINDEN_VON - spaeter) / (SCHWINDEN_BIS - SCHWINDEN_VON)));
+      const v = 1 - t * t * (3 - 2 * t);
+      s = sb * v;
+      d = SCHWINDEN_HINAUS * (1 - v) * (1 - v);
+    }
+    return [x + (q[0] - x0) * s + d, q[1]];
+  });
 }
 
 /** Punkte einer Form, abgeflacht */
@@ -595,19 +633,22 @@ export class FigurRaster {
     const b90 = keyBei('kopfB', 90)!;
     let x0 = -Infinity;
     for (const q of punkteVon(b90)) x0 = Math.max(x0, q[0]);
-    let xAus = xr;
-    for (const n of ['kopfA', 'kopfB'] as TeilName[]) for (const a of keyBei(n, 180)!) xAus = Math.max(xAus, Math.abs(a.p[0]));
-    const weg = (f: Form, w: number): Form => wegGedreht(f, w, x0, xr + GESICHT_AUSSEN, xAus + 2 * GESICHT_AUSSEN);
-    // Bart (nah und fern): mit seinen Haaren wie im Profil, nur schmaler, in voller Höhe; ab 162° ohne Breite außerhalb des Kopfs
-    for (const n of ['bartA', 'bartB'] as TeilName[]) {
-      const f90 = keyBei(n, 90)!;
-      dazu(n, ...GESICHT_WEG.map((w) => ({ w, form: weg(f90, w) })));
+    const weg = (f: Form, w: number): Form => wegGedreht(f, w, x0, xr);
+    // Bart (nah und fern): mit seinen Haaren wie im Profil, nur schmaler, in voller Höhe; ab SCHWINDEN_VON zum rechten Rand hin schmal
+    {
+      let y0 = Infinity;
+      let y1 = -Infinity;
+      for (const n of ['bartA', 'bartB'] as TeilName[]) for (const q of punkteVon(keyBei(n, 90)!)) [y0, y1] = [Math.min(y0, q[1]), Math.max(y1, q[1])];
+      for (const n of ['bartA', 'bartB'] as TeilName[]) {
+        const f90 = keyBei(n, 90)!;
+        dazu(n, ...GESICHT_WEG.map((w) => ({ w, form: wegGedreht(f90, w, x0, xr, { y0, y1 }) })));
+      }
     }
     // nahe Maske übernimmt die Schnauze: Ihr Scheitel (Stück 8 → 0) liegt im Profil unter dem Weiß. Bis WICKEL[0] wird Anker 8 die Spitze
     // der Stirnfranse (dort, wo das Weiß von oben her die ferne Maske erreicht), Anker 0 die Kinnspitze (tiefster Punkt der fernen Maske); die
     // Stücke 7 → 8 (oben), 8 → 0 (vorn: das Weiß oder die ferne Maske, was weiter rechts liegt) und 0 → 1 (unten) folgen dem Umriss aus naher
     // Maske, ferner Maske und Weiß. Danach gehen Anker 8, 0 und 1 (Spitze unten: der Kiefer bleibt unter dem Bart) mit dem Gesicht, die
-    // übrigen von 90° zum Rücken
+    // übrigen von 90° zum Rücken; bei RUECKEN_DA ist die Maske wie im Rücken (das Gesicht ist dann am Rand verschwunden)
     {
       const pa = punkteVon(a90, 4);
       const pb = punkteVon(b90, 4);
@@ -667,6 +708,7 @@ export class FigurRaster {
         b2.i = [b2.p[0] + g[2]!.i[0] - g[2]!.p[0], b2.p[1] + g[2]!.i[1] - g[2]!.p[1]];
         neu.push({ w, form: basis });
       }
+      neu.push({ w: RUECKEN_DA, form: keyBei('kopfA', 180)! });
       dazu('kopfA', ...neu);
     }
     // Nase: kommt im Profil zur Ruhe, wird dann am rechten Rand schmaler und kleiner wie ein Knubbel, der sich wegdreht (Florian: „sie muss
@@ -681,6 +723,13 @@ export class FigurRaster {
       const rand = (w: number): number => weg([{ p: [xs, cy], i: [xs, cy], o: [xs, cy] }], w)[0]!.p[0];
       const knubbel = (w: number, b: number, h: number): Form => abbilden(n90, (q) => [rand(w) + (q[0] - xs) * b, cy + (q[1] - cy) * h]);
       dazu('nase', { w: 94, form: n90 }, ...NASE_FORM.map((x) => ({ w: x.w, form: knubbel(x.w, x.breite, x.hoehe) })), { w: NASE_WEG, form: punktForm(n90, [rand(NASE_WEG) - 2, cy]) });
+    }
+    // Ohren: Das mittlere (fernes Ohr im Profil) bleibt von der Seite nah am linken und geht erst nach 130° schnell an seinen Platz im
+    // Rücken (OHR_WEG, Anteil des Wegs zwischen Profil und Rücken); bei RUECKEN_DA stehen beide wie im Rücken
+    {
+      const zwei: Schluessel[] = [{ w: 0, form: keyBei('ohrB', 90)! }, { w: 1, form: keyBei('ohrB', 180)! }];
+      dazu('ohrB', ...OHR_WEG.map((x) => ({ w: x.w, form: formAusSchluesseln(zwei, x.u) })), { w: RUECKEN_DA, form: keyBei('ohrB', 180)! });
+      dazu('ohrA', { w: RUECKEN_DA, form: keyBei('ohrA', 180)! });
     }
     // Ohrspalt: zieht sich zwischen den Ohren auf einen Punkt zusammen
     {
