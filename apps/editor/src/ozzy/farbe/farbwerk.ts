@@ -8,10 +8,11 @@
  * einen Schritt zurück und stellt dabei ein älteres Netz wieder her, kommt die Bemalung zurück, wie sie auf diesem Netz war (`jeNetz`).
  */
 import type { HautNetz } from '../../anfang/haut';
-import { FarbAnzeige } from './anzeige';
+import { FarbAnzeige, type FlussBild } from './anzeige';
 import { type Bemalung, type BemalungDatei, type Farbe, type TrefferPunkt, aktiveEbene, alleOrte, alsDatei, ausDatei, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, ortZahl, uebergeben } from './bemalung';
 import { feinBei } from './fein';
 import { type Flaechen, type Saat, flaechenRechnen } from './flaechen';
+import { flussWeiten, fuellungBei } from './fliessen';
 import { kettenAller, stueckeVon } from './ketten';
 import { type Karte, type Naechster, type Netz, type Ort, type V3, dreieckNormale, karteVon, ortGespiegelt, ortLage } from './ort';
 import { ParallelTreffer, ortAusFein, strahlAufNetz } from './treffer';
@@ -48,9 +49,31 @@ function gleicheDreiecke(a: ArrayLike<number>, b: ArrayLike<number>): boolean {
   return true;
 }
 
+/**
+ * Etappe 3: wie eine Füllung einläuft. Die Front läuft mit `tempo` (Einheiten des Werks je Sekunde) über die Haut, nach einem
+ * kurzen Stoß am Anfang (der Tropfen trifft auf: `stoss` Einheiten in einer Zehntelsekunde). Eine kleine Fläche braucht
+ * mindestens `dauerMin` Sekunden, eine große höchstens `dauerMax` (dann läuft die Front langsamer oder schneller). `welle`: wie
+ * wellig die Front ist, `wulst`: wie breit der Wulst hinter ihr (beides Einheiten des Werks), `staerke`: wie deutlich er ist
+ * (0 … 1). `an`: aus heißt, die Farbe steht sofort.
+ */
+export type FliessWerte = { an: boolean; dauerMin: number; dauerMax: number; tempo: number; stoss: number; welle: number; wulst: number; staerke: number };
+/** zwei Fassungen zur Wahl (Florian entscheidet): dünn und schnell wie Tinte, oder zäh mit dickem Wulst wie Honig */
+export const FLIESSEN: Record<'tinte' | 'honig', FliessWerte> = {
+  tinte: { an: true, dauerMin: 0.34, dauerMax: 1.2, tempo: 640, stoss: 14, welle: 3, wulst: 6, staerke: 0.7 },
+  honig: { an: true, dauerMin: 0.6, dauerMax: 2.6, tempo: 250, stoss: 8, welle: 8, wulst: 14, staerke: 1 },
+};
+
 export class FarbWerk {
   bemalung: Bemalung = leereBemalung();
   readonly anzeige = new FarbAnzeige();
+  /** Etappe 3: wie eine Füllung einläuft (von Ozzy gesetzt: Adresse, Feinregler) */
+  fliessWerte: FliessWerte = { ...FLIESSEN.tinte };
+  /** die Füllung (ihre Kennung), die beim nächsten Ableiten einlaufen soll */
+  private flussWunsch: number | null = null;
+  /** die Füllung, die gerade einläuft: ihr Bild für die Anzeige, die Zeit seit dem Klick, ihre Dauer, ihr Tempo, die größte Weite */
+  private fluss: { bild: FlussBild; zeit: number; dauer: number; tempo: number; groesst: number } | null = null;
+  /** was das Vorbereiten des letzten Einlaufens gekostet hat (ms, für Proben) */
+  flussMs = 0;
   private haut: HautJetzt['haut'] | null = null;
   private tri: ArrayLike<number> | null = null;
   private karte: Karte | null = null;
@@ -60,6 +83,8 @@ export class FarbWerk {
   private flaechen: Flaechen | null = null;
   private farben: Farbe[] = [];
   private gezeigt = -1;
+  /** im Bild davor lief noch eine Füllung ein (das Bild danach ist das erste ohne sie) */
+  private flussEben = false;
   private schritte: Schritt[] = [];
   /** die Bemalung, wie sie auf einem Netz war, als das Werk es verließ (für ⌘Z im Werk zurück auf dieses Netz) */
   private jeNetz = new WeakMap<object, Bemalung>();
@@ -94,10 +119,41 @@ export class FarbWerk {
     this.schritte = [];
     this.alt = true;
     this.flaechen = null;
+    this.fluss = null;
+    this.flussWunsch = null;
     this.anzeige.leeren();
     this.streckenGemerkt = null;
     this.lagenVor = null;
     this.lagenDavor = null;
+  }
+
+  /** läuft gerade eine Füllung ein? */
+  get fliesst(): boolean {
+    return this.fluss !== null;
+  }
+
+  /** Etappe 3, je Bild (vor `schritt`): die Zeit der einlaufenden Füllung geht weiter; ist sie angekommen, steht die Farbe wie immer */
+  fliessen(dt: number): void {
+    const f = this.fluss;
+    if (!f) return;
+    f.zeit += dt;
+    if (f.zeit >= f.dauer) this.fluss = null;
+  }
+
+  /** für Proben: wie weit die einlaufende Füllung ist (null: keine läuft) */
+  flussStand(): { zeit: number; dauer: number; groesst: number; front: number } | null {
+    const f = this.fluss;
+    return f ? { zeit: f.zeit, dauer: f.dauer, groesst: f.groesst, front: this.front(f) } : null;
+  }
+
+  /** die Front einer einlaufenden Füllung: ein Stoß, wo der Tropfen auftrifft, dann gleichmäßig über die Haut */
+  private front(f: { zeit: number; tempo: number }): number {
+    return FarbWerk.stossWeg(this.fliessWerte.stoss, f.zeit) + f.tempo * f.zeit;
+  }
+
+  /** wie weit der Stoß am Anfang die Front trägt */
+  private static stossWeg(stoss: number, zeit: number): number {
+    return stoss * (1 - Math.exp(-zeit / 0.06));
   }
 
   /** das aktive Objekt ruht von jetzt an: seine Bemalung mitgeben */
@@ -180,8 +236,18 @@ export class FarbWerk {
     this.gezeigt = h.version;
     if (bewegt || gewechselt) this.ruckMessen(h, gewechselt);
     // (die Anzeige des Werks zeigt alle Dreiecke der Haut in ihrer Reihenfolge, je 4^stufen feine: nur dann passt die Bemalung darauf)
-    if (h.netz.index.length === h.haut.tri.length * 4 ** h.stufen) this.anzeige.setzen(h.netz, h.stufen, this.flaechen, this.farben, bewegt);
-    else this.anzeige.leeren();
+    const f = this.fluss;
+    if (h.netz.index.length === h.haut.tri.length * 4 ** h.stufen) {
+      this.anzeige.setzen(h.netz, h.stufen, this.flaechen, this.farben, bewegt, f?.bild ?? null);
+      const W = this.fliessWerte;
+      const x = f ? Math.min(1, f.zeit / f.dauer) : 1;
+      // (der Wulst vergeht, wenn die Farbe ankommt)
+      const aus = 1 - Math.min(1, Math.max(0, (x - 0.78) / 0.22)) ** 2;
+      this.anzeige.flussSetzen(f ? { front: this.front(f), welle: W.welle, wulst: W.wulst, staerke: W.staerke * aus, zeit: f.zeit, mass: h.f } : null);
+    } else this.anzeige.leeren();
+    // (solange eine Füllung einläuft, ändert sich das Bild)
+    if (f || this.flussEben) neu = true;
+    this.flussEben = f !== null;
     return neu || bewegt;
   }
 
@@ -225,6 +291,10 @@ export class FarbWerk {
   private ableiten(h: HautJetzt): void {
     this.alt = false;
     this.streckenGemerkt = null;
+    // (jede Änderung beendet eine einlaufende Füllung; nur eine eben gesetzte läuft neu ein)
+    this.fluss = null;
+    const wunsch = this.flussWunsch;
+    this.flussWunsch = null;
     if (this.leer) {
       this.flaechen = null;
       this.farben = [];
@@ -249,6 +319,29 @@ export class FarbWerk {
       }
     }
     this.flaechen = flaechenRechnen(k, ketten, saaten);
+    // Etappe 3: die eben gesetzte Füllung läuft ein, von ihrer Saat (und deren Spiegelbild) über die Haut bis an die Farblinien
+    const nr = ebene.fuellungen.length - 1;
+    if (wunsch !== null && this.fliessWerte.an && nr >= 0 && ebene.fuellungen[nr]!.id === wunsch) {
+      const t0 = performance.now();
+      const eigene = saaten.filter((s) => s.farbe === nr).map((s) => s.ort);
+      // (was vorher in dieser Fläche lag: die Flächen ohne diese Füllung)
+      const vorher = fuellungBei(flaechenRechnen(k, ketten, saaten.filter((s) => s.farbe !== nr)), ebene.fuellungen[nr]!.saat);
+      const w = flussWeiten(k, this.flaechen, nr, eigene);
+      const W = this.fliessWerte;
+      if (w.groesst > 0) {
+        // so weit muss die Front kommen (die Welle zieht sie stellenweise zurück); daraus Dauer und Tempo
+        const ziel = w.groesst + 1.4 * W.welle + 1;
+        const dauer = Math.min(W.dauerMax, Math.max(W.dauerMin, Math.max(0, ziel - W.stoss) / Math.max(1, W.tempo)));
+        this.fluss = {
+          bild: { fuell: nr, alt: vorher >= 0 ? (this.farben[vorher] ?? null) : null, weite: w.weite, rand: w.rand, tri: h.haut.tri, pos: h.haut.pos },
+          zeit: 0,
+          dauer,
+          tempo: Math.max(0, ziel - FarbWerk.stossWeg(W.stoss, dauer)) / dauer,
+          groesst: w.groesst,
+        };
+      }
+      this.flussMs = performance.now() - t0;
+    }
   }
 
   /** die Bemalung ist von außen geändert worden (ein Handgriff an einer Farblinie, `farbBlatt.ts`): alles Abgeleitete neu */
@@ -403,8 +496,11 @@ export class FarbWerk {
   /** eine Füllung an diesem Ort: Die Farbe reicht von dort bis an die Farblinien */
   fuellen(h: HautJetzt, ort: Ort, farbe: Farbe): void {
     this.merken(h);
-    aktiveEbene(this.bemalung).fuellungen.push({ id: this.bemalung.naechste++, saat: ort, farbe: [farbe[0], farbe[1], farbe[2]] });
+    const id = this.bemalung.naechste++;
+    aktiveEbene(this.bemalung).fuellungen.push({ id, saat: ort, farbe: [farbe[0], farbe[1], farbe[2]] });
     this.alt = true;
+    // (Etappe 3: Diese Füllung läuft ein, sobald die Flächen neu gerechnet sind)
+    this.flussWunsch = id;
   }
 
   /** die Lage eines Orts auf der glatten Anzeige (Welt) oder, ohne Anzeige, auf dem Rechennetz */

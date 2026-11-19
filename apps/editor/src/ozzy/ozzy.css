@@ -390,6 +390,48 @@ body.wende-an #hinweis {
 #farbe-wahl[hidden] {
   display: none;
 }
+/* Paint-Modus, Etappe 3: Die gewählte Farbe hängt als Tropfen am Zeiger, wo ein Klick füllen würde; beim Füllen fällt er auf die Haut
+   (--x, --y: der Zeiger; --ox, --oy: wie weit der Tropfen unter ihm hängt). */
+#farbtropfen {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 1px solid #1f1a17;
+  border-radius: 0 50% 50% 50%;
+  background: var(--farbe, #f6c445);
+  pointer-events: none;
+  --ox: 11px;
+  --oy: 14px;
+  transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg);
+  transform-origin: 0 0;
+}
+#farbtropfen[hidden] {
+  display: none;
+}
+#farbtropfen.faellt {
+  --ox: 0px;
+  --oy: 0px;
+  opacity: 0;
+  transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg) scale(0.3);
+  transition:
+    transform 0.13s cubic-bezier(0.55, 0, 1, 0.7),
+    opacity 0.04s 0.1s;
+}
+#farbtropfen.waechst {
+  animation: farbtropfen-waechst 0.28s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes farbtropfen-waechst {
+  from {
+    transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg) scale(0);
+  }
+  to {
+    transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg) scale(1);
+  }
+}
 #farbe-wahl input {
   width: 26px;
   height: 26px;

@@ -9,6 +9,11 @@
  *   zwischen zwei Farben ist darum bei jedem Zoom einen Bildpunkt breit, gleich auf welcher Stufe die Anzeige gerade steht, und im
  *   Netz wird nichts geschnitten. Die Ketten eines Dreiecks stehen in einer Datentextur.
  *
+ * Etappe 3: Eine Füllung kann einlaufen (`FlussBild`). Jede Stelle ihrer Fläche kennt ihre Weite von der Saat (`fliessen.ts`: je
+ * Punkt, in den Dreiecken mit Farblinien je Kette und Seite); zu sehen ist die neue Farbe, wo die Front schon war, davor liegt,
+ * was vorher dort lag. Die Front ist eine flüssige Kante: ein wenig wellig, mit einem Wulst dahinter. Je Bild ändern sich nur
+ * Zahlen (`flussSetzen`), nichts wird neu gebaut.
+ *
  * Zwei Arten, die Farbe mit dem Grund zu verrechnen: `wachs` (die Farbe mit Hell, Dunkel und Glanz des Wachses, deckend über dem
  * Wachs; lineare Werte, für das Ziel der festen Materialien) und `hell` (die reine Farbe, mit dem Bild darunter multipliziert: Das
  * helle Solid bringt sein Hell und Dunkel selbst mit).
@@ -44,6 +49,7 @@ import { wachsLichtBild } from '../wachs';
 import type { Farbe } from './bemalung';
 import { feinEcken } from './fein';
 import type { Flaechen } from './flaechen';
+import { FERN, weiteImDreieck } from './fliessen';
 
 export type FarbModus = 'wachs' | 'hell';
 
@@ -58,6 +64,10 @@ const VERTEX = /* glsl */ `
   varying vec2 vB;
   flat varying float vSlot;
   #endif
+  #ifdef FLUSS
+  attribute float aWeite;
+  varying float vWeite;
+  #endif
   varying vec3 vBlick;
   varying vec3 vNormale;
   varying vec2 vSpiegel;
@@ -66,6 +76,9 @@ const VERTEX = /* glsl */ `
     #ifdef RAND
     vB = aBary;
     vSlot = aSlot;
+    #endif
+    #ifdef FLUSS
+    vWeite = aWeite;
     #endif
     vWelt = position;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
@@ -89,19 +102,28 @@ const FRAGMENT = /* glsl */ `
   varying vec2 vB;
   flat varying float vSlot;
   #endif
+  #ifdef FLUSS
+  varying float vWeite;
+  #endif
   varying vec3 vBlick;
   varying vec3 vNormale;
   varying vec2 vSpiegel;
   varying vec3 vWelt;
   uniform vec4 uSchnitt;
+  // Etappe 3, eine Füllung läuft ein. uFluss: x ihre Nummer (−1: keine), y die Front (so weit ist die Farbe), z die Welle der
+  // Front, w die Breite des Wulstes dahinter (alles in Einheiten des Werks). uFlussAlt: die Farbe davor (a = 0: keine).
+  // uFlussMass: x Einheiten des Werks je Einheit der Welt, y die Zeit seit dem Klick, z die Stärke des Wulstes.
+  uniform vec4 uFluss;
+  uniform vec4 uFlussAlt;
+  uniform vec3 uFlussMass;
 
   vec3 linear(vec3 c) { return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)); }
 
-  /** die Farbe einer Fläche (Bildschirmwerte) mit dem Grund verrechnet; a: Deckung */
-  vec4 aus(vec3 farbe, float a) {
+  /** die Farbe einer Fläche (Bildschirmwerte) mit dem Grund verrechnet; a: Deckung; wulst: der Wulst an der Front einer einlaufenden Füllung (0 … 1) */
+  vec4 aus(vec3 farbe, float a, float wulst) {
     if (uModus > 0.5) {
-      // helles Solid: die reine Farbe, multipliziert mit dem Bild darunter (wo nichts deckt: mal Weiß)
-      return vec4(mix(vec3(1.0), farbe, a), 1.0);
+      // helles Solid: die reine Farbe, multipliziert mit dem Bild darunter (wo nichts deckt: mal Weiß); der Wulst ein wenig satter
+      return vec4(mix(vec3(1.0), farbe * (1.0 - 0.16 * wulst), a), 1.0);
     }
     // Wachs: Hell, Dunkel und Glanz des Wachses, nachgeschlagen über die Normale im Blick (wie das Wachs selbst)
     vec3 n = normalize(vNormale);
@@ -109,13 +131,56 @@ const FRAGMENT = /* glsl */ `
     vec3 x = normalize(vec3(blick.z, 0.0, -blick.x));
     vec3 y = cross(blick, x);
     vec2 licht = texture2D(tLicht, vec2(dot(x, n), dot(y, n)) * 0.495 + 0.5).rg;
-    vec3 c = linear(farbe) * licht.r + vec3(licht.g);
+    // (der Wulst steht höher als die Fläche: Er fängt mehr Licht und mehr Glanz)
+    vec3 c = linear(farbe) * licht.r * (1.0 + 0.22 * wulst) + vec3(licht.g) * (1.0 + 2.2 * wulst) + vec3(0.045 * wulst * wulst);
     return vec4(c * a, a);
+  }
+
+  float rauschen(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float n = dot(i, vec3(1.0, 57.0, 113.0));
+    vec4 u = fract(sin(vec4(n, n + 1.0, n + 57.0, n + 58.0)) * 43758.5453);
+    vec4 o = fract(sin(vec4(n + 113.0, n + 114.0, n + 170.0, n + 171.0)) * 43758.5453);
+    return mix(mix(mix(u.x, u.y, f.x), mix(u.z, u.w, f.x), f.y), mix(mix(o.x, o.y, f.x), mix(o.z, o.w, f.x), f.y), f.z);
+  }
+
+  /** eine einlaufende Füllung an einer Stelle mit dieser Weite: x wie weit sie schon deckt (0 … 1), y der Wulst an ihrer Front (0 … 1) */
+  vec2 fluss(float weite) {
+    // (Einheiten des Werks je Bildpunkt: Die Kante der Front ist einen Bildpunkt breit)
+    float e = max(max(length(dFdx(vWelt)), length(dFdy(vWelt))) * uFlussMass.x, 1e-6);
+    vec3 q = vWelt * uFlussMass.x;
+    float welle = uFluss.z * (rauschen(q * 0.05 + vec3(0.0, 0.0, uFlussMass.y * 1.1)) + 0.5 * rauschen(q * 0.13 - vec3(uFlussMass.y * 1.7, 0.0, 0.0)) - 0.75) * 1.33 * smoothstep(0.0, 14.0, weite);
+    float f = uFluss.y - weite + welle;
+    float a = clamp(f / e + 0.5, 0.0, 1.0);
+    float r = clamp(1.0 - f / max(uFluss.w, 1e-6), 0.0, 1.0);
+    return vec2(a, a * r * r * (3.0 - 2.0 * r) * uFlussMass.z);
   }
 
   #ifdef RAND
   vec4 daten(int i) { return texelFetch(tDaten, ivec2(i % ${DB}, i / ${DB}), 0); }
   vec4 farbeVon(float nr) { return nr < -0.5 ? vec4(0.0) : texelFetch(tFarben, ivec2(int(nr + 0.5), 0), 0); }
+
+  /**
+   * Die Weite an einer Stelle des Dreiecks (g: Gewichte der drei Ecken) aus den Weiten w seiner Ecken: rund, als käme die Front von
+   * einer Quelle in seiner Ebene (wie weiteImDreieck in fliessen.ts). m: das Dreieck in seiner Ebene (Länge AB, Lage von C).
+   */
+  float weiteRund(vec3 g, vec3 w, vec3 m) {
+    float eben = dot(g, w);
+    if (max(w.x, max(w.y, w.z)) > 5e8 || m.x < 1e-6 || m.z < 1e-6) return eben;
+    float sx = (w.x * w.x - w.y * w.y + m.x * m.x) / (2.0 * m.x);
+    float sy = (w.x * w.x - w.z * w.z + m.y * m.y + m.z * m.z - 2.0 * m.y * sx) / (2.0 * m.z);
+    vec2 s = vec2(sx, sy);
+    vec2 B = vec2(m.x, 0.0);
+    vec2 C = m.yz;
+    vec2 p = g.y * B + g.z * C;
+    vec3 rest = w - vec3(length(s), length(s - B), length(s - C));
+    vec3 zu = vec3(length(p), length(p - B), length(p - C));
+    float x = length(p - s) + dot(g, rest);
+    x = min(x, min(w.x + zu.x, min(w.y + zu.y, w.z + zu.z)));
+    return max(max(x, 0.0), max(w.x - zu.x, max(w.y - zu.y, w.z - zu.z)));
+  }
   #endif
 
   void main() {
@@ -135,12 +200,14 @@ const FRAGMENT = /* glsl */ `
     float best = 1e30;
     float bestQuer = 0.0;
     vec2 bestFarben = vec2(-1.0);
+    int bestZ = z;
     for (int k = 0; k < nK; k++) {
+      // je Kette: Kopf (Zahl der Punkte, Füllung links, rechts), zwei Zeilen Weiten (links, rechts: an den drei Ecken), ihre Punkte
       vec4 kette = daten(z);
       int nP = int(kette.x + 0.5);
-      vec2 a = daten(z + 1).xy;
+      vec2 a = daten(z + 3).xy;
       for (int j = 1; j < nP; j++) {
-        vec2 b = daten(z + 1 + j).xy;
+        vec2 b = daten(z + 3 + j).xy;
         vec2 pg = vB - a;
         vec2 eg = b - a;
         // in Bildpunkte
@@ -156,14 +223,30 @@ const FRAGMENT = /* glsl */ `
           best = d2;
           bestQuer = quer;
           bestFarben = kette.yz;
+          bestZ = z;
         }
         a = b;
       }
-      z += 1 + nP;
+      z += 3 + nP;
     }
     float d = sqrt(best);
-    vec4 eigen = farbeVon(bestQuer > 0.0 ? bestFarben.x : bestFarben.y);
-    vec4 fremd = farbeVon(bestQuer > 0.0 ? bestFarben.y : bestFarben.x);
+    float nrEigen = bestQuer > 0.0 ? bestFarben.x : bestFarben.y;
+    float nrFremd = bestQuer > 0.0 ? bestFarben.y : bestFarben.x;
+    vec4 eigen = farbeVon(nrEigen);
+    vec4 fremd = farbeVon(nrFremd);
+    float wulst = 0.0;
+    if (uFluss.x > -0.5) {
+      // eine Füllung läuft ein: Auf ihrer Seite der Kette gilt die Weite dieser Seite, aus den drei Ecken gemischt
+      vec3 g = vec3(1.0 - vB.x - vB.y, vB.x, vB.y);
+      vec3 mass = daten(kopf).yzw;
+      vec2 flE = fluss(weiteRund(g, daten(bestZ + (bestQuer > 0.0 ? 1 : 2)).xyz, mass));
+      vec2 flF = fluss(weiteRund(g, daten(bestZ + (bestQuer > 0.0 ? 2 : 1)).xyz, mass));
+      if (abs(nrEigen - uFluss.x) < 0.5) {
+        eigen = uFlussAlt.a > 0.0 ? vec4(mix(uFlussAlt.rgb, eigen.rgb, flE.x), 1.0) : vec4(eigen.rgb, flE.x);
+        wulst = flE.y;
+      }
+      if (abs(nrFremd - uFluss.x) < 0.5) fremd = uFlussAlt.a > 0.0 ? vec4(mix(uFlussAlt.rgb, fremd.rgb, flF.x), 1.0) : vec4(fremd.rgb, flF.x);
+    }
     // an der Kante: einen Bildpunkt breit von der einen in die andere Füllung
     float t = clamp(0.5 + d, 0.0, 1.0);
     vec3 farbe = eigen.a + fremd.a > 0.0 ? (eigen.rgb * eigen.a * t + fremd.rgb * fremd.a * (1.0 - t)) / max(1e-6, eigen.a * t + fremd.a * (1.0 - t)) : vec3(1.0);
@@ -173,9 +256,16 @@ const FRAGMENT = /* glsl */ `
     farbe = mix(farbe, uTinte, linie);
     deckung = deckung + (1.0 - deckung) * linie;
     if (deckung < 0.002) discard;
-    gl_FragColor = aus(farbe, deckung);
+    gl_FragColor = aus(farbe, deckung, wulst * (1.0 - linie));
     #else
-    gl_FragColor = aus(uFarbe, 1.0);
+    #ifdef FLUSS
+    vec2 fl = fluss(vWeite);
+    vec4 c = uFlussAlt.a > 0.0 ? vec4(mix(uFlussAlt.rgb, uFarbe, fl.x), 1.0) : vec4(uFarbe, fl.x);
+    if (c.a < 0.002) discard;
+    gl_FragColor = aus(c.rgb, c.a, fl.y);
+    #else
+    gl_FragColor = aus(uFarbe, 1.0, 0.0);
+    #endif
     #endif
   }
 `;
@@ -190,6 +280,14 @@ export type FarbWerte = {
   schnitt?: [number, number, number, number] | null;
 };
 
+/**
+ * Etappe 3: eine Füllung, die einläuft. `fuell`: ihre Nummer; `alt`: die Farbe, die vorher in ihrer Fläche lag (null: keine);
+ * `weite`, `rand`: die Weiten von der Saat (`flussWeiten`); `tri`, `pos`: die Dreiecke und Lagen des Rechennetzes.
+ */
+export type FlussBild = { fuell: number; alt: Farbe | null; weite: Float32Array; rand: Float32Array[]; tri: ArrayLike<number>; pos: ArrayLike<number> };
+/** was sich je Bild ändert: die Front, ihre Welle, Breite und Stärke des Wulstes (Einheiten des Werks), die Zeit seit dem Klick, Werk je Welt */
+export type FlussWerte = { front: number; welle: number; wulst: number; staerke: number; zeit: number; mass: number };
+
 export class FarbAnzeige {
   private readonly szene = new Scene();
   private readonly gruppe = new Group();
@@ -198,13 +296,15 @@ export class FarbAnzeige {
   private readonly innen: Mesh;
   private readonly rand: Mesh;
   private innenMat: ShaderMaterial[] = [];
+  /** das Material der Füllung, die gerade einläuft (ihre Dreiecke innen) */
+  private flussMat: ShaderMaterial | null = null;
   private readonly randMat: ShaderMaterial;
   private readonly licht: DataTexture;
   private daten: DataTexture;
   private farben: DataTexture;
   private modus: FarbModus = 'wachs';
   /** woraus die Geometrie gebaut ist */
-  private stand: { netz: HautNetz; index: Uint32Array; pos: Float32Array; stufen: number; flaechen: Flaechen } | null = null;
+  private stand: { netz: HautNetz; index: Uint32Array; pos: Float32Array; stufen: number; flaechen: Flaechen; fluss: FlussBild | null } | null = null;
   /** je Ecke des Rands: ihr Punkt in der Anzeige */
   private randQuelle = new Uint32Array(0);
   /** zählt, was gezeichnet wird (für Proben) */
@@ -221,7 +321,7 @@ export class FarbAnzeige {
     this.licht.needsUpdate = true;
     this.daten = this.datenTextur(new Float32Array(4 * DB));
     this.farben = this.farbenTextur([]);
-    this.randMat = this.material(true);
+    this.randMat = this.material(true, false);
     this.innen = new Mesh(this.innenGeo, this.innenMat);
     this.rand = new Mesh(this.randGeo, this.randMat);
     this.innen.frustumCulled = false;
@@ -251,10 +351,13 @@ export class FarbAnzeige {
     return t;
   }
 
-  private material(rand: boolean): ShaderMaterial {
+  private material(rand: boolean, fluss: boolean): ShaderMaterial {
     const m = new ShaderMaterial({
-      defines: rand ? { RAND: 1 } : {},
+      defines: rand ? { RAND: 1 } : fluss ? { FLUSS: 1 } : {},
       uniforms: {
+        uFluss: { value: [-1, 0, 0, 1] },
+        uFlussAlt: { value: [0, 0, 0, 0] },
+        uFlussMass: { value: [1, 0, 0] },
         uModus: { value: 0 },
         uSpiegel: { value: -1 },
         uSchnitt: { value: [0, 0, 1, -1e9] },
@@ -276,7 +379,7 @@ export class FarbAnzeige {
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -2,
     });
-    this.blenden(m, this.modus, rand);
+    this.blenden(m, this.modus, rand || fluss);
     return m;
   }
 
@@ -323,17 +426,32 @@ export class FarbAnzeige {
    * je Füllung (Bildschirmwerte 0 … 1). Neu gebaut wird nur, wenn sich Netz, Stufe oder Flächen geändert haben; `bewegt`: Die Lagen
    * haben sich geändert (dann gehen die Ecken des Rands mit).
    */
-  setzen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[], bewegt: boolean): void {
+  setzen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[], bewegt: boolean, fluss: FlussBild | null = null): void {
     const st = this.stand;
-    const neu = !st || st.netz !== netz || st.index !== netz.index || st.pos !== netz.pos || st.stufen !== stufen || st.flaechen !== flaechen;
-    if (neu) this.bauen(netz, stufen, flaechen, farben);
+    const neu = !st || st.netz !== netz || st.index !== netz.index || st.pos !== netz.pos || st.stufen !== stufen || st.flaechen !== flaechen || st.fluss !== fluss;
+    if (neu) this.bauen(netz, stufen, flaechen, farben, fluss);
     else if (bewegt) this.bewegen(netz);
   }
 
-  private bauen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[]): void {
+  /** Etappe 3, je Bild: wie weit die einlaufende Füllung ist (null: keine läuft) */
+  flussSetzen(w: FlussWerte | null): void {
+    const fl = this.stand?.fluss ?? null;
+    const an = w && fl;
+    const u1 = an ? [fl.fuell, w.front, w.welle, Math.max(1e-6, w.wulst)] : [-1, 0, 0, 1];
+    const u2 = an && fl.alt ? [fl.alt[0], fl.alt[1], fl.alt[2], 1] : [0, 0, 0, 0];
+    const u3 = an ? [w.mass, w.zeit, w.staerke] : [1, 0, 0];
+    for (const m of [this.randMat, this.flussMat]) {
+      if (!m) continue;
+      m.uniforms.uFluss!.value = u1;
+      m.uniforms.uFlussAlt!.value = u2;
+      m.uniforms.uFlussMass!.value = u3;
+    }
+  }
+
+  private bauen(netz: HautNetz, stufen: number, flaechen: Flaechen, farben: readonly Farbe[], fluss: FlussBild | null): void {
     const je = 4 ** stufen;
     const T = netz.index.length / 3 / je;
-    this.stand = { netz, index: netz.index, pos: netz.pos, stufen, flaechen };
+    this.stand = { netz, index: netz.index, pos: netz.pos, stufen, flaechen, fluss };
     // ---- innen: je Füllung die feinen Dreiecke ihrer ganzen Dreiecke ----
     const zahl = new Array<number>(farben.length).fill(0);
     const ganz = flaechen.ganz;
@@ -360,22 +478,43 @@ export class FarbAnzeige {
     g.setAttribute('aSeite', new BufferAttribute(netz.seite, 1));
     g.setIndex(new BufferAttribute(index, 1));
     g.clearGroups();
-    while (this.innenMat.length < farben.length) this.innenMat.push(this.material(false));
+    while (this.innenMat.length < farben.length) this.innenMat.push(this.material(false, false));
     farben.forEach((f, i) => {
       this.innenMat[i]!.uniforms.uFarbe!.value = [f[0], f[1], f[2]];
       if (zahl[i]! > 0) g.addGroup(start[i]!, zahl[i]! * je * 3, i);
     });
-    this.innen.material = this.innenMat;
+    const ecken = feinEcken(stufen);
+    /** eine Weite für die Grafikkarte (unendlich: nie erreicht) */
+    const endlich = (w: number | undefined): number => (w !== undefined && w < FERN ? w : FERN);
+    if (fluss && fluss.fuell < farben.length) {
+      // die Füllung, die einläuft: ihre Dreiecke innen mit eigenem Material, jede Ecke der Anzeige mit ihrer Weite (aus den drei
+      // Ecken ihres Dreiecks im Rechennetz gemischt)
+      const weite = new Float32Array(netz.pos.length / 3).fill(FERN);
+      const R = fluss.tri;
+      for (let t = 0; t < Tg; t++) {
+        if (ganz[t] !== fluss.fuell) continue;
+        // (rund, nicht eben gemischt: Sonst wäre die Front in jedem Dreieck eine Gerade)
+        const w = weiteImDreieck(fluss.pos, 3 * R[3 * t]!, 3 * R[3 * t + 1]!, 3 * R[3 * t + 2]!, endlich(fluss.weite[R[3 * t]!]), endlich(fluss.weite[R[3 * t + 1]!]), endlich(fluss.weite[R[3 * t + 2]!]));
+        for (let q = 0; q < 3 * je; q++) weite[I[3 * je * t + q]!] = w(ecken[2 * q]!, ecken[2 * q + 1]!);
+      }
+      g.setAttribute('aWeite', new BufferAttribute(weite, 1));
+      this.flussMat ??= this.material(false, true);
+      this.blenden(this.flussMat, this.modus, true);
+      const f = farben[fluss.fuell]!;
+      this.flussMat.uniforms.uFarbe!.value = [f[0], f[1], f[2]];
+      const mat = this.innenMat.slice(0, farben.length);
+      mat[fluss.fuell] = this.flussMat;
+      this.innen.material = mat;
+    } else this.innen.material = this.innenMat;
     this.innen.visible = summe > 0;
     // ---- Rand: die feinen Dreiecke der Dreiecke mit Ketten, jede Ecke mit ihren Gewichten; die Ketten in der Datentextur ----
-    const R = flaechen.rand.filter((r) => r.t < T);
-    const ecken = feinEcken(stufen);
+    const R = flaechen.rand.map((r, ri) => ({ ...r, ri })).filter((r) => r.t < T);
     const nE = R.length * je * 3;
     const quelle = new Uint32Array(nE);
     const bary = new Float32Array(2 * nE);
     const slot = new Float32Array(nE);
     let texel = 0;
-    for (const r of R) texel += 1 + r.ketten.reduce((s, c) => s + 1 + c.p.length / 2, 0);
+    for (const r of R) texel += 1 + r.ketten.reduce((s, c) => s + 3 + c.p.length / 2, 0);
     const feld = new Float32Array(4 * DB * Math.max(1, Math.ceil(texel / DB)));
     let z = 0;
     let ketten = 0;
@@ -383,13 +522,35 @@ export class FarbAnzeige {
     R.forEach((r, ri) => {
       const kopf = z;
       feld[4 * z] = r.ketten.length;
+      if (fluss) {
+        // (für die einlaufende Füllung: das Dreieck in seiner Ebene, A im Ursprung, B auf der ersten Achse: Länge AB, Lage von C)
+        const P = fluss.pos;
+        const ia = 3 * fluss.tri[3 * r.t]!;
+        const ib = 3 * fluss.tri[3 * r.t + 1]!;
+        const ic = 3 * fluss.tri[3 * r.t + 2]!;
+        const ux = P[ib]! - P[ia]!;
+        const uy = P[ib + 1]! - P[ia + 1]!;
+        const uz = P[ib + 2]! - P[ia + 2]!;
+        const vx = P[ic]! - P[ia]!;
+        const vy = P[ic + 1]! - P[ia + 1]!;
+        const vz = P[ic + 2]! - P[ia + 2]!;
+        const lb = Math.sqrt(ux * ux + uy * uy + uz * uz);
+        const cx = lb > 1e-9 ? (vx * ux + vy * uy + vz * uz) / lb : 0;
+        feld[4 * z + 1] = lb;
+        feld[4 * z + 2] = cx;
+        feld[4 * z + 3] = Math.sqrt(Math.max(0, vx * vx + vy * vy + vz * vz - cx * cx));
+      }
       z++;
-      for (const c of r.ketten) {
+      const wr = fluss ? fluss.rand[r.ri] : undefined;
+      r.ketten.forEach((c, ki) => {
         const nP = c.p.length / 2;
         feld[4 * z] = nP;
         feld[4 * z + 1] = c.links;
         feld[4 * z + 2] = c.rechts;
         z++;
+        // (zwei Zeilen: die Weiten der einlaufenden Füllung links und rechts der Kette, an den drei Ecken des Dreiecks)
+        for (let q = 0; q < 6; q++) feld[4 * (z + (q < 3 ? 0 : 1)) + (q % 3)] = endlich(wr?.[6 * ki + q]);
+        z += 2;
         for (let j = 0; j < nP; j++) {
           feld[4 * z] = c.p[2 * j]!;
           feld[4 * z + 1] = c.p[2 * j + 1]!;
@@ -397,7 +558,7 @@ export class FarbAnzeige {
         }
         ketten++;
         punkte += nP;
-      }
+      });
       const ab = ri * je * 3;
       quelle.set(I.subarray(3 * je * r.t, 3 * je * (r.t + 1)), ab);
       bary.set(ecken, 2 * ab);
@@ -504,9 +665,10 @@ export class FarbAnzeige {
       this.modus = w.modus;
       this.blenden(this.randMat, w.modus, true);
       for (const m of this.innenMat) this.blenden(m, w.modus, false);
+      if (this.flussMat) this.blenden(this.flussMat, w.modus, true);
     }
     const sn = w.schnitt && Math.hypot(w.schnitt[0], w.schnitt[1], w.schnitt[2]) > 1e-9 ? w.schnitt : [0, 0, 1, -1e9];
-    for (const m of [this.randMat, ...this.innenMat]) {
+    for (const m of [this.randMat, ...this.innenMat, ...(this.flussMat ? [this.flussMat] : [])]) {
       m.uniforms.uSchnitt!.value = sn;
       m.uniforms.uSpiegel!.value = w.spiegelSchnitt ?? -1;
       m.uniforms.uModus!.value = w.modus === 'hell' ? 1 : 0;

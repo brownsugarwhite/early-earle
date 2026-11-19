@@ -40,7 +40,7 @@ import { WACHS_FARBTON_GRUND } from './wachs';
 import { type Farbe, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
 import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
 import { richtungVektor } from './farbe/kurve';
-import { type BlattAnker, FarbWerk, type FarbStand, type HautJetzt } from './farbe/farbwerk';
+import { type BlattAnker, FLIESSEN, FarbWerk, type FarbStand, type FliessWerte, type HautJetzt } from './farbe/farbwerk';
 import { naechsterAuf } from './farbe/naechster';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
@@ -124,6 +124,39 @@ const WACHS_GRUND: WachsWerte = { farbton: WACHS_FARBTON_GRUND };
 const WACHS_REGLER: ReglerZeile<keyof WachsWerte>[] = [{ gruppe: 'Farbe', k: 'farbton', name: 'Farbton (0 = Rot wie ZBrush)', min: -90, max: 30, schritt: 1 }];
 const wachsWerte = werteLesen<WachsWerte>('ozzy-wachs-1', WACHS_GRUND);
 if (params.get('wachs') !== null && Number.isFinite(Number(params.get('wachs')))) wachsWerte.farbton = Number(params.get('wachs'));
+/**
+ * Paint-Modus, Etappe 3: wie eine Füllung einläuft (`FliessWerte` in `farbe/farbwerk.ts`). `?fuellen=tinte|honig` wählt eine der zwei
+ * Fassungen, `?fuellen=0` schaltet das Einlaufen ab. Im Testbrowser ist es ohne diese Angabe aus: Die Proben lesen die Farbe gleich
+ * nach dem Klick.
+ */
+interface FuellWerte {
+  an: number;
+  dauerMin: number;
+  dauerMax: number;
+  tempo: number;
+  stoss: number;
+  welle: number;
+  wulst: number;
+  staerke: number;
+}
+const fuellAus = (f: FliessWerte): FuellWerte => ({ an: f.an ? 1 : 0, dauerMin: f.dauerMin, dauerMax: f.dauerMax, tempo: f.tempo, stoss: f.stoss, welle: f.welle, wulst: f.wulst, staerke: f.staerke });
+const FUELL_GRUND: FuellWerte = fuellAus(FLIESSEN.tinte);
+const FUELL_REGLER: ReglerZeile<keyof FuellWerte>[] = [
+  { gruppe: 'Einlaufen', k: 'an', name: 'Farbe läuft ein (0 = steht sofort)', min: 0, max: 1, schritt: 1 },
+  { gruppe: 'Einlaufen', k: 'tempo', name: 'Tempo der Front (Einheiten je s)', min: 80, max: 1500, schritt: 10 },
+  { gruppe: 'Einlaufen', k: 'stoss', name: 'Stoß am Anfang (Einheiten)', min: 0, max: 40, schritt: 1 },
+  { gruppe: 'Einlaufen', k: 'dauerMin', name: 'Dauer, mindestens (s)', min: 0.1, max: 1.5, schritt: 0.01 },
+  { gruppe: 'Einlaufen', k: 'dauerMax', name: 'Dauer, höchstens (s)', min: 0.3, max: 5, schritt: 0.05 },
+  { gruppe: 'Front', k: 'welle', name: 'Welle der Front', min: 0, max: 20, schritt: 0.5 },
+  { gruppe: 'Front', k: 'wulst', name: 'Wulst: Breite', min: 0, max: 30, schritt: 0.5 },
+  { gruppe: 'Front', k: 'staerke', name: 'Wulst: Stärke', min: 0, max: 1.5, schritt: 0.05 },
+];
+const fuellWerte = werteLesen<FuellWerte>('ozzy-fuellen-1', FUELL_GRUND);
+{
+  const f = params.get('fuellen');
+  if (f === 'tinte' || f === 'honig') Object.assign(fuellWerte, fuellAus(FLIESSEN[f]));
+  else if (f === '0' || (f === null && navigator.webdriver)) fuellWerte.an = 0;
+}
 
 // ---------- Teile ----------
 
@@ -213,6 +246,11 @@ const farbWerk = new FarbWerk(naechsterAuf);
  * `werkBlatt` (`modellSetzen`). `farbAn`: gilt in diesem Bild (im Raum und eingerastet; in den Vier Ansichten noch nicht).
  */
 const farbBlatt = new FarbBlatt(farbWerk);
+/** Etappe 3: die Werte des Feinreglers „Füllen“ gelten im Farbwerk */
+const fuellAnwenden = (): void => {
+  farbWerk.fliessWerte = { an: fuellWerte.an > 0.5, dauerMin: fuellWerte.dauerMin, dauerMax: Math.max(fuellWerte.dauerMin, fuellWerte.dauerMax), tempo: fuellWerte.tempo, stoss: fuellWerte.stoss, welle: fuellWerte.welle, wulst: fuellWerte.wulst, staerke: fuellWerte.staerke };
+};
+fuellAnwenden();
 let farbAn = false;
 /** (für die Proben) wie weit eine Linie im letzten Bild hinter der Haut liegen durfte, ohne als verdeckt zu gelten (Welt) */
 let linienBias = 0;
@@ -4052,7 +4090,10 @@ function bild(dt: number): boolean {
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
   // Paint-Modus: Die Bemalung folgt der Haut (Netzwechsel, neue Lagen), auch wenn sie gerade nicht zu sehen ist
   const tFarbe = performance.now();
+  // (Etappe 3: Eine Füllung, die einläuft, braucht jedes Bild)
+  farbWerk.fliessen(dt);
   if (zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && farbWerk.schritt(hautJetzt())) farbBild++;
+  if (farbWerk.fliesst) aktiv = true;
   // (nicht `farbAn`: So heißt der Schalter, ob die Farblinien gerade bedient werden; er gilt weiter unten für Tintenlinie und Verdeckung)
   const farbeDa = farbeZeigen();
   farbKostenBild = performance.now() - tFarbe;
@@ -4228,6 +4269,7 @@ function bild(dt: number): boolean {
   const ta = performance.now();
   anzeige.zeichnen(szene);
   mess.teile[4] = performance.now() - ta;
+  farbTropfenZeigen();
   hintenZeigen();
   maulUiZeigen();
   objektUiZeigen();
@@ -7485,6 +7527,38 @@ dreieckeSchalter.addEventListener('change', () => dreieckeSetzen(dreieckeSchalte
 // ---------- Paint-Modus (Etappe 1) ----------
 
 const farbWahlFeld = $<HTMLLabelElement>('farbe-wahl');
+/**
+ * Etappe 3: Die gewählte Farbe hängt als Tropfen am Zeiger, wo ein Klick füllen würde (im Paint-Modus mit A, über der Form, nichts
+ * anderes am Zeiger). Beim Füllen fällt er auf die Haut, und von dort läuft die Farbe; kurz darauf wächst ein neuer nach.
+ */
+const farbTropfen = $<HTMLDivElement>('farbtropfen');
+let farbTropfenFall = -1e9;
+function farbTropfenZeigen(): void {
+  const faellt = performance.now() - farbTropfenFall < 430;
+  const da = malModus && zustand === 'ruhe' && werkGezeigt && farbAn && raumWerkzeug === 'auswahl' && zeiger.da && !drehen && !bearbeiten.haengt && !bearbeitenGedrueckt && farbBlatt.ortFrei(zeiger.x, zeiger.y) !== null;
+  farbTropfen.hidden = !(da || faellt);
+  if (farbTropfen.hidden) return;
+  if (!faellt) {
+    farbTropfen.style.setProperty('--x', `${zeiger.x}px`);
+    farbTropfen.style.setProperty('--y', `${zeiger.y}px`);
+  }
+  farbTropfen.style.setProperty('--farbe', `rgb(${farbWahl.map((c) => Math.round(255 * c)).join(' ')})`);
+}
+/** der Tropfen fällt an dieser Stelle auf die Haut */
+function farbTropfenFallen(x: number, y: number): void {
+  farbTropfenFall = performance.now();
+  farbTropfen.hidden = false;
+  farbTropfen.style.setProperty('--x', `${x}px`);
+  farbTropfen.style.setProperty('--y', `${y}px`);
+  farbTropfen.classList.remove('waechst');
+  farbTropfen.classList.add('faellt');
+  setTimeout(() => {
+    farbTropfen.classList.remove('faellt');
+    farbTropfen.classList.add('waechst');
+    anstossen();
+  }, 430);
+  setTimeout(() => farbTropfen.classList.remove('waechst'), 430 + 300);
+}
 const farbWahlEingabe = $<HTMLInputElement>('farbe-farbe');
 farbWahlEingabe.addEventListener('input', () => {
   const h = farbWahlEingabe.value;
@@ -7536,6 +7610,7 @@ function farbFuellenBei(x: number, y: number, farbe: Farbe = farbWahl): boolean 
   }
   farbSchritt(() => farbWerk.fuellen(h, ort, farbe));
   if (!istMalgrund()) werk.G.meldung = 'Gefüllt · zu sehen auf hellem Solid und Wachs (Taste M)';
+  if (!farbTropfen.hidden) farbTropfenFallen(x, y);
   return true;
 }
 /** den Paint-Modus schalten */
@@ -7815,6 +7890,7 @@ const bereiche: Bereich[] = [
   },
   { titel: 'Raum und Ansichten', speicher: 'ozzy-buehne-1', zeilen: BUEHNE_REGLER, werte: bw as unknown as Record<string, number>, grundwerte: BUEHNE_GRUND as unknown as Record<string, number> },
   { titel: 'Material Wachs', speicher: 'ozzy-wachs-1', zeilen: WACHS_REGLER, werte: wachsWerte as unknown as Record<string, number>, grundwerte: WACHS_GRUND as unknown as Record<string, number> },
+  { titel: 'Füllen', speicher: 'ozzy-fuellen-1', zeilen: FUELL_REGLER, werte: fuellWerte as unknown as Record<string, number>, grundwerte: FUELL_GRUND as unknown as Record<string, number> },
 ];
 const fein = feinreglerBauen($('regler-liste'), bereiche, (bereich, k) => {
   if (bereich === 'Linien und Punkte') blatt.verhalten.abtasten();
@@ -7832,6 +7908,7 @@ const fein = feinreglerBauen($('regler-liste'), bereiche, (bereich, k) => {
     if (k === 'groesse' || k === 'alle') massstab.nachfuehren = true;
   }
   if (bereich === 'Material Wachs') feste.wachsFarbton(wachsWerte.farbton);
+  if (bereich === 'Füllen') fuellAnwenden();
   anstossen();
 });
 $('knopf-grundwerte').addEventListener('click', () => fein.grundwerte());
@@ -8729,6 +8806,17 @@ const haken = {
   farbMitte: (): { x: number; y: number }[] => (farbAn ? farbBlatt.mitteSichtbar() : []),
   /** Etappe 2: die Tiefe der Haut unter einem Bildpunkt (CSS-Pixel), im Maß der Tiefen von `farbNetz` (null: daneben) */
   farbTiefe: (x: number, y: number): number | null => (farbAn ? farbBlatt.tiefeUnter(x, y) : null),
+  /** Etappe 3: die Füllung, die gerade einläuft (Zeit, Dauer, größte Weite, Front in Einheiten des Werks; null: keine), und was ihr Vorbereiten kostete */
+  farbFluss: (): { zeit: number; dauer: number; groesst: number; front: number; ms: number } | null => {
+    const f = farbWerk.flussStand();
+    return f ? { ...f, ms: farbWerk.flussMs } : null;
+  },
+  /** Etappe 3: eine der zwei Fassungen des Einlaufens wählen oder es abschalten */
+  farbFliessen: (art: 'tinte' | 'honig' | 'aus'): void => {
+    if (art === 'aus') fuellWerte.an = 0;
+    else Object.assign(fuellWerte, fuellAus(FLIESSEN[art]));
+    fuellAnwenden();
+  },
   /** Etappe 2: wie oft die Kurve zwischen zwei Punkten im Bild und wie oft im Raum gelegt wurde, und was Legen und Ableiten gekostet haben */
   farbGelegt: (): { bild: number; raum: number; vorhang: number; gerade: number; msLegen: number; abgeleitet: number; msAbleiten: number } => ({ ...farbBlatt.gelegt }),
   /** Etappe 2: Liegt unter der Stelle des Bilds (CSS-Pixel) die Form, sodass P dort einen Punkt setzen könnte? */

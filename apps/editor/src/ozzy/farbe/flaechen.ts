@@ -19,13 +19,17 @@ import { type Kette, jeDreieck } from './ketten';
 
 export type Saat = { ort: Ort; farbe: number };
 
-/** eine Kette, wie die Anzeige sie braucht: ihre Punkte und je Seite die Füllung (Nummer der Farbe, −1: keine) */
-export type RandKette = { p: number[]; links: number; rechts: number; linie: number; gespiegelt: boolean };
+/**
+ * Eine Kette, wie die Anzeige sie braucht: ihre Punkte und je Seite die Füllung (Nummer der Farbe, −1: keine). `zl`, `zr` (Etappe 3):
+ * die Zelle ihres Dreiecks links und rechts von ihr (Nummern, die nur innerhalb des Dreiecks etwas sagen: gleiche Nummer = dieselbe
+ * Zelle, ohne eine Kette dazwischen).
+ */
+export type RandKette = { p: number[]; links: number; rechts: number; linie: number; gespiegelt: boolean; zl: number; zr: number };
 export type Flaechen = {
   /** je Dreieck ohne Kette die Farbe (−1: keine) */
   ganz: Int32Array;
-  /** die Dreiecke mit Ketten */
-  rand: { t: number; ketten: RandKette[] }[];
+  /** die Dreiecke mit Ketten; `ecken`, `eckFarben` (Etappe 3): die Zelle, in der jede Ecke des Dreiecks liegt, und deren Füllung */
+  rand: { t: number; ketten: RandKette[]; ecken: [number, number, number]; eckFarben: [number, number, number] }[];
 };
 
 /** Lage einer Stelle auf dem Rand des Dreiecks: Kante e (Ecke e → e + 1) und Anteil λ; aus den Gewichten (b, c) eines Punkts auf ihr */
@@ -131,6 +135,12 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
     zahl += 2 * liste.length;
   }
   const M = new Mengen(zahl);
+  // (Etappe 3) dieselben Knoten, aber nur innerhalb jedes Dreiecks verbunden: die Zellen eines Dreiecks
+  const Lok = new Mengen(zahl);
+  const beide = (a: number, b: number): void => {
+    M.vereinen(a, b);
+    Lok.vereinen(a, b);
+  };
   const seite = (t: number, ki: number, s: number): number => ab.get(t)! + 2 * ki + s;
   /** je Dreieck mit Ketten: seine drei Kanten in Abschnitten, jeder mit dem Knoten seiner Zelle */
   const kanten = new Map<number, [Abschnitt[], Abschnitt[], Abschnitt[]]>();
@@ -143,7 +153,7 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
       if (c.ein >= 0) er.push({ e: c.ein, lam: lambdaAuf(c.ein, c.p[0]!, c.p[1]!), vor: seite(t, ki, 0), nach: seite(t, ki, 1), w: winkelAmRand(c.ein, c.p, true) });
       if (c.aus >= 0) er.push({ e: c.aus, lam: lambdaAuf(c.aus, c.p[n - 2]!, c.p[n - 1]!), vor: seite(t, ki, 1), nach: seite(t, ki, 0), w: winkelAmRand(c.aus, c.p, false) });
       // ein freies Ende (nicht an einer Kreuzung): Um die Spitze herum ist es dieselbe Zelle
-      if (!c.zu && ((c.ein < 0 && c.kEin === undefined) || (c.aus < 0 && c.kAus === undefined))) M.vereinen(seite(t, ki, 0), seite(t, ki, 1));
+      if (!c.zu && ((c.ein < 0 && c.kEin === undefined) || (c.aus < 0 && c.kAus === undefined))) beide(seite(t, ki, 0), seite(t, ki, 1));
     });
     // Kreuzungen: Die Ketten, die an einer hängen, im Umlauf geordnet; zwischen zwei Nachbarn liegt eine Zelle
     const anKreuzung = new Map<number, { w: number; ccw: number; cw: number }[]>();
@@ -161,7 +171,7 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
     });
     for (const arme of anKreuzung.values()) {
       arme.sort((x, y) => x.w - y.w);
-      for (let i = 0; i < arme.length; i++) M.vereinen(arme[i]!.ccw, arme[(i + 1) % arme.length]!.cw);
+      for (let i = 0; i < arme.length; i++) beide(arme[i]!.ccw, arme[(i + 1) % arme.length]!.cw);
     }
     er.sort((x, y) => x.e + x.lam - (y.e + y.lam));
     // Treffen sich zwei Ketten an derselben Stelle des Rands (eine Farblinie und ihr Spiegelbild auf der Mitte: Sie kreuzen sich genau
@@ -181,7 +191,7 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
       for (let e = 0; e < 3; e++) drei[e]!.push({ von: 0, bis: 1, knoten: t });
     } else {
       // zwischen zwei Ereignissen liegt eine Zelle: die Seite nach dem einen ist die Seite vor dem nächsten
-      for (let i = 0; i < er.length; i++) M.vereinen(er[i]!.nach, er[(i + 1) % er.length]!.vor);
+      for (let i = 0; i < er.length; i++) beide(er[i]!.nach, er[(i + 1) % er.length]!.vor);
       let knoten = er[er.length - 1]!.nach;
       let i = 0;
       for (let e = 0; e < 3; e++) {
@@ -239,7 +249,7 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
         const a = drei[1]!.find((x) => lam >= x.von && lam <= x.bis) ?? drei[1]![0]!;
         bestKnoten = a.knoten;
       }
-      M.vereinen(aussen, bestKnoten);
+      beide(aussen, bestKnoten);
     });
   }
   // über die Kanten: Nachbarn gehören zusammen, wo ihre Abschnitte aufeinanderliegen
@@ -278,7 +288,10 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
   const ganz = new Int32Array(T).fill(-1);
   if (farbe.size) for (let t = 0; t < T; t++) if (!kd.has(t)) ganz[t] = farbe.get(M.wurzel(t)) ?? -1;
   const rand: Flaechen['rand'] = [];
-  for (const [t, liste] of kd)
+  for (const [t, liste] of kd) {
+    // (die Ecke e liegt am Anfang der Kante e: in der Zelle ihres ersten Abschnitts)
+    const drei = kanten.get(t)!;
+    const eck = [drei[0][0]!.knoten, drei[1][0]!.knoten, drei[2][0]!.knoten] as const;
     rand.push({
       t,
       ketten: liste.map((c, ki) => ({
@@ -287,7 +300,12 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
         rechts: farbe.get(M.wurzel(seite(t, ki, 1))) ?? -1,
         linie: c.linie,
         gespiegelt: c.gespiegelt,
+        zl: Lok.wurzel(seite(t, ki, 0)),
+        zr: Lok.wurzel(seite(t, ki, 1)),
       })),
+      ecken: [Lok.wurzel(eck[0]), Lok.wurzel(eck[1]), Lok.wurzel(eck[2])],
+      eckFarben: [farbe.get(M.wurzel(eck[0])) ?? -1, farbe.get(M.wurzel(eck[1])) ?? -1, farbe.get(M.wurzel(eck[2])) ?? -1],
     });
+  }
   return { ganz, rand };
 }
