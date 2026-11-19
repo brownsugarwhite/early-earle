@@ -63,23 +63,11 @@ export class Verbund {
     if (k.laeuft) return true;
     // (dieser Stand ist schon gerechnet und war nicht zu zeigen, etwa weil er scheiterte: nicht noch einmal)
     if (k.fertig === soll.schl) return false;
-    if (!k.worker) {
-      try {
-        k.worker = new Worker(new URL('./verbund.worker.ts', import.meta.url), { type: 'module' });
-      } catch (e) {
-        k.kaputt = true;
-        this.fehler = `Der Rechner für den Verbund startet nicht (${e instanceof Error ? e.message : String(e)})`;
-        return false;
-      }
-      k.worker.onmessage = (e: MessageEvent<VerbundErgebnis>) => this.angekommen(i, e.data);
-      k.worker.onerror = (e) => {
-        k.kaputt = true;
-        k.laeuft = null;
-        this.fehler = `Der Rechner für den Verbund ist ausgefallen (${e.message})`;
-        this.bild = null;
-        this.geaendert();
-      };
-    }
+    if (!k.worker && !this.starten(i)) return false;
+    // (der andere Rechner gleich mit: Er lädt die Bibliothek schon, bevor der erste Zug oder die erste Ruhe ihn braucht)
+    const anderer = this.kanaele[1 - i]!;
+    if (!anderer.worker && !anderer.kaputt && this.starten(1 - i)) anderer.worker!.postMessage({ nr: -1, teile: [], koerper: [] } satisfies VerbundAuftrag);
+    if (!k.worker) return false;
     // nur die Netze mitschicken, die der Rechner noch nicht hat (er behält je Objekt die letzten zwei Stände, wie hier mitgezählt)
     const gibt = new Set(soll.alle);
     for (const id of [...k.hat.keys()]) if (!gibt.has(id)) k.hat.delete(id);
@@ -108,11 +96,33 @@ export class Verbund {
     return true;
   }
 
+  /** einen der zwei Rechner anlegen; falsch: Er startet nicht */
+  private starten(i: number): boolean {
+    const k = this.kanaele[i]!;
+    try {
+      k.worker = new Worker(new URL('./verbund.worker.ts', import.meta.url), { type: 'module' });
+    } catch (e) {
+      k.kaputt = true;
+      this.fehler = `Der Rechner für den Verbund startet nicht (${e instanceof Error ? e.message : String(e)})`;
+      return false;
+    }
+    k.worker.onmessage = (e: MessageEvent<VerbundErgebnis>) => this.angekommen(i, e.data);
+    k.worker.onerror = (e) => {
+      k.kaputt = true;
+      k.laeuft = null;
+      this.fehler = `Der Rechner für den Verbund ist ausgefallen (${e.message})`;
+      this.bild = null;
+      this.geaendert();
+    };
+    return true;
+  }
+
   private angekommen(i: number, e: VerbundErgebnis): void {
     const k = this.kanaele[i]!;
     const l = k.laeuft;
-    k.laeuft = null;
+    // (nur die Antwort auf den laufenden Auftrag zählt; die auf das Vorwärmen nicht)
     if (!l || l.nr !== e.nr) return;
+    k.laeuft = null;
     this.stand.ms[i] = e.ms;
     if (e.teile) this.stand.teile[i] = e.teile;
     this.stand.runde[i] = performance.now() - l.seit;

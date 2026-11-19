@@ -1003,12 +1003,15 @@ void main() {
   ruheSetzen(netz: HautNetz | null, platz = 0): void {
     const P = this.ruhePlaetze[platz]!;
     if (netz === P.netz) return;
-    for (const m of P.netze) this.szene.remove(m);
-    P.netze = [];
-    P.geo?.dispose();
+    const alt = P.geo;
     P.geo = null;
     P.netz = netz;
-    if (!netz) return;
+    if (!netz) {
+      for (const m of P.netze) this.szene.remove(m);
+      P.netze = [];
+      alt?.dispose();
+      return;
+    }
     if (!this.matsRuhe.length) this.matsRuhe = this.durchgaenge(0);
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(netz.pos, 3));
@@ -1020,13 +1023,17 @@ void main() {
     g.setAttribute('aSicht', new BufferAttribute(netz.sicht, 1));
     g.setIndex(new BufferAttribute(netz.index, 1));
     P.geo = g;
-    this.matsRuhe.forEach((m, i) => {
-      const mesh = new Mesh(g, m);
-      mesh.renderOrder = i;
-      mesh.frustumCulled = false;
-      this.szene.add(mesh);
-      P.netze.push(mesh);
-    });
+    // (die Durchgänge bleiben stehen und bekommen nur das neue Netz: Der Verbund wechselt beim Ziehen mit jedem Stand)
+    if (P.netze.length) for (const mesh of P.netze) mesh.geometry = g;
+    else
+      this.matsRuhe.forEach((m, i) => {
+        const mesh = new Mesh(g, m);
+        mesh.renderOrder = i;
+        mesh.frustumCulled = false;
+        this.szene.add(mesh);
+        P.netze.push(mesh);
+      });
+    alt?.dispose();
   }
   /** nur die Dehnung eines ruhenden Netzes neu hochladen (der Verbund: Seine Farben der Dehnung klingen nach) */
   ruheDehnungErneuern(platz = 0): void {
