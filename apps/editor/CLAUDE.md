@@ -446,6 +446,22 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `WEITE`, `DIAG`), `ozzy-farbe-form.mjs` (an einer gesicherten Form), Film `scripts/ozzy/paint-film.mjs`. Fallen der Proben
   (Tropfen „Maul formen“ über dem Anfasser, Griff der Raumecke hinter der Form, Einrasten des Zeigers, Kanten messen):
   `docs/look/ozzy/paint/UEBERGABE.md`, Abschnitt 7.
+- **Paint-Modus, Etappe 2 (19.11.; Plan, Abschnitt 10 und 11):** `farbe/farbBlatt.ts` ist für die Farblinien, was `werkBlatt.ts`
+  für die Linien der Form ist (Schnittstelle `Raum`): Im Paint-Modus bekommt das eine `Verhalten` dieses Modell (`modellSetzen`;
+  Schalter `farbAn`: im Raum mit A, P oder Lasso). Merke: (1) Die Punkte einer Farblinie sind einzelne ihrer Orte; eine Richtung
+  steht im Maß des Dreiecks ihres Orts (drei Zahlen, Summe null; `kurve.ts`). (2) Die Kurve zwischen zwei sichtbaren Punkten wird
+  im Bild gelegt (`stueckImBild`; `BildTreffer` ist ein Raster der Dreiecke im Bild und trifft die glatte Anzeige wie ein Klick),
+  im Raum (`stueckLegen`) nur, wenn ein Punkt nicht zu sehen ist: An einer steilen Stelle ist eine Richtung im Raum viel länger
+  als ihr Bild, und der nächste Ort der Haut zu einer Kurve fern von ihr springt an Falten auf einen anderen Körperteil. (3)
+  Springt die Kurve im Bild auf die Haut hinter einem Überhang, führt `spurImVorhang` den Weg in der Ebene des Blicks (von den
+  zwei Wegen um den Ring der kürzere). (4) Die Mitte: Ein Ort genau in der Spiegelebene hat das Gewicht null der Ecke gegenüber
+  (`zurMitte`); `ortIn` rückt jeden Ort vom Rand weg, ihn also nie durch `ortIn` schicken. Eine fertige Farblinie endet an der
+  Mitte (`linienAusTreffern`: Der längere Teil gilt). Kreuzt eine Farblinie ihr Spiegelbild, liegt die Kreuzung genau auf einer
+  Kante des Netzes: Dort teilt `kreuzungenTeilen` nicht, `flaechen.ts` ordnet die zwei Ketten am Rand nach ihrer Richtung (sonst
+  läuft die Füllung aus). (5) Was verdeckt ist, entscheidet die Anzeige der Linien über die Tiefe des Körpers (`linienKoerper`
+  mit `nurTiefe`); den Namen `farbAn` nie örtlich neu vergeben (so galt die Verdeckung vor der ersten Farblinie nicht). (6) Eine
+  Probe an der Kugel reicht nicht: `ozzy-farbe-bedienen-fenster.mjs` (Kugel) und `ozzy-farbe-mitte-fenster.mjs` („strange bird“:
+  Überhang, Mitte, Tempo); Film `scripts/ozzy/paint-bedienen-film.mjs`. Was fehlt: Plan 11.4.
 - **Jelly und helles Solid (18.11., `src/ozzy/gast.ts`):** `BlaupauseBild` aus `src/form/blaupause.ts` läuft unverändert als Gast
   auf der eigenen Fläche `#gast` (zweiter WebGL-Renderer mit Kantenglättung, über `#haut`, unter `#linien`). Was der Gast tut: (1)
   den Grund verbergen (`Reflect.get(bild, 'hgNetz')`: ein privates Feld; benennt die Design-Sitzung es um, steht eine Warnung in der

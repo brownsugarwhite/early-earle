@@ -8717,10 +8717,11 @@ const haken = {
   /** Etappe 2: unter einem Bildpunkt (CSS-Pixel) der Treffer des Rasters im Bild gegen den des Strahls (Abstand in Einheiten des Werks; −1: einer fehlt, −2: beide) */
   farbRaster: (x: number, y: number): number => (farbAn ? farbBlatt.rasterGegenStrahl(x, y) : -2),
   /** Etappe 2: die Linien, wie das Farb-Blatt sie dem Verhalten gibt (samt Spiegelbildern und Entwurf): je Linie ihre Proben im Bild (CSS-Pixel) */
-  farbNetz: (): { zu: boolean; punkte: number; x: number[]; y: number[]; z: number[]; hinten: number[] }[] =>
+  farbNetz: (): { zu: boolean; punkte: number; zuSehen: boolean[]; x: number[]; y: number[]; z: number[]; hinten: number[] }[] =>
     farbBlatt.netz.linien.map((l, i) => {
       const P = farbBlatt.proben[i];
-      return { zu: l.zu, punkte: l.punkte.length, x: Array.from(P?.x ?? []), y: Array.from(P?.y ?? []), z: Array.from(P?.z ?? []), hinten: Array.from(P?.schicht ?? []) };
+      // (`zuSehen`: je Punkt der Linie, ob er zu sehen und zu greifen ist)
+      return { zu: l.zu, punkte: l.punkte.length, zuSehen: l.punkte.map((pi) => !!farbBlatt.netz.punkte[pi]?.sichtbar), x: Array.from(P?.x ?? []), y: Array.from(P?.y ?? []), z: Array.from(P?.z ?? []), hinten: Array.from(P?.schicht ?? []) };
     }),
   /** Etappe 2: ab welcher Tiefe hinter der Haut eine Linie im letzten Bild als verdeckt galt, im Verhältnis zur Größe des Raums (0,02: die Verdeckung gilt ganz) */
   farbVerdeckung: (): number => linienBias / (raum?.R ?? 1),

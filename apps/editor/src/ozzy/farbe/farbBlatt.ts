@@ -322,6 +322,19 @@ export class FarbBlatt implements Raum {
     return tr ? { ort: ortIn(h.haut, tr.f, tr.w0, tr.w1, tr.w2), tiefe: tr.tiefe } : null;
   }
 
+  /**
+   * Steht nichts vor dem Ort (`s`: sein Bild mit Tiefe)? Verdeckt ist er, wenn unter seinem Bildpunkt eine andere Stelle der Form
+   * vorn liegt: weiter vorn und im Raum woanders.
+   */
+  private frei(s: readonly [number, number, number], o: Ort): boolean {
+    const h = this.h!;
+    const tr = this.ortImRaster(s[0], s[1]);
+    if (!tr || tr.tiefe > s[2] - this.sicht!.duldung) return true;
+    const p = ortLage(h.haut.pos, o);
+    const q = ortLage(h.haut.pos, tr.ort);
+    return (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2 < VERDECKT_AB ** 2;
+  }
+
   /** für die Proben: die Tiefe der Haut unter einem Bildpunkt (wie die Tiefe der Punkte des Netzes; null: daneben) */
   tiefeUnter(x: number, y: number): number | null {
     if (!this.h || !this.sicht) return null;
@@ -361,18 +374,7 @@ export class FarbBlatt implements Raum {
     if (this.vorn(A.ort, wa) && this.vorn(B.ort, wb)) {
       const a = this.schirm(wa);
       const b = this.schirm(wb);
-      /**
-       * Steht nichts vor dem Punkt? (Verdeckt ist er, wenn unter seinem Bildpunkt eine andere Stelle der Form vorn liegt: weiter vorn
-       * und im Raum woanders.)
-       */
-      const frei = (s: [number, number, number], o: Ort): boolean => {
-        const tr = this.ortImRaster(s[0], s[1]);
-        if (!tr || tr.tiefe > s[2] - S.duldung) return true;
-        const p = ortLage(h.haut.pos, o);
-        const q = ortLage(h.haut.pos, tr.ort);
-        return (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2 < VERDECKT_AB ** 2;
-      };
-      if (frei(a, A.ort) && frei(b, B.ort)) {
+      if (this.frei(a, A.ort) && this.frei(b, B.ort)) {
         this.gelegt.bild++;
         const ga = this.griffImBild(A.ort, griff(gA));
         const gb = this.griffImBild(B.ort, griff(gB));
@@ -526,8 +528,9 @@ export class FarbBlatt implements Raum {
       const lagen = z.punkte.map((p) => this.welt(p.ort));
       z.punkte.forEach((p, k) => {
         const s = this.schirm(lagen[k]!);
-        // (ein Punkt auf der abgewandten Seite ist nicht zu sehen und nicht zu greifen: Die Bemalung liegt auf der Haut, nicht in ihr)
-        const vorn = this.vorn(p.ort, lagen[k]!);
+        // (ein Punkt auf der abgewandten Seite oder hinter einem anderen Teil der Form ist nicht zu sehen und nicht zu greifen: Die
+        // Bemalung liegt auf der Haut, nicht in ihr)
+        const vorn = this.vorn(p.ort, lagen[k]!) && this.frei(s, p.ort);
         punkte.push({ x: s[0], y: s[1], sichtbar: vorn, verdeckt: !vorn, z: s[2] });
         anker.push({ z: zi, k });
       });

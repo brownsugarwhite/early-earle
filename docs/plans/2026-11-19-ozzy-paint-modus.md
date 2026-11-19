@@ -1,11 +1,13 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand (19.11., 12:15 Uhr): Etappe 1 ist gebaut, dein Urteil steht aus.** Was gebaut und gemessen ist, was fehlt und was nicht
-hält, steht in Abschnitt 9 (Bildblatt: [`2026-11-19-paint-etappe-1-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-1-bogen.jpg),
-Film: [`2026-11-19-paint-etappe-1.mp4`](../progress/ozzy/2026-11-19-paint-etappe-1.mp4)). Davor gebaut: das Material „Wachs“
-(Abschnitt 2) und der Schalter „Dreiecke zeigen“. Etappe 2 bis 7 warten auf dein Wort. Zweig `claude/reverent-feynman-1efdd3`
-(baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html`
-(Eintrag `ozzy-paint`). Übergabe des Strangs: [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
+**Stand (19.11., 15:15 Uhr): Etappe 2 ist gebaut, dein Urteil steht aus.** Farblinien bedienen wie Linien: P direkt auf der
+Form, Punkte und Richtungen mit A, offen und gekreuzt, die Mitte. Was gebaut und gemessen ist und was fehlt, steht in Abschnitt 11
+(Bildblatt: [`2026-11-19-paint-etappe-2-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-2-bogen.jpg), Film an deiner Form
+„strange bird“: [`2026-11-19-paint-etappe-2.mp4`](../progress/ozzy/2026-11-19-paint-etappe-2.mp4)). Davor: Etappe 1 (Abschnitt 9,
+dein Wort dazu: „Etappe 2 starten“), das Material „Wachs“ (Abschnitt 2) und der Schalter „Dreiecke zeigen“. Etappe 3 bis 7 warten
+auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
+zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
+[`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
 ## Dein Auftrag (19.11.2026, wörtlich)
 
@@ -73,8 +75,8 @@ Geste wird von Anfang an auch für iPad und Stift gebaut (dort gibt es kein ⌥)
 | Etappe | Was du siehst und anfasst | Probe und Kriterium |
 | --- | --- | --- |
 | **0** Material „Wachs“ | das neue Material | gebaut; Vergleichsbild liegt vor |
-| **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | **gebaut (19.11.)**; Kriterien in 3.1, Messwerte in Abschnitt 9; dein Urteil steht aus |
-| **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | du zeichnest Bauch, Schnauze, Augenrand an einer deiner Formen; jede Geste geht mit einzelnen Klicks |
+| **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | **gebaut (19.11.)**; Kriterien in 3.1, Messwerte in Abschnitt 9; dein Wort: „Etappe 2 starten“ |
+| **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | **gebaut (19.11.)**; Schritte in Abschnitt 10, Messwerte und Lücken in Abschnitt 11; Film an „strange bird“; dein Urteil steht aus |
 | **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | zuerst ein Film der Animation für dein Urteil, dann gebaut |
 | **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | zuerst ein Bild der Bedienung (zwei Fassungen zur Wahl), dann gebaut |
 | **5** Ebenen | Ebene anlegen, ordnen, aus- und einblenden; Muster über Verläufen | ein Verlauf auf Ebene 1, Punkte auf Ebene 2, an deiner Form |
@@ -363,6 +365,9 @@ zurück).
 
 ### 9.4 Was Etappe 1 nicht hat
 
+(Stand nach Etappe 1. Etappe 2 hat davon gebaut: P direkt auf der Form im Raum, Punkte zum Anfassen, offene Farblinien, Löschen,
+Kreuzungen; Abschnitt 11.)
+
 - **Die Farbe steht nur im Raum.** Eingerastet, an den Wänden und in den Vier Ansichten siehst du die Farblinien als feine Linien,
   keine Farbe. (Im Plan stand für Etappe 1 ein Bild „flach wie eine Illustration“: noch nicht gebaut.)
 - **P zeichnet nicht direkt auf die Form im Raum**, nur an einer Wand oder eingerastet (wie die Linien der Form).
@@ -399,9 +404,13 @@ Farblinien bedienen wie Linien. Jeder Schritt hat seine Probe; nach 2b und am En
 
 **Am Ende:** Bauch, Schnauze und Augenrand an „strange bird“, jede Geste mit einzelnen Klicks, als Film.
 
-**Wie eine Farblinie zwischen zwei Punkten läuft** (wie in deiner Vorlage `raum.html`): Aus den zwei Punkten und ihren Richtungen
-entsteht die Kurve im Raum; sie wird Probe für Probe auf die Haut gelegt. Danach gehen ihre Orte mit der Haut mit. Neu gerechnet
-wird ein Stück nur, wenn du einen seiner zwei Punkte oder dessen Richtung anfasst; alles andere bleibt, wie es liegt.
+**Stand:** 2a bis 2e sind gebaut (Abschnitt 11).
+
+**Wie eine Farblinie zwischen zwei Punkten läuft:** Sind beide Punkte zu sehen, entsteht die Kurve im Bild, so wie du sie ziehst
+(aus den zwei Punkten und den Bildern ihrer Richtungen), und wird längs des Blicks auf die Haut gelegt. Nur wenn ein Punkt nicht
+zu sehen ist, entsteht sie im Raum und wird auf die Haut gelegt (wie in deiner Vorlage `raum.html`; an einer Form mit Falten
+verläuft sich das, darum die Regel davor). Danach gehen ihre Orte mit der Haut mit. Neu gerechnet wird ein Stück nur, wenn du
+einen seiner zwei Punkte oder dessen Richtung anfasst; alles andere bleibt, wie es liegt.
 
 **Bauweise:** Eine Richtung steht im Maß des Dreiecks ihres Punkts (drei Zahlen zu seinen drei Ecken, Summe null: So dreht und
 dehnt sie sich mit der Haut, und beim Netzwechsel geht sie wie die Gewichte mit). Bedient wird über ein zweites Verhalten der
@@ -409,3 +418,85 @@ Linien-Studie mit einem eigenen Modell (`farbe/farbBlatt.ts`, Schnittstelle `Rau
 A und P den Farblinien, die Linien der Form stehen still. Die Farblinien zeichnet dann das Verhalten selbst (mit Schwellen,
 Tropfen und Nadel); verdeckt wird über die Tiefe des Körpers.
 
+## 11. Etappe 2: was gebaut ist, was gemessen ist, was fehlt (19.11.2026)
+
+Bildblatt: [`2026-11-19-paint-etappe-2-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-2-bogen.jpg). Film (42 Sekunden, deine
+Form „strange bird“ von vorn): [`2026-11-19-paint-etappe-2.mp4`](../progress/ozzy/2026-11-19-paint-etappe-2.mp4).
+
+### 11.1 Was du anfassen kannst
+
+- **P direkt auf der Form** (im Raum): Ein Klick setzt einen Punkt, Klicken und Ziehen einen runden Punkt mit zwei Richtungen; der
+  Faden zeigt die Farblinie, wie sie wird. Auf dem ersten Punkt klicken schließt sie, ↩ beendet sie offen, ⌫ nimmt den letzten
+  Punkt zurück, Esc bricht ab.
+- **A greift:** einen Punkt ziehen (er gleitet über die Haut); nahe an einem runden Punkt die Richtung drehen (Nadel und Ring wie
+  bei den Linien, ⌥ knickt, Doppelklick schaltet zwischen Knick und rund); ⌫ löscht gewählte Punkte; ⌘Z nimmt jeden Handgriff
+  zurück. Die Füllung folgt der Farblinie.
+- **Offen und gekreuzt:** Eine offene Farblinie begrenzt nur, wo sie liegt (die Füllung läuft um ihr Ende). Zwei Farblinien, die
+  sich kreuzen, trennen vier Flächen.
+- **Die Mitte:** Mit P zeigt sie sich nahe am Zeiger als Punktreihe auf der Haut; ein Klick nah an ihr rastet ein. Auf der Mitte
+  begonnen und auf der Mitte beendet, ist die Farblinie von selbst fertig, und ihr Spiegelbild schließt sie: So zeichnest du
+  Bauch oder Schnauze als eine Hälfte. Zeichnest du geschlossen quer über die Mitte, bleibt der längere Teil und endet an der
+  Mitte; was hinausragt, fällt weg (wie bei einem Ring der Form). Ein Spiegelbild greifst du wie die Farblinie selbst.
+- Im Paint-Modus gehören A und P den Farblinien; die Linien der Form stehen still.
+
+### 11.2 Was die Probe an deiner Form geändert hat
+
+„strange bird“ hat Falten und Überhänge (ein Körperteil verdeckt die Falte dahinter). An der Kugel hielt alles, an deiner Form
+hielt die erste Fassung nicht. Behoben:
+
+1. **Die Kurve zwischen zwei Punkten wird im Bild gelegt,** so wie du sie ziehst, nicht mehr im Raum. An einer steilen Stelle
+   ist eine Richtung im Raum viel länger als ihr Bild; dort verlief sich die Kurve über die Haut.
+2. **Über den Rand eines Körperteils hinweg** (die Kurve springt im Bild auf die Haut dahinter) führt die Farblinie verdeckt
+   hinter dem Rand weiter, im Bild genau unter der Kurve.
+3. **An der Mitte lief die Füllung aus,** wenn eine Farblinie dort ihr Spiegelbild kreuzte.
+4. **Bevor irgendetwas gemalt war,** zeigte der erste Entwurf auch, was hinter der Form liegt (ein Namenskonflikt in Ozzys
+   Bildfunktion); mit Ellipse und Freihand fehlte im Raum die dunkle Farblinie.
+
+### 11.3 Gemessen
+
+Zwei Proben: `ozzy-farbe-bedienen-fenster.mjs` (an einer Kugel, alle Gesten mit einzelnen Klicks) und
+`ozzy-farbe-mitte-fenster.mjs` (an „strange bird“). Dazu 36 Tests ohne Fenster. Die Probe der Etappe 1 hält weiter.
+
+| Was | gemessen | hält? |
+| --- | --- | --- |
+| P direkt auf der Form | Die Punkte liegen 0,00 Gerätepunkte neben den Klicks, die Farblinie läuft glatt (Zacken 0,00). | ja |
+| Ziehen rundet; ⌫, ↩, Esc | Die Richtungen stehen im Bild, wie gezogen (25; 0 und −25; 0). | ja |
+| A zieht einen Punkt | 0,00 Gerätepunkte neben dem Ziel, die anderen Punkte bewegen sich nicht; ein Klick ohne Weg ist kein Schritt für ⌘Z. | ja |
+| Richtung drehen | 0,00° neben dem Zeiger; die Gegenseite dreht mit, mit ⌥ knickt sie. | ja |
+| Füllen, Löschen, ⌘Z | Die Füllung folgt; sieben Schritte der Reihe nach zurück; die Form bleibt Zahl für Zahl dieselbe. | ja |
+| gekreuzt und offen | Gefüllt wird nur die Überlappung; um das Ende einer offenen Farblinie läuft die Füllung. | ja |
+| von hinten, verdeckt | Von hinten gesehen und hinter einem anderen Teil der Form ist kein Punkt zu greifen. | ja |
+| über einen Überhang („strange bird“) | Jede Kurve wird im Bild gelegt; größter Schritt der Farblinie im Bild 2,0 CSS-Pixel; 138 von 240 Proben liegen hinter der Form und sind nicht zu sehen. | ja |
+| die Mitte („strange bird“) | Die Enden liegen 0,00 Einheiten neben der Spiegelebene; ein Klick füllt beide Hälften; quer über die Mitte bleibt der längere Teil. | ja |
+| Tempo („strange bird“, rund 1 000 Orte gemalt) | Punkt ziehen und Richtung drehen: je Schritt 0,9 ms für die Kurven und 0,9 ms für das Netz; die Bemalung je Bild dabei 2,8 ms (95 %: 3,4 ms, das teuerste 11,3 ms). | ja |
+
+### 11.4 Was Etappe 2 nicht hat
+
+- **Ein Stück an der Farblinie selbst ziehen** (zwischen zwei Punkten greifen): tut nichts.
+- **An einer Kreuzung teilen zwei Farblinien keinen Punkt** (im Plan stand das so). Die Flächen stimmen.
+- **P auf einem Punkt oder einer Farblinie schließt nicht an sie an:** Dort entsteht ein neuer Punkt an derselben Stelle. Einen
+  Punkt mit P auf eine Farblinie setzen ist gebaut, im Fenster aber nicht geprüft; ebenso Rahmen, Lasso und Doppelklick (die ganze
+  Farblinie wählen).
+- **Nur im Raum.** Eingerastet und in den Vier Ansichten gilt weiter Etappe 1 (über die Wand gezeichnet, keine Farbe dort). P
+  zeichnet im Paint-Modus im Raum nicht mehr an einer Wand; Ellipse und Freihand tun es weiter.
+- **Ein Punkt, den du mit A über die Mitte ziehst,** beendet die Farblinie dort nicht: Sie kreuzt dann ihr Spiegelbild (die
+  Flächen stimmen).
+- **Der Entwurf zeigt sein Spiegelbild erst, wenn er fertig ist.**
+- **Über einen Überhang, in dessen Falte die Mitte verdeckt liegt** (schräg gesehen, von einer Körperhälfte auf die andere
+  gezeichnet): Die Farblinie endet auch dann an der Mitte. Der kürzere Teil fällt weg, der längere erscheint gespiegelt auf der
+  anderen Hälfte. Das überrascht. Von vorn gesehen, die Mitte im Blick, tritt es nicht auf.
+- **Das Kriechen der Bemalung bei weiten Zügen an der Form** (9.3) ist unverändert.
+- **Am iPad mit Stift ist nichts davon geprüft.**
+
+### 11.5 Für die Sitzung, die baut
+
+- `farbe/farbBlatt.ts`: das Modell der Farblinien für das Verhalten der Linien-Studie (`Raum`, `Dreher`, `StiftWerk`); `legen`
+  (im Bild oder im Raum), `alsLinien` (endet an der Mitte), `mittePunkte`, `frei` (verdeckt?).
+- `farbe/kurve.ts`: `stueckImBild` (im Bild gelegt, Sprünge über `bruecke`), `stueckLegen` (im Raum, durch Halbieren),
+  `orteAusSpur`. `farbe/treffer.ts`: `BildTreffer` (Raster der Dreiecke im Bild; `trefferFein` trifft die glatte Anzeige wie ein
+  Klick). `farbe/ort.ts`: `spur` mit gegebener Ebene, `spurImVorhang` (der kürzere der zwei Wege um den Ring).
+- `farbe/bemalung.ts`: `linienAusTreffern` (über die Mitte: der längere Teil gilt; ein Ort genau in der Spiegelebene gehört zu
+  beiden Hälften). `farbe/flaechen.ts`: zwei Ketten an derselben Stelle des Rands werden nach ihrer Richtung geordnet.
+- Haken für Proben: `farbPunkte` (mit Abstand `z` zur Spiegelebene), `farbNetz` (samt Spiegelbildern und Entwurf, `zuSehen`),
+  `farbTiefe`, `farbRaster`, `farbGelegt` (wie gelegt, was es kostet), `farbMitte`, `farbOrtFrei`, `farbVerdeckung`.
+- Fallen: `apps/editor/CLAUDE.md`, Eintrag „Paint-Modus, Etappe 2“.

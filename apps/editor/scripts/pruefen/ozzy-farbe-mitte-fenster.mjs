@@ -4,6 +4,7 @@
 //   11  Über einen Überhang gezeichnet (ein Körperteil verdeckt die Falte dahinter; fünf runde Punkte): Jede Kurve wird im Bild
 //       gelegt, der Entwurf läuft im Bild lückenlos (kein Schritt über 3 CSS-Pixel), und was hinter der Form liegt, ist nicht zu
 //       sehen, auch bevor irgendetwas gemalt ist (die Verdeckung gilt ganz).
+//   16  Ein Punkt hinter einem anderen Teil der Form (das Ende der Farblinie in der verdeckten Falte) ist nicht zu greifen.
 //   12  Die Mitte: Auf der Mitte begonnen (P rastet ein), über eine Seite gezogen, auf der Mitte beendet: Die Farblinie ist von
 //       selbst fertig, offen, ihre Enden liegen auf der Mitte, ihr Spiegelbild steht im Netz; ein Klick füllt beide Hälften.
 //   13  Geschlossen quer über die Mitte gezeichnet: Es bleibt der längere Teil, er endet auf der Mitte (kein Punkt hinter ihr);
@@ -118,8 +119,22 @@ await s.waitForTimeout(500);
     l.punkte === 5 && nach.raum === vor.raum && nach.bild > vor.bild && schritt <= 3 && verdeckt > 20 && gemalt === 0 && duldung < 0.03,
     `Entwurf mit ${l.punkte} Punkten, ${l.x.length} Proben; im Bild gelegt ${nach.bild - vor.bild}-mal, im Raum ${nach.raum - vor.raum}-mal (Sprünge im Vorhang überbrückt ${nach.vorhang - vor.vorhang}, gerade ${nach.gerade - vor.gerade}); größter Schritt ${z2(schritt)} CSS-Pixel; ${verdeckt} von ${Math.ceil(l.x.length / 4)} Proben liegen hinter der Form; gemalt ist noch nichts (${gemalt}), die Verdeckung gilt ab ${z2(duldung)} der Raumgröße`,
   );
-  await s.keyboard.press('Escape');
-  await s.waitForTimeout(400);
+  // ---------- 16: auf dem ersten Punkt geschlossen: Die Farblinie endet an der Mitte, die hier verdeckt in der Falte liegt ----------
+  await klick(P[0][0], P[0][1]);
+  await s.mouse.move(1300, 132, { steps: 4 });
+  await s.waitForTimeout(500);
+  const f = await O('farbe');
+  const Q = await O('farbPunkte', 0);
+  const Z = (await O('farbNetz'))[0];
+  const enden = Q ? [Q.punkte[0], Q.punkte[Q.punkte.length - 1]] : [];
+  const nichtZuSehen = Z ? Z.zuSehen.filter((v) => !v).length : 0;
+  ok(
+    '16 ein Punkt hinter einem anderen Teil der Form ist nicht zu sehen und nicht zu greifen',
+    f.linien === 1 && !!Q && !Q.zu && enden.every((q) => q.z === 0) && !!Z && nichtZuSehen >= 1 && Z.zuSehen.filter(Boolean).length >= 3,
+    `geschlossen quer über die verdeckte Mitte: ${f.linien} Farblinie, offen (${Q ? !Q.zu : '–'}), ${Q?.punkte.length} Punkte, beide Enden auf der Spiegelebene; davon zu sehen und zu greifen ${Z?.zuSehen.filter(Boolean).length}, verdeckt ${nichtZuSehen}`,
+  );
+  await s.keyboard.press('Meta+z');
+  await s.waitForTimeout(500);
 }
 
 // ---------- die Ansicht drehen: von vorn, die Mitte läuft sichtbar über den Schnabel ----------

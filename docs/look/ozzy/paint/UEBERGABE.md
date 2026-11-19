@@ -1,4 +1,4 @@
-# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, mittags)
+# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 15:15 Uhr)
 
 Florian will in Ozzy einen Paint-Modus mit Ebenen, einer Ebenen-Ansicht und einem neuen Material (sein Auftrag wörtlich im Plan).
 Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende jedes Blocks überschrieben.
@@ -9,10 +9,10 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | --- | --- |
 | Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`, Stand `3a091f14`). **Nicht zusammengeführt**, weder mit ihm noch mit `claude/ozzy` noch mit `main`; erst auf sein Wort, am Schluss. |
 | Fenster | `http://localhost:5215/ozzy.html`, Eintrag `ozzy-paint` in `.claude/launch.json`. Proben: `OZZY_URL=http://localhost:5215/ozzy.html`. Nie unter seinen Fenstern bauen (5205, 5211, 5194). |
-| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7, wie gebaut), **Abschnitt 9: Etappe 1 mit Messwerten, Lücken und dem, was nicht hält** |
+| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), **Abschnitt 11: Etappe 2 mit Messwerten und Lücken** |
 | Recherche | [`docs/research/2026-11-19-zbrush-grundmaterial.md`](../../../research/2026-11-19-zbrush-grundmaterial.md) |
 | Seine Vorlagen | [`2026-11-19-zbrush-matcap-red-wax.png`](2026-11-19-zbrush-matcap-red-wax.png), [`2026-11-19-zbrush-red-wax-vierecke.webp`](2026-11-19-zbrush-red-wax-vierecke.webp) |
-| Bilder und Film | `docs/progress/ozzy/2026-11-19-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
+| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
 
 ## 2. Stand
 
@@ -20,49 +20,56 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | --- | --- |
 | 0 Material „Wachs“ | gebaut. Sein Wort: Farbton „-40 sieht gut aus“. |
 | Schalter „Dreiecke zeigen“ | gebaut auf seinen Wunsch (Menü, `?facetten=1`). Sein Urteil steht aus. |
-| **1 Der Beweis** | **gebaut (19.11.), sein Urteil steht aus.** Vier von fünf Kriterien halten; „bleibt auf der Haut“ hält bei kleinen Zügen, bei weiten nicht (Plan 9.3). Ihm vorgelegt mit Bildblatt und Film und der Frage, wie es weitergeht. |
-| 2 bis 7 | nicht begonnen. **Nichts davon ohne sein Wort bauen.** |
+| 1 Der Beweis | gebaut (19.11.). Vier von fünf Kriterien halten; die Bemalung kriecht bei weiten Zügen an der Form (Plan 9.3). Sein Wort danach: „Etappe 2 starten“. |
+| **2 Farblinien bedienen wie Linien** | **gebaut (19.11.), sein Urteil steht aus.** P direkt auf der Form, Punkte und Richtungen mit A, offen und gekreuzt, die Mitte. Beide Proben halten, an der Kugel und an „strange bird“. Ihm vorgelegt mit Bildblatt und Film. Was fehlt: Plan 11.4. |
+| 3 bis 7 | nicht begonnen. **Nichts davon ohne sein Wort bauen.** |
 
-**Die Frage, die bei ihm liegt:** sein Urteil zu Etappe 1 und was als Nächstes kommt: Etappe 2 (Farblinien bedienen), oder zuerst
-eine der Lücken (P direkt auf der Form im Raum; Farbe auch eingerastet), oder zuerst das Kriechen.
+**Die Frage, die bei ihm liegt:** sein Urteil zu Etappe 2 (er probiert Bauch, Schnauze, Augenrand an einer seiner Formen) und was
+als Nächstes kommt: Etappe 3 (Füllen mit dem Farbtropfen, zuerst ein Film der Animation), oder zuerst eine der Lücken aus 11.4.
 
 ## 3. Was gebaut ist
 
 ### Material „Wachs“ und „Dreiecke zeigen“
 
-`apps/editor/src/ozzy/wachs.ts` (Kugelbild aus seiner Vorlage, Farbton in OKLCH gedreht, dazu `wachsLicht`: Helligkeit und Glanz
-getrennt, für die Bemalung), `material.ts` (drittes festes Material; Ziel mit 16 Bit; `FesteWerte.flach`, `FesteWerte.danach`),
-`main.ts` (Feinregler, `?wachs=`, `dreieckeZeigen`). Einzelheiten: Recherche und `apps/editor/CLAUDE.md`.
+`apps/editor/src/ozzy/wachs.ts`, `material.ts` (drittes festes Material; Ziel mit 16 Bit; `FesteWerte.flach`, `danach`), `main.ts`
+(Feinregler, `?wachs=`, `dreieckeZeigen`). Einzelheiten: Recherche und `apps/editor/CLAUDE.md`.
 
-### Paint-Modus, Etappe 1
+### Paint-Modus
 
-- **Bedienung:** B (Knopf „Farbe“ am iPad) schaltet den Modus; P, Ellipse (E), Freihand (N) zeichnen an einer Wand oder
-  eingerastet eine geschlossene Farblinie (`werkBlatt.stiftZiel` → `farbStiftZiel`); ein Klick auf die Form im Raum füllt
-  (`farbDruck`, `farbFuellenBei`); Farbe oben (`#farbe-wahl`); ⌘Z über den gemeinsamen Rückweg (`{ art: 'farbe' }`); Sichern und
-  Laden (`WesenStand.farbe`); je Objekt eine Bemalung (`Ruhend.farbe`).
-- **Code:** `apps/editor/src/ozzy/farbe/` (ohne DOM und three bis auf `anzeige.ts`; Tests `farbe.test.ts`, 11 Stück):
-  `ort.ts` (Ort = Dreieck + Gewichte, `spur`, `punkteZuordnen`, `orteUebergeben`), `ketten.ts`, `flaechen.ts`, `bemalung.ts`
-  (Modell, Datei), `fein.ts`, `treffer.ts`, `naechster.ts`, `anzeige.ts` (Zeichnen je Bildpunkt), `farbwerk.ts` (hält alles
-  zusammen, folgt je Bild der Haut des Werks). In `main.ts`: `farbWerk`, `malModus`, `hautJetzt()`, `farbeZeigen()`, `malSetzen`,
-  `farbSchritt`, die Nahtstellen in Bild, Zeiger, Tasten, Rückweg, Ablage; Haken `malen`, `farbe`, `farbLinie`, `farbFuellen`,
-  `farbLinieImBild`, `farbLinieImRaum`, `farbKosten`, `werkSumme`, `hautAbstand`.
-- **Bauweise in drei Sätzen:** Die Bemalung sitzt an den Punkten des Rechennetzes (Dreieck + Gewichte) und geht ohne Rechnung
-  mit. Beim Netzwechsel bleibt ein Ort in seinem Dreieck, wenn es das noch gibt (die gebliebenen Punkte stehen im Werk vorn und in
-  ihrer Reihenfolge), sonst wird er gesucht. Gezeichnet wird ohne Schnitt ins Netz: Die Grafikkarte rechnet je Bildpunkt Abstand
-  und Seite zur Farblinie. Ausführlich: Plan, Abschnitt 7.
-- **Am Werk und am Rechenkern ist nichts geändert** (Probe, Kriterium 3: Prüfsumme der Form).
+- **Bedienung:** B (Knopf „Farbe“ am iPad) schaltet den Modus. Im Raum gehören A, P und Lasso den Farblinien (`farbAn`,
+  `modellSetzen`): P setzt Punkte direkt auf der Form (Klick Ecke, Ziehen rund, Faden, auf dem ersten Punkt schließen, ↩ offen,
+  ⌫, Esc); A zieht Punkte, dreht Richtungen (Nadel, Ring, ⌥ knickt), ⌫ löscht; die Mitte zeigt sich mit P als Punktreihe, P
+  rastet auf ihr ein, eine Farblinie von der Mitte zur Mitte ist von selbst fertig. Ein Klick auf die Form (ohne dass etwas am
+  Zeiger hängt) füllt. Ellipse (E) und Freihand (N) zeichnen wie in Etappe 1 an einer Wand oder eingerastet. ⌘Z über den
+  gemeinsamen Rückweg (`{ art: 'farbe' }`); Sichern und Laden (`WesenStand.farbe`, Version 2 mit Punkten und Richtungen); je
+  Objekt eine Bemalung (`Ruhend.farbe`).
+- **Code:** `apps/editor/src/ozzy/farbe/` (ohne DOM und three bis auf `anzeige.ts`):
+  `ort.ts` (Ort = Dreieck + Gewichte, `spur`, `spurImVorhang`, `punkteZuordnen`, `orteUebergeben`), `kurve.ts` (Punkte und
+  Richtungen, `stueckImBild`, `stueckLegen`), `treffer.ts` (`strahlAufNetz`, `ParallelTreffer`, `BildTreffer`), `ketten.ts`
+  (Ketten je Dreieck, `kreuzungenTeilen`), `flaechen.ts`, `bemalung.ts` (Modell, Datei, `linienAusTreffern`), `fein.ts`,
+  `naechster.ts`, `anzeige.ts` (Zeichnen je Bildpunkt), `farbwerk.ts` (hält alles zusammen, folgt je Bild der Haut des Werks),
+  `farbBlatt.ts` (das Modell für das Verhalten der Linien-Studie). In `main.ts`: `farbWerk`, `farbBlatt`, `malModus`, `farbAn`,
+  `hautJetzt()`, `farbSicht()`, `farbeZeigen()`, die Nahtstellen in Bild, Zeiger, Tasten, Rückweg, Ablage.
+- **Bauweise in vier Sätzen:** Die Bemalung sitzt an den Punkten des Rechennetzes (Dreieck + Gewichte) und geht ohne Rechnung
+  mit; beim Netzwechsel bleibt ein Ort in seinem Dreieck, wenn es das noch gibt, sonst wird er gesucht. Eine Farblinie ist eine
+  dichte Folge solcher Orte, einzelne davon sind ihre Punkte mit zwei Richtungen im Maß ihres Dreiecks. Die Kurve zwischen zwei
+  sichtbaren Punkten wird im Bild gelegt, längs des Blicks auf die glatte Anzeige; nur angefasste Stücke werden neu gelegt.
+  Gezeichnet wird ohne Schnitt ins Netz: Die Grafikkarte rechnet je Bildpunkt Abstand und Seite zur Farblinie.
+- **Am Werk und am Rechenkern ist nichts geändert** (Proben: Prüfsumme der Form).
 
 ### Messwerte und Lücken
 
-Stehen im Plan, Abschnitt 9 (9.2 die fünf Kriterien, 9.3 das Kriechen, 9.4 was Etappe 1 nicht hat, 9.5 Aufgefallenes). Kurz:
-Kante 0,83 Gerätepunkte bei 1-, 2-, 4-fach; Bemalung 0,2 bis 0,5 ms je Bild beim Ziehen; ⌘Z und Laden genau; hin und zurück 0,3
-Einheiten bei 15 Einheiten Zug, 0,6 bis 0,7 bei 55 (verlangt 0,5), nach drei weiten Zügen 1,7.
+Etappe 1: Plan, Abschnitt 9. Etappe 2: Plan, Abschnitt 11 (11.3 die Tabelle, 11.4 was fehlt). Kurz: Punkte 0,00 Gerätepunkte
+neben den Klicks; Richtungen 0,00° neben dem Zeiger; an „strange bird“ kostet Bedienen je Schritt rund 2 ms und die Bemalung je
+Bild 2,8 ms; die Bemalung kriecht bei weiten Zügen an der Form (unverändert).
 
 ## 4. Was im Plan für ihn entschieden ist (er kann es umdrehen)
 
 Das Wort „Farblinie“; „gewohnte Tools“ = seine Werkzeuge aus Ozzy (bestätigt, Pinsel vielleicht später); gemalt wird im Raum und
-eingerastet; Bemalung gespiegelt wie das Objekt; nur Farblinien begrenzen Farbflächen; Tasten B, F, I als Vorschlag; Farbtropfen
-am Zeiger; auf Wachs färbt das Material Gemaltes nicht ein; die Ebenen-Ansicht als aufgefächerter Raum (Skizze).
+eingerastet; Bemalung gespiegelt wie das Objekt, **eine Farblinie über die Mitte endet an der Mitte** (der längere Teil gilt);
+nur Farblinien begrenzen Farbflächen; Tasten B, F, I als Vorschlag; Farbtropfen am Zeiger; auf Wachs färbt das Material Gemaltes
+nicht ein; die Ebenen-Ansicht als aufgefächerter Raum (Skizze). Neu in Etappe 2, von mir entschieden: Die Kurve liegt, wie man
+sie im Bild zieht (nicht wie die Richtungen im Raum stehen).
 
 ## 5. Was hier besonders zählt
 
@@ -71,6 +78,8 @@ am Zeiger; auf Wachs färbt das Material Gemaltes nicht ein; die Ebenen-Ansicht 
 - Budget: keine Fächer aus Agenten, keine Workflows, keine Messreihen ohne Rückfrage; nur die betroffenen Proben und Tests.
 - Am Rechenkern (`packages/shape`), am Werk, am Verbund, am Sitz der Loops und am Aufblasen nichts ändern, ohne ihn zu fragen. Eine
   Stelle im Plan sieht noch einen Zusatz vor und sagt, dass vorher gefragt wird: die Farben im Verbund (5.3, vor Etappe 7).
+- **An seiner Form prüfen, nicht nur an der Kugel.** Etappe 2 hielt an der Kugel in allen Kriterien und an „strange bird“ nicht
+  (Falten, Überhänge, die Mitte): Das zeigte erst der Film.
 - Ozzy läuft auch am iPad mit Stift (kein ⌥): jede Geste von Anfang an dafür mitbauen. **Am iPad ist vom Paint-Modus noch nichts
   geprüft.**
 - Materialien nie nachempfinden, wo es eine Quelle gibt („exakt wie erarbeitet“). Das helle Solid bleibt der Gast, unverändert.
@@ -80,41 +89,46 @@ am Zeiger; auf Wachs färbt das Material Gemaltes nicht ein; die Ebenen-Ansicht 
 
 - Typen: `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`. Lint nur geänderte Dateien:
   `pnpm --filter @ee/editor exec eslint <dateien>`.
-- Tests, aus `apps/editor`: `npx vitest run src/ozzy/` (23 Tests: Bemalung, Kugelbild des Wachses, Rechner des Verbunds).
-- Proben, aus `apps/editor`, immer mit `GPU=1 OZZY_URL=http://localhost:5215/ozzy.html`:
-  - `node scripts/pruefen/ozzy-farbe-fenster.mjs [ordner]`: die fünf Kriterien an einer Kugel (rund 2 Minuten). Stand: 0, 1, 3, 4,
-    5, 6 halten, 2 bei `WEITE=15`, nicht bei 55. `DIAG=1`: die Lagen in jedem Abschnitt des Zugs, der Ruck beim Netzwechsel und
-    zwei weitere Züge hin und zurück. `PROFIL=1`: das Profil quer zur Kante.
-  - `[NAME=<Form>] [WEITE=20] node scripts/pruefen/ozzy-farbe-form.mjs [ordner]`: dieselben Handgriffe an einer gesicherten Form
-    (Standard „strange bird“). Stand: alles hält.
-  - `node scripts/pruefen/ozzy-material-fenster.mjs [ordner]`: die Materialien (2b Wachs, 2c Dreiecke zeigen). Stand: alles hält.
-- Film: `OZZY_URL=… node scripts/ozzy/paint-film.mjs <ziel.mp4>`. Vergleichsbild Wachs: `scripts/ozzy/wachs-vergleich.mjs`.
+- Tests, aus `apps/editor`: `npx vitest run src/ozzy/` (36 Tests: Bemalung, Kurven, Kugelbild des Wachses, Rechner des Verbunds).
+- Proben, aus `apps/editor`, immer mit `GPU=1 OZZY_URL=http://localhost:5215/ozzy.html`; Stand 19.11., 15 Uhr: alle halten.
+  - `node scripts/pruefen/ozzy-farbe-bedienen-fenster.mjs [ordner]`: Etappe 2 an einer Kugel, jede Geste mit einzelnen Klicks
+    (Kriterien 0 bis 6, 8, 9).
+  - `[NAME=<Form>] node scripts/pruefen/ozzy-farbe-mitte-fenster.mjs [ordner]`: Etappe 2 an „strange bird“ (10 Raster gegen
+    Strahl, 11 Überhang, 16 verdeckter Punkt, 12 von der Mitte zur Mitte, 13 quer über die Mitte, 15 Tempo beim Bedienen).
+    `DIAG=1` nennt die gewählten Stellen.
+  - `node scripts/pruefen/ozzy-farbe-fenster.mjs [ordner]`: die fünf Kriterien der Etappe 1 an einer Kugel. Kriterium 2 hält bei
+    `WEITE=15`, nicht bei 55. `DIAG=1`, `PROFIL=1`.
+  - `[NAME=<Form>] [WEITE=20] node scripts/pruefen/ozzy-farbe-form.mjs [ordner]`: Etappe 1 an einer gesicherten Form.
+  - `node scripts/pruefen/ozzy-material-fenster.mjs [ordner]`: die Materialien (2b Wachs, 2c Dreiecke zeigen).
+- Filme: `OZZY_URL=… node scripts/ozzy/paint-bedienen-film.mjs <ziel.mp4>` (Etappe 2, an „strange bird“ von vorn),
+  `scripts/ozzy/paint-film.mjs` (Etappe 1). Vergleichsbild Wachs: `scripts/ozzy/wachs-vergleich.mjs`.
 
 ## 7. Fallen und Aufgefallenes
 
 - **Frischer Arbeitsbaum:** erst `pnpm install --frozen-lockfile --prefer-offline`, sonst läuft nichts.
 - **Vorschau-Server:** vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51` ansehen und danach prüfen, dass 5194, 5205, 5211 und
-  5213 noch laufen. Am 19.11. vormittags war 5211 (das Fenster der Objekte) verschwunden, ohne dass diese Sitzung es beendet hätte;
-  **sie hat es um 10:06 wieder gestartet (Eintrag `ozzy-objekte`), es hängt seitdem an ihr.** Endet diese Sitzung, kann es wieder
-  verschwinden.
+  5213 noch laufen. **5211 (das Fenster der Objekte) hat diese Sitzung am 19.11. um 10:06 neu gestartet; es hängt an ihr.**
+- **`farbAn` in `main.ts`** ist der Schalter „die Farblinien werden gerade bedient“ (im Raum mit A, P, Lasso). In der Bildfunktion
+  gab es einen örtlichen Namen gleichen Wortlauts für „die Farbe ist zu sehen“; er verdeckte den Schalter, und solange nichts
+  gemalt war, galt die Verdeckung der Linien nicht. Er heißt jetzt `farbeDa`. Wer dort einen Namen vergibt: vorher suchen.
+- **Was verdeckt ist, entscheidet die Anzeige der Linien je Bildpunkt** über die Tiefe des Körpers (er steht im Paint-Modus mit
+  Deckung 0 in der Szene). Sieht man Linien durch die Form, zuerst `__ozzy.farbVerdeckung()` lesen (soll 0,02 sein).
 - **Bilder der Haut allein:** `__ozzy.film(true)`, `__ozzy.bild(1 / 60)`, dann sofort `#haut.toDataURL()`; danach `film(false)`.
   Die Fläche des Gasts (helles Solid) gibt so kein Bild her: aus einem Bildschirmfoto der Seite lesen.
-- **Eine Kante messen:** nie zwischen Bildpunkten mischen (das zeichnet selbst weich: 1,3 bis 1,9 statt 0,83 Gerätepunkte).
-  Die Probe sammelt alle Bildpunkte in einem Streifen um die Farblinie mit ihrem Abstand und liest daraus das Profil.
-- **Der Zeiger rastet mit P auf Linien und Punkte der Form ein,** auch im Paint-Modus; ein Punkt der Farblinie liegt dann dort,
-  wo der Zeiger steht, nicht unter der Maus (eine Probe las das als 1,2 Einheiten Abweichung). Ob das so bleiben soll, ist offen.
+- **Eine Kante messen:** nie zwischen Bildpunkten mischen. Die Probe sammelt alle Bildpunkte in einem Streifen um die Farblinie
+  mit ihrem Abstand und liest daraus das Profil.
+- **Der Zeiger rastet mit P auf Linien und Punkte der Form ein,** wenn über die Wand gezeichnet wird (Ellipse, Freihand,
+  eingerastet); ein Punkt der Farblinie liegt dann dort, wo der Zeiger steht.
 - **Proben, die an der Wand des Tops ziehen:** Unter einem gewählten Ring hängt der Tropfen „Maul formen“ und kann genau über dem
-  Anfasser liegen (Drücken trifft dann den Knopf, Drücken und Loslassen formt ein Maul). Vorher die Auswahl leeren: Esc, aber nur,
-  wenn etwas gewählt ist (ohne Auswahl lässt Esc die Luft ab). Und hinter der Form liegt bei (685; 545) der Griff der Raumecke: Ein
-  Klick dort klappt auf, statt zu füllen.
-- **Ein Ring quer über die Kugel drückt sie ein** (bekannt: zu wenige Punkte je Linie). Die Kugel der Probe mit drei Ringen ist
-  darum keine Kugel mehr; das stört nicht.
-- **„strange bird“ kommt nach einem Zug hin und zurück nicht an ihren Platz** (Haut bis 4,5 Einheiten daneben, auch nach einem
-  ersten Zug zum Setzen). Wer dort misst, vergleicht die Bemalung mit der Haut, nicht mit ihrer Lage davor.
+  Anfasser liegen. Vorher die Auswahl leeren: Esc, aber nur, wenn etwas gewählt ist (ohne Auswahl lässt Esc die Luft ab). Und
+  hinter der Form liegt in der Grundansicht bei (685; 545) der Griff der Raumecke: Ein Klick dort klappt auf, statt zu füllen.
+- **„strange bird“ in der Grundansicht:** Die Mitte liegt verdeckt in der Falte zwischen den zwei Körperhälften; die vordere
+  Hälfte hängt über. Für Proben an der Mitte die Form von vorn drehen (im Leeren 170 Pixel nach links ziehen; so der Film).
+- **„strange bird“ kommt nach einem Zug hin und zurück nicht an ihren Platz** (Haut bis 4,5 Einheiten daneben). Wer dort misst,
+  vergleicht die Bemalung mit der Haut, nicht mit ihrer Lage davor.
 - **Die Kanten der hinteren Raumecke und die Zeichnungen an den Wänden** liegen bei allen festen Materialien als feine Linien über
-  der Form (schon vor dieser Sitzung). Über einer Farbfläche fällt es mehr auf. Nicht behoben; gehört in den Feinschliff der
-  Materialien.
+  der Form (schon vor dieser Sitzung; im Bildblatt der Etappe 2, Bild 6, am linken Flügel zu sehen). Nicht behoben.
 - **Ein Ziel mit linearen Farben braucht mehr als 8 Bit,** sobald weiche dunkle Verläufe darin stehen.
-- **Zusammenführen später:** Dieser Zweig ändert `main.ts` an schmalen Nahtstellen (Suchwort `farbWerk`, `malModus`), dazu
-  `material.ts`, `gast.ts` (`ueberzug`), `werkBlatt.ts` (`stiftZiel`), `ablage.ts` (`farbe`), `ozzy.html`, `ozzy.css` und beide
-  `CLAUDE.md`. Der Stand in `CLAUDE.md` wird beim Zusammenführen ohnehin neu geschrieben.
+- **Zusammenführen später:** Dieser Zweig ändert `main.ts` an schmalen Nahtstellen (Suchwörter `farbWerk`, `farbBlatt`, `malModus`,
+  `farbAn`), dazu `material.ts`, `gast.ts` (`ueberzug`), `werkBlatt.ts` (`stiftZiel`), `ablage.ts` (`farbe`), `ozzy.html`,
+  `ozzy.css` und beide `CLAUDE.md`. Der Stand in `CLAUDE.md` wird beim Zusammenführen ohnehin neu geschrieben.
