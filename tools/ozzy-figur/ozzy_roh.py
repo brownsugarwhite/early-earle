@@ -237,6 +237,7 @@ for name, ob in netze.items():
 for ob in (koerper, kopf, nase, ohrR, ohrL):
     ob.hide_render = True
     ob.hide_set(True)
+bpy.context.preferences.filepaths.save_version = 0  # keine .blend1-Kopie
 bpy.ops.wm.save_as_mainfile(filepath=f'{AUS}/ozzy-roh.blend')
 for ob in bpy.data.objects:
     ob.select_set(ob.name in netze)
