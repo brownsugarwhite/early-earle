@@ -9184,6 +9184,13 @@ const haken = {
     anzeige: { ...farbWerk.anzeige.stand },
     abgeleitet: farbWerk.abgeleitet,
   }),
+  /** Etappe 5, für Messungen: auf Wachs mehrere Ebenen sammeln (wahr, so ist es gebaut) oder jede für sich überlagern */
+  farbSammeln: (an: boolean): boolean => {
+    farbWerk.anzeige.wachsOhneSammeln = !an;
+    farbBild++;
+    anstossen();
+    return an;
+  },
   /** Etappe 5: ein Handgriff am Stapel, wie ein Klick dort: `neu`; `waehlen`, `loeschen` (Kennung); `zeigen` (Kennung, an?); `ordnen` (Kennung, Platz von oben) */
   farbEbene: (was: 'neu' | 'waehlen' | 'zeigen' | 'ordnen' | 'loeschen', id = -1, wert: number | boolean = 0): number | boolean | null =>
     was === 'neu' ? ebeneNeu() : was === 'waehlen' ? ebeneWaehlen(id) : was === 'zeigen' ? ebeneZeigen(id, !!wert) : was === 'ordnen' ? ebeneOrdnen(id, Number(wert), true) : ebeneLoeschen(id),

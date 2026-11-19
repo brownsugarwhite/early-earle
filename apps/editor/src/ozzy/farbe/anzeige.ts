@@ -25,11 +25,11 @@
  * helle Solid bringt sein Hell und Dunkel selbst mit).
  *
  * Etappe 5: mehrere Ebenen (`FarbStapel`). Jede Ebene ist eine `FarbAnzeige` mit ihren eigenen Flächen; gezeichnet werden alle in
- * einem Durchgang, von unten nach oben (`renderOrder`), jede deckt, was unter ihr liegt. Liegen mehrere Ebenen übereinander, werden
- * sie zuerst zu einem Bild gesammelt: die reinen Farben in Bildschirmwerten, oben deckt unten. Erst dieses Bild wird mit dem Grund
- * verrechnet, wie sonst die eine Ebene: auf Wachs mit dessen Hell, Dunkel und Glanz, über dem hellen Solid multipliziert. So mischt
- * eine weiche Kante zwischen zwei Ebenen genau wie innerhalb einer Ebene (in Bildschirmwerten), und über dem hellen Solid deckt die
- * obere Ebene überhaupt erst (multipliziert deckt nichts). Mit einer Ebene bleibt jede Rechnung, wie sie war.
+ * einem Durchgang, von unten nach oben (`renderOrder`), jede deckt, was unter ihr liegt. Auf Wachs deckt schon das Überlagern. Wo
+ * das nicht reicht, werden die Ebenen zuerst zu einem Bild gesammelt (die reinen Farben in Bildschirmwerten, oben deckt unten), und
+ * erst dieses Bild wird mit dem Grund verrechnet, wie sonst die eine Ebene: über dem hellen Solid immer (multipliziert deckt
+ * nichts), auf Wachs, wenn eine obere Ebene weiche Kanten hat (so mischt ihr Verlauf in die Ebene darunter genau wie innerhalb
+ * einer Ebene: in Bildschirmwerten, nicht im Licht). Mit einer Ebene bleibt jede Rechnung, wie sie war.
  */
 import {
   BufferAttribute,
@@ -402,6 +402,11 @@ export class FarbAnzeige {
   zahlen = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
   /** läuft auf dieser Ebene gerade eine Füllung ein? */
   fliesst = false;
+
+  /** hat diese Ebene weiche Kanten? */
+  get weich(): boolean {
+    return !!this.stand?.weich;
+  }
 
   /** `licht`: Hell, Dunkel und Glanz des Wachses (für alle Ebenen dasselbe Bild); `gemeinsam`: die geteilten Felder der glatten Anzeige */
   constructor(
@@ -937,6 +942,8 @@ export class FarbStapel {
 
   /** wie viele Ebenen gerade etwas zeichnen, und ob sie zuletzt gesammelt wurden (mehrere Ebenen; für Proben) */
   stand = { ebenen: 0, gesammelt: false };
+  /** für Messungen: auf Wachs nie sammeln (jede Ebene für sich über die darunter, wie eine einzelne) */
+  wachsOhneSammeln = false;
 
   private tiefe: { szene: Scene; geo: BufferGeometry; netz: HautNetz | null; index: Uint32Array | null; pos: Float32Array | null } | null = null;
   /** die Dreiecke von allem, was verdeckt (`netz`: alle Objekte), mit ihren Normalen; `bewegt`: Die Lagen haben sich geändert */
@@ -1152,9 +1159,13 @@ export class FarbStapel {
     const da = this.reihe.filter((a) => !a.leer);
     this.stand = { ebenen: da.length, gesammelt: false };
     if (!da.length) return;
-    // Mehrere Ebenen werden erst gesammelt, dann einmal mit dem Grund verrechnet. (Auf Wachs nicht, solange eine Füllung einläuft:
-    // Ihr Wulst fängt Licht und Glanz des Wachses, das trägt das Sammelbild nicht. Über dem hellen Solid ist er nur ein wenig satter.)
-    const gesammelt = da.length > 1 && !!w.verdeckt && (w.modus === 'hell' || !da.some((a) => a.fliesst));
+    // Mehrere Ebenen werden erst gesammelt, dann einmal mit dem Grund verrechnet. Über dem hellen Solid immer (multipliziert deckt
+    // nichts). Auf Wachs deckt schon das Überlagern, und das Sammeln kostet (zwei Bilder mehr in der Größe des Fensters: gemessen
+    // 3,5 ms je Bild bei 2880 × 1800): Gesammelt wird dort nur, wenn es etwas ändert, also wenn eine Ebene über der untersten weiche
+    // Kanten hat (überlagert mischte sie im Licht, heller als innerhalb einer Ebene). Und nicht, solange eine Füllung einläuft:
+    // Ihr Wulst fängt Licht und Glanz des Wachses, das trägt das Sammelbild nicht.
+    const noetig = w.modus === 'hell' || (!this.wachsOhneSammeln && da.slice(1).some((a) => a.weich) && !da.some((a) => a.fliesst));
+    const gesammelt = da.length > 1 && !!w.verdeckt && noetig;
     this.stand.gesammelt = gesammelt;
     for (const a of this.reihe) a.werte(gesammelt ? 'sammel' : w.modus, w, a === this.aktive ? w.linie : 0);
     const auto = renderer.autoClear;

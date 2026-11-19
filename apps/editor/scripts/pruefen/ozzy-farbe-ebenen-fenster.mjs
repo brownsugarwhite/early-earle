@@ -11,13 +11,15 @@
 //   66  ⌘Z nimmt Anlegen und Löschen zurück; Sichern und Laden halten Ebenen, Reihenfolge und was ausgeblendet ist.
 //   67  Der Stapel am Rand mit echten Klicks: Plus legt an, Tippen wählt, der Punkt blendet aus und ein, Ziehen ordnet, auf dem
 //       Mülleimer ist die Ebene gelöscht.
-//   68  Tempo an „strange bird“ mit drei Ebenen: Ein Handgriff rechnet nur seine Ebene neu (höchstens 30 ms); beim Drehen kostet
-//       die Bemalung je Bild im Median höchstens 1 ms, auf Wachs kein Bild über 16,7 ms.
+//   68  Tempo an „strange bird“ mit drei Ebenen: Ein Handgriff rechnet nur seine Ebene neu (höchstens 30 ms); drei Ebenen mit
+//       harten Kanten kosten je Bild samt Grafikkarte nicht mehr als eine (höchstens 1,5 ms mehr); mit einer weichen Kante auf
+//       einer oberen Ebene (dann wird auf Wachs gesammelt) bleibt ein Bild unter 16,7 ms; die Bemalung kostet den Prozessor je Bild
+//       im Median höchstens 1 ms. Gemessen bei 2880 × 1800 Gerätepunkten; dazu, ohne Kriterium, der Abstand der Bilder beim Drehen.
 //   69  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 OZZY_URL=http://localhost:5215/ozzy.html node scripts/pruefen/ozzy-farbe-ebenen-fenster.mjs [ordner für Bilder]
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { auf, quantil } from './ozzy-teile.mjs';
+import { auf, mitKarte, quantil } from './ozzy-teile.mjs';
 
 const ordner = process.argv[2] ?? '';
 const ablage = fileURLToPath(new URL('../../../../wesen/', import.meta.url));
@@ -566,15 +568,36 @@ const helfer = (t) => {
     await fleck(q.x + dx, q.y + dy, 9);
     await O('farbFuellen', q.x + dx, q.y + dy, ROT);
   }
-  // Ebene 3: ein Fleck daneben, rundum weich
+  // Ebene 3: ein Fleck daneben, zuerst mit harter Kante
   await O('farbEbene', 'neu');
   await s.waitForTimeout(300);
   await fleck(q.x + 150, q.y - 20, 30);
   await O('farbFuellen', q.x + 150, q.y - 20, [0.96, 0.77, 0.27]);
-  await O('farbBreite', 0, -1, 12);
   await s.waitForTimeout(500);
   const E = (await O('farbe')).ebenen;
-  // ein Punkt der obersten Ebene gewählt, sein Tropfen in zwölf Schritten gezogen: Jeder Schritt rechnet nur diese Ebene neu
+  const oben = (await O('farbEbenen')).ebenen.map((e) => e.id);
+  // ---------- was ein Bild samt Grafikkarte kostet (im Stand, außerhalb des Paint-Modus) ----------
+  await O('malen', false);
+  await s.waitForTimeout(400);
+  const kostet = async () => {
+    await s.waitForTimeout(300);
+    await mitKarte(s, 20);
+    const [a, b] = [await mitKarte(s, 50), await mitKarte(s, 50)];
+    return { ms: Math.min(a.gesamt, b.gesamt), anzeige: (await O('farbEbenen')).anzeige };
+  };
+  await O('farbEbene', 'zeigen', oben[0], false);
+  await O('farbEbene', 'zeigen', oben[1], false);
+  const eine = await kostet();
+  await O('farbEbene', 'zeigen', oben[0], true);
+  await O('farbEbene', 'zeigen', oben[1], true);
+  const dreiHart = await kostet();
+  // (die oberste Ebene rundum weich: Jetzt wird auf Wachs gesammelt)
+  await O('farbBreite', 0, -1, 12);
+  const dreiWeich = await kostet();
+  await O('malen', true);
+  await s.waitForTimeout(500);
+  // ---------- ein Handgriff rechnet nur seine Ebene neu ----------
+  // ein Punkt der obersten Ebene gewählt, sein Tropfen in zwölf Schritten gezogen
   const P = (await O('farbPunkte', 0)).punkte[0];
   await klick(P.x, P.y);
   await s.waitForTimeout(300);
@@ -597,7 +620,7 @@ const helfer = (t) => {
   await s.keyboard.press('Escape');
   await s.waitForTimeout(200);
   if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-ebenen-68.png`, await s.screenshot());
-  /** die Form drehen und messen: was ein Bild kostet und was davon die Bemalung */
+  /** die Form drehen und messen: was ein Bild den Prozessor kostet, was davon die Bemalung, und wie dicht die Bilder kommen */
   const drehen = async () => {
     await O('farbKosten', true);
     await O('messen', true);
@@ -610,23 +633,26 @@ const helfer = (t) => {
     }
     await s.mouse.up();
     await s.waitForTimeout(900);
-    const bilder = (await O('messen', false)).filter((b) => b.abstand > 0);
+    // (die ersten Bilder nicht: Beim ersten Sammeln entstehen seine Bilder und Programme)
+    const bilder = (await O('messen', false)).filter((b) => b.abstand > 0).slice(8);
     const kb = await O('farbKosten', true);
-    return { kb, bildMs: bilder.map((b) => b.ms), zahl: bilder.length };
+    return { kb, bildMs: bilder.map((b) => b.ms), abstand: bilder.map((b) => b.abstand), zahl: bilder.length };
   };
   await O('malen', false);
   await s.waitForTimeout(300);
+  await drehen();
   const wachs = await drehen();
   const aufWachs = (await O('farbEbenen')).anzeige;
   await O('material', 'Helles Solid');
   await s.waitForTimeout(800);
+  await drehen();
   const hell = await drehen();
   const aufHell = (await O('farbEbenen')).anzeige;
   const groesst = Math.max(...kosten);
   ok(
-    '68 Tempo an „strange bird“ mit drei Ebenen: Ein Handgriff rechnet nur seine Ebene neu (höchstens 30 ms); beim Drehen kostet die Bemalung je Bild im Median höchstens 1 ms, auf Wachs kein Bild über 16,7 ms',
-    E.length === 3 && E.every((e) => e.linien >= 1 && e.fuellungen >= 1) && groesst <= 30 && neuGerechnet.every((n) => n === 1) && aufWachs.ebenen === 3 && aufWachs.gesammelt && aufHell.gesammelt && wachs.zahl > 20 && wachs.kb.median <= 1 && Math.max(...wachs.bildMs) <= 16.7 && hell.zahl > 20 && hell.kb.median <= 1,
-    `${E.map((e) => `${e.name}: ${e.linien} Farblinien, ${e.fuellungen} Füllungen`).join(' · ')}; beim Ziehen am Tropfen (zwölf Schritte): Neurechnen ${z2(Math.min(...kosten))} bis ${z2(groesst)} ms, je Schritt ${[...new Set(neuGerechnet)].join(' oder ')} Ebene neu; beim Drehen auf Wachs (${wachs.zahl} Bilder): ein Bild im Median ${z2(quantil(wachs.bildMs, 0.5))} ms, das teuerste ${z2(Math.max(...wachs.bildMs))} ms, davon die Bemalung im Median ${z2(wachs.kb.median)} ms, 95 % ${z2(wachs.kb.p95)} ms; auf hellem Solid (${hell.zahl} Bilder, gesammelt ${aufHell.gesammelt}): ein Bild im Median ${z2(quantil(hell.bildMs, 0.5))} ms, das teuerste ${z2(Math.max(...hell.bildMs))} ms, davon die Bemalung im Median ${z2(hell.kb.median)} ms, 95 % ${z2(hell.kb.p95)} ms`,
+    '68 Tempo an „strange bird“ mit drei Ebenen: Ein Handgriff rechnet nur seine Ebene neu (höchstens 30 ms); drei Ebenen mit harten Kanten kosten je Bild nicht mehr als eine; die Bemalung kostet den Prozessor je Bild im Median höchstens 1 ms',
+    E.length === 3 && E.every((e) => e.linien >= 1 && e.fuellungen >= 1) && groesst <= 30 && neuGerechnet.every((n) => n === 1) && eine.anzeige.ebenen === 1 && dreiHart.anzeige.ebenen === 3 && !dreiHart.anzeige.gesammelt && dreiWeich.anzeige.gesammelt && dreiHart.ms <= eine.ms + 1.5 && dreiWeich.ms <= 16.7 && aufWachs.gesammelt && aufHell.gesammelt && wachs.zahl > 20 && wachs.kb.median <= 1 && Math.max(...wachs.bildMs) <= 16.7 && hell.zahl > 20 && hell.kb.median <= 1,
+    `${E.map((e) => `${e.name}: ${e.linien} Farblinien, ${e.fuellungen} Füllungen`).join(' · ')}; beim Ziehen am Tropfen (zwölf Schritte): Neurechnen ${z2(Math.min(...kosten))} bis ${z2(groesst)} ms, je Schritt ${[...new Set(neuGerechnet)].join(' oder ')} Ebene neu; ein Bild samt Grafikkarte auf Wachs (2880 × 1800): eine Ebene ${z2(eine.ms)} ms, drei Ebenen mit harten Kanten ${z2(dreiHart.ms)} ms, die oberste weich (gesammelt) ${z2(dreiWeich.ms)} ms; beim Drehen auf Wachs (${wachs.zahl} Bilder, gesammelt ${aufWachs.gesammelt}): Prozessor je Bild im Median ${z2(quantil(wachs.bildMs, 0.5))} ms, das teuerste ${z2(Math.max(...wachs.bildMs))} ms, davon die Bemalung im Median ${z2(wachs.kb.median)} ms; Abstand der Bilder im Median ${z2(quantil(wachs.abstand, 0.5))} ms, 95 % ${z2(quantil(wachs.abstand, 0.95))} ms; auf hellem Solid (${hell.zahl} Bilder, gesammelt ${aufHell.gesammelt}): Prozessor im Median ${z2(quantil(hell.bildMs, 0.5))} ms, das teuerste ${z2(Math.max(...hell.bildMs))} ms, davon die Bemalung im Median ${z2(hell.kb.median)} ms; Abstand der Bilder im Median ${z2(quantil(hell.abstand, 0.5))} ms, 95 % ${z2(quantil(hell.abstand, 0.95))} ms`,
   );
   if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-ebenen-68-hell.png`, await s.screenshot());
   fehlerAlle.push(...fehler);
