@@ -2,9 +2,9 @@
 // paint mode will ich mit gewohnten tools linien auf die haut einzeichnen. […] Die flächen zwischen den linien kann ich dann […]
 // einfärben und sie haben dann eine harte kante“. An einer frischen Kugel mit vier Linien (Mitte, drei Ringe).
 // Kriterien (wie im Plan vorher festgelegt):
-//   0  Bedienung: B schaltet den Paint-Modus; P zeichnet (eingerastet in der Seite, sechs Klicks, auf dem ersten geschlossen) eine
-//      Farblinie auf die Haut, keine Linie der Form; ein Klick auf die Form im Raum füllt ihr Inneres; die Farbe steht auf Wachs
-//      und auf dem hellen Solid.
+//   0  Bedienung: B schaltet den Paint-Modus; P zeichnet (eingerastet in der Seite, sechs Klicks auf die Form, auf dem ersten
+//      geschlossen) eine Farblinie auf die Haut, keine Linie der Form; ein Klick auf die Form im Raum füllt ihr Inneres; die Farbe
+//      steht auf Wachs und auf dem hellen Solid.
 //   1  Scharf bei jedem Zoom: Die Kante der Farbfläche ist bei 1-, 2- und 4-facher Vergrößerung (weiter zoomt Ozzy nicht) und auf
 //      der Anzeige im Zug höchstens 1,5 Gerätepunkte breit (von 10 % bis 90 % des Übergangs) und liegt höchstens einen halben
 //      Gerätepunkt neben der gezeichneten Kurve.
@@ -190,8 +190,10 @@ for (let i = 0; i < 6; i++) {
 }
 const f0 = await O('farbe');
 const nachP = (await O('werk')).linien;
-// die Orte der Farblinie im Bild der Seite gegen das Sechseck der Klicks (CSS-Pixel), und der Maßstab der Seite
-const inSeite = await O('farbLinieImBild', 0);
+// die Punkte der Farblinie im Bild der Seite gegen die Klicks (CSS-Pixel), und der Maßstab der Seite. (Seit Etappe 2 setzt P die
+// Punkte direkt auf die Form; zwischen zwei Punkten läuft die Farblinie über die Haut, wie der Faden sie zeigt, nicht mehr als
+// Gerade im Blatt: Verglichen werden darum die Punkte, nicht mehr alle Orte.)
+const punkteSeite = (await O('farbPunkte', 0))?.punkte ?? [];
 const abstandVomSechseck = (x, y) => {
   let d = Infinity;
   for (let i = 0; i < 6; i++) {
@@ -202,7 +204,8 @@ const abstandVomSechseck = (x, y) => {
   }
   return d;
 };
-const nebenCss = inSeite.length ? Math.max(...inSeite.map((q) => abstandVomSechseck(q.x, q.y))) : NaN;
+void abstandVomSechseck;
+const nebenCss = punkteSeite.length === 6 ? Math.max(...punkteSeite.map((q, i) => Math.hypot(q.x - klicks[i][0], q.y - klicks[i][1]))) : NaN;
 const s0 = await O('flaecheHin', 'seite', 0, 0);
 const s1 = await O('flaecheHin', 'seite', 100, 0);
 const seiteJeEinheit = Math.hypot(s1.x - s0.x, s1.y - s0.y) / 100;
@@ -468,7 +471,7 @@ await zoomAuf(1);
 await s.keyboard.press('Home');
 await s.waitForTimeout(900);
 const kanteGut = (k) => k.stuecke >= 4 && k.breiteGroesst <= 1.5 && k.lageGroesst + k.kurve <= 0.5;
-const kanteText = (k) => `Breite ${z2(k.breite)} (breitestes Stück ${z2(k.breiteGroesst)}), neben der Farblinie ${z2(k.lage)} (höchstens ${z2(k.lageGroesst)}), die Farblinie neben der gezeichneten Kurve ${z2(k.kurve)}`;
+const kanteText = (k) => `Breite ${z2(k.breite)} (breitestes Stück ${z2(k.breiteGroesst)}), neben der Farblinie ${z2(k.lage)} (höchstens ${z2(k.lageGroesst)}), die Punkte neben den Klicks ${z2(k.kurve)}`;
 
 // ---------- 2 bleibt auf der Haut ----------
 // eine zweite Farblinie fern vom Zug, hinter dem dritten Ring
@@ -481,20 +484,10 @@ const kreis = (mx, my, r) => {
     { X: mx, Y: my - r, aus: [g, 0] },
   ];
 };
-// (mit P und echten Klicks an der Wand der Seite im Raum: ein Achteck um (−105; 32), mit Abstand zu den Linien der Form)
-await O('malen', true);
+// (über den Haken auf das Blatt der Seite gezeichnet, wie Ellipse und Freihand es tun: ein Kreis um (−105; 32). P direkt auf der
+// Form prüft `ozzy-farbe-bedienen-fenster.mjs`.)
+await O('farbLinie', 'seite', kreis(-105, 32, 18));
 await s.waitForTimeout(300);
-await s.keyboard.press('p');
-await s.waitForTimeout(300);
-const wand = [];
-for (let i = 0; i < 8; i++) {
-  const q = await O('flaecheHin', 'seite', -105 + 18 * Math.cos((i * Math.PI) / 4), 32 + 18 * Math.sin((i * Math.PI) / 4));
-  wand.push([q.x, q.y]);
-}
-for (const [x, y] of [...wand, wand[0]]) await klick(x, y);
-await s.waitForTimeout(400);
-await s.keyboard.press('a');
-await s.waitForTimeout(200);
 const anDerWand = (await O('farbe')).linien;
 await s.mouse.move(40, 20);
 await s.waitForTimeout(400);
@@ -594,13 +587,13 @@ const gesucht = wechsel2.gesucht - wechsel0.gesucht;
 ok(
   '1 die Kante ist bei jedem Zoom und im Zug scharf und liegt auf der gezeichneten Kurve',
   kanten.every(kanteGut) && !!hin && hin.halten.kante.stuecke >= 4 && hin.halten.kante.breiteGroesst <= 1.5,
-  `${kanten.map((k) => `${z2(k.zoom)}-fach (Stufe ${k.stufen} der Anzeige, ${k.stuecke} Stücke): ${kanteText(k)}`).join(' · ')} · im Zug (Stufe ${hin?.halten.stufen}, ${hin?.halten.kante.stuecke} Stücke): Breite ${z2(hin?.halten.kante.breite)} (breitestes Stück ${z2(hin?.halten.kante.breiteGroesst)}) · alles in Gerätepunkten; die Orte liegen ${z2(nebenEinheiten)} Einheiten (${z2(nebenCss * 2)} Gerätepunkte in der Seite) neben dem geklickten Sechseck`,
+  `${kanten.map((k) => `${z2(k.zoom)}-fach (Stufe ${k.stufen} der Anzeige, ${k.stuecke} Stücke): ${kanteText(k)}`).join(' · ')} · im Zug (Stufe ${hin?.halten.stufen}, ${hin?.halten.kante.stuecke} Stücke): Breite ${z2(hin?.halten.kante.breite)} (breitestes Stück ${z2(hin?.halten.kante.breiteGroesst)}) · alles in Gerätepunkten; die Punkte liegen ${z2(nebenEinheiten)} Einheiten (${z2(nebenCss * 2)} Gerätepunkte in der Seite) neben den Klicks`,
 );
 if (process.env.PROFIL) for (const k of kanten) console.log(`     Profil ${z2(k.zoom)}-fach: ${k.werte.join(' ')}`);
 ok(
   '2 die Bemalung geht mit der Haut mit und kommt mit ihr zurück; fern vom Zug bewegt sie sich nicht weiter als die Haut dort; kein Ort verliert beim Netzwechsel die Haut',
   anDerWand === 2 && gewaehlt === '' && !!hin && !!zurueckGezogen && hin.halten.fehl === 0 && mitgegangen > 3 && zurueckNah <= 0.5 && zurueckFern <= 0.5 && fernBewegt <= hin.halten.haut + 0.5 && wechsel2.groesst <= 0.5 && wechsel2.zahl > wechsel0.zahl,
-  `die zweite Farblinie mit P an der Wand gezeichnet (${anDerWand} Farblinien${gewaehlt === '' ? '' : `; gewählt blieb „${gewaehlt}“`}) · beim Zug um ${WEITE} Einheiten ging die Farblinie am Zug bis ${z2(mitgegangen)} Einheiten mit; nach dem Zug zurück liegt sie höchstens ${z2(zurueckNah)} Einheiten neben ihrer Lage davor, die ferne ${z2(zurueckFern)} (die Haut selbst liegt dort ${z2(hautZurueck)} neben ihrer Lage davor, der Umriss der Form ${z2(formZurueck)}) · fern vom Zug bewegte sich die Bemalung höchstens ${z2(fernBewegt)} Einheiten, die Haut dort ${z2(hin?.halten.haut)} · ${wechsel2.zahl - wechsel0.zahl} Netzwechsel (${wechsel1.zahl - wechsel0.zahl} hin, ${wechsel2.zahl - wechsel1.zahl} zurück): ${gehalten} Orte blieben in ihrem Dreieck, ${gesucht} wurden neu gesucht und lagen höchstens ${z2(wechsel2.groesst)} Einheiten neben der neuen Haut`,
+  `${anDerWand} Farblinien${gewaehlt === '' ? '' : `; gewählt blieb „${gewaehlt}“`} · beim Zug um ${WEITE} Einheiten ging die Farblinie am Zug bis ${z2(mitgegangen)} Einheiten mit; nach dem Zug zurück liegt sie höchstens ${z2(zurueckNah)} Einheiten neben ihrer Lage davor, die ferne ${z2(zurueckFern)} (die Haut selbst liegt dort ${z2(hautZurueck)} neben ihrer Lage davor, der Umriss der Form ${z2(formZurueck)}) · fern vom Zug bewegte sich die Bemalung höchstens ${z2(fernBewegt)} Einheiten, die Haut dort ${z2(hin?.halten.haut)} · ${wechsel2.zahl - wechsel0.zahl} Netzwechsel (${wechsel1.zahl - wechsel0.zahl} hin, ${wechsel2.zahl - wechsel1.zahl} zurück): ${gehalten} Orte blieben in ihrem Dreieck, ${gesucht} wurden neu gesucht und lagen höchstens ${z2(wechsel2.groesst)} Einheiten neben der neuen Haut`,
 );
 
 // ---------- 3 formt nicht ----------

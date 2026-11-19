@@ -7,10 +7,9 @@
  * Vektor ist die so gewichtete Summe der Ecken; er dreht und dehnt sich mit dem Dreieck, und beim Netzwechsel gehen die Zahlen wie
  * die Gewichte mit ihren Ecken.
  *
- * Die Kurve zwischen zwei Punkten (`stueckLegen`, wie `aufHautLegen` in der Vorlage `src/linien/raum.ts`): die Bézier-Kurve im Raum
- * aus den zwei Punkten und ihren Richtungen, Probe für Probe auf die Haut gelegt (an den nächsten Ort der Haut, auf der Seite, die
- * die zwei Punkte zeigen). Gerechnet wird sie nur, wenn ein Punkt oder eine Richtung angefasst wird; danach gehen ihre Orte mit der
- * Haut mit wie alle anderen.
+ * Die Kurve zwischen zwei Punkten (`stueckLegen`; die Idee ist `aufHautLegen` in der Vorlage `src/linien/raum.ts`): die
+ * Bézier-Kurve im Raum aus den zwei Punkten und ihren Richtungen, auf die Haut gelegt. Gerechnet wird sie nur, wenn ein Punkt oder
+ * eine Richtung angefasst wird; danach gehen ihre Orte mit der Haut mit wie alle anderen.
  *
  * Ohne DOM und ohne three: Die Tests laufen in Node.
  */
@@ -65,35 +64,49 @@ export function richtungUmordnen(g: Richtung, vorher: readonly number[], jetzt: 
 
 /**
  * Die Orte der Kurve von A nach B auf der Haut, ohne A und B selbst: die Bézier-Kurve aus den zwei Lagen und ihren Richtungen
- * (`gA` verlässt A, `gB` kommt in B an; Vektoren in den Einheiten der Lagen, null: keine), gleichmäßig im Parameter abgetastet
- * (höchstens `weit` auseinander), jede Probe an den nächsten Ort der Haut gelegt. Gesucht wird auf der Seite der Haut, die A und B
- * zeigen (zwischen ihren Normalen gemischt): An einem dünnen Teil springt die Kurve so nicht auf die Rückseite.
+ * (`gA` verlässt A, `gB` kommt in B an; Vektoren in den Einheiten der Lagen, null: keine).
+ *
+ * Gelegt wird sie durch Halbieren: Die Kurve wird in der Mitte geteilt (de Casteljau), ihr Teilpunkt an den nächsten Ort der Haut
+ * gelegt, seine zwei inneren Griffe gehen mit ihm und in die Ebene der Haut dort; dann jede Hälfte für sich, bis die Orte höchstens
+ * `weit` auseinander liegen. So liegt jede Probe nah an der Haut, bevor sie auf sie gelegt wird. (Die ganze Kurve Probe für Probe
+ * auf die Haut zu legen, wie die Vorlage es tut, gibt bei langen Stücken Zacken: Die Sehne läuft tief unter der Haut, und der
+ * nächste Ort springt an jeder Kante des Netzes.) Die Orte stehen gleichmäßig im Parameter der Kurve (ihre Zahl ist 2^n − 1).
+ * Gesucht wird auf der Seite der Haut, die die Enden zeigen: An einem dünnen Teil springt die Kurve nicht auf die Rückseite.
  */
 export function stueckLegen(netz: Netz, naechster: Naechster, A: Ort, gA: V3 | null, B: Ort, gB: V3 | null, weit = 1.5): Ort[] {
   const p0 = ortLage(netz.pos, A);
   const p3 = ortLage(netz.pos, B);
-  const p1: V3 = gA ? [p0[0] + gA[0], p0[1] + gA[1], p0[2] + gA[2]] : p0;
-  const p2: V3 = gB ? [p3[0] + gB[0], p3[1] + gB[1], p3[2] + gB[2]] : p3;
+  const p1: V3 = gA ? [p0[0] + gA[0], p0[1] + gA[1], p0[2] + gA[2]] : [p0[0], p0[1], p0[2]];
+  const p2: V3 = gB ? [p3[0] + gB[0], p3[1] + gB[1], p3[2] + gB[2]] : [p3[0], p3[1], p3[2]];
   const ab = (a: V3, b: V3): number => Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
   // die Länge der Kurve liegt zwischen der Sehne und dem Zug der Kontrollpunkte
   const laenge = (ab(p0, p1) + ab(p1, p2) + ab(p2, p3) + ab(p0, p3)) / 2;
-  const n = Math.max(1, Math.ceil(laenge / weit));
-  const nA = dreieckNormale(netz.pos, netz.tri, A.t);
-  const nB = dreieckNormale(netz.pos, netz.tri, B.t);
+  const tiefe = Math.max(0, Math.min(12, Math.ceil(Math.log2(Math.max(1e-9, laenge / weit)))));
+  const mitte = (a: V3, b: V3): V3 => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
   const aus: Ort[] = [];
-  for (let i = 1; i < n; i++) {
-    const t = i / n;
-    const u = 1 - t;
-    const b0 = u * u * u;
-    const b1 = 3 * u * u * t;
-    const b2 = 3 * u * t * t;
-    const b3 = t * t * t;
-    const x = b0 * p0[0] + b1 * p1[0] + b2 * p2[0] + b3 * p3[0];
-    const y = b0 * p0[1] + b1 * p1[1] + b2 * p2[1] + b3 * p3[1];
-    const z = b0 * p0[2] + b1 * p1[2] + b2 * p2[2] + b3 * p3[2];
-    const r = naechster(x, y, z, u * nA[0] + t * nB[0], u * nA[1] + t * nB[1], u * nA[2] + t * nB[2]);
-    aus.push(ortIn(netz, r.t, r.wa, r.wb, r.wc));
-  }
+  const teilen = (a: V3, b: V3, c: V3, d: V3, na: V3, nd: V3, k: number): void => {
+    if (k <= 0) return;
+    const q0 = mitte(a, b);
+    const q1 = mitte(b, c);
+    const q2 = mitte(c, d);
+    const r0 = mitte(q0, q1);
+    const r1 = mitte(q1, q2);
+    const m = mitte(r0, r1);
+    const r = naechster(m[0], m[1], m[2], na[0] + nd[0], na[1] + nd[1], na[2] + nd[2]);
+    const o = ortIn(netz, r.t, r.wa, r.wb, r.wc);
+    const mp = ortLage(netz.pos, o);
+    const nm = dreieckNormale(netz.pos, netz.tri, o.t);
+    /** ein innerer Griff: mit dem Teilpunkt auf die Haut, sein Anteil aus der Haut heraus fällt weg */
+    const inHaut = (g: V3): V3 => {
+      const v: V3 = [g[0] - m[0], g[1] - m[1], g[2] - m[2]];
+      const vn = v[0] * nm[0] + v[1] * nm[1] + v[2] * nm[2];
+      return [mp[0] + v[0] - vn * nm[0], mp[1] + v[1] - vn * nm[1], mp[2] + v[2] - vn * nm[2]];
+    };
+    teilen(a, q0, inHaut(r0), mp, na, nm, k - 1);
+    aus.push(o);
+    teilen(mp, inHaut(r1), q2, d, nm, nd, k - 1);
+  };
+  teilen(p0, p1, p2, p3, dreieckNormale(netz.pos, netz.tri, A.t), dreieckNormale(netz.pos, netz.tri, B.t), tiefe);
   return aus;
 }
 

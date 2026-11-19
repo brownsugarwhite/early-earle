@@ -92,9 +92,9 @@ describe('Farbe, Etappe 2: Punkte, Richtungen, Kurve', () => {
       weit = Math.max(weit, ab(vor, p));
       vor = p;
     }
-    // (bestellt sind 1,5 Einheiten; auf diesem groben Netz springt der nächste Ort an jeder Kante ein Stück, weil die Sehne bis
-    // 9 Einheiten unter der Haut läuft. Im Fenster wird auf der glatten Anzeige gesucht.)
-    expect(Math.max(weit, ab(vor, pB))).toBeLessThan(3.5);
+    // (bestellt sind höchstens 1,5 Einheiten; durch das Halbieren liegt jede Probe nah an der Haut, bevor sie auf sie gelegt wird)
+    // (auf dem groben Prüfnetz teilt eine Hälfte nicht immer genau in der Mitte: bis 2 statt 1,5)
+    expect(Math.max(weit, ab(vor, pB))).toBeLessThan(2.2);
     // mit Richtungen: Die Kurve verlässt A längs seiner Richtung und baucht zur Seite aus
     const gA: V3 = [0, -40, 0];
     const gB: V3 = [-40, 0, 0];

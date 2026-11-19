@@ -246,6 +246,22 @@ export class FarbWerk {
     this.flaechen = flaechenRechnen(k, ketten, saaten);
   }
 
+  /** die Bemalung ist von außen geändert worden (ein Handgriff an einer Farblinie, `farbBlatt.ts`): alles Abgeleitete neu */
+  geaendert(): void {
+    this.alt = true;
+    this.streckenGemerkt = null;
+  }
+
+  private naechsterGemerkt: { haut: object; version: number; f: Naechster } | null = null;
+  /** der nächste Ort auf dem Rechennetz, wie es jetzt liegt (für die Kurve zwischen zwei Punkten einer Farblinie) */
+  naechster(h: HautJetzt): Naechster {
+    const g = this.naechsterGemerkt;
+    if (g && g.haut === h.haut && g.version === h.version) return g.f;
+    const f = this.naechsterFuer(h.haut);
+    this.naechsterGemerkt = { haut: h.haut, version: h.version, f };
+    return f;
+  }
+
   /** vor einem Handgriff am Bemalen: den Stand merken (ein Schritt für ⌘Z) */
   merken(h: HautJetzt): void {
     this.schritt(h);

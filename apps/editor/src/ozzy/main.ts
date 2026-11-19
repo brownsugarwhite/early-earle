@@ -38,6 +38,7 @@ import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND } from './wachs';
 import { type Farbe, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
+import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
 import { type BlattAnker, FarbWerk, type FarbStand, type HautJetzt } from './farbe/farbwerk';
 import { naechsterAuf } from './farbe/naechster';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
@@ -206,6 +207,12 @@ let dreieckeZeigen = ((): boolean => {
  * Wachs), auch außerhalb des Paint-Modus; die Farblinien selbst nur im Paint-Modus.
  */
 const farbWerk = new FarbWerk(naechsterAuf);
+/**
+ * Etappe 2: Im Paint-Modus bedient das Verhalten der Linien die Farblinien (A und P): `farbBlatt` ist dann sein Modell statt
+ * `werkBlatt` (`modellSetzen`). `farbAn`: gilt in diesem Bild (im Raum und eingerastet; in den Vier Ansichten noch nicht).
+ */
+const farbBlatt = new FarbBlatt(farbWerk);
+let farbAn = false;
 let malModus = false;
 /** die Farbe für die nächste Füllung (Bildschirmwerte 0 … 1) */
 let farbWahl: Farbe = [0.965, 0.769, 0.271];
@@ -741,6 +748,7 @@ function rueckwegAnders(): boolean {
       }
       rueckweg.pop();
       if (farbWerk.zurueck(hautJetzt())) werk.G.meldung = '⌘Z: die Bemalung einen Schritt zurück';
+      if (farbAn) bearbeiten.auswahlLeeren();
       farbBild++;
       return true;
     }
@@ -4083,7 +4091,7 @@ function bild(dt: number): boolean {
             ? (r) => {
                 const t0 = performance.now();
                 farbWerk.anzeige.tiefeSchreiben(r, kam.aktiv, zeigN, true);
-                farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt() });
+                farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt() });
                 farbKostenBild += performance.now() - t0;
               }
             : null,
@@ -4109,7 +4117,7 @@ function bild(dt: number): boolean {
           farbAn && material === 'Wachs'
             ? (r, k) => {
                 const t0 = performance.now();
-                farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt });
+                farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt });
                 farbKostenBild += performance.now() - t0;
               }
             : null,
@@ -4204,7 +4212,8 @@ function bild(dt: number): boolean {
       // S20: der weiße Körper (eingerastet), Linien dürfen ein wenig hinter seiner Haut liegen
       koerper: linienKoerper(),
       // die Verdeckung kommt mit dem Körper: Solange er noch blass ist, liegt alles vorn
-      bias: (raum?.R ?? 0) * (KOERPER_BIAS + 2 * (1 - koerperDeckung)),
+      // (im Paint-Modus steht der Körper im Raum nur für die Tiefe da, mit Deckung 0: Dort gilt die Verdeckung ganz)
+      bias: (raum?.R ?? 0) * (KOERPER_BIAS + (farbAn && koerperDeckung <= 0.001 ? 0 : 2 * (1 - koerperDeckung))),
       band: (raum?.R ?? 1) * KOERPER_BAND,
     };
     szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
@@ -4233,8 +4242,8 @@ function bild(dt: number): boolean {
       ? 'Röntgen: auch Punkte und Linien hinter der Form greifen · ⌥ loslassen: zurück'
       : zustand === 'ruhe' && werkGezeigt && malModus
       ? bearbeiten.stift
-        ? 'Paint-Modus · P: eine Farblinie zeichnen (an einer Wand oder eingerastet), auf dem ersten Punkt schließen · Esc'
-        : 'Paint-Modus · P zeichnet eine Farblinie · Klick auf die Form füllt bis an die Farblinien · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
+        ? 'Paint-Modus · P: auf die Form klicken setzt Punkte, ziehen rundet · auf dem ersten Punkt schließen · ↩ beendet offen · ⌫ letzter Punkt · Esc'
+        : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · Klick auf die Form füllt bis an die Farblinien · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
       : zustand === 'ruhe' && werkGezeigt && objektModus()
@@ -4811,7 +4820,10 @@ function wicklungVon(N: { pos: Float32Array; normal: Float32Array; index: Uint32
 
 /** S20: der weiße Körper für die Anzeige (die glatte Haut des Werks), eingerastet mit der Kamera; sonst null */
 function linienKoerper(): LinienKoerper | null {
-  if (!koerperAn() || koerperDeckung <= 0.001) return null;
+  // Etappe 2 (Paint-Modus): Liegen die Farblinien auf der Form, braucht die Anzeige den Körper für die Tiefe, auch wo er nicht zu
+  // sehen ist (im Raum mit einem Material): Er steht dann mit Deckung 0 in der Szene
+  const nurTiefe = farbAn && (!koerperAn() || koerperDeckung <= 0.001);
+  if ((!koerperAn() || koerperDeckung <= 0.001) && !nurTiefe) return null;
   // (nichts zu zeigen: etwa, wenn ein Objekt, das abzieht, den ganzen Körper weggenommen hat)
   const N = zeigeNetzAlle();
   if (!N) return null;
@@ -4846,12 +4858,12 @@ function linienKoerper(): LinienKoerper | null {
           ],
     huelleTiefe: raum!.R * HUELLE_TIEFE,
     schattierung: 0,
-    umriss: linienWerte.umriss * D,
+    umriss: nurTiefe ? 0 : linienWerte.umriss * D,
     geaendert: neu,
     netz: koerperNr,
     wicklung: koerperWicklung,
     durchsichtig: true,
-    deckung: koerperDeckung,
+    deckung: nurTiefe ? 0 : koerperDeckung,
     // (geht das aktive Objekt im Verbund auf, stehen seine Dreiecke nicht mehr einzeln im Netz: keine Tönung gewählter Felder)
     toenung: verbundVerdeckt(aktivId) ? null : feldToenungJetzt(N.index),
   };
@@ -4869,7 +4881,7 @@ function feldToenungJetzt(index: Uint32Array): NonNullable<LinienKoerper['toenun
  * Feld der Vier Ansichten); nicht in der Pose, nicht im Zug.
  */
 function feldTreffen(x: number, y: number): { fl: number; t: FeldTreffer } | null {
-  if (!werkGezeigt || !bearbeitenAn || werk.zug || werk.grund) return null;
+  if (!werkGezeigt || !bearbeitenAn || malModus || werk.zug || werk.grund) return null;
   const fl = werkBlatt.flaecheUnter(x, y);
   const F = werkBlatt.flaechen[fl];
   if (!F || F.raeumlich || !F.tiefe) return null;
@@ -4898,7 +4910,7 @@ function feldUmschalten(x: number, y: number, zeit: number): boolean {
 
 /** C4: G, S oder R: die Auswahl des Werks verschieben, skalieren oder drehen (wie im Prüffenster), geführt vom Zeiger */
 function tastenZugBeginnen(k: 'g' | 's' | 'r'): boolean {
-  if (!werkGezeigt || !bearbeitenAn || werk.zug || tastenZug || feldDruck || bearbeitenGedrueckt || pinselZug || bearbeiten.stift || strichWerkzeug() || raumWerkzeug === 'lasso') return false;
+  if (!werkGezeigt || !bearbeitenAn || malModus || werk.zug || tastenZug || feldDruck || bearbeitenGedrueckt || pinselZug || bearbeiten.stift || strichWerkzeug() || raumWerkzeug === 'lasso') return false;
   const mitte = werk.auswahlMitte();
   if (!mitte || !zeiger.da) {
     werk.G.meldung = 'G, S, R: erst Punkte, eine Linie oder ein Feld wählen';
@@ -5282,7 +5294,11 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   werkBlatt.bauen(flaechen, uhr);
   // (mit V, im Objekt-Modus, bedient das Verhalten die Linien nicht: Sie stehen still, ohne Punkte)
   // (im Paint-Modus stehen die Linien der Form ebenso still: Dort gelten P, Freihand und Formen den Farblinien, ein Klick füllt)
-  bearbeitenAn = stabil && !objektModus() && !(malModus && raumWerkzeug !== 'p' && !strichWerkzeug());
+  // Etappe 2: A und P gehören im Paint-Modus den Farblinien (im Raum und eingerastet); in den Vier Ansichten zeichnet P wie in
+  // Etappe 1 auf dem Blatt
+  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p');
+  bearbeitenAn = stabil && !objektModus() && (!malModus || farbAn || raumWerkzeug === 'p' || strichWerkzeug());
+  modellSetzen(farbAn);
   // P in der Leiste, sobald das Werk bedient wird
   if (stabil !== pErlaubt) {
     pErlaubt = stabil;
@@ -5356,12 +5372,23 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     K.punkt(px, py, linienWerte.punktRadius * linienWerte.tropfen * D);
   }
   if (bearbeitenAn) {
-    if (werkBlatt.struktur !== bearbeitenStruktur) {
-      bearbeiten.tropfen = [];
-      bearbeitenStruktur = werkBlatt.struktur;
+    if (farbAn) {
+      // die Linien der Form stehen still, ohne Punkte; bedient werden die Farblinien auf der Form
+      werkLinienStill(flaechen, false);
+      farbBlatt.bauen(hautJetzt(), farbSicht());
+      if (farbBlatt.struktur !== bearbeitenStruktur) {
+        bearbeiten.tropfen = [];
+        bearbeitenStruktur = farbBlatt.struktur;
+      }
+      bearbeiten.setzeNetz(farbBlatt.netz, farbBlatt.proben);
+    } else {
+      if (werkBlatt.struktur !== bearbeitenStruktur) {
+        bearbeiten.tropfen = [];
+        bearbeitenStruktur = werkBlatt.struktur;
+      }
+      bearbeiten.setzeNetz(werkBlatt.netz, werkBlatt.proben);
+      bearbeiten.auswahl = werkBlatt.auswahlAbgleichen(bearbeiten.auswahl);
     }
-    bearbeiten.setzeNetz(werkBlatt.netz, werkBlatt.proben);
-    bearbeiten.auswahl = werkBlatt.auswahlAbgleichen(bearbeiten.auswahl);
     bearbeitenAnsicht.dpr = D;
     bearbeiten.setzeAnsicht(bearbeitenAnsicht);
     const aktiv = bearbeiten.schritt(dt) || !!raumStrich || !!raumAufzug || werkBlatt.fliesst;
@@ -5374,16 +5401,63 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
     return { zeiger: strichWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv: aktiv || licht };
   }
+  werkLinienStill(flaechen, !objektModus());
+  return { zeiger: undefined, aktiv: werkBlatt.fliesst };
+}
+
+/** die Linien des Werks schlicht gezeichnet (das Verhalten bedient sie gerade nicht); `punkte`: mit ihren Punkten */
+function werkLinienStill(flaechen: readonly Flaeche[], punkte: boolean): void {
   for (const P of werkBlatt.proben) {
     const g = K.neueGruppe();
     for (let j = 0; j + 1 < P.n; j++) K.push(P.x[j]! * D, P.y[j]! * D, P.x[j + 1]! * D, P.y[j + 1]! * D, P.halb[j]! * D, P.halb[j + 1]! * D, g, 0, false);
   }
+  if (!punkte) return;
   werkBlatt.netz.punkte.forEach((p, pi) => {
     const A = werkBlatt.anker[pi]!;
     const F = flaechen[A.fl]!;
-    if (A.zuSehen && !objektModus()) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
+    if (A.zuSehen) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
   });
-  return { zeiger: undefined, aktiv: werkBlatt.fliesst };
+}
+
+/** das Modell, das das Verhalten der Linien bedient: die Linien der Form oder (im Paint-Modus) die Farblinien */
+function modellSetzen(farbe: boolean): void {
+  if ((bearbeiten.raum === farbBlatt) === farbe) return;
+  if (bearbeitenGedrueckt) {
+    bearbeiten.loslassen();
+    bearbeitenGedrueckt = false;
+  }
+  if (bearbeiten.werk.entwurf()) bearbeiten.eingabe('esc');
+  bearbeiten.auswahlLeeren();
+  bearbeiten.raum = farbe ? farbBlatt : werkBlatt;
+  bearbeiten.werk = farbe ? farbBlatt : werkBlatt;
+  bearbeiten.tropfen = [];
+  bearbeitenStruktur = '';
+}
+
+/** was das Blatt der Farblinien in diesem Bild von der Ansicht braucht */
+let farbWicklung: { netz: unknown; w: number } | null = null;
+function farbSicht(): FarbSicht {
+  const c = kam.aktiv as Camera;
+  const N = werkHaut.netz;
+  if (N && farbWicklung?.netz !== N) farbWicklung = { netz: N, w: wicklungVon(N) };
+  const blick = new Vector3();
+  c.getWorldDirection(blick);
+  const auge = new Vector3().setFromMatrixPosition(c.matrixWorld);
+  return {
+    vp: new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse).elements,
+    ansicht: c.matrixWorldInverse.elements,
+    W,
+    H,
+    strahl: (x, y) => {
+      const r = kam.strahl(x, y, W, H);
+      return { o: [r.o.x, r.o.y, r.o.z], d: [r.d.x, r.d.y, r.d.z] };
+    },
+    auge: (c as { isOrthographicCamera?: boolean }).isOrthographicCamera ? null : [auge.x, auge.y, auge.z],
+    blick: [blick.x, blick.y, blick.z],
+    wicklung: farbWicklung?.w ?? 1,
+    halb: linienWerte.umriss / 2,
+    duldung: (raum?.R ?? 100) * KOERPER_BIAS,
+  };
 }
 
 /**
@@ -6493,7 +6567,7 @@ function schweben(x: number, y: number): void {
   let aufBlase = false;
   pinselZiel = null;
   zeigerPinsel = false;
-  if (werkGezeigt && bearbeitenAn && !bearbeiten.haengt && raumWerkzeug === 'auswahl' && !teiler.ueber && pinselHier(x, y)) {
+  if (werkGezeigt && bearbeitenAn && !malModus && !bearbeiten.haengt && raumWerkzeug === 'auswahl' && !teiler.ueber && pinselHier(x, y)) {
     const t = werkHautTreffen(x, y);
     if (t) {
       hauch.pos.copy(t.welt);
@@ -6663,7 +6737,8 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     return;
   }
   // Paint-Modus (Etappe 1): Ein Klick auf die Form füllt die Farbfläche dort; mit dem ersten Weg wird stattdessen gedreht
-  if (malModus && werkGezeigt && raumWerkzeug === 'auswahl' && pinselHier(x, y)) {
+  // (Etappe 2: Hängt ein Punkt oder eine Farblinie am Zeiger, greift das Drücken sie)
+  if (malModus && werkGezeigt && raumWerkzeug === 'auswahl' && pinselHier(x, y) && !(farbAn && bearbeiten.haengt)) {
     farbDruck = { x, y, zeit: e.timeStamp };
     anstossen();
     return;
@@ -6691,7 +6766,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
   }
   if (bearbeitenAn) {
     // mit P: auf einer Fläche setzt das Drücken einen Punkt (`ortFrei`), daneben dreht es weiter
-    const p = bearbeiten.stift && werkBlatt.ortFrei(x, y) !== null;
+    const p = bearbeiten.stift && (farbAn ? farbBlatt.ortFrei(x, y) : werkBlatt.ortFrei(x, y)) !== null;
     if (bearbeiten.haengt || p) {
       bearbeiten.alt = e.altKey;
       bearbeiten.umschalt = e.shiftKey;
@@ -6704,7 +6779,12 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     }
     // B4 (17.11.): Mit P ist eine Linie angefangen, der Klick liegt weit neben ihrer Fläche: Er tut nichts. Bis dahin drehte er die
     // Ansicht (und schloss die Vier Ansichten), die angefangene Linie war dann nicht mehr fortzusetzen
-    if (bearbeiten.stift && werkBlatt.entwurfOffen) {
+    if (bearbeiten.stift && farbAn && farbBlatt.entwurfOffen) {
+      werk.G.meldung = 'P: neben der Form · auf der Form weiterzeichnen · ↩ beendet die Farblinie · Esc bricht ab';
+      anstossen();
+      return;
+    }
+    if (bearbeiten.stift && !farbAn && werkBlatt.entwurfOffen) {
       werk.G.meldung = 'P: Die Linie gehört zu der Ansicht, in der sie begonnen wurde. Dort weiterzeichnen · ↩ schließt · Esc bricht ab';
       anstossen();
       return;
@@ -6720,7 +6800,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     }
   }
   // der Pinsel „Ziehen“ an der Haut des Werks (⇧ dreht stattdessen)
-  if (werkGezeigt && bearbeitenAn && raumWerkzeug === 'auswahl' && !e.shiftKey && pinselHier(x, y) && pinselBeginnen(x, y)) {
+  if (werkGezeigt && bearbeitenAn && !malModus && raumWerkzeug === 'auswahl' && !e.shiftKey && pinselHier(x, y) && pinselBeginnen(x, y)) {
     anstossen();
     return;
   }
@@ -7100,7 +7180,11 @@ window.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'z') {
     e.preventDefault();
     if (zustand === 'blatt' && blatt.rueckgaengig()) anstossen();
-    else if (zustand === 'ruhe' && !werk.zug && !tastenZug && !objektZug && rueckwegAnders()) anstossen();
+    // (mit P ist eine Farblinie angefangen: ⌘Z nimmt ihren letzten Punkt zurück)
+    else if (zustand === 'ruhe' && farbAn && bearbeiten.stift && farbBlatt.entwurfOffen) {
+      bearbeiten.eingabe('loeschen');
+      anstossen();
+    } else if (zustand === 'ruhe' && !werk.zug && !tastenZug && !objektZug && rueckwegAnders()) anstossen();
     else if (zustand === 'ruhe' && bearbeitenAn) {
       // über das Verhalten (es räumt Tropfen und Auswahl auf), das im Werk zurückgeht
       if (bearbeiten.rueckgaengig()) anstossen();
@@ -7161,7 +7245,9 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'Backspace' || k === 'Delete') {
     if (zustand === 'blatt') blatt.eingabe('loeschen');
     // gewählte Punkte löschen (im Werk), sonst Luft ablassen
-    else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || (bearbeiten.stift && werkBlatt.entwurf()))) bearbeiten.eingabe('loeschen');
+    else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || (bearbeiten.stift && bearbeiten.werk.entwurf()))) bearbeiten.eingabe('loeschen');
+    // (im Paint-Modus lässt ⌫ nie die Luft ab: Es gilt nur Farblinien)
+    else if (malModus) werk.G.meldung = 'Paint-Modus: ⌫ löscht gewählte Punkte einer Farblinie · B: zurück zur Form';
     // im Objekt-Modus (V) löscht ⌫ nur das gewählte Objekt (noch ist es die eine Form: Die Luft geht ab)
     else if (objektModus() && werkGezeigt) {
       // (gibt es noch andere Objekte, geht nur das gewählte; das letzte Objekt lässt wie bisher die Luft ab)
@@ -7410,6 +7496,19 @@ function farbSchritt<T>(tun: () => T): T {
   anstossen();
   return aus;
 }
+// (ein Handgriff im Blatt der Farblinien hat einen Schritt angelegt: Er kommt in den gemeinsamen Rückweg)
+farbBlatt.nachSchritt = () => {
+  rueckwegAbgleichen();
+  rueckweg.push({ art: 'farbe', id: aktivId });
+  farbBild++;
+  anstossen();
+};
+farbBlatt.schrittWeg = () => {
+  const e = rueckweg[rueckweg.length - 1];
+  if (e?.art === 'farbe' && e.id === aktivId) rueckweg.pop();
+  farbBild++;
+  anstossen();
+};
 /** eine fertige Zeichnung (P, Freihand, Formen) auf einem Blatt wird eine Farblinie auf der Haut */
 function farbStiftZiel(a: 'seite' | 'front' | 'top', anker: werk.StiftAnker[], vorn: number | undefined): boolean {
   // (von welcher Seite man auf das Blatt schaut: wie `objektBei`; ohne Angabe die Seite, von der das Blatt gewöhnlich gesehen wird)
@@ -7849,7 +7948,7 @@ function objektUiZeigen(): void {
 }
 
 function maulUiZeigen(): void {
-  const an = zustand === 'ruhe' && werkGezeigt && bearbeitenAn;
+  const an = zustand === 'ruhe' && werkGezeigt && bearbeitenAn && !malModus;
   // der Tropfen hängt unter dem tiefsten sichtbaren Punkt der gewählten Linie
   // (nicht, wenn ein Feld gewählt ist: Dann sind die Punkte auf seinem Rand gewählt, kein Ring)
   // (ein Maul braucht noch die gespiegelte Form: an einer freien gibt es den Tropfen nicht)
@@ -8610,6 +8709,21 @@ const haken = {
   farbLinieImRaum: (nr = 0): number[][] => {
     const h = hautJetzt();
     return (farbWerk.bemalung.ebenen[0]?.linien[nr]?.stuetzen ?? []).map((o) => farbWerk.lageImRaum(h, o));
+  },
+  /** Etappe 2: die Punkte der Farblinie `nr` im Bild (CSS-Pixel), mit Knick und ob sie Richtungen tragen; dazu, ob sie geschlossen ist */
+  farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: boolean; aus: boolean }[] } | null => {
+    const h = hautJetzt();
+    const l = farbWerk.bemalung.ebenen[0]?.linien[nr];
+    if (!l) return null;
+    return {
+      zu: l.zu,
+      orte: l.stuetzen.length,
+      punkte: l.punkte.map((q) => {
+        const p = farbWerk.lageImRaum(h, l.stuetzen[q.i]!);
+        const v = new Vector3(p[0], p[1], p[2]).project(kam.aktiv as Camera);
+        return { x: ((v.x + 1) / 2) * W, y: ((1 - v.y) / 2) * H, i: q.i, knick: q.knick, ein: !!q.ein, aus: !!q.aus };
+      }),
+    };
   },
   /** wie weit Punkte im Raum (Welt) neben der gezeigten Haut des aktiven Objekts liegen (für Proben: Hat sich die Haut dort bewegt?) */
   hautAbstand: (punkte: number[][]): number[] => {
