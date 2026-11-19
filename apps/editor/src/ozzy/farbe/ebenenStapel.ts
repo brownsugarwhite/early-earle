@@ -80,6 +80,7 @@ export class EbenenStapel {
     // (drei kleine Linsen, schräg versetzt: die Ebenen, aufgefächert)
     this.faecher.innerHTML = '<svg viewBox="0 0 30 18" aria-hidden="true"><ellipse cx="10.5" cy="5" rx="8" ry="3.3" /><ellipse cx="15" cy="9" rx="8" ry="3.3" /><ellipse cx="19.5" cy="13" rx="8" ry="3.3" /></svg>';
     this.faecher.addEventListener('click', (e) => this.ziele.faecher(e.shiftKey));
+    this.faecherTitel(false);
     el.append(this.faecher, this.plus, this.liste);
     eltern.append(el);
     // ohne Fokus auf einem Knopf (sonst löste die Leertaste ihn danach noch einmal aus)
@@ -93,6 +94,14 @@ export class EbenenStapel {
       const id = Number(auge?.closest('li')?.dataset.id);
       if (auge && Number.isFinite(id)) this.ziele.zeigen(id, auge.getAttribute('aria-pressed') !== 'true');
     });
+  }
+
+  /** der Knopf der Ebenen-Ansicht: gedrückt, solange aufgefächert ist, und was er dann tut */
+  private faecherTitel(offen: boolean): void {
+    this.faecher.setAttribute('aria-pressed', String(offen));
+    const titel = offen ? 'Ebenen-Ansicht: wieder zusammenschieben · ⇧: die andere Anordnung' : 'Ebenen-Ansicht: auffächern, je Ebene eine Kopie · ⇧: die andere Anordnung';
+    this.faecher.title = titel;
+    this.faecher.setAttribute('aria-label', titel);
   }
 
   private linse(): HTMLSpanElement {
@@ -116,12 +125,7 @@ export class EbenenStapel {
       if (!an && this.druck) this.zugEnde();
     }
     if (!an) return;
-    if ((this.faecher.getAttribute('aria-pressed') === 'true') !== offen) {
-      this.faecher.setAttribute('aria-pressed', String(offen));
-      const titel = offen ? 'Ebenen-Ansicht: wieder zusammenschieben · ⇧: die andere Anordnung' : 'Ebenen-Ansicht: auffächern, je Ebene eine Kopie · ⇧: die andere Anordnung';
-      this.faecher.title = titel;
-      this.faecher.setAttribute('aria-label', titel);
-    }
+    if ((this.faecher.getAttribute('aria-pressed') === 'true') !== offen) this.faecherTitel(offen);
     // (der Knopf steht da, sobald es mehr als eine Ebene gibt)
     this.faecher.hidden = ebenen.length < 2;
     const zeichen = `${voll ? 1 : 0}|` + ebenen.map((e) => `${e.id}:${e.aktiv ? 'a' : ''}${e.aus ? 'x' : ''}${e.leer ? 'l' : ''}:${e.name}:${e.farben.map(css).join(';')}`).join('|');
