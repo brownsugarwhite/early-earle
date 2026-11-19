@@ -2924,6 +2924,8 @@ function blickIn(n: 'seite' | 'front' | 'top' | 'raum', F: ReturnType<typeof fel
 function eckTropfenOrt(): [number, number] | null {
   const e = raum;
   if (zustand !== 'ruhe' || !e || eckZug || vier > 1e-3 || vierZiel > 0.5 || ansichtFahrt || vorDreh || wenden || drehen) return null;
+  // (Paint-Modus, Etappe 6: Aufgefächert stehen nur die Kopien im Bild, der Raum tritt zurück; die Ecke gibt es dort nicht)
+  if (faecherOffen()) return null;
   if (ansicht !== 'raum') return flach >= 0.999 ? eckeVon(ansicht) : null;
   // im Raum nur von vorn rechts oben (S16): dort liegen die Wände so, wie die Kiste aufklappt
   if (flach > 1e-3 || !vorKiste(nutzer.gier, nutzer.neigung)) return null;
@@ -4122,6 +4124,9 @@ function bild(dt: number): boolean {
     // beim Einrasten blenden die Materialien auf eigener Fläche aus, während sich das Blatt durch die Form schiebt (ihre Renderer
     // kennen keinen Schnitt)
     const blende = schnittJetzt ? 1 - glatt(flach) : 1;
+    // Etappe 6 des Paint-Modus: aufgefächert je Ebene eine Kopie der Form, auf den zwei Gründen, auf denen gemalt wird
+    faecherBild = !w.blaseAus && !dreieckeZeigen && farbeMoeglich() ? faecherRechnen() : [];
+    const kopien = faecherBild.length ? faecherBild : null;
     if (material !== MATERIAL_GRUEN || w.blaseAus) gruen?.aus();
     if (w.blaseAus) gast.aus();
     else if (material === MATERIAL_GRUEN) {
@@ -4149,13 +4154,16 @@ function bild(dt: number): boolean {
         kante: werk.MK / werkHaut.f,
         heim: [heim.x, heim.y, heim.z],
         jetzt: performance.now(),
+        // (aufgefächert: das helle Solid je Kopie, von hinten nach vorn)
+        kopien: kopien ? [...kopien].sort((a, b) => a.rang - b.rang) : null,
         // die Farbe über dem hellen Solid: multipliziert mit seinem Bild (es bringt Hell und Dunkel selbst mit)
         ueberzug:
           farbeDa && material === 'Helles Solid'
             ? (r) => {
                 const t0 = performance.now();
-                // (die Zeichenfläche des hellen Solids hat keine Tiefe von Ozzys Kamera: Die Anzeige schreibt sie vor der Farbe)
-                farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), verdeckt: zeigN });
+                // (die Zeichenfläche des hellen Solids hat keine Tiefe von Ozzys Kamera: Die Anzeige schreibt sie vor der Farbe,
+                // aufgefächert je Kopie in ihrem Bereich der Tiefe)
+                farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), verdeckt: zeigN, kopien });
                 farbKostenBild += performance.now() - t0;
               }
             : null,
@@ -4171,9 +4179,7 @@ function bild(dt: number): boolean {
         feste.netzSetzen(festN, wicklungVon(festN));
         festeStand = { netz: festN, version: werkHaut.version };
       }
-      // Etappe 6: aufgefächert je Ebene eine Kopie, alle in einem Durchgang (jede an ihrem Platz im Bild, in ihrer Schicht der Tiefe)
-      faecherBild = material === 'Wachs' && !facetten && farbeMoeglich() ? faecherRechnen() : [];
-      const kopien = faecherBild.length ? faecherBild : null;
+      // (Etappe 6: aufgefächert je Ebene eine Kopie, alle in einem Durchgang: jede an ihrem Platz im Bild, in ihrer Schicht der Tiefe)
       feste.zeichnen(kam.aktiv, material, {
         schnitt: schnittJetzt,
         deckung: 1 - 0.7 * roentgen,
@@ -4685,7 +4691,7 @@ function wandLinien(vp: Matrix4, m: Moment): void {
   }
   for (const achse of [0, 1, 2] as const) {
     // B3: mit dem Kurvennetz auf der Form treten die Zeichnungen an den Wänden zurück (sie lägen sonst über dem weißen Körper)
-    // (Etappe 6 im Paint-Modus: ebenso, solange die Ebenen-Ansicht offen ist; die Kanten der fernen Ecke bleiben)
+    // (Etappe 6 im Paint-Modus: ebenso, solange die Ebenen-Ansicht offen ist)
     const st = staerke[achse] * (1 - raumNetzDeckung) * faecherStill();
     if (st < 0.01) continue;
     const w = achse * 2 + (s[achse] > 0 ? 1 : 0);
@@ -4736,7 +4742,9 @@ function wandLinien(vp: Matrix4, m: Moment): void {
     }
   }
   // Kanten der fernen Ecke: drei feinste Haarlinien vom Eckpunkt aus
-  const kanten = werte.kanten * Math.min(staerke[0], staerke[1], staerke[2]) * raumSicht();
+  // (Etappe 6 im Paint-Modus: Aufgefächert treten auch sie zurück. Die Kopien stehen als Bilder vor dem Raum, und nur an der
+  // vorderen steht der Körper für die Verdeckung: Durch die anderen schienen die Haarlinien hindurch)
+  const kanten = werte.kanten * Math.min(staerke[0], staerke[1], staerke[2]) * raumSicht() * faecherStill();
   if (kanten > 0.01) {
     const c = new Vector3(e.cx + s[0] * e.L, e.cy + s[1] * e.L, s[2] * e.L);
     const enden = [c.clone().setX(e.cx - s[0] * e.L), c.clone().setY(e.cy - s[1] * e.L), c.clone().setZ(-s[2] * e.L)];
@@ -7842,9 +7850,9 @@ function faecherSetzen(an: boolean, art?: FaecherArt): boolean {
     werk.G.meldung = 'Die Ebenen liegen wieder übereinander';
     return true;
   }
-  if (!malModus || zustand !== 'ruhe' || !werkGezeigt || !istMalgrund()) return false;
-  if (material !== 'Wachs') {
-    werk.G.meldung = 'Die Ebenen-Ansicht gibt es bisher nur auf Wachs (Taste M)';
+  if (!malModus || zustand !== 'ruhe' || !werkGezeigt) return false;
+  if (!istMalgrund()) {
+    werk.G.meldung = 'Ebenen-Ansicht: auf hellem Solid und Wachs (Taste M)';
     return false;
   }
   if (!farbeMoeglich()) {
@@ -7888,7 +7896,7 @@ function federSchritt(x: number, v: number, ziel: number, t: number, hart = 150,
 /** je Bild: die Bewegungen der Ebenen-Ansicht gehen weiter (auffächern, rücken, wachsen, vortreten); wahr: Etwas läuft noch */
 function faecherSchritt(dt: number): boolean {
   // (was die Ansicht braucht, gilt nicht mehr: zusammenschieben)
-  if (faecher.ziel > 0.5 && (!malModus || material !== 'Wachs' || !farbeMoeglich() || vierZiel > 0.5 || ansicht !== 'raum')) faecherSchliessen();
+  if (faecher.ziel > 0.5 && (!malModus || !farbeMoeglich() || vierZiel > 0.5 || vier > 0.001 || ansicht !== 'raum')) faecherSchliessen();
   const t = Math.min(dt, 1 / 30);
   let laeuft = false;
   if (faecher.f !== faecher.ziel || faecher.v !== 0) {

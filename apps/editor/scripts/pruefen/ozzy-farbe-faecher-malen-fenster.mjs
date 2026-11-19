@@ -16,6 +16,7 @@
 //   86  Keine Fehler in der Konsole.
 // Dazu, ohne Kriterium: was ein Bild samt Grafikkarte kostet, zusammen und aufgefächert, solange die Farblinien bedient werden.
 // Aufruf aus apps/editor: GPU=1 OZZY_URL=http://localhost:5215/ozzy.html node scripts/pruefen/ozzy-farbe-faecher-malen-fenster.mjs [ordner für Bilder]
+// Auf dem hellen Solid: dasselbe mit MATERIAL='helles solid' davor.
 import fs from 'node:fs';
 import { auf, mitKarte } from './ozzy-teile.mjs';
 
@@ -29,7 +30,8 @@ const ok = (name, gut, text = '') => {
 };
 const z2 = (x) => (Number.isFinite(x) ? x.toFixed(2).replace('.', ',') : '–');
 
-const t = await auf({ dichte: 1, extra: 'ohneLinie=0&material=wachs&fuellen=0' });
+const MATERIAL = process.env.MATERIAL ?? 'wachs';
+const t = await auf({ dichte: 1, extra: `ohneLinie=0&material=${encodeURIComponent(MATERIAL)}&fuellen=0` });
 const { s, O, geladen, klick, fehler } = t;
 const [cx, cy, R, k] = [720, 450, 150, 0.5523 * 150];
 await O('form', [
@@ -110,7 +112,7 @@ const kostenAuf = (await mitKarte(s, 40)).gesamt;
   const orte = await fleck(Z, 22);
   const P = await O('farbPunkte', 1);
   const weit = P ? Math.max(...P.punkte.map((p, i) => Math.hypot(p.x - orte[i][0], p.y - orte[i][1]))) : NaN;
-  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-p.png`, await s.screenshot());
+  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-${MATERIAL === 'wachs' ? '' : 'hell-'}p.png`, await s.screenshot());
   await s.keyboard.press('a');
   await s.waitForTimeout(400);
   const wahl = (await O('farbLeiste')).gewaehlt;
@@ -148,7 +150,7 @@ let Z1 = [0, 0];
   await klick(Z1[0], Z1[1]);
   await s.waitForTimeout(500);
   const z = await zahlen();
-  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-andere.png`, await s.screenshot());
+  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-${MATERIAL === 'wachs' ? '' : 'hell-'}andere.png`, await s.screenshot());
   ok('77 Eine andere Kopie antippen: Sie tritt vor; dort gezeichnet und gefüllt, liegt es auf ihrer Ebene', vorn && weit <= 1 && z === '1/2,2/2', `vorn und 5 % größer: ${vorn}; Punkte höchstens ${z2(weit)} Pixel neben dem Klick; Farblinien/Füllungen je Ebene ${z}`);
 }
 // 78: einen Punkt ziehen
@@ -199,7 +201,7 @@ let Z1 = [0, 0];
     gut = !!G1 && G.breite === 0 && G1.breite > 0 && Math.abs(lang1 - (lang + 20)) < 2.5;
     text = `Breite vorher ${z2(G.breite)}, nachher ${z2(G1?.breite ?? NaN)} Einheiten; der Faden ${z2(lang)} → ${z2(lang1)} Pixel (20 gezogen)`;
   }
-  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-weich.png`, await s.screenshot());
+  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-${MATERIAL === 'wachs' ? '' : 'hell-'}weich.png`, await s.screenshot());
   ok('79 Der Tropfen am Faden: Wegziehen macht die Kante dort weich', gut, text);
   await s.keyboard.press('Escape');
   await s.waitForTimeout(300);
@@ -264,7 +266,7 @@ let Z1 = [0, 0];
     weit = Math.max(weit, Math.hypot(q1.x - (Zg[0] + zoom * (q0.x - Zg[0])), q1.y - (Zg[1] + zoom * (q0.y - Zg[1]))));
     gross = Math.max(gross, Math.abs((q1.s * F1.kreis.r) / (q0.s * F0.kreis.r) - zoom));
   }
-  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-zoom.png`, await s.screenshot());
+  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-${MATERIAL === 'wachs' ? '' : 'hell-'}zoom.png`, await s.screenshot());
   // (gezoomt wird weiter gemalt: ein Klick mit dem Farbtropfen füllt auf der vorderen Kopie)
   await s.keyboard.press('Home');
   await s.waitForTimeout(600);
@@ -334,7 +336,7 @@ let Z1 = [0, 0];
   const erste3 = r[0].find((q) => q.id === neu)?.s ?? NaN;
   gut &&= ende.length === 3 && kopie(F3, neu)?.aktiv === true && kopie(F3, neu).rang === 2 && erste3 < 0.35 * kopie(F3, neu).s && sp < SPRUNG;
   zeilen.push(`angelegt: drei Kopien, die neue wächst von ${z2(erste3)} auf ${z2(kopie(F3, neu)?.s ?? NaN)} und steht vorn, größter Schritt je Bild ${z2(sp)}`);
-  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-drei.png`, await s.screenshot());
+  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-malen-${MATERIAL === 'wachs' ? '' : 'hell-'}drei.png`, await s.screenshot());
   // ordnen: Die mittlere Ebene nach ganz unten (der Platz zählt von oben), ihre Kopie tauscht den Platz mit der unteren
   const vor3 = ende;
   await O('farbEbene', 'ordnen', oben, 2);
@@ -381,7 +383,7 @@ let Z1 = [0, 0];
   const gleich = Math.abs(b1.zoom - blick0.zoom) < 1e-9 && Math.abs(b1.schwenkX - blick0.schwenkX) < 1e-9 && Math.abs(b1.schwenkY - blick0.schwenkY) < 1e-9;
   ok('85 Zusammengeschoben stehen Zoom und Schwenk wieder wie vor dem Auffächern', gezoomt > 1.1 && gleich, `aufgefächert gezoomt auf ${z2(gezoomt)}; danach Zoom ${z2(b1.zoom)} (vorher ${z2(blick0.zoom)}), Schwenk ${z2(b1.schwenkX)}; ${z2(b1.schwenkY)}`);
 }
-console.log(`     gemessen (1440 × 900 Gerätepunkte): ein Bild samt Grafikkarte zusammen ${z2(kostenZu)} ms, aufgefächert mit zwei Kopien ${z2(kostenAuf)} ms`);
+console.log(`     gemessen (${MATERIAL}, 1440 × 900 Gerätepunkte): ein Bild samt Grafikkarte zusammen ${z2(kostenZu)} ms, aufgefächert mit zwei Kopien ${z2(kostenAuf)} ms`);
 ok('86 Keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 await t.browser.close();
 console.log(schlecht ? `${schlecht} FEHL` : 'alles gut');

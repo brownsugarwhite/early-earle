@@ -67,7 +67,14 @@ export type GastWerte = {
    */
   ueberzug?: ((r: WebGLRenderer) => void) | null;
   ueberzugStand?: string;
+  /**
+   * Paint-Modus, Etappe 6 (die Ebenen-Ansicht, nur helles Solid): die Form mehrfach, jede Kopie an ihrem Platz im Bild (um `s`
+   * verkleinert, dann um `tx`, `ty` versetzt; Einheiten des Bilds, −1 … 1), von hinten nach vorn: Die spätere deckt die frühere.
+   * Ohne Kopien steht die Form einmal da, wie die Kamera sie sieht.
+   */
+  kopien?: readonly GastKopie[] | null;
 };
+export type GastKopie = { s: number; tx: number; ty: number };
 
 /** Grundwerte des Editors (`teststand` in `editor.ts`): so zeigt sein 3D-Fenster das Jelly */
 const JELLY: Einstellung = {
@@ -471,7 +478,9 @@ export class GastHaut {
     // steht alles (Kamera, Haut, Größe, Material), bleibt das Bild stehen
     const pe = kamera.projectionMatrix.elements;
     const me = kamera.matrixWorld.elements;
-    const stand = `${art}|${this.b}|${this.h}|${this.dpr}|${w.abstand}|${w.kante}|${pe.join(',')}|${me.join(',')}|${w.ueberzugStand ?? ''}`;
+    const kopien = !jelly && w.kopien?.length ? w.kopien : null;
+    const kopienStand = kopien ? kopien.map((k) => `${k.s},${k.tx},${k.ty}`).join(';') : '';
+    const stand = `${art}|${this.b}|${this.h}|${this.dpr}|${w.abstand}|${w.kante}|${pe.join(',')}|${me.join(',')}|${w.ueberzugStand ?? ''}|${kopienStand}`;
     if (stand === this.stand && !unruhig && this.sichtbar) return false;
     this.stand = stand;
 
@@ -567,14 +576,47 @@ export class GastHaut {
     const hh = raeumlich ? D / pe[5]! : 1 / pe[5]!;
     const mx = raeumlich ? (D * pe[8]!) / pe[0]! : -pe[12]! / pe[0]!;
     const my = raeumlich ? (D * pe[9]!) / pe[5]! : -pe[13]! / pe[5]!;
-    const ppu = Hd / (2 * hh);
-    const mass = ppu / this.dpr / (Math.min(this.b, this.h) / SICHT);
-    // das Fenster des Renderers: die Haut im Bild mit Rand (Kante, Glättung), auf ganze Gerätepunkte
-    const rand = Math.ceil((16 + 2 * KANTE_BREITE * mass) * this.dpr);
-    const X0 = Math.max(0, Math.floor(((sx0 - mx) / hw / 2 + 0.5) * Bd) - rand);
-    const X1 = Math.min(Bd, Math.ceil(((sx1 - mx) / hw / 2 + 0.5) * Bd) + rand);
-    const Y0 = Math.max(0, Math.floor(((sy0 - my) / hh / 2 + 0.5) * Hd) - rand);
-    const Y1 = Math.min(Hd, Math.ceil(((sy1 - my) / hh / 2 + 0.5) * Hd) + rand);
+    /**
+     * Ein Bild der Haut auf der Fläche: halbe Breite und Höhe des ganzen Bilds in der Welt und seine Mitte, Bildpunkte je
+     * Welteinheit, der Maßstab gegen den Editor, der Rand um die Haut (Kante, Glättung) und die Haut im Bild (Gerätepunkte)
+     */
+    const bildVon = (hwB: number, hhB: number, mxB: number, myB: number) => {
+      const ppu = Hd / (2 * hhB);
+      const mass = ppu / this.dpr / (Math.min(this.b, this.h) / SICHT);
+      const rand = Math.ceil((16 + 2 * KANTE_BREITE * mass) * this.dpr);
+      const x0 = ((sx0 - mxB) / hwB / 2 + 0.5) * Bd;
+      const x1 = ((sx1 - mxB) / hwB / 2 + 0.5) * Bd;
+      const y0 = ((sy0 - myB) / hhB / 2 + 0.5) * Hd;
+      const y1 = ((sy1 - myB) / hhB / 2 + 0.5) * Hd;
+      return { hw: hwB, hh: hhB, mx: mxB, my: myB, ppu, mass, rand, x0, x1, y0, y1 };
+    };
+    type Fenster = ReturnType<typeof bildVon> & { rect: { x: number; y: number; w: number; h: number } };
+    const fensterListe: Fenster[] = [];
+    if (!kopien) {
+      // das Fenster des Renderers: die Haut im Bild mit Rand (Kante, Glättung), auf ganze Gerätepunkte
+      const B = bildVon(hw, hh, mx, my);
+      const X0 = Math.max(0, Math.floor(B.x0) - B.rand);
+      const X1 = Math.min(Bd, Math.ceil(B.x1) + B.rand);
+      const Y0 = Math.max(0, Math.floor(B.y0) - B.rand);
+      const Y1 = Math.min(Hd, Math.ceil(B.y1) + B.rand);
+      if (X1 - X0 >= 4 && Y1 - Y0 >= 4) fensterListe.push({ ...B, rect: { x: X0, y: Y0, w: X1 - X0, h: Y1 - Y0 } });
+    } else {
+      // Je Kopie ein Bild: Ihre Abbildung (verkleinert, versetzt) ist ein größeres, verschobenes Bild der parallelen Kamera. Alle
+      // Kopien bekommen ein gleich großes Fenster (so groß, wie die größte es braucht, höchstens die Fläche): So behalten die
+      // Felder des Renderers über alle Kopien eines Bilds ihre Größe. Liegt eine Kopie am Rand, rückt ihr Fenster in die Fläche
+      // (was von ihr zu sehen ist, liegt dann weiter darin)
+      const B = kopien.map((k) => bildVon(hw / k.s, hh / k.s, mx - (k.tx * hw) / k.s, my - (k.ty * hh) / k.s));
+      const wr = Math.min(Bd, Math.max(...B.map((b) => Math.ceil(b.x1 - b.x0) + 2 * b.rand)));
+      const hr = Math.min(Hd, Math.max(...B.map((b) => Math.ceil(b.y1 - b.y0) + 2 * b.rand)));
+      if (wr >= 4 && hr >= 4)
+        for (const b of B) {
+          // (eine Kopie ganz außerhalb der Fläche braucht kein Bild)
+          if (b.x1 + b.rand < 0 || b.x0 - b.rand > Bd || b.y1 + b.rand < 0 || b.y0 - b.rand > Hd) continue;
+          const x = Math.max(0, Math.min(Bd - wr, Math.round((b.x0 + b.x1) / 2 - wr / 2)));
+          const y = Math.max(0, Math.min(Hd - hr, Math.round((b.y0 + b.y1) / 2 - hr / 2)));
+          fensterListe.push({ ...b, rect: { x, y, w: wr, h: hr } });
+        }
+    }
     r.setRenderTarget(null);
     r.setScissorTest(false);
     r.setViewport(0, 0, this.b, this.h);
@@ -584,22 +626,25 @@ export class GastHaut {
       this.sichtbar = true;
       this.leinwand.style.display = '';
     }
-    if (X1 - X0 < 4 || Y1 - Y0 < 4) return unruhig;
-    const rect = { x: X0, y: Y0, w: X1 - X0, h: Y1 - Y0 };
-    const css = { x: rect.x / this.dpr, y: rect.y / this.dpr, w: rect.w / this.dpr, h: rect.h / this.dpr };
-    this.mess.fenster = [rect.w, rect.h];
-    this.fenster = rect;
+    const vorn = fensterListe[fensterListe.length - 1];
+    if (!vorn) return unruhig;
+    this.mess.fenster = [vorn.rect.w, vorn.rect.h];
+    this.fenster = vorn.rect;
     const kam = this.kam;
     kam.position.set(cx, cy, cz);
     kam.quaternion.setFromRotationMatrix(kamera.matrixWorld);
-    kam.left = mx - hw + (rect.x / Bd) * 2 * hw;
-    kam.right = kam.left + (rect.w / Bd) * 2 * hw;
-    kam.bottom = my - hh + (rect.y / Hd) * 2 * hh;
-    kam.top = kam.bottom + (rect.h / Hd) * 2 * hh;
     const polster = Math.max(10, 0.1 * (d1 - d0));
     kam.near = Math.max(1, d0 - polster);
     kam.far = d1 + polster;
-    kam.updateProjectionMatrix();
+    /** die parallele Kamera auf ein Fenster stellen */
+    const kamStellen = (F: Fenster): void => {
+      kam.left = F.mx - F.hw + (F.rect.x / Bd) * 2 * F.hw;
+      kam.right = kam.left + (F.rect.w / Bd) * 2 * F.hw;
+      kam.bottom = F.my - F.hh + (F.rect.y / Hd) * 2 * F.hh;
+      kam.top = kam.bottom + (F.rect.h / Hd) * 2 * F.hh;
+      kam.updateProjectionMatrix();
+    };
+    kamStellen(vorn);
     kam.updateMatrixWorld(true);
 
     // ---------- was das Fenster des Editors dem Renderer mitgibt (`rendern` in `editor.ts`) ----------
@@ -648,36 +693,43 @@ export class GastHaut {
       );
     }
     const t1 = performance.now();
-    // helles Solid: zuerst die Kante um den Umriss (der Körper deckt danach alles, was innen liegt)
-    if (!jelly) {
-      r.setViewport(css.x, css.y, css.w, css.h);
-      r.setScissor(css.x, css.y, css.w, css.h);
-      r.setScissorTest(true);
-      const breit = KANTE_BREITE * this.dpr * mass;
-      // so viele Lagen im Kreis, dass der Rand zwischen zweien höchstens 0,15 Bildpunkte einfällt
-      const lagen = Math.max(12, Math.min(48, Math.ceil(Math.PI / Math.acos(Math.max(0, 1 - 0.15 / Math.max(0.2, breit))))));
-      const zug = this.randMat.uniforms.uZug!.value as Vector2;
-      for (let i = 0; i < lagen; i++) {
-        const a = (2 * Math.PI * i) / lagen;
-        zug.set((2 * breit * Math.cos(a)) / rect.w, (2 * breit * Math.sin(a)) / rect.h);
-        r.render(this.szRand, kam);
+    // (mehrere Kopien: von hinten nach vorn, jede über die vorigen; der Renderer löscht die Tiefe in seinem Fenster selbst)
+    for (const F of fensterListe) {
+      const rect = F.rect;
+      const css = { x: rect.x / this.dpr, y: rect.y / this.dpr, w: rect.w / this.dpr, h: rect.h / this.dpr };
+      if (F !== vorn || fensterListe.length > 1) kamStellen(F);
+      // helles Solid: zuerst die Kante um den Umriss (der Körper deckt danach alles, was innen liegt)
+      if (!jelly) {
+        r.setRenderTarget(null);
+        r.setViewport(css.x, css.y, css.w, css.h);
+        r.setScissor(css.x, css.y, css.w, css.h);
+        r.setScissorTest(true);
+        const breit = KANTE_BREITE * this.dpr * F.mass;
+        // so viele Lagen im Kreis, dass der Rand zwischen zweien höchstens 0,15 Bildpunkte einfällt
+        const lagen = Math.max(12, Math.min(48, Math.ceil(Math.PI / Math.acos(Math.max(0, 1 - 0.15 / Math.max(0.2, breit))))));
+        const zug = this.randMat.uniforms.uZug!.value as Vector2;
+        for (let i = 0; i < lagen; i++) {
+          const a = (2 * Math.PI * i) / lagen;
+          zug.set((2 * breit * Math.cos(a)) / rect.w, (2 * breit * Math.sin(a)) / rect.h);
+          r.render(this.szRand, kam);
+        }
       }
+      const fenster: FensterBild = {
+        rect,
+        css,
+        kam,
+        // immer von vorn (im Editor tauschen Körper und Kontur von hinten die Farben; ein Material hat keine Rückseite)
+        sigma: { A: 3.2, beta: 0, w: 1, fdot: 1, fs: [0, 0], cx: 0, cy: 0 },
+        ppu: F.ppu,
+        mass: F.mass,
+        kamAbstand: D,
+        blick: [bx, by, bz],
+        griffStaebe: [],
+        griffBoegen: [],
+        art: jelly ? 'jelly' : 'logo',
+      };
+      bild.zeichne(fenster);
     }
-    const fenster: FensterBild = {
-      rect,
-      css,
-      kam,
-      // immer von vorn (im Editor tauschen Körper und Kontur von hinten die Farben; ein Material hat keine Rückseite)
-      sigma: { A: 3.2, beta: 0, w: 1, fdot: 1, fs: [0, 0], cx: 0, cy: 0 },
-      ppu,
-      mass,
-      kamAbstand: D,
-      blick: [bx, by, bz],
-      griffStaebe: [],
-      griffBoegen: [],
-      art: jelly ? 'jelly' : 'logo',
-    };
-    bild.zeichne(fenster);
     r.setScissorTest(false);
     if (w.ueberzug) {
       r.setRenderTarget(null);

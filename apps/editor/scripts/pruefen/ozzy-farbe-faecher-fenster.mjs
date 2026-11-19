@@ -9,8 +9,10 @@
 //   73  Ins Leere ziehen dreht alle Kopien zugleich; jede bleibt an ihrem Platz und gleich groß.
 //   74  Eine Kopie antippen: An ihrer Ebene wird gemalt. Esc schiebt die Kopien zusammen.
 //   75  Keine Fehler in der Konsole.
-// Dazu, ohne Kriterium: was ein Bild samt Grafikkarte kostet, zusammen und aufgefächert.
+// Dazu, ohne Kriterium: was ein Bild samt Grafikkarte kostet, zusammen und aufgefächert (auf dem hellen Solid: ein Bild seines
+// Renderers, während gedreht wird; in Ruhe zeichnet er nicht neu).
 // Aufruf aus apps/editor: GPU=1 OZZY_URL=http://localhost:5215/ozzy.html node scripts/pruefen/ozzy-farbe-faecher-fenster.mjs [ordner für Bilder]
+// Auf dem hellen Solid: dasselbe mit MATERIAL='helles solid' davor.
 import fs from 'node:fs';
 import { auf, mitKarte } from './ozzy-teile.mjs';
 
@@ -24,7 +26,9 @@ const ok = (name, gut, text = '') => {
 };
 const z2 = (x) => (Number.isFinite(x) ? x.toFixed(2).replace('.', ',') : '–');
 
-const t = await auf({ dichte: 1, extra: 'ohneLinie=0&material=wachs&fuellen=0' });
+const MATERIAL = process.env.MATERIAL ?? 'wachs';
+const HELL = MATERIAL !== 'wachs';
+const t = await auf({ dichte: 1, extra: `ohneLinie=0&material=${encodeURIComponent(MATERIAL)}&fuellen=0` });
 const { s, O, geladen, klick, fehler } = t;
 const [cx, cy, R, k] = [720, 450, 150, 0.5523 * 150];
 await O('form', [
@@ -70,31 +74,59 @@ await O('farbFuellen', M[0], M[1], ROT);
 await s.waitForTimeout(400);
 if ((await O('farbe')).ebenen.map((e) => `${e.linien}/${e.fuellungen}`).join() !== '0/1,1/1') throw new Error(`Vorbereitung: ${JSON.stringify((await O('farbe')).ebenen)}`);
 
-/** ein Bild rechnen und an den Stellen (CSS-Pixel) lesen, was dort steht: 'rot', 'blau' oder 'anderes' (Wachs, Papier) */
-const farbe = (punkte) =>
-  s.evaluate((punkte) => {
+/**
+ * An den Stellen des Bilds (CSS-Pixel) lesen, was dort steht: 'rot', 'blau' oder 'anderes' (der Grund, Papier). Aus einem
+ * Bildschirmfoto: Das helle Solid liegt auf einer eigenen Fläche über dem Raum.
+ */
+const farbe = async (punkte) => {
+  await s.mouse.move(1380, 80);
+  await s.waitForTimeout(350);
+  const png = (await s.screenshot()).toString('base64');
+  return s.evaluate(
+    async ({ png, punkte }) => {
+      const b = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
+      const c = new OffscreenCanvas(b.width, b.height);
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(b, 0, 0);
+      const f = b.width / window.innerWidth;
+      return punkte.map(([x, y]) => {
+        const d = g.getImageData(Math.round(x * f), Math.round(y * f), 1, 1).data;
+        const [rr, gg, bb] = [d[0], d[1], d[2]];
+        return rr > gg + 60 && rr > bb + 60 ? 'rot' : bb > gg + 60 && bb > rr + 60 ? 'blau' : 'anderes';
+      });
+    },
+    { png, punkte },
+  );
+};
+/** was ein Bild kostet (ms): auf Wachs samt Grafikkarte; auf dem hellen Solid ein Bild seines Renderers, während gedreht wird */
+const kostenJetzt = async () => {
+  if (!HELL) return (await mitKarte(s, 40)).gesamt;
+  return s.evaluate(() => {
     const o = window.__ozzy;
+    o.gast(true);
     o.film(true);
+    const b = o.blickSetzen({});
+    const z = [];
+    for (let i = 0; i < 30; i++) {
+      o.blickSetzen({ gier: b.gier + 0.002 * (i + 1) });
+      o.bild(1 / 60);
+      const m = o.gast();
+      z.push(m.verzerren + m.zeichnen);
+    }
+    o.blickSetzen({ gier: b.gier });
     o.bild(1 / 60);
-    const haut = document.getElementById('haut');
-    const c = new OffscreenCanvas(haut.width, haut.height);
-    const g = c.getContext('2d', { willReadFrequently: true });
-    g.drawImage(haut, 0, 0);
     o.film(false);
-    const f = haut.width / window.innerWidth;
-    return punkte.map(([x, y]) => {
-      const d = g.getImageData(Math.round(x * f), Math.round(y * f), 1, 1).data;
-      const [rr, gg, bb] = [d[0], d[1], d[2]];
-      return rr > gg + 60 && rr > bb + 60 ? 'rot' : bb > gg + 60 && bb > rr + 60 ? 'blau' : 'anderes';
-    });
-  }, punkte);
+    o.gast(false);
+    return z.sort((p, q) => p - q)[15];
+  });
+};
 const AUS = { x: 380, y: 200, width: 700, height: 520 };
 const bilder = {};
 const schirm = async (name) => {
   await s.mouse.move(1380, 80);
   await s.waitForTimeout(350);
   bilder[name] = (await s.screenshot({ clip: AUS })).toString('base64');
-  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-${name}.png`, Buffer.from(bilder[name], 'base64'));
+  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-${HELL ? 'hell-' : ''}${name}.png`, Buffer.from(bilder[name], 'base64'));
 };
 const unterschied = (a, b) =>
   s.evaluate(
@@ -126,7 +158,7 @@ await O('malen', false);
 await schirm('vorher');
 await O('malen', true);
 await s.waitForTimeout(400);
-const kostenZu = (await mitKarte(s, 40)).gesamt;
+const kostenZu = await kostenJetzt();
 const zeilen71 = [];
 const zeilen72 = [];
 let gut71 = true;
@@ -154,8 +186,8 @@ for (const art of ['neben', 'schraeg']) {
   // (die Kopie der Ebene, an der gemalt wird, steht vorn und 5 % größer: hier die obere)
   gut72 &&= lage && Math.abs(B.s / A.s - 1.05) < 1e-6 && A.s <= 1 && B.rang === 1 && A.rang === 0;
   zeilen72.push(`${art}: Maßstab ${z2(A.s)}, die obere Kopie ${z2(dx / d)} Durchmesser weiter rechts und ${z2(dy / d)} tiefer`);
-  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-${art}.png`, await s.screenshot());
-  kosten[art] = (await mitKarte(s, 40)).gesamt;
+  if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-${HELL ? 'hell-' : ''}${art}.png`, await s.screenshot());
+  kosten[art] = await kostenJetzt();
   // 73: drehen, jede Kopie bleibt an ihrem Platz
   await s.mouse.move(1250, 760, { steps: 4 });
   await s.waitForTimeout(250);
@@ -211,7 +243,7 @@ ok('70 Zusammengeschoben steht genau das Bild von vorher, nach dem Auffächern i
   const zu = !(await O('faecher')).offen;
   ok('74 Eine Kopie antippen: An ihrer Ebene wird gemalt. Esc schiebt die Kopien zusammen', a === unten && b === oben && c === oben && fuellungen === '1,1' && zu, `untere Kopie angetippt: aktiv ${a === unten ? 'die untere' : a}; obere: ${b === oben ? 'die obere' : b}; ins Leere: ${c === oben ? 'bleibt' : c}; Füllungen ${fuellungen}; nach Esc zu: ${zu}`);
 }
-console.log(`     gemessen (1440 × 900 Gerätepunkte): ein Bild samt Grafikkarte zusammen ${z2(kostenZu)} ms, aufgefächert mit zwei Kopien nebeneinander ${z2(kosten.neben)} ms, schräg versetzt ${z2(kosten.schraeg)} ms`);
+console.log(`     gemessen (${MATERIAL}, 1440 × 900 Gerätepunkte): ein Bild samt Grafikkarte zusammen ${z2(kostenZu)} ms, aufgefächert mit zwei Kopien nebeneinander ${z2(kosten.neben)} ms, schräg versetzt ${z2(kosten.schraeg)} ms`);
 ok('75 Keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 await t.browser.close();
 console.log(schlecht ? `${schlecht} FEHL` : 'alles gut');
