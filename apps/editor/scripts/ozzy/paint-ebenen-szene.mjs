@@ -100,6 +100,74 @@ export async function ebeneEins({ s, O }, weit = 13) {
   return { je };
 }
 
+/** Ebene 2: die Punkte, gelb gefüllt (über dem Fleck, über seinem Verlauf und daneben auf dem Blau). Danach gilt A. */
+export async function ebeneZwei({ s, O }) {
+  const { fleck } = maus(s);
+  const id = await O('farbEbene', 'neu');
+  await s.waitForTimeout(300);
+  await s.keyboard.press('p');
+  await s.waitForTimeout(400);
+  for (const [x, y] of PUNKTE) await fleck(x, y, PUNKT_R);
+  await s.keyboard.press('a');
+  await s.waitForTimeout(400);
+  for (const [x, y] of PUNKTE) await O('farbFuellen', x, y, GELB);
+  await s.waitForTimeout(300);
+  return id;
+}
+
+/** der Fleck auf Ebene 3 (Etappe 6): orange, mit weicher Kante; wo er liegt, wird ausprobiert (links neben dem hellen Fleck) */
+export const WANGE = { r: 22, wo: [[240, 300], [228, 312], [250, 306], [470, 330], [452, 326]] };
+export const ORANGE = [0xf0 / 255, 0x8a / 255, 0x3c / 255];
+/**
+ * Ebene 3: ein oranger Fleck mit weicher Kante (`weit`: Pixel im Bild zu jeder Seite). Er liegt an der ersten Stelle aus `WANGE.wo`,
+ * an der er schließt (über eine Falte oder einen Überhang gezeichnet liefe die Füllung über die ganze Form: Dann steht das Orange
+ * auch mitten im hellen Fleck, beides wird zurückgenommen und die nächste Stelle versucht). Danach gilt A. Zurück: die Kennung der
+ * Ebene und die Stelle.
+ */
+export async function ebeneDrei({ s, O }, weit = 7) {
+  const { fleck } = maus(s);
+  const id = await O('farbEbene', 'neu');
+  await s.waitForTimeout(300);
+  const r = WANGE.r;
+  let wo = null;
+  for (const [x, y] of WANGE.wo) {
+    await s.keyboard.press('p');
+    await s.waitForTimeout(400);
+    let frei = true;
+    for (let i = 0; i < 12 && frei; i++) frei = await O('farbOrtFrei', x + 1.2 * r * Math.cos((Math.PI * i) / 6), y + 1.35 * r * Math.sin((Math.PI * i) / 6));
+    if (frei) await fleck(x, y, r);
+    await s.keyboard.press('a');
+    await s.waitForTimeout(400);
+    if (!frei) continue;
+    const linien = (await O('farbe')).linien;
+    if (linien === 1) {
+      await O('farbFuellen', x, y, ORANGE);
+      await s.waitForTimeout(250);
+      // (was mitten im hellen Fleck zu sehen ist: Steht dort das Orange, ist die Füllung ausgelaufen)
+      const ausgelaufen = String(await O('farbUnter', FLECK.x, FLECK.y)).toLowerCase() === '#f08a3c';
+      if (!ausgelaufen) {
+        wo = [x, y];
+        break;
+      }
+      await s.keyboard.press('Meta+z');
+      await s.waitForTimeout(350);
+    }
+    for (let i = 0; i < linien; i++) {
+      await s.keyboard.press('Meta+z');
+      await s.waitForTimeout(350);
+    }
+  }
+  if (!wo) throw new Error('Vorbereitung: An keiner Stelle schließt der Fleck der dritten Ebene');
+  await s.keyboard.press('Meta+a');
+  await s.waitForTimeout(300);
+  const je = (await O('farbWeichGriffe'))[0]?.jeEinheit ?? 1;
+  await s.keyboard.press('Escape');
+  await s.waitForTimeout(200);
+  await O('farbBreite', 0, -1, weit / je);
+  await s.waitForTimeout(300);
+  return { id, wo };
+}
+
 /** die Mitte der Linse einer Ebene im Stapel, die ihres Punkts und die des Plus; dazu die Höhe einer Zeile (CSS-Pixel) */
 export const imStapel = (s, id) =>
   s.evaluate((id) => {

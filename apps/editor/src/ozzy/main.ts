@@ -4108,6 +4108,8 @@ function bild(dt: number): boolean {
   const tFarbe = performance.now();
   // (Etappe 3: Eine Füllung, die einläuft, braucht jedes Bild)
   farbWerk.fliessen(dt);
+  // (Etappe 6: das Auffächern der Ebenen)
+  if (faecherSchritt(dt)) aktiv = true;
   if (zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && farbWerk.schritt(hautJetzt())) farbBild++;
   if (farbWerk.fliesst) aktiv = true;
   // (nicht `farbAn`: So heißt der Schalter, ob die Farblinien gerade bedient werden; er gilt weiter unten für Tintenlinie und Verdeckung)
@@ -4168,25 +4170,42 @@ function bild(dt: number): boolean {
         feste.netzSetzen(festN, wicklungVon(festN));
         festeStand = { netz: festN, version: werkHaut.version };
       }
-      feste.zeichnen(kam.aktiv, material, {
-        schnitt: schnittJetzt,
-        deckung: 1 - 0.7 * roentgen,
-        spiegelSchnitt: spiegelSchnittJetzt(),
-        flach: !!facetten,
-        // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
-        danach:
-          farbeDa && material === 'Wachs'
-            ? (r, k) => {
-                const t0 = performance.now();
-                farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt, verdeckt: zeigN });
-                farbKostenBild += performance.now() - t0;
-              }
-            : null,
-      });
+      /** die Haut mit dem Material und darauf die Farbe (`nur`: Etappe 6, eine Kopie der Ebenen-Ansicht mit ihren Ebenen) */
+      const festArt = material;
+      const festZeichnen = (nur: ReadonlyMap<number, number> | null): void =>
+        feste.zeichnen(kam.aktiv, festArt, {
+          schnitt: schnittJetzt,
+          deckung: 1 - 0.7 * roentgen,
+          spiegelSchnitt: spiegelSchnittJetzt(),
+          flach: !!facetten,
+          // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
+          danach:
+            farbeDa && festArt === 'Wachs'
+              ? (r, k) => {
+                  const t0 = performance.now();
+                  farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt, verdeckt: zeigN, nur });
+                  farbKostenBild += performance.now() - t0;
+                }
+              : null,
+        });
+      // Etappe 6: aufgefächert je Ebene eine Kopie, von unten nach oben; jede mit der Projektion an ihrem Platz im Bild
+      faecherBild = farbeDa && material === 'Wachs' && !facetten ? faecherRechnen() : [];
+      if (faecherBild.length) {
+        const c = kam.aktiv;
+        const [p0, p0i] = [c.projectionMatrix.clone(), c.projectionMatrixInverse.clone()];
+        for (const q of faecherBild) {
+          c.projectionMatrix.copy(p0).premultiply(new Matrix4().set(q.s, 0, 0, q.tx, 0, q.s, 0, q.ty, 0, 0, 1, 0, 0, 0, 0, 1));
+          c.projectionMatrixInverse.copy(c.projectionMatrix).invert();
+          festZeichnen(q.nur);
+        }
+        c.projectionMatrix.copy(p0);
+        c.projectionMatrixInverse.copy(p0i);
+      } else festZeichnen(null);
     }
   } else {
     gast.aus();
     gruen?.aus();
+    faecherBild = [];
     haut.zeichnen(kam.aktiv, w, []);
   }
   mess.teile[3] = performance.now() - tz;
@@ -4300,7 +4319,7 @@ function bild(dt: number): boolean {
   leiste.malZeigen(malt);
   farbLeiste.zeigen(malt);
   // Etappe 5: der Stapel der Ebenen am Rand
-  ebenenStapel.zeigen(malt, malt ? farbWerk.ebenenStand() : [], farbWerk.bemalung.ebenen.length >= EBENEN_HOECHSTENS);
+  ebenenStapel.zeigen(malt, malt ? farbWerk.ebenenStand() : [], farbWerk.bemalung.ebenen.length >= EBENEN_HOECHSTENS, faecher.ziel > 0.5);
   tastenStand();
   // Text
   // (auf dem Blatt eines weiteren Objekts stehen die vorhandenen blass: Dort schweigt der Schriftzug)
@@ -4309,7 +4328,9 @@ function bild(dt: number): boolean {
     zustand === 'ruhe' && werkGezeigt && roentgen > 0.5
       ? 'Röntgen: auch Punkte und Linien hinter der Form greifen · ⌥ loslassen: zurück'
       : zustand === 'ruhe' && werkGezeigt && malModus
-      ? bearbeiten.stift
+      ? faecherOffen()
+        ? 'Ebenen-Ansicht (Probebau) · je Ebene eine Kopie · ziehen dreht alle zugleich · eine Kopie antippen: Dort malst du · der Knopf über dem Stapel oder Esc: wieder eine Form'
+        : bearbeiten.stift
         ? 'Paint-Modus · P: auf die Form klicken setzt Punkte, ziehen rundet · auf dem ersten Punkt schließen · ↩ beendet offen · ⌫ letzter Punkt · Esc'
         : raumWerkzeug === 'tropfen'
         ? 'Farbtropfen · Klick auf die Form füllt bis an die Farblinien · ⌥ + Klick nimmt die Farbe dort auf · Farben: die Tropfen unter der Leiste, auch zum Ziehen auf die Form · A: zurück zu den Punkten'
@@ -5371,7 +5392,8 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // Etappe 2: A und P gehören im Paint-Modus den Farblinien (im Raum und eingerastet); in den Vier Ansichten zeichnet P wie in
   // Etappe 1 auf dem Blatt
   // (Etappe 3: Mit Farbtropfen und Pipette stehen die Farblinien wie mit A, nur hängt nichts am Zeiger)
-  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p' || raumWerkzeug === 'lasso' || farbWerkzeug());
+  // (Etappe 6, Probebau: aufgefächert werden die Farblinien nicht bedient; die der aktiven Ebene stehen als Linie auf ihrer Kopie)
+  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && !faecherOffen() && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p' || raumWerkzeug === 'lasso' || farbWerkzeug());
   bearbeitenAn = stabil && !objektModus() && (!malModus || farbAn || raumWerkzeug === 'p' || strichWerkzeug());
   modellSetzen(farbAn);
   // P in der Leiste, sobald das Werk bedient wird
@@ -6724,6 +6746,13 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // Etappe 6 (Probebau): aufgefächert dreht das Ziehen alle Kopien zugleich; ohne Weg losgelassen ist die Kopie dort gemeint
+  if (faecherOffen() && werkGezeigt) {
+    faecherDruck = { x, y };
+    drehenBeginnen(x, y, e.timeStamp);
+    anstossen();
+    return;
+  }
   // B1 (17.11.): das Ziel für genau diesen Ort bestimmen, bevor gefragt wird, ob etwas am Zeiger hängt. Bis dahin galt, was seit dem
   // Bild davor an ihm hing: Ein Tipp mit Stift oder Finger (kein Zeigen davor) und ein rascher Klick griffen oft nichts. Nicht mit dem
   // Lasso (es greift nichts, es umfährt)
@@ -7025,6 +7054,15 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
+  // Etappe 6: aufgefächert ohne Weg losgelassen: An der Ebene der Kopie unter dem Zeiger wird gemalt
+  if (faecherDruck) {
+    const d = faecherDruck;
+    faecherDruck = null;
+    if (Math.hypot(zeiger.x - d.x, zeiger.y - d.y) < FELD_KLICK_WEG) {
+      const id = faecherKopieBei(d.x, d.y);
+      if (id !== null) ebeneWaehlen(id);
+    }
+  }
   // Objekte (V): ein Klick ohne Weg wählt die Form (auf ihr) oder wählt sie ab (daneben)
   if (objektDruck) {
     const d = objektDruck;
@@ -7202,6 +7240,11 @@ function stiftImRaum(an: boolean): void {
 function werkzeugImRaum(w: LeistenWerkzeug): void {
   // (Farbtropfen und Pipette gibt es nur im Paint-Modus)
   if ((w === 'tropfen' || w === 'pipette') && !malModus) w = 'auswahl';
+  // (Etappe 6, Probebau: Aufgefächert wird gedreht und gewählt; gemalt wird, sobald die Form wieder zusammen ist)
+  if (faecherOffen() && w !== 'auswahl') {
+    werk.G.meldung = 'Ebenen-Ansicht (Probebau): Malen auf den Kopien kommt mit dem Bau · der Knopf über dem Stapel oder Esc schiebt sie zusammen';
+    return;
+  }
   raumWerkzeug = w;
   bearbeiten.stiftSchalten(w === 'p');
   if (strichWerkzeug() || w === 'objekt' || farbWerkzeug()) bearbeiten.zeigerWeg();
@@ -7253,6 +7296,12 @@ window.addEventListener('keydown', (e) => {
   bearbeiten.umschalt = e.shiftKey;
   bearbeiten.kippen = e.shiftKey;
   const k = e.key;
+  // Etappe 6: aufgefächert schiebt Esc die Kopien wieder zu einer Form zusammen
+  if (k === 'Escape' && faecher.ziel > 0.5) {
+    e.preventDefault();
+    faecherSetzen(false);
+    return;
+  }
   // Objekte (V): G, S oder R am Objekt läuft: Esc nimmt zurück, ↩ beendet, X, Y, Z halten das Verschieben längs einer Achse
   if (objektZug) {
     e.preventDefault();
@@ -7684,6 +7733,148 @@ const farbLeiste = new FarbLeiste(document.body, $<HTMLInputElement>('farbe-farb
 });
 farbWahl = farbLeiste.farbe;
 leiste.farbeZeigen(farbCss(farbWahl));
+// ---------- Paint-Modus, Etappe 6: die Ebenen-Ansicht (Probebau: zeichnen, zusammen drehen, eine Kopie antippen) ----------
+
+/** wie die Kopien stehen: nebeneinander in einer Reihe, oder schräg versetzt wie aufgefächerte Karten (die obere Ebene vorn) */
+type FaecherArt = 'neben' | 'schraeg';
+/**
+ * Die Form fächert auf: je Ebene eine Kopie, dieselbe Haut mehrfach gezeichnet, jede an ihrem Platz im Bild (wie der Raum im Feld
+ * der Vier Ansichten: die Projektion verkleinert und verschoben). `ziel`: 1 aufgefächert, 0 zusammen; `f`: wo die Bewegung gerade
+ * ist (sie federt ein wenig über das Ziel), `v`: ihr Tempo.
+ */
+const faecher: { art: FaecherArt; ziel: number; f: number; v: number } = { art: params.get('faecher') === 'schraeg' ? 'schraeg' : 'neben', ziel: 0, f: 0, v: 0 };
+/**
+ * Eine Kopie: ihre Ebene; ihr Bild im Bild (um den Faktor `s` verkleinert, dann um `tx`, `ty` versetzt; Einheiten des Bilds, −1 … 1);
+ * ihre Mitte im Bild (`x`, `y`, CSS-Pixel); und welche Ebenen sie wie deckend zeigt (ihre eigene ganz; die darunter nur, solange die Kopien noch beieinander stehen: So ist
+ * der Anfang der Bewegung genau das Bild von vorher)
+ */
+type FaecherKopie = { id: number; s: number; tx: number; ty: number; nur: Map<number, number>; x: number; y: number };
+/** die Kopien des letzten Bilds, von unten nach oben (leer: nicht aufgefächert) */
+let faecherBild: FaecherKopie[] = [];
+/** aufgefächert auf die Zeichenfläche gedrückt (ohne Weg losgelassen: die Kopie dort ist gemeint) */
+let faecherDruck: { x: number; y: number } | null = null;
+const faecherOffen = (): boolean => faecher.ziel > 0.5 || faecher.f > 0.002;
+/** auffächern oder zusammenschieben (`art`: die Anordnung von jetzt an). Zurück: Gilt es? */
+function faecherSetzen(an: boolean, art?: FaecherArt): boolean {
+  if (art) faecher.art = art;
+  if (an) {
+    if (!malModus || zustand !== 'ruhe' || !werkGezeigt) return false;
+    if (material !== 'Wachs') {
+      werk.G.meldung = 'Die Ebenen-Ansicht gibt es im Probebau nur auf Wachs (Taste M)';
+      return false;
+    }
+    if (farbWerk.gezeichneteEbenen().length < 2) {
+      werk.G.meldung = 'Ebenen-Ansicht: erst mit zwei Ebenen, auf denen etwas liegt';
+      return false;
+    }
+    if (raumWerkzeug !== 'auswahl') werkzeugImRaum('auswahl');
+    bearbeiten.auswahlLeeren();
+    weichZug = null;
+  }
+  faecher.ziel = an ? 1 : 0;
+  werk.G.meldung = an ? 'Ebenen-Ansicht: je Ebene eine Kopie · ziehen dreht alle zugleich · eine Kopie antippen: Dort malst du' : 'Die Ebenen liegen wieder übereinander';
+  farbBild++;
+  anstossen();
+  return true;
+}
+/** je Bild: die Bewegung des Auffächerns geht weiter (eine Feder mit wenig Überschwingen); wahr: Sie läuft noch */
+function faecherSchritt(dt: number): boolean {
+  // (was die Ansicht braucht, gilt nicht mehr: zusammenschieben)
+  if (faecher.ziel > 0.5 && (!malModus || material !== 'Wachs' || zustand !== 'ruhe' || !werkGezeigt)) faecher.ziel = 0;
+  if (faecher.f === faecher.ziel && faecher.v === 0) return false;
+  const t = Math.min(dt, 1 / 30);
+  const hart = 150;
+  faecher.v += (hart * (faecher.ziel - faecher.f) - 2 * Math.sqrt(hart) * 0.8 * faecher.v) * t;
+  faecher.f += faecher.v * t;
+  if (Math.abs(faecher.ziel - faecher.f) < 4e-4 && Math.abs(faecher.v) < 4e-3) {
+    faecher.f = faecher.ziel;
+    faecher.v = 0;
+  }
+  farbBild++;
+  return true;
+}
+/** der Kreis um die Form im Raum (Welt): ihre Mitte und der Abstand ihres fernsten Punkts; gemerkt, solange die Haut dieselbe ist */
+let faecherKugel: { haut: object; version: number; m: Vector3; r: number } | null = null;
+/**
+ * Der Kreis um die Form im Bild: seine Mitte (Einheiten des Bilds, −1 … 1) und sein Halbmesser in CSS-Pixeln. Er hängt nicht davon
+ * ab, wie die Form gedreht ist: So bleibt jede Kopie beim Drehen an ihrem Platz und gleich groß.
+ */
+function faecherKreis(): { cx: number; cy: number; r: number } {
+  const h = hautJetzt();
+  if (!faecherKugel || faecherKugel.haut !== h.haut || faecherKugel.version !== h.version) {
+    const P = h.haut.pos;
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < P.length; i += 3)
+      for (let a = 0; a < 3; a++) {
+        lo[a] = Math.min(lo[a]!, P[i + a]!);
+        hi[a] = Math.max(hi[a]!, P[i + a]!);
+      }
+    // (eine gespiegelte Form liegt zu beiden Seiten der Mitte)
+    const mz = h.gespiegelt ? 0 : (lo[2]! + hi[2]!) / 2;
+    const m = [(lo[0]! + hi[0]!) / 2, (lo[1]! + hi[1]!) / 2, mz];
+    let r2 = 0;
+    for (let i = 0; i < P.length; i += 3) r2 = Math.max(r2, (P[i]! - m[0]!) ** 2 + (P[i + 1]! - m[1]!) ** 2 + (Math.abs(P[i + 2]! - m[2]!) + 0) ** 2);
+    faecherKugel = { haut: h.haut, version: h.version, m: new Vector3(m[0]! / h.f + h.mitte.x, m[1]! / h.f + h.mitte.y, m[2]! / h.f), r: Math.sqrt(r2) / h.f };
+  }
+  const K = faecherKugel;
+  const vp = vpJetzt();
+  const c = new Vector4(K.m.x, K.m.y, K.m.z, 1).applyMatrix4(vp);
+  const quer = new Vector3().setFromMatrixColumn(kam.aktiv.matrixWorld, 0).multiplyScalar(K.r);
+  const e = new Vector4(K.m.x + quer.x, K.m.y + quer.y, K.m.z + quer.z, 1).applyMatrix4(vp);
+  const [cx, cy] = [c.x / c.w, c.y / c.w];
+  return { cx, cy, r: (Math.abs(e.x / e.w - cx) / 2) * W };
+}
+/**
+ * Die Kopien für dieses Bild, von unten nach oben. Sie teilen sich den Platz links vom Stapel und unter der Leiste. Nebeneinander:
+ * in einer Reihe, so weit verkleinert, dass alle hineinpassen. Schräg versetzt: jede höhere Ebene um den halben Durchmesser nach
+ * rechts und ein gutes Viertel nach unten, vor den anderen (wie aufgefächerte Karten); dafür größer.
+ */
+function faecherRechnen(): FaecherKopie[] {
+  const ids = farbWerk.gezeichneteEbenen();
+  const N = ids.length;
+  const f = faecher.f;
+  if (N < 2 || Math.abs(f) < 0.002) return [];
+  const { cx, cy, r } = faecherKreis();
+  const d = Math.max(1, 2 * r);
+  // der Platz im Bild (CSS-Pixel): links bis fast an den Rand, rechts bleibt der Stapel frei; in der Höhe unter Leiste und Farben
+  const [links, rechts, oben, unten] = [0.02 * W, W - 88, 84, H - 34];
+  const [breit, hoch] = [rechts - links, unten - oben];
+  const neben = faecher.art === 'neben';
+  // (wie weit die Kopien auseinander stehen, in Durchmessern; die Form füllt ihren Kreis nie ganz: Sie dürfen sich ein wenig schneiden)
+  const [ux, uy] = neben ? [0.97, 0] : [0.5, 0.27];
+  const s1 = Math.min(1, breit / (d * (1 + ux * (N - 1))), hoch / (d * ((neben ? 0.8 : 0.62) + uy * (N - 1))));
+  // (die Ebenen darunter verblassen auf einer Kopie, während sie sich löst)
+  const u = Math.min(1, Math.max(0, f / 0.6));
+  const fremd = 1 - u * u * (3 - 2 * u);
+  // die Mitte der Reihe im Bild (Einheiten des Bilds)
+  const mx = ((links + rechts) / W) * 1 - 1;
+  const my = 1 - (oben + unten) / H;
+  return ids.map((id, k) => {
+    const platz = k - (N - 1) / 2;
+    const zx = mx + (platz * s1 * d * ux * 2) / W;
+    const zy = (neben ? cy * 0.5 + my * 0.5 : my) - (platz * s1 * d * uy * 2) / H;
+    const sk = 1 + (s1 - 1) * f;
+    const [px, py] = [cx + (zx - cx) * f, cy + (zy - cy) * f];
+    const nur = new Map<number, number>();
+    for (let j = 0; j <= k; j++) nur.set(ids[j]!, j === k ? 1 : fremd);
+    return { id, s: sk, tx: px - sk * cx, ty: py - sk * cy, nur, x: ((px + 1) / 2) * W, y: ((1 - py) / 2) * H };
+  });
+}
+/** die Kopie unter einem Ort des Bilds (CSS-Pixel): die vorderste, deren Form dort liegt; ihre Ebene, oder null */
+function faecherKopieBei(x: number, y: number): number | null {
+  const h = hautJetzt();
+  for (let k = faecherBild.length - 1; k >= 0; k--) {
+    const q = faecherBild[k]!;
+    // der Ort im Bild der Form, bevor sie verkleinert und versetzt wurde
+    const nx = ((x / W) * 2 - 1 - q.tx) / q.s;
+    const ny = (1 - (y / H) * 2 - q.ty) / q.s;
+    const { o, d } = kam.strahl(((nx + 1) / 2) * W, ((1 - ny) / 2) * H, W, H);
+    if (farbWerk.ortUnterStrahl(h, [o.x, o.y, o.z], [d.x, d.y, d.z])) return q.id;
+  }
+  return null;
+}
+
 // ---------- Paint-Modus, Etappe 5: Ebenen (der Stapel am Rand, `farbe/ebenenStapel.ts`) ----------
 
 /** der Name einer Ebene (für Meldungen) */
@@ -7755,6 +7946,8 @@ const ebenenStapel = new EbenenStapel(document.body, {
   },
   loeschen: (id) => void ebeneLoeschen(id),
   muell: (x, y) => document.elementFromPoint(x, y)?.closest('button') === leiste.muellKnopf,
+  // Etappe 6 (Probebau): auffächern und zusammenschieben; mit ⇧ die andere Anordnung
+  faecher: (andere) => void faecherSetzen(andere ? true : faecher.ziel < 0.5, andere ? (faecher.art === 'neben' ? 'schraeg' : 'neben') : undefined),
 });
 // ---------- Paint-Modus, Etappe 4: weiche Kanten (Fassung 1: der Tropfen am Faden) ----------
 
@@ -9184,6 +9377,16 @@ const haken = {
     anzeige: { ...farbWerk.anzeige.stand },
     abgeleitet: farbWerk.abgeleitet,
   }),
+  /**
+   * Etappe 6 (Probebau): die Ebenen-Ansicht auf- oder zuschieben (`an`), mit einer Anordnung (`neben`, `schraeg`); ohne Angabe nur
+   * lesen. Zurück: der Stand, der Kreis um die Form und die Kopien im Bild (Mitte in CSS-Pixeln, Maßstab), von unten nach oben
+   */
+  faecher: (an?: boolean, art?: 'neben' | 'schraeg'): { offen: boolean; art: string; f: number; kreis: { x: number; y: number; r: number }; kopien: { id: number; x: number; y: number; s: number }[] } => {
+    if (an !== undefined) faecherSetzen(an, art);
+    // (der Kreis um die Form, wie sie zusammen steht: Mitte und Halbmesser in CSS-Pixeln)
+    const k = faecherKreis();
+    return { offen: faecher.ziel > 0.5, art: faecher.art, f: faecher.f, kreis: { x: ((k.cx + 1) / 2) * W, y: ((1 - k.cy) / 2) * H, r: k.r }, kopien: faecherBild.map((q) => ({ id: q.id, x: q.x, y: q.y, s: q.s })) };
+  },
   /** Etappe 5, für Messungen: auf Wachs mehrere Ebenen sammeln (wahr, so ist es gebaut) oder jede für sich überlagern */
   farbSammeln: (an: boolean): boolean => {
     farbWerk.anzeige.wachsOhneSammeln = !an;

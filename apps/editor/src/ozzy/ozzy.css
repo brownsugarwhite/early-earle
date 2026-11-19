@@ -594,6 +594,46 @@ body.wende-an #hinweis {
   background: transparent;
   border-color: var(--leise);
 }
+/* Etappe 6: der Knopf über dem Plus, der die Form auffächert (drei schräg versetzte Linsen); aufgefächert stehen sie weiter
+   auseinander und sind gefüllt */
+#ebenen .faecher {
+  width: 48px;
+  height: 24px;
+  margin-right: 17px;
+  margin-bottom: 4px;
+  display: grid;
+  align-items: center;
+  justify-items: end;
+}
+#ebenen .faecher svg {
+  width: 30px;
+  height: 18px;
+  overflow: visible;
+}
+#ebenen .faecher ellipse {
+  fill: var(--papier);
+  stroke: var(--leise);
+  stroke-width: 0.75;
+  transition:
+    transform 380ms var(--feder),
+    stroke 160ms ease,
+    fill 160ms ease;
+}
+#ebenen .faecher:hover ellipse {
+  stroke: var(--tinte);
+}
+#ebenen .faecher:hover ellipse:first-child,
+#ebenen .faecher[aria-pressed='true'] ellipse:first-child {
+  transform: translate(-2.5px, -1.5px);
+}
+#ebenen .faecher:hover ellipse:last-child,
+#ebenen .faecher[aria-pressed='true'] ellipse:last-child {
+  transform: translate(2.5px, 1.5px);
+}
+#ebenen .faecher[aria-pressed='true'] ellipse {
+  stroke: var(--tinte);
+  fill: var(--gruen);
+}
 /* die hohle Linse mit dem Plus: eine neue Ebene (sie steht über dem Stapel, bündig mit den Linsen) */
 #ebenen .ebene.neu {
   margin-right: 17px;

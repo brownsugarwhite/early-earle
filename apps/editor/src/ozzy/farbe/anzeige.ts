@@ -146,6 +146,8 @@ const FRAGMENT = /* glsl */ `
   // Etappe 4: 1, wenn eine Farblinie eine Breite hat. uDeckung: 0 für Flächen ohne Füllung
   uniform float uWeich;
   uniform float uDeckung;
+  // Etappe 6: wie deckend die ganze Ebene gezeichnet wird (1: ganz; in der Ebenen-Ansicht blendet sie auf fremden Kopien aus)
+  uniform float uSicht;
   varying vec3 vBlick;
   varying vec3 vNormale;
   varying vec2 vSpiegel;
@@ -322,6 +324,7 @@ const FRAGMENT = /* glsl */ `
     float linie = uLinie > 0.0 ? clamp(0.5 * uLinie + 0.5 - d, 0.0, 1.0) : 0.0;
     farbe = mix(farbe, uTinte, linie);
     deckung = deckung + (1.0 - deckung) * linie;
+    deckung *= uSicht;
     if (deckung < 0.002) discard;
     gl_FragColor = aus(farbe, deckung, wulst * (1.0 - linie));
     #else
@@ -339,10 +342,12 @@ const FRAGMENT = /* glsl */ `
     vec4 R = mix(vec4(c.rgb * c.a, c.a), vFremd, jenseits);
     c = vec4(R.a > 1e-6 ? R.rgb / R.a : c.rgb, R.a);
     #endif
+    c.a *= uSicht;
     if (c.a < 0.002) discard;
     gl_FragColor = aus(c.rgb, c.a, wulst);
     #else
-    gl_FragColor = aus(uFarbe, 1.0, 0.0);
+    if (uSicht < 0.002) discard;
+    gl_FragColor = aus(uFarbe, uSicht, 0.0);
     #endif
     #endif
   }
@@ -361,6 +366,11 @@ export type FarbWerte = {
    * Kamera, sie wird vor der Farbe geschrieben. Beide: Mehrere Ebenen werden gesammelt, das Sammelbild braucht den Körper.
    */
   verdeckt?: HautNetz | null;
+  /**
+   * Etappe 6 (die Ebenen-Ansicht): nur diese Ebenen zeichnen, jede so deckend (Kennung → 0 … 1); fehlt: alle, ganz. Die Farblinien
+   * der aktiven Ebene stehen dann nur dort, wo sie ganz zu sehen ist (auf ihrer eigenen Kopie).
+   */
+  nur?: ReadonlyMap<number, number> | null;
 };
 
 /**
@@ -394,6 +404,8 @@ export class FarbAnzeige {
   private daten: DataTexture;
   private farben: DataTexture;
   private modus: ZeichenArt = 'wachs';
+  /** wie deckend die Ebene zuletzt gezeichnet wurde (unter 1 überblendet auch, was sonst deckt) */
+  private sicht = 1;
   /** woraus die Geometrie gebaut ist */
   private stand: { netz: HautNetz; index: Uint32Array; pos: Float32Array; stufen: number; flaechen: Flaechen; fluss: FlussBild | null; weich: WeichBild | null } | null = null;
   /** je Ecke des Rands: ihr Punkt in der Anzeige */
@@ -408,8 +420,9 @@ export class FarbAnzeige {
     return !!this.stand?.weich;
   }
 
-  /** `licht`: Hell, Dunkel und Glanz des Wachses (für alle Ebenen dasselbe Bild); `gemeinsam`: die geteilten Felder der glatten Anzeige */
+  /** `id`: die Kennung ihrer Ebene; `licht`: Hell, Dunkel und Glanz des Wachses (für alle Ebenen dasselbe Bild); `gemeinsam`: die geteilten Felder der glatten Anzeige */
   constructor(
+    readonly id: number,
     private readonly licht: DataTexture,
     private readonly gemeinsam: (netz: HautNetz) => Gemeinsam,
   ) {
@@ -466,6 +479,7 @@ export class FarbAnzeige {
       uniforms: {
         uWeich: { value: 0 },
         uDeckung: { value: 1 },
+        uSicht: { value: 1 },
         uFluss: { value: [-1, 0, 0, 1] },
         uFlussAlt: { value: [0, 0, 0, 0] },
         uFlussMass: { value: [1, 0, 0] },
@@ -492,7 +506,7 @@ export class FarbAnzeige {
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -2,
     });
-    this.blenden(m, this.modus, rand || fluss || weich);
+    this.blenden(m, this.modus, rand || fluss || weich || this.sicht < 1);
     return m;
   }
 
@@ -828,21 +842,25 @@ export class FarbAnzeige {
   }
 
   /**
-   * Vor dem Zeichnen: wie die Farbe mit dem Grund verrechnet wird, die Schnitte, und wie breit die Farblinien selbst zu sehen sind
-   * (`linie`, Gerätepunkte; 0: nicht)
+   * Vor dem Zeichnen: wie die Farbe mit dem Grund verrechnet wird, die Schnitte, wie breit die Farblinien selbst zu sehen sind
+   * (`linie`, Gerätepunkte; 0: nicht) und wie deckend die ganze Ebene steht (`sicht`, 0 … 1)
    */
-  werte(art: ZeichenArt, w: FarbWerte, linie: number): void {
-    if (art !== this.modus) {
+  werte(art: ZeichenArt, w: FarbWerte, linie: number, sicht = 1): void {
+    // (halb durchscheinend überblendet auch, was sonst deckt)
+    if (art !== this.modus || sicht < 1 !== this.sicht < 1) {
       this.modus = art;
+      this.sicht = sicht;
       this.blenden(this.randMat, art, true);
-      for (const m of this.innenAlle()) this.blenden(m, art, !this.innenMat.includes(m));
+      for (const m of this.innenAlle()) this.blenden(m, art, sicht < 1 || !this.innenMat.includes(m));
     }
+    this.sicht = sicht;
     const sn = w.schnitt && Math.hypot(w.schnitt[0], w.schnitt[1], w.schnitt[2]) > 1e-9 ? w.schnitt : [0, 0, 1, -1e9];
     const nr = art === 'hell' ? 1 : art === 'sammel' ? 2 : 0;
     for (const m of [this.randMat, ...this.innenAlle()]) {
       m.uniforms.uSchnitt!.value = sn;
       m.uniforms.uSpiegel!.value = w.spiegelSchnitt ?? -1;
       m.uniforms.uModus!.value = nr;
+      m.uniforms.uSicht!.value = sicht;
     }
     this.randMat.uniforms.uLinie!.value = linie;
   }
@@ -895,7 +913,7 @@ export class FarbStapel {
   fuer(id: number): FarbAnzeige {
     let a = this.jeEbene.get(id);
     if (!a) {
-      a = new FarbAnzeige(this.licht, this.gemeinsam);
+      a = new FarbAnzeige(id, this.licht, this.gemeinsam);
       a.gruppe.visible = false;
       this.szene.add(a.gruppe);
       this.jeEbene.set(id, a);
@@ -1156,9 +1174,15 @@ export class FarbStapel {
    * Solid wird sie hier geschrieben: `w.verdeckt`). Die Ebenen von unten nach oben, jede deckt, was unter ihr liegt.
    */
   zeichnen(renderer: WebGLRenderer, kamera: Camera, w: FarbWerte): void {
-    const da = this.reihe.filter((a) => !a.leer);
+    // (Etappe 6: in der Ebenen-Ansicht je Kopie nur ihre Ebenen, jede so deckend, wie sie dort steht)
+    const sicht = (a: FarbAnzeige): number => (w.nur ? Math.max(0, Math.min(1, w.nur.get(a.id) ?? 0)) : 1);
+    const da = this.reihe.filter((a) => !a.leer && sicht(a) > 0.002);
     this.stand = { ebenen: da.length, gesammelt: false };
-    if (!da.length) return;
+    for (const a of this.reihe) a.gruppe.visible = da.includes(a);
+    if (!da.length) {
+      for (const a of this.reihe) a.gruppe.visible = true;
+      return;
+    }
     // Mehrere Ebenen werden erst gesammelt, dann einmal mit dem Grund verrechnet. Über dem hellen Solid immer (multipliziert deckt
     // nichts). Auf Wachs deckt schon das Überlagern, und das Sammeln kostet (zwei Bilder mehr in der Größe des Fensters: gemessen
     // 3,5 ms je Bild bei 2880 × 1800): Gesammelt wird dort nur, wenn es etwas ändert, also wenn eine Ebene über der untersten weiche
@@ -1167,7 +1191,7 @@ export class FarbStapel {
     const noetig = w.modus === 'hell' || (!this.wachsOhneSammeln && da.slice(1).some((a) => a.weich) && !da.some((a) => a.fliesst));
     const gesammelt = da.length > 1 && !!w.verdeckt && noetig;
     this.stand.gesammelt = gesammelt;
-    for (const a of this.reihe) a.werte(gesammelt ? 'sammel' : w.modus, w, a === this.aktive ? w.linie : 0);
+    for (const a of da) a.werte(gesammelt ? 'sammel' : w.modus, w, a === this.aktive && sicht(a) > 0.999 ? w.linie : 0, sicht(a));
     const auto = renderer.autoClear;
     renderer.autoClear = false;
     if (gesammelt) this.sammeln(renderer, kamera, w.verdeckt!, w.modus);
@@ -1176,5 +1200,6 @@ export class FarbStapel {
       renderer.render(this.szene, kamera);
     }
     renderer.autoClear = auto;
+    for (const a of this.reihe) a.gruppe.visible = true;
   }
 }

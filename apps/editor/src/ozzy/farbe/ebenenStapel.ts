@@ -36,6 +36,8 @@ export type EbenenZiele = {
   loeschen(id: number): void;
   /** liegt an dieser Stelle der Mülleimer? */
   muell(x: number, y: number): boolean;
+  /** Etappe 6: die Ebenen-Ansicht auf- oder zuschieben (`andere`: mit ⇧ gedrückt: die andere Anordnung) */
+  faecher(andere: boolean): void;
 };
 
 type Zeile = { li: HTMLLIElement; knopf: HTMLButtonElement; auge: HTMLButtonElement; linse: HTMLSpanElement };
@@ -44,6 +46,8 @@ export class EbenenStapel {
   readonly el: HTMLElement;
   private liste: HTMLOListElement;
   private plus: HTMLButtonElement;
+  /** Etappe 6: der Knopf über dem Stapel, der die Form auffächert (je Ebene eine Kopie) */
+  private faecher: HTMLButtonElement;
   private zeilen = new Map<number, Zeile>();
   /** die Ebenen von oben nach unten, wie sie zuletzt gezeigt wurden */
   private reihe: number[] = [];
@@ -69,7 +73,14 @@ export class EbenenStapel {
     this.plus.addEventListener('click', () => this.ziele.neu());
     this.liste = document.createElement('ol');
     this.liste.className = 'stapel';
-    el.append(this.plus, this.liste);
+    this.faecher = document.createElement('button');
+    this.faecher.type = 'button';
+    this.faecher.className = 'faecher';
+    this.faecher.setAttribute('aria-pressed', 'false');
+    // (drei kleine Linsen, schräg versetzt: die Ebenen, aufgefächert)
+    this.faecher.innerHTML = '<svg viewBox="0 0 30 18" aria-hidden="true"><ellipse cx="10.5" cy="5" rx="8" ry="3.3" /><ellipse cx="15" cy="9" rx="8" ry="3.3" /><ellipse cx="19.5" cy="13" rx="8" ry="3.3" /></svg>';
+    this.faecher.addEventListener('click', (e) => this.ziele.faecher(e.shiftKey));
+    el.append(this.faecher, this.plus, this.liste);
     eltern.append(el);
     // ohne Fokus auf einem Knopf (sonst löste die Leertaste ihn danach noch einmal aus)
     el.addEventListener('pointerdown', (e) => e.preventDefault());
@@ -97,14 +108,22 @@ export class EbenenStapel {
 
   /**
    * Je Bild: zu sehen, solange gemalt wird, mit den Ebenen, wie sie gerade sind (von oben nach unten); `voll`: Mehr Ebenen gehen
-   * nicht.
+   * nicht; `offen`: Die Ebenen-Ansicht ist aufgefächert.
    */
-  zeigen(an: boolean, ebenen: readonly EbeneZeile[], voll: boolean): void {
+  zeigen(an: boolean, ebenen: readonly EbeneZeile[], voll: boolean, offen = false): void {
     if (this.el.hidden === an) {
       this.el.hidden = !an;
       if (!an && this.druck) this.zugEnde();
     }
     if (!an) return;
+    if ((this.faecher.getAttribute('aria-pressed') === 'true') !== offen) {
+      this.faecher.setAttribute('aria-pressed', String(offen));
+      const titel = offen ? 'Ebenen-Ansicht: wieder zusammenschieben · ⇧: die andere Anordnung' : 'Ebenen-Ansicht: auffächern, je Ebene eine Kopie · ⇧: die andere Anordnung';
+      this.faecher.title = titel;
+      this.faecher.setAttribute('aria-label', titel);
+    }
+    // (der Knopf steht da, sobald es mehr als eine Ebene gibt)
+    this.faecher.hidden = ebenen.length < 2;
     const zeichen = `${voll ? 1 : 0}|` + ebenen.map((e) => `${e.id}:${e.aktiv ? 'a' : ''}${e.aus ? 'x' : ''}${e.leer ? 'l' : ''}:${e.name}:${e.farben.map(css).join(';')}`).join('|');
     if (zeichen === this.gezeigt) return;
     this.gezeigt = zeichen;

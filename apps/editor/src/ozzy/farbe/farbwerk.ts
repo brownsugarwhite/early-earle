@@ -662,6 +662,11 @@ export class FarbWerk {
     return e.aus ? [] : e.linien;
   }
 
+  /** Etappe 6: die Ebenen, die gezeichnet werden (zu sehen und nicht leer), von unten nach oben: ihre Kennungen */
+  gezeichneteEbenen(): number[] {
+    return this.bemalung.ebenen.filter((e) => this.staende.has(e.id)).map((e) => e.id);
+  }
+
   /** die Ebenen, wie der Stapel am Rand sie zeigt: von oben nach unten, je Ebene die Farben ihrer Füllungen (jede einmal, höchstens vier) */
   ebenenStand(): EbeneZeile[] {
     const aktiv = aktiveEbene(this.bemalung).id;
