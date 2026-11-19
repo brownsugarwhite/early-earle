@@ -185,7 +185,7 @@ describe('Farbe, Etappe 2: Punkte, Richtungen, Kurve', () => {
     expect(vek(b, netz.pos, 1, 'ein')).toBeNull();
     // Sichern und Laden
     const d = alsDatei(b);
-    expect(d.version).toBe(2);
+    expect(d.version).toBe(3);
     const zurueck = ausDatei(k, JSON.parse(JSON.stringify(d, (_, v) => (ArrayBuffer.isView(v) ? Array.from(v as unknown as ArrayLike<number>) : typeof v === 'number' && Number.isNaN(v) ? 'NaN' : v)), (_, v) => (v === 'NaN' ? NaN : v)) as typeof d)!;
     expect(zurueck).not.toBeNull();
     const lz = zurueck.ebenen[0]!.linien[0]!;

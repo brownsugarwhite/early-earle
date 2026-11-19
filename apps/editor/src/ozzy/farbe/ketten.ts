@@ -30,34 +30,50 @@ export type Kette = {
   /** Etappe 2: Die Kette beginnt (`kEin`) oder endet (`kAus`) an einer Kreuzung im Inneren des Dreiecks (ihre Nummer im Dreieck) */
   kEin?: number;
   kAus?: number;
+  /** Etappe 4: je Punkt die Breite des Verlaufs dort (fehlt: die Farblinie ist hart) */
+  w?: number[];
 };
 
-/** die Stücke einer Farblinie der Reihe nach (null: Ein Weg zwischen zwei Orten ließ sich nicht finden) */
-export function stueckeVon(k: Karte, l: LinieOrte): Stueck[] | null {
+/** ein Stück einer Farblinie in einem Dreieck, dazu (Etappe 4) die Breite des Verlaufs an seinem Anfang und Ende */
+export type BreitStueck = Stueck & { w0?: number; w1?: number };
+
+/**
+ * Die Stücke einer Farblinie der Reihe nach (null: Ein Weg zwischen zwei Orten ließ sich nicht finden). `breiten` (Etappe 4): die
+ * Breite des Verlaufs an jedem Ort; die Stücke zwischen zwei Orten teilen sie unter sich auf.
+ */
+export function stueckeVon(k: Karte, l: LinieOrte, breiten?: ArrayLike<number> | null): BreitStueck[] | null {
   const S = l.stuetzen;
   const n = S.length;
   if (n < 2) return null;
-  const aus: Stueck[] = [];
+  const aus: BreitStueck[] = [];
   const bis = l.zu ? n : n - 1;
   for (let i = 0; i < bis; i++) {
     const st = spur(k, S[i]!, S[(i + 1) % n]!);
     if (!st) return null;
-    for (const s of st) aus.push(s);
+    if (breiten) {
+      const wa = breiten[i]!;
+      const wb = breiten[(i + 1) % n]!;
+      st.forEach((s, j) => aus.push({ ...s, w0: wa + ((wb - wa) * j) / st.length, w1: wa + ((wb - wa) * (j + 1)) / st.length }));
+    } else for (const s of st) aus.push(s);
   }
   return aus;
 }
 
 /** aufeinanderfolgende Stücke im selben Dreieck zu Ketten fügen */
-export function kettenAus(stuecke: readonly Stueck[], linie: number, zu: boolean): Kette[] {
+export function kettenAus(stuecke: readonly BreitStueck[], linie: number, zu: boolean): Kette[] {
   const aus: Kette[] = [];
   let jetzt: Kette | null = null;
+  // (Etappe 4) mit Breiten trägt jede Kette je Punkt eine
+  const breit = stuecke.length > 0 && stuecke[0]!.w0 !== undefined;
   for (const s of stuecke) {
     // ein neues Dreieck, oder dasselbe nach einem Gang über eine Kante hinaus und wieder herein
     if (!jetzt || jetzt.t !== s.t || s.ein >= 0) {
       jetzt = { t: s.t, linie, p: [s.b0, s.c0], ein: s.ein, aus: -1, zu: false, gespiegelt: false };
+      if (breit) jetzt.w = [s.w0 ?? 0];
       aus.push(jetzt);
     }
     jetzt.p.push(s.b1, s.c1);
+    jetzt.w?.push(s.w1 ?? 0);
     jetzt.aus = s.aus;
     if (s.aus >= 0) jetzt = null;
   }
@@ -72,6 +88,10 @@ export function kettenAus(stuecke: readonly Stueck[], linie: number, zu: boolean
       letzte.p.pop();
       letzte.p.pop();
       letzte.p.push(...erste.p);
+      if (letzte.w && erste.w) {
+        letzte.w.pop();
+        letzte.w.push(...erste.w);
+      }
       letzte.aus = erste.aus;
       aus.shift();
     }
@@ -118,18 +138,18 @@ export function ketteGespiegelt(k: Karte, c: Kette): Kette | null {
     const b = platz[(e + 1) % 3]!;
     return (a + 1) % 3 === b ? a : b;
   };
-  return { t, linie: c.linie, p, ein: kante(c.ein), aus: kante(c.aus), zu: c.zu, gespiegelt: true };
+  return { t, linie: c.linie, p, ein: kante(c.ein), aus: kante(c.aus), zu: c.zu, gespiegelt: true, ...(c.w ? { w: c.w.slice() } : {}) };
 }
 
 /**
  * Alle Ketten aller Farblinien, bei einer gespiegelten Form samt ihren Spiegelbildern. `fehl`: Farblinien, deren Weg sich nicht
  * finden ließ (sie fehlen dann in der Anzeige; ihre Orte bleiben).
  */
-export function kettenAller(k: Karte, linien: readonly LinieOrte[], spiegeln: boolean): { ketten: Kette[]; fehl: number[] } {
+export function kettenAller(k: Karte, linien: readonly LinieOrte[], spiegeln: boolean, breiten?: (l: LinieOrte) => ArrayLike<number> | null): { ketten: Kette[]; fehl: number[] } {
   const ketten: Kette[] = [];
   const fehl: number[] = [];
   for (const l of linien) {
-    const st = stueckeVon(k, l);
+    const st = stueckeVon(k, l, breiten?.(l));
     if (!st) {
       fehl.push(l.id);
       continue;
@@ -190,9 +210,16 @@ export function kreuzungenTeilen(ketten: readonly Kette[]): Kette[] {
       }
       return null;
     };
-    const teilen = (c: Kette, i: number, x: number, y: number, k: number): [Kette, Kette] => {
+    const teilen = (c: Kette, i: number, u: number, x: number, y: number, k: number): [Kette, Kette] => {
       const vorn: Kette = { ...c, p: [...c.p.slice(0, i + 2), x, y], aus: -1, zu: false, kAus: k };
       const hinten: Kette = { ...c, p: [x, y, ...c.p.slice(i + 2)], ein: -1, zu: false, kEin: k };
+      if (c.w) {
+        // (die Breite an der Kreuzung: zwischen den zwei Punkten des geteilten Stücks)
+        const j = i / 2;
+        const wx = c.w[j]! + (c.w[j + 1]! - c.w[j]!) * u;
+        vorn.w = [...c.w.slice(0, j + 1), wx];
+        hinten.w = [wx, ...c.w.slice(j + 1)];
+      }
       if (c.kEin === undefined) delete vorn.kEin;
       if (c.kAus === undefined) delete hinten.kAus;
       return [vorn, hinten];
@@ -207,8 +234,8 @@ export function kreuzungenTeilen(ketten: readonly Kette[]): Kette[] {
           if (A.zu || B.zu) continue;
           const k = finden(A, B);
           if (!k) continue;
-          const [a1, a2] = teilen(A, k.i, k.x, k.y, knoten);
-          const [b1, b2] = teilen(B, k.j, k.x, k.y, knoten);
+          const [a1, a2] = teilen(A, k.i, k.u, k.x, k.y, knoten);
+          const [b1, b2] = teilen(B, k.j, k.v, k.x, k.y, knoten);
           knoten++;
           L = [...L.slice(0, a), a1, a2, ...L.slice(a + 1, b), b1, b2, ...L.slice(b + 1)];
           gefunden = true;

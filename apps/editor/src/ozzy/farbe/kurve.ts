@@ -19,8 +19,12 @@ import { type Naechster, type Netz, type Ort, type V3, dreieckNormale, ortIn, or
 /** eine Richtung im Maß des Dreiecks ihres Orts: Gewichte zu seinen drei Ecken, Summe null */
 export type Richtung = [number, number, number];
 
-/** ein Punkt einer Farblinie: die Nummer seines Orts in `stuetzen`, seine zwei Richtungen (null: keine, eine Ecke), geknickt oder rund */
-export type FarbPunkt = { i: number; ein: Richtung | null; aus: Richtung | null; knick: boolean };
+/**
+ * Ein Punkt einer Farblinie: die Nummer seines Orts in `stuetzen`, seine zwei Richtungen (null: keine, eine Ecke), geknickt oder
+ * rund. `breite` (Etappe 4): wie weit der Verlauf an diesem Punkt zu jeder Seite der Farblinie reicht (Einheiten der Lagen; fehlt
+ * oder 0: harte Kante). Zwischen zwei Punkten fließt die Breite (`breitenLaengs` in `bemalung.ts`).
+ */
+export type FarbPunkt = { i: number; ein: Richtung | null; aus: Richtung | null; knick: boolean; breite?: number };
 
 /** die Richtung als Vektor (in den Einheiten der Lagen) */
 export function richtungVektor(pos: ArrayLike<number>, o: Ort, g: Richtung): V3 {

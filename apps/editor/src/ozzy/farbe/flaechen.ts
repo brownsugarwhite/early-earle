@@ -22,9 +22,10 @@ export type Saat = { ort: Ort; farbe: number };
 /**
  * Eine Kette, wie die Anzeige sie braucht: ihre Punkte und je Seite die Füllung (Nummer der Farbe, −1: keine). `zl`, `zr` (Etappe 3):
  * die Zelle ihres Dreiecks links und rechts von ihr (Nummern, die nur innerhalb des Dreiecks etwas sagen: gleiche Nummer = dieselbe
- * Zelle, ohne eine Kette dazwischen).
+ * Zelle, ohne eine Kette dazwischen). Etappe 4: `w` je Punkt die Breite des Verlaufs (fehlt: hart); `ein`, `aus`: ob sie am Rand des
+ * Dreiecks beginnt und endet (dort geht sie im Nachbarn weiter) oder im Inneren (−1).
  */
-export type RandKette = { p: number[]; links: number; rechts: number; linie: number; gespiegelt: boolean; zl: number; zr: number };
+export type RandKette = { p: number[]; links: number; rechts: number; linie: number; gespiegelt: boolean; zl: number; zr: number; w?: number[]; ein: number; aus: number };
 export type Flaechen = {
   /** je Dreieck ohne Kette die Farbe (−1: keine) */
   ganz: Int32Array;
@@ -302,6 +303,9 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
         gespiegelt: c.gespiegelt,
         zl: Lok.wurzel(seite(t, ki, 0)),
         zr: Lok.wurzel(seite(t, ki, 1)),
+        ein: c.ein,
+        aus: c.aus,
+        ...(c.w ? { w: c.w } : {}),
       })),
       ecken: [Lok.wurzel(eck[0]), Lok.wurzel(eck[1]), Lok.wurzel(eck[2])],
       eckFarben: [farbe.get(M.wurzel(eck[0])) ?? -1, farbe.get(M.wurzel(eck[1])) ?? -1, farbe.get(M.wurzel(eck[2])) ?? -1],

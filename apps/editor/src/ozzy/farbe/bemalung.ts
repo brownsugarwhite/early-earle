@@ -27,7 +27,45 @@ export const aktiveEbene = (b: Bemalung): Ebene => b.ebenen.find((e) => e.id ===
 
 const ortKopie = (o: Ort): Ort => ({ t: o.t, e: [o.e[0], o.e[1], o.e[2]], w: [o.w[0], o.w[1], o.w[2]] });
 const richtungKopie = (g: Richtung | null): Richtung | null => (g ? [g[0], g[1], g[2]] : null);
-export const punktKopie = (q: FarbPunkt): FarbPunkt => ({ i: q.i, ein: richtungKopie(q.ein), aus: richtungKopie(q.aus), knick: q.knick });
+export const punktKopie = (q: FarbPunkt): FarbPunkt => ({ i: q.i, ein: richtungKopie(q.ein), aus: richtungKopie(q.aus), knick: q.knick, ...(q.breite ? { breite: q.breite } : {}) });
+
+/**
+ * Etappe 4: die Breite des Verlaufs an jedem Ort einer Farblinie (Einheiten der Lagen), aus den Breiten ihrer Punkte. Zwischen zwei
+ * Punkten fließt sie weich von der einen zur anderen, längs des Wegs über die Haut gemessen; an einem Punkt mit Breite null ist die
+ * Kante hart, und der Verlauf läuft zu ihm hin aus. Zurück: null, wenn kein Punkt eine Breite hat (die ganze Farblinie ist hart).
+ */
+export function breitenLaengs(pos: ArrayLike<number>, l: Farblinie): Float32Array | null {
+  const P = l.punkte;
+  if (!P.some((q) => (q.breite ?? 0) > 0)) return null;
+  const S = l.stuetzen;
+  const n = S.length;
+  const m = P.length;
+  const aus = new Float32Array(n);
+  // der Weg bis zu jedem Ort (und, geschlossen, zurück zum ersten)
+  const weg = new Float64Array(n + 1);
+  let vor = ortLage(pos, S[0]!);
+  for (let i = 1; i <= n; i++) {
+    const p = ortLage(pos, S[i % n]!);
+    weg[i] = weg[i - 1]! + Math.hypot(p[0] - vor[0], p[1] - vor[1], p[2] - vor[2]);
+    vor = p;
+  }
+  const stuecke = l.zu ? m : m - 1;
+  for (let k = 0; k < stuecke; k++) {
+    const a = P[k]!;
+    const b = P[(k + 1) % m]!;
+    const von = a.i;
+    const bis = k + 1 < m ? b.i : n;
+    const [wa, wb] = [a.breite ?? 0, b.breite ?? 0];
+    const lang = Math.max(1e-12, weg[bis]! - weg[von]!);
+    for (let i = von; i < bis; i++) {
+      const u = (weg[i]! - weg[von]!) / lang;
+      aus[i] = wa + (wb - wa) * u * u * (3 - 2 * u);
+    }
+  }
+  // (offen: der letzte Ort ist der letzte Punkt)
+  if (!l.zu) aus[n - 1] = P[m - 1]!.breite ?? 0;
+  return aus;
+}
 
 /** eine tiefe Kopie (für ⌘Z und für den Stand eines ruhenden Objekts) */
 export function kopie(b: Bemalung): Bemalung {
@@ -137,7 +175,7 @@ function aufKanteDerMitte(k: Karte, o: Ort): void {
 }
 
 /** ein Punkt der Zeichnung für `linienAusTreffern`: welcher Treffer er ist, seine Richtungen als Vektoren (Einheiten der Lagen), Knick */
-export type TrefferPunkt = { i: number; ein: V3 | null; aus: V3 | null; knick: boolean };
+export type TrefferPunkt = { i: number; ein: V3 | null; aus: V3 | null; knick: boolean; breite?: number };
 
 /**
  * Aus einer Folge von Treffern auf der Haut (dicht, der Reihe nach, wie gezeichnet) werden Farblinien. An einer gespiegelten Form
@@ -171,7 +209,7 @@ export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean
       if (!q) return;
       const ein = m(q.ein);
       const aus = m(q.aus);
-      P.push({ i: j, ein: ein ? richtungAus(pos, o, ein) : null, aus: aus ? richtungAus(pos, o, aus) : null, knick: q.knick });
+      P.push({ i: j, ein: ein ? richtungAus(pos, o, ein) : null, aus: aus ? richtungAus(pos, o, aus) : null, knick: q.knick, ...(q.breite ? { breite: q.breite } : {}) });
     });
     if (runZu) {
       if (!P.length) P = punkteSchaetzen(k.netz, st, true);
@@ -303,23 +341,24 @@ export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean
 /**
  * Was gespeichert wird (`WesenStand.farbe`): Orte als Punkte des Netzes und Gewichte, Farben als Zahlen 0 … 1. Version 2 (Etappe 2)
  * trägt je Farblinie ihre Punkte: `p` die Nummern ihrer Orte, `g` je Punkt sechs Zahlen (Richtung „ein“, Richtung „aus“, zu den
- * Ecken in der Reihenfolge von `e`; NaN: keine), `k` je Punkt 1 für geknickt. Version 1 (Etappe 1) hat nur die Orte.
+ * Ecken in der Reihenfolge von `e`; NaN: keine), `k` je Punkt 1 für geknickt. Version 1 (Etappe 1) hat nur die Orte. Version 3
+ * (Etappe 4) trägt dazu `b`: je Punkt die Breite seines Verlaufs (0: harte Kante).
  */
 export type BemalungDatei = {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   aktiv: number;
   naechste: number;
   ebenen: {
     id: number;
     name: string;
-    linien: { id: number; zu: boolean; e: Int32Array; w: Float64Array; p?: Int32Array; g?: Float64Array; k?: Uint8Array }[];
+    linien: { id: number; zu: boolean; e: Int32Array; w: Float64Array; p?: Int32Array; g?: Float64Array; k?: Uint8Array; b?: Float64Array }[];
     fuellungen: { id: number; e: [number, number, number]; w: [number, number, number]; farbe: Farbe }[];
   }[];
 };
 
 export function alsDatei(b: Bemalung): BemalungDatei {
   return {
-    version: 2,
+    version: 3,
     aktiv: b.aktiv,
     naechste: b.naechste,
     ebenen: b.ebenen.map((e) => ({
@@ -333,6 +372,7 @@ export function alsDatei(b: Bemalung): BemalungDatei {
         p: Int32Array.from(l.punkte.map((q) => q.i)),
         g: Float64Array.from(l.punkte.flatMap((q) => [...(q.ein ?? [NaN, NaN, NaN]), ...(q.aus ?? [NaN, NaN, NaN])])),
         k: Uint8Array.from(l.punkte.map((q) => (q.knick ? 1 : 0))),
+        b: Float64Array.from(l.punkte.map((q) => q.breite ?? 0)),
       })),
       fuellungen: e.fuellungen.map((f) => ({ id: f.id, e: [...f.saat.e], w: [...f.saat.w], farbe: [...f.farbe] })),
     })),
@@ -345,7 +385,7 @@ export function alsDatei(b: Bemalung): BemalungDatei {
  * (Version 1) bekommt sie aus ihrem Verlauf (`punkteSchaetzen`).
  */
 export function ausDatei(k: Karte, d: BemalungDatei | null | undefined): Bemalung | null {
-  if (!d || (d.version !== 1 && d.version !== 2) || !Array.isArray(d.ebenen)) return null;
+  if (!d || (d.version !== 1 && d.version !== 2 && d.version !== 3) || !Array.isArray(d.ebenen)) return null;
   const tri = k.netz.tri;
   /** der Ort i einer Liste; `zu`: Werte je Ecke in der Reihenfolge der Datei, die mit in die Reihenfolge des Dreiecks gehen */
   const ort = (e: ArrayLike<number>, w: ArrayLike<number>, i: number): { o: Ort; platz: [number, number, number] } | null => {
@@ -389,7 +429,8 @@ export function ausDatei(k: Karte, d: BemalungDatei | null | undefined): Bemalun
             for (let j = 0; j < 3; j++) r[platz[j]!] = l.g![ab + j]!;
             return r;
           };
-          punkte.push({ i, ein: richtung(6 * q), aus: richtung(6 * q + 3), knick: l.k[q] === 1 });
+          const breite = l.b && l.b.length === l.p.length && Number.isFinite(l.b[q]!) && l.b[q]! > 0 ? l.b[q]! : 0;
+          punkte.push({ i, ein: richtung(6 * q), aus: richtung(6 * q + 3), knick: l.k[q] === 1, ...(breite ? { breite } : {}) });
         }
         if (punkte && punkte[0]!.i !== 0) punkte = null;
       }

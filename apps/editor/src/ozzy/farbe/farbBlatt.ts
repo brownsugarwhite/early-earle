@@ -48,8 +48,10 @@ export type Sicht = {
   duldung: number;
 };
 
-/** ein Punkt, wie das Blatt ihn führt: Ort, Richtungen als Vektoren (Einheiten des Werks), Knick */
-type BPunkt = { ort: Ort; ein: V3 | null; aus: V3 | null; knick: boolean };
+/** ein Punkt, wie das Blatt ihn führt: Ort, Richtungen als Vektoren (Einheiten des Werks), Knick, Breite seines Verlaufs (Etappe 4) */
+type BPunkt = { ort: Ort; ein: V3 | null; aus: V3 | null; knick: boolean; breite?: number };
+/** die Breite eines Punkts, wie sie von Punkt zu Punkt weitergegeben wird (nur, wenn er eine hat) */
+const mitBreite = (p: { breite?: number }): { breite?: number } => (p.breite ? { breite: p.breite } : {});
 /**
  * Eine Farblinie, wie das Netz sie zeigt: ihre Punkte und je Stück die Orte dazwischen; `id` < 0: der Entwurf. `m`: das Spiegelbild
  * einer Farblinie (an einer gespiegelten Form): Es wird gezeigt und gegriffen wie sie; was an ihm geschieht, geht gespiegelt an sie.
@@ -64,7 +66,7 @@ const zeileKopie = (z: Zeile): Zeile => ({
   id: z.id,
   m: z.m,
   zu: z.zu,
-  punkte: z.punkte.map((p) => ({ ort: ortKopie(p.ort), ein: vKopie(p.ein), aus: vKopie(p.aus), knick: p.knick })),
+  punkte: z.punkte.map((p) => ({ ort: ortKopie(p.ort), ein: vKopie(p.ein), aus: vKopie(p.aus), knick: p.knick, ...mitBreite(p) })),
   teile: z.teile.map((t) => t.map(ortKopie)),
 });
 const lang = (v: V3 | null): number => (v ? Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) : 0);
@@ -422,7 +424,7 @@ export class FarbBlatt implements Raum {
     const m = l.punkte.length;
     const punkte: BPunkt[] = l.punkte.map((q) => {
       const ort = l.stuetzen[q.i]!;
-      return { ort, ein: q.ein ? richtungVektor(pos, ort, q.ein) : null, aus: q.aus ? richtungVektor(pos, ort, q.aus) : null, knick: q.knick };
+      return { ort, ein: q.ein ? richtungVektor(pos, ort, q.ein) : null, aus: q.aus ? richtungVektor(pos, ort, q.aus) : null, knick: q.knick, ...mitBreite(q) };
     });
     const teile: Ort[][] = [];
     const n = l.zu ? m : m - 1;
@@ -438,7 +440,7 @@ export class FarbBlatt implements Raum {
     for (const p of z.punkte) {
       const o = ort(p.ort);
       if (!o) return null;
-      punkte.push({ ort: o, ein: v(p.ein), aus: v(p.aus), knick: p.knick });
+      punkte.push({ ort: o, ein: v(p.ein), aus: v(p.aus), knick: p.knick, ...mitBreite(p) });
     }
     const teile: Ort[][] = [];
     for (const T of z.teile) {
@@ -476,7 +478,7 @@ export class FarbBlatt implements Raum {
     z.punkte.forEach((p, k) => {
       const hatEin = z.zu || k > 0;
       const hatAus = z.zu || k < m - 1;
-      punkte.push({ i: stuetzen.length, ein: hatEin && griff(p.ein) ? richtungAus(pos, p.ort, p.ein!) : null, aus: hatAus && griff(p.aus) ? richtungAus(pos, p.ort, p.aus!) : null, knick: p.knick });
+      punkte.push({ i: stuetzen.length, ein: hatEin && griff(p.ein) ? richtungAus(pos, p.ort, p.ein!) : null, aus: hatAus && griff(p.aus) ? richtungAus(pos, p.ort, p.aus!) : null, knick: p.knick, ...mitBreite(p) });
       stuetzen.push(p.ort);
       const t = z.teile[k];
       if (t) for (const o of t) stuetzen.push(o);
@@ -496,7 +498,7 @@ export class FarbBlatt implements Raum {
       const punkte: TrefferPunkt[] = [];
       const m = z.punkte.length;
       z.punkte.forEach((p, k) => {
-        punkte.push({ i: treffer.length, ein: z.zu || k > 0 ? griff(p.ein) : null, aus: z.zu || k < m - 1 ? griff(p.aus) : null, knick: p.knick });
+        punkte.push({ i: treffer.length, ein: z.zu || k > 0 ? griff(p.ein) : null, aus: z.zu || k < m - 1 ? griff(p.aus) : null, knick: p.knick, ...mitBreite(p) });
         treffer.push(p.ort);
         const t = z.teile[k];
         if (t) for (const o of t) treffer.push(o);
@@ -792,11 +794,15 @@ export class FarbBlatt implements Raum {
     const mitte = mi(r0, r1);
     const hatGriffe = !!griff(a.aus) || !!griff(b.ein);
     const o = TT[j]!;
+    // (Etappe 4: Der neue Punkt bekommt die Breite, die der Verlauf an seiner Stelle schon hat)
+    const [wa, wb] = [aa.breite ?? 0, bb.breite ?? 0];
+    const breite = wa + (wb - wa) * u * u * (3 - 2 * u);
     const neu: BPunkt = {
       ort: o,
       ein: hatGriffe ? [r0[0] - mitte[0], r0[1] - mitte[1], r0[2] - mitte[2]] : null,
       aus: hatGriffe ? [r1[0] - mitte[0], r1[1] - mitte[1], r1[2] - mitte[2]] : null,
       knick: !hatGriffe,
+      ...(breite > 0 ? { breite } : {}),
     };
     if (aa.aus) aa.aus = [aa.aus[0] * u, aa.aus[1] * u, aa.aus[2] * u];
     if (bb.ein) bb.ein = [bb.ein[0] * (1 - u), bb.ein[1] * (1 - u), bb.ein[2] * (1 - u)];
