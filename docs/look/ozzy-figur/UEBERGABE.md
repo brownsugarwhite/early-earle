@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026: 2,5D A–D gebaut; Beweis 3D durchgefallen; Rohmodell aus Blender, ozzy-3d.html)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026: 2,5D A–D gebaut; Beweis 3D und Rohmodell verworfen; Modell aus der Front aufgeblasen, ozzy-modell.html, zuerst der Kopf)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -379,6 +379,23 @@ weiß kann auch gerne aus einem shader kommen. Im gesicht vllt nicht aber am kö
   einer Kugel = 0,5748 × Radius bei Schwelle 0,6 und Steifheit 2. Bei Kapseln ist `size_x` die halbe Länge (absolut). Metaballs mit
   demselben Grundnamen verschmelzen über Objekte hinweg (Koerper und Kopf getrennt halten).
 
+## Modell aus der Front aufgeblasen (19.11. nachmittags; Kopf zuerst)
+
+Florian zum Rohmodell: „Es soll schon genau wie mein logo sein … so sieht es garnicht gut aus! kein bisschen“; dann: „ich habe keine
+projektion gezeichnet. Front ist am wichtigsten. seite und 3/4 sind angenähert...das musst du eben auch machen. Ich verlange ja nicht
+dass es es 100% trifft. aber es war ja komplett daneben und unschön“. Plan: [`docs/plans/2026-11-19-ozzy-modell.md`](../../plans/2026-11-19-ozzy-modell.md).
+
+- **Seite** `ozzy-modell.html` (Port 5213), Code `src/ozzy-figur/modell/`: `aufblasen.ts` (Poisson im Umriss, Tiefe je Zeile aus der
+  zweiten Ansicht, Block, Surface Nets), `kopf.ts` (Stand 1: runder Kopf mit aufgemaltem Weiß, `?kopf=rund`), `bart.ts` (Stand 2:
+  Bart als eigener weißer Block vor dem schwarzen Schädel, Standard). Prüfhaken `__ozzyModell` (`zeigen(ψ, b, h, nurKopf)`, `bild`,
+  `vergleich(ψ, ansicht, b, h, spiegeln, mitZeichnung, ausrichten)`), Schalter `?schattiert=1` (Form mit Licht), `?umriss=1` (nur
+  Silhouette), `?randFarbe=%23ff2020` (Rand rot), Zahlen des Barts als Adresse (`rundung`, `woelbung`, `flacher`, `naseVor`, …).
+- **Probe** `node scripts/ozzy-figur/modell-vergleich.mjs <aus.png>` aus `apps/editor` (Server auf 5213): 3D, Zeichnung, Unterschied je
+  Ansicht.
+- **Stand 2:** Deckung nur Kopf, ausgerichtet: Front 92 %, 3/4 58 %, Seite 65 %, Rücken 90 %. Bilder
+  `docs/progress/ozzy-modell/kopf-2-bart-vergleich.png`, Drehung `kopf-2-bart-drehung.mp4`. Körper, Beine, Schwanz noch nicht.
+- **Offen (sein Auge):** Seine Seite zeigt den Bart rund 200 tief, sein 3/4 ein flacheres Gesicht; das Modell folgt der Seite.
+
 ## Fallen
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
@@ -403,6 +420,14 @@ weiß kann auch gerne aus einem shader kommen. Im gesicht vllt nicht aber am kö
 - Eine steife Pfote (Gerade aus dem Fuß, weich ins Rückgrat übergehend) knickt den Umriss, wenn das Rückgrat kurz und stark gebogen
   ist; sie half auch nicht (gemessen an den Ankern stand die Pfote schon).
 
+- Weiß, das von vorn aufgemalt wird, liegt auf einem runden Körper an der Seite breit: Alles, was von vorn nah am Umriss liegt (Rand,
+  Kappe am Ohransatz, Mündung einer Augenkerbe), wird von der Seite ein Balken oder Fleck. Zwei Zeichnungen ineinander zu schieben
+  (Abstandsfelder mischen) gibt doppelte Linien. Was hilft: eine eigene Form für das Weiß (Bart), vorn die Front, an den Seiten die Seite.
+- Der Rand ums Weiß als vergrößerte Hülle (Rückseiten) sticht in Mulden durch die Fläche: beim Zeichnen nach hinten schieben
+  (`gl_Position.z += …`), dann erscheint er nur außerhalb des Umrisses. Seine Breite je Stelle aus der Zeichnung (`randBreiten`).
+- Abstandsfelder aus Masken haben Treppen von einer halben Zelle; bilinear gelesen flackern die Flächenrichtungen von Zelle zu Zelle
+  (Streifen, durchstechender Rand): weichzeichnen (σ = 1) und bikubisch lesen.
+- Aufblasen mit einem Maß je Zeile macht aus schmalen Zeilen (Bartzacken) flache Finnen: Maß nur langsam ändern (Glättung 25).
 - Teile, die in einer Haltung fehlen, nie zu einem fernen Punkt ziehen (sie wandern sichtbar durch anderes): dort zurückziehen, wo
   sie verdeckt sind, und früh im Weg.
 - Gelenke in der Welt mischen, wenn sie stehen bleiben, sonst im Knochen der Bohne: Eine Hüfte, die geradlinig zwischen zwei

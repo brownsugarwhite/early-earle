@@ -222,6 +222,8 @@ export function tiefeAusSeite(
     massMax?: number;
     /** Lage der dicksten Stelle je Höhe (sonst die Mitte des Intervalls); null: keine Angabe in dieser Höhe */
     mitte?: ((y: number) => number | null) | undefined;
+    /** vorderes Ende je Höhe statt aus der Seite (null: aus der Seite) */
+    vornBei?: ((y: number) => number | null) | undefined;
   } = {},
 ): Tiefe {
   const glatt = opt.glatt ?? 10;
@@ -251,6 +253,8 @@ export function tiefeAusSeite(
     if (!(zf > zb)) continue;
     zf -= opt.vorn ?? 0;
     zb += opt.hinten ?? 0;
+    const zv = opt.vornBei?.(y);
+    if (zv != null) zf = Math.min(zf, zv);
     if (zf - zb < 2) continue;
     const gewuenscht = opt.mitte?.(y);
     const c = gewuenscht == null ? (zf + zb) / 2 : Math.max(zb + 0.2 * (zf - zb), Math.min(zf - 0.3 * (zf - zb), gewuenscht));
@@ -281,6 +285,70 @@ export function tiefeAusSeite(
   const mass = glaetten((r) => Math.min(massMax, r.a), glattMass, 1);
   const massHinten = glaetten((r) => Math.min(massMax, r.b), glattMass, 1);
   return { y0, s: S, mitte, mass, massHinten };
+}
+
+/** Feld einer Fläche bikubisch gelesen (stetige Richtungen); außerhalb des Gitters weiter steigend */
+export function lesenGlatt(feld: Float32Array, g: Gitter, x: number, y: number): number {
+  const fx = (x - g.x0) / g.s - 0.5;
+  const fy = (y - g.y0) / g.s - 0.5;
+  const cx = Math.max(0, Math.min(g.b - 1.001, fx));
+  const cy = Math.max(0, Math.min(g.h - 1.001, fy));
+  const i = Math.floor(cx);
+  const j = Math.floor(cy);
+  const tx = cx - i;
+  const ty = cy - j;
+  const zeile = (jj: number): number => {
+    const r = Math.max(0, Math.min(g.h - 1, jj)) * g.b;
+    return cr(feld[r + Math.max(0, i - 1)]!, feld[r + i]!, feld[r + i + 1]!, feld[r + Math.min(g.b - 1, i + 2)]!, tx);
+  };
+  return cr(zeile(j - 1), zeile(j), zeile(j + 1), zeile(j + 2), ty) + Math.hypot((fx - cx) * g.s, (fy - cy) * g.s);
+}
+
+/**
+ * Block: eine Fläche von vorn, in die Tiefe gezogen zwischen hinten und vorn je Zeile (aus der Seite), vorn zum Rand hin um `woelbung`
+ * zurückgewölbt, alle Kanten mit `rundung` gerundet. Von vorn genau die Fläche, von der Seite genau das Intervall je Zeile.
+ */
+export interface Block {
+  flaeche: Flaeche;
+  y0: number;
+  s: number;
+  hinten: Float32Array;
+  vorn: Float32Array;
+  rundung: number;
+  woelbung: number;
+  woelbWeite: number;
+}
+
+export function blockBei(b: Block, y: number): [number, number] {
+  const n = b.vorn.length;
+  const f = Math.max(0, Math.min(n - 1.0001, (y - b.y0) / b.s));
+  const j = Math.floor(f);
+  const a = f - j;
+  const k = (q: number): number => Math.max(0, Math.min(n - 1, q));
+  const w = (v: Float32Array): number => cr(v[k(j - 1)]!, v[j]!, v[j + 1]!, v[k(j + 2)]!, a);
+  return [w(b.hinten), w(b.vorn)];
+}
+
+export function blockFeld(b: Block, x: number, y: number, z: number): number {
+  const d2 = lesenGlatt(b.flaeche.abstand, b.flaeche.g, x, y);
+  const [zb, zf] = blockBei(b, y);
+  const t = Math.min(1, Math.max(0, -d2 / b.woelbWeite));
+  const zv = zf - b.woelbung * (1 - t) * (1 - t);
+  const dz = Math.max(zb - z, z - zv);
+  const a = d2 + b.rundung;
+  const c = dz + b.rundung;
+  return Math.hypot(Math.max(a, 0), Math.max(c, 0)) + Math.min(Math.max(a, c), 0) - b.rundung;
+}
+
+export function blockQuader(b: Block): [number, number, number, number, number, number] {
+  const k = b.flaeche.kasten;
+  let z0 = Infinity;
+  let z1 = -Infinity;
+  for (let j = 0; j < b.vorn.length; j++) {
+    z0 = Math.min(z0, b.hinten[j]!);
+    z1 = Math.max(z1, b.vorn[j]!);
+  }
+  return [k[0], b.y0, z0, k[2], b.y0 + (b.vorn.length - 1) * b.s, z1];
 }
 
 /** ein aufgeblasenes Teil: Feld ≈ Abstand (innen negativ) */

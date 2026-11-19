@@ -65,7 +65,7 @@ export const KOPF_TEILE: TeilName[] = ['ohrA', 'ohrB', 'ohrSpalt', 'kopfA', 'kop
  * Breite von Florians schwarzem Rand je Stelle (von vorn): am äußeren Umriss der Abstand zu seinem Weiß (zwischen 4 und 26); wo kein Weiß
  * nahe ist (Kappe, weiter als 30), die Grundbreite. Nach innen und außen glatt fortgesetzt (Laplace), auf einem Gitter von 1 Einheit.
  */
-function randBreiten(umriss: Flaeche, weiss: Flaeche, grund: number): { g: Gitter; w: Float32Array } {
+export function randBreiten(umriss: Flaeche, weiss: Flaeche, grund: number): { g: Gitter; w: Float32Array } {
   const g = gitterUm(umriss.kasten, 1, 30);
   const N = g.b * g.h;
   const w = new Float32Array(N).fill(grund);
@@ -90,7 +90,7 @@ function randBreiten(umriss: Flaeche, weiss: Flaeche, grund: number): { g: Gitte
 }
 
 /** größtes zusammenhängendes Stück einer Maske (Nachbarn in vier Richtungen) */
-function groesstesStueck(m: Uint8Array, g: Gitter): Uint8Array {
+export function groesstesStueck(m: Uint8Array, g: Gitter): Uint8Array {
   const marke = new Int32Array(m.length);
   let beste = 0;
   let besteGroesse = 0;

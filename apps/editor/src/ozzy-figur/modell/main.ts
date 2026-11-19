@@ -18,6 +18,7 @@ import { koerperUrsprung } from '../raster';
 import { type AnsichtName, importieren, type TeilName } from '../vorlagen/import';
 import { lesen } from '../raum/gitter';
 import type { Netz3 } from './aufblasen';
+import { type BartKopf, bartKopfBauen } from './bart';
 import { KOPF_TEILE, kopfBauen, type KopfModell } from './kopf';
 
 const TEXTE: Record<string, string> = {
@@ -139,6 +140,58 @@ const GESICHT = /* glsl */ `
   }
 `;
 /**
+ * Bart (eigene Form): vorn Florians Weiß der Front, an den Seiten das Weiß seiner Seitenzeichnung; die Grenze liegt dort, wo die Fläche
+ * gleich weit nach vorn wie zur Seite schaut (an der gerundeten Kante). Wo sie nach hinten schaut, schwarz.
+ */
+const BART = /* glsl */ `
+  uniform sampler2D weiss;
+  uniform vec4 weissRahmen;
+  uniform sampler2D weissSeite;
+  uniform vec4 weissSeiteRahmen;
+  uniform float weit;
+  uniform float schattiert;
+  uniform float umriss;
+  varying vec3 vRest;
+  varying vec3 vNormaleRest;
+  varying vec3 vNormaleSicht;
+  float lesen(sampler2D t, vec4 r, vec2 q) {
+    vec2 uv = (q - r.xy) / r.zw;
+    return (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) ? 50.0 : texture2D(t, uv).r;
+  }
+  void main() {
+    vec3 n = normalize(vNormaleRest);
+    float mf = lesen(weiss, weissRahmen, vRest.xy);
+    float ms = lesen(weissSeite, weissSeiteRahmen, vec2(vRest.z, vRest.y));
+    float d = n.z - abs(n.x);
+    float ad = max(fwidth(d), 1e-4);
+    float m = mix(ms, mf, smoothstep(-ad, ad, d)) - weit;
+    float aa = max(fwidth(m), 1e-4) * 0.75;
+    float w = smoothstep(aa, -aa, m);
+    float an = max(fwidth(n.z), 1e-4);
+    w *= smoothstep(-0.5 - an, -0.5 + an, n.z);
+    w *= 1.0 - umriss;
+    gl_FragColor = vec4(vec3(w), 1.0);
+    if (schattiert > 0.5) {
+      vec3 l = normalize(vec3(-0.4, 0.6, 0.7));
+      float licht = 0.25 + 0.75 * max(0.0, dot(normalize(vNormaleSicht), l));
+      gl_FragColor = vec4(vec3(licht) * mix(vec3(0.55, 0.6, 0.75), vec3(1.0), w), 1.0);
+    }
+  }
+`;
+/** schwarz, in der Prüfansicht schattiert */
+const SCHWARZ_FARBE = /* glsl */ `
+  uniform float schattiert;
+  varying vec3 vNormaleSicht;
+  void main() {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    if (schattiert > 0.5) {
+      vec3 l = normalize(vec3(-0.4, 0.6, 0.7));
+      float licht = 0.25 + 0.75 * max(0.0, dot(normalize(vNormaleSicht), l));
+      gl_FragColor = vec4(vec3(licht) * vec3(0.32, 0.3, 0.35), 1.0);
+    }
+  }
+`;
+/**
  * schwarzer Rand: Rückseiten einer um `rand` längs der Normalen vergrößerten Hülle, beim Zeichnen um `zurueck` (Tiefe, normierte
  * Einheiten) nach hinten geschoben: So zeigt er sich nur außerhalb des Umrisses; in Mulden stach er sonst durch die Fläche
  */
@@ -214,6 +267,10 @@ let modell: KopfModell | null = null;
 const umfang = { r: 200, y0: -430, y1: -80 };
 
 function aufbauen(): void {
+  if (adresse.get('kopf') !== 'rund') {
+    bartAufbauen();
+    return;
+  }
   const t = performance.now();
   modell = kopfBauen(daten, { rand: optionen.rand, hinten: optionen.hinten, netz: optionen.netz, vorZurMitte: adresse.has('dick') ? Number(adresse.get('dick')) : undefined });
   const m = modell;
@@ -269,6 +326,58 @@ function aufbauen(): void {
   }
   umfang.r += optionen.rand;
   console.info('Ozzy Modell gebaut', Math.round(performance.now() - t), 'ms', m.zeiten);
+}
+
+let bartModell: BartKopf | null = null;
+/** Kopf mit dem Bart als eigener Form */
+function bartAufbauen(): void {
+  const t = performance.now();
+  const zahl = (n: string): number | undefined => (adresse.has(n) ? Number(adresse.get(n)) : undefined);
+  bartModell = bartKopfBauen(daten, {
+    rand: optionen.rand,
+    netz: optionen.netz,
+    ...Object.fromEntries((['rundung', 'woelbung', 'flacher', 'schaedelBis', 'naseVor', 'schaedelVorn'] as const).flatMap((k) => (zahl(k) === undefined ? [] : [[k, zahl(k)]]))),
+  });
+  const m = bartModell;
+  const w = m.weiss;
+  const ws = m.weissSeite;
+  const bart = new THREE.ShaderMaterial({
+    vertexShader: ECKEN,
+    fragmentShader: BART,
+    uniforms: {
+      weiss: { value: halbFeld(w.abstand, w.g.b, w.g.h) },
+      weissRahmen: { value: new THREE.Vector4(w.g.x0, w.g.y0, w.g.b * w.g.s, w.g.h * w.g.s) },
+      weissSeite: { value: halbFeld(ws.abstand, ws.g.b, ws.g.h) },
+      weissSeiteRahmen: { value: new THREE.Vector4(ws.g.x0, ws.g.y0, ws.g.b * ws.g.s, ws.g.h * ws.g.s) },
+      weit: { value: optionen.weit },
+      schattiert: { value: optionen.schattiert },
+      umriss: { value: optionen.umriss },
+    },
+    side: THREE.DoubleSide,
+  });
+  const schwarz = new THREE.ShaderMaterial({ vertexShader: ECKEN, fragmentShader: SCHWARZ_FARBE, uniforms: { schattiert: { value: optionen.schattiert } }, side: THREE.DoubleSide });
+  for (const p of m.teile) {
+    const g = geometrie(p.netz);
+    const mesh = new THREE.Mesh(g, p.art === 'bart' ? bart : schwarz);
+    mesh.frustumCulled = false;
+    wurzel.add(mesh);
+    if (p.art === 'bart') {
+      const rb = new Float32Array(p.netz.lagen.length / 3);
+      for (let i = 0; i < rb.length; i++) rb[i] = lesen(m.randFeld.w, m.randFeld.g, p.netz.lagen[3 * i]!, p.netz.lagen[3 * i + 1]!);
+      g.setAttribute('randBreite', new THREE.BufferAttribute(rb, 1));
+      const rand = new THREE.Mesh(g, randMaterial);
+      rand.frustumCulled = false;
+      wurzel.add(rand);
+    }
+    const L = p.netz.lagen;
+    for (let i = 0; i < L.length; i += 3) {
+      umfang.r = Math.max(umfang.r, Math.hypot(L[i]!, L[i + 2]!));
+      umfang.y0 = Math.min(umfang.y0, L[i + 1]!);
+      umfang.y1 = Math.max(umfang.y1, L[i + 1]!);
+    }
+  }
+  umfang.r += optionen.rand;
+  console.info('Ozzy Modell (Bart) gebaut', Math.round(performance.now() - t), 'ms', m.zeiten);
 }
 
 /** fester Rahmen über alle Winkel (Körperkoordinaten): Mitte, halbe Breite und Höhe */
@@ -360,7 +469,7 @@ function vorlageZeichnen(): void {
 function zeichnen(): void {
   winkel.value = String(zustand.psi);
   winkelAus.value = `${Math.round(zustand.psi * 10) / 10}°`;
-  if (!modell) return;
+  if (!modell && !bartModell) return;
   const { b, h, dpr } = groesse();
   bildZeichnen(zustand.psi, b, h, dpr);
   vorlageZeichnen();
@@ -454,7 +563,7 @@ const KOPF_RAHMEN: Rahmen = { cx: 25, cy: -255, hb: 205, hh: 205 };
 const haken = {
   bereit: () => bereit,
   optionen,
-  modell: () => modell,
+  modell: () => modell ?? bartModell,
   zeigen(psi: number, b = 800, h = 800, kopf = false): Rahmen {
     figur.style.width = `${b}px`;
     figur.style.height = `${h}px`;
