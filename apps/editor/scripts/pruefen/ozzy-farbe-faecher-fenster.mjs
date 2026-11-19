@@ -1,6 +1,7 @@
-// Ozzy, Paint-Modus, Etappe 6, erster Schritt (19.11.2026; Plan docs/plans/2026-11-19-ozzy-paint-modus.md, Abschnitt 17): die
-// Ebenen-Ansicht im Probebau. An einer frischen Kugel auf Wachs: unten eine Ebene ganz in Blau, darüber eine Ebene mit einem
-// runden Fleck in Rot.
+// Ozzy, Paint-Modus, Etappe 6 (19.11.2026; Plan docs/plans/2026-11-19-ozzy-paint-modus.md, Abschnitt 17 und 18): die
+// Ebenen-Ansicht: auffächern, Anordnung, drehen, antippen. Gebaut ist die schräg versetzte Anordnung; die Probe prüft über den
+// Haken auch die Reihe nebeneinander. Das Malen auf den Kopien prüft `ozzy-farbe-faecher-malen-fenster.mjs`. An einer frischen
+// Kugel auf Wachs: unten eine Ebene ganz in Blau, darüber eine Ebene mit einem runden Fleck in Rot.
 //   70  Zusammengeschoben steht genau das Bild von vorher (kein Bildpunkt anders), nach dem Auffächern in beiden Anordnungen.
 //   71  Aufgefächert steht je Ebene eine Kopie, und jede zeigt nur ihre Ebene (die untere blau ohne Fleck, die obere den Fleck auf Wachs).
 //   72  Nebeneinander stehen die Kopien in einer Reihe und schneiden sich nicht; schräg versetzt liegt die obere Ebene weiter
@@ -147,9 +148,11 @@ for (const art of ['neben', 'schraeg']) {
   zeilen71.push(`${art}: untere Kopie am Fleck ${C[0]}, daneben ${C[1]}; obere Kopie am Fleck ${C[2]}, daneben ${C[3]}`);
   // 72: die Anordnung
   const d = F.kreis.r * 2 * A.s;
+  // (die aktive Ebene ist die obere: nach dem Fleck gezeichnet)
   const [dx, dy] = [B.x - A.x, B.y - A.y];
   const lage = art === 'neben' ? Math.abs(dy) < 1 && dx >= 0.93 * d : dx > 0.3 * d && dx < 0.8 * d && dy > 0.1 * d;
-  gut72 &&= lage && Math.abs(A.s - B.s) < 1e-9 && A.s <= 1;
+  // (die Kopie der Ebene, an der gemalt wird, steht vorn und 5 % größer: hier die obere)
+  gut72 &&= lage && Math.abs(B.s / A.s - 1.05) < 1e-6 && A.s <= 1 && B.rang === 1 && A.rang === 0;
   zeilen72.push(`${art}: Maßstab ${z2(A.s)}, die obere Kopie ${z2(dx / d)} Durchmesser weiter rechts und ${z2(dy / d)} tiefer`);
   if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-faecher-${art}.png`, await s.screenshot());
   kosten[art] = (await mitKarte(s, 40)).gesamt;
@@ -201,7 +204,7 @@ ok('70 Zusammengeschoben steht genau das Bild von vorher, nach dem Auffächern i
   await klick(F.kreis.x, 800);
   await s.waitForTimeout(300);
   const c = (await O('farbEbenen')).ebenen.find((e) => e.aktiv)?.id;
-  // (aufgefächert wird nicht gemalt: Ein Klick auf eine Kopie füllt nichts)
+  // (antippen wählt nur: Ein Klick auf eine andere Kopie und einer ins Leere füllen nichts)
   const fuellungen = (await O('farbe')).ebenen.map((e) => e.fuellungen).join();
   await s.keyboard.press('Escape');
   await steht(0);

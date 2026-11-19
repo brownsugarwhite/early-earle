@@ -284,9 +284,10 @@ const hautJetzt = (): HautJetzt => ({ haut: werk.haut, gespiegelt: !werk.istFrei
 const istMalgrund = (): boolean => material === 'Wachs' || material === 'Helles Solid';
 /**
  * Ist die Bemalung jetzt zu sehen: in der Ruhe, auf einem der zwei Gründe, am aktiven Objekt für sich (Etappe 1: Im Verbund, mit
- * „Dreiecke zeigen“ und in der Pose noch nicht)
+ * „Dreiecke zeigen“ und in der Pose noch nicht). `farbeMoeglich`: Sie wäre zu sehen, läge schon etwas auf der Form.
  */
-const farbeZeigen = (): boolean => zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && !werk.grund;
+const farbeMoeglich = (): boolean => zustand === 'ruhe' && werkGezeigt && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && !werk.grund;
+const farbeZeigen = (): boolean => farbeMoeglich() && !farbWerk.leer;
 let gastStand: { netz: unknown; version: number } | null = null;
 /**
  * Das grüne Material: Sein Renderer (three/webgpu und das Earle-Material aus `@ee/render`) wird erst geladen, wenn es gewählt ist;
@@ -4171,7 +4172,7 @@ function bild(dt: number): boolean {
         festeStand = { netz: festN, version: werkHaut.version };
       }
       // Etappe 6: aufgefächert je Ebene eine Kopie, alle in einem Durchgang (jede an ihrem Platz im Bild, in ihrer Schicht der Tiefe)
-      faecherBild = farbeDa && material === 'Wachs' && !facetten ? faecherRechnen() : [];
+      faecherBild = material === 'Wachs' && !facetten && farbeMoeglich() ? faecherRechnen() : [];
       const kopien = faecherBild.length ? faecherBild : null;
       feste.zeichnen(kam.aktiv, material, {
         schnitt: schnittJetzt,
@@ -4317,7 +4318,11 @@ function bild(dt: number): boolean {
       ? 'Röntgen: auch Punkte und Linien hinter der Form greifen · ⌥ loslassen: zurück'
       : zustand === 'ruhe' && werkGezeigt && malModus
       ? faecherOffen()
-        ? 'Ebenen-Ansicht (Probebau) · je Ebene eine Kopie · ziehen dreht alle zugleich · eine Kopie antippen: Dort malst du · der Knopf über dem Stapel oder Esc: wieder eine Form'
+        ? bearbeiten.stift
+          ? 'Ebenen-Ansicht · P: auf die vordere Kopie klicken setzt Punkte, ziehen rundet · auf dem ersten Punkt schließen · ↩ beendet offen · ⌫ letzter Punkt · Esc'
+          : raumWerkzeug === 'pipette'
+          ? 'Ebenen-Ansicht · Pipette: Klick auf eine Kopie nimmt die Farbe ihrer Ebene auf · A: zurück zu den Punkten'
+          : 'Ebenen-Ansicht · je Ebene eine Kopie · gemalt wird an der vorderen, mit allen Werkzeugen · eine andere antippen: Sie tritt vor · ziehen dreht alle zugleich · Rad zoomt · der Knopf über dem Stapel: wieder eine Form'
         : bearbeiten.stift
         ? 'Paint-Modus · P: auf die Form klicken setzt Punkte, ziehen rundet · auf dem ersten Punkt schließen · ↩ beendet offen · ⌫ letzter Punkt · Esc'
         : raumWerkzeug === 'tropfen'
@@ -4680,7 +4685,8 @@ function wandLinien(vp: Matrix4, m: Moment): void {
   }
   for (const achse of [0, 1, 2] as const) {
     // B3: mit dem Kurvennetz auf der Form treten die Zeichnungen an den Wänden zurück (sie lägen sonst über dem weißen Körper)
-    const st = staerke[achse] * (1 - raumNetzDeckung);
+    // (Etappe 6 im Paint-Modus: ebenso, solange die Ebenen-Ansicht offen ist; die Kanten der fernen Ecke bleiben)
+    const st = staerke[achse] * (1 - raumNetzDeckung) * faecherStill();
     if (st < 0.01) continue;
     const w = achse * 2 + (s[achse] > 0 ? 1 : 0);
     const ueber = wandSicht[w]!;
@@ -4919,11 +4925,15 @@ function linienKoerper(): LinienKoerper | null {
   koerperVersion = werkHaut.version;
   const c = kam.aktiv;
   const f = faltJetzt;
+  // (Etappe 6: Aufgefächert liegen die Farblinien auf der Kopie der Ebene, an der gemalt wird: Dort steht auch der Körper für die Tiefe)
+  const kopie = farbAn ? faecherAktiv() : null;
+  const projektion = new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse);
+  if (kopie) projektion.premultiply(faecherMatrix(kopie));
   return {
     pos: N.pos,
     normal: N.normal,
     index: N.index,
-    projektion: Float32Array.from(new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse).elements),
+    projektion: Float32Array.from(projektion.elements),
     ansicht: Float32Array.from(c.matrixWorldInverse.elements),
     // in den Vier Ansichten je flaches Feld mit seiner Abbildung, eingerastet die Kamera; immer mit eigener Tiefe (für die Hülle)
     ansichten:
@@ -4933,7 +4943,7 @@ function linienKoerper(): LinienKoerper | null {
         ? (['seite', 'front', 'top'] as const).map((n, i) => wandAnsicht(n, f, bereicheJetzt.slice(12 * i, 12 * i + 12)))
         : [
             {
-              projektion: Float32Array.from(new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse).elements),
+              projektion: Float32Array.from(projektion.elements),
               ansicht: Float32Array.from(c.matrixWorldInverse.elements),
               schere: [0, 0, Math.round(W * D), Math.round(H * D)],
               tiefeMax: kam.abstand + 4 * raum!.L,
@@ -5313,7 +5323,8 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
   // wird zum Blatt: Ihre Zeichnung wandert zur Mitte der Form und wird so stark wie das Blatt (nichts wird überblendet oder doppelt gezeigt)
   const { s, staerke: staerkeWand } = waendeJetzt(m);
   // B3: mit dem Kurvennetz auf der Form treten die Zeichnungen an den Wänden zurück (die Wände selbst bleiben)
-  const staerke = staerkeWand.map((v) => v * (1 - raumNetzDeckung)) as [number, number, number];
+  // (Etappe 6 im Paint-Modus: ebenso, solange die Ebenen-Ansicht offen ist, `faecherStill`)
+  const staerke = staerkeWand.map((v) => v * (1 - raumNetzDeckung) * faecherStill()) as [number, number, number];
   const blatt = blattModus();
   const achsen = blatt ? new Set<number>() : blattAchsen();
   const pb = glatt(flach);
@@ -5380,9 +5391,11 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // Etappe 2: A und P gehören im Paint-Modus den Farblinien (im Raum und eingerastet); in den Vier Ansichten zeichnet P wie in
   // Etappe 1 auf dem Blatt
   // (Etappe 3: Mit Farbtropfen und Pipette stehen die Farblinien wie mit A, nur hängt nichts am Zeiger)
-  // (Etappe 6, Probebau: aufgefächert werden die Farblinien nicht bedient; die der aktiven Ebene stehen als Linie auf ihrer Kopie)
-  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && !faecherOffen() && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p' || raumWerkzeug === 'lasso' || farbWerkzeug());
-  bearbeitenAn = stabil && !objektModus() && (!malModus || farbAn || raumWerkzeug === 'p' || strichWerkzeug());
+  // (Etappe 6: aufgefächert liegen die Farblinien auf der Kopie der Ebene, an der gemalt wird; ist sie ausgeblendet, gibt es keine,
+  // dann wird nichts bedient)
+  const aufKopie = !faecherOffen() || faecherAktiv() !== null;
+  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && aufKopie && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p' || raumWerkzeug === 'lasso' || farbWerkzeug());
+  bearbeitenAn = stabil && !objektModus() && (!malModus || farbAn || (!faecherOffen() && (raumWerkzeug === 'p' || strichWerkzeug())));
   modellSetzen(farbAn);
   // P in der Leiste, sobald das Werk bedient wird
   if (stabil !== pErlaubt) {
@@ -5401,18 +5414,22 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     bearbeiten.loslassen();
     bearbeitenGedrueckt = false;
   }
+  // (Etappe 6: Aufgefächert stehen nur die Kopien im Raum. Die Linien der Form, an den Wänden und auf ihr, gehören zu der einen
+  // Form an ihrem Ort: Sie werden dünner und verschwinden, solange die Ebenen-Ansicht offen ist)
+  const still = faecherStill();
   // Linien ohne Pfad (noch keine Griffe): nur zu sehen
-  for (const r of werkBlatt.roh) {
-    const F = flaechen[r.fl]!;
-    K.bereich = F.bereich ?? 0;
-    K.zug(
-      r.x.map((v) => v * D),
-      r.y.map((v) => v * D),
-      (linienWerte.innen / 2) * D * F.breite * F.staerke,
-      false,
-    );
-    K.bereich = 0;
-  }
+  if (still > 0.02)
+    for (const r of werkBlatt.roh) {
+      const F = flaechen[r.fl]!;
+      K.bereich = F.bereich ?? 0;
+      K.zug(
+        r.x.map((v) => v * D),
+        r.y.map((v) => v * D),
+        (linienWerte.innen / 2) * D * F.breite * F.staerke * still,
+        false,
+      );
+      K.bereich = 0;
+    }
   // Freihand und Formen im Zug: der Strich und die Form, dazu ein Tropfen am Zeiger (wie auf dem Blatt)
   const rs = (linienWerte.umriss / 2) * D;
   if (raumStrich) {
@@ -5459,7 +5476,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   if (bearbeitenAn) {
     if (farbAn) {
       // die Linien der Form stehen still, ohne Punkte; bedient werden die Farblinien auf der Form
-      werkLinienStill(flaechen, false);
+      werkLinienStill(flaechen, false, still);
       farbBlatt.bauen(hautJetzt(), farbSicht());
       if (farbBlatt.struktur !== bearbeitenStruktur) {
         bearbeiten.tropfen = [];
@@ -5487,15 +5504,19 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
     return { zeiger: strichWerkzeug() || farbWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv: aktiv || licht };
   }
-  werkLinienStill(flaechen, !objektModus());
+  werkLinienStill(flaechen, !objektModus() && still > 0.98, still);
   return { zeiger: undefined, aktiv: werkBlatt.fliesst };
 }
 
-/** die Linien des Werks schlicht gezeichnet (das Verhalten bedient sie gerade nicht); `punkte`: mit ihren Punkten */
-function werkLinienStill(flaechen: readonly Flaeche[], punkte: boolean): void {
+/**
+ * die Linien des Werks schlicht gezeichnet (das Verhalten bedient sie gerade nicht); `punkte`: mit ihren Punkten; `staerke`: so
+ * breit (1: wie immer; 0: nicht zu sehen)
+ */
+function werkLinienStill(flaechen: readonly Flaeche[], punkte: boolean, staerke = 1): void {
+  if (staerke <= 0.02) return;
   for (const P of werkBlatt.proben) {
     const g = K.neueGruppe();
-    for (let j = 0; j + 1 < P.n; j++) K.push(P.x[j]! * D, P.y[j]! * D, P.x[j + 1]! * D, P.y[j + 1]! * D, P.halb[j]! * D, P.halb[j + 1]! * D, g, 0, false);
+    for (let j = 0; j + 1 < P.n; j++) K.push(P.x[j]! * D, P.y[j]! * D, P.x[j + 1]! * D, P.y[j + 1]! * D, P.halb[j]! * D * staerke, P.halb[j + 1]! * D * staerke, g, 0, false);
   }
   if (!punkte) return;
   werkBlatt.netz.punkte.forEach((p, pi) => {
@@ -5529,13 +5550,19 @@ function farbSicht(): FarbSicht {
   const blick = new Vector3();
   c.getWorldDirection(blick);
   const auge = new Vector3().setFromMatrixPosition(c.matrixWorld);
+  // Etappe 6: Aufgefächert liegt die Form, an der gemalt wird, verkleinert und versetzt im Bild (die Kopie der aktiven Ebene). Das
+  // Blatt bekommt ihre Abbildung statt der der Kamera: So liegen Farblinien, Punkte, Griffe und Treffer von selbst auf der Kopie
+  const q = faecherAktiv();
+  const vp = new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse);
+  if (q) vp.premultiply(faecherMatrix(q));
   return {
-    vp: new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse).elements,
+    vp: vp.elements,
     ansicht: c.matrixWorldInverse.elements,
     W,
     H,
     strahl: (x, y) => {
-      const r = kam.strahl(x, y, W, H);
+      const [xm, ym] = q ? faecherZurueck(q, x, y) : [x, y];
+      const r = kam.strahl(xm, ym, W, H);
       return { o: [r.o.x, r.o.y, r.o.z], d: [r.d.x, r.d.y, r.d.z] };
     },
     auge: (c as { isOrthographicCamera?: boolean }).isOrthographicCamera ? null : [auge.x, auge.y, auge.z],
@@ -6035,9 +6062,10 @@ function hintenZeigen(): void {
 
 /**
  * Rastet die Drehung von Hand ein? In den Vier Ansichten nie (Florian, 18.11.: „der 3d view soll in der viereransicht nicht einrasten“):
- * Das Feld des Raums bleibt, wie er es loslässt; die drei Ansichten stehen ja daneben.
+ * Das Feld des Raums bleibt, wie er es loslässt; die drei Ansichten stehen ja daneben. Ebenso in der Ebenen-Ansicht (Paint-Modus,
+ * Etappe 6): Eingerastet stünde die Farbe nicht im Bild.
  */
-const rastetEin = (): boolean => vier < 1e-3 && vierZiel === 0;
+const rastetEin = (): boolean => vier < 1e-3 && vierZiel === 0 && !faecherOffen();
 
 /** nahe einer der sechs Ansichten: einrasten (nach dem Drehen von Hand) */
 function einrasten(): void {
@@ -6340,7 +6368,7 @@ function gesteBewegen(): void {
     b.y = m.y - (r.y + r.h / 2) - qy * z;
     if (gf.n !== 'raum') return;
   }
-  const z = Math.max(0.3, Math.min(4, (geste.zoom0 * d) / geste.d0));
+  const z = Math.max(0.3, Math.min(zoomHoechstens(), (geste.zoom0 * d) / geste.d0));
   const qx = (geste.m0.x - (W / 2 + geste.sx0)) / geste.zoom0;
   const qy = (geste.m0.y - (H / 2 + geste.sy0)) / geste.zoom0;
   if (!gf) nutzer.zoom = z;
@@ -6734,13 +6762,6 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
-  // Etappe 6 (Probebau): aufgefächert dreht das Ziehen alle Kopien zugleich; ohne Weg losgelassen ist die Kopie dort gemeint
-  if (faecherOffen() && werkGezeigt) {
-    faecherDruck = { x, y };
-    drehenBeginnen(x, y, e.timeStamp);
-    anstossen();
-    return;
-  }
   // B1 (17.11.): das Ziel für genau diesen Ort bestimmen, bevor gefragt wird, ob etwas am Zeiger hängt. Bis dahin galt, was seit dem
   // Bild davor an ihm hing: Ein Tipp mit Stift oder Finger (kein Zeigen davor) und ein rascher Klick griffen oft nichts. Nicht mit dem
   // Lasso (es greift nichts, es umfährt)
@@ -6750,6 +6771,21 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     bearbeiten.kippen = e.shiftKey;
     bearbeiten.zeigerSetzen(x, y, x, y, 0);
     bearbeiten.zielJetzt();
+  }
+  // Etappe 6: Aufgefächert wird an der Kopie gemalt, die vorn steht (der Ebene, an der gemalt wird): Dort und im Leeren gilt alles
+  // wie an der einen Form. Auf einer anderen Kopie ist sie selbst gemeint: Ohne Weg losgelassen tritt sie vor, mit Weg drehen alle
+  // zugleich. Nicht, wenn etwas von der vorderen Kopie am Zeiger hängt (ein Punkt, eine Farblinie, der Tropfen am Faden), solange
+  // mit P eine Farblinie angefangen ist, und nicht mit der Pipette (sie nimmt die Farbe von jeder Kopie)
+  if (faecherBild.length && werkGezeigt) {
+    const unter = faecherKopieBei(x, y);
+    const haengt = farbAn && ((bearbeiten.haengt && !farbWerkzeug() && raumWerkzeug !== 'lasso') || (raumWerkzeug === 'auswahl' && !bearbeiten.stift && weichGriffBei(x, y) !== null) || (bearbeiten.stift && farbBlatt.entwurfOffen));
+    const pipette = raumWerkzeug === 'pipette' || (raumWerkzeug === 'tropfen' && e.altKey);
+    if (!farbAn ? !pipette : unter !== null && unter !== faecherAktiv() && !haengt && !pipette) {
+      faecherDruck = { x, y };
+      drehenBeginnen(x, y, e.timeStamp);
+      anstossen();
+      return;
+    }
   }
   // S17b: ⇧ + Ziehen in einem flachen Feld wendet es, ⇧ + Doppelklick ganz (über einem Punkt oder einer Linie gilt ⇧ der Auswahl)
   if (e.shiftKey && !bearbeiten.haengt) {
@@ -7042,13 +7078,13 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
-  // Etappe 6: aufgefächert ohne Weg losgelassen: An der Ebene der Kopie unter dem Zeiger wird gemalt
+  // Etappe 6: aufgefächert ohne Weg losgelassen: An der Ebene der Kopie unter dem Zeiger wird gemalt, sie tritt vor
   if (faecherDruck) {
     const d = faecherDruck;
     faecherDruck = null;
     if (Math.hypot(zeiger.x - d.x, zeiger.y - d.y) < FELD_KLICK_WEG) {
-      const id = faecherKopieBei(d.x, d.y);
-      if (id !== null) ebeneWaehlen(id);
+      const q = faecherKopieBei(d.x, d.y);
+      if (q) ebeneWaehlen(q.id);
     }
   }
   // Objekte (V): ein Klick ohne Weg wählt die Form (auf ihr) oder wählt sie ab (daneben)
@@ -7097,7 +7133,15 @@ leinwandLinien.addEventListener(
       const [x, y] = lageIm(e);
       const n = feldUnter(x, y);
       if (n) feldZoomen(n, Math.exp(-e.deltaY * 0.0015), x, y);
-      else nutzer.zoom = Math.max(0.3, Math.min(4, nutzer.zoom * Math.exp(-e.deltaY * 0.0015)));
+      else if (faecherBild.length) {
+        // Etappe 6: aufgefächert zoomt das Rad zum Zeiger hin (was unter ihm lag, bleibt unter ihm): So kommt man an eine Kopie heran
+        const z = Math.max(0.3, Math.min(zoomHoechstens(), nutzer.zoom * Math.exp(-e.deltaY * 0.0015)));
+        const qx = (x - (W / 2 + nutzer.schwenkX)) / nutzer.zoom;
+        const qy = (y - (H / 2 + nutzer.schwenkY)) / nutzer.zoom;
+        nutzer.zoom = z;
+        nutzer.schwenkX = x - W / 2 - qx * z;
+        nutzer.schwenkY = y - H / 2 - qy * z;
+      } else nutzer.zoom = Math.max(0.3, Math.min(4, nutzer.zoom * Math.exp(-e.deltaY * 0.0015)));
       anstossen();
     }
   },
@@ -7195,7 +7239,7 @@ function objektUnter(x: number, y: number): boolean {
  */
 function verbundenesWaehlen(weg: boolean): void {
   if (!bearbeitenAn || !zeiger.da || bearbeiten.stift || strichWerkzeug()) return;
-  if (!bearbeiten.haengt && !objektUnter(zeiger.x, zeiger.y)) return;
+  if (!bearbeiten.haengt && !objektUnter(...malOrt(zeiger.x, zeiger.y))) return;
   if (weg) {
     bearbeiten.eingabe('esc');
     werk.G.auswahl = [];
@@ -7228,9 +7272,11 @@ function stiftImRaum(an: boolean): void {
 function werkzeugImRaum(w: LeistenWerkzeug): void {
   // (Farbtropfen und Pipette gibt es nur im Paint-Modus)
   if ((w === 'tropfen' || w === 'pipette') && !malModus) w = 'auswahl';
-  // (Etappe 6, Probebau: Aufgefächert wird gedreht und gewählt; gemalt wird, sobald die Form wieder zusammen ist)
-  if (faecherOffen() && w !== 'auswahl') {
-    werk.G.meldung = 'Ebenen-Ansicht (Probebau): Malen auf den Kopien kommt mit dem Bau · der Knopf über dem Stapel oder Esc schiebt sie zusammen';
+  // (Etappe 6: Aufgefächert gibt es Freihand, Formen und Objekte nicht: Sie arbeiten an Wänden, Ansichten und der ganzen Form)
+  if (faecher.ziel > 0.5 && (w === 'frei' || w === 'ellipse' || w === 'wuerfel' || w === 'objekt')) {
+    werk.G.meldung = `Ebenen-Ansicht: ${w === 'objekt' ? 'Objekte (V)' : 'Freihand und Formen'} gibt es hier nicht · der Knopf über dem Stapel schiebt die Kopien wieder zusammen`;
+    leiste.setzen(raumWerkzeug);
+    anstossen();
     return;
   }
   raumWerkzeug = w;
@@ -7284,12 +7330,6 @@ window.addEventListener('keydown', (e) => {
   bearbeiten.umschalt = e.shiftKey;
   bearbeiten.kippen = e.shiftKey;
   const k = e.key;
-  // Etappe 6: aufgefächert schiebt Esc die Kopien wieder zu einer Form zusammen
-  if (k === 'Escape' && faecher.ziel > 0.5) {
-    e.preventDefault();
-    faecherSetzen(false);
-    return;
-  }
   // Objekte (V): G, S oder R am Objekt läuft: Esc nimmt zurück, ↩ beendet, X, Y, Z halten das Verschieben längs einer Achse
   if (objektZug) {
     e.preventDefault();
@@ -7380,6 +7420,9 @@ window.addEventListener('keydown', (e) => {
       // zuerst die Auswahl leeren
       bearbeiten.eingabe('esc');
       werk.G.auswahl = [];
+    } else if (faecher.ziel > 0.5) {
+      // Etappe 6: Ist nichts angefangen und nichts gewählt, schiebt Esc die Kopien wieder zu einer Form zusammen
+      faecherSetzen(false);
     } else if (objektModus() && objektGewaehlt) objektGewaehlt = false;
     else if (vierZiel > 0.5) vierUmschalten(false);
     else if (ansicht !== 'raum') ansichtSetzen('raum');
@@ -7460,6 +7503,11 @@ window.addEventListener('keydown', (e) => {
     const ziel: Ansicht = k === '1' ? 'seite' : k === '3' ? 'front' : k === '7' ? 'top' : 'raum';
     tasteGehalten = { taste: k, seit: performance.now(), vorher: ansicht };
     ansichtSetzen(ziel);
+  } else if (k === 'Home' && faecherBild.length) {
+    // Etappe 6: aufgefächert passt die Reihe der Kopien wieder ins Bild (Zoom und Schwenk wie beim Auffächern)
+    nutzer.zoom = faecher.blick0.zoom;
+    nutzer.schwenkX = faecher.blick0.sx;
+    nutzer.schwenkY = faecher.blick0.sy;
   } else if (k === 'Home') {
     nutzer.zoom = 1;
     nutzer.schwenkX = 0;
@@ -7640,17 +7688,27 @@ let farbZug: { farbe: Farbe; x: number; y: number } | null = null;
 const farbCss = (f: Farbe): string => `rgb(${f.map((c) => Math.round(255 * c)).join(' ')})`;
 /** die Farbe der Farbfläche unter einem Ort des Bilds (CSS-Pixel); null: keine Form oder keine Farbe dort */
 function farbUnter(x: number, y: number): Farbe | null {
+  // (Etappe 6: aufgefächert die Farbe auf der Kopie unter dem Ort, also die ihrer Ebene allein)
+  let nur: number | null = null;
+  if (faecherBild.length) {
+    const q = faecherKopieBei(x, y);
+    if (!q) return null;
+    nur = q.id;
+    [x, y] = faecherZurueck(q, x, y);
+  }
   if (ruhende.length && objektBei(x, y) !== aktivId) return null;
   const { o, d } = kam.strahl(x, y, W, H);
   const h = hautJetzt();
   const ort = farbWerk.ortUnterStrahl(h, [o.x, o.y, o.z], [d.x, d.y, d.z]);
-  return ort ? farbWerk.farbeBei(h, ort) : null;
+  return ort ? farbWerk.farbeBei(h, ort, nur) : null;
 }
 /** (für den Ring der Pipette: nur neu gesucht, wenn sich der Strahl unter dem Zeiger, die Bemalung oder die Haut geändert haben) */
 let farbUnterGemerkt: { schluessel: string; farbe: Farbe | null } = { schluessel: '', farbe: null };
 function farbUnterZeiger(): Farbe | null {
   const { o, d } = kam.strahl(zeiger.x, zeiger.y, W, H);
-  const schluessel = `${o.x},${o.y},${o.z},${d.x},${d.y},${d.z}|${farbBild}|${werkHaut.version}`;
+  // (aufgefächert hängt es auch daran, wo die Kopien stehen)
+  const kopien = faecherBild.map((q) => `${q.id},${q.s},${q.tx},${q.ty},${q.rang}`).join(';');
+  const schluessel = `${o.x},${o.y},${o.z},${d.x},${d.y},${d.z}|${farbBild}|${werkHaut.version}|${kopien}`;
   if (schluessel !== farbUnterGemerkt.schluessel) farbUnterGemerkt = { schluessel, farbe: farbUnter(zeiger.x, zeiger.y) };
   return farbUnterGemerkt.farbe;
 }
@@ -7713,74 +7771,170 @@ const farbLeiste = new FarbLeiste(document.body, $<HTMLInputElement>('farbe-farb
     anstossen();
   },
   fallen: (x, y, f) => {
-    if (!malModus || zustand !== 'ruhe' || !werkGezeigt || !pinselHier(x, y) || !objektUnter(x, y)) return false;
+    if (!malModus || zustand !== 'ruhe' || !werkGezeigt) return false;
+    // (Etappe 6: aufgefächert füllt der Tropfen auf der Kopie, auf die er fällt)
+    const kopie = faecherBild.length ? faecherKopieBei(x, y) : null;
+    if (faecherBild.length ? !kopie : !pinselHier(x, y) || !objektUnter(x, y)) return false;
     farbTropfen.hidden = false;
-    return farbFuellenBei(x, y, f);
+    return farbFuellenBei(x, y, f, kopie);
   },
   muell: (x, y) => document.elementFromPoint(x, y)?.closest('button') === leiste.muellKnopf,
 });
 farbWahl = farbLeiste.farbe;
 leiste.farbeZeigen(farbCss(farbWahl));
-// ---------- Paint-Modus, Etappe 6: die Ebenen-Ansicht (Probebau: zeichnen, zusammen drehen, eine Kopie antippen) ----------
+// ---------- Paint-Modus, Etappe 6: die Ebenen-Ansicht ----------
 
-/** wie die Kopien stehen: nebeneinander in einer Reihe, oder schräg versetzt wie aufgefächerte Karten (die obere Ebene vorn) */
-type FaecherArt = 'neben' | 'schraeg';
 /**
- * Die Form fächert auf: je Ebene eine Kopie, dieselbe Haut mehrfach gezeichnet, jede an ihrem Platz im Bild (wie der Raum im Feld
- * der Vier Ansichten: die Projektion verkleinert und verschoben). `ziel`: 1 aufgefächert, 0 zusammen; `f`: wo die Bewegung gerade
- * ist (sie federt ein wenig über das Ziel), `v`: ihr Tempo.
+ * Wie die Kopien stehen. Gebaut ist Fassung B (Florian, 19.11.: „dann fassung b“): schräg versetzt wie aufgefächerte Karten.
+ * Fassung A (nebeneinander in einer Reihe) bleibt über `?faecher=neben` erreichbar.
  */
-const faecher: { art: FaecherArt; ziel: number; f: number; v: number } = { art: params.get('faecher') === 'schraeg' ? 'schraeg' : 'neben', ziel: 0, f: 0, v: 0 };
+type FaecherArt = 'neben' | 'schraeg';
+/** Zoom und Schwenk der Ansicht (wie in `nutzer`) */
+type FaecherBlick = { zoom: number; sx: number; sy: number };
+/**
+ * Die Form fächert auf: je Ebene, die zu sehen ist, eine Kopie; dieselbe Haut mehrfach gezeichnet, jede an ihrem Platz im Bild (wie
+ * der Raum im Feld der Vier Ansichten: verkleinert und versetzt). `ziel`: 1 aufgefächert, 0 zusammen; `f`: wo die Bewegung gerade
+ * ist (sie federt ein wenig über das Ziel), `v`: ihr Tempo; `n`: wie viele Kopien es sind, weich nachgeführt (daran hängt ihre
+ * Größe). `blick0`: Zoom und Schwenk beim Auffächern. Dazu passt die Reihe ins Bild; was seither gezoomt und geschwenkt wird, gilt
+ * dem ganzen Bild der Kopien, und beim Zusammenschieben kehrt die Ansicht dorthin zurück (`blick1`: von wo aus). `fit`: so viel
+ * kleiner als die Form steht eine Kopie im Bild.
+ */
+const faecher: { art: FaecherArt; ziel: number; f: number; v: number; n: number; vn: number; blick0: FaecherBlick; blick1: FaecherBlick | null; fit: number } = {
+  art: params.get('faecher') === 'neben' ? 'neben' : 'schraeg',
+  ziel: 0,
+  f: 0,
+  v: 0,
+  n: 1,
+  vn: 0,
+  blick0: { zoom: 1, sx: 0, sy: 0 },
+  blick1: null,
+  fit: 1,
+};
+/**
+ * Was jede Kopie weich nachführt: ihr Platz in der Reihe (`p`; ordnen, aus- und einblenden lassen sie rücken statt springen), ihre
+ * Größe (`g`: Eine Kopie, die dazukommt, wächst), und wie weit sie vortritt (`vor`: die Kopie der Ebene, an der gemalt wird).
+ */
+const faecherPlaetze = new Map<number, { p: number; vp: number; g: number; vg: number; vor: number; vv: number }>();
 /**
  * Eine Kopie: ihre Ebene; ihr Bild im Bild (um den Faktor `s` verkleinert, dann um `tx`, `ty` versetzt; Einheiten des Bilds, −1 … 1);
- * ihr Bereich der Tiefe (`za`, `zb`: Alle Kopien stehen in einem Durchgang, jede in ihrer Schicht, die vordere deckt); ihre Mitte
- * im Bild (`x`, `y`, CSS-Pixel); und welche Ebenen sie wie deckend zeigt (ihre eigene ganz; die darunter nur, solange die Kopien noch beieinander stehen: So ist
- * der Anfang der Bewegung genau das Bild von vorher)
+ * ihr Bereich der Tiefe (`za`, `zb`: Alle Kopien stehen in einem Durchgang, jede in ihrer Schicht, die vordere deckt; `rang`: 0 ist
+ * hinten); ihre Mitte im Bild (`x`, `y`, CSS-Pixel); und welche Ebenen sie wie deckend zeigt (ihre eigene ganz; die der Kopien
+ * hinter ihr nur, solange alle noch beieinander stehen: So ist der Anfang der Bewegung genau das Bild von vorher)
  */
-type FaecherKopie = { id: number; s: number; tx: number; ty: number; za: number; zb: number; nur: Map<number, number>; x: number; y: number };
+type FaecherKopie = { id: number; s: number; tx: number; ty: number; za: number; zb: number; rang: number; nur: Map<number, number>; x: number; y: number };
 /** die Kopien des letzten Bilds, von unten nach oben (leer: nicht aufgefächert) */
 let faecherBild: FaecherKopie[] = [];
-/** aufgefächert auf die Zeichenfläche gedrückt (ohne Weg losgelassen: die Kopie dort ist gemeint) */
+/** aufgefächert neben die Kopie gedrückt, an der gemalt wird (ohne Weg losgelassen: die Kopie dort ist gemeint; mit Weg wird gedreht) */
 let faecherDruck: { x: number; y: number } | null = null;
 const faecherOffen = (): boolean => faecher.ziel > 0.5 || faecher.f > 0.002;
+/** steht statt einer Ebene: Ist keine zu sehen, bleibt eine blanke Kopie stehen */
+const KEINE_EBENE = -1;
+/** die Ebenen, die aufgefächert je eine Kopie bekommen, von unten nach oben: alle, die zu sehen sind (auch leere) */
+function faecherEbenen(): number[] {
+  const ids = farbWerk.sichtbareEbenen();
+  return ids.length ? ids : [KEINE_EBENE];
+}
 /** auffächern oder zusammenschieben (`art`: die Anordnung von jetzt an). Zurück: Gilt es? */
 function faecherSetzen(an: boolean, art?: FaecherArt): boolean {
   if (art) faecher.art = art;
-  if (an) {
-    if (!malModus || zustand !== 'ruhe' || !werkGezeigt) return false;
-    if (material !== 'Wachs') {
-      werk.G.meldung = 'Die Ebenen-Ansicht gibt es im Probebau nur auf Wachs (Taste M)';
-      return false;
-    }
-    if (farbWerk.gezeichneteEbenen().length < 2) {
-      werk.G.meldung = 'Ebenen-Ansicht: erst mit zwei Ebenen, auf denen etwas liegt';
-      return false;
-    }
-    if (raumWerkzeug !== 'auswahl') werkzeugImRaum('auswahl');
-    bearbeiten.auswahlLeeren();
-    weichZug = null;
+  if (!an) {
+    faecherSchliessen();
+    werk.G.meldung = 'Die Ebenen liegen wieder übereinander';
+    return true;
   }
-  faecher.ziel = an ? 1 : 0;
-  werk.G.meldung = an ? 'Ebenen-Ansicht: je Ebene eine Kopie · ziehen dreht alle zugleich · eine Kopie antippen: Dort malst du' : 'Die Ebenen liegen wieder übereinander';
+  if (!malModus || zustand !== 'ruhe' || !werkGezeigt || !istMalgrund()) return false;
+  if (material !== 'Wachs') {
+    werk.G.meldung = 'Die Ebenen-Ansicht gibt es bisher nur auf Wachs (Taste M)';
+    return false;
+  }
+  if (!farbeMoeglich()) {
+    werk.G.meldung = 'Ebenen-Ansicht: erst, wenn die Farbe zu sehen ist (ohne „Dreiecke zeigen“, außerhalb der Pose)';
+    return false;
+  }
+  if (vierZiel > 0.5 || vier > 0.001 || ansicht !== 'raum') {
+    werk.G.meldung = 'Ebenen-Ansicht: im Raum (Taste 0)';
+    return false;
+  }
+  if (farbWerk.sichtbareEbenen().length < 2) {
+    werk.G.meldung = 'Ebenen-Ansicht: erst mit zwei Ebenen, die zu sehen sind · das Plus im Stapel legt eine an';
+    return false;
+  }
+  // (Freihand, Formen und Objekte gibt es aufgefächert nicht: Sie arbeiten an Wänden, Ansichten und der ganzen Form)
+  if (strichWerkzeug() || objektModus()) werkzeugImRaum('auswahl');
+  weichZug = null;
+  // (zum Zoom und Schwenk von jetzt passt die Reihe ins Bild; läuft das Zusammenschieben noch, gilt weiter, was beim Auffächern galt)
+  if (!faecherOffen()) faecher.blick0 = { zoom: nutzer.zoom, sx: nutzer.schwenkX, sy: nutzer.schwenkY };
+  faecher.blick1 = null;
+  faecher.ziel = 1;
+  werk.G.meldung = 'Ebenen-Ansicht: je Ebene eine Kopie · die vorderste ist die, an der du malst · eine andere antippen: Sie tritt vor';
   farbBild++;
   anstossen();
   return true;
 }
-/** je Bild: die Bewegung des Auffächerns geht weiter (eine Feder mit wenig Überschwingen); wahr: Sie läuft noch */
+/** zusammenschieben, ohne Meldung: Die Ansicht kehrt dabei dorthin zurück, wo sie beim Auffächern stand */
+function faecherSchliessen(): void {
+  if (faecher.ziel > 0.5) faecher.blick1 = { zoom: nutzer.zoom, sx: nutzer.schwenkX, sy: nutzer.schwenkY };
+  faecher.ziel = 0;
+  faecherDruck = null;
+  farbBild++;
+  anstossen();
+}
+/** ein Schritt einer Feder mit wenig Überschwingen: `x` mit Tempo `v` auf `ziel` zu; zurück: [x, v], am Ziel in Ruhe genau das Ziel */
+function federSchritt(x: number, v: number, ziel: number, t: number, hart = 150, daempfung = 0.8): [number, number] {
+  const v1 = v + (hart * (ziel - x) - 2 * Math.sqrt(hart) * daempfung * v) * t;
+  const x1 = x + v1 * t;
+  return Math.abs(ziel - x1) < 4e-4 && Math.abs(v1) < 4e-3 ? [ziel, 0] : [x1, v1];
+}
+/** je Bild: die Bewegungen der Ebenen-Ansicht gehen weiter (auffächern, rücken, wachsen, vortreten); wahr: Etwas läuft noch */
 function faecherSchritt(dt: number): boolean {
   // (was die Ansicht braucht, gilt nicht mehr: zusammenschieben)
-  if (faecher.ziel > 0.5 && (!malModus || material !== 'Wachs' || zustand !== 'ruhe' || !werkGezeigt)) faecher.ziel = 0;
-  if (faecher.f === faecher.ziel && faecher.v === 0) return false;
+  if (faecher.ziel > 0.5 && (!malModus || material !== 'Wachs' || !farbeMoeglich() || vierZiel > 0.5 || ansicht !== 'raum')) faecherSchliessen();
   const t = Math.min(dt, 1 / 30);
-  const hart = 150;
-  faecher.v += (hart * (faecher.ziel - faecher.f) - 2 * Math.sqrt(hart) * 0.8 * faecher.v) * t;
-  faecher.f += faecher.v * t;
-  if (Math.abs(faecher.ziel - faecher.f) < 4e-4 && Math.abs(faecher.v) < 4e-3) {
-    faecher.f = faecher.ziel;
-    faecher.v = 0;
+  let laeuft = false;
+  if (faecher.f !== faecher.ziel || faecher.v !== 0) {
+    [faecher.f, faecher.v] = federSchritt(faecher.f, faecher.v, faecher.ziel, t);
+    laeuft = true;
   }
-  farbBild++;
-  return true;
+  // beim Zusammenschieben kehren Zoom und Schwenk dorthin zurück, wo sie beim Auffächern standen: Am Ende steht das Bild von vorher
+  const b1 = faecher.blick1;
+  if (b1 && faecher.ziel < 0.5) {
+    const b0 = faecher.blick0;
+    const g = faecherOffen() ? Math.min(1, Math.max(0, faecher.f)) : 0;
+    nutzer.zoom = b0.zoom * (b1.zoom / b0.zoom) ** g;
+    nutzer.schwenkX = b0.sx + (b1.sx - b0.sx) * g;
+    nutzer.schwenkY = b0.sy + (b1.sy - b0.sy) * g;
+    if (g === 0) faecher.blick1 = null;
+    laeuft = true;
+  }
+  if (!faecherOffen()) {
+    faecherPlaetze.clear();
+    if (laeuft) farbBild++;
+    return laeuft;
+  }
+  // die Kopien: Platz in der Reihe, Größe, Vortreten
+  const ids = faecherEbenen();
+  const aktiv = aktiveEbene(farbWerk.bemalung).id;
+  const neuOffen = faecherPlaetze.size === 0;
+  for (const id of [...faecherPlaetze.keys()]) if (!ids.includes(id)) faecherPlaetze.delete(id);
+  if (neuOffen) faecher.n = Math.max(1, ids.length);
+  ids.forEach((id, k) => {
+    let z = faecherPlaetze.get(id);
+    if (!z) {
+      // (beim Auffächern stehen alle sofort an ihrem Platz; eine Kopie, die später dazukommt, wächst dort)
+      z = { p: k, vp: 0, g: neuOffen ? 1 : 0, vg: 0, vor: id === aktiv && neuOffen ? 1 : 0, vv: 0 };
+      faecherPlaetze.set(id, z);
+    }
+    const vorher = [z.p, z.g, z.vor];
+    [z.p, z.vp] = federSchritt(z.p, z.vp, k, t);
+    [z.g, z.vg] = federSchritt(z.g, z.vg, 1, t, 220, 0.72);
+    [z.vor, z.vv] = federSchritt(z.vor, z.vv, id === aktiv ? 1 : 0, t, 260, 0.7);
+    if (z.p !== vorher[0] || z.g !== vorher[1] || z.vor !== vorher[2]) laeuft = true;
+  });
+  const n0 = faecher.n;
+  [faecher.n, faecher.vn] = federSchritt(faecher.n, faecher.vn, Math.max(1, ids.length), t);
+  if (faecher.n !== n0) laeuft = true;
+  if (laeuft) farbBild++;
+  return laeuft;
 }
 /** der Kreis um die Form im Raum (Welt): ihre Mitte und der Abstand ihres fernsten Punkts; gemerkt, solange die Haut dieselbe ist */
 let faecherKugel: { haut: object; version: number; m: Vector3; r: number } | null = null;
@@ -7803,7 +7957,7 @@ function faecherKreis(): { cx: number; cy: number; r: number } {
     const mz = h.gespiegelt ? 0 : (lo[2]! + hi[2]!) / 2;
     const m = [(lo[0]! + hi[0]!) / 2, (lo[1]! + hi[1]!) / 2, mz];
     let r2 = 0;
-    for (let i = 0; i < P.length; i += 3) r2 = Math.max(r2, (P[i]! - m[0]!) ** 2 + (P[i + 1]! - m[1]!) ** 2 + (Math.abs(P[i + 2]! - m[2]!) + 0) ** 2);
+    for (let i = 0; i < P.length; i += 3) r2 = Math.max(r2, (P[i]! - m[0]!) ** 2 + (P[i + 1]! - m[1]!) ** 2 + (P[i + 2]! - m[2]!) ** 2);
     faecherKugel = { haut: h.haut, version: h.version, m: new Vector3(m[0]! / h.f + h.mitte.x, m[1]! / h.f + h.mitte.y, m[2]! / h.f), r: Math.sqrt(r2) / h.f };
   }
   const K = faecherKugel;
@@ -7814,56 +7968,101 @@ function faecherKreis(): { cx: number; cy: number; r: number } {
   const [cx, cy] = [c.x / c.w, c.y / c.w];
   return { cx, cy, r: (Math.abs(e.x / e.w - cx) / 2) * W };
 }
+/** so viel größer steht die Kopie der Ebene, an der gemalt wird */
+const FAECHER_VOR = 0.05;
 /**
- * Die Kopien für dieses Bild, von unten nach oben. Sie teilen sich den Platz links vom Stapel und unter der Leiste. Nebeneinander:
- * in einer Reihe, so weit verkleinert, dass alle hineinpassen. Schräg versetzt: jede höhere Ebene um den halben Durchmesser nach
- * rechts und ein gutes Viertel nach unten, vor den anderen (wie aufgefächerte Karten); dafür größer.
+ * Die Kopien für dieses Bild, von unten nach oben. Sie teilen sich den Platz links vom Stapel und unter der Leiste. Schräg
+ * versetzt (Fassung B): jede höhere Ebene um den halben Durchmesser nach rechts und ein gutes Viertel nach unten (wie
+ * aufgefächerte Karten). Nebeneinander (Fassung A): in einer Reihe, so weit verkleinert, dass alle hineinpassen. Die Kopie der
+ * Ebene, an der gemalt wird, tritt vor: Sie steht vor allen anderen und ein wenig größer. Zoom und Schwenk seit dem Auffächern
+ * gelten dem ganzen Bild der Kopien (wie einem Blatt, auf dem sie liegen).
  */
 function faecherRechnen(): FaecherKopie[] {
-  const ids = farbWerk.gezeichneteEbenen();
+  const ids = faecherEbenen().filter((id) => faecherPlaetze.has(id));
   const N = ids.length;
   const f = faecher.f;
-  if (N < 2 || Math.abs(f) < 0.002) return [];
+  if (!N || Math.abs(f) < 0.002) return [];
   const { cx, cy, r } = faecherKreis();
   const d = Math.max(1, 2 * r);
   // der Platz im Bild (CSS-Pixel): links bis fast an den Rand, rechts bleibt der Stapel frei; in der Höhe unter Leiste und Farben
   const [links, rechts, oben, unten] = [0.02 * W, W - 88, 84, H - 34];
-  const [breit, hoch] = [rechts - links, unten - oben];
   const neben = faecher.art === 'neben';
   // (wie weit die Kopien auseinander stehen, in Durchmessern; die Form füllt ihren Kreis nie ganz: Sie dürfen sich ein wenig schneiden)
   const [ux, uy] = neben ? [0.97, 0] : [0.5, 0.27];
-  const s1 = Math.min(1, breit / (d * (1 + ux * (N - 1))), hoch / (d * ((neben ? 0.8 : 0.62) + uy * (N - 1))));
-  // (die Ebenen darunter verblassen auf einer Kopie, während sie sich löst)
+  // (wie viele es sind, weich nachgeführt: Kommt eine dazu oder fällt eine weg, ändert sich die Größe aller ohne Sprung)
+  const n = Math.max(1, faecher.n);
+  // so groß darf eine Kopie sein, damit die Reihe in den Platz passt (ihr Durchmesser, CSS-Pixel)
+  const dPlatz = Math.min((rechts - links) / (1 + FAECHER_VOR + ux * (n - 1)), (unten - oben) / ((neben ? 0.8 : 0.62) + FAECHER_VOR + uy * (n - 1)));
+  // Zoom und Schwenk seit dem Auffächern: Die Kamera vergrößert die Form, die Kopien wachsen mit (`s1` bleibt), ihre Plätze gehen
+  // vom Drehpunkt der Ansicht aus auseinander und mit dem Schwenk mit
+  const b0 = faecher.blick0;
+  const Z = nutzer.zoom / b0.zoom;
+  const s1 = Math.min(1, (Z * dPlatz) / d);
+  faecher.fit = s1;
+  const mitteX = W / 2 + nutzer.schwenkX + Z * ((links + rechts) / 2 - W / 2 - b0.sx);
+  const mitteY = H / 2 + nutzer.schwenkY + Z * ((oben + unten) / 2 - H / 2 - b0.sy);
+  // (die Ebenen der Kopien dahinter verblassen auf einer Kopie, während sie sich löst)
   const u = Math.min(1, Math.max(0, f / 0.6));
   const fremd = 1 - u * u * (3 - 2 * u);
-  // die Mitte der Reihe im Bild (Einheiten des Bilds)
-  const mx = ((links + rechts) / W) * 1 - 1;
-  const my = 1 - (oben + unten) / H;
-  return ids.map((id, k) => {
-    const platz = k - (N - 1) / 2;
-    const zx = mx + (platz * s1 * d * ux * 2) / W;
-    const zy = (neben ? cy * 0.5 + my * 0.5 : my) - (platz * s1 * d * uy * 2) / H;
-    const sk = 1 + (s1 - 1) * f;
+  // welche Kopie vor welcher steht: nach ihrem Platz in der Reihe, die der aktiven Ebene ganz vorn
+  const aktiv = aktiveEbene(farbWerk.bemalung).id;
+  const reihenfolge = ids.filter((id) => id !== aktiv);
+  if (ids.includes(aktiv)) reihenfolge.push(aktiv);
+  return ids.map((id) => {
+    const z = faecherPlaetze.get(id)!;
+    const platz = z.p - (n - 1) / 2;
+    const zx = ((mitteX + platz * s1 * d * ux) / W) * 2 - 1;
+    const zy = 1 - ((mitteY + platz * s1 * d * uy) / H) * 2;
+    // (aufgefächert: ihre Größe; wer dazukommt, wächst; wer vortritt, steht ein wenig größer)
+    const sk = (1 + (s1 - 1) * f) * (1 + (Math.max(0, z.g) - 1) * f) * (1 + FAECHER_VOR * z.vor * f);
     const [px, py] = [cx + (zx - cx) * f, cy + (zy - cy) * f];
+    // (was sie zeigt: ihre eigene Ebene ganz; solange die Kopien noch beieinander stehen, auch die Ebenen aller Kopien hinter ihr.
+    // So zeigt die vorderste am Anfang alle, und die Bewegung beginnt mit dem Bild von vorher)
+    const rang = reihenfolge.indexOf(id);
     const nur = new Map<number, number>();
-    for (let j = 0; j <= k; j++) nur.set(ids[j]!, j === k ? 1 : fremd);
-    // (ihre Schicht der Tiefe: die oberste Ebene vorn)
-    return { id, s: sk, tx: px - sk * cx, ty: py - sk * cy, za: 1 / N, zb: 1 - (2 * k + 1) / N, nur, x: ((px + 1) / 2) * W, y: ((1 - py) / 2) * H };
+    for (const andere of ids) if (andere === id || (fremd > 0 && reihenfolge.indexOf(andere) < rang)) nur.set(andere, andere === id ? 1 : fremd);
+    return { id, s: sk, tx: px - sk * cx, ty: py - sk * cy, za: 1 / N, zb: 1 - (2 * rang + 1) / N, rang, nur, x: ((px + 1) / 2) * W, y: ((1 - py) / 2) * H };
   });
 }
-/** die Kopie unter einem Ort des Bilds (CSS-Pixel): die vorderste, deren Form dort liegt; ihre Ebene, oder null */
-function faecherKopieBei(x: number, y: number): number | null {
+/** die Kopie unter einem Ort des Bilds (CSS-Pixel): die vorderste, deren Form dort liegt; oder null */
+function faecherKopieBei(x: number, y: number): FaecherKopie | null {
   const h = hautJetzt();
-  for (let k = faecherBild.length - 1; k >= 0; k--) {
-    const q = faecherBild[k]!;
-    // der Ort im Bild der Form, bevor sie verkleinert und versetzt wurde
-    const nx = ((x / W) * 2 - 1 - q.tx) / q.s;
-    const ny = (1 - (y / H) * 2 - q.ty) / q.s;
-    const { o, d } = kam.strahl(((nx + 1) / 2) * W, ((1 - ny) / 2) * H, W, H);
-    if (farbWerk.ortUnterStrahl(h, [o.x, o.y, o.z], [d.x, d.y, d.z])) return q.id;
+  for (const q of [...faecherBild].sort((a, b) => b.rang - a.rang)) {
+    const [xm, ym] = faecherZurueck(q, x, y);
+    const { o, d } = kam.strahl(xm, ym, W, H);
+    if (farbWerk.ortUnterStrahl(h, [o.x, o.y, o.z], [d.x, d.y, d.z])) return q;
   }
   return null;
 }
+/** ein Ort des Bilds (CSS-Pixel) auf einer Kopie, zurück in das Bild der Form, bevor sie verkleinert und versetzt wurde */
+function faecherZurueck(q: FaecherKopie, x: number, y: number): [number, number] {
+  const nx = ((x / W) * 2 - 1 - q.tx) / q.s;
+  const ny = (1 - (y / H) * 2 - q.ty) / q.s;
+  return [((nx + 1) / 2) * W, ((1 - ny) / 2) * H];
+}
+/** die Kopie der Ebene, an der gemalt wird (null: nicht aufgefächert, oder ihre Ebene ist ausgeblendet) */
+function faecherAktiv(): FaecherKopie | null {
+  if (!faecherBild.length) return null;
+  const aktiv = aktiveEbene(farbWerk.bemalung).id;
+  return faecherBild.find((q) => q.id === aktiv) ?? null;
+}
+/** die Abbildung einer Kopie als Matrix: nach der Projektion der Kamera angewandt, steht die Form an der Stelle der Kopie im Bild */
+const faecherMatrix = (q: FaecherKopie): Matrix4 => new Matrix4().set(q.s, 0, 0, q.tx, 0, q.s, 0, q.ty, 0, 0, 1, 0, 0, 0, 0, 1);
+/**
+ * Ein Ort des Bilds (CSS-Pixel) für alles, was malt. Aufgefächert liegt die Form, an der gemalt wird, verkleinert und versetzt im
+ * Bild (die Kopie der aktiven Ebene). Zurück: derselbe Ort im Bild der Form, wie die Kamera sie sieht (dort gelten ihre Strahlen).
+ */
+function malOrt(x: number, y: number): [number, number] {
+  const q = faecherAktiv();
+  return q ? faecherZurueck(q, x, y) : [x, y];
+}
+/**
+ * So stark stehen die Zeichnungen der Form an den Wänden und ihre Linien im Raum (1: wie immer; 0: nicht zu sehen). Sie gehören zu
+ * der einen Form an ihrem Ort: Aufgefächert stehen nur die Kopien im Raum, die Zeichnungen werden dünner und verschwinden.
+ */
+const faecherStill = (): number => 1 - glatt(Math.min(1, Math.max(0, faecher.f / 0.5)));
+/** so weit lässt sich hineinzoomen: aufgefächert stehen die Kopien kleiner als die Form, dort entsprechend weiter */
+const zoomHoechstens = (): number => 4 / (faecherBild.length ? Math.max(0.1, faecher.fit) : 1);
 
 // ---------- Paint-Modus, Etappe 5: Ebenen (der Stapel am Rand, `farbe/ebenenStapel.ts`) ----------
 
@@ -7936,8 +8135,8 @@ const ebenenStapel = new EbenenStapel(document.body, {
   },
   loeschen: (id) => void ebeneLoeschen(id),
   muell: (x, y) => document.elementFromPoint(x, y)?.closest('button') === leiste.muellKnopf,
-  // Etappe 6 (Probebau): auffächern und zusammenschieben; mit ⇧ die andere Anordnung
-  faecher: (andere) => void faecherSetzen(andere ? true : faecher.ziel < 0.5, andere ? (faecher.art === 'neben' ? 'schraeg' : 'neben') : undefined),
+  // Etappe 6: auffächern und zusammenschieben
+  faecher: () => void faecherSetzen(faecher.ziel < 0.5),
 });
 // ---------- Paint-Modus, Etappe 4: weiche Kanten (Fassung 1: der Tropfen am Faden) ----------
 
@@ -8094,8 +8293,21 @@ function farbStiftZiel(a: 'seite' | 'front' | 'top', anker: werk.StiftAnker[], v
   werk.G.meldung = zahl ? (flach > 0.5 ? 'Farblinie auf der Haut · gefüllt wird im Raum (Taste 0): Klick auf die Form' : 'Farblinie auf der Haut · Klick auf die Form füllt') : 'Keine Farblinie: ganz auf der Form zeichnen';
   return zahl > 0;
 }
-/** ein Klick auf die Form im Raum: die Farbfläche dort füllen */
-function farbFuellenBei(x: number, y: number, farbe: Farbe = farbWahl): boolean {
+/**
+ * Ein Klick auf die Form im Raum: die Farbfläche dort füllen. Aufgefächert (Etappe 6) auf der Kopie der Ebene, an der gemalt wird;
+ * `auf`: auf dieser Kopie (ein Farbtropfen, der auf sie fällt): An ihrer Ebene wird von da an gemalt.
+ */
+function farbFuellenBei(x: number, y: number, farbe: Farbe = farbWahl, auf: FaecherKopie | null = null): boolean {
+  const [x0, y0] = [x, y];
+  const kopie = faecherBild.length ? (auf ?? faecherAktiv()) : null;
+  if (faecherBild.length) {
+    if (!kopie || kopie.id === KEINE_EBENE || faecherKopieBei(x, y) !== kopie) {
+      werk.G.meldung = 'Füllen: auf die Kopie klicken, an der du malst (sie steht vorn) · eine andere antippen: Sie tritt vor';
+      return false;
+    }
+    if (kopie.id !== aktiveEbene(farbWerk.bemalung).id) ebeneWaehlen(kopie.id);
+    [x, y] = faecherZurueck(kopie, x, y);
+  }
   if (ruhende.length && objektBei(x, y) !== aktivId) {
     werk.G.meldung = 'Füllen: am gewählten Objekt (V wählt ein anderes)';
     return false;
@@ -8108,11 +8320,12 @@ function farbFuellenBei(x: number, y: number, farbe: Farbe = farbWahl): boolean 
     return false;
   }
   farbSchritt(() => farbWerk.fuellen(h, ort, farbe));
-  // (Etappe 5: Liegt eine Ebene darüber, die hier deckt, ist die neue Füllung nicht zu sehen: Das sagt die Meldung)
-  const decker = farbWerk.deckerUeber(h, ort);
+  // (Etappe 5: Liegt eine Ebene darüber, die hier deckt, ist die neue Füllung nicht zu sehen: Das sagt die Meldung. Aufgefächert
+  // steht jede Ebene für sich: Dort deckt nichts)
+  const decker = kopie ? null : farbWerk.deckerUeber(h, ort);
   if (!istMalgrund()) werk.G.meldung = 'Gefüllt · zu sehen auf hellem Solid und Wachs (Taste M)';
   else if (decker) werk.G.meldung = `Gefüllt auf „${aktiveEbene(farbWerk.bemalung).name}“ · „${decker}“ liegt darüber und deckt hier`;
-  if (!farbTropfen.hidden) farbTropfenFallen(x, y);
+  if (!farbTropfen.hidden) farbTropfenFallen(x0, y0);
   return true;
 }
 /** den Paint-Modus schalten */
@@ -9371,11 +9584,27 @@ const haken = {
    * Etappe 6 (Probebau): die Ebenen-Ansicht auf- oder zuschieben (`an`), mit einer Anordnung (`neben`, `schraeg`); ohne Angabe nur
    * lesen. Zurück: der Stand, der Kreis um die Form und die Kopien im Bild (Mitte in CSS-Pixeln, Maßstab), von unten nach oben
    */
-  faecher: (an?: boolean, art?: 'neben' | 'schraeg'): { offen: boolean; art: string; f: number; kreis: { x: number; y: number; r: number }; kopien: { id: number; x: number; y: number; s: number }[] } => {
+  faecher: (
+    an?: boolean,
+    art?: 'neben' | 'schraeg',
+  ): { offen: boolean; art: string; f: number; zoom: number; kreis: { x: number; y: number; r: number }; kopien: { id: number; x: number; y: number; s: number; rang: number; aktiv: boolean }[] } => {
     if (an !== undefined) faecherSetzen(an, art);
-    // (der Kreis um die Form, wie sie zusammen steht: Mitte und Halbmesser in CSS-Pixeln)
+    // (der Kreis um die Form, wie sie zusammen steht: Mitte und Halbmesser in CSS-Pixeln; `zoom`: seit dem Auffächern)
     const k = faecherKreis();
-    return { offen: faecher.ziel > 0.5, art: faecher.art, f: faecher.f, kreis: { x: ((k.cx + 1) / 2) * W, y: ((1 - k.cy) / 2) * H, r: k.r }, kopien: faecherBild.map((q) => ({ id: q.id, x: q.x, y: q.y, s: q.s })) };
+    const aktiv = faecherAktiv();
+    return {
+      offen: faecher.ziel > 0.5,
+      art: faecher.art,
+      f: faecher.f,
+      zoom: nutzer.zoom / faecher.blick0.zoom,
+      kreis: { x: ((k.cx + 1) / 2) * W, y: ((1 - k.cy) / 2) * H, r: k.r },
+      kopien: faecherBild.map((q) => ({ id: q.id, x: q.x, y: q.y, s: q.s, rang: q.rang, aktiv: q === aktiv })),
+    };
+  },
+  /** Etappe 6: ein Ort des Bilds auf einer Kopie (ihre Ebene), zurück in das Bild der Form, wie die Kamera sie sieht; null: keine solche Kopie */
+  faecherZurueck: (id: number, x: number, y: number): [number, number] | null => {
+    const q = faecherBild.find((k) => k.id === id);
+    return q ? faecherZurueck(q, x, y) : null;
   },
   /** Etappe 5, für Messungen: auf Wachs mehrere Ebenen sammeln (wahr, so ist es gebaut) oder jede für sich überlagern */
   farbSammeln: (an: boolean): boolean => {
@@ -9404,8 +9633,11 @@ const haken = {
     const h = hautJetzt();
     const l = aktiveEbene(farbWerk.bemalung).linien[nr];
     if (!l) return null;
+    // (Etappe 6: aufgefächert auf der Kopie der Ebene, an der gemalt wird)
+    const kopie = faecherAktiv();
     const imBild = (p: [number, number, number]): [number, number] => {
       const v = new Vector3(p[0], p[1], p[2]).project(kam.aktiv as Camera);
+      if (kopie) v.set(v.x * kopie.s + kopie.tx, v.y * kopie.s + kopie.ty, v.z);
       return [((v.x + 1) / 2) * W, ((1 - v.y) / 2) * H];
     };
     return {

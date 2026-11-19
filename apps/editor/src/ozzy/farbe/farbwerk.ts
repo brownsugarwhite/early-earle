@@ -623,14 +623,15 @@ export class FarbWerk {
 
   /**
    * Die Farbe der Füllung, die an diesem Ort zu sehen ist (für die Pipette): die der obersten sichtbaren Ebene, die dort eine
-   * Füllung hat. null: Dort liegt keine Farbe.
+   * Füllung hat. null: Dort liegt keine Farbe. `nur`: nur auf dieser Ebene gesucht (Etappe 6: Eine Kopie der Ebenen-Ansicht
+   * zeigt allein ihre Ebene).
    */
-  farbeBei(h: HautJetzt, ort: Ort): Farbe | null {
+  farbeBei(h: HautJetzt, ort: Ort, nur: number | null = null): Farbe | null {
     // (steht noch etwas aus, zuerst nachziehen; sonst gilt, was das letzte Bild gerechnet hat)
     if (this.alt || this.altNur.size || this.haut !== h.haut || this.sichtAlt()) this.schritt(h);
     const E = this.bemalung.ebenen;
     for (let i = E.length - 1; i >= 0; i--) {
-      const st = this.staende.get(E[i]!.id);
+      const st = nur === null || E[i]!.id === nur ? this.staende.get(E[i]!.id) : undefined;
       if (!st) continue;
       const nr = fuellungBei(st.flaechen, ort);
       const f = nr >= 0 ? st.farben[nr] : undefined;
@@ -662,9 +663,12 @@ export class FarbWerk {
     return e.aus ? [] : e.linien;
   }
 
-  /** Etappe 6: die Ebenen, die gezeichnet werden (zu sehen und nicht leer), von unten nach oben: ihre Kennungen */
-  gezeichneteEbenen(): number[] {
-    return this.bemalung.ebenen.filter((e) => this.staende.has(e.id)).map((e) => e.id);
+  /**
+   * Etappe 6: die Ebenen, die zu sehen sind (nicht ausgeblendet; auch leere), von unten nach oben: ihre Kennungen. In der
+   * Ebenen-Ansicht bekommt jede ihre Kopie der Form.
+   */
+  sichtbareEbenen(): number[] {
+    return this.bemalung.ebenen.filter((e) => !e.aus).map((e) => e.id);
   }
 
   /** die Ebenen, wie der Stapel am Rand sie zeigt: von oben nach unten, je Ebene die Farben ihrer Füllungen (jede einmal, höchstens vier) */

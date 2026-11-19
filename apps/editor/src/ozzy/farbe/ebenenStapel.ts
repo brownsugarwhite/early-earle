@@ -36,8 +36,8 @@ export type EbenenZiele = {
   loeschen(id: number): void;
   /** liegt an dieser Stelle der Mülleimer? */
   muell(x: number, y: number): boolean;
-  /** Etappe 6: die Ebenen-Ansicht auf- oder zuschieben (`andere`: mit ⇧ gedrückt: die andere Anordnung) */
-  faecher(andere: boolean): void;
+  /** Etappe 6: die Ebenen-Ansicht auf- oder zuschieben */
+  faecher(): void;
 };
 
 type Zeile = { li: HTMLLIElement; knopf: HTMLButtonElement; auge: HTMLButtonElement; linse: HTMLSpanElement };
@@ -79,7 +79,7 @@ export class EbenenStapel {
     this.faecher.setAttribute('aria-pressed', 'false');
     // (drei kleine Linsen, schräg versetzt: die Ebenen, aufgefächert)
     this.faecher.innerHTML = '<svg viewBox="0 0 30 18" aria-hidden="true"><ellipse cx="10.5" cy="5" rx="8" ry="3.3" /><ellipse cx="15" cy="9" rx="8" ry="3.3" /><ellipse cx="19.5" cy="13" rx="8" ry="3.3" /></svg>';
-    this.faecher.addEventListener('click', (e) => this.ziele.faecher(e.shiftKey));
+    this.faecher.addEventListener('click', () => this.ziele.faecher());
     this.faecherTitel(false);
     el.append(this.faecher, this.plus, this.liste);
     eltern.append(el);
@@ -99,7 +99,7 @@ export class EbenenStapel {
   /** der Knopf der Ebenen-Ansicht: gedrückt, solange aufgefächert ist, und was er dann tut */
   private faecherTitel(offen: boolean): void {
     this.faecher.setAttribute('aria-pressed', String(offen));
-    const titel = offen ? 'Ebenen-Ansicht: wieder zusammenschieben · ⇧: die andere Anordnung' : 'Ebenen-Ansicht: auffächern, je Ebene eine Kopie · ⇧: die andere Anordnung';
+    const titel = offen ? 'Ebenen-Ansicht: wieder zu einer Form zusammenschieben (Esc)' : 'Ebenen-Ansicht: auffächern, je Ebene eine Kopie';
     this.faecher.title = titel;
     this.faecher.setAttribute('aria-label', titel);
   }
