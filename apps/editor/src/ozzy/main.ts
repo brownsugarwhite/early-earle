@@ -4170,37 +4170,25 @@ function bild(dt: number): boolean {
         feste.netzSetzen(festN, wicklungVon(festN));
         festeStand = { netz: festN, version: werkHaut.version };
       }
-      /** die Haut mit dem Material und darauf die Farbe (`nur`: Etappe 6, eine Kopie der Ebenen-Ansicht mit ihren Ebenen) */
-      const festArt = material;
-      const festZeichnen = (nur: ReadonlyMap<number, number> | null): void =>
-        feste.zeichnen(kam.aktiv, festArt, {
-          schnitt: schnittJetzt,
-          deckung: 1 - 0.7 * roentgen,
-          spiegelSchnitt: spiegelSchnittJetzt(),
-          flach: !!facetten,
-          // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
-          danach:
-            farbeDa && festArt === 'Wachs'
-              ? (r, k) => {
-                  const t0 = performance.now();
-                  farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt, verdeckt: zeigN, nur });
-                  farbKostenBild += performance.now() - t0;
-                }
-              : null,
-        });
-      // Etappe 6: aufgefächert je Ebene eine Kopie, von unten nach oben; jede mit der Projektion an ihrem Platz im Bild
+      // Etappe 6: aufgefächert je Ebene eine Kopie, alle in einem Durchgang (jede an ihrem Platz im Bild, in ihrer Schicht der Tiefe)
       faecherBild = farbeDa && material === 'Wachs' && !facetten ? faecherRechnen() : [];
-      if (faecherBild.length) {
-        const c = kam.aktiv;
-        const [p0, p0i] = [c.projectionMatrix.clone(), c.projectionMatrixInverse.clone()];
-        for (const q of faecherBild) {
-          c.projectionMatrix.copy(p0).premultiply(new Matrix4().set(q.s, 0, 0, q.tx, 0, q.s, 0, q.ty, 0, 0, 1, 0, 0, 0, 0, 1));
-          c.projectionMatrixInverse.copy(c.projectionMatrix).invert();
-          festZeichnen(q.nur);
-        }
-        c.projectionMatrix.copy(p0);
-        c.projectionMatrixInverse.copy(p0i);
-      } else festZeichnen(null);
+      const kopien = faecherBild.length ? faecherBild : null;
+      feste.zeichnen(kam.aktiv, material, {
+        schnitt: schnittJetzt,
+        deckung: 1 - 0.7 * roentgen,
+        spiegelSchnitt: spiegelSchnittJetzt(),
+        flach: !!facetten,
+        kopien,
+        // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
+        danach:
+          farbeDa && material === 'Wachs'
+            ? (r, k) => {
+                const t0 = performance.now();
+                farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt, verdeckt: zeigN, kopien });
+                farbKostenBild += performance.now() - t0;
+              }
+            : null,
+      });
     }
   } else {
     gast.aus();
@@ -7745,10 +7733,11 @@ type FaecherArt = 'neben' | 'schraeg';
 const faecher: { art: FaecherArt; ziel: number; f: number; v: number } = { art: params.get('faecher') === 'schraeg' ? 'schraeg' : 'neben', ziel: 0, f: 0, v: 0 };
 /**
  * Eine Kopie: ihre Ebene; ihr Bild im Bild (um den Faktor `s` verkleinert, dann um `tx`, `ty` versetzt; Einheiten des Bilds, −1 … 1);
- * ihre Mitte im Bild (`x`, `y`, CSS-Pixel); und welche Ebenen sie wie deckend zeigt (ihre eigene ganz; die darunter nur, solange die Kopien noch beieinander stehen: So ist
+ * ihr Bereich der Tiefe (`za`, `zb`: Alle Kopien stehen in einem Durchgang, jede in ihrer Schicht, die vordere deckt); ihre Mitte
+ * im Bild (`x`, `y`, CSS-Pixel); und welche Ebenen sie wie deckend zeigt (ihre eigene ganz; die darunter nur, solange die Kopien noch beieinander stehen: So ist
  * der Anfang der Bewegung genau das Bild von vorher)
  */
-type FaecherKopie = { id: number; s: number; tx: number; ty: number; nur: Map<number, number>; x: number; y: number };
+type FaecherKopie = { id: number; s: number; tx: number; ty: number; za: number; zb: number; nur: Map<number, number>; x: number; y: number };
 /** die Kopien des letzten Bilds, von unten nach oben (leer: nicht aufgefächert) */
 let faecherBild: FaecherKopie[] = [];
 /** aufgefächert auf die Zeichenfläche gedrückt (ohne Weg losgelassen: die Kopie dort ist gemeint) */
@@ -7858,7 +7847,8 @@ function faecherRechnen(): FaecherKopie[] {
     const [px, py] = [cx + (zx - cx) * f, cy + (zy - cy) * f];
     const nur = new Map<number, number>();
     for (let j = 0; j <= k; j++) nur.set(ids[j]!, j === k ? 1 : fremd);
-    return { id, s: sk, tx: px - sk * cx, ty: py - sk * cy, nur, x: ((px + 1) / 2) * W, y: ((1 - py) / 2) * H };
+    // (ihre Schicht der Tiefe: die oberste Ebene vorn)
+    return { id, s: sk, tx: px - sk * cx, ty: py - sk * cy, za: 1 / N, zb: 1 - (2 * k + 1) / N, nur, x: ((px + 1) / 2) * W, y: ((1 - py) / 2) * H };
   });
 }
 /** die Kopie unter einem Ort des Bilds (CSS-Pixel): die vorderste, deren Form dort liegt; ihre Ebene, oder null */
@@ -9370,7 +9360,7 @@ const haken = {
    * Etappe 5: die Ebenen von oben nach unten (wie der Stapel am Rand sie zeigt), dazu was die Anzeige zuletzt tat (wie viele
    * Ebenen etwas zeichneten, ob sie über dem hellen Solid gesammelt wurden) und wie viele Ebenen das letzte Ableiten neu rechnete
    */
-  farbEbenen: (): { ebenen: ReturnType<FarbWerk['ebenenStand']>; stapel: number[]; zu_sehen: boolean; anzeige: { ebenen: number; gesammelt: boolean }; abgeleitet: number } => ({
+  farbEbenen: (): { ebenen: ReturnType<FarbWerk['ebenenStand']>; stapel: number[]; zu_sehen: boolean; anzeige: { ebenen: number; gesammelt: boolean; kopien: number; netze: number }; abgeleitet: number } => ({
     ebenen: farbWerk.ebenenStand(),
     stapel: ebenenStapel.stand,
     zu_sehen: !ebenenStapel.el.hidden,

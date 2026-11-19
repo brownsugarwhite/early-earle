@@ -81,6 +81,22 @@ function mitSpiegelSchnitt(shader: { vertexShader: string; fragmentShader: strin
   shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\n${SPIEGEL_FRAGMENT}`).replace('void main() {', `void main() {\n${SPIEGEL_FRAGMENT_MAIN}`);
 }
 
+/**
+ * Paint-Modus, Etappe 6 (19.11., die Ebenen-Ansicht): Die Haut steht mehrmals im Bild, je Ebene eine Kopie, alle in einem Durchgang.
+ * Jede Kopie hat ihr Bild im Bild (`s`: verkleinert; `tx`, `ty`: versetzt; Einheiten des Bilds, −1 … 1) und ihren Bereich der
+ * Tiefe (`za`, `zb`: z' = z · za + zb): So deckt eine Kopie die andere. Dieselben Werte bekommt die Bemalung (`farbe/anzeige.ts`).
+ */
+export type FesteKopie = { s: number; tx: number; ty: number; za: number; zb: number };
+type BildWerte = { bild: { value: Vector3 }; tiefe: { value: Vector2 } };
+const BILD_VERTEX = 'uniform vec3 uBild;\nuniform vec2 uTiefe;';
+const BILD_VERTEX_MAIN = 'gl_Position.xy = gl_Position.xy * uBild.x + uBild.yz * gl_Position.w;\ngl_Position.z = gl_Position.z * uTiefe.x + uTiefe.y * gl_Position.w;';
+/** das Bild im Bild in ein Material von three einbauen (nach der Projektion: Hell und Dunkel bleiben, wie sie ohne Kopie sind) */
+function mitBild(shader: { vertexShader: string; uniforms: Record<string, unknown> }, u: BildWerte): void {
+  shader.uniforms.uBild = u.bild;
+  shader.uniforms.uTiefe = u.tiefe;
+  shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>\n${BILD_VERTEX}`).replace('#include <project_vertex>', `#include <project_vertex>\n${BILD_VERTEX_MAIN}`);
+}
+
 /** `hautMaterial` des Prüffensters (glatte Anzeige); der Schnitt an der Spiegelebene nur, wo eine Hälfte über sie reicht */
 function hautMaterial(farbe: number, sp: SpiegelSchnitt): MeshToonMaterial {
   const m = new MeshToonMaterial({ color: farbe });
@@ -195,6 +211,8 @@ export type FesteWerte = {
    * Haut (`farbe/anzeige.ts`)
    */
   danach?: ((r: WebGLRenderer, kamera: Camera) => void) | null;
+  /** Paint-Modus, Etappe 6: die Kopien der Ebenen-Ansicht (nur mit Wachs); fehlt oder leer: die Haut einmal, wie immer */
+  kopien?: readonly FesteKopie[] | null;
 };
 
 export class FesteHaut {
@@ -212,6 +230,8 @@ export class FesteHaut {
   private wachsBild: DataTexture | null = null;
   private wachsTon = WACHS_FARBTON_GRUND;
   private wachsTonGebaut = Number.NaN;
+  /** Etappe 6: je Kopie der Ebenen-Ansicht ein Netz mit eigenem Wachs (dasselbe Programm, eigene Werte für Platz und Tiefe) */
+  private kopieNetze: { netz: Mesh; mat: MeshMatcapMaterial; werte: BildWerte }[] = [];
   private readonly licht: (DirectionalLight | HemisphereLight)[];
   private readonly ebene = new Plane(new Vector3(0, 0, 1), 0);
   private readonly ende: { szene: Scene; kamera: OrthographicCamera; material: ShaderMaterial };
@@ -340,6 +360,40 @@ export class FesteHaut {
     this.wachsTonGebaut = this.wachsTon;
   }
 
+  /** Etappe 6: so viele Kopien der Haut in Wachs, jede an ihrem Platz und in ihrem Bereich der Tiefe (null: keine, der Körper wie immer) */
+  private kopienStellen(kopien: readonly FesteKopie[] | null, flach: boolean): void {
+    const n = kopien?.length ?? 0;
+    while (this.kopieNetze.length < n) {
+      const werte: BildWerte = { bild: { value: new Vector3(1, 0, 0) }, tiefe: { value: new Vector2(1, 0) } };
+      const mat = new MeshMatcapMaterial();
+      mat.onBeforeCompile = (shader) => {
+        mitSpiegelSchnitt(shader, this.spiegel);
+        mitBild(shader, werte);
+      };
+      mat.customProgramCacheKey = () => 'ozzy-wachs-spiegel-bild';
+      mat.clippingPlanes = [this.ebene];
+      const netz = new Mesh(this.geo, mat);
+      netz.frustumCulled = false;
+      netz.visible = false;
+      this.szene.add(netz);
+      this.kopieNetze.push({ netz, mat, werte });
+    }
+    this.kopieNetze.forEach((k, i) => {
+      k.netz.visible = i < n;
+      if (i >= n) return;
+      const q = kopien![i]!;
+      k.werte.bild.value.set(q.s, q.tx, q.ty);
+      k.werte.tiefe.value.set(q.za, q.zb);
+      const m = k.mat as MeshMatcapMaterial & { flatShading: boolean };
+      if (m.matcap !== this.wachs.matcap || m.flatShading !== flach) {
+        m.matcap = this.wachs.matcap;
+        m.flatShading = flach;
+        m.needsUpdate = true;
+      }
+    });
+    this.koerper.visible = n === 0;
+  }
+
   /** ist eine Haut da, die gezeichnet werden kann? */
   get bereit(): boolean {
     return this.netz !== null;
@@ -365,6 +419,8 @@ export class FesteHaut {
     }
     if (art === 'Wachs') this.wachsBereiten();
     this.koerper.material = art === 'Zebra' ? this.zebra : art === 'Wachs' ? this.wachs : this.solid;
+    // (Etappe 6: mit Kopien steht statt des einen Körpers je Kopie einer in der Szene, alle in diesem einen Durchgang)
+    this.kopienStellen(art === 'Wachs' && w.kopien?.length ? w.kopien : null, flach);
     // der Umriss gehört zum Solid des Prüffensters; die Zebra-Matcap lag im alten Editor ohne Umriss auf dem Körper, und ZBrush
     // zeichnet sein Grundmaterial ohne Umriss und ohne die Lichter der Szene
     this.umriss.visible = art === 'Solid';

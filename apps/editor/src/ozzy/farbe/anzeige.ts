@@ -58,6 +58,7 @@ import {
   Scene,
   ShaderMaterial,
   Vector2,
+  Vector3,
   WebGLRenderTarget,
   type WebGLRenderer,
   ZeroFactor,
@@ -81,6 +82,10 @@ const DB = 1024;
 
 const VERTEX = /* glsl */ `
   attribute float aSeite;
+  // Etappe 6, eine Kopie der Ebenen-Ansicht: ihr Bild im Bild (x: verkleinert, yz: versetzt; Einheiten des Bilds) und ihr Bereich
+  // der Tiefe (z' = z · x + y). Ohne Kopie (1, 0, 0) und (1, 0): Dann ändert sich nichts, auch kein Bit
+  uniform vec3 uBild;
+  uniform vec2 uTiefe;
   #ifdef RAND
   attribute vec2 aBary;
   attribute float aSlot;
@@ -119,6 +124,8 @@ const VERTEX = /* glsl */ `
     vNormale = normalMatrix * normal;
     vSpiegel = vec2(aSeite, position.z);
     gl_Position = projectionMatrix * mv;
+    gl_Position.xy = gl_Position.xy * uBild.x + uBild.yz * gl_Position.w;
+    gl_Position.z = gl_Position.z * uTiefe.x + uTiefe.y * gl_Position.w;
   }
 `;
 
@@ -367,11 +374,23 @@ export type FarbWerte = {
    */
   verdeckt?: HautNetz | null;
   /**
-   * Etappe 6 (die Ebenen-Ansicht): nur diese Ebenen zeichnen, jede so deckend (Kennung → 0 … 1); fehlt: alle, ganz. Die Farblinien
-   * der aktiven Ebene stehen dann nur dort, wo sie ganz zu sehen ist (auf ihrer eigenen Kopie).
+   * Etappe 6 (die Ebenen-Ansicht): die Kopien der Form im Bild, in einem Durchgang gezeichnet; fehlt: die Form einmal, mit allen
+   * Ebenen. Die Farblinien der aktiven Ebene stehen dann nur dort, wo sie ganz zu sehen ist (auf ihrer eigenen Kopie).
    */
-  nur?: ReadonlyMap<number, number> | null;
+  kopien?: readonly FarbKopie[] | null;
 };
+
+/**
+ * Etappe 6: eine Kopie der Form im Bild. `s`, `tx`, `ty`: ihr Bild im Bild (um `s` verkleinert, dann versetzt; Einheiten des
+ * Bilds, −1 … 1). `za`, `zb`: ihr Bereich der Tiefe (z' = z · za + zb): So deckt eine Kopie die andere, obwohl alle in einem
+ * Durchgang stehen. `nur`: welche Ebenen sie wie deckend zeigt (Kennung → 0 … 1; null: alle, ganz).
+ */
+export type FarbKopie = { s: number; tx: number; ty: number; za: number; zb: number; nur: ReadonlyMap<number, number> | null };
+/** die Form einmal, wie sie steht, mit allen Ebenen */
+const EINE_KOPIE: readonly FarbKopie[] = [{ s: 1, tx: 0, ty: 0, za: 1, zb: 0, nur: null }];
+/** wie ein Netz in einem Durchgang steht: das Bild seiner Kopie, wie deckend es ist, wie breit seine Farblinien zu sehen sind */
+type Zeichnung = { s: number; tx: number; ty: number; za: number; zb: number; sicht: number; linie: number };
+const GANZ: Zeichnung = { s: 1, tx: 0, ty: 0, za: 1, zb: 0, sicht: 1, linie: 0 };
 
 /**
  * Etappe 3: eine Füllung, die einläuft. `fuell`: ihre Nummer; `alt`: die Farbe, die vorher in ihrer Fläche lag (null: keine);
@@ -404,8 +423,11 @@ export class FarbAnzeige {
   private daten: DataTexture;
   private farben: DataTexture;
   private modus: ZeichenArt = 'wachs';
-  /** wie deckend die Ebene zuletzt gezeichnet wurde (unter 1 überblendet auch, was sonst deckt) */
-  private sicht = 1;
+  /** Etappe 6: weitere Netze auf denselben Feldern und Materialien, für eine Ebene, die in einem Durchgang auf mehreren Kopien steht */
+  private abzuege: { innen: Mesh; rand: Mesh }[] = [];
+  /** gibt es innen und am Rand etwas zu zeichnen? */
+  private hatInnen = false;
+  private hatRand = false;
   /** woraus die Geometrie gebaut ist */
   private stand: { netz: HautNetz; index: Uint32Array; pos: Float32Array; stufen: number; flaechen: Flaechen; fluss: FlussBild | null; weich: WeichBild | null } | null = null;
   /** je Ecke des Rands: ihr Punkt in der Anzeige */
@@ -429,19 +451,57 @@ export class FarbAnzeige {
     this.daten = this.datenTextur(new Float32Array(4 * DB));
     this.farben = this.farbenTextur([]);
     this.randMat = this.material(true, false, false);
-    this.innen = new Mesh(this.innenGeo, this.innenMat);
-    this.rand = new Mesh(this.randGeo, this.randMat);
-    this.innen.frustumCulled = false;
-    this.rand.frustumCulled = false;
-    this.innen.visible = false;
-    this.rand.visible = false;
-    this.gruppe.add(this.innen, this.rand);
+    this.innen = this.netzNeu(this.innenGeo, this.innenMat);
+    this.rand = this.netzNeu(this.randGeo, this.randMat);
   }
 
-  /** der Platz im Stapel: Was eine höhere Zahl hat, wird später gezeichnet und deckt */
-  ordnung(n: number): void {
-    this.innen.renderOrder = n;
-    this.rand.renderOrder = n;
+  /** ein Netz der Bemalung: Vor jedem Zeichnen bekommt sein Material, was für diese Zeichnung gilt (`userData.z`) */
+  private netzNeu(geo: BufferGeometry, material: ShaderMaterial | ShaderMaterial[]): Mesh {
+    const netz = new Mesh(geo, material);
+    netz.frustumCulled = false;
+    netz.visible = false;
+    netz.userData.z = GANZ;
+    netz.onBeforeRender = (_r, _s, _k, _g, m) => this.vorher(netz.userData.z as Zeichnung, m as ShaderMaterial);
+    this.gruppe.add(netz);
+    return netz;
+  }
+
+  /**
+   * Für diesen Durchgang: das Netzpaar Nummer `n` dieser Ebene (0: ihr eigenes; weitere, wenn sie auf mehreren Kopien steht)
+   * zeichnet so. `ordnung`: der Platz in der Reihe (was eine höhere Zahl hat, wird später gezeichnet und deckt).
+   */
+  stellen(n: number, z: Zeichnung, ordnung: number): void {
+    while (this.abzuege.length < n) this.abzuege.push({ innen: this.netzNeu(this.innenGeo, this.innenMat), rand: this.netzNeu(this.randGeo, this.randMat) });
+    const p = n === 0 ? { innen: this.innen, rand: this.rand } : this.abzuege[n - 1]!;
+    // (die Materialien innen wechseln mit jedem Bauen)
+    p.innen.material = this.innen.material;
+    p.innen.visible = this.hatInnen;
+    p.rand.visible = this.hatRand;
+    for (const netz of [p.innen, p.rand]) {
+      netz.userData.z = z;
+      netz.renderOrder = ordnung;
+    }
+  }
+
+  /** nach dem Stellen: Die Netzpaare ab Nummer `n` werden in diesem Durchgang nicht gebraucht */
+  rest(n: number): void {
+    [{ innen: this.innen, rand: this.rand }, ...this.abzuege].forEach((p, i) => {
+      if (i < n) return;
+      p.innen.visible = false;
+      p.rand.visible = false;
+    });
+  }
+
+  /** gleich wird ein Netz mit diesem Material gezeichnet: was für diese Zeichnung gilt */
+  private vorher(z: Zeichnung, m: ShaderMaterial): void {
+    const u = m.uniforms;
+    (u.uBild!.value as Vector3).set(z.s, z.tx, z.ty);
+    (u.uTiefe!.value as Vector2).set(z.za, z.zb);
+    u.uSicht!.value = z.sicht;
+    u.uLinie!.value = z.linie;
+    // (was sonst deckt, überblendet, sobald die Ebene halb durchscheint)
+    m.blending = this.modus === 'hell' || m.userData.immer || z.sicht < 1 ? CustomBlending : NoBlending;
+    m.uniformsNeedUpdate = true;
   }
 
   /** die Ebene gibt es nicht mehr: alles freigeben, was auf der Grafikkarte liegt */
@@ -477,6 +537,8 @@ export class FarbAnzeige {
     const m = new ShaderMaterial({
       defines: rand ? { RAND: 1 } : { ...(fluss ? { FLUSS: 1 } : {}), ...(weich ? { WEICH: 1 } : {}) },
       uniforms: {
+        uBild: { value: new Vector3(1, 0, 0) },
+        uTiefe: { value: new Vector2(1, 0) },
         uWeich: { value: 0 },
         uDeckung: { value: 1 },
         uSicht: { value: 1 },
@@ -506,7 +568,7 @@ export class FarbAnzeige {
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -2,
     });
-    this.blenden(m, this.modus, rand || fluss || weich || this.sicht < 1);
+    this.blenden(m, this.modus, rand || fluss || weich);
     return m;
   }
 
@@ -515,37 +577,41 @@ export class FarbAnzeige {
     return [...this.innenMat, ...this.weichMat, ...[this.flussMat, this.leerMat, this.flussWeichMat].filter((m): m is ShaderMaterial => m !== null)];
   }
 
-  private blenden(m: ShaderMaterial, modus: ZeichenArt, rand: boolean): void {
+  /**
+   * Wie ein Material mit dem verrechnet, was schon steht. `immer`: Es überblendet immer (der Rand, eine einlaufende Füllung, ein
+   * Verlauf); sonst deckt es ganz und überblendet nur, wenn seine Ebene halb durchscheint (`vorher`).
+   */
+  private blenden(m: ShaderMaterial, modus: ZeichenArt, immer: boolean): void {
     m.uniforms.uModus!.value = modus === 'hell' ? 1 : modus === 'sammel' ? 2 : 0;
+    m.userData.immer = immer;
     if (modus === 'hell') {
       // multiplizieren: Bild darunter mal Farbe (die Deckung des Bilds bleibt)
-      m.blending = CustomBlending;
       m.blendSrc = DstColorFactor;
       m.blendDst = ZeroFactor;
       m.blendSrcAlpha = ZeroFactor;
       m.blendDstAlpha = OneFactor;
-    } else if (rand) {
+    } else {
       // überlagern (Wachs und Sammelbild): Die Farbe steht schon mal ihre Deckung
-      m.blending = CustomBlending;
       m.blendSrc = OneFactor;
       m.blendDst = OneMinusSrcAlphaFactor;
       m.blendSrcAlpha = OneFactor;
       m.blendDstAlpha = OneMinusSrcAlphaFactor;
-    } else m.blending = NoBlending;
-    m.needsUpdate = true;
+    }
+    m.blending = modus === 'hell' || immer ? CustomBlending : NoBlending;
   }
 
   /** ist etwas zu zeichnen? */
   get leer(): boolean {
-    return !this.innen.visible && !this.rand.visible;
+    return !this.hatInnen && !this.hatRand;
   }
 
   /** nichts mehr zeigen (keine Bemalung, oder kein Netz) */
   leeren(): void {
     this.stand = null;
     this.fliesst = false;
-    this.innen.visible = false;
-    this.rand.visible = false;
+    this.hatInnen = false;
+    this.hatRand = false;
+    this.rest(0);
     this.zahlen = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
   }
 
@@ -719,7 +785,7 @@ export class FarbAnzeige {
       }
     }
     this.innen.material = mat;
-    this.innen.visible = summe > 0;
+    this.hatInnen = summe > 0;
     // ---- Rand: die feinen Dreiecke der Dreiecke mit Ketten, jede Ecke mit ihren Gewichten; die Ketten in der Datentextur ----
     const R = flaechen.rand.map((r, ri) => ({ ...r, ri })).filter((r) => r.t < T);
     const nE = R.length * je * 3;
@@ -804,7 +870,7 @@ export class FarbAnzeige {
     h.setAttribute('aSeite', seite);
     h.setAttribute('aBary', new BufferAttribute(bary, 2));
     h.setAttribute('aSlot', new BufferAttribute(slot, 1));
-    this.rand.visible = nE > 0;
+    this.hatRand = nE > 0;
     this.zahlen = { innen: summe / 3, rand: nE / 3, ketten, punkte, fuellungen: farben.length, weich: weichZahl };
     this.bewegen(netz);
   }
@@ -841,38 +907,78 @@ export class FarbAnzeige {
     seite.needsUpdate = true;
   }
 
-  /**
-   * Vor dem Zeichnen: wie die Farbe mit dem Grund verrechnet wird, die Schnitte, wie breit die Farblinien selbst zu sehen sind
-   * (`linie`, Gerätepunkte; 0: nicht) und wie deckend die ganze Ebene steht (`sicht`, 0 … 1)
-   */
-  werte(art: ZeichenArt, w: FarbWerte, linie: number, sicht = 1): void {
-    // (halb durchscheinend überblendet auch, was sonst deckt)
-    if (art !== this.modus || sicht < 1 !== this.sicht < 1) {
+  /** vor dem Zeichnen: wie die Farbe mit dem Grund verrechnet wird, und die Schnitte (für alle Netze dieser Ebene) */
+  werte(art: ZeichenArt, w: FarbWerte): void {
+    if (art !== this.modus) {
       this.modus = art;
-      this.sicht = sicht;
       this.blenden(this.randMat, art, true);
-      for (const m of this.innenAlle()) this.blenden(m, art, sicht < 1 || !this.innenMat.includes(m));
+      for (const m of this.innenAlle()) this.blenden(m, art, !this.innenMat.includes(m));
     }
-    this.sicht = sicht;
     const sn = w.schnitt && Math.hypot(w.schnitt[0], w.schnitt[1], w.schnitt[2]) > 1e-9 ? w.schnitt : [0, 0, 1, -1e9];
     const nr = art === 'hell' ? 1 : art === 'sammel' ? 2 : 0;
     for (const m of [this.randMat, ...this.innenAlle()]) {
       m.uniforms.uSchnitt!.value = sn;
       m.uniforms.uSpiegel!.value = w.spiegelSchnitt ?? -1;
       m.uniforms.uModus!.value = nr;
-      m.uniforms.uSicht!.value = sicht;
     }
-    this.randMat.uniforms.uLinie!.value = linie;
   }
 }
 
 const NULL_ZAHLEN = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
 /**
- * Der Körper (alles, was verdeckt) ohne Farbe: für die Tiefe und, über dem hellen Solid mit mehreren Ebenen, für den Durchgang, der
- * das Sammelbild mit dem Grund verrechnet. `invariant`: Beide Durchgänge müssen Bit für Bit dieselbe Tiefe geben (der zweite
- * zeichnet nur, wo sie gleich ist).
+ * Der Körper (alles, was verdeckt) ohne Farbe: für die Tiefe und für die Durchgänge, die ein Sammelbild mit dem Grund verrechnen.
+ * `uBild`, `uTiefe`: wie in den Programmen der Bemalung (eine Kopie der Ebenen-Ansicht). `invariant`: Zwei Durchgänge müssen
+ * Bit für Bit dieselbe Tiefe geben (der zweite zeichnet nur, wo sie gleich ist).
  */
-const KOERPER_VERTEX = 'invariant gl_Position; void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+const KOERPER_VERTEX = /* glsl */ `
+  uniform vec3 uBild;
+  uniform vec2 uTiefe;
+  invariant gl_Position;
+  void main() {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    gl_Position.xy = gl_Position.xy * uBild.x + uBild.yz * gl_Position.w;
+    gl_Position.z = gl_Position.z * uTiefe.x + uTiefe.y * gl_Position.w;
+  }
+`;
+
+/**
+ * Der Körper so oft in einer Szene, wie es Kopien gibt (Etappe 6), jede an ihrem Platz im Bild und in ihrem Bereich der Tiefe: ein
+ * Material, mehrere Netze auf denselben Feldern; vor jedem Netz bekommt das Material das Bild seiner Kopie.
+ */
+class KoerperSatz {
+  private readonly netze: Mesh[] = [];
+  constructor(
+    private readonly szene: Scene,
+    private readonly geo: BufferGeometry,
+    readonly material: ShaderMaterial,
+    private readonly ordnung = 0,
+  ) {
+    material.uniforms.uBild ??= { value: new Vector3(1, 0, 0) };
+    material.uniforms.uTiefe ??= { value: new Vector2(1, 0) };
+  }
+
+  /** für diesen Durchgang: je Kopie ein Netz (null: nichts zeichnen) */
+  setzen(kopien: readonly FarbKopie[] | null): void {
+    const n = kopien?.length ?? 0;
+    while (this.netze.length < n) {
+      const netz = new Mesh(this.geo, this.material);
+      netz.frustumCulled = false;
+      netz.renderOrder = this.ordnung;
+      netz.onBeforeRender = () => {
+        const k = netz.userData.k as FarbKopie;
+        (this.material.uniforms.uBild!.value as Vector3).set(k.s, k.tx, k.ty);
+        (this.material.uniforms.uTiefe!.value as Vector2).set(k.za, k.zb);
+        this.material.uniformsNeedUpdate = true;
+      };
+      this.szene.add(netz);
+      this.netze.push(netz);
+    }
+    this.netze.forEach((netz, i) => {
+      netz.visible = i < n;
+      if (i < n) netz.userData.k = kopien![i]!;
+    });
+  }
+}
 
 /**
  * Etappe 5: der Stapel der Ebenen im Bild. Er hält je Ebene ihre `FarbAnzeige`, weiß, welche gezeichnet werden und in welcher
@@ -932,10 +1038,9 @@ export class FarbStapel {
       this.jeEbene.delete(id);
     }
     for (const a of this.jeEbene.values()) a.gruppe.visible = false;
-    this.reihe = sichtbar.map((id, n) => {
+    this.reihe = sichtbar.map((id) => {
       const a = this.fuer(id);
       a.gruppe.visible = true;
-      a.ordnung(n);
       return a;
     });
     this.aktive = sichtbar.includes(aktiv) ? this.fuer(aktiv) : null;
@@ -958,53 +1063,49 @@ export class FarbStapel {
     return z;
   }
 
-  /** wie viele Ebenen gerade etwas zeichnen, und ob sie zuletzt gesammelt wurden (mehrere Ebenen; für Proben) */
-  stand = { ebenen: 0, gesammelt: false };
+  /**
+   * Was der letzte Durchgang tat (für Proben): wie viele Ebenen etwas zeichneten, ob sie gesammelt wurden, auf wie vielen Kopien
+   * und mit wie vielen Netzpaaren
+   */
+  stand = { ebenen: 0, gesammelt: false, kopien: 1, netze: 0 };
   /** für Messungen: auf Wachs nie sammeln (jede Ebene für sich über die darunter, wie eine einzelne) */
   wachsOhneSammeln = false;
 
-  private tiefe: { szene: Scene; geo: BufferGeometry; netz: HautNetz | null; index: Uint32Array | null; pos: Float32Array | null } | null = null;
-  /** die Dreiecke von allem, was verdeckt (`netz`: alle Objekte), mit ihren Normalen; `bewegt`: Die Lagen haben sich geändert */
-  private tiefeFuer(netz: HautNetz, bewegt: boolean): NonNullable<FarbStapel['tiefe']> {
-    if (!this.tiefe) {
-      const geo = new BufferGeometry();
-      const mat = new ShaderMaterial({
-        vertexShader: KOERPER_VERTEX,
-        fragmentShader: 'void main() { gl_FragColor = vec4(0.0); }',
-        colorWrite: false,
-        side: DoubleSide,
-      });
-      const netzKoerper = new Mesh(geo, mat);
-      netzKoerper.frustumCulled = false;
-      const szene = new Scene();
-      szene.add(netzKoerper);
-      this.tiefe = { szene, geo, netz: null, index: null, pos: null };
-    }
-    const T = this.tiefe;
-    if (T.netz !== netz || T.index !== netz.index || T.pos !== netz.pos) {
-      T.geo.setAttribute('position', new BufferAttribute(netz.pos, 3));
-      T.geo.setAttribute('normal', new BufferAttribute(netz.normal, 3));
-      T.geo.setIndex(new BufferAttribute(netz.index, 1));
-      T.netz = netz;
-      T.index = netz.index;
-      T.pos = netz.pos;
+  /** die Dreiecke von allem, was verdeckt (`netz`: alle Objekte), mit ihren Normalen */
+  private readonly koerperGeo = new BufferGeometry();
+  private koerperStand: { netz: HautNetz; index: Uint32Array; pos: Float32Array } | null = null;
+  /** die Felder des Körpers nachziehen; `bewegt`: Die Lagen haben sich geändert */
+  private koerperSetzen(netz: HautNetz, bewegt: boolean): void {
+    const K = this.koerperStand;
+    if (!K || K.netz !== netz || K.index !== netz.index || K.pos !== netz.pos) {
+      this.koerperGeo.setAttribute('position', new BufferAttribute(netz.pos, 3));
+      this.koerperGeo.setAttribute('normal', new BufferAttribute(netz.normal, 3));
+      this.koerperGeo.setIndex(new BufferAttribute(netz.index, 1));
+      this.koerperStand = { netz, index: netz.index, pos: netz.pos };
     } else if (bewegt) {
-      (T.geo.getAttribute('position') as BufferAttribute).needsUpdate = true;
-      (T.geo.getAttribute('normal') as BufferAttribute).needsUpdate = true;
+      (this.koerperGeo.getAttribute('position') as BufferAttribute).needsUpdate = true;
+      (this.koerperGeo.getAttribute('normal') as BufferAttribute).needsUpdate = true;
     }
-    return T;
   }
 
+  /** der Körper in einer eigenen Szene, je Kopie ein Netz, mit diesem Programm */
+  private satz(material: ShaderMaterial, szene = new Scene()): { szene: Scene; satz: KoerperSatz } {
+    return { szene, satz: new KoerperSatz(szene, this.koerperGeo, material) };
+  }
+
+  private tiefe: { szene: Scene; satz: KoerperSatz } | null = null;
   /**
    * Die Tiefe der Haut in das gebundene Ziel schreiben, ohne Farbe (für eine Zeichenfläche, deren Tiefe nicht von Ozzys Kamera
    * stammt: die des hellen Solids). `netz`: alles, was verdeckt (alle Objekte); `bewegt`: Die Lagen haben sich geändert.
    */
-  tiefeSchreiben(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz, bewegt: boolean): void {
-    const T = this.tiefeFuer(netz, bewegt);
+  tiefeSchreiben(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz, bewegt: boolean, kopien: readonly FarbKopie[] = EINE_KOPIE): void {
+    this.koerperSetzen(netz, bewegt);
+    this.tiefe ??= this.satz(new ShaderMaterial({ vertexShader: KOERPER_VERTEX, fragmentShader: 'void main() { gl_FragColor = vec4(0.0); }', colorWrite: false, side: DoubleSide }));
+    this.tiefe.satz.setzen(kopien);
     const auto = renderer.autoClear;
     renderer.autoClear = false;
     renderer.clearDepth();
-    renderer.render(T.szene, kamera);
+    renderer.render(this.tiefe.szene, kamera);
     renderer.autoClear = auto;
   }
 
@@ -1012,13 +1113,12 @@ export class FarbStapel {
     /** das Sammelbild: alle Ebenen, die reinen Farben mal ihre Deckung, oben deckt unten */
     ziel: WebGLRenderTarget;
     /** der Körper im Sammelbild (über dem hellen Solid weiß, auf Wachs nur seine Tiefe) */
-    koerper: Mesh;
-    koerperMat: ShaderMaterial;
+    koerper: KoerperSatz;
     /** Wachs: welchen Teil jedes Bildpunkts der Körper deckt (ein eigenes Bild: der Körper allein, weiß) */
-    deckung: { ziel: WebGLRenderTarget; szene: Scene } | null;
+    deckung: { ziel: WebGLRenderTarget; szene: Scene; satz: KoerperSatz } | null;
     /** der Durchgang, der das Sammelbild mit dem Grund verrechnet: der Körper selbst, je Grund sein Programm */
-    hell: { szene: Scene; material: ShaderMaterial } | null;
-    wachs: { szene: Scene; material: ShaderMaterial } | null;
+    hell: { szene: Scene; satz: KoerperSatz } | null;
+    wachs: { szene: Scene; satz: KoerperSatz } | null;
   } | null = null;
 
   /**
@@ -1034,17 +1134,14 @@ export class FarbStapel {
    *   bleibt das Wachs): Dort steht der Teil des Körpers in einem zweiten Bild.
    * - Helles Solid: an jeder Stelle nur einmal (nur die vorderste Fläche: Tiefe gleich der zuvor geschriebenen). Wachs: gegen die
    *   Tiefe, die das Wachs geschrieben hat, wie die Farbe einer einzelnen Ebene.
+   * - Etappe 6: Mit mehreren Kopien steht je Kopie ein Körper in jedem dieser Durchgänge, an ihrem Platz und in ihrem Bereich der
+   *   Tiefe; die Netze der Ebenen sind schon gestellt.
    */
-  private sammeln(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz, modus: FarbModus): void {
-    const T = this.tiefeFuer(netz, true);
+  private sammeln(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz, modus: FarbModus, kopien: readonly FarbKopie[]): void {
+    this.koerperSetzen(netz, true);
     if (!this.sammel) {
-      const koerperMat = new ShaderMaterial({ vertexShader: KOERPER_VERTEX, fragmentShader: 'void main() { gl_FragColor = vec4(1.0); }', side: DoubleSide });
-      const koerper = new Mesh(T.geo, koerperMat);
-      koerper.frustumCulled = false;
-      koerper.visible = false;
-      koerper.renderOrder = -1;
-      this.szene.add(koerper);
-      this.sammel = { ziel: new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: true }), koerper, koerperMat, deckung: null, hell: null, wachs: null };
+      const koerper = new KoerperSatz(this.szene, this.koerperGeo, new ShaderMaterial({ vertexShader: KOERPER_VERTEX, fragmentShader: 'void main() { gl_FragColor = vec4(1.0); }', side: DoubleSide }), -1);
+      this.sammel = { ziel: new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: true }), koerper, deckung: null, hell: null, wachs: null };
     }
     const S = this.sammel;
     // so groß wie das Ziel, über das gezeichnet wird
@@ -1055,23 +1152,20 @@ export class FarbStapel {
     const alpha = renderer.getClearAlpha();
     renderer.setClearColor(0x000000, 0);
     // das Sammelbild
-    S.koerper.visible = true;
-    S.koerperMat.colorWrite = modus === 'hell';
+    S.koerper.setzen(kopien);
+    S.koerper.material.colorWrite = modus === 'hell';
     renderer.setRenderTarget(S.ziel);
     renderer.clear(true, true, true);
     renderer.render(this.szene, kamera);
-    S.koerper.visible = false;
+    S.koerper.setzen(null);
     if (modus === 'wachs') {
       // welchen Teil jedes Bildpunkts der Körper deckt
       if (!S.deckung) {
-        const mat = new ShaderMaterial({ vertexShader: KOERPER_VERTEX, fragmentShader: 'void main() { gl_FragColor = vec4(1.0); }', side: DoubleSide, depthTest: false, depthWrite: false });
-        const k = new Mesh(T.geo, mat);
-        k.frustumCulled = false;
-        const szene = new Scene();
-        szene.add(k);
-        S.deckung = { ziel: new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: false, format: RedFormat }), szene };
+        const d = this.satz(new ShaderMaterial({ vertexShader: KOERPER_VERTEX, fragmentShader: 'void main() { gl_FragColor = vec4(1.0); }', side: DoubleSide, depthTest: false, depthWrite: false }));
+        S.deckung = { ziel: new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: false, format: RedFormat }), ...d };
       }
       if (S.deckung.ziel.width !== g.x || S.deckung.ziel.height !== g.y) S.deckung.ziel.setSize(g.x, g.y);
+      S.deckung.satz.setzen(kopien);
       renderer.setRenderTarget(S.deckung.ziel);
       renderer.clear(true, false, false);
       renderer.render(S.deckung.szene, kamera);
@@ -1079,8 +1173,8 @@ export class FarbStapel {
     renderer.setRenderTarget(vorher);
     renderer.setClearColor(farbe, alpha);
     if (modus === 'hell') {
-      if (!S.hell) {
-        const material = new ShaderMaterial({
+      S.hell ??= this.satz(
+        new ShaderMaterial({
           uniforms: { tBild: { value: S.ziel.texture }, uGroesse: { value: new Vector2(4, 4) } },
           vertexShader: KOERPER_VERTEX,
           fragmentShader: 'uniform sampler2D tBild; uniform vec2 uGroesse; void main() { vec4 c = texture2D(tBild, gl_FragCoord.xy / uGroesse); gl_FragColor = vec4(c.a > 0.002 ? c.rgb / c.a : vec3(1.0), 1.0); }',
@@ -1095,23 +1189,21 @@ export class FarbStapel {
           blendDst: ZeroFactor,
           blendSrcAlpha: ZeroFactor,
           blendDstAlpha: OneFactor,
-        });
-        const k = new Mesh(T.geo, material);
-        k.frustumCulled = false;
-        const szene = new Scene();
-        szene.add(k);
-        S.hell = { szene, material };
-      }
-      (S.hell.material.uniforms.uGroesse!.value as Vector2).copy(g);
+        }),
+      );
+      (S.hell.satz.material.uniforms.uGroesse!.value as Vector2).copy(g);
+      S.hell.satz.setzen(kopien);
       // die Tiefe des Körpers ins Ziel, dann der Körper selbst, wo er vorn liegt: mal dem Sammelbild
-      this.tiefeSchreiben(renderer, kamera, netz, false);
+      this.tiefeSchreiben(renderer, kamera, netz, false, kopien);
       renderer.render(S.hell.szene, kamera);
       return;
     }
-    if (!S.wachs) {
-      const material = new ShaderMaterial({
+    S.wachs ??= this.satz(
+      new ShaderMaterial({
         uniforms: { tBild: { value: S.ziel.texture }, tDeckung: { value: S.deckung!.ziel.texture }, tLicht: { value: this.licht }, uGroesse: { value: new Vector2(4, 4) } },
         vertexShader: /* glsl */ `
+          uniform vec3 uBild;
+          uniform vec2 uTiefe;
           varying vec3 vBlick;
           varying vec3 vNormale;
           void main() {
@@ -1119,6 +1211,8 @@ export class FarbStapel {
             vBlick = -mv.xyz;
             vNormale = normalMatrix * normal;
             gl_Position = projectionMatrix * mv;
+            gl_Position.xy = gl_Position.xy * uBild.x + uBild.yz * gl_Position.w;
+            gl_Position.z = gl_Position.z * uTiefe.x + uTiefe.y * gl_Position.w;
           }
         `,
         fragmentShader: /* glsl */ `
@@ -1158,48 +1252,62 @@ export class FarbStapel {
         blendDst: OneMinusSrcAlphaFactor,
         blendSrcAlpha: OneFactor,
         blendDstAlpha: OneMinusSrcAlphaFactor,
-      });
-      const k = new Mesh(T.geo, material);
-      k.frustumCulled = false;
-      const szene = new Scene();
-      szene.add(k);
-      S.wachs = { szene, material };
-    }
-    (S.wachs.material.uniforms.uGroesse!.value as Vector2).copy(g);
+      }),
+    );
+    (S.wachs.satz.material.uniforms.uGroesse!.value as Vector2).copy(g);
+    S.wachs.satz.setzen(kopien);
     renderer.render(S.wachs.szene, kamera);
   }
 
   /**
    * Über das zeichnen, was im gebundenen Ziel steht (die Haut mit ihrem Grund; auf Wachs auch mit ihrer Tiefe, auf dem hellen
-   * Solid wird sie hier geschrieben: `w.verdeckt`). Die Ebenen von unten nach oben, jede deckt, was unter ihr liegt.
+   * Solid wird sie hier geschrieben: `w.verdeckt`). Die Ebenen von unten nach oben, jede deckt, was unter ihr liegt. Etappe 6:
+   * mit `w.kopien` je Kopie die Ebenen, die sie zeigt, alle Kopien in einem Durchgang.
    */
   zeichnen(renderer: WebGLRenderer, kamera: Camera, w: FarbWerte): void {
-    // (Etappe 6: in der Ebenen-Ansicht je Kopie nur ihre Ebenen, jede so deckend, wie sie dort steht)
-    const sicht = (a: FarbAnzeige): number => (w.nur ? Math.max(0, Math.min(1, w.nur.get(a.id) ?? 0)) : 1);
-    const da = this.reihe.filter((a) => !a.leer && sicht(a) > 0.002);
-    this.stand = { ebenen: da.length, gesammelt: false };
-    for (const a of this.reihe) a.gruppe.visible = da.includes(a);
-    if (!da.length) {
-      for (const a of this.reihe) a.gruppe.visible = true;
-      return;
-    }
-    // Mehrere Ebenen werden erst gesammelt, dann einmal mit dem Grund verrechnet. Über dem hellen Solid immer (multipliziert deckt
-    // nichts). Auf Wachs deckt schon das Überlagern, und das Sammeln kostet (zwei Bilder mehr in der Größe des Fensters: gemessen
-    // 3,5 ms je Bild bei 2880 × 1800): Gesammelt wird dort nur, wenn es etwas ändert, also wenn eine Ebene über der untersten weiche
-    // Kanten hat (überlagert mischte sie im Licht, heller als innerhalb einer Ebene). Und nicht, solange eine Füllung einläuft:
-    // Ihr Wulst fängt Licht und Glanz des Wachses, das trägt das Sammelbild nicht.
-    const noetig = w.modus === 'hell' || (!this.wachsOhneSammeln && da.slice(1).some((a) => a.weich) && !da.some((a) => a.fliesst));
-    const gesammelt = da.length > 1 && !!w.verdeckt && noetig;
+    const kopien = w.kopien?.length ? w.kopien : EINE_KOPIE;
+    // die Zeichnungen dieses Durchgangs: je Kopie die Ebenen, die sie zeigt, von unten nach oben
+    const gebraucht = new Map<FarbAnzeige, number>();
+    const da = new Set<FarbAnzeige>();
+    /** je Kopie: wie viele Ebenen sie zeigt, und ob eine über ihrer untersten weiche Kanten hat */
+    let mehrere = false;
+    let obenWeich = false;
+    let netze = 0;
+    kopien.forEach((k, c) => {
+      let zahl = 0;
+      this.reihe.forEach((a, j) => {
+        const sicht = k.nur ? Math.max(0, Math.min(1, k.nur.get(a.id) ?? 0)) : 1;
+        if (a.leer || sicht <= 0.002) return;
+        const n = gebraucht.get(a) ?? 0;
+        gebraucht.set(a, n + 1);
+        da.add(a);
+        // (die Farblinien der aktiven Ebene nur dort, wo sie ganz zu sehen ist)
+        a.stellen(n, { s: k.s, tx: k.tx, ty: k.ty, za: k.za, zb: k.zb, sicht, linie: a === this.aktive && sicht > 0.999 ? w.linie : 0 }, 64 * c + j);
+        if (zahl > 0 && a.weich) obenWeich = true;
+        zahl++;
+        netze++;
+      });
+      if (zahl > 1) mehrere = true;
+    });
+    for (const a of this.jeEbene.values()) a.rest(gebraucht.get(a) ?? 0);
+    this.stand = { ebenen: da.size, gesammelt: false, kopien: kopien.length, netze };
+    if (!da.size) return;
+    // Mehrere Ebenen auf einer Kopie werden erst gesammelt, dann einmal mit dem Grund verrechnet. Über dem hellen Solid immer
+    // (multipliziert deckt nichts). Auf Wachs deckt schon das Überlagern, und das Sammeln kostet (zwei Bilder mehr in der Größe
+    // des Fensters: gemessen 3,5 ms je Bild bei 2880 × 1800): Gesammelt wird dort nur, wenn es etwas ändert, also wenn eine Ebene
+    // über der untersten weiche Kanten hat (überlagert mischte sie im Licht, heller als innerhalb einer Ebene). Und nicht,
+    // solange eine Füllung einläuft: Ihr Wulst fängt Licht und Glanz des Wachses, das trägt das Sammelbild nicht.
+    const noetig = w.modus === 'hell' || (!this.wachsOhneSammeln && obenWeich && ![...da].some((a) => a.fliesst));
+    const gesammelt = mehrere && !!w.verdeckt && noetig;
     this.stand.gesammelt = gesammelt;
-    for (const a of da) a.werte(gesammelt ? 'sammel' : w.modus, w, a === this.aktive && sicht(a) > 0.999 ? w.linie : 0, sicht(a));
+    for (const a of da) a.werte(gesammelt ? 'sammel' : w.modus, w);
     const auto = renderer.autoClear;
     renderer.autoClear = false;
-    if (gesammelt) this.sammeln(renderer, kamera, w.verdeckt!, w.modus);
+    if (gesammelt) this.sammeln(renderer, kamera, w.verdeckt!, w.modus, kopien);
     else {
-      if (w.modus === 'hell' && w.verdeckt) this.tiefeSchreiben(renderer, kamera, w.verdeckt, true);
+      if (w.modus === 'hell' && w.verdeckt) this.tiefeSchreiben(renderer, kamera, w.verdeckt, true, kopien);
       renderer.render(this.szene, kamera);
     }
     renderer.autoClear = auto;
-    for (const a of this.reihe) a.gruppe.visible = true;
   }
 }
