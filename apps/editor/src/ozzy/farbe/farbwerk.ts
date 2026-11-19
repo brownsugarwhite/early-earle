@@ -503,6 +503,16 @@ export class FarbWerk {
     this.flussWunsch = id;
   }
 
+  /** die Farbe der Füllung, die an diesem Ort gilt (für die Pipette); null: Dort liegt keine Farbe */
+  farbeBei(h: HautJetzt, ort: Ort): Farbe | null {
+    // (steht noch etwas aus, zuerst nachziehen; sonst gilt, was das letzte Bild gerechnet hat)
+    if (this.alt || this.haut !== h.haut) this.schritt(h);
+    if (!this.flaechen) return null;
+    const nr = fuellungBei(this.flaechen, ort);
+    const f = nr >= 0 ? this.farben[nr] : undefined;
+    return f ? [f[0], f[1], f[2]] : null;
+  }
+
   /** die Lage eines Orts auf der glatten Anzeige (Welt) oder, ohne Anzeige, auf dem Rechennetz */
   lageImRaum(h: HautJetzt, o: Ort): V3 {
     const N = h.netz;

@@ -371,24 +371,114 @@ body.wende-an #hinweis {
   user-select: none;
   white-space: nowrap;
 }
-/* Paint-Modus (Etappe 1): die Farbe für die nächste Füllung, unter der Leiste. Vorläufig: die Farben als Tropfen kommen mit Etappe 3 */
-#farbe-wahl {
+/* Paint-Modus, Etappe 3: die Farben als kleine Tropfen, die unter der Leiste hängen (`farbe/farbLeiste.ts`). Der gewählte hängt
+   tiefer und ist größer; der hohle mit dem Plus legt eine neue Farbe an. Jeder Tropfen hängt an seiner Spitze (dort dreht und
+   wächst er). */
+#farbleiste {
   position: fixed;
   left: 50%;
-  top: 88px;
+  top: 55px;
   transform: translateX(-50%);
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px 4px 12px;
-  border: 1px solid #e0e5e8;
-  border-radius: 999px;
-  background: #ffffff;
-  color: var(--leise);
+  align-items: flex-start;
+  z-index: 3;
+  touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
 }
-#farbe-wahl[hidden] {
+#farbleiste[hidden] {
   display: none;
+}
+#farbleiste .reihe {
+  display: flex;
+  align-items: flex-start;
+  touch-action: none;
+}
+#farbleiste .farbe {
+  position: relative;
+  width: 21px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#farbleiste .farbe[hidden] {
+  display: none;
+}
+#farbleiste .farbe svg {
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  width: 10px;
+  height: 14px;
+  margin-left: -5px;
+  overflow: visible;
+  fill: var(--farbe, transparent);
+  stroke: var(--tinte);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  /* (die Spitze des Tropfens: dort hängt er, dort wächst er) */
+  transform-origin: 50% 0.5px;
+  transition:
+    transform 380ms var(--feder),
+    fill 160ms ease,
+    opacity 160ms ease;
+  animation: farbe-haengt 420ms var(--feder) backwards;
+}
+#farbleiste .farbe:hover svg {
+  transform: scale(1.16);
+}
+#farbleiste .farbe[aria-pressed='true'] svg {
+  transform: translateY(2px) scale(1.5);
+}
+/* aus der Leiste gezogen: An seinem Platz bleibt die leere Hülle, bis er zurück ist */
+#farbleiste .farbe.unterwegs svg {
+  fill: transparent;
+  opacity: 0.4;
+}
+#farbleiste .farbe.neu svg {
+  fill: transparent;
+  stroke: var(--leise);
+  stroke-width: 0.7;
+}
+#farbleiste .farbe.neu:hover svg {
+  stroke: var(--tinte);
+}
+#farbleiste .farbe.neu svg .plus {
+  stroke-width: 0.7;
+}
+@keyframes farbe-haengt {
+  from {
+    transform: scale(0);
+  }
+}
+/* das Farbfeld der Seite: unsichtbar; es öffnet den Farbwähler des Systems am Tropfen, dessen Farbe geändert wird */
+#farbleiste input[type='color'] {
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Farbtropfen und Pipette stehen nur im Paint-Modus in der Leiste; der Farbtropfen trägt die gewählte Farbe */
+#leiste .mal-gruppe {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+#leiste .mal-gruppe[hidden] {
+  display: none;
+}
+#leiste .werkzeug svg .farbe {
+  fill: var(--farbe, none);
 }
 /* Paint-Modus, Etappe 3: Die gewählte Farbe hängt als Tropfen am Zeiger, wo ein Klick füllen würde; beim Füllen fällt er auf die Haut
    (--x, --y: der Zeiger; --ox, --oy: wie weit der Tropfen unter ihm hängt). */
@@ -399,15 +489,23 @@ body.wende-an #hinweis {
   z-index: 6;
   box-sizing: border-box;
   width: 12px;
-  height: 12px;
-  border: 1px solid #1f1a17;
-  border-radius: 0 50% 50% 50%;
-  background: var(--farbe, #f6c445);
+  height: 16.8px;
   pointer-events: none;
   --ox: 11px;
-  --oy: 14px;
-  transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg);
-  transform-origin: 0 0;
+  --oy: 13px;
+  /* (die Spitze des Tropfens sitzt bei --ox, --oy unter dem Zeiger; dort dreht sich nichts, dort wächst und schrumpft er) */
+  transform: translate(calc(var(--x, -100px) + var(--ox) - 50%), calc(var(--y, -100px) + var(--oy)));
+  transform-origin: 50% 0;
+}
+#farbtropfen svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: var(--farbe, #f6c445);
+  stroke: #1f1a17;
+  stroke-width: 0.85;
+  stroke-linejoin: round;
 }
 #farbtropfen[hidden] {
   display: none;
@@ -416,7 +514,7 @@ body.wende-an #hinweis {
   --ox: 0px;
   --oy: 0px;
   opacity: 0;
-  transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg) scale(0.3);
+  transform: translate(calc(var(--x, -100px) + var(--ox) - 50%), calc(var(--y, -100px) + var(--oy))) scale(0.3);
   transition:
     transform 0.13s cubic-bezier(0.55, 0, 1, 0.7),
     opacity 0.04s 0.1s;
@@ -426,27 +524,38 @@ body.wende-an #hinweis {
 }
 @keyframes farbtropfen-waechst {
   from {
-    transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg) scale(0);
+    transform: translate(calc(var(--x, -100px) + var(--ox) - 50%), calc(var(--y, -100px) + var(--oy))) scale(0);
   }
   to {
-    transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy))) rotate(45deg) scale(1);
+    transform: translate(calc(var(--x, -100px) + var(--ox) - 50%), calc(var(--y, -100px) + var(--oy))) scale(1);
   }
 }
-#farbe-wahl input {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: none;
-  cursor: pointer;
+/* aus der Leiste gezogen: größer, er hängt mittig unter dem Zeiger */
+#farbtropfen.zieht {
+  width: 15px;
+  height: 21px;
+  --ox: 0px;
+  --oy: 6px;
 }
-#farbe-wahl input::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-#farbe-wahl input::-webkit-color-swatch {
-  border: 1px solid #e0e5e8;
+/* Pipette: ein Ring neben dem Zeiger, gefüllt mit der Farbe unter ihm (`leer`: Dort liegt keine) */
+#farbtropfen.pipette {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #1f1a17;
   border-radius: 50%;
+  background: var(--farbe, transparent);
+  box-shadow: 0 0 0 1.5px #ffffff;
+  --ox: 12px;
+  --oy: 12px;
+  transform: translate(calc(var(--x, -100px) + var(--ox)), calc(var(--y, -100px) + var(--oy)));
+}
+#farbtropfen.pipette svg {
+  display: none;
+}
+#farbtropfen.pipette.leer {
+  background: transparent;
+  border-style: dashed;
+  box-shadow: none;
 }
 #info {
   position: fixed;
@@ -682,6 +791,7 @@ button {
   }
 }
 body.bild #leiste,
+body.bild #farbleiste,
 body.bild #marke,
 body.bild #hinweis,
 body.bild #regler {

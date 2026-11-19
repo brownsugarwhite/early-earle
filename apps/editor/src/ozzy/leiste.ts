@@ -11,7 +11,10 @@ import type { Werkzeug } from './blatt';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
-const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'muell', string> = {
+/** die Werkzeuge der Leiste: die des Blatts und, im Paint-Modus, Farbtropfen und Pipette */
+export type LeistenWerkzeug = Werkzeug | 'tropfen' | 'pipette';
+
+const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'muell' | 'tropfen' | 'pipette', string> = {
   // die zwei Zeiger wie in Illustrator: dunkel für ganze Objekte (V), weiß für Punkte (A); dieselbe Form wie der Zeiger im Bild
   objekt: '<path d="M5.2 3.2l9.9 6.2-4.1 1.2 2.3 4.6-1.9 1-2.3-4.7-3 3.1z" class="voll" />',
   auswahl: '<path d="M5.2 3.2l9.9 6.2-4.1 1.2 2.3 4.6-1.9 1-2.3-4.7-3 3.1z" />',
@@ -25,6 +28,10 @@ const ZEICHEN: Record<'objekt' | 'auswahl' | 'lasso' | 'p' | 'frei' | 'ellipse' 
   // Würfel als Haarlinien: vorn ein Quadrat, hinten versetzt
   wuerfel: '<path d="M4.2 7.4h8.4v8.4H4.2z" /><path d="M4.2 7.4l3.2-3.2h8.4v8.4l-3.2 3.2" /><path d="M12.6 7.4l3.2-3.2" />',
   muell: '<path d="M5 5.2h10M8.1 5.2V3.8h3.8v1.4M6.3 7.1l.75 9.4h5.9l.75-9.4" /><path d="M8.6 9v5.4M11.4 9v5.4" class="duenn" />',
+  // Farbtropfen: ein hängender Tropfen, gefüllt mit der gewählten Farbe (`--farbe` an der Leiste)
+  tropfen: '<path d="M10 3.3C12.7 6.9 14.5 9.2 14.5 11.8a4.5 4.5 0 0 1-9 0C5.5 9.2 7.3 6.9 10 3.3z" class="farbe" /><path d="M7.7 12.2a2.4 2.4 0 0 0 1.7 2" class="duenn" />',
+  // Pipette: Ballon, Kragen, Glasrohr, an der Spitze ein kleiner Tropfen
+  pipette: '<path d="M12.2 6.6l2.2-2.2a1.5 1.5 0 0 1 2.1 2.1l-2.2 2.2z" class="voll" /><path d="M11.4 5.8l3.7 3.7" /><path d="M12.15 6.85l1.9 1.9-6.2 6.2-2.5.6.6-2.5z" /><circle cx="4.2" cy="16.9" r="0.8" class="voll" />',
 };
 /** das Plus: ein neues Objekt */
 const PLUS_ZEICHEN = '<path d="M10 4.4v11.2M4.4 10h11.2" />';
@@ -66,7 +73,7 @@ const SPIEGEL_NAMEN: Record<SpiegelZustand, string> = {
   clip: 'Spiegel an, mit Clipping: Was über die Mitte reicht, verschmilzt dort zu einer Naht',
 };
 
-const NAMEN: Record<Werkzeug | 'muell', string> = {
+const NAMEN: Record<LeistenWerkzeug | 'muell', string> = {
   p: 'Zeichenstift (P): Klick Ecke, Ziehen rund, am ersten Punkt schließen',
   frei: 'Freihand (N): zeichnen, der Strich wird ein Pfad mit wenigen Punkten',
   ellipse: 'Ellipse (E): ziehen, ⇧ Kreis, ⌥ aus der Mitte',
@@ -75,6 +82,8 @@ const NAMEN: Record<Werkzeug | 'muell', string> = {
   auswahl: 'Punkte (A): Punkte, Linien und Griffe ziehen · L wählt alles Verbundene unter dem Zeiger',
   lasso: 'Lasso (Q): Punkte umfahren, ⇧ dazu, ⌥ weg (A zurück)',
   muell: 'Mülleimer: verwerfen (⌘Z holt es zurück)',
+  tropfen: 'Farbtropfen (F): Klick auf die Form füllt die Farbfläche dort mit der gewählten Farbe · ⌥ + Klick nimmt die Farbe dort auf',
+  pipette: 'Pipette (I): Klick auf die Form nimmt die Farbe dort auf',
 };
 
 function zeichen(art: keyof typeof ZEICHEN): SVGSVGElement {
@@ -120,12 +129,13 @@ class Feder {
 
 export class Leiste {
   readonly el: HTMLElement;
-  private knoepfe = new Map<Werkzeug | 'formen' | 'muell', HTMLButtonElement>();
+  private knoepfe = new Map<LeistenWerkzeug | 'formen' | 'muell', HTMLButtonElement>();
+  private malGruppe!: HTMLSpanElement;
   private tropfen: HTMLDivElement;
   private klapp: HTMLDivElement;
   private formenZeichen: HTMLSpanElement;
   private form: 'ellipse' | 'wuerfel' = 'ellipse';
-  private aktiv: Werkzeug = 'p';
+  private aktiv: LeistenWerkzeug = 'p';
   private plusKnopf!: HTMLButtonElement;
   private nahtKnoepfe = new Map<NahtKnopf, HTMLButtonElement>();
   private nahtStand = '';
@@ -141,7 +151,7 @@ export class Leiste {
 
   constructor(
     eltern: HTMLElement,
-    private wahl: (w: Werkzeug) => void,
+    private wahl: (w: LeistenWerkzeug) => void,
     private muell: () => void,
     private spiegel: (z: SpiegelZustand, alt: boolean) => void = () => {},
     private plus: () => void = () => {},
@@ -151,7 +161,7 @@ export class Leiste {
     el.id = 'leiste';
     el.setAttribute('aria-label', 'Werkzeuge');
     this.el = el;
-    const knopf = (name: Werkzeug | 'formen' | 'muell', art: keyof typeof ZEICHEN, titel: string): HTMLButtonElement => {
+    const knopf = (name: LeistenWerkzeug | 'formen' | 'muell', art: keyof typeof ZEICHEN, titel: string): HTMLButtonElement => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'werkzeug';
@@ -185,6 +195,19 @@ export class Leiste {
       if (aufPfeil || this.aktiv === this.form) this.klappen(this.klapp.hidden);
       else this.waehlen(this.form);
     });
+    // Paint-Modus (Etappe 3): Farbtropfen und Pipette, nur dort zu sehen (`malZeigen`)
+    this.malGruppe = document.createElement('span');
+    this.malGruppe.className = 'mal-gruppe';
+    this.malGruppe.hidden = true;
+    const vorMalen = document.createElement('span');
+    vorMalen.className = 'trenner';
+    this.malGruppe.append(vorMalen);
+    for (const w of ['tropfen', 'pipette'] as const) {
+      const b = knopf(w, w, NAMEN[w]);
+      b.addEventListener('click', () => this.waehlen(this.aktiv === w ? 'auswahl' : w));
+      this.malGruppe.append(b);
+    }
+    el.append(this.malGruppe);
     // der Spiegel des gewählten Objekts (im Raum; auf dem Blatt gibt es noch kein Objekt)
     const vorSpiegel = document.createElement('span');
     vorSpiegel.className = 'trenner';
@@ -281,13 +304,13 @@ export class Leiste {
     this.el.classList.toggle('klapp-auf', auf);
   }
 
-  private waehlen(w: Werkzeug): void {
+  private waehlen(w: LeistenWerkzeug): void {
     this.setzen(w);
     this.wahl(w);
   }
 
   /** das gewählte Werkzeug zeigen (von außen, z. B. über Tasten); `sofort`: ohne Fließen */
-  setzen(w: Werkzeug, sofort = false): void {
+  setzen(w: LeistenWerkzeug, sofort = false): void {
     this.aktiv = w;
     if (w === 'ellipse' || w === 'wuerfel') {
       this.form = w;
@@ -308,6 +331,25 @@ export class Leiste {
       this.fx.v = 0;
     }
     this.anstossen();
+  }
+
+  /** Farbtropfen und Pipette: zu sehen im Paint-Modus */
+  malZeigen(an: boolean): void {
+    if (this.malGruppe.hidden === !an) return;
+    this.malGruppe.hidden = !an;
+    // (die Leiste ist breiter oder schmaler geworden: Der Tropfen unter dem Werkzeug und der des Spiegels sitzen neu)
+    this.setzen(this.aktiv, true);
+    this.spiegelStand = '';
+  }
+
+  /** die gewählte Farbe: Sie füllt das Zeichen des Farbtropfens */
+  farbeZeigen(css: string): void {
+    this.el.style.setProperty('--farbe', css);
+  }
+
+  /** der Mülleimer (ein Farbtropfen, auf ihn gezogen, wird verworfen) */
+  get muellKnopf(): HTMLButtonElement {
+    return this.knoepfe.get('muell')!;
   }
 
   /** das Plus an oder aus (ein neues Objekt gibt es nur im Raum, wenn schon eine Form steht) */

@@ -39,6 +39,7 @@ import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND } from './wachs';
 import { type Farbe, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
 import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
+import { FarbLeiste, alsHex as farbeAlsHex } from './farbe/farbLeiste';
 import { richtungVektor } from './farbe/kurve';
 import { type BlattAnker, FLIESSEN, FarbWerk, type FarbStand, type FliessWerte, type HautJetzt } from './farbe/farbwerk';
 import { naechsterAuf } from './farbe/naechster';
@@ -46,7 +47,7 @@ import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
 import { AnsichtsTropfen } from './ansichtsTropfen';
-import { Leiste, type NahtKnopf, type SpiegelZustand } from './leiste';
+import { Leiste, type LeistenWerkzeug, type NahtKnopf, type SpiegelZustand } from './leiste';
 import { Verbund, type VerbundBild, type VerbundGlied, type VerbundSoll } from './verbund';
 import type { VerbundNetz } from './verbundRechnen';
 import { reglerDehnung, reglerTropfen } from './reglerTropfen';
@@ -629,7 +630,7 @@ let pErlaubt = false;
 /** P, Freihand und Formen in der Leiste an (null: beim nächsten Bild neu setzen) */
 let zeichnenErlaubt: boolean | null = null;
 /** Werkzeug im Raum (mit dem Werk): Auswahl, P (über das Verhalten), Freihand, Ellipse, Würfel */
-let raumWerkzeug: Werkzeug = 'auswahl';
+let raumWerkzeug: LeistenWerkzeug = 'auswahl';
 /** Freihand und Formen im Raum (Etappe 5.3): ein Strich oder ein Aufzug auf einer Fläche (Bildschirm, CSS-Pixel) */
 let raumStrich: { fl: number; st: Strich } | null = null;
 let raumAufzug: { fl: number; art: 'ellipse' | 'wuerfel'; von: { x: number; y: number }; bis: { x: number; y: number } } | null = null;
@@ -641,6 +642,8 @@ const strichWerkzeug = (): boolean => raumWerkzeug === 'frei' || raumWerkzeug ==
  * ihren Punkten (A).
  */
 const objektModus = (): boolean => raumWerkzeug === 'objekt';
+/** Paint-Modus, Etappe 3: Farbtropfen (F) und Pipette (I) arbeiten an der Farbe; sie greifen keine Punkte und keine Farblinien */
+const farbWerkzeug = (): boolean => raumWerkzeug === 'tropfen' || raumWerkzeug === 'pipette';
 /** das Objekt ist gewählt (noch gibt es eines: die Form); der letzte Klick darauf (Doppelklick) und ein Drücken im Objekt-Modus */
 let objektGewaehlt = false;
 let objektKlick = { t: 0, x: 0, y: 0 };
@@ -4022,7 +4025,8 @@ function bild(dt: number): boolean {
   hauch.staerke += (hauch.ziel - hauch.staerke) * (1 - Math.exp(-dt / 0.18));
   // in der Pose tönt sich das Papier (E8)
   // S14: Röntgen (⌥ gehalten oder der Knopf auf dem iPad), weich
-  const roentgenZiel = (altGehalten || roentgenFest) && zustand === 'ruhe' && werkGezeigt ? 1 : 0;
+  // (mit dem Farbtropfen nimmt ⌥ die Farbe auf, es gibt dort nichts zu greifen: kein Röntgen)
+  const roentgenZiel = (altGehalten || roentgenFest) && zustand === 'ruhe' && werkGezeigt && !farbWerkzeug() ? 1 : 0;
   roentgen += (roentgenZiel - roentgen) * (1 - Math.exp(-dt / 0.1));
   if (Math.abs(roentgenZiel - roentgen) > 0.005) aktiv = true;
   else roentgen = roentgenZiel;
@@ -4279,6 +4283,10 @@ function bild(dt: number): boolean {
   leiste.plusErlauben(spiegelErlaubt());
   // Verschmelzen und Abziehen: zu sehen, sobald es mehr als ein Objekt gibt; an, wenn das aktive ein anderes berührt
   leiste.nahtZeigen(ruhende.length > 0 && zustand === 'ruhe', ruhende.length > 0 && verbundErlaubt(), verbundVon.get(aktivId)?.art ?? null);
+  // Paint-Modus: Farbtropfen und Pipette in der Leiste und die Farben darunter, solange im Raum gemalt wird
+  const malt = malModus && zustand === 'ruhe' && werkGezeigt;
+  leiste.malZeigen(malt);
+  farbLeiste.zeigen(malt);
   tastenStand();
   // Text
   // (auf dem Blatt eines weiteren Objekts stehen die vorhandenen blass: Dort schweigt der Schriftzug)
@@ -4289,7 +4297,11 @@ function bild(dt: number): boolean {
       : zustand === 'ruhe' && werkGezeigt && malModus
       ? bearbeiten.stift
         ? 'Paint-Modus · P: auf die Form klicken setzt Punkte, ziehen rundet · auf dem ersten Punkt schließen · ↩ beendet offen · ⌫ letzter Punkt · Esc'
-        : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · Klick auf die Form füllt bis an die Farblinien · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
+        : raumWerkzeug === 'tropfen'
+        ? 'Farbtropfen · Klick auf die Form füllt bis an die Farblinien · ⌥ + Klick nimmt die Farbe dort auf · Farben: die Tropfen unter der Leiste, auch zum Ziehen auf die Form · A: zurück zu den Punkten'
+        : raumWerkzeug === 'pipette'
+        ? 'Pipette · Klick auf die Form nimmt die Farbe dort auf · A: zurück zu den Punkten'
+        : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · F Farbtropfen: Klick auf die Form füllt bis an die Farblinien · I Pipette · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
       : zustand === 'ruhe' && werkGezeigt && objektModus()
@@ -5342,7 +5354,8 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // (im Paint-Modus stehen die Linien der Form ebenso still: Dort gelten P, Freihand und Formen den Farblinien, ein Klick füllt)
   // Etappe 2: A und P gehören im Paint-Modus den Farblinien (im Raum und eingerastet); in den Vier Ansichten zeichnet P wie in
   // Etappe 1 auf dem Blatt
-  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p' || raumWerkzeug === 'lasso');
+  // (Etappe 3: Mit Farbtropfen und Pipette stehen die Farblinien wie mit A, nur hängt nichts am Zeiger)
+  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p' || raumWerkzeug === 'lasso' || farbWerkzeug());
   bearbeitenAn = stabil && !objektModus() && (!malModus || farbAn || raumWerkzeug === 'p' || strichWerkzeug());
   modellSetzen(farbAn);
   // P in der Leiste, sobald das Werk bedient wird
@@ -5445,7 +5458,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     ordnungslinien();
     const licht = lichtringZeichnen();
     // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
-    return { zeiger: strichWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv: aktiv || licht };
+    return { zeiger: strichWerkzeug() || farbWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv: aktiv || licht };
   }
   werkLinienStill(flaechen, !objektModus());
   return { zeiger: undefined, aktiv: werkBlatt.fliesst };
@@ -6466,7 +6479,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     bearbeiten.alt = e.altKey;
     bearbeiten.umschalt = e.shiftKey;
     bearbeiten.kippen = e.shiftKey;
-    if (!strichWerkzeug()) bearbeiten.zeigerSetzen(x, y, x, y, dt);
+    if (!strichWerkzeug() && !farbWerkzeug()) bearbeiten.zeigerSetzen(x, y, x, y, dt);
   }
   // C4: G, S oder R folgt dem Zeiger
   if (tastenZug) {
@@ -6689,7 +6702,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
   // B1 (17.11.): das Ziel für genau diesen Ort bestimmen, bevor gefragt wird, ob etwas am Zeiger hängt. Bis dahin galt, was seit dem
   // Bild davor an ihm hing: Ein Tipp mit Stift oder Finger (kein Zeigen davor) und ein rascher Klick griffen oft nichts. Nicht mit dem
   // Lasso (es greift nichts, es umfährt)
-  if (werkGezeigt && bearbeitenAn && !strichWerkzeug() && raumWerkzeug !== 'lasso') {
+  if (werkGezeigt && bearbeitenAn && !strichWerkzeug() && !farbWerkzeug() && raumWerkzeug !== 'lasso') {
     bearbeiten.alt = e.altKey;
     bearbeiten.umschalt = e.shiftKey;
     bearbeiten.kippen = e.shiftKey;
@@ -6784,7 +6797,8 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
   }
   // Paint-Modus (Etappe 1): Ein Klick auf die Form füllt die Farbfläche dort; mit dem ersten Weg wird stattdessen gedreht
   // (Etappe 2: Hängt ein Punkt oder eine Farblinie am Zeiger, greift das Drücken sie)
-  if (malModus && werkGezeigt && raumWerkzeug === 'auswahl' && pinselHier(x, y) && !(farbAn && bearbeiten.haengt)) {
+  // (Etappe 3: mit dem Farbtropfen ebenso, dort hängt nie etwas am Zeiger; mit der Pipette nimmt der Klick die Farbe auf)
+  if (malModus && werkGezeigt && (raumWerkzeug === 'auswahl' || farbWerkzeug()) && pinselHier(x, y) && !(farbAn && bearbeiten.haengt)) {
     farbDruck = { x, y, zeit: e.timeStamp };
     anstossen();
     return;
@@ -6920,7 +6934,8 @@ const loslassen = (e: PointerEvent): void => {
     const d = farbDruck;
     farbDruck = null;
     if (!drehen) {
-      farbFuellenBei(d.x, d.y);
+      if (raumWerkzeug === 'pipette' || (raumWerkzeug === 'tropfen' && e.altKey)) farbAufnehmenBei(d.x, d.y);
+      else farbFuellenBei(d.x, d.y);
       anstossen();
       return;
     }
@@ -7121,13 +7136,13 @@ function verbundenesWaehlen(weg: boolean): void {
   } else bearbeiten.eingabe('alle');
 }
 
-function werkzeugGewaehlt(w: Werkzeug): void {
+function werkzeugGewaehlt(w: LeistenWerkzeug): void {
   // im Raum (mit dem Werk): P, Freihand, Formen und Lasso auf den Flächen
   if (zustand === 'ruhe' && werkGezeigt) {
     werkzeugImRaum(w);
     return;
   }
-  if (zustand !== 'blatt' || w === 'lasso') return;
+  if (zustand !== 'blatt' || w === 'lasso' || w === 'tropfen' || w === 'pipette') return;
   // auf dem Blatt gibt es noch keine Objekte: Der dunkle Zeiger gilt dort wie der weiße
   if (w === 'objekt') {
     waehlenTaste('auswahl');
@@ -7144,10 +7159,14 @@ function stiftImRaum(an: boolean): void {
 }
 
 /** ein Werkzeug im Raum: P geht über das Verhalten der Studie; Freihand, Ellipse und Würfel zeichnen auf der Fläche unter dem Zeiger */
-function werkzeugImRaum(w: Werkzeug): void {
+function werkzeugImRaum(w: LeistenWerkzeug): void {
+  // (Farbtropfen und Pipette gibt es nur im Paint-Modus)
+  if ((w === 'tropfen' || w === 'pipette') && !malModus) w = 'auswahl';
   raumWerkzeug = w;
   bearbeiten.stiftSchalten(w === 'p');
-  if (strichWerkzeug() || w === 'objekt') bearbeiten.zeigerWeg();
+  if (strichWerkzeug() || w === 'objekt' || farbWerkzeug()) bearbeiten.zeigerWeg();
+  // (an der Farbe gibt es nichts Gewähltes: ⌫ soll dort keine Punkte löschen, die man nicht mehr im Blick hat)
+  if (farbWerkzeug()) bearbeiten.auswahlLeeren();
   if (w === 'objekt') {
     hauch.ziel = 0;
     pinselZiel = null;
@@ -7328,6 +7347,9 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
   else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
   else if ((k === 'b' || k === 'B') && zustand === 'ruhe' && werkGezeigt && !e.repeat) malSetzen(!malModus);
+  // Paint-Modus, Etappe 3: F ist der Farbtropfen, I die Pipette (noch einmal dieselbe Taste: zurück zu den Punkten)
+  else if ((k === 'f' || k === 'F') && zustand === 'ruhe' && werkGezeigt && !e.repeat) farbWerkzeugTaste('tropfen');
+  else if ((k === 'i' || k === 'I') && zustand === 'ruhe' && werkGezeigt && !e.repeat) farbWerkzeugTaste('pipette');
   else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && (objektModus() || !werk.G.auswahl.length) && verbundRundSchalten()) {
     // Etappe 5: am Objekt (V, oder mit A ohne gewählte Punkte) schaltet K die Naht seines Verbunds zwischen rund und Kante
   } else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && !objektModus()) {
@@ -7526,44 +7548,120 @@ dreieckeSchalter.addEventListener('change', () => dreieckeSetzen(dreieckeSchalte
 
 // ---------- Paint-Modus (Etappe 1) ----------
 
-const farbWahlFeld = $<HTMLLabelElement>('farbe-wahl');
 /**
- * Etappe 3: Die gewählte Farbe hängt als Tropfen am Zeiger, wo ein Klick füllen würde (im Paint-Modus mit A, über der Form, nichts
- * anderes am Zeiger). Beim Füllen fällt er auf die Haut, und von dort läuft die Farbe; kurz darauf wächst ein neuer nach.
+ * Etappe 3: Die gewählte Farbe hängt als Tropfen am Zeiger, wo ein Klick füllen würde (im Paint-Modus mit A oder dem Farbtropfen,
+ * über der Form, nichts anderes am Zeiger). Beim Füllen fällt er auf die Haut, und von dort läuft die Farbe; kurz darauf wächst ein
+ * neuer nach. Wird ein Tropfen aus der Leiste gezogen (`farbZug`), hängt er am Zeiger, bis er losgelassen wird. Mit der Pipette
+ * steht dort ein Ring in der Farbe, die unter dem Zeiger liegt.
  */
 const farbTropfen = $<HTMLDivElement>('farbtropfen');
 let farbTropfenFall = -1e9;
+/** ein Tropfen, der gerade aus der Leiste gezogen wird (CSS-Pixel) */
+let farbZug: { farbe: Farbe; x: number; y: number } | null = null;
+const farbCss = (f: Farbe): string => `rgb(${f.map((c) => Math.round(255 * c)).join(' ')})`;
+/** die Farbe der Farbfläche unter einem Ort des Bilds (CSS-Pixel); null: keine Form oder keine Farbe dort */
+function farbUnter(x: number, y: number): Farbe | null {
+  if (ruhende.length && objektBei(x, y) !== aktivId) return null;
+  const { o, d } = kam.strahl(x, y, W, H);
+  const h = hautJetzt();
+  const ort = farbWerk.ortUnterStrahl(h, [o.x, o.y, o.z], [d.x, d.y, d.z]);
+  return ort ? farbWerk.farbeBei(h, ort) : null;
+}
+/** (für den Ring der Pipette: nur neu gesucht, wenn sich der Strahl unter dem Zeiger, die Bemalung oder die Haut geändert haben) */
+let farbUnterGemerkt: { schluessel: string; farbe: Farbe | null } = { schluessel: '', farbe: null };
+function farbUnterZeiger(): Farbe | null {
+  const { o, d } = kam.strahl(zeiger.x, zeiger.y, W, H);
+  const schluessel = `${o.x},${o.y},${o.z},${d.x},${d.y},${d.z}|${farbBild}|${werkHaut.version}`;
+  if (schluessel !== farbUnterGemerkt.schluessel) farbUnterGemerkt = { schluessel, farbe: farbUnter(zeiger.x, zeiger.y) };
+  return farbUnterGemerkt.farbe;
+}
 function farbTropfenZeigen(): void {
   const faellt = performance.now() - farbTropfenFall < 430;
-  const da = malModus && zustand === 'ruhe' && werkGezeigt && farbAn && raumWerkzeug === 'auswahl' && zeiger.da && !drehen && !bearbeiten.haengt && !bearbeitenGedrueckt && farbBlatt.ortFrei(zeiger.x, zeiger.y) !== null;
-  farbTropfen.hidden = !(da || faellt);
-  if (farbTropfen.hidden) return;
-  if (!faellt) {
-    farbTropfen.style.setProperty('--x', `${zeiger.x}px`);
-    farbTropfen.style.setProperty('--y', `${zeiger.y}px`);
+  const t = farbTropfen;
+  if (farbZug && !faellt) {
+    t.hidden = false;
+    t.classList.add('zieht');
+    t.classList.remove('pipette', 'leer');
+    t.style.setProperty('--x', `${farbZug.x}px`);
+    t.style.setProperty('--y', `${farbZug.y}px`);
+    t.style.setProperty('--farbe', farbCss(farbZug.farbe));
+    return;
   }
-  farbTropfen.style.setProperty('--farbe', `rgb(${farbWahl.map((c) => Math.round(255 * c)).join(' ')})`);
+  if (!faellt) t.classList.remove('zieht');
+  const da = malModus && zustand === 'ruhe' && werkGezeigt && farbAn && (raumWerkzeug === 'auswahl' || farbWerkzeug()) && zeiger.da && !drehen && !bearbeiten.haengt && !bearbeitenGedrueckt && farbBlatt.ortFrei(zeiger.x, zeiger.y) !== null;
+  // (mit dem Farbtropfen nimmt ⌥ die Farbe auf, wie die Pipette)
+  const pipette = da && !faellt && (raumWerkzeug === 'pipette' || (raumWerkzeug === 'tropfen' && altGehalten));
+  t.hidden = !(da || faellt);
+  if (t.hidden) return;
+  if (!faellt) {
+    t.style.setProperty('--x', `${zeiger.x}px`);
+    t.style.setProperty('--y', `${zeiger.y}px`);
+  }
+  const unter = pipette ? farbUnterZeiger() : null;
+  t.classList.toggle('pipette', pipette);
+  t.classList.toggle('leer', pipette && !unter);
+  t.style.setProperty('--farbe', farbCss(unter ?? farbWahl));
 }
 /** der Tropfen fällt an dieser Stelle auf die Haut */
 function farbTropfenFallen(x: number, y: number): void {
   farbTropfenFall = performance.now();
   farbTropfen.hidden = false;
+  farbTropfen.classList.remove('pipette', 'leer');
   farbTropfen.style.setProperty('--x', `${x}px`);
   farbTropfen.style.setProperty('--y', `${y}px`);
   farbTropfen.classList.remove('waechst');
   farbTropfen.classList.add('faellt');
   setTimeout(() => {
-    farbTropfen.classList.remove('faellt');
+    farbTropfen.classList.remove('faellt', 'zieht');
     farbTropfen.classList.add('waechst');
     anstossen();
   }, 430);
   setTimeout(() => farbTropfen.classList.remove('waechst'), 430 + 300);
 }
-const farbWahlEingabe = $<HTMLInputElement>('farbe-farbe');
-farbWahlEingabe.addEventListener('input', () => {
-  const h = farbWahlEingabe.value;
-  farbWahl = [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+/**
+ * Etappe 3: die Farben als Tropfen unter der Leiste (`farbe/farbLeiste.ts`). Die gewählte füllt: mit dem Farbtropfen (F), mit A auf
+ * freier Haut, und wenn ein Tropfen aus der Leiste auf die Form gezogen wird (wie Farbe ziehen in Procreate).
+ */
+const farbLeiste = new FarbLeiste(document.body, $<HTMLInputElement>('farbe-farbe'), {
+  gewaehlt: (f) => {
+    farbWahl = f;
+    leiste.farbeZeigen(farbCss(f));
+    anstossen();
+  },
+  zug: (z) => {
+    farbZug = z;
+    anstossen();
+  },
+  fallen: (x, y, f) => {
+    if (!malModus || zustand !== 'ruhe' || !werkGezeigt || !pinselHier(x, y) || !objektUnter(x, y)) return false;
+    farbTropfen.hidden = false;
+    return farbFuellenBei(x, y, f);
+  },
+  muell: (x, y) => document.elementFromPoint(x, y)?.closest('button') === leiste.muellKnopf,
 });
+farbWahl = farbLeiste.farbe;
+leiste.farbeZeigen(farbCss(farbWahl));
+/** F und I: Farbtropfen und Pipette (noch einmal dieselbe Taste: zurück zu den Punkten); sie gelten im Paint-Modus */
+function farbWerkzeugTaste(w: 'tropfen' | 'pipette'): void {
+  if (!malModus) {
+    werk.G.meldung = `${w === 'tropfen' ? 'Farbtropfen (F)' : 'Pipette (I)'}: im Paint-Modus · B schaltet ihn an`;
+    return;
+  }
+  werkzeugImRaum(raumWerkzeug === w ? 'auswahl' : w);
+}
+/** Pipette: Die Farbe der Farbfläche unter dem Ort wird die gewählte (steht sie nicht bei den Tropfen der Leiste, kommt sie dazu) */
+function farbAufnehmenBei(x: number, y: number): boolean {
+  const f = farbUnter(x, y);
+  if (!f) {
+    werk.G.meldung = 'Pipette: Hier liegt keine Farbe · auf eine gefüllte Fläche klicken';
+    return false;
+  }
+  farbLeiste.aufnehmen(f);
+  // (mit der aufgenommenen Farbe wird gefüllt: weiter mit dem Farbtropfen)
+  if (raumWerkzeug === 'pipette') werkzeugImRaum('tropfen');
+  werk.G.meldung = 'Farbe aufgenommen · Klick auf die Form füllt mit ihr';
+  return true;
+}
 /** ein Handgriff am Bemalen: Kommt ein Schritt dazu, steht er im gemeinsamen Rückweg (⌘Z nimmt ihn zurück, in der Reihenfolge aller Schritte) */
 function farbSchritt<T>(tun: () => T): T {
   rueckwegAbgleichen();
@@ -7619,15 +7717,14 @@ function malSetzen(an: boolean): void {
   farbBild++;
   farbDruck = null;
   werkBlatt.stiftZiel = an ? farbStiftZiel : null;
-  farbWahlFeld.hidden = !an;
   if (an) {
     // gemalt wird auf einem der zwei Gründe (Florian: „Als Basismaterial für den paint mode kannst du erstmal das helle solid benutzen“)
     if (!istMalgrund()) materialSetzen('Helles Solid');
     if (objektModus() || raumWerkzeug === 'lasso') werkzeugImRaum('auswahl');
     werkFelder.leeren();
-    werk.G.meldung = 'Paint-Modus: P zeichnet eine Farblinie auf die Haut, ein Klick auf die Form füllt · B: zurück zur Form';
+    werk.G.meldung = 'Paint-Modus: P zeichnet eine Farblinie auf die Haut · F Farbtropfen: ein Klick auf die Form füllt · B: zurück zur Form';
   } else {
-    if (bearbeiten.stift || strichWerkzeug()) werkzeugImRaum('auswahl');
+    if (bearbeiten.stift || strichWerkzeug() || farbWerkzeug()) werkzeugImRaum('auswahl');
     werk.G.meldung = 'Zurück bei der Form';
   }
   anstossen();
@@ -8810,6 +8907,19 @@ const haken = {
   farbFluss: (): { zeit: number; dauer: number; groesst: number; front: number; ms: number } | null => {
     const f = farbWerk.flussStand();
     return f ? { ...f, ms: farbWerk.flussMs } : null;
+  },
+  /** Etappe 3: die Farben der Leiste und welche gewählt ist, das Werkzeug im Raum, der Tropfen am Zeiger (Klassen; null: nicht zu sehen) */
+  farbLeiste: (): { farben: string[]; wahl: number; gewaehlt: string; werkzeug: LeistenWerkzeug; tropfen: string | null; zu_sehen: boolean } => ({
+    ...farbLeiste.stand,
+    gewaehlt: farbeAlsHex(farbWahl),
+    werkzeug: raumWerkzeug,
+    tropfen: farbTropfen.hidden ? null : farbTropfen.className,
+    zu_sehen: !farbLeiste.el.hidden,
+  }),
+  /** Etappe 3, Pipette: die Farbe der Farbfläche unter einem Ort des Bilds (CSS-Pixel) als #rrggbb; null: keine */
+  farbUnter: (x: number, y: number): string | null => {
+    const f = farbUnter(x, y);
+    return f ? farbeAlsHex(f) : null;
   },
   /** Etappe 3: eine der zwei Fassungen des Einlaufens wählen oder es abschalten */
   farbFliessen: (art: 'tinte' | 'honig' | 'aus'): void => {
