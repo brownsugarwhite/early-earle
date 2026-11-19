@@ -462,6 +462,20 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   mit `nurTiefe`); den Namen `farbAn` nie örtlich neu vergeben (so galt die Verdeckung vor der ersten Farblinie nicht). (6) Eine
   Probe an der Kugel reicht nicht: `ozzy-farbe-bedienen-fenster.mjs` (Kugel) und `ozzy-farbe-mitte-fenster.mjs` („strange bird“:
   Überhang, Mitte, Tempo); Film `scripts/ozzy/paint-bedienen-film.mjs`. Was fehlt: Plan 11.4.
+- **Paint-Modus, Etappe 3, erster Schritt (19.11.; Plan, Abschnitt 12): Eine Füllung läuft ein.** `farbe/fliessen.ts` rechnet je
+  Punkt des Rechennetzes die Weite von der Saat (über die Haut, nur in der Fläche der Füllung), `anzeige.ts` zeigt die neue Farbe,
+  wo die Front schon war (`FlussBild` beim Bauen, je Bild nur `flussSetzen`), `farbwerk.ts` führt die Zeit (`fliessen(dt)` vor
+  `schritt`, `FLIESSEN.tinte|honig`, Feinregler „Füllen“, `?fuellen=tinte|honig|0`). Merke: (1) Nur längs der Kanten gerechnet
+  läuft die Front in Sechsecken: Aus zwei bekannten Ecken folgt die dritte über eine Quelle hinter der Kante (`quelle`), und im
+  Inneren eines Dreiecks wird rund statt eben gemischt (`weiteImDreieck`, im Shader `weiteRund`). (2) Der Haufen vergleicht seine
+  Einträge mit dem Feld der Weiten: beide doppelt genau, sonst gilt ein Eintrag nach dem Runden als überholt und sein Punkt wird
+  nie fertig. (3) An einer Farblinie geht es nur zwischen Ecken derselben Zelle weiter (`Flaechen.rand[].ecken`: ohne Kette
+  dazwischen; `flaechenRechnen` führt dafür eine zweite Vereinigung nur innerhalb des Dreiecks); die Anzeige bekommt je Kette und
+  Seite drei Weiten, auch für Ecken jenseits der Farblinie (weitergedacht). (4) Ableitungen im Shader nie von Werten nehmen, die
+  aus der Datentextur je nach nächster Kette kommen (sie springen): Die Breite der Front kommt aus `dFdx(vWelt)`. (5) Jedes
+  `ableiten` beendet ein Einlaufen (Netzwechsel, Handgriff an einer Farblinie, ⌘Z); nur eine eben gesetzte Füllung läuft neu ein.
+  (6) Im Testbrowser ist das Einlaufen ohne `fuellen=` aus: Die Proben der Etappen 1 und 2 lesen die Farbe gleich nach dem Klick.
+  Probe `ozzy-farbe-fliessen-fenster.mjs`, Film `scripts/ozzy/paint-fuellen-film.mjs`, Tests `fliessen.test.ts`.
 - **Jelly und helles Solid (18.11., `src/ozzy/gast.ts`):** `BlaupauseBild` aus `src/form/blaupause.ts` läuft unverändert als Gast
   auf der eigenen Fläche `#gast` (zweiter WebGL-Renderer mit Kantenglättung, über `#haut`, unter `#linien`). Was der Gast tut: (1)
   den Grund verbergen (`Reflect.get(bild, 'hgNetz')`: ein privates Feld; benennt die Design-Sitzung es um, steht eine Warnung in der

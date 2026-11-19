@@ -1,4 +1,4 @@
-# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 15:15 Uhr)
+# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 16:10 Uhr)
 
 Florian will in Ozzy einen Paint-Modus mit Ebenen, einer Ebenen-Ansicht und einem neuen Material (sein Auftrag wörtlich im Plan).
 Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende jedes Blocks überschrieben.
@@ -9,10 +9,10 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | --- | --- |
 | Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`, Stand `3a091f14`). **Nicht zusammengeführt**, weder mit ihm noch mit `claude/ozzy` noch mit `main`; erst auf sein Wort, am Schluss. |
 | Fenster | `http://localhost:5215/ozzy.html`, Eintrag `ozzy-paint` in `.claude/launch.json`. Proben: `OZZY_URL=http://localhost:5215/ozzy.html`. Nie unter seinen Fenstern bauen (5205, 5211, 5194). |
-| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), **Abschnitt 11: Etappe 2 mit Messwerten und Lücken** |
+| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), **Abschnitt 12: Etappe 3, erster Schritt (die Farbe läuft ein)** |
 | Recherche | [`docs/research/2026-11-19-zbrush-grundmaterial.md`](../../../research/2026-11-19-zbrush-grundmaterial.md) |
 | Seine Vorlagen | [`2026-11-19-zbrush-matcap-red-wax.png`](2026-11-19-zbrush-matcap-red-wax.png), [`2026-11-19-zbrush-red-wax-vierecke.webp`](2026-11-19-zbrush-red-wax-vierecke.webp) |
-| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
+| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-3-bogen.jpg`, `…-paint-etappe-3-tinte.mp4`, `…-paint-etappe-3-honig.mp4`; `…-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
 
 ## 2. Stand
 
@@ -21,11 +21,12 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | 0 Material „Wachs“ | gebaut. Sein Wort: Farbton „-40 sieht gut aus“. |
 | Schalter „Dreiecke zeigen“ | gebaut auf seinen Wunsch (Menü, `?facetten=1`). Sein Urteil steht aus. |
 | 1 Der Beweis | gebaut (19.11.). Vier von fünf Kriterien halten; die Bemalung kriecht bei weiten Zügen an der Form (Plan 9.3). Sein Wort danach: „Etappe 2 starten“. |
-| **2 Farblinien bedienen wie Linien** | **gebaut (19.11.), sein Urteil steht aus.** P direkt auf der Form, Punkte und Richtungen mit A, offen und gekreuzt, die Mitte. Beide Proben halten, an der Kugel und an „strange bird“. Ihm vorgelegt mit Bildblatt und Film. Was fehlt: Plan 11.4. |
-| 3 bis 7 | nicht begonnen. **Nichts davon ohne sein Wort bauen.** |
+| 2 Farblinien bedienen wie Linien | gebaut (19.11.). P direkt auf der Form, Punkte und Richtungen mit A, offen und gekreuzt, die Mitte. Beide Proben halten, an der Kugel und an „strange bird“. Was fehlt: Plan 11.4. Sein Wort danach: „Etappe 3 starten“ (kein Urteil in Worten). |
+| **3 Füllen mit dem Farbtropfen** | **begonnen (19.11.), sein Urteil zum ersten Schritt steht aus.** Gebaut: Die Farbe läuft ein (zwei Fassungen, „Tinte“ und „Honig“), der Farbtropfen hängt am Zeiger und fällt. Ihm vorgelegt mit Bildblatt und zwei Filmen. Noch nicht gebaut: Farben als Tropfen in der Leiste, Taste F, Pipette (Plan 12.3). |
+| 4 bis 7 | nicht begonnen. **Nichts davon ohne sein Wort bauen.** |
 
-**Die Frage, die bei ihm liegt:** sein Urteil zu Etappe 2 (er probiert Bauch, Schnauze, Augenrand an einer seiner Formen) und was
-als Nächstes kommt: Etappe 3 (Füllen mit dem Farbtropfen, zuerst ein Film der Animation), oder zuerst eine der Lücken aus 11.4.
+**Die Frage, die bei ihm liegt:** welche Fassung des Einlaufens gilt (Tinte, Honig, etwas dazwischen oder anders), und ob der
+Rest von Etappe 3 (Farben in der Leiste, Taste F, Pipette) danach gebaut werden soll.
 
 ## 3. Was gebaut ist
 
@@ -55,6 +56,10 @@ als Nächstes kommt: Etappe 3 (Füllen mit dem Farbtropfen, zuerst ein Film der 
   dichte Folge solcher Orte, einzelne davon sind ihre Punkte mit zwei Richtungen im Maß ihres Dreiecks. Die Kurve zwischen zwei
   sichtbaren Punkten wird im Bild gelegt, längs des Blicks auf die glatte Anzeige; nur angefasste Stücke werden neu gelegt.
   Gezeichnet wird ohne Schnitt ins Netz: Die Grafikkarte rechnet je Bildpunkt Abstand und Seite zur Farblinie.
+- **Etappe 3, erster Schritt:** Eine neue Füllung läuft ein (`farbe/fliessen.ts`: die Weite jeder Stelle von der Saat, über die
+  Haut, nur innerhalb der Fläche; `anzeige.ts`: die neue Farbe steht, wo die Front schon war; `farbwerk.ts`: `FLIESSEN`,
+  `fliessen(dt)`). Feinregler „Füllen“, `?fuellen=tinte|honig|0`; im Testbrowser ohne Angabe aus. Der Farbtropfen am Zeiger ist
+  ein Element der Seite (`#farbtropfen`).
 - **Am Werk und am Rechenkern ist nichts geändert** (Proben: Prüfsumme der Form).
 
 ### Messwerte und Lücken
@@ -89,8 +94,11 @@ sie im Bild zieht (nicht wie die Richtungen im Raum stehen).
 
 - Typen: `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`. Lint nur geänderte Dateien:
   `pnpm --filter @ee/editor exec eslint <dateien>`.
-- Tests, aus `apps/editor`: `npx vitest run src/ozzy/` (36 Tests: Bemalung, Kurven, Kugelbild des Wachses, Rechner des Verbunds).
-- Proben, aus `apps/editor`, immer mit `GPU=1 OZZY_URL=http://localhost:5215/ozzy.html`; Stand 19.11., 15 Uhr: alle halten.
+- Tests, aus `apps/editor`: `npx vitest run src/ozzy/` (41 Tests: Bemalung, Kurven, Einlaufen, Kugelbild des Wachses, Rechner des
+  Verbunds).
+- Proben, aus `apps/editor`, immer mit `GPU=1 OZZY_URL=http://localhost:5215/ozzy.html`; Stand 19.11., 16 Uhr: alle halten.
+  - `[ART=tinte|honig] node scripts/pruefen/ozzy-farbe-fliessen-fenster.mjs [ordner]`: Etappe 3 an einer Kugel (20 läuft vom Klick
+    aus, 22 offene Farblinie staut, 23 Tempo, 24 ⌘Z mittendrin, 25 Farbtropfen am Zeiger).
   - `node scripts/pruefen/ozzy-farbe-bedienen-fenster.mjs [ordner]`: Etappe 2 an einer Kugel, jede Geste mit einzelnen Klicks
     (Kriterien 0 bis 6, 8, 9).
   - `[NAME=<Form>] node scripts/pruefen/ozzy-farbe-mitte-fenster.mjs [ordner]`: Etappe 2 an „strange bird“ (10 Raster gegen
@@ -100,7 +108,8 @@ sie im Bild zieht (nicht wie die Richtungen im Raum stehen).
     `WEITE=15`, nicht bei 55. `DIAG=1`, `PROFIL=1`.
   - `[NAME=<Form>] [WEITE=20] node scripts/pruefen/ozzy-farbe-form.mjs [ordner]`: Etappe 1 an einer gesicherten Form.
   - `node scripts/pruefen/ozzy-material-fenster.mjs [ordner]`: die Materialien (2b Wachs, 2c Dreiecke zeigen).
-- Filme: `OZZY_URL=… node scripts/ozzy/paint-bedienen-film.mjs <ziel.mp4>` (Etappe 2, an „strange bird“ von vorn),
+- Filme: `OZZY_URL=… [ART=tinte|honig] node scripts/ozzy/paint-fuellen-film.mjs <ziel.mp4>` (Etappe 3: die Farbe läuft ein),
+  `scripts/ozzy/paint-bedienen-film.mjs` (Etappe 2, an „strange bird“ von vorn),
   `scripts/ozzy/paint-film.mjs` (Etappe 1). Vergleichsbild Wachs: `scripts/ozzy/wachs-vergleich.mjs`.
 
 ## 7. Fallen und Aufgefallenes
@@ -113,6 +122,9 @@ sie im Bild zieht (nicht wie die Richtungen im Raum stehen).
   gemalt war, galt die Verdeckung der Linien nicht. Er heißt jetzt `farbeDa`. Wer dort einen Namen vergibt: vorher suchen.
 - **Was verdeckt ist, entscheidet die Anzeige der Linien je Bildpunkt** über die Tiefe des Körpers (er steht im Paint-Modus mit
   Deckung 0 in der Szene). Sieht man Linien durch die Form, zuerst `__ozzy.farbVerdeckung()` lesen (soll 0,02 sein).
+- **Einlaufen Bild für Bild ansehen:** `__ozzy.film(true)` hält die Schleife an, `__ozzy.bild(dt)` rechnet ein Bild mit dieser
+  Zeit, `__ozzy.farbFluss()` sagt, wie weit die Front ist. Im Filmskript wechselt P mit einem zweiten Druck auf P zurück zu A:
+  zwischen zwei Formen erst A, dann P drücken.
 - **Bilder der Haut allein:** `__ozzy.film(true)`, `__ozzy.bild(1 / 60)`, dann sofort `#haut.toDataURL()`; danach `film(false)`.
   Die Fläche des Gasts (helles Solid) gibt so kein Bild her: aus einem Bildschirmfoto der Seite lesen.
 - **Eine Kante messen:** nie zwischen Bildpunkten mischen. Die Probe sammelt alle Bildpunkte in einem Streifen um die Farblinie

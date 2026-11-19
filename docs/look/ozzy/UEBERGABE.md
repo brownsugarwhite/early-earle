@@ -8,8 +8,8 @@ ihn (bisher: C1, C2, D1).
 **Sitzung „Paint-Modus“ (seit 19.11., eigener Zweig auf dem Stand der Objekte).** Zweig `claude/reverent-feynman-1efdd3`, Fenster
 `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`), nicht zusammengeführt. Gebaut: das Material „Wachs“ (ZBrushs
 Grundmaterial, in Magenta), der Schalter „Dreiecke zeigen“, Etappe 1 des Paint-Modus (Farblinie auf der Haut, ein Klick füllt,
-harte Kante) und Etappe 2 (Farblinien bedienen wie Linien: P direkt auf der Form, Punkte und Richtungen, die Mitte); Florians
-Urteil zu Etappe 2 steht aus. Alles dazu:
+harte Kante), Etappe 2 (Farblinien bedienen wie Linien: P direkt auf der Form, Punkte und Richtungen, die Mitte) und von
+Etappe 3 das Einlaufen der Farbe (zwei Fassungen zur Wahl); Florians Urteil dazu steht aus. Alles dazu:
 [`paint/UEBERGABE.md`](paint/UEBERGABE.md).
 
 **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11. mittags, eigener Zweig).** Zweig `claude/ozzy-donut-mirror-system-7a31b7`

@@ -1,11 +1,12 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand (19.11., 15:15 Uhr): Etappe 2 ist gebaut, dein Urteil steht aus.** Farblinien bedienen wie Linien: P direkt auf der
-Form, Punkte und Richtungen mit A, offen und gekreuzt, die Mitte. Was gebaut und gemessen ist und was fehlt, steht in Abschnitt 11
-(Bildblatt: [`2026-11-19-paint-etappe-2-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-2-bogen.jpg), Film an deiner Form
-„strange bird“: [`2026-11-19-paint-etappe-2.mp4`](../progress/ozzy/2026-11-19-paint-etappe-2.mp4)). Davor: Etappe 1 (Abschnitt 9,
-dein Wort dazu: „Etappe 2 starten“), das Material „Wachs“ (Abschnitt 2) und der Schalter „Dreiecke zeigen“. Etappe 3 bis 7 warten
-auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
+**Stand (19.11., 16:10 Uhr): Etappe 3 hat begonnen (dein Wort: „Etappe 3 starten“). Die Farbe läuft ein, in zwei Fassungen zur
+Wahl; dein Urteil dazu steht aus.** Wie vereinbart zuerst zur Ansicht: Bildblatt
+[`2026-11-19-paint-etappe-3-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-3-bogen.jpg), Filme
+[„Tinte“](../progress/ozzy/2026-11-19-paint-etappe-3-tinte.mp4) und [„Honig“](../progress/ozzy/2026-11-19-paint-etappe-3-honig.mp4);
+was gebaut und gemessen ist und was von Etappe 3 noch fehlt, steht in Abschnitt 12. Davor: Etappe 2 (Abschnitt 11, Farblinien
+bedienen wie Linien), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 4 bis 7
+warten auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
 zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
 [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
@@ -76,8 +77,8 @@ Geste wird von Anfang an auch für iPad und Stift gebaut (dort gibt es kein ⌥)
 | --- | --- | --- |
 | **0** Material „Wachs“ | das neue Material | gebaut; Vergleichsbild liegt vor |
 | **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | **gebaut (19.11.)**; Kriterien in 3.1, Messwerte in Abschnitt 9; dein Wort: „Etappe 2 starten“ |
-| **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | **gebaut (19.11.)**; Schritte in Abschnitt 10, Messwerte und Lücken in Abschnitt 11; Film an „strange bird“; dein Urteil steht aus |
-| **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | zuerst ein Film der Animation für dein Urteil, dann gebaut |
+| **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | **gebaut (19.11.)**; Schritte in Abschnitt 10, Messwerte und Lücken in Abschnitt 11; Film an „strange bird“; dein Wort: „Etappe 3 starten“ |
+| **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | **begonnen (19.11.):** das Einlaufen in zwei Fassungen und der Tropfen am Zeiger sind gebaut, Filme liegen vor (Abschnitt 12); dein Urteil steht aus, danach der Rest (Farben in der Leiste, Taste F, Pipette) |
 | **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | zuerst ein Bild der Bedienung (zwei Fassungen zur Wahl), dann gebaut |
 | **5** Ebenen | Ebene anlegen, ordnen, aus- und einblenden; Muster über Verläufen | ein Verlauf auf Ebene 1, Punkte auf Ebene 2, an deiner Form |
 | **6** Ebenen-Ansicht | die Form fächert auf, je Ebene eine Kopie; drehen, eine Kopie wählen und dort malen | zuerst ein Film (nebeneinander und schräg versetzt zur Wahl), dann gebaut |
@@ -500,3 +501,63 @@ Zwei Proben: `ozzy-farbe-bedienen-fenster.mjs` (an einer Kugel, alle Gesten mit 
 - Haken für Proben: `farbPunkte` (mit Abstand `z` zur Spiegelebene), `farbNetz` (samt Spiegelbildern und Entwurf, `zuSehen`),
   `farbTiefe`, `farbRaster`, `farbGelegt` (wie gelegt, was es kostet), `farbMitte`, `farbOrtFrei`, `farbVerdeckung`.
 - Fallen: `apps/editor/CLAUDE.md`, Eintrag „Paint-Modus, Etappe 2“.
+
+## 12. Etappe 3, erster Schritt: Die Farbe läuft ein (19.11.2026, auf dein Wort „Etappe 3 starten“)
+
+Wie vereinbart zuerst zur Ansicht, bevor der Rest der Etappe gebaut wird. Bildblatt:
+[`2026-11-19-paint-etappe-3-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-3-bogen.jpg). Filme in echter Zeit an „strange
+bird“ (je rund 20 Sekunden): [„Tinte“](../progress/ozzy/2026-11-19-paint-etappe-3-tinte.mp4),
+[„Honig“](../progress/ozzy/2026-11-19-paint-etappe-3-honig.mp4).
+
+### 12.1 Was du siehst und anfassen kannst
+
+- **Der Farbtropfen hängt am Zeiger:** im Paint-Modus mit A, über der Form, wo ein Klick füllen würde, in der gewählten Farbe.
+- **Klick:** Der Tropfen fällt auf die Haut, und von dort läuft die Farbe über die Haut, auf beiden Hälften zugleich, bis an die
+  Farblinien. An einer geschlossenen Farblinie staut sie sich. Um das Ende einer offenen Farblinie und durch eine Lücke läuft sie
+  herum: So siehst du, wo eine Fläche offen ist. Wo schon Farbe liegt, läuft die neue über die alte.
+- **Zwei Fassungen zur Wahl:**
+  - **„Tinte“** (eingestellt): schnell, feine Front. Eine kleine Fläche in einer Drittelsekunde, der sichtbare Körper von
+    „strange bird“ in gut einer halben Sekunde.
+  - **„Honig“:** zäh, die Front welliger, dahinter ein dicker Wulst, der mehr Licht und Glanz fängt. Am Körper rund
+    zweieinhalbmal so lang (der sichtbare Teil etwa 1,6 Sekunden), eine kleine Fläche 0,6 Sekunden.
+- **Selbst einstellen:** Menü, Feinregler „Füllen“: Tempo der Front, Stoß am Anfang, Dauer mindestens und höchstens, Welle der
+  Front, Breite und Stärke des Wulstes; der erste Regler schaltet das Einlaufen ab. Für die zwei Fassungen:
+  `?fuellen=tinte` oder `?fuellen=honig` an die Adresse hängen.
+- Auf Wachs und auf dem hellen Solid. ⌘Z nimmt eine Füllung auch mitten im Einlaufen ganz zurück.
+
+### 12.2 Gemessen
+
+Probe `ozzy-farbe-fliessen-fenster.mjs` (an einer Kugel, Fassung „Tinte“), dazu fünf Tests ohne Fenster. Die Proben der Etappen 1
+und 2 halten weiter.
+
+| Was | gemessen | hält? |
+| --- | --- | --- |
+| Die Farbe läuft von der Stelle des Klicks aus | gefärbt am Klick nach 0,01 s, 18 Pixel daneben nach 0,06 s, 36 Pixel nach 0,15 s; hinter der geschlossenen Farblinie nie; am Ende 0 von 255 Unterschied zum Bild ohne Einlaufen | ja |
+| Eine offene Farblinie staut | hinter der Spitze eines Winkels nach 0,17 s, gleich weit entfernt im Freien nach 0,07 s | ja |
+| Die Front läuft rund (nicht in Sechsecken längs der Kanten des Netzes) | die Weite gegen den wahren Weg über die Kugel: höchstens 4 % daneben, im Mittel unter 1,5 % | ja |
+| Tempo | Vorbereiten 4 ms an der Kugel, 3 bis 24 ms an „strange bird“ (der ganze Körper); die Bemalung je Bild beim Einlaufen 0,1 ms | ja |
+| ⌘Z mitten im Einlaufen | die Füllung ist sofort ganz zurück | ja |
+| Der Farbtropfen am Zeiger | mit A über der Form zu sehen, neben der Form und mit P nicht | ja |
+| Im gewöhnlichen Browser, ohne Angabe in der Adresse | „Tinte“ läuft: an „strange bird“ 1,05 s für den ganzen Körper, Vorbereiten 9 ms, keine Fehler in der Konsole | ja |
+
+### 12.3 Was von Etappe 3 noch fehlt (nach deinem Urteil)
+
+- **Farben als Tropfen in der Leiste** (statt des einen Farbfelds), **Taste F** als eigenes Werkzeug „Farbtropfen“, die
+  **Pipette** (I: Farbe von der Form aufnehmen).
+- **Am iPad** gibt es keinen Zeiger, also keinen hängenden Tropfen; das Einlaufen selbst ist dort ungeprüft.
+- **Eingerastet und in den Vier Ansichten** steht weiter keine Farbe (Lücke aus Etappe 1).
+- **Die Dauer richtet sich nach der fernsten Stelle der Fläche,** auch wenn sie auf der Rückseite liegt: Bei „Tinte“ läuft es am
+  ganzen Körper von „strange bird“ nach dem sichtbaren Teil noch eine halbe Sekunde unsichtbar weiter (das stört nicht, ein neuer
+  Klick beendet es).
+- **Ein Streifen zwischen zwei Farblinien, schmaler als ein Dreieck des Netzes,** füllt sich erst am Schluss auf einen Schlag.
+
+### 12.4 Für die Sitzung, die baut
+
+- `farbe/fliessen.ts`: `flussWeiten` (die Weite jeder Stelle von der Saat, innerhalb der Fläche; Wellenfront von Dreieck zu
+  Dreieck), `weiteImDreieck` (rund statt eben gemischt), `fuellungBei`. `farbe/flaechen.ts`: je Dreieck mit Farblinien die Zelle
+  jeder Ecke (`ecken`, `eckFarben`) und jeder Seite einer Kette (`zl`, `zr`).
+- `farbe/anzeige.ts`: `FlussBild`, `flussSetzen`; im Shader `fluss` (Front, Welle, Wulst) und `weiteRund`. Die Datentextur hat je
+  Kette drei Zeilen Kopf (Zahl der Punkte und Füllungen; Weiten links; Weiten rechts), je Dreieck im Kopf sein Maß.
+- `farbe/farbwerk.ts`: `FLIESSEN` (die zwei Fassungen), `fliessWerte`, `fliessen(dt)` je Bild, `fliesst`, `flussStand`.
+  `main.ts`: Feinregler „Füllen“ (`fuellWerte`), `farbTropfenZeigen`, `farbTropfenFallen`, Haken `farbFluss`, `farbFliessen`.
+- Im Testbrowser ist das Einlaufen ohne `fuellen=` in der Adresse aus (die Proben lesen die Farbe gleich nach dem Klick).
