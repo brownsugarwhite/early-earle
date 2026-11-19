@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachmittags: zurück im 2D; Kopf dreht 360°, Szene kopf360; 3D-Wege ruhen)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 abends: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in zweiter Fassung; 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -423,6 +423,40 @@ Florian nach dem 3D-Modell: „versuch mal die 360 grad drehung vom kopf in 2d f
   `scripts/ozzy-figur/zwischen67/`). 90°–150° ist gebaut, nicht gezeichnet: eine Übermalung um 120° von ihm wäre der nächste Schlüssel.
   Danach der Körper.
 
+### Zweite Fassung von 90° bis 180° (19.11. abends, nach Florians Rückmeldung)
+
+Florian: „das weiß muss vor der linie bleiben und nur leicht verjüngen. Die nase muss hinter den kopf wechseln. Die barthaare links die
+nach rechts rauswandern schrumpfen nicht so wie sie es beim drehen tun würden. Sie werden so komisch zur mitte rausgezogen“. Alle drei
+Punkte lagen in 90°–180°: Die ferne Maske (der schwarze Untergrund der Schnauze) tauchte ab 90° unter, das Weiß davor verlor seinen
+Grund, und die Klemme schnitt es am Scheitel der nahen Maske ab (eine Linie durchs Gesicht, bei 97° fein, dann dick); die Nase blieb
+außen vor dem Kopf stehen; der Bart wurde zu einem Punkt rechts in der Mitte gezogen. Vorher/nachher:
+`docs/progress/ozzy-figur/2026-11-19-kopf360-2-vorher-nachher.png`, Blatt `…-kopf360-2-blatt.png`, Video `…-kopf360-2.mp4`.
+
+- **Nahe Maske um die Schnauze** (`schnauzenKurve`, Schlüssel `WICKEL` 96°–135°): Ihr Scheitel (Stück 8 → 0) liegt im Profil unter dem
+  Weiß; bis 96° legt er sich unter dem Weiß um die ganze Schnauze (Umriss aus Bart A und B mit Rand 8 und der fernen Maske, eine Kurve nach
+  kleinsten Quadraten, wo sie innen bliebe, nachgeschoben). Die ferne Maske bleibt bis 96° stehen und taucht erst dann unter (104°).
+- **Gesicht dreht sich weg** (`wegGedreht`, Schlüssel `GESICHT_WEG` 100°–180° für Bart A und B, Maske bis 135°): mit dem Kosinus des Wegs
+  schmaler (Barthaare werden kürzer wie bei einer Drehung), dabei an den rechten Rand des Rückens; im letzten Viertel klappt es in der Höhe
+  dorthin, wo die nahe Maske im Rücken ihren rechten Rand hat (sonst schnitt deren steigender Unterrand den Bart waagerecht ab). Die
+  Vorderkante der Schnauze bleibt fast stehen. Die Klemme (Bart in der nahen Maske) wirkt erst ab 96°, wenn die Maske ganz darum liegt,
+  und wächst bis 150° auf 8: Das Weiß behält seinen Rand und läuft am Ende darin aus.
+- **Nase:** wird bis 100° zur Spitze hin schmal (wie beim Wegdrehen) und liegt dann im schwarzen Rand der Schnauze; dort wechselt sie in der
+  Malreihenfolge hinter das Weiß (nicht zu sehen), zieht sich verborgen zusammen und wächst im Kopf zur Nase des Rückens. Versucht und
+  verworfen: weiche Malreihenfolge (`deckung`), die Nase löste sich von ihrem Rand her auf (kurz ein „V“).
+- **Verdecken nur zwischen Front und Profil** (0°–90°, 270°–360°): Es zog an jeder äußeren Kante des Schwarz, auch an der, die die nahe
+  Maske unter dem Weiß überstreicht (feine Linien bei 92°–94°).
+- **Erste Hälfte unverändert** (`anschlussBauen`, `kopfVorn`): Die Mischung bei 45°–90° hängt am ersten Schlüssel hinter 90°. Mit den
+  neuen Schlüsseln wäre die ferne Wange bei 60°–85° bis 15 schmaler und die Nase bis 11 verschoben gewesen. Die erste Hälfte (und gespiegelt
+  270°–360°) mischt deshalb mit den ersten verborgenen Schlüsseln, mit denen Florian sie gesehen hat. Rest gegen den Stand c9b42b03: bis
+  1,9 an Griffen der Masken (ob ein Griff über den Winkel oder geradlinig gemischt wird, entscheidet die ganze Liste), die Umrisse liegen
+  übereinander.
+- **Bart und Ohrspalt in der zweiten Hälfte** (`ohneRuecken`): Teile, die im Rücken fehlen, sind zwischen 180° und 270° das gespiegelte
+  Gegenstück der ersten Hälfte. Sie wechseln bei 180° verborgen die Seite (gemischt wanderte der Bart bei 184°–190° quer über den Hinterkopf).
+- **Geprüft:** an 0°, 45°, 90°, 180° jeder Anker 0,00; 52 Tests grün; keine Sprünge zwischen 88° und 272° (Schritte 0,5°, je vier Viertel).
+  Anker der Kopfteile in Kopfkoordinaten: `npx vite-node scripts/ozzy-figur/kopf-daten.ts <θ,…>` (aus `apps/editor`).
+- **Offen:** sein Urteil. Unten rechts bei 145°–160° kleine Stufen, wo die Zacken der nahen Maske zum Rand des Rückens hochwandern (gab es
+  vorher auch). Die Schnauze ist ab 96° eine glatte Rundung (die Stirnfranse vorn verschwindet dort). Stirnfranse bei 52°–82° wie oben.
+
 ## Fallen
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
@@ -504,3 +538,11 @@ Florian nach dem 3D-Modell: „versuch mal die 360 grad drehung vom kopf in 2d f
 - Verdeckte Schlüssel immer so bauen, dass die Klemme sie ganz abdeckt (Streifen an der Gipskante, nicht an der eigenen Kante).
 - EXT_disjoint_timer_query liefert unter Chrome/Metal schwankende Werte (1,4 bis 5,5 ms für dasselbe Bild); maßgeblich ist die
   Zeit mit Warten in jedem Bild.
+- Ein neuer Schlüssel hinter einem gezeichneten ändert die Mischung davor: PCHIP nimmt die Steigung am Schlüssel aus beiden Nachbarn. Wer
+  hinter 90° baut, prüft 45°–90° gegen den alten Stand (Umrisse übereinander, nicht nur die Schlüsselwinkel); die erste Hälfte mischt mit
+  ihrem eigenen Anschluss (`anschlussBauen`).
+- Verdecken zieht an jeder äußeren Kante des Schwarz, auch an einer, die unter überstehendem Weiß liegt: Dort entstehen feine Linien.
+- Eine Klemme erst einschalten, wenn der Träger ganz um das Weiß liegt; schaltet sie ein, während er noch wandert, schneidet sie mit einem
+  Ruck (Sprungprobe mit allen vier Vierteln eines Schritts, ein Viertel allein übersieht ihn).
+- Teile ohne Schlüssel im Rücken (Bart, Ohrspalt) wechseln bei 180° die Seite: in der zweiten Hälfte gespiegelt aus der ersten nehmen.
+  Über 180° gemischt wandern sie durch den Kopf (als Punkt unsichtbar, mit Fläche nicht).
