@@ -7,7 +7,7 @@ ihn (bisher: C1, C2, D1).
 
 **Sitzung „Paint-Modus“ (seit 19.11., eigener Zweig auf dem Stand der Objekte).** Zweig `claude/reverent-feynman-1efdd3`, Fenster
 `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`), nicht zusammengeführt. Gebaut: das Material „Wachs“ (ZBrushs
-Grundmaterial, in Magenta). Der Plan zum Paint-Modus wartet auf Florians Freigabe. Alles dazu:
+Grundmaterial, in Magenta). Dazu der Schalter „Dreiecke zeigen“ und Etappe 1 des Paint-Modus (Farblinie auf der Haut, ein Klick füllt, harte Kante); Florians Urteil dazu steht aus. Alles dazu:
 [`paint/UEBERGABE.md`](paint/UEBERGABE.md).
 
 **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11. mittags, eigener Zweig).** Zweig `claude/ozzy-donut-mirror-system-7a31b7`

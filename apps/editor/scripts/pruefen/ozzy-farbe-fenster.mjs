@@ -14,7 +14,8 @@
 //   3  Formt nicht: Nach jedem Handgriff am Bemalen ist die Form des Werks Zahl für Zahl dieselbe (Prüfsumme über Lagen, Dreiecke
 //      und Linien). (Zwei Läufe im Fenster lassen sich nicht Zahl für Zahl vergleichen: Die Runden je Bild hängen an der Uhr.)
 //   4  Tempo: Beim Ziehen an der Form kostet die Bemalung im Median höchstens 1 ms je Bild; beim Drehen kostet kein Bild über
-//      16,7 ms und keines fällt aus.
+//      16,7 ms und keines fällt aus (kein Abstand zweier Bilder von 30 ms oder mehr; einzelne Bilder kommen im Testbrowser
+//      bis 10 ms verspätet, das nächste dann früher).
 //   5  Sichern, Laden, ⌘Z: ⌘Z nimmt Füllung, Zug an der Form und Farblinie in der Reihenfolge zurück, in der sie geschahen; nach
 //      Sichern und Laden liegt die Farblinie an derselben Stelle.
 //   6  Keine Fehler in der Konsole.
@@ -27,7 +28,12 @@
 //   Scheitel bewegt die Haut überall: 37 Einheiten am anderen Ende). Mit ihm liegt die zweite Farblinie hinter einer Linie, die der
 //   Zug nicht bewegt. Gemessen wird, wie weit sich ihre Orte bewegen und wie weit die Haut dort (Abstand der alten Lagen von der
 //   Haut im Zug).
-// Aufruf aus apps/editor: GPU=1 OZZY_URL=http://localhost:5215/ozzy.html node scripts/pruefen/ozzy-farbe-fenster.mjs [ordner für Bilder]
+//   Stand 19.11.: 0, 1, 3, 4, 5, 6 halten. 2 hält bei einem Zug von 15 Einheiten (0,3 Einheiten daneben), nicht bei 55 (0,6 bis
+//   0,7 statt 0,5; nach drei solchen Zügen 1,7): Die Haut selbst kommt zurück, aber das Werk rechnet sie nach jedem Zug neu aus
+//   den Linien, und ihre Punkte liegen danach leicht anders auf der Fläche (Plan, Abschnitt 9).
+// Aufruf aus apps/editor: GPU=1 OZZY_URL=http://localhost:5215/ozzy.html [WEITE=15] [DIAG=1] [PROFIL=1] node scripts/pruefen/ozzy-farbe-fenster.mjs [ordner für Bilder]
+//   WEITE: so weit wird gezogen (55); DIAG: die Lagen in jedem Abschnitt des Zugs und zwei weitere Züge hin und zurück (häuft es
+//   sich?); PROFIL: die Werte des Profils quer zur Kante
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { auf, kugelMitRingen, quantil, seitenPunkt } from './ozzy-teile.mjs';
@@ -634,7 +640,7 @@ const bildMs = bilder.map((b) => b.ms);
 const kostenZug = hin?.kosten ?? { bilder: 0, median: NaN, p95: NaN, groesst: NaN };
 ok(
   '4 Tempo: Beim Ziehen an der Form kostet die Bemalung im Median höchstens 1 ms je Bild; beim Drehen kostet kein Bild über 16,7 ms und keines fällt aus',
-  kostenZug.bilder > 20 && kostenZug.median <= 1 && bilder.length > 20 && Math.max(...bildMs) <= 16.7 && Math.max(...abstaende) < 25,
+  kostenZug.bilder > 20 && kostenZug.median <= 1 && bilder.length > 20 && Math.max(...bildMs) <= 16.7 && Math.max(...abstaende) < 30,
   `beim Ziehen (${kostenZug.bilder} Bilder): Median ${z2(kostenZug.median)} ms, 95 % ${z2(kostenZug.p95)} ms, größtes ${z2(kostenZug.groesst)} ms · beim Drehen (${bilder.length} Bilder): ein Bild kostet im Median ${z2(quantil(bildMs, 0.5))} ms, das teuerste ${z2(Math.max(...bildMs))} ms; Abstand der Bilder im Median ${z2(quantil(abstaende, 0.5))} ms, größter ${z2(Math.max(...abstaende))} ms; davon die Bemalung im Median ${z2(kostenDrehen.median)} ms, 95 % ${z2(kostenDrehen.p95)} ms`,
 );
 

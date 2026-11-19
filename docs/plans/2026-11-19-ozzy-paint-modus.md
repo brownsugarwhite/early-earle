@@ -1,9 +1,11 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand (19.11., 10:15 Uhr): freigegeben für Etappe 1.** Deine Antwort: „Du kannst dann mit Etappe 1 starten.“ Gebaut sind das
-neue Material (Abschnitt 2) und der Schalter „Dreiecke zeigen“; Etappe 1 läuft. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht zusammengeführt),
-eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
-[`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
+**Stand (19.11., 12:15 Uhr): Etappe 1 ist gebaut, dein Urteil steht aus.** Was gebaut und gemessen ist, was fehlt und was nicht
+hält, steht in Abschnitt 9 (Bildblatt: [`2026-11-19-paint-etappe-1-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-1-bogen.jpg),
+Film: [`2026-11-19-paint-etappe-1.mp4`](../progress/ozzy/2026-11-19-paint-etappe-1.mp4)). Davor gebaut: das Material „Wachs“
+(Abschnitt 2) und der Schalter „Dreiecke zeigen“. Etappe 2 bis 7 warten auf dein Wort. Zweig `claude/reverent-feynman-1efdd3`
+(baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html`
+(Eintrag `ozzy-paint`). Übergabe des Strangs: [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
 ## Dein Auftrag (19.11.2026, wörtlich)
 
@@ -71,7 +73,7 @@ Geste wird von Anfang an auch für iPad und Stift gebaut (dort gibt es kein ⌥)
 | Etappe | Was du siehst und anfasst | Probe und Kriterium |
 | --- | --- | --- |
 | **0** Material „Wachs“ | das neue Material | gebaut; Vergleichsbild liegt vor |
-| **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | siehe 3.1 |
+| **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | **gebaut (19.11.)**; Kriterien in 3.1, Messwerte in Abschnitt 9; dein Urteil steht aus |
 | **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | du zeichnest Bauch, Schnauze, Augenrand an einer deiner Formen; jede Geste geht mit einzelnen Klicks |
 | **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | zuerst ein Film der Animation für dein Urteil, dann gebaut |
 | **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | zuerst ein Bild der Bedienung (zwei Fassungen zur Wahl), dann gebaut |
@@ -158,12 +160,18 @@ Was das dichte Netz dafür hergibt (nachgelesen im Kern und im Werk):
   sobald die Form steht). Erst wenn du die Zeichnung auf dem Blatt änderst, entsteht eine neue Form; ihre Bemalung beginnt leer,
   wie ihre Linien.
 
-**Was unbewiesen ist:** wie weit eine Farblinie über viele Netzwechsel hinweg wandert, und ob das Aufräumen im Hintergrund (dabei
-setzt sich die Haut) sie sichtbar verschiebt. Das misst Etappe 1 (Kriterium 2). Ausweg, falls es nicht reicht: Das Werk reicht bei
-jedem Netzwechsel die Zuordnung „alter Punkt → neuer Punkt“ heraus (der Kern kennt sie). Das wäre ein kleiner Zusatz im Werk, kein
-Eingriff in die Rechnung; ich frage dich, bevor ich ihn baue.
+**Gemessen in Etappe 1 (Abschnitt 9):** Der Netzwechsel selbst und das Aufräumen verschieben die Bemalung nicht merklich (0,05 bis
+0,12 Einheiten). Die Zuordnung „alter Punkt → neuer Punkt“ braucht dafür keinen Zusatz im Werk: Es lässt die gebliebenen Punkte
+vorn und in ihrer Reihenfolge stehen, daran erkennt die Bemalung sie wieder. Was bleibt, ist ein langsames Kriechen bei großen
+Zügen (Abschnitt 9.3): Das Werk rechnet die Haut nach jedem Zug neu aus den Linien, und ihre Punkte liegen danach leicht anders
+auf derselben Fläche.
 
 ### 5.2 Scharfe Kanten, bei jedem Zoom, unabhängig vom Netz
+
+**Nachtrag (19.11., gebaut): Geschnitten wird nicht.** Einfacher und genauso scharf: Die Grafikkarte rechnet je Bildpunkt, wie
+weit er von der Farblinie liegt und auf welcher Seite, und färbt ihn danach. Die Kante ist damit bei jedem Zoom und auf jeder
+Stufe der Anzeige einen Bildpunkt breit; an der Anzeige selbst ändert sich nichts. Die ersten drei Punkte unten beschreiben den
+Weg, den ich nicht gegangen bin; der Rest gilt.
 
 - **Die Farblinie wird in die Anzeige geschnitten, nicht ins Rechennetz.** Die glatte Anzeige der Haut besteht aus feinen
   Dreiecken. Wo eine Farblinie darüberläuft, werden diese Dreiecke längs der Farblinie geteilt. Die Kante zwischen zwei Farben ist
@@ -246,37 +254,46 @@ nichts ohne Florians Wort. Keine Messreihen im Hintergrund; je Etappe eine Probe
 
 **Modell** (je Objekt, je Ebene):
 
-- *Ort auf der Haut:* drei Punktnummern des Rechennetzes und drei Gewichte (nicht die Nummer des Dreiecks: Die ändert sich beim
-  Verdichten, Punktnummern überleben über `alt`).
-- *Farblinie:* Punkte mit Ort, zwei Richtungen im Maß ihres Dreiecks (Anteile zweier Kanten: so gehen sie mit, wenn sich das
-  Dreieck dehnt oder dreht), Knick, Breite; offen oder geschlossen; an Kreuzungen geteilte Punkte; Enden auf der Mitte.
+- *Ort auf der Haut* (gebaut, `ort.ts`): ein Dreieck des Rechennetzes, seine drei Punktnummern und drei Gewichte. (Die Nummer des
+  Dreiecks überlebt keinen Netzwechsel, die Punkte schon: an ihnen wird das Dreieck wiedergefunden.)
+- *Farblinie:* in Etappe 1 eine dichte Folge von Orten (höchstens 1,5 Einheiten auseinander, höchstens 0,02 neben der
+  gezeichneten Kurve), geschlossen. Ab Etappe 2 dazu ihre Punkte zum Anfassen: Ort, zwei Richtungen im Maß ihres Dreiecks
+  (Anteile zweier Kanten: so gehen sie mit, wenn sich das Dreieck dehnt oder dreht), Knick, Breite; offen oder geschlossen; an
+  Kreuzungen geteilte Punkte; Enden auf der Mitte.
 - *Füllung:* eine Saat (Ort tief in der Fläche) und eine Farbe. Die Farbfläche wird von der Saat aus bis an die Farblinien
   gefüllt und nach jeder Änderung neu (das Muster von `werkFelder.ts`: Feld = Saat, nach jedem Netzwechsel neu gefüllt).
 
-**Mitgehen:** Zwischen Netzwechseln ist die Lage eines Orts die gewichtete Lage seiner drei Punkte, auf der glatten Anzeige die
-entsprechende Stelle im unterteilten Dreieck (`GlattPlan`: jedes Dreieck wird je Stufe in vier geteilt, Reihenfolge `triFein`; der
-Weg vom groben Dreieck zum feinen ist reine Rechnung). Ein Netzwechsel wird daran erkannt, dass `werk.haut` ein anderes Objekt ist
-(wie `werkFelder`); die alte Haut hält ihre letzten Lagen. Übergabe: Orte, deren drei Punkte noch ein Dreieck bilden, bleiben; die
-übrigen gehen an den nächsten Ort der neuen Haut (`dreieckSuche` in `werkHaut.ts` tut das für die Muster; herausführen). Zuerst
-ohne Eingriff ins Werk; der Ausweg mit `alt` steht in 5.1. ⌘Z: je Schritt des Werks der Stand der Bemalung daneben, wie `marken`
-für den Spiegel. „Luft ablassen“ behält die Form des Werks (`werkFormAnlegen` legt nur neu an, wenn sich das Blatt geändert hat).
+**Mitgehen** (gebaut, `ort.ts`, `farbwerk.ts`): Zwischen Netzwechseln ist die Lage eines Orts die gewichtete Lage seiner drei
+Punkte, auf der glatten Anzeige die entsprechende Stelle im unterteilten Dreieck (`fein.ts`; `GlattPlan` teilt je Stufe in vier
+Kinder in fester Reihenfolge). Ein Netzwechsel wird daran erkannt, dass `werk.haut` oder seine Dreiecke ein anderes Objekt sind;
+die alte Haut hält ihre letzten Lagen. Übergabe in zwei Teilen: (1) `punkteZuordnen`: Das Werk lässt die gebliebenen Punkte vorn
+und in ihrer Reihenfolge stehen (`netzGewachsen`); die zwei Reihen werden nebeneinander abgeschritten, und ein Paar gilt nur, wenn
+der neue Punkt am Ort des alten liegt (näher als ein Viertel seiner kürzesten Kante). (2) `orteUebergeben`: Bilden die drei Punkte
+eines Orts im neuen Netz wieder ein Dreieck, bleibt er mit denselben Gewichten darin; sonst geht er an die nächste Stelle der
+neuen Haut (`naechster.ts`). Haben zwei Netze nichts miteinander zu tun (unter einem Fünftel zugeordnet), wird jeder Ort gesucht.
+Ohne Eingriff ins Werk. ⌘Z: Jeder Handgriff am Bemalen ist ein Eintrag im gemeinsamen Rückweg von Ozzy (`{ art: 'farbe' }`); stellt
+das Werk ein älteres Netz wieder her, kommt die Bemalung zurück, wie sie auf diesem Netz war (`jeNetz`). „Luft ablassen“ behält die
+Form des Werks (`werkFormAnlegen` legt nur neu an, wenn sich das Blatt geändert hat).
 
-**Schneiden:** Die Farblinie wird auf der Haut abgetastet (Bézier zwischen den Orten, Zwischenpunkte auf die Anzeige gelegt), so
-fein, wie der Zoom es verlangt. Je feinem Dreieck der Anzeige, durch das sie läuft: die Stücke eintragen und das Dreieck neu
-aufteilen (Punkte auf Kanten in beiden Nachbarn, Punkte im Inneren, Ecken der Farblinie genau; nahe an einer Ecke oder Kante
-einrasten, damit keine Splitter entstehen). Jeder Schnittpunkt ist eine gewichtete Lage aus drei Punkten der Anzeige und geht je
-Bild mit. Neu geschnitten wird, wenn sich das Netz der Anzeige ändert (Netzwechsel, andere Stufe), eine Farblinie sich ändert
-oder der Zoom sich verdoppelt. Grobe Dreiecke, die keine Farblinie berührt, gehören ganz zu einer Farbfläche: gefüllt wird zuerst
-im Groben, fein nur an den Farblinien.
+**Flächen** (gebaut, `ketten.ts`, `flaechen.ts`): Zwischen zwei Orten läuft die Farblinie gerade über die Haut (`spur`: der
+Schnitt mit der Ebene durch beide Orte und ihre mittlere Normale). Daraus je Dreieck des Rechennetzes eine Kette (ein Linienzug in
+seinen Gewichten, von Kante zu Kante). Gefüllt wird im Groben: Dreiecke ohne Kette gehören ganz zu einer Fläche, Dreiecke mit
+Ketten zerfallen in Zellen; verbunden wird über die Kanten. Bei gespiegelten Formen wird auf der Hälfte z ≥ 0 gemalt, Ketten und
+Saaten bekommen ihr Spiegelbild. Neu gerechnet wird nach jedem Netzwechsel und jeder Änderung der Bemalung, nicht je Bild.
 
-**Zeichnen:** ein eigener Durchgang mit der Kamera des Raums. Das Innere einer Farbfläche ist eine Dreiecksliste auf den Punkten
-der Anzeige (wie `Koerper.toenung`); die geschnittenen Dreiecke und die Dreiecke im Verlauf liegen in einem eigenen kleinen
-Puffer mit Werten je Ecke (eigene Farbe, Farbe gegenüber, Abstand zur Farblinie, Breite). Verdecktes über die Tiefe der Haut.
-Ebenen nacheinander, obere über untere. Auf Wachs im Renderer der Haut (`material.ts`), auf hellem Solid im Renderer des Gasts
-(`gast.ts`, nach seinem Bild, multipliziert): Die Dinge von three lassen sich in beiden Zeichenflächen zeichnen. Eingerastet und in
-den Feldern über `feldAbbildung`. Das Ziel der festen Materialien hält seit dem 19.11. 16 Bit je Kanal (wichtig für Verläufe).
+**Zeichnen** (gebaut, `anzeige.ts`): **nichts wird geschnitten.** Ein eigener Durchgang mit der Kamera des Raums. Das Innere
+einer Farbfläche ist eine Dreiecksliste auf den Punkten der Anzeige (wie `Koerper.toenung`). Die feinen Dreiecke der groben
+Dreiecke, durch die eine Farblinie läuft, liegen in einem eigenen Puffer; für sie rechnet der Fragment-Shader je Bildpunkt den
+Abstand zur nächsten Kette (in Bildpunkten, über die Ableitungen der Gewichte) und die Seite, und mischt über einen Bildpunkt von
+der einen Füllung in die andere. Die Ketten stehen in einer Datentextur. Verdecktes über die Tiefe der Haut. Auf Wachs im Ziel
+der festen Materialien (`FesteWerte.danach`; Farbe mal Helligkeit des Wachses plus Glanz, `wachsLicht`), auf hellem Solid über dem
+Bild des Gasts (`GastWerte.ueberzug`, multipliziert). Das Ziel der festen Materialien hält seit dem 19.11. 16 Bit je Kanal
+(wichtig für Verläufe). Eingerastet, an den Wänden und in den Feldern stehen bisher nur die Farblinien als feine Striche
+(`ruheLinien`); die Farbe selbst dort kommt später (über `feldAbbildung`). Für die Weichheit (Etappe 4) ist der Abstand je
+Bildpunkt schon da; er muss dann längs der Haut über Dreiecke hinweg reichen.
 
-**Bedienung:** Die Linien-Studie hängt ihre Bedienung über die Schnittstelle `Raum` an ein Modell (`src/linien/verhalten.ts`);
+**Bedienung** (Etappe 1: P, Freihand und Formen geben ihre fertige Zeichnung über `werkBlatt.stiftZiel` an das Farbwerk; das
+Folgende ist der Plan für Etappe 2): Die Linien-Studie hängt ihre Bedienung über die Schnittstelle `Raum` an ein Modell (`src/linien/verhalten.ts`);
 für die Linien der Form ist das `werkBlatt.ts`. Für Farblinien kommt ein zweites Modell derselben Schnittstelle dazu
 (`farbBlatt.ts`): Farblinien als Netz in Bildschirmpunkten mit Tiefe, Ziehen als „Strahl auf die Haut“. Im Paint-Modus bekommt das
 Verhalten dieses Netz; die Linien der Form stehen dann als feine Striche ohne Punkte (wie im Objekt-Modus).
@@ -294,3 +311,77 @@ zeigen, die es nicht gibt.
 - Freies Malen mit dem Pinsel, Bilder als Textur, Farblinien als sichtbarer Strich (Ornament), Muster von selbst wiederholen.
 - Die Vertiefungen des ZBrush-Materials (Recherche, Abschnitt 6).
 - Zusammenführen mit `claude/ozzy` und dem Zweig der Objekte: erst auf dein Wort, am Schluss.
+
+## 9. Etappe 1: was gebaut ist, was gemessen ist, was fehlt (19.11.2026)
+
+### 9.1 Was du anfassen kannst
+
+- **B** schaltet den Paint-Modus (auch der Knopf „Farbe“ am iPad). Ist weder helles Solid noch Wachs gewählt, wechselt Ozzy auf
+  das helle Solid. Oben erscheint die Farbe; M wechselt den Grund.
+- **P, Ellipse (E) und Freihand (N)** zeichnen an einer Wand oder eingerastet eine Farblinie statt einer Linie der Form. Die
+  Zeichnung wird längs der Blickachse auf die Haut gelegt, von der Seite, von der du schaust. Sie ist immer geschlossen (P: auf
+  dem ersten Punkt klicken oder ↩). Was über die Mitte hinausragt, endet an der Mitte.
+- **Ein Klick auf die Form im Raum füllt** die Fläche dort mit der gewählten Farbe, bis an die Farblinien (auch außerhalb einer
+  Farblinie: dann den Rest der Form). Mit Weg wird stattdessen gedreht.
+- **Gespiegelt** wie die Form. **⌘Z** nimmt Farblinie und Füllung zurück, in der Reihenfolge mit den Schritten an der Form.
+  **Sichern und Laden** tragen die Bemalung. Mit mehreren Objekten hat jedes seine eigene (gebaut, im Fenster noch nicht geprüft).
+- **B zurück:** Die Farbe bleibt auf der Form stehen, die dunkle Farblinie nicht. Umformen nimmt die Bemalung mit.
+
+### 9.2 Die fünf Kriterien (Probe `scripts/pruefen/ozzy-farbe-fenster.mjs`, an einer Kugel mit vier Linien)
+
+| Kriterium | gemessen | hält? |
+| --- | --- | --- |
+| 1 scharf bei jedem Zoom | Kante 0,83 Gerätepunkte breit (10 % bis 90 %), breitestes Stück 0,90; höchstens 0,06 neben der Farblinie; die Farblinie 0,00 neben den Klicks. Bei 1-, 2- und 4-fach und im Zug gleich. | ja. Ozzy zoomt nur bis 4-fach: 16-fach ließ sich nicht messen. |
+| 2 bleibt auf der Haut | Netzwechsel: 99 % der Orte bleiben in ihrem Dreieck, der Rest liegt höchstens 0,11 Einheiten neben der neuen Haut. Fern vom Zug bewegt sich die Bemalung wie die Haut dort (3,1 zu 2,9 Einheiten). Hin und zurück: bei 15 Einheiten Zug 0,3 daneben, bei 55 Einheiten 0,6 bis 0,7 (verlangt: 0,5). | **bei weiten Zügen nicht** (9.3) |
+| 3 formt nicht | Prüfsumme der Form (Lagen, Dreiecke, Linien) nach jedem Handgriff am Bemalen Zahl für Zahl gleich. | ja |
+| 4 Tempo | Beim Ziehen kostet die Bemalung 0,2 bis 0,5 ms je Bild (Median), ein Bild mit Netzwechsel 6 bis 10 ms. Beim Drehen kostet ein Bild 1,8 ms, das teuerste 4,8 ms. | ja |
+| 5 Sichern, Laden, ⌘Z | sechs Schritte der Reihe nach zurück (Füllung, Zug, Zug, Farblinie, Füllung, Farblinie); danach und nach dem Laden 0,00 Einheiten neben der Lage davor. | ja |
+
+**An deiner Form „strange bird“** (`ozzy-farbe-form.mjs`; 7 437 Punkte im Rechennetz): drei Farblinien, drei Füllungen, keine
+verliert ihren Weg. Beim Drehen kostet ein Bild 1,7 bis 2,0 ms (das teuerste 4,9 bis 9,5), beim Ziehen die Bemalung 0,1 ms, ein
+Netzwechsel 6 bis 8 ms. Hin und zurück ließ sich dort nicht gegen 0,5 prüfen: An dieser Form kommt die Haut selbst nach einem Zug
+von 20 Einheiten nicht an ihren Platz zurück (bis 4,5 Einheiten daneben, auch nach einem ersten Zug zum Setzen); die Bemalung
+liegt mit ihr dort (4,9).
+
+### 9.3 Was nicht hält: Die Bemalung kriecht bei weiten Zügen
+
+Ein Punkt der Kugel 55 Einheiten hinaus und zurück (ein Fünftel der Form): Die Haut liegt wieder, wo sie war (0,03 bis 0,14), die
+Farblinie an der gezogenen Stelle 0,6 bis 0,7 Einheiten daneben, fern davon 0,35. Dreimal hintereinander: 1,7 Einheiten an der
+gezogenen Stelle, fern 0,3. Bei 15 Einheiten: 0,3, und drei Runden ändern daran fast nichts (0,34). Bei normaler Ansicht ist eine
+Einheit knapp zwei Gerätepunkte.
+
+**Woher es kommt:** nicht vom Netzwechsel (Ruck dort 0,05 bis 0,12) und nicht vom Aufräumen (0,05). Das Werk rechnet die Haut bei
+jedem Zug neu aus den Linien; es hat kein Gedächtnis dafür, welche Stelle der Haut welche war. Seine Punkte liegen nach einem Zug
+hin und zurück leicht anders auf derselben Fläche, und die Bemalung sitzt an den Punkten. ⌘Z ist davon nicht betroffen (genau
+zurück).
+
+**Auswege**, wenn es dich stört (keiner ist gebaut oder bewiesen):
+
+1. So lassen: Bei Korrekturen bis etwa 15 Einheiten bleibt es unter einem halben Gerätepunkt.
+2. Die Bemalung nach jedem Zug an den Linien der Form neu ausrichten (zwischen zwei Linien der Form eine feste Einteilung der
+   Haut, die nur von den Linien abhängt). Das wäre ein eigener Brocken; ich würde es zuerst an deiner Form messen.
+
+### 9.4 Was Etappe 1 nicht hat
+
+- **Die Farbe steht nur im Raum.** Eingerastet, an den Wänden und in den Vier Ansichten siehst du die Farblinien als feine Linien,
+  keine Farbe. (Im Plan stand für Etappe 1 ein Bild „flach wie eine Illustration“: noch nicht gebaut.)
+- **P zeichnet nicht direkt auf die Form im Raum**, nur an einer Wand oder eingerastet (wie die Linien der Form).
+- Nur geschlossene Farblinien, keine Punkte zum Anfassen, kein Löschen einzelner Farblinien (nur ⌘Z); Kreuzungen sind nicht
+  geprüft. Das ist Etappe 2.
+- Eine Ebene, harte Kante, keine Animation beim Füllen.
+- Nicht zu sehen ist die Bemalung: mit einem anderen Material als hellem Solid und Wachs, mit „Dreiecke zeigen“, in der Pose, im
+  Verbund (Verschmelzen, Abziehen) und an ruhenden Objekten (sie behalten sie). Beim Anwenden von Verschmelzen geht die Bemalung
+  des aufgenommenen Objekts verloren. An einer freien Form mit Spiegelbild steht die Farbe nur auf der echten Hälfte.
+- Fast Weiß sieht man auf dem hellen Solid kaum (die Farbe wird dort mit seinem Bild multipliziert).
+- Der Zeiger rastet mit P auch im Paint-Modus auf Punkte und Linien der Form ein; der Punkt der Farblinie liegt dann dort, wo der
+  Zeiger steht.
+- Am iPad mit Stift ist nichts davon geprüft (gebaut ist es mit denselben Gesten: Knopf „Farbe“, Werkzeuge der Leiste, Tippen
+  füllt).
+
+### 9.5 Aufgefallen, nicht vom Paint-Modus
+
+- Die Kanten der hinteren Raumecke und die Zeichnungen an den Wänden liegen bei allen festen Materialien als feine Linien über der
+  Form; über einer Farbfläche fällt das mehr auf (Bildblatt, Bild 4 ist daneben ausgeschnitten).
+- Unter einem gewählten Ring hängt der Tropfen „Maul formen“; an der Wand des Tops kann er genau über einem Anfasser liegen. Und
+  hinter der Form liegt der Griff der Raumecke: Ein Klick auf die Form genau dort klappt auf, statt zu füllen.
+

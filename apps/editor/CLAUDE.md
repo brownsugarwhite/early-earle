@@ -431,6 +431,21 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `scripts/ozzy/wachs-vergleich.mjs` (nimmt die Zeichenfläche der Haut allein, gleich nach `__ozzy.bild()`); Recherche
   `docs/research/2026-11-19-zbrush-grundmaterial.md`. Eigenes Fenster des Strangs: 5215 (`ozzy-paint`), Proben mit
   `OZZY_URL=http://localhost:5215/ozzy.html`.
+- **Paint-Modus, Etappe 1 (19.11., Sitzung „Paint-Modus“; Plan `docs/plans/2026-11-19-ozzy-paint-modus.md`, Abschnitt 7 und 9):**
+  `src/ozzy/farbe/` (ohne DOM bis auf `anzeige.ts`; Tests `farbe.test.ts`), in `main.ts` das `farbWerk` mit schmalen Nahtstellen
+  (Suchwort `malModus`). Taste B, P/Ellipse/Freihand zeichnen über `werkBlatt.stiftZiel` Farblinien statt Linien der Form, ein
+  Klick auf die Form im Raum füllt. Merke: (1) Ein Ort ist ein Dreieck des Rechennetzes mit Gewichten; die Bemalung liest das
+  Werk nur (Haken `werkSumme` prüft es). (2) Netzwechsel: `punkteZuordnen` verlässt sich darauf, dass `netzGewachsen` die
+  gebliebenen Punkte vorn und in ihrer Reihenfolge lässt, und prüft jedes Paar am Ort; wer das im Werk ändert, nimmt der
+  Bemalung den Halt (sie fällt dann auf „nächster Ort“ zurück). (3) Gezeichnet wird ohne Schnitt ins Netz: je Bildpunkt Abstand
+  und Seite zur Farblinie aus einer Datentextur; das setzt wie `Koerper.toenung` voraus, dass die Anzeige alle Dreiecke der Haut
+  in ihrer Reihenfolge zeigt, je 4^Stufen feine. Auf Wachs über `FesteWerte.danach`, auf hellem Solid über `GastWerte.ueberzug`.
+  (4) Wer einen neuen Ort baut, an dem Linien stehen, zeichnet im Paint-Modus auch die Farblinien dort (`ruheLinien()` trägt
+  sie; die Bedingung ist `ruhende.length || (malModus && !farbWerk.leer)`). (5) Die Bemalung kriecht bei weiten Zügen (das Werk
+  rechnet die Haut ohne Gedächtnis neu; Plan 9.3): nicht am Netzwechsel suchen. Proben: `ozzy-farbe-fenster.mjs` (fünf Kriterien,
+  `WEITE`, `DIAG`), `ozzy-farbe-form.mjs` (an einer gesicherten Form), Film `scripts/ozzy/paint-film.mjs`. Fallen der Proben
+  (Tropfen „Maul formen“ über dem Anfasser, Griff der Raumecke hinter der Form, Einrasten des Zeigers, Kanten messen):
+  `docs/look/ozzy/paint/UEBERGABE.md`, Abschnitt 7.
 - **Jelly und helles Solid (18.11., `src/ozzy/gast.ts`):** `BlaupauseBild` aus `src/form/blaupause.ts` läuft unverändert als Gast
   auf der eigenen Fläche `#gast` (zweiter WebGL-Renderer mit Kantenglättung, über `#haut`, unter `#linien`). Was der Gast tut: (1)
   den Grund verbergen (`Reflect.get(bild, 'hgNetz')`: ein privates Feld; benennt die Design-Sitzung es um, steht eine Warnung in der
