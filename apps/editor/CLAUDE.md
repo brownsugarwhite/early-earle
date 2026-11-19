@@ -526,16 +526,22 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (7) Die Haken `farbPunkte`, `farbBreite`, `farbLinieImBild` meinen die aktive Ebene; `farbe().ebenen` zählt von unten,
   `farbEbenen().ebenen` von oben. (8) Was ein Bild kostet, samt Grafikkarte messen (`mitKarte`): Die Zeit von `bild()` allein
   zeigte vom Sammeln nichts. Probe `ozzy-farbe-ebenen-fenster.mjs`, Tests `ebenen.test.ts`.
-- **Paint-Modus, Etappe 6, erster Schritt (19.11.; Plan, Abschnitt 17): die Ebenen-Ansicht als Probebau** (zwei Fassungen zur
-  Wahl; nur auf Wachs; aufgefächert wird gedreht und gewählt, nicht gemalt). In `main.ts` alles mit `faecher`: Die Form wird je
-  Ebene einmal gezeichnet (`festZeichnen(nur)`), die Projektion der Kamera dafür vorübergehend verkleinert und versetzt, wie das
-  Raumfeld der Vier Ansichten. Merke: (1) Wer die Projektion ändert, zieht auch `projectionMatrixInverse` nach und stellt beide
-  danach zurück (`kam.strahl` liest die Umkehrung). (2) Größe und Platz der Kopien hängen am Kreis um die Form
-  (`faecherKreis`), nicht an ihrem Kasten im Bild (`hautAusschnitt` ist viel größer als der Umriss und ändert sich beim Drehen).
-  (3) Damit die Bewegung mit dem Bild von vorher beginnt, zeigt eine Kopie am Anfang auch die Ebenen unter ihrer eigenen und
-  lässt sie verblassen (`FarbWerte.nur`, `uSicht`; unter 1 überblendet auch, was sonst deckt). (4) Je Kopie ein ganzes Bild des
-  Wachses ist teuer (drei Kopien bei 2880 × 1800: 26 ms statt 13 ms): Der Bau soll alle Kopien in einem Durchgang zeichnen.
-  Probe `ozzy-farbe-faecher-fenster.mjs`.
+- **Paint-Modus, Etappe 6 (19.11.; Plan, Abschnitt 17 und 18): die Ebenen-Ansicht** (Florian: „dann fassung b“; schräg versetzt;
+  auf Wachs und hellem Solid; X oder der Knopf über dem Stapel). In `main.ts` alles mit `faecher`. Je Ebene, die zu sehen ist,
+  eine Kopie: ein Bild im Bild (`s`, `tx`, `ty`) und ein Bereich der Tiefe (`za`, `zb`). Merke: (1) Alle Kopien stehen in einem
+  Durchgang (`uBild`, `uTiefe` in den Programmen; `material.ts` `kopienStellen`, `anzeige.ts` `FarbKopie`); je Kopie ein ganzes
+  Bild des Wachses kostete das Doppelte. Das helle Solid zeichnet je Kopie ein eigenes Bild (`gast.ts` `kopien`, von hinten nach
+  vorn, alle Fenster gleich groß); `src/form/blaupause.ts` bleibt unberührt. (2) Größe und Platz hängen am Kreis um die Form
+  (`faecherKreis`), nicht an ihrem Kasten im Bild (`hautAusschnitt`). (3) Gemalt wird an der vorderen Kopie: `farbSicht()` gibt
+  dem Blatt der Farblinien ihre Abbildung (`faecherMatrix`), `linienKoerper()` stellt den Körper für die Verdeckung dorthin; wer
+  sonst einen Strahl der Kamera braucht, rechnet den Zeiger zurück (`malOrt`, `faecherZurueck`). Im Drücken steht eine Weiche:
+  auf einer hinteren Kopie → `faecherDruck` (drehen oder wählen), sonst der gewohnte Weg. (4) Damit die Bewegung mit dem Bild
+  von vorher beginnt, zeigt eine Kopie am Anfang auch die Ebenen der Kopien hinter ihr und lässt sie verblassen (`nur`,
+  `uSicht`). (5) Zoom und Schwenk seit dem Auffächern gelten dem ganzen Bild der Kopien (`blick0`); beim Zusammenschieben
+  kehren sie zurück. (6) Aufgefächert treten Wände, Kanten und Punkt der Raumecke zurück (`faecherStill`), und die Drehung rastet
+  nicht ein. (7) Der Platz einer Ebene zählt im Fenster von oben, im Farbwerk von unten. Proben
+  `ozzy-farbe-faecher-fenster.mjs`, `ozzy-farbe-faecher-malen-fenster.mjs` (beide auch mit `MATERIAL='helles solid'`),
+  `ozzy-farbe-faecher-tempo.mjs`.
 - **Bilder und Filme: den Blick setzen, nicht mit der Maus drehen (19.11.).** Beim Loslassen läuft die Form mit Schwung nach
   (`schwung`), je nach Takt verschieden weit: Dieselben Schritte geben jedes Mal ein etwas anderes Bild, und feste Stellen im
   Skript treffen dann daneben. `__ozzy.blickSetzen({ gier, neigung, zoom, schwenkX, schwenkY })` setzt den Blick ohne Schwung

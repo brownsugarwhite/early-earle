@@ -42,6 +42,15 @@ const gastBild = () =>
 const gross = await s.evaluate(() => `${document.getElementById('haut').width} × ${document.getElementById('haut').height}`);
 // Wachs
 const zu = await mitKarte(s, 60);
+// (zum Vergleich: die Form allein, ohne die Ebenen zu sammeln, und ohne Paint-Modus)
+await O('farbSammeln', false);
+const ohneSammeln = await mitKarte(s, 60);
+await O('farbSammeln', true);
+await s.keyboard.press('b');
+await s.waitForTimeout(600);
+const ohneMalen = await mitKarte(s, 60);
+await s.keyboard.press('b');
+await s.waitForTimeout(600);
 await s.keyboard.press('x');
 await steht(1);
 const kopien = (await O('faecher')).kopien.length;
@@ -51,6 +60,7 @@ await steht(0);
 const mehr = auf.gesamt - zu.gesamt;
 const gut = kopien === 3 && mehr <= 3;
 console.log(`${gut ? 'gut ' : 'FEHL'} 87 Wachs: drei Kopien kosten je Bild höchstens 3 ms mehr als die Form allein: ${gross} Gerätepunkte; zusammen ${z2(zu.gesamt)} ms (davon Rechnen ${z2(zu.rechnen)}), aufgefächert mit ${kopien} Kopien ${z2(auf.gesamt)} ms (Rechnen ${z2(auf.rechnen)}): ${mehr >= 0 ? '+' : '−'}${z2(Math.abs(mehr))} ms`);
+console.log(`     zum Vergleich, die Form allein: ohne die Ebenen zu sammeln ${z2(ohneSammeln.gesamt)} ms, außerhalb des Paint-Modus ${z2(ohneMalen.gesamt)} ms`);
 // helles Solid
 await O('material', 'Helles Solid');
 await s.waitForTimeout(1200);

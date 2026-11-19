@@ -1,4 +1,4 @@
-# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 20:30 Uhr)
+# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 22:00 Uhr)
 
 Florian will in Ozzy einen Paint-Modus mit Ebenen, einer Ebenen-Ansicht und einem neuen Material (sein Auftrag wörtlich im Plan).
 Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende jedes Blocks überschrieben.
@@ -9,10 +9,10 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | --- | --- |
 | Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`, Stand `3a091f14`). **Nicht zusammengeführt**, weder mit ihm noch mit `claude/ozzy` noch mit `main`; erst auf sein Wort, am Schluss. |
 | Fenster | `http://localhost:5215/ozzy.html`, Eintrag `ozzy-paint` in `.claude/launch.json`. Proben: `OZZY_URL=http://localhost:5215/ozzy.html`. Nie unter seinen Fenstern bauen (5205, 5211, 5194). |
-| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (Abschnitt 13), Etappe 4, das Bild der Bedienung in zwei Fassungen (Abschnitt 14), Abschnitt 15: Etappe 4, gebaut (Fassung 1, der Tropfen am Faden), Abschnitt 16: Etappe 5, gebaut (Ebenen), **Abschnitt 17: Etappe 6, erster Schritt (die Ebenen-Ansicht, zwei Fassungen zur Wahl, Probebau)** |
+| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (Abschnitt 13), Etappe 4, das Bild der Bedienung in zwei Fassungen (Abschnitt 14), Abschnitt 15: Etappe 4, gebaut (Fassung 1, der Tropfen am Faden), Abschnitt 16: Etappe 5, gebaut (Ebenen), Abschnitt 17: Etappe 6, erster Schritt (die Ebenen-Ansicht, zwei Fassungen zur Wahl), **Abschnitt 18: Etappe 6, gebaut (Fassung B: was er sieht, gemessen, für ihn entschieden, was fehlt, Bauweise)** |
 | Recherche | [`docs/research/2026-11-19-zbrush-grundmaterial.md`](../../../research/2026-11-19-zbrush-grundmaterial.md) |
 | Seine Vorlagen | [`2026-11-19-zbrush-matcap-red-wax.png`](2026-11-19-zbrush-matcap-red-wax.png), [`2026-11-19-zbrush-red-wax-vierecke.webp`](2026-11-19-zbrush-red-wax-vierecke.webp) |
-| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-6-ansicht-bogen.jpg`, `…-paint-etappe-6-ansicht.mp4` (die Ebenen-Ansicht, zwei Fassungen, an „strange bird“); `…-paint-etappe-5-bogen.jpg`, `…-paint-etappe-5.mp4` (Ebenen, an „strange bird“); `…-paint-etappe-4-bogen.jpg`, `…-paint-etappe-4.mp4` (gebaut, an „strange bird“); `…-paint-etappe-4-bedienung-bogen.jpg` (das Bild davor, zusammengesetzt); `…-paint-etappe-3-farben-bogen.jpg`, `…-paint-etappe-3-farben.mp4` (an „strange bird“); `…-paint-etappe-3-bogen.jpg`, `…-paint-etappe-3-tinte.mp4`, `…-paint-etappe-3-honig.mp4`; `…-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
+| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-6-bogen.jpg`, `…-paint-etappe-6.mp4` (die Ebenen-Ansicht, gebaut, an „strange bird“); `…-paint-etappe-6-ansicht-bogen.jpg`, `…-paint-etappe-6-ansicht.mp4` (davor: die zwei Fassungen zur Wahl); `…-paint-etappe-5-bogen.jpg`, `…-paint-etappe-5.mp4` (Ebenen, an „strange bird“); `…-paint-etappe-4-bogen.jpg`, `…-paint-etappe-4.mp4` (gebaut, an „strange bird“); `…-paint-etappe-4-bedienung-bogen.jpg` (das Bild davor, zusammengesetzt); `…-paint-etappe-3-farben-bogen.jpg`, `…-paint-etappe-3-farben.mp4` (an „strange bird“); `…-paint-etappe-3-bogen.jpg`, `…-paint-etappe-3-tinte.mp4`, `…-paint-etappe-3-honig.mp4`; `…-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
 
 ## 2. Stand
 
@@ -25,11 +25,12 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | **3 Füllen mit dem Farbtropfen** | **gebaut (19.11.), sein Urteil steht aus.** Erster Schritt: Die Farbe läuft ein; sein Wort dazu: „Tinte“ (eingestellt; „Honig“ bleibt über `?fuellen=honig`). Zweiter Schritt: Farben als Tropfen unter der Leiste (antippen, ziehen und fallen lassen, Plus, Mülleimer), Farbtropfen (F), Pipette (I). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Was fehlt: Plan 13.4. Sein Wort danach: „Etappe 4 starten“ (kein Urteil in Worten). |
 | 4 Weichheit an Linien und Punkten | gebaut (19.11.). Zuerst das Bild der Bedienung in zwei Fassungen; sein Wort: „Fassung 1“. Gebaut: Jeder Punkt einer Farblinie kann eine Breite tragen; an gewählten Punkten sitzt quer zur Farblinie ein Tropfen an einem Faden (wegziehen: weich, zurückschieben: hart), K und `[` `]` an mehreren Punkten. Alle sieben Kriterien halten (Plan 15.2). Was fehlt: Plan 15.4. Fassung 2 („Wasser“) ist nicht gebaut. Sein Wort danach: „Etappe 5 starten“ (kein Urteil in Worten). |
 | 5 Ebenen | gebaut (19.11.). Sein Wort danach: „Etappe 6 starten“ (kein Urteil in Worten). Am rechten Rand ein Stapel liegender Tropfen, je Ebene eine Linse: Plus legt an, antippen wählt, wo gemalt wird, der Punkt daneben blendet aus und ein, ziehen ordnet, auf den Mülleimer gezogen ist die Ebene gelöscht. Oben deckt unten, auf Wachs und auf hellem Solid. Alle zehn Kriterien halten (Plan 16.2). Ihm vorgelegt mit Bildblatt und Film an „strange bird“ (ein Verlauf auf Ebene 1, Punkte auf Ebene 2). Für ihn entschieden: Plan 16.3. Was fehlt: Plan 16.4. |
-| **6 Ebenen-Ansicht** | **begonnen (19.11.), seine Wahl steht aus.** Wie vereinbart zuerst zur Wahl: zwei Fassungen, A nebeneinander und B schräg versetzt, als Probebau im Fenster (nur auf Wachs): Der Knopf über dem Stapel fächert auf, ziehen dreht alle Kopien zugleich, eine Kopie antippen wählt ihre Ebene, Esc schiebt zusammen. **Malen auf den Kopien, das helle Solid und das Tempo fehlen** (Plan 17.5: Kriterien 5 bis 8). Mein Vorschlag: Fassung B. Ihm vorgelegt mit Bildblatt und Film an „strange bird“. |
+| **6 Ebenen-Ansicht** | **gebaut (19.11.), sein Urteil steht aus.** Zuerst zwei Fassungen zur Wahl (A nebeneinander, B schräg versetzt); sein Wort: „dann fassung b“. Gebaut: Der Knopf über dem Stapel oder X fächert auf, je Ebene, die zu sehen ist, eine Kopie; vorn steht die Kopie der Ebene, an der gemalt wird (eine andere antippen: Sie tritt vor); an ihr malt man mit A, P, Lasso, Farbtropfen, Pipette wie an der einen Form; ziehen dreht alle zugleich, das Rad zoomt zum Zeiger hin; ordnen, aus- und einblenden, anlegen lassen die Kopien rücken und wachsen. Auf Wachs und auf hellem Solid. Alle neun Kriterien halten (Plan 18.2). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Für ihn entschieden: Plan 18.3. Was fehlt: Plan 18.4 (Freihand, Formen, Objekte aufgefächert; das Tempo des hellen Solids beim Drehen; iPad). |
 | 7 | nicht begonnen. **Nicht ohne sein Wort bauen.** |
 
-**Die Frage, die bei ihm liegt:** welche Fassung der Ebenen-Ansicht gebaut wird (A, B oder beide). Danach baue ich Etappe 6
-fertig (Plan 17.5). Dazu, ohne dass es aufhält: sein Urteil zu Etappe 5; ob das Füllen mit A bleiben soll (Plan 13.3).
+**Die Frage, die bei ihm liegt:** sein Urteil zur Ebenen-Ansicht (passt sie, was soll anders), und ob Etappe 7 beginnt (mehrere
+Objekte, Spiegel, Verbund; vor ihr steht eine Frage an ihn: die Farben im Verbund, Plan 5.3). Dazu, ohne dass es aufhält: sein
+Urteil zu Etappe 5; ob das Füllen mit A bleiben soll (Plan 13.3).
 
 ## 3. Was gebaut ist
 
@@ -81,10 +82,14 @@ fertig (Plan 17.5). Dazu, ohne dass es aufhält: sein Urteil zu Etappe 5; ob das
   zeichnet alle in einem Durchgang, sammelt, wo Überlagern nicht reicht), `farbe/ebenenStapel.ts` (der Stapel am Rand,
   `#ebenen`), `main.ts` (`ebenenStapel`, `ebeneWaehlen`, `ebeneZeigen`, `ebeneNeu`, `ebeneOrdnen`, `ebeneLoeschen`). Bedienung:
   Plus, Linse antippen, Punkt daneben, Linse ziehen, auf den Mülleimer.
-- **Etappe 6, erster Schritt, die Ebenen-Ansicht als Probebau:** in `main.ts` alles mit `faecher` (Zustand, Feder, der Kreis
-  um die Form, die Kopien, der Zeiger zurück in das Bild einer Kopie); gezeichnet wird je Kopie einmal das Wachs mit ihren
-  Ebenen, die Projektion verkleinert und versetzt. `anzeige.ts`: `FarbWerte.nur`, `uSicht`. `ebenenStapel.ts`: der Knopf
-  `.faecher`. Nur auf Wachs; aufgefächert wird gedreht und gewählt, nicht gemalt.
+- **Etappe 6, die Ebenen-Ansicht:** in `main.ts` alles mit `faecher` (Zustand, Federn je Kopie, der Kreis um die Form, die
+  Kopien mit Maßstab, Versatz, Bereich der Tiefe und Rang, der Zeiger zurück in das Bild einer Kopie, Zoom und Schwenk des ganzen
+  Bilds). Gemalt wird an der vorderen Kopie: `farbSicht()` gibt dem Blatt der Farblinien ihre Abbildung, `linienKoerper()` stellt
+  den Körper für die Verdeckung dorthin, `farbUnter`, `farbFuellenBei` rechnen den Zeiger zurück. Gezeichnet werden alle Kopien
+  in einem Durchgang: `material.ts` (`kopienStellen`), `anzeige.ts` (`FarbKopie`, `uBild`, `uTiefe`, `uSicht`, `KoerperSatz`),
+  `gast.ts` (`kopien`: das helle Solid je Kopie von hinten nach vorn). `farbwerk.ts`: `sichtbareEbenen()`, `farbeBei(…, nur)`.
+  `ebenenStapel.ts`: der Knopf `.faecher`. Bedienung: X oder der Knopf, Kopie antippen, malen, ziehen dreht, Rad zoomt, Pos1.
+  Einzelheiten: Plan 18.5.
 - **Am Werk und am Rechenkern ist nichts geändert** (Proben: Prüfsumme der Form).
 
 ### Messwerte und Lücken
@@ -105,7 +110,11 @@ Farbtropfen; mit dem Farbtropfen nimmt ⌥ die Farbe auf (kein Röntgen). Neu in
 ein eigener Punkt blendet aus (im Plan stand „tippen blendet aus und ein“); der Stapel am rechten Rand; eine neue Ebene liegt
 über der aktiven; zu sehen und zu greifen sind nur die Farblinien der aktiven Ebene; wer an einer ausgeblendeten Ebene malt,
 blendet sie ein; Aus- und Einblenden und die Wahl der Ebene sind keine Schritte für ⌘Z; höchstens zwölf Ebenen; zwischen zwei
-Ebenen mischt eine weiche Kante wie innerhalb einer Ebene.
+Ebenen mischt eine weiche Kante wie innerhalb einer Ebene. Neu in Etappe 6 (Plan 18.3): Jede Ebene, die zu sehen ist, hat ihre
+Kopie, auch eine leere; ein Tipp auf eine hintere Kopie wählt nur (Ausnahmen: ein Tropfen aus der Leiste, die Pipette); die Taste
+X; die vordere Kopie 5 % größer; Zoom und Schwenk gelten dem ganzen Bild der Kopien, das Rad zoomt dort zum Zeiger hin, beim
+Zusammenschieben kehrt die Ansicht zurück; der Raum tritt aufgefächert zurück; kein Einrasten und keine Vier Ansichten, solange
+aufgefächert ist.
 
 ## 5. Was hier besonders zählt
 
@@ -127,12 +136,17 @@ Ebenen mischt eine weiche Kante wie innerhalb einer Ebene.
   `pnpm --filter @ee/editor exec eslint <dateien>`.
 - Tests, aus `apps/editor`: `npx vitest run src/ozzy/` (63 Tests: Bemalung, Kurven, Einlaufen, weiche Kanten, Ebenen, Kugelbild
   des Wachses, Rechner des Verbunds).
-- Proben, aus `apps/editor`, immer mit `GPU=1 OZZY_URL=http://localhost:5215/ozzy.html`; Stand 19.11., 19:45 Uhr: alle halten
-  (die Zeile zum Tempo beim Drehen in `ozzy-farbe-fenster.mjs` riss einmal, als drei Proben hintereinander liefen, und hielt
-  allein wiederholt).
-  - `node scripts/pruefen/ozzy-farbe-faecher-fenster.mjs [ordner]`: Etappe 6, der Probebau der Ebenen-Ansicht an einer Kugel
-    (70 zusammengeschoben ist das Bild von vorher, 71 jede Kopie zeigt nur ihre Ebene, 72 die zwei Anordnungen, 73 drehen,
-    74 antippen und Esc). Rund eine Minute.
+- Proben, aus `apps/editor`, immer mit `GPU=1 OZZY_URL=http://localhost:5215/ozzy.html`; Stand 19.11., 21:50 Uhr: alle halten,
+  bis auf Kriterium 2 der Etappe 1 bei weiten Zügen (bekannt, Plan 9.3).
+  - `[MATERIAL='helles solid'] node scripts/pruefen/ozzy-farbe-faecher-fenster.mjs [ordner]`: Etappe 6 an einer Kugel (70
+    zusammengeschoben ist das Bild von vorher, 71 jede Kopie zeigt nur ihre Ebene, 72 die Anordnung, auch die Reihe
+    nebeneinander über den Haken, 73 drehen, 74 antippen und Esc). Rund eine Minute je Grund.
+  - `[MATERIAL='helles solid'] node scripts/pruefen/ozzy-farbe-faecher-malen-fenster.mjs [ordner]`: Etappe 6, malen in der
+    Ebenen-Ansicht, mit echten Klicks (76 P auf der vorderen Kopie, 77 eine andere antippen und dort malen, 78 Punkt ziehen, 79
+    der Tropfen am Faden, 80 Farbtropfen aus der Leiste auf eine andere Kopie, 81 Pipette, 82 Zoom und Pos1, 83 aus- und
+    einblenden, anlegen, ordnen, 84 Werkzeuge und Esc, 85 Zoom und Schwenk nach dem Zusammenschieben). Rund anderthalb Minuten.
+  - `node scripts/pruefen/ozzy-farbe-faecher-tempo.mjs`: Etappe 6, Tempo an „strange bird“ mit drei Ebenen bei 2880 × 1800 (87
+    drei Kopien höchstens 3 ms mehr als die Form allein; dazu das helle Solid beim Drehen).
   - `node scripts/pruefen/ozzy-farbe-ebenen-fenster.mjs [ordner]`: Etappe 5 an einer Kugel und an „strange bird“ (60 leere und
     ausgeblendete Ebene ändern nichts, 61 oben deckt unten, 62 ordnen, 63 aus- und einblenden, 64 weiche Kante über einer
     anderen Ebene, 65 gemalt wird auf der aktiven Ebene, 66 ⌘Z, Sichern, Laden, 67 der Stapel mit echten Klicks, 68 Tempo mit
@@ -154,8 +168,9 @@ Ebenen mischt eine weiche Kante wie innerhalb einer Ebene.
     `WEITE=15`, nicht bei 55. `DIAG=1`, `PROFIL=1`.
   - `[NAME=<Form>] [WEITE=20] node scripts/pruefen/ozzy-farbe-form.mjs [ordner]`: Etappe 1 an einer gesicherten Form.
   - `node scripts/pruefen/ozzy-material-fenster.mjs [ordner]`: die Materialien (2b Wachs, 2c Dreiecke zeigen).
-- Film der Etappe 6 (zwei Fassungen): `OZZY_URL=… node scripts/ozzy/paint-faecher-film.mjs <ziel.mp4>`; Standbilder: `GPU=1
-  OZZY_URL=… node scripts/ozzy/paint-faecher-blick.mjs <ordner>`.
+- Film der Etappe 6 (die gebaute Ansicht): `GPU=1 OZZY_URL=… node scripts/ozzy/paint-faecher-film.mjs <ziel.mp4>`; Standbilder:
+  `GPU=1 OZZY_URL=… node scripts/ozzy/paint-faecher-blick.mjs <ordner>` (auch das helle Solid). Die Skripte für die zwei
+  Fassungen zur Wahl stehen in der Geschichte (`6ea54242`).
 - Film der Etappe 5: `OZZY_URL=… node scripts/ozzy/paint-ebenen-film.mjs <ziel.mp4>` (in einem kleinen Fenster, 760 × 560: Leiste,
   Form und Stapel zusammen im Bild; Tasten und Handgriffe nennt ein kleines Feld); Standbilder: `GPU=1 OZZY_URL=… node
   scripts/ozzy/paint-ebenen-blick.mjs <ordner>`; die Szene beider: `scripts/ozzy/paint-ebenen-szene.mjs`.
@@ -227,10 +242,21 @@ Ebenen mischt eine weiche Kante wie innerhalb einer Ebene.
 - **Der Kasten der Form im Bild (`hautAusschnitt`) ist viel größer als ihr Umriss** (er nimmt die Ecken ihres Kastens im
   Raum). Wer etwas an der Größe der Form im Bild bemisst, nimmt den Kreis um sie (`faecherKreis`: Er hängt auch nicht davon ab,
   wie sie gedreht ist).
-- **Die Ebenen-Ansicht im Probebau ist teuer:** je Kopie ein ganzes Bild des Wachses (bei 2880 × 1800 mit drei Kopien 26 ms
-  statt 13 ms je Bild). Vor dem Vorlegen des Baus: alle Kopien in einem Durchgang (Plan 17.6).
+- **Die Ebenen-Ansicht zeichnet alle Kopien in einem Durchgang** (je Kopie ein Versatz im Programm und ein Bereich der Tiefe).
+  Je Kopie ein ganzes Bild des Wachses kostete das Doppelte (26 statt 13 ms bei 2880 × 1800).
+- **Aufgefächert liegt die Form, an der gemalt wird, verkleinert und versetzt im Bild.** Wer im Paint-Modus einen Strahl der
+  Kamera braucht, rechnet den Zeiger zuerst zurück (`malOrt`, `faecherZurueck`), oder nimmt das Blatt der Farblinien (seine Sicht
+  ist schon die der Kopie). `faecherBild` sind die Kopien des letzten Bilds: Daran misst das Drücken.
+- **Der Platz einer Ebene zählt im Fenster von oben** (`ebeneOrdnen(id, platz)` in `main.ts`, der Haken `farbEbene('ordnen')`), im
+  Farbwerk von unten.
+- **Die Linien an den Wänden zeichnet `wandLinien`** (Umriss der Form, die Farblinien als feine Striche, die Kanten der Ecke),
+  nicht `werkLinien`. Aufgefächert blendet beides über `faecherStill()` aus.
+- **Der Renderer des hellen Solids zeichnet in Ruhe nicht neu:** Sein Tempo misst man beim Drehen (`__ozzy.gast(true)`, dann
+  je Bild `mess.verzerren + mess.zeichnen`); `mitKarte` wartet nur auf `#haut` und `#linien`.
+- **Im Film-Takt (`film(true)`, `bild()`) kann der Stapel am Rand hinter dem Bild herhinken:** vor einem Bildschirmfoto kurz
+  in echter Zeit warten.
 - **Ein gezogenes Element der Seite gleitet nach dem Loslassen zurück** (seine Stile ändern sich, es liegt noch unter dem
   Zeiger): Wer wissen will, was unter dem Zeiger liegt (`elementFromPoint`, der Mülleimer), fragt vor dem Aufräumen.
 - **Zusammenführen später:** Dieser Zweig ändert `main.ts` an schmalen Nahtstellen (Suchwörter `farbWerk`, `farbBlatt`, `malModus`,
-  `farbAn`, `farbWerkzeug`, `farbLeiste`, `weichZug`, `weichGriffe`, `ebenenStapel`, `faecher`), dazu `leiste.ts` (zwei Werkzeuge, `LeistenWerkzeug`), `material.ts`, `gast.ts`
-  (`ueberzug`), `werkBlatt.ts` (`stiftZiel`), `ablage.ts` (`farbe`), `ozzy.html`, `ozzy.css` und beide `CLAUDE.md`. Der Stand in `CLAUDE.md` wird beim Zusammenführen ohnehin neu geschrieben.
+  `farbAn`, `farbWerkzeug`, `farbLeiste`, `weichZug`, `weichGriffe`, `ebenenStapel`, `faecher`, `malOrt`), dazu `leiste.ts` (zwei Werkzeuge, `LeistenWerkzeug`), `material.ts` (`kopien`), `gast.ts`
+  (`ueberzug`, `kopien`), `werkBlatt.ts` (`stiftZiel`), `ablage.ts` (`farbe`), `ozzy.html`, `ozzy.css` und beide `CLAUDE.md`. Der Stand in `CLAUDE.md` wird beim Zusammenführen ohnehin neu geschrieben.

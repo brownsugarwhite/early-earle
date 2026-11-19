@@ -1,17 +1,17 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand (19.11., 20:30 Uhr): Etappe 6 hat begonnen (dein Wort: „Etappe 6 starten“), deine Wahl steht aus.** Wie vereinbart
-zuerst zur Wahl: die Ebenen-Ansicht in zwei Fassungen, **A nebeneinander** und **B schräg versetzt**. Diesmal nicht als
-zusammengesetztes Bild, sondern als Probebau im Fenster 5215: Der Knopf über dem Stapel fächert die Form auf (je Ebene eine
-Kopie), ziehen dreht alle zugleich, eine Kopie antippen wählt ihre Ebene. Malen auf den Kopien geht noch nicht, und es gibt die
-Ansicht erst auf Wachs. Bildblatt
-[`2026-11-19-paint-etappe-6-ansicht-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-6-ansicht-bogen.jpg), Film an „strange
-bird“ [`2026-11-19-paint-etappe-6-ansicht.mp4`](../progress/ozzy/2026-11-19-paint-etappe-6-ansicht.mp4); beide Fassungen, mein
-Vorschlag und was der Bau noch braucht, stehen in Abschnitt 17. Davor gebaut: Etappe 5, Ebenen (Abschnitt 16), Etappe 4, weiche
-Kanten (Abschnitt 14 und 15), Etappe 3 (Abschnitt 12 und 13), Etappe 2 (Abschnitt 11), Etappe 1 (Abschnitt 9), das Material
-„Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 7 wartet auf dein Wort. Zweig `claude/reverent-feynman-1efdd3`
-(baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html`
-(Eintrag `ozzy-paint`). Übergabe des Strangs: [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
+**Stand (19.11., 22:00 Uhr): Etappe 6 ist gebaut (deine Worte: „Etappe 6 starten“, dann „dann fassung b“).** Die Ebenen-Ansicht
+steht schräg versetzt: Der Knopf über dem Stapel oder die Taste X fächert die Form auf, je Ebene eine Kopie. Vorn steht die Kopie
+der Ebene, an der du malst; eine andere antippen, und sie tritt vor. An der vorderen malst du mit allen Werkzeugen wie an der
+einen Form. Ziehen dreht alle zugleich, das Rad zoomt zum Zeiger hin. Auf Wachs und auf dem hellen Solid. Alle neun Kriterien
+halten (Abschnitt 18.2); was fehlt, steht in 18.4. Bildblatt
+[`2026-11-19-paint-etappe-6-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-6-bogen.jpg), Film an „strange bird“ (44
+Sekunden) [`2026-11-19-paint-etappe-6.mp4`](../progress/ozzy/2026-11-19-paint-etappe-6.mp4). Davor: die zwei Fassungen zur Wahl
+(Abschnitt 17), Etappe 5, Ebenen (Abschnitt 16), Etappe 4, weiche Kanten (Abschnitt 14 und 15), Etappe 3 (Abschnitt 12 und 13),
+Etappe 2 (Abschnitt 11), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 7
+wartet auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
+zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
+[`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
 ## Dein Auftrag (19.11.2026, wörtlich)
 
@@ -84,7 +84,7 @@ Geste wird von Anfang an auch für iPad und Stift gebaut (dort gibt es kein ⌥)
 | **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | **gebaut (19.11.):** das Einlaufen (dein Wort: „Tinte“; Abschnitt 12), dann Farben als Tropfen unter der Leiste, Farbtropfen F, Pipette I (Abschnitt 13); Bildblatt und Film an „strange bird“; dein Wort danach: „Etappe 4 starten“ |
 | **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | **gebaut (19.11.):** das Bild der Bedienung (Abschnitt 14), dein Wort „Fassung 1“, dann der Bau (Abschnitt 15: der Tropfen am Faden, K, `[` `]`); alle sieben Kriterien halten; Bildblatt und Film an „strange bird“; dein Wort danach: „Etappe 5 starten“ |
 | **5** Ebenen | Ebene anlegen, ordnen, aus- und einblenden; Muster über Verläufen | **gebaut (19.11.):** der Stapel am rechten Rand (Abschnitt 16); alle zehn Kriterien halten; Bildblatt und Film an „strange bird“ (ein Verlauf auf Ebene 1, Punkte auf Ebene 2); dein Wort danach: „Etappe 6 starten“ |
-| **6** Ebenen-Ansicht | die Form fächert auf, je Ebene eine Kopie; drehen, eine Kopie wählen und dort malen | **begonnen (19.11.):** Film und Bildblatt mit zwei Fassungen zur Wahl, als Probebau im Fenster (Abschnitt 17); deine Wahl steht aus, dann wird fertig gebaut |
+| **6** Ebenen-Ansicht | die Form fächert auf, je Ebene eine Kopie; drehen, eine Kopie wählen und dort malen | **gebaut (19.11.):** erst Film und Bildblatt mit zwei Fassungen zur Wahl (Abschnitt 17), dein Wort „dann fassung b“, dann der Bau (Abschnitt 18); alle neun Kriterien halten; Bildblatt und Film an „strange bird“ |
 | **7** Mehrere Objekte, Spiegel, Verbund | jedes Objekt mit eigener Bemalung; Spiegel aus; Verschmelzen und Abziehen zeigen die Farben | Bild an zwei bemalten Objekten im Verbund |
 
 ### 3.1 Etappe 1: der Beweis
@@ -891,6 +891,8 @@ Fenster. Alle Proben der Etappen 1 bis 4 und die der Materialien halten weiter.
 
 ## 17. Etappe 6, erster Schritt: die Ebenen-Ansicht, zwei Fassungen zur Wahl (19.11.2026, auf dein Wort „Etappe 6 starten“)
 
+**Deine Wahl (19.11.): „dann fassung b“. Der Bau steht in Abschnitt 18; dieser Abschnitt bleibt als Beleg der Wahl stehen.**
+
 Bildblatt: [`2026-11-19-paint-etappe-6-ansicht-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-6-ansicht-bogen.jpg). Film in
 echter Zeit an „strange bird“ mit drei Ebenen (33 Sekunden, erst Fassung A, dann Fassung B):
 [`2026-11-19-paint-etappe-6-ansicht.mp4`](../progress/ozzy/2026-11-19-paint-etappe-6-ansicht.mp4).
@@ -963,3 +965,113 @@ Offen ist auch der Griff: Im Plan stand „auf einen Griff“. Im Probebau ist e
   Raum): Damit wurden die Kopien zu klein (32 % statt 48 %). Für das Tempo: alle Kopien in einem Durchgang in das Ziel des
   Wachses zeichnen (je Kopie ein eigener Versatz im Programm und ein eigener Bereich der Tiefe), statt je Kopie ein ganzes Bild.
 
+## 18. Etappe 6, gebaut: die Ebenen-Ansicht (19.11.2026, auf dein Wort „dann fassung b“)
+
+Bildblatt: [`2026-11-19-paint-etappe-6-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-6-bogen.jpg) (alles echt, aus dem
+Fenster). Film in echter Zeit an „strange bird“ (44 Sekunden):
+[`2026-11-19-paint-etappe-6.mp4`](../progress/ozzy/2026-11-19-paint-etappe-6.mp4).
+
+### 18.1 Was du siehst und anfassen kannst
+
+- **Auffächern:** der Knopf über dem Stapel (drei Linsen) oder die Taste **X**. Die Form teilt sich in eine Kopie je Ebene, die
+  zu sehen ist; die Kopien gleiten schräg auseinander, die unterste Ebene links oben. Auch eine leere Ebene hat ihre Kopie (blankes
+  Wachs). Derselbe Knopf oder X schiebt sie wieder zusammen.
+- **Vorn steht die Kopie, an der du malst,** ein wenig größer (5 %). **Eine andere antippen: Sie tritt vor.** Ebenso ein Klick
+  auf ihre Linse im Stapel.
+- **An der vorderen Kopie malst du wie an der einen Form:** A (Punkte und Griffe ziehen, der Tropfen am Faden für weiche Kanten,
+  ein Klick füllt), P, Lasso, Farbtropfen, Pipette, ⌘Z. Farblinien, Punkte und Griffe liegen auf der Kopie.
+- **Ein Farbtropfen aus der Leiste** füllt auf der Kopie, auf die er fällt; sie tritt dann vor. **Die Pipette** nimmt von jeder
+  Kopie die Farbe ihrer Ebene, ohne dass eine andere vortritt.
+- **Ziehen dreht alle zugleich:** auf einer hinteren Kopie, im Leeren, und an der vorderen wie immer (mit Weg wird gedreht, ohne
+  Weg gefüllt). Aufgefächert rastet die Drehung nicht in eine Ansicht ein.
+- **Das Rad zoomt zum Zeiger hin,** alle Kopien zugleich; geschwenkt wird wie immer. Pos1 passt die Reihe wieder ein.
+- **Im Stapel ordnen, aus- und einblenden, das Plus:** Die Kopien rücken an ihren neuen Platz, eine neue wächst an ihrem, keine
+  springt.
+- **Der Raum tritt zurück:** Die Zeichnungen der Form an den Wänden, die Kanten der Raumecke und ihr Punkt blenden aus, solange
+  aufgefächert ist.
+- **Zusammenschieben:** X, der Knopf, oder Esc (Esc beendet zuerst eine angefangene Farblinie, dann P, leert dann die Auswahl).
+  Zoom und Schwenk stehen danach wieder wie vor dem Auffächern; gedreht bleibt gedreht.
+- **Auf Wachs und auf dem hellen Solid.**
+
+### 18.2 Gemessen (die Kriterien aus Abschnitt 17.5)
+
+| Kriterium | Gemessen | Hält |
+| --- | --- | --- |
+| 1 Zusammengeschoben steht genau das Bild von vorher | 0 von 255, auf Wachs und auf dem hellen Solid | ja |
+| 2 Jede Kopie zeigt nur ihre Ebene | Kugel, beide Gründe: untere Kopie blau ohne Fleck, obere der Fleck auf blankem Grund | ja |
+| 3 Beim Drehen bleibt jede Kopie an ihrem Platz und gleich groß | 0,00 Pixel, Maßstab unverändert | ja |
+| 4 Eine Kopie antippen: An ihrer Ebene wird gemalt, sie tritt vor | vor allen anderen, 5 % größer; ein Klick ins Leere ändert nichts | ja |
+| 5 Auf der vorderen Kopie malen | P: jeder Punkt 0,00 Pixel neben dem Klick (verlangt: höchstens ein Gerätepunkt); die Füllung liegt auf der Ebene dieser Kopie, auf der anderen Kopie steht dort weiter ihr Blau; ein gezogener Punkt bleibt 0,00 Pixel unter dem Zeiger; der Tropfen am Faden: 20 Pixel gezogen, der Faden wird 20 Pixel länger, die Kante dort weich | ja |
+| 6 Tempo: drei Kopien höchstens 3 ms mehr als die Form allein (2880 × 1800, „strange bird“, samt Grafikkarte) | Wachs: zusammen 16,8 bis 19,1 ms, aufgefächert 12,6 bis 13,6 ms je Bild (zwei Läufe). Aufgefächert ist es billiger: Jede Kopie zeigt eine Ebene, es muss nichts gesammelt werden | ja |
+| 7 Auf dem hellen Solid | alle Proben (70 bis 86) laufen dort wie auf Wachs | ja (Tempo beim Drehen: 18.4) |
+| 8 Ordnen, aus- und einblenden, anlegen: Die Kopien rücken weich | größter Schritt einer Kopie je Bild 6,9 bis 13,9 Pixel (ein Sprung wären mindestens 76); eine neue Kopie wächst von 6 % auf ihre Größe | ja |
+| 9 An einer deiner Formen, mit Film | „strange bird“, 44 Sekunden, in echter Zeit | dein Auge |
+
+Dazu gemessen: Beim Zoomen bleibt, was unter dem Zeiger lag, 0,18 Pixel genau dort; nach Pos1 steht jede Kopie wieder an ihrem
+Platz (0,00); nach dem Zusammenschieben stehen Zoom und Schwenk wie vor dem Auffächern. Die älteren Proben des Paint-Modus laufen
+wie zuvor (Etappe 1 mit ihrer bekannten Lücke bei weiten Zügen, Abschnitt 9.3; Etappe 2 bis 5 „alles gut“), die Material-Probe
+auch (das helle Solid ohne Kopien: 0,00 Gerätepunkte neben Ozzys Bild).
+
+### 18.3 Für dich entschieden (sag, wenn du es anders willst)
+
+- **Jede Ebene, die zu sehen ist, hat ihre Kopie,** auch eine leere (im Probebau nur Ebenen, auf denen etwas liegt). So bekommt
+  eine neue Ebene sofort ihre Kopie zum Bemalen, und keine Kopie verschwindet, nur weil du eine andere antippst.
+- **Ein Tipp auf eine hintere Kopie wählt nur,** er füllt nicht. Erst an der vorderen malst du. Ausnahmen: der Farbtropfen, den du
+  aus der Leiste auf eine Kopie ziehst, und die Pipette.
+- **Die Taste X.** Im Plan stand „auf einen Griff“; E wäre naheliegend, gehört aber der Ellipse.
+- **Die vordere Kopie steht 5 % größer.** Genug, um sie zu erkennen, ohne dass die Reihe unruhig wird.
+- **Zoom und Schwenk gelten dem ganzen Bild der Kopien** (wie einem Blatt, auf dem sie liegen), und das Rad zoomt hier zum Zeiger
+  hin (im Raum sonst zur Mitte): So kommst du an eine Kopie heran. Du kannst weiter hineinzoomen als sonst, weil die Kopien kleiner
+  stehen als die Form.
+- **Beim Zusammenschieben kehrt die Ansicht zurück,** wo sie beim Auffächern stand. Sonst stünde die Form nach dem Zoomen an
+  einer Kopie irgendwo am Rand.
+- **Der Raum tritt zurück** (Zeichnungen an den Wänden, Kanten der Ecke). Sie gehören zu der einen Form an ihrem Ort; durch die
+  hinteren Kopien schienen sie hindurch.
+- **Aufgefächert kein Einrasten, keine Vier Ansichten:** Wer eine Ansicht wählt (1, 3, 7, Tab), schiebt damit zusammen.
+- **Eine Kopie, die geht (ausgeblendet, gelöscht), verschwindet sofort;** die anderen rücken weich nach.
+
+### 18.4 Was fehlt
+
+- **Freihand, Formen und Objekte (V) gibt es aufgefächert nicht.** Sie arbeiten an Wänden, Ansichten und der ganzen Form; wer sie
+  wählt, bekommt eine Meldung. P, A, Lasso, Farbtropfen und Pipette gehen.
+- **Helles Solid, Tempo beim Drehen:** Jede Kopie ist ein eigenes Bild seines Renderers. An „strange bird“ bei 2880 × 1800 kostet
+  ein Bild mit drei Kopien 37,5 bis 38,9 ms, die Form allein 26,2 bis 26,9 ms. In Ruhe zeichnet er nicht neu. Auf Wachs gibt es
+  das nicht. Abhilfe wäre, das Bild des Körpers je Kopie zu behalten, solange sich nur die Farbe ändert; nicht gebaut.
+- **Die Form allein mit drei Ebenen** kostet an „strange bird“ bei 2880 × 1800 16,8 bis 19,1 ms je Bild, sobald eine obere Ebene
+  weiche Kanten hat (dann wird gesammelt, Abschnitt 16.2; ohne Sammeln 13,5 ms). Das ist die Rechnung aus Etappe 5, an deiner
+  Form gemessen: knapp an 60 Bildern je Sekunde.
+- **Mit mehreren Objekten** zeigt jede Kopie alle Objekte; gemalt wird am gewählten. Nicht eigens geprüft (Etappe 7).
+- **iPad und Stift:** nicht geprüft (wie in Etappe 5).
+- **Fassung A (nebeneinander)** ist nicht in der Bedienung; nur über `?faecher=neben`.
+- **Viele Ebenen:** Bei zwölf Ebenen stehen die Kopien klein (rund ein Sechstel der Breite); Zoomen hilft. Nicht an einer Form
+  mit so vielen Ebenen angesehen.
+
+### 18.5 Für die Sitzung, die baut
+
+- **In `main.ts`** (Suchwort `faecher`): der Zustand `faecher` (dazu `blick0`, `blick1`: Zoom und Schwenk beim Auffächern und
+  beim Zusammenschieben; `fit`), `faecherEbenen` (alle Ebenen, die zu sehen sind), `faecherSetzen`, `faecherSchliessen`,
+  `faecherSchritt` (Federn: auffächern, Platz, Größe, Vortreten je Kopie; kehrt beim Zusammenschieben Zoom und Schwenk zurück),
+  `faecherRechnen` (je Kopie Maßstab, Versatz, Bereich der Tiefe, `rang`, welche Ebenen sie wie deckend zeigt; Zoom und Schwenk
+  seit dem Auffächern als Ähnlichkeit des ganzen Bilds), `faecherKopieBei` (die vorderste Kopie unter dem Zeiger),
+  `faecherZurueck`, `faecherAktiv`, `faecherMatrix`, `malOrt`, `faecherStill`, `zoomHoechstens`.
+- **Malen auf der Kopie:** `farbSicht()` gibt dem Blatt der Farblinien die Abbildung der vorderen Kopie statt der der Kamera
+  (`faecherMatrix(q) · Projektion · Ansicht`, Strahlen über `faecherZurueck`): Damit liegen Netz, Treffer, Griffe und der
+  Tropfen am Faden von selbst auf der Kopie. `linienKoerper()` stellt den Körper für die Verdeckung an dieselbe Stelle.
+  `farbUnter`, `farbUnterZeiger`, `farbFuellenBei` rechnen den Zeiger zurück. Im Drücken steht die eine Weiche (nach
+  `bearbeiten.zielJetzt()`): auf einer hinteren Kopie, ohne dass etwas von der vorderen am Zeiger hängt → `faecherDruck`
+  (drehen oder wählen); sonst der gewohnte Weg des Paint-Modus.
+- **Zeichnen:** `faecherBild` entsteht einmal je Bild, vor den Zweigen der Materialien. Wachs: `feste.zeichnen({ kopien })` und
+  `farbWerk.anzeige.zeichnen({ kopien })`, alle Kopien in einem Durchgang (`uBild`, `uTiefe`; Abschnitt 17.6, „Merke“). Helles
+  Solid: `gast.zeichnen({ kopien })` zeichnet je Kopie Kante und Körper, von hinten nach vorn (jede Kopie ist ein größeres,
+  verschobenes Bild seiner parallelen Kamera; alle Fenster eines Bilds gleich groß, damit die Felder des Renderers ihre Größe
+  behalten); die Farbe danach in einem Durchgang mit `kopien` (`tiefeSchreiben` je Kopie in ihrem Bereich der Tiefe).
+  `src/form/blaupause.ts` ist unverändert.
+- **`farbwerk.ts`:** `sichtbareEbenen()` (statt `gezeichneteEbenen()`), `farbeBei(h, ort, nur)`.
+- **Haken:** `faecher(an?, art?)` (dazu `zoom` und je Kopie `rang`, `aktiv`), `faecherZurueck(id, x, y)`; `farbPunkte` gibt
+  aufgefächert die Orte auf der vorderen Kopie.
+- **Proben** (alle mit `MATERIAL='helles solid'` auch dort): `ozzy-farbe-faecher-fenster.mjs` (70 bis 75),
+  `ozzy-farbe-faecher-malen-fenster.mjs` (76 bis 86), `ozzy-farbe-faecher-tempo.mjs` (87, an „strange bird“). Film
+  `scripts/ozzy/paint-faecher-film.mjs`, Standbilder `scripts/ozzy/paint-faecher-blick.mjs`.
+- **Merke:** Der Platz im Stapel zählt im Fenster von oben (`ebeneOrdnen(id, platz)` in `main.ts`), im Farbwerk von unten. Die
+  Linien an den Wänden zeichnet `wandLinien` (Umriss, Farblinien, Kanten der Ecke), nicht `werkLinien`. Der Renderer des hellen
+  Solids zeichnet in Ruhe nicht neu: Sein Tempo misst man beim Drehen (`gast(true)`, `mess.verzerren + mess.zeichnen`).
