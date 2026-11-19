@@ -3,9 +3,9 @@
 Diese Datei lädt jede Sitzung automatisch und ganz. **Kurz halten (unter 10 KB):** nur Stand, Regeln, Fallen, Landkarte,
 Verweise. Verlauf, Messwerte und Florians Rückmeldungen gehören in `docs/` (Plan, Übergabe, Berichte), nicht hierher. Den Stand
 unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.2026 liegt in
-[`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`](docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md).
+`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`.
 
-## Stand (19.11.2026, früh)
+## Stand (19.11.2026)
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
@@ -19,13 +19,16 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   auf sein Wort wartet; nichts davon ohne sein Wort bauen).** Gebaut daraus: Rückschritt beim Aufblasen behoben, frische Form
   größer angelegt, kein Einrasten in den Vier Ansichten, Umriss der Seite, alle Materialien (Solid, Zebra, Jelly, helles Solid,
   Grün ohne Bauch; `material.ts`, `gast.ts`, `gruen.ts`). Vergleich mit Sitzung 4:
-  [`docs/research/2026-11-18-vergleich-5197-ozzy.md`](docs/research/2026-11-18-vergleich-5197-ozzy.md). Offene Fragen und Urteile:
-  [`docs/plans/2026-11-17-ozzy-feinschliff.md`](docs/plans/2026-11-17-ozzy-feinschliff.md). Die Sitzung ist auch die des Kerns.
-  Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell. Maul, Posen und Teile will er in einer neuen Sitzung beginnen.
+  `docs/research/2026-11-18-vergleich-5197-ozzy.md`. Offene Fragen und Urteile: `docs/plans/2026-11-17-ozzy-feinschliff.md`. Die
+  Sitzung ist auch die des Kerns. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell. Das Maul kommt später in
+  eigener Sitzung.
 - **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11.):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211
   (`ozzy-objekte`), nicht zusammengeführt. Plan und Stand:
   [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0 bis 5;
   **Formen beginnen mit drei Loops**, Abschnitt 11; Etappe 5 als Verbund, Abschnitt 13; offen: Sitz der Loops, Hilfsloop greifen).
+- **Sitzung „Paint-Modus“ (seit 19.11.):** Zweig `claude/reverent-feynman-1efdd3` (auf dem Stand der Objekte, nicht
+  zusammengeführt), Fenster 5215 (`ozzy-paint`). Einstieg: [`docs/look/ozzy/paint/UEBERGABE.md`](docs/look/ozzy/paint/UEBERGABE.md)
+  (Plan wartet auf Freigabe; gebaut: Material „Wachs“).
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)
@@ -33,9 +36,8 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Abzweigungen): [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), Übergabe von
   Sitzung 4 (Stand 14.11.) in [`docs/UEBERGABE.md`](docs/UEBERGABE.md). Das Maul-System bekommt später eine eigene Sitzung.
 - **Studien (abgeschlossen, Feinschliff jetzt in Ozzy):** Linien `src/linien/` (`linien.html`, `raum.html`,
-  [`docs/look/linien/UEBERGABE.md`](docs/look/linien/UEBERGABE.md)); Aufblasen `src/anfang/` (`anfang.html`,
-  [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md)); Ecke/Werft nur als Konzept im Cloud-Zweig
-  `claude/meme-curves-editor-concept-s65kq1`; Bleistift-Kern `packages/shape/src/zeichnen/`.
+  `docs/look/linien/UEBERGABE.md`); Aufblasen `src/anfang/` (`anfang.html`, `docs/look/anfang/UEBERGABE.md`); Ecke/Werft nur als
+  Konzept im Cloud-Zweig `claude/meme-curves-editor-concept-s65kq1`; Bleistift-Kern `packages/shape/src/zeichnen/`.
 - **Ruht:** `/editor` (Blaupause), der Käfig-Weg (`packages/shape/src/kern/`, Electron-Editor `pnpm editor`), `form.html`.
 - **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt, maul handgemacht test). Beliebige Tests, kein
   Maßstab für das Tempo.
@@ -121,6 +123,5 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
 
 - Florians Klarstellungen wörtlich: `docs/plans/2026-10-22-klarstellungen.md`.
 - Gegenprüfung vom 10.11. (G1–G6, Wege A–D, Werkzeugliste): `docs/research/2026-11-10-gegenpruefung-kurven-loeser.md`.
-- Bilanz seit dem 11.10.: `docs/research/2026-11-09-bilanz-wesen-editor.md`.
 - Planseite des Kurven-Wegs (chronologisch): `docs/plans/2026-11-06-kurven-als-wahrheit.md`.
 - Prototyp-Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) sind Erfahrungsschatz, kein Auftrag.

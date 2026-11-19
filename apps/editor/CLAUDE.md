@@ -423,7 +423,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - **Materialien (18.11.):** `src/ozzy/material.ts` (`FesteHaut`): Solid (aus `kurven.ts`, Zeile für Zeile) und Zebra (Matcap des
   alten Editors) zeichnen die glatte Anzeige des Werks in ein eigenes Ziel und legen es über den Grund der Seifenhaut
   (`Haut.zeichnen` mit `leer`); `material` in `main.ts` (null = Seifenhaut), Menü und Taste M, `?material=`. Florian will sie exakt
-  wie erarbeitet, keine eigene Fassung.
+  wie erarbeitet, keine eigene Fassung. **Wachs (19.11., Sitzung „Paint-Modus“):** ZBrushs „MatCap Red Wax“ als drittes festes
+  Material, eine Matcap wie die Zebra; das Kugelbild (`src/ozzy/wachs.ts`) ist an Florians Vorlage ausgemessen, der Farbton in OKLCH
+  gedreht (Feinregler „Material Wachs“, `?wachs=<Grad>`, 0 = ZBrushs Rot). Merke: (1) Das Ziel von `FesteHaut` hält seitdem 16 Bit
+  je Kanal: Es trägt lineare Werte, mit 8 Bit zeigte ein weicher dunkler Verlauf Ringe. (2) Die Kante der hinteren Raumecke liegt
+  bei allen festen Materialien als feine Linie über der Form (nicht behoben). (3) Vergleich gegen die Vorlage:
+  `scripts/ozzy/wachs-vergleich.mjs` (nimmt die Zeichenfläche der Haut allein, gleich nach `__ozzy.bild()`); Recherche
+  `docs/research/2026-11-19-zbrush-grundmaterial.md`. Eigenes Fenster des Strangs: 5215 (`ozzy-paint`), Proben mit
+  `OZZY_URL=http://localhost:5215/ozzy.html`.
 - **Jelly und helles Solid (18.11., `src/ozzy/gast.ts`):** `BlaupauseBild` aus `src/form/blaupause.ts` läuft unverändert als Gast
   auf der eigenen Fläche `#gast` (zweiter WebGL-Renderer mit Kantenglättung, über `#haut`, unter `#linien`). Was der Gast tut: (1)
   den Grund verbergen (`Reflect.get(bild, 'hgNetz')`: ein privates Feld; benennt die Design-Sitzung es um, steht eine Warnung in der

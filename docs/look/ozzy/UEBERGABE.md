@@ -5,6 +5,11 @@ Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im 
 Ansichten. Gerechnet wird mit dem Kern von Sitzung 4; seit dem 17.11. nachts ist die Sitzung von Ozzy auch die des Kerns und ändert
 ihn (bisher: C1, C2, D1).
 
+**Sitzung „Paint-Modus“ (seit 19.11., eigener Zweig auf dem Stand der Objekte).** Zweig `claude/reverent-feynman-1efdd3`, Fenster
+`http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`), nicht zusammengeführt. Gebaut: das Material „Wachs“ (ZBrushs
+Grundmaterial, in Magenta). Der Plan zum Paint-Modus wartet auf Florians Freigabe. Alles dazu:
+[`paint/UEBERGABE.md`](paint/UEBERGABE.md).
+
 **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11. mittags, eigener Zweig).** Zweig `claude/ozzy-donut-mirror-system-7a31b7`
 (von `claude/ozzy`, Stand `6bef9f17`), Arbeitsbaum `.claude/worktrees/ozzy-donut-mirror-system-7a31b7`, Fenster
 `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). **Noch nicht in `claude/ozzy` zusammengeführt** (das entscheidet Florian
