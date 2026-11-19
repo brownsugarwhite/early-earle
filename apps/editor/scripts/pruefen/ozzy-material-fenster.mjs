@@ -6,6 +6,9 @@
 //      von 255 unter seinem Licht; geprüft: Die Mitte der Form ist sandfarben, Rot > Grün > Blau) und einen Umriss in Tinte; an den
 //      Wänden und im Leeren bleibt das Papier weiß.
 //   2  Zebra (Taste M von Solid aus): Schwarz und Weiß zu etwa gleichen Teilen auf der Form, keine Farbe.
+//   2b Wachs (M weiter; 19.11., Florian: „Das Basismaterial, so wie es Z-Brush benutzt, aber mehr in magenta statt rot“): die Form in
+//      Magenta (Rot und Blau über Grün) mit weichem Verlauf, kein Umriss in Tinte um die Form, das Papier bleibt weiß; mit dem
+//      Farbton 0 (Feinregler „Material Wachs“) ist sie rot wie ZBrush.
 //   3  Jelly (M weiter): die Form in Türkis auf dem weißen Raum (der dunkle Grund des Blaupause-Editors bleibt weg); das Bild des
 //      Gasts liegt auf Ozzys Bild der Haut (höchstens 0,5 Gerätepunkte daneben).
 //   4  Helles Solid (M weiter): der Körper weiß und lavendel, die Kante in Petrol; kein Türkis, kein dunkler Grund, keine Platten in
@@ -45,7 +48,7 @@ const farben = async (name) => {
     const g = c.getContext('2d');
     g.drawImage(bild, 0, 0);
     const P = g.getImageData(0, 0, bild.width, bild.height).data;
-    let sand = 0, tinte = 0, weiss = 0, grau = 0, bunt = 0, tuerkis = 0, petrol = 0, lavendel = 0, rosa = 0, gruen = 0, punkt = 0;
+    let sand = 0, tinte = 0, weiss = 0, grau = 0, bunt = 0, tuerkis = 0, petrol = 0, lavendel = 0, rosa = 0, gruen = 0, punkt = 0, wachs = 0, rot = 0;
     const n = P.length / 4;
     for (let i = 0; i < P.length; i += 4) {
       const r = P[i], gg = P[i + 1], b = P[i + 2];
@@ -58,13 +61,15 @@ const farben = async (name) => {
       else if (gg > r + 15 && gg > b + 30 && gg < 135) punkt++;
       else if (r > 215 && b > 228 && gg > 205 && gg < r && r < b) lavendel++;
       else if (r > 200 && gg < 170 && b > 140) rosa++;
+      else if (r > gg + 25 && b > gg + 10 && r < 200) wachs++;
+      else if (r > gg + 45 && r > b + 45 && gg < 0.62 * r && Math.abs(gg - b) < 14) rot++;
       else if (r > gg + 12 && gg > b + 12 && r > 110) sand++;
       else if (max - min < 14) grau++;
       else bunt++;
     }
     const mitte = 4 * (Math.floor(bild.height / 2) * bild.width + Math.floor(bild.width / 2));
     const a = (x) => x / n;
-    return { sand: a(sand), tinte: a(tinte), weiss: a(weiss), grau: a(grau), bunt: a(bunt), tuerkis: a(tuerkis), petrol: a(petrol), lavendel: a(lavendel), rosa: a(rosa), gruen: a(gruen), punkt: a(punkt), mitte: [P[mitte], P[mitte + 1], P[mitte + 2]] };
+    return { wachs: a(wachs), rot: a(rot), sand: a(sand), tinte: a(tinte), weiss: a(weiss), grau: a(grau), bunt: a(bunt), tuerkis: a(tuerkis), petrol: a(petrol), lavendel: a(lavendel), rosa: a(rosa), gruen: a(gruen), punkt: a(punkt), mitte: [P[mitte], P[mitte + 1], P[mitte + 2]] };
   }, png.toString('base64'));
 };
 const p = (x) => `${(100 * x).toFixed(1).replace('.', ',')} %`;
@@ -79,6 +84,29 @@ await s.keyboard.press('m');
 await s.waitForTimeout(700);
 const f2 = await farben('zebra');
 ok('2 Zebra: Schwarz und Weiß auf der Form, keine Farbe', (await O('material')) === 'Zebra' && f2.sand < 0.002 && f2.tinte > 0.02 && f2.bunt < 0.02 && f2.tuerkis < 0.002, `Tinte ${p(f2.tinte)}, grau ${p(f2.grau)}, sandfarben ${p(f2.sand)}, bunt ${p(f2.bunt)}`);
+// 2b Wachs: Magenta als Grundwert; mit dem Farbton 0 rot wie ZBrush
+await s.keyboard.press('m');
+await s.waitForTimeout(900);
+const f2b = await farben('wachs');
+const regler = async (wert) =>
+  s.evaluate((v) => {
+    const zeile = [...document.querySelectorAll('#regler-liste label')].find((l) => l.textContent.includes('Farbton'));
+    const eingabe = zeile?.querySelector('input');
+    if (!eingabe) return false;
+    eingabe.value = String(v);
+    eingabe.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }, wert);
+const reglerDa = await regler(0);
+await s.waitForTimeout(700);
+const f2c = await farben('wachs-rot');
+await regler(-40);
+await s.waitForTimeout(500);
+ok(
+  '2b Wachs: Magenta mit weichem Verlauf, ohne Umriss; Farbton 0 ist rot wie ZBrush',
+  (await O('material')) === 'Wachs' && f2b.wachs > 0.05 && f2b.sand < 0.002 && f2b.rot < 0.01 && f2b.weiss > 0.3 && f2b.tinte < f1.tinte + 0.03 && reglerDa && f2c.rot > 0.03 && f2c.wachs < 0.02,
+  `Magenta ${p(f2b.wachs)}, rot ${p(f2b.rot)}, sehr dunkel ${p(f2b.tinte)}, weiß ${p(f2b.weiss)}; mit Farbton 0: rot ${p(f2c.rot)}, Magenta ${p(f2c.wachs)}`,
+);
 // 3 Jelly
 await s.keyboard.press('m');
 await s.waitForTimeout(2500);
@@ -121,7 +149,7 @@ const f5 = await farben('seifenhaut');
 const g5 = await O('gast');
 ok(
   '5 M weiter: die Seifenhaut, im Menü gezeigt und gemerkt, die Flächen der Gäste verborgen',
-  m5 === 'Seifenhaut' && menue.filter((x) => x.endsWith('*')).join() === 'Seifenhaut*' && ['Solid', 'Zebra', 'Jelly', 'Helles Solid', 'Grün'].every((x) => menue.includes(x)) && gemerkt === 'seifenhaut' && f5.sand < 0.01 && f5.tuerkis < 0.01 && f5.gruen < 0.01 && !g5.sichtbar && !(await O('gruen')).sichtbar,
+  m5 === 'Seifenhaut' && menue.filter((x) => x.endsWith('*')).join() === 'Seifenhaut*' && ['Solid', 'Zebra', 'Wachs', 'Jelly', 'Helles Solid', 'Grün'].every((x) => menue.includes(x)) && gemerkt === 'seifenhaut' && f5.sand < 0.01 && f5.tuerkis < 0.01 && f5.gruen < 0.01 && !g5.sichtbar && !(await O('gruen')).sichtbar,
   `Material ${m5}; Menü ${menue.join(' ')}; gemerkt ${gemerkt}; Gast sichtbar ${g5.sichtbar}`,
 );
 // 6 eingerastet: nur die Linienansicht; zurück im Raum der Körper (Solid und Jelly)

@@ -36,6 +36,7 @@ import { type FeldTreffer, werkFelder } from './werkFelder';
 import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
 import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
+import { WACHS_FARBTON_GRUND } from './wachs';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
@@ -110,6 +111,14 @@ const linienWerte = werteLesen<LinienWerte>('ozzy-linien-1', LINIEN_GRUNDWERTE);
 const freihandWerte = werteLesen<FreihandWerte>('ozzy-freihand-1', FREIHAND_GRUNDWERTE);
 const werte = werteLesen<BlasenWerte>('ozzy-blase-1', BLASE_GRUND);
 const bw = werteLesen<BuehnenWerte>('ozzy-buehne-1', BUEHNE_GRUND);
+/** das Material Wachs (`wachs.ts`): der Farbton in Grad gegen ZBrushs Rot; `?wachs=<Grad>` legt ihn für Proben und Vergleiche fest */
+interface WachsWerte {
+  farbton: number;
+}
+const WACHS_GRUND: WachsWerte = { farbton: WACHS_FARBTON_GRUND };
+const WACHS_REGLER: ReglerZeile<keyof WachsWerte>[] = [{ gruppe: 'Farbe', k: 'farbton', name: 'Farbton (0 = Rot wie ZBrush)', min: -90, max: 30, schritt: 1 }];
+const wachsWerte = werteLesen<WachsWerte>('ozzy-wachs-1', WACHS_GRUND);
+if (params.get('wachs') !== null && Number.isFinite(Number(params.get('wachs')))) wachsWerte.farbton = Number(params.get('wachs'));
 
 // ---------- Teile ----------
 
@@ -128,8 +137,9 @@ const infoAnzeige = $<HTMLSpanElement>('info');
 
 const renderer = new WebGLRenderer({ canvas: leinwandHaut, antialias: false, alpha: false, powerPreference: 'high-performance' });
 const haut = new Haut(renderer);
-/** die Haut des Werks mit einem festen Material statt der Seifenhaut (Solid, Zebra) */
+/** die Haut des Werks mit einem festen Material statt der Seifenhaut (Solid, Zebra, Wachs) */
 const feste = new FesteHaut(renderer);
+feste.wachsFarbton(wachsWerte.farbton);
 const gast = new GastHaut(leinwandGast);
 const anzeige = new FluessigeAnzeige(leinwandLinien);
 const blatt = new Blatt(linienWerte, freihandWerte);
@@ -144,8 +154,8 @@ let T = 0;
 let festeZeit: number | null = null;
 let fassung: Fassung = Number(params.get('fassung') ?? 0) as Fassung;
 /**
- * alle Materialien neben der Seifenhaut, in der Reihenfolge des Menüs: Solid, Zebra (`material.ts`), Jelly, helles Solid (`gast.ts`),
- * Grün (`gruen.ts`)
+ * alle Materialien neben der Seifenhaut, in der Reihenfolge des Menüs: Solid, Zebra, Wachs (`material.ts`), Jelly, helles Solid
+ * (`gast.ts`), Grün (`gruen.ts`)
  */
 const MATERIAL_GRUEN = 'Grün';
 const MATERIALIEN = [...FESTE_MATERIALIEN, ...GAST_MATERIALIEN, MATERIAL_GRUEN] as const;
@@ -153,7 +163,7 @@ type Material = FestesMaterial | GastMaterial | typeof MATERIAL_GRUEN;
 const istGast = (m: Material): m is GastMaterial => (GAST_MATERIALIEN as readonly string[]).includes(m);
 /**
  * Das Material der Haut (Florian, 18.11.): null = die Seifenhaut in ihrer Fassung, sonst eines der festen Materialien. Im Menü gemerkt;
- * `?material=solid|zebra|jelly|helles solid|grün|seifenhaut` für Proben.
+ * `?material=solid|zebra|wachs|jelly|helles solid|grün|seifenhaut` für Proben.
  */
 let material: Material | null = ((): Material | null => {
   let wahl = params.get('material');
@@ -7422,6 +7432,7 @@ const bereiche: Bereich[] = [
     grundwerte: BLASE_GRUND as unknown as Record<string, number>,
   },
   { titel: 'Raum und Ansichten', speicher: 'ozzy-buehne-1', zeilen: BUEHNE_REGLER, werte: bw as unknown as Record<string, number>, grundwerte: BUEHNE_GRUND as unknown as Record<string, number> },
+  { titel: 'Material Wachs', speicher: 'ozzy-wachs-1', zeilen: WACHS_REGLER, werte: wachsWerte as unknown as Record<string, number>, grundwerte: WACHS_GRUND as unknown as Record<string, number> },
 ];
 const fein = feinreglerBauen($('regler-liste'), bereiche, (bereich, k) => {
   if (bereich === 'Linien und Punkte') blatt.verhalten.abtasten();
@@ -7438,6 +7449,7 @@ const fein = feinreglerBauen($('regler-liste'), bereiche, (bereich, k) => {
     raumRechnen();
     if (k === 'groesse' || k === 'alle') massstab.nachfuehren = true;
   }
+  if (bereich === 'Material Wachs') feste.wachsFarbton(wachsWerte.farbton);
   anstossen();
 });
 $('knopf-grundwerte').addEventListener('click', () => fein.grundwerte());

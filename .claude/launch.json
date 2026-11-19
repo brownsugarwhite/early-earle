@@ -47,6 +47,13 @@
       "url": "http://localhost:5211"
     },
     {
+      "name": "ozzy-paint",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/reverent-feynman-1efdd3", "--filter", "@ee/editor", "exec", "vite", "--port", "5215", "--strictPort", "--host"],
+      "port": 5215,
+      "url": "http://localhost:5215"
+    },
+    {
       "name": "game-dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ee/game", "exec", "vite", "--port", "5173", "--strictPort"],
