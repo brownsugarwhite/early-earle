@@ -253,8 +253,12 @@ export function dreieckNormale(P: ArrayLike<number>, tri: ArrayLike<number>, t: 
   return n;
 }
 
-/** der nächste Ort auf einem Netz zu einem Punkt: (x, y, z) → Dreieck und Gewichte; `d2`: Abstand im Quadrat */
-export type Naechster = (x: number, y: number, z: number) => { t: number; wa: number; wb: number; wc: number; d2: number };
+/**
+ * Der nächste Ort auf einem Netz zu einem Punkt: (x, y, z) → Dreieck und Gewichte; `d2`: Abstand im Quadrat. Mit einer Normalen
+ * (nx, ny, nz) zählen nur Dreiecke, die auf dieselbe Seite zeigen (an einem dünnen Teil nicht die Rückseite); findet sich so
+ * keines, gilt die Suche ohne sie.
+ */
+export type Naechster = (x: number, y: number, z: number, nx?: number, ny?: number, nz?: number) => { t: number; wa: number; wb: number; wc: number; d2: number };
 
 /**
  * Netzwechsel, erster Teil: Welcher Punkt der neuen Haut ist ein Punkt der alten? Die Punkte des Netzes sind das Material der Haut.

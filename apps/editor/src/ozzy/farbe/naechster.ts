@@ -107,10 +107,40 @@ export function naechsterAuf(netz: Netz): Naechster {
   const marke = new Uint32Array(T);
   let lauf = 0;
   const r = { wb: 0, wc: 0, d2: 0 };
-  return (x, y, z) => {
+  /** die Normalen der Dreiecke (Länge 1), erst gerechnet, wenn eine Suche nach der Seite fragt */
+  let normalen: Float32Array | null = null;
+  const normalenHolen = (): Float32Array => {
+    if (normalen) return normalen;
+    const N = new Float32Array(3 * T);
+    for (let t = 0; t < T; t++) {
+      const a = 3 * I[3 * t]!;
+      const b = 3 * I[3 * t + 1]!;
+      const c = 3 * I[3 * t + 2]!;
+      const ux = Q[b]! - Q[a]!;
+      const uy = Q[b + 1]! - Q[a + 1]!;
+      const uz = Q[b + 2]! - Q[a + 2]!;
+      const vx = Q[c]! - Q[a]!;
+      const vy = Q[c + 1]! - Q[a + 1]!;
+      const vz = Q[c + 2]! - Q[a + 2]!;
+      const x = uy * vz - uz * vy;
+      const y = uz * vx - ux * vz;
+      const z = ux * vy - uy * vx;
+      const l = Math.sqrt(x * x + y * y + z * z) || 1;
+      N[3 * t] = x / l;
+      N[3 * t + 1] = y / l;
+      N[3 * t + 2] = z / l;
+    }
+    normalen = N;
+    return N;
+  };
+  const suche: Naechster = (x, y, z, nx, ny, nz) => {
     lauf++;
     let best = { t: 0, wa: 1, wb: 0, wc: 0, d2: Infinity };
+    // mit einer Normalen: nur Dreiecke, die auf dieselbe Seite zeigen
+    const nl = nx !== undefined && ny !== undefined && nz !== undefined ? Math.sqrt(nx * nx + ny * ny + nz * nz) : 0;
+    const N = nl > 0.3 ? normalenHolen() : null;
     const pruefen = (t: number): void => {
+      if (N && N[3 * t]! * nx! + N[3 * t + 1]! * ny! + N[3 * t + 2]! * nz! < 0.2 * nl) return;
       aufDreieck(Q, I[3 * t]!, I[3 * t + 1]!, I[3 * t + 2]!, x, y, z, r);
       if (r.d2 < best.d2) best = { t, wa: 1 - r.wb - r.wc, wb: r.wb, wc: r.wc, d2: r.d2 };
     };
@@ -137,6 +167,9 @@ export function naechsterAuf(netz: Netz): Naechster {
     }
     // weit weg vom Netz (oder nur entartete Dreiecke in der Nähe): alle
     for (let t = 0; t < T; t++) if (marke[t] !== lauf) pruefen(t);
+    // (keines zeigt auf diese Seite: ohne die Normale)
+    if (N && best.d2 === Infinity) return suche(x, y, z);
     return best;
   };
+  return suche;
 }

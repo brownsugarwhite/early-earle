@@ -9,11 +9,11 @@
  */
 import type { HautNetz } from '../../anfang/haut';
 import { FarbAnzeige } from './anzeige';
-import { type Bemalung, type BemalungDatei, type Farbe, aktiveEbene, alleOrte, alsDatei, ausDatei, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, ortZahl, uebergeben } from './bemalung';
+import { type Bemalung, type BemalungDatei, type Farbe, type TrefferPunkt, aktiveEbene, alleOrte, alsDatei, ausDatei, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, ortZahl, uebergeben } from './bemalung';
 import { feinBei } from './fein';
 import { type Flaechen, type Saat, flaechenRechnen } from './flaechen';
 import { kettenAller, stueckeVon } from './ketten';
-import { type Karte, type Naechster, type Netz, type Ort, type V3, karteVon, ortGespiegelt, ortLage } from './ort';
+import { type Karte, type Naechster, type Netz, type Ort, type V3, dreieckNormale, karteVon, ortGespiegelt, ortLage } from './ort';
 import { ParallelTreffer, ortAusFein, strahlAufNetz } from './treffer';
 
 /** die Haut des Werks, wie das Farbwerk sie je Bild sieht */
@@ -302,6 +302,29 @@ export class FarbWerk {
     const GENAU = 0.02;
     const WEIT = 1.5;
     const treffer: Ort[] = [];
+    /** die Punkte der Zeichnung: welcher Treffer jeder ist, und seine Richtungen als Vektoren in der Haut (Einheiten des Werks) */
+    const punkte: TrefferPunkt[] = [];
+    const eX: V3 = a === 'front' ? [0, 0, 1] : [1, 0, 0];
+    const eY: V3 = a === 'top' ? [0, 0, 1] : [0, -1, 0];
+    const eA: V3 = [0, 0, 0];
+    eA[achse] = 1;
+    /** ein Griff im Blatt als Vektor in der Ebene der Haut am Ort: sein Bild im Blatt ist der Griff */
+    const inHaut = (o: Ort, hx: number, hy: number): V3 => {
+      const nn = dreieckNormale(h.haut.pos, h.haut.tri, o.t);
+      const g: V3 = [hx * eX[0] + hy * eY[0], hx * eX[1] + hy * eY[1], hx * eX[2] + hy * eY[2]];
+      const gn = g[0] * nn[0] + g[1] * nn[1] + g[2] * nn[2];
+      const an = eA[0] * nn[0] + eA[1] * nn[1] + eA[2] * nn[2];
+      // (fast von der Kante gesehen: der Griff ohne seinen Anteil aus der Haut heraus)
+      if (Math.abs(an) < 0.15) return [g[0] - gn * nn[0], g[1] - gn * nn[1], g[2] - gn * nn[2]];
+      const c = -gn / an;
+      return [g[0] + c * eA[0], g[1] + c * eA[1], g[2] + c * eA[2]];
+    };
+    const punktDazu = (nr: number, o: Ort): void => {
+      const p = anker[nr]!;
+      const g = p.aus && Math.hypot(p.aus[0], p.aus[1]) > 1e-9 ? inHaut(o, p.aus[0], p.aus[1]) : null;
+      // (das Werkzeug gibt je Punkt einen Griff nach vorn: Der nach hinten liegt ihm gegenüber, der Punkt ist rund)
+      punkte.push({ i: treffer.length - 1, ein: g && (zu || nr > 0) ? [-g[0], -g[1], -g[2]] : null, aus: g && (zu || nr < anker.length - 1) ? g : null, knick: !g });
+    };
     const n = anker.length;
     const bis = zu ? n : n - 1;
     for (let i = 0; i < bis; i++) {
@@ -329,17 +352,24 @@ export class FarbWerk {
         const b2 = 3 * u * t * t;
         const b3 = t * t * t;
         const tr = raster.treffer(anfang(b0 * c[0]![0] + b1 * c[1]![0] + b2 * c[2]![0] + b3 * c[3]![0], b0 * c[0]![1] + b1 * c[1]![1] + b2 * c[2]![1] + b3 * c[3]![1]));
-        if (tr) treffer.push(ortAusFein(h.haut, h.stufen, tr));
+        if (!tr) continue;
+        const o = ortAusFein(h.haut, h.stufen, tr);
+        treffer.push(o);
+        if (j === 0) punktDazu(i, o);
       }
     }
     if (!zu) {
       const e = anker[n - 1]!;
       const tr = raster.treffer(anfang(e.X, e.Y));
-      if (tr) treffer.push(ortAusFein(h.haut, h.stufen, tr));
+      if (tr) {
+        const o = ortAusFein(h.haut, h.stufen, tr);
+        treffer.push(o);
+        punktDazu(n - 1, o);
+      }
     }
     if (treffer.length < 3) return 0;
     const k = this.karteJetzt(h);
-    const linien = linienAusTreffern(k, treffer, zu, h.gespiegelt && k.spiegel !== null, () => this.bemalung.naechste++);
+    const linien = linienAusTreffern(k, treffer, zu, h.gespiegelt && k.spiegel !== null, () => this.bemalung.naechste++, punkte);
     // nur, was sich über die Haut verbinden lässt
     const gut = linien.filter((l) => stueckeVon(k, l) !== null);
     if (!gut.length) return 0;
