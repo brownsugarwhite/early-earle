@@ -109,3 +109,13 @@ schnelle drafts gewesen … Mach mal und wir schauen wie gut es rankommt.“
   Weiß des Barts an der Wange), 3/4 52 % (seine 3/4 zeigt den Kopf stärker von vorn). Bilder `docs/progress/ozzy-figur/2026-11-19-3d-*`.
 - **Offen für ihn:** wie das Gesicht von der Seite aussehen soll (Bart an der Wange als eigene Form oder Bemalung), Proportionen am
   Modell nach seinem Auge (in Blender), dann Skelett und Haltungen.
+
+### 7a. Bart als eigene Form (Florian, 19.11.: „Bart als eigene Form“)
+
+- **Versucht:** Bart = was von vorn UND von der Seite weiß ist (Schnitt beider Weißflächen durch den Kopf). Verlor zu viel Weiß (Front
+  62 %): Der runde Kopf des Rohmodells liegt nicht genau auf seinem Seitenumriss (die Stirn steht vor), dort fällt der Schnitt weg.
+  Weich nach der Richtung der Fläche gemischt: Brauen verwischen. Weich auslaufende Grenze: schwarze Risse über den Rand der Front.
+- **Gebaut (Standard `?gesicht=kante`):** Jede Fläche des Kopfes nimmt die Zeichnung, zu der sie schaut: die Front bis etwa 53° zur
+  Seite (dort liegt noch das Weiß ihres Gesichts), dahinter die Seitenzeichnung (links gespiegelt), scharfe Grenze. Eine feste Form
+  auf dem Kopf, die sich mitdreht. Front 77 %, Seite 61 % (vorher 50 %), Rücken 83 %. Rest: bei 50–60° sieht man die Grenze als
+  senkrechte Kante, wo die Braue der Front auf die der Seite trifft. Bilder `docs/progress/ozzy-figur/2026-11-19-3d-bart-*`.

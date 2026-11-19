@@ -96,14 +96,18 @@ const FENSTER = /* glsl */ `
     gl_FragColor = vec4(vec3(w * f), 1.0);
   }
 `;
-/** Kopf: Florians Weiß, fest aufgemalt: auf Flächen, die nach vorn schauen, aus der Frontzeichnung, auf Flächen, die zur Seite
- * schauen, aus der Seitenzeichnung (links gespiegelt); nie bis an den Umriss (ein schwarzer Rand bleibt) */
+/**
+ * Kopf: Florians Weiß als feste Form im Raum. „schnitt“ (Standard, Florian: „Bart als eigene Form“): Weiß ist, was von vorn UND von
+ * der Seite in seinen Zeichnungen weiß ist (Schnitt der beiden Weißflächen, durch den Kopf geschoben) – eine feste Form, die aus jedem
+ * Winkel dieselbe bleibt, nichts wird überblendet. „front“: nur die Frontzeichnung, auf Flächen, die nach vorn schauen. „mischen“:
+ * Front und Seite nach der Richtung der Fläche gemischt (Versuch). Nie bis an den Umriss: ein schwarzer Rand bleibt.
+ */
 const GESICHT = /* glsl */ `
   uniform sampler2D maske;
   uniform vec4 maskeRahmen;
   uniform sampler2D maskeSeite;
   uniform vec4 maskeSeiteRahmen;
-  uniform float seitenWeiss;
+  uniform float gesichtArt;
   varying vec3 vRest;
   varying vec3 vNormaleRest;
   varying vec3 vNormaleSicht;
@@ -113,21 +117,34 @@ const GESICHT = /* glsl */ `
   }
   void main() {
     vec3 n = normalize(vNormaleRest);
-    // seitenWeiss 1: auf Flächen, die zur Seite schauen, die Seitenzeichnung (gemischt nach der Richtung); 0: nur die Front
-    float wf = smoothstep(0.05, 0.6, n.z);
-    float ws = smoothstep(0.05, 0.6, abs(n.x)) * seitenWeiss;
-    wf *= wf;
-    ws *= ws;
-    float m = lesen(maske, maskeRahmen, vec2(vRest.x, -vRest.y) * 1000.0);
-    if (ws > 1e-4) m = (wf * m + ws * lesen(maskeSeite, maskeSeiteRahmen, vec2(vRest.z, -vRest.y) * 1000.0)) / max(wf + ws, 1e-4);
+    float mf = lesen(maske, maskeRahmen, vec2(vRest.x, -vRest.y) * 1000.0);
+    float ms = lesen(maskeSeite, maskeSeiteRahmen, vec2(vRest.z, -vRest.y) * 1000.0);
+    float m = mf;
+    float vorn = 1.0;
+    if (gesichtArt > 2.5) {
+      // jede Fläche nimmt die Zeichnung, zu der sie schaut: die Front bis etwa 53° zur Seite (dort liegt noch das Weiß ihres Gesichts,
+      // nicht ihr schwarzer Rand), dann die Seite; scharfe Grenze (weich auslaufend lief sie über den Rand: schwarze Risse)
+      float d = n.z - 0.75 * abs(n.x);
+      float ad = max(fwidth(d), 1e-4);
+      float k = smoothstep(-ad, ad, d);
+      m = mix(ms, mf, k);
+    } else if (gesichtArt > 1.5) {
+      m = max(mf, ms);
+    } else if (gesichtArt > 0.5) {
+      float wf = smoothstep(0.05, 0.6, n.z);
+      float ws = smoothstep(0.05, 0.6, abs(n.x));
+      wf *= wf;
+      ws *= ws;
+      m = (wf * mf + ws * ms) / max(wf + ws, 1e-4);
+    } else {
+      float an = max(fwidth(n.z), 1e-4);
+      vorn = smoothstep(0.22 - an, 0.22 + an, n.z);
+    }
     float aa = max(fwidth(m), 1e-4) * 0.75;
-    // scharfe Kanten (nur an der Kante geglättet): Weiß, wo die Fläche zur Kamera schaut (ein schwarzer Rand bleibt am Umriss) und
-    // nach vorn (die Front malt nicht auf Flächen, die zur Seite schauen)
+    // scharfe Kanten (nur an der Kante geglättet): Weiß nur, wo die Fläche zur Kamera schaut (ein schwarzer Rand bleibt am Umriss)
     float zu = abs(normalize(vNormaleSicht).z);
     float az = max(fwidth(zu), 1e-4);
     float rand = smoothstep(0.45 - az, 0.45 + az, zu);
-    float an = max(fwidth(n.z), 1e-4);
-    float vorn = seitenWeiss > 0.5 ? 1.0 : smoothstep(0.22 - an, 0.22 + an, n.z);
     float weiss = smoothstep(aa, -aa, m) * rand * vorn;
     gl_FragColor = vec4(vec3(weiss), 1.0);
   }
@@ -149,7 +166,7 @@ const maskeSeite = maskenTextur('profil');
 const gesichtMaterial = new THREE.ShaderMaterial({
   vertexShader: ECKEN,
   fragmentShader: GESICHT,
-  uniforms: { maske: { value: maskeFront.t }, maskeRahmen: { value: maskeFront.r }, maskeSeite: { value: maskeSeite.t }, maskeSeiteRahmen: { value: maskeSeite.r }, seitenWeiss: { value: adresse.get('seitenWeiss') === '1' ? 1 : 0 } },
+  uniforms: { maske: { value: maskeFront.t }, maskeRahmen: { value: maskeFront.r }, maskeSeite: { value: maskeSeite.t }, maskeSeiteRahmen: { value: maskeSeite.r }, gesichtArt: { value: { front: 0, mischen: 1, schnitt: 2, kante: 3 }[adresse.get('gesicht') ?? 'kante'] ?? 3 } },
   side: THREE.DoubleSide,
 });
 

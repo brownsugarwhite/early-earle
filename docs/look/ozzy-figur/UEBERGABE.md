@@ -372,6 +372,9 @@ weiß kann auch gerne aus einem shader kommen. Im gesicht vllt nicht aber am kö
   Umriss.
 - **Stand:** Front 79 %, Rücken 85 % Deckung; von der Seite fehlt der weiße Bart an der Wange (Seite 50 %). Dreht ohne Risse. Bilder
   `docs/progress/ozzy-figur/2026-11-19-3d-vergleich.png`, `-umlauf.png`, Video `-umlauf.mp4`.
+- **Bart als eigene Form** (sein Wunsch): Jede Fläche des Kopfes nimmt die Zeichnung, zu der sie schaut (Front bis etwa 53°, dahinter
+  die Seite, scharfe Grenze; `?gesicht=kante`, Versuche `schnitt`, `mischen`, `front`). Front 77 %, Seite 61 %, Rücken 83 %. Rest: bei
+  50–60° eine senkrechte Kante an der Braue. Bilder `2026-11-19-3d-bart-*`, Plan Abschnitt 7a.
 - **Metaball-Fallen:** Blender begrenzt `size_x/y/z` auf 20 (größte Achse über den Radius, die anderen als Anteil). Sichtbarer Radius
   einer Kugel = 0,5748 × Radius bei Schwelle 0,6 und Steifheit 2. Bei Kapseln ist `size_x` die halbe Länge (absolut). Metaballs mit
   demselben Grundnamen verschmelzen über Objekte hinweg (Koerper und Kopf getrennt halten).
