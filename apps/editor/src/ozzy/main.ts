@@ -4178,7 +4178,7 @@ function bild(dt: number): boolean {
           farbeDa && material === 'Wachs'
             ? (r, k) => {
                 const t0 = performance.now();
-                farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt });
+                farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt, verdeckt: zeigN });
                 farbKostenBild += performance.now() - t0;
               }
             : null,

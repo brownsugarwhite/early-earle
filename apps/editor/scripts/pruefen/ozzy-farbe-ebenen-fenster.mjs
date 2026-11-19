@@ -6,7 +6,7 @@
 //   62  Ordnen: Liegt die Ebene mit dem Fleck unten, deckt die andere ihn zu; ⌘Z legt sie zurück.
 //   63  Aus- und einblenden: ausgeblendet steht das Bild ohne die Ebene, eingeblendet wieder das mit ihr, Bildpunkt für Bildpunkt.
 //   64  Muster über Verläufen: Eine weiche Kante der oberen Ebene läuft in die Farbe der unteren aus; an der Farblinie zur
-//       Hälfte, so breit wie eingestellt (höchstens 1 Gerätepunkt oder 5 % daneben).
+//       Hälfte, so breit wie eingestellt (höchstens 1 Gerätepunkt oder 5 % daneben), gemischt wie innerhalb einer Ebene.
 //   65  Gemalt wird auf der aktiven Ebene: P und Füllen kommen dort an, bedient werden nur ihre Farblinien.
 //   66  ⌘Z nimmt Anlegen und Löschen zurück; Sichern und Laden halten Ebenen, Reihenfolge und was ausgeblendet ist.
 //   67  Der Stapel am Rand mit echten Klicks: Plus legt an, Tippen wählt, der Punkt blendet aus und ein, Ziehen ordnet, auf dem
@@ -50,7 +50,7 @@ const helfer = (t) => {
   };
   /**
    * Ein Bild rechnen und an den Stellen (CSS-Pixel) den Anteil von Rot lesen (0 … 1; null: dort steht keine der zwei Farben).
-   * Zwischen zwei Ebenen wird im Licht gemischt (die obere liegt mit ihrer Deckung über der unteren): Der Anteil ist die Deckung.
+   * Gemischt wird in Bildschirmwerten, dann erst hell und dunkel (auch zwischen zwei Ebenen: Sie werden erst gesammelt).
    */
   const rot = (punkte) =>
     s.evaluate((punkte) => {
@@ -69,7 +69,15 @@ const helfer = (t) => {
         const [R, G, B] = [lin(d[0] / 255), lin(d[1] / 255), lin(d[2] / 255)];
         const [r, b] = [Math.max(0, R - G), Math.max(0, B - G)];
         if (r + b < 0.004) return null;
-        return r / (r + b);
+        // (r : b = lin(t) : lin(1 − t))
+        const q = r / (r + b);
+        let [lo, hi] = [0, 1];
+        for (let i = 0; i < 30; i++) {
+          const m = (lo + hi) / 2;
+          if (lin(m) / (lin(m) + lin(1 - m)) < q) lo = m;
+          else hi = m;
+        }
+        return (lo + hi) / 2;
       });
     }, punkte);
   /** der Ausschnitt um die Kugel, wie er auf dem Schirm steht (samt hellem Solid, das auf eigener Fläche liegt) */
@@ -281,7 +289,7 @@ const helfer = (t) => {
     const hellDaneben = await farbeIm('zwei-hell', [M[0] + r + 30, M[1], 8]);
     ok(
       '61 Oben deckt unten: Im Fleck steht die Farbe der oberen Ebene rein, als läge nichts darunter (Wachs und helles Solid)',
-      mitte !== null && mitte > 0.995 && daneben !== null && daneben < 0.005 && u[0].groesst === 0 && u[1].groesst <= 2 && u[0].geprueft > 3000 && beideDa.ebenen === 2 && beideDa.gesammelt && allein.ebenen === 1 && !allein.gesammelt && hellMitte[0] > 150 && hellMitte[2] < 40 && hellDaneben[2] > 150 && hellDaneben[0] < 40,
+      mitte !== null && mitte > 0.995 && daneben !== null && daneben < 0.005 && u[0].groesst <= 2 && u[1].groesst <= 2 && u[0].geprueft > 3000 && beideDa.ebenen === 2 && beideDa.gesammelt && allein.ebenen === 1 && !allein.gesammelt && hellMitte[0] > 150 && hellMitte[2] < 40 && hellDaneben[2] > 150 && hellDaneben[0] < 40,
       `auf Wachs: im Fleck ${z2(100 * mitte)} % Rot, daneben ${z2(100 * daneben)} %; im Fleck mit und ohne die untere Ebene: Wachs ${u[0].groesst} von 255, helles Solid ${u[1].groesst} von 255 (${u[0].geprueft} Bildpunkte); helles Solid: im Fleck steht ${hellMitte.join(', ')}, daneben ${hellDaneben.join(', ')}; gesammelt wird nur mit zwei Ebenen (${beideDa.gesammelt}, allein ${allein.gesammelt})`,
     );
   }
@@ -304,7 +312,7 @@ const helfer = (t) => {
     const wie = [await unterschied('zwei-wachs', 'zurueck-wachs'), await unterschied('zwei-hell', 'zurueck-hell')];
     ok(
       '62 Ordnen: Liegt die Ebene mit dem Fleck unten, deckt die andere ihn zu; ⌘Z legt sie zurück',
-      gelegt === true && vorher.join() === `${oben},${unten}` && nachher.join() === `${unten},${oben}` && zu[0].groesst === 0 && zu[1].groesst <= 2 && mitte !== null && mitte < 0.005 && aktiv === oben && zurueck.join() === vorher.join() && wie.every((u) => u.groesst === 0),
+      gelegt === true && vorher.join() === `${oben},${unten}` && nachher.join() === `${unten},${oben}` && zu[0].groesst <= 2 && zu[1].groesst <= 2 && mitte !== null && mitte < 0.005 && aktiv === oben && zurueck.join() === vorher.join() && wie.every((u) => u.groesst === 0),
       `von oben nach unten: ${vorher.join(', ')} → ${nachher.join(', ')}; das Bild gegen „nur die blaue Ebene“: Wachs ${zu[0].groesst} von 255, helles Solid ${zu[1].groesst} von 255; im Fleck ${z2(100 * (mitte ?? NaN))} % Rot; ⌘Z: ${zurueck.join(', ')}, das Bild gegen vorher ${wie.map((u) => u.groesst).join(' und ')}`,
     );
   }
@@ -588,7 +596,7 @@ const helfer = (t) => {
   const groesst = Math.max(...kosten);
   ok(
     '68 Tempo an „strange bird“ mit drei Ebenen: Ein Handgriff rechnet nur seine Ebene neu (höchstens 30 ms); beim Drehen kostet die Bemalung je Bild im Median höchstens 1 ms, auf Wachs kein Bild über 16,7 ms',
-    E.length === 3 && E.every((e) => e.linien >= 1 && e.fuellungen >= 1) && groesst <= 30 && neuGerechnet.every((n) => n === 1) && aufWachs.ebenen === 3 && !aufWachs.gesammelt && aufHell.gesammelt && wachs.zahl > 20 && wachs.kb.median <= 1 && Math.max(...wachs.bildMs) <= 16.7 && hell.zahl > 20 && hell.kb.median <= 1,
+    E.length === 3 && E.every((e) => e.linien >= 1 && e.fuellungen >= 1) && groesst <= 30 && neuGerechnet.every((n) => n === 1) && aufWachs.ebenen === 3 && aufWachs.gesammelt && aufHell.gesammelt && wachs.zahl > 20 && wachs.kb.median <= 1 && Math.max(...wachs.bildMs) <= 16.7 && hell.zahl > 20 && hell.kb.median <= 1,
     `${E.map((e) => `${e.name}: ${e.linien} Farblinien, ${e.fuellungen} Füllungen`).join(' · ')}; beim Ziehen am Tropfen (zwölf Schritte): Neurechnen ${z2(Math.min(...kosten))} bis ${z2(groesst)} ms, je Schritt ${[...new Set(neuGerechnet)].join(' oder ')} Ebene neu; beim Drehen auf Wachs (${wachs.zahl} Bilder): ein Bild im Median ${z2(quantil(wachs.bildMs, 0.5))} ms, das teuerste ${z2(Math.max(...wachs.bildMs))} ms, davon die Bemalung im Median ${z2(wachs.kb.median)} ms, 95 % ${z2(wachs.kb.p95)} ms; auf hellem Solid (${hell.zahl} Bilder, gesammelt ${aufHell.gesammelt}): ein Bild im Median ${z2(quantil(hell.bildMs, 0.5))} ms, das teuerste ${z2(Math.max(...hell.bildMs))} ms, davon die Bemalung im Median ${z2(hell.kb.median)} ms, 95 % ${z2(hell.kb.p95)} ms`,
   );
   if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-ebenen-68-hell.png`, await s.screenshot());
