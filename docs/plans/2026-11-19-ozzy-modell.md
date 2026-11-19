@@ -46,6 +46,8 @@ flacherer Bart (3/4 und Seite schlechter), Schädel unten abgeschnitten (Front s
 Offen, Florians Auge: Der Bart ist so tief, wie seine Seite es zeigt (rund 200); in 3/4 wirkt er dadurch länger als in seiner
 3/4-Zeichnung, die ein flacheres Gesicht zeigt. Seine Zeichnungen widersprechen sich hier; welche gilt, entscheidet er.
 
+**Urteil Florian zu Stand 2:** „ups, das ist ni. Sieht ja wieder komplett anders ud ganz verzogen aus. Ich dachte das kannst du aber scheinbar siehst du niht wie es aussehen soll und machst das einfach nach deckungswerten...das ist ja überhaupt nicht aussagekräftig. Du kannst es nicht machen wenn du nicht verstehst wie es aussehen soll.“ Lehre: Deckungswerte sagen nichts darüber, ob es Ozzy ist (sie stiegen, während der Bart zum Kasten und der Kopf zum Ball wurde). Die Deutung seiner Entwürfe in eine Form braucht sein Auge. Dieser Weg ruht.
+
 ## Nächster Schritt (vorher): Bart als eigene Form (Florians Wahl vom 19.11.)
 
 Sein 3/4 zeigt, wie er es meint: Das Weiß behält fast seine Frontform, und auf der nahen Seite erscheint breites Schwarz, der Kopf

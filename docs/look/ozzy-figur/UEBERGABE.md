@@ -395,6 +395,7 @@ dass es es 100% trifft. aber es war ja komplett daneben und unschön“. Plan: [
 - **Stand 2:** Deckung nur Kopf, ausgerichtet: Front 92 %, 3/4 58 %, Seite 65 %, Rücken 90 %. Bilder
   `docs/progress/ozzy-modell/kopf-2-bart-vergleich.png`, Drehung `kopf-2-bart-drehung.mp4`. Körper, Beine, Schwanz noch nicht.
 - **Offen (sein Auge):** Seine Seite zeigt den Bart rund 200 tief, sein 3/4 ein flacheres Gesicht; das Modell folgt der Seite.
+- **Urteil Florian (19.11.) zu Stand 2:** „ups, das ist ni. Sieht ja wieder komplett anders ud ganz verzogen aus. Ich dachte das kannst du aber scheinbar siehst du niht wie es aussehen soll und machst das einfach nach deckungswerten...das ist ja überhaupt nicht aussagekräftig. Du kannst es nicht machen wenn du nicht verstehst wie es aussehen soll.“ Nicht weiterbauen. Vorschlag an ihn: Er formt Ozzy in Blender, ich bereite die Datei mit seinen Zeichnungen als Hintergrund und dem fertigen Look live im Fenster vor und übernehme danach Export, Look im Spiel, Skelett, Animation, Physik; oder 2D mit weiteren gezeichneten Zwischenansichten. Seine Wahl steht aus.
 
 ## Fallen
 
