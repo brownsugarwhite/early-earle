@@ -14,11 +14,16 @@ export const SCHWANZ_RAND = 6;
 export interface Regeln {
   /** Rand auf der abgewandten Kopfseite zwischen den Schlüsseln (Figur-Einheiten, 0 = aus) */
   verdecken: number;
+  /** Durchbruch: dünnes Schwarz zwischen Bart und Umriss nimmt das Weiß, bis zu dieser Dicke läuft es spitz aus (Figur-Einheiten, 0 = aus) */
+  durchbruch: number;
   /** Bohnenenden an den äußeren Beinkanten */
   bohnenenden: boolean;
 }
-/** Verdecken 8 (19.11.): zwischen den Schlüsselwinkeln behält die abgewandte Wange ihren schwarzen Rand (an den Schlüsseln ohne Wirkung) */
-export const REGELN: Regeln = { verdecken: 8, bohnenenden: true };
+/**
+ * Durchbruch 8 statt Verdecken (Florian, 19.11. abends: „das weiß muss über die schwarze outline laufen“, „nie eine durchgängige dünne
+ * outline“): Zwischen den Schlüsselwinkeln bricht das Weiß durch dünne Ränder, sonst laufen sie spitz aus (an den Schlüsseln ohne Wirkung)
+ */
+export const REGELN: Regeln = { verdecken: 0, durchbruch: 8, bohnenenden: true };
 
 export function gruppeVon(name: TeilName): Gruppe {
   if (name === 'bohne') return 'bohne';
@@ -111,7 +116,7 @@ export function rasterVon(d: FigurDaten): FigurRaster {
 }
 
 export function drehSzene(d: FigurDaten, art: Drehung, t: number, fl: Fluessig, regeln: Regeln = REGELN): Szene {
-  return rasterVon(d).szene(drehLage(art, t, ankerVon(d)), fl, { verdecken: regeln.verdecken }, regeln.bohnenenden);
+  return rasterVon(d).szene(drehLage(art, t, ankerVon(d)), fl, { verdecken: regeln.verdecken, durchbruch: regeln.durchbruch }, regeln.bohnenenden);
 }
 
 /** Kasten einer Szene in Figur-Einheiten (für das Einpassen ins Bild) */

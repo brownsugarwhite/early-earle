@@ -73,6 +73,12 @@ export interface Szene {
    * liegt: Das Schwarz schiebt sich im Wechsel von innen über das Weiß, statt umzuklappen.
    */
   deckung?: number[][] | null;
+  /**
+   * Durchbruch (Florian, 19.11.: „es sollen immer schöne Verjüngungen ins Weiß entstehen, die smooth ein- und auswachsen. Nie eine
+   * durchgängige dünne Outline“): Schwarz zwischen dem Bart und dem Umriss, das dort dünner als `duenn` ist, nimmt das Weiß ganz; bis
+   * `voll` läuft es spitz aus (das Weiß nimmt nur seinen inneren Teil), dickeres bleibt (Figur-Einheiten; fehlt er: aus)
+   */
+  durchbruch?: { duenn: number; voll: number } | null;
 }
 /** Figur-Einheiten → Bildpunkte des Zeichenpuffers: px = (x − x0)·massstab */
 export interface Ansicht {
@@ -169,7 +175,7 @@ export class FigurRenderer {
         uniform int hinter[${MAX_TEILE}]; uniform float hinterTiefe[${MAX_TEILE}]; uniform int weissGruppe[${MAX_TEILE}]; uniform float kWeiss; uniform int fensterKanal[2]; uniform int weichKanal[${MAX_TEILE}]; uniform float kWeissSchwarz;
         uniform float kBohneBein, kBohneSchwanz, kBohneKopf, kKopfOhr, kOhrOhr, kKopfNase, kKlemme;
         uniform int verdeckerZahl; uniform vec4 verdeckerA[4]; uniform vec2 verdeckerB[4];
-        uniform int spaltNah, spaltFern; uniform float spaltBreite, spaltAuslauf; uniform int diagnose;
+        uniform int spaltNah, spaltFern; uniform float spaltBreite, spaltAuslauf; uniform int diagnose; uniform float durchA, durchB;
         uniform int weichOrdnung; uniform int weissNr[${MAX_TEILE}]; uniform vec4 anteil[${(MAX_WEISS * MAX_TEILE) / 4}];
         out vec4 farbe;
         float smin(float a, float b, float k){ if (k < 1e-4) return min(a, b); float h = max(k - abs(a - b), 0.0) / k; return min(a, b) - h * h * k * 0.25; }
@@ -209,7 +215,7 @@ export class FigurRenderer {
           vec2 pf = gl_FragCoord.xy; float rv = 0.0;
           for (int k = 0; k < 4; k++) { if (k >= verdeckerZahl) break;
             vec2 q = (pf - verdeckerA[k].xy) / verdeckerB[k].x; rv += verdeckerB[k].y * smoothstep(0.15, 0.85, clamp(dot(q, verdeckerA[k].zw), 0.0, 1.0)); }
-          float weiss = 0.0; float wBart = 1e5; float ueberBart = 1e5;
+          float weiss = 0.0; float wBart = 1e5; float ueberBart = 1e5; float wRoh = 1e5;
           for (int c = 0; c < ${MAX_TEILE}; c++) { if (c >= anzahl) break; if (gruppe[c] >= 0) continue;
             float w = d[c]; int t = traeger[c];
             if (t >= 0) w = smax(w, d[t] + rand[c], kKlemme);
@@ -226,7 +232,14 @@ export class FigurRenderer {
             int hi = hinter[c]; if (hi >= 0) cw *= 1.0 - deck(d[hi] + hinterTiefe[c]);
             weiss = max(weiss, cw);
             // Bart, wie er nach der Malreihenfolge sichtbar ist (das später gezeichnete Schwarz als Abstand abgezogen)
-            if (weissGruppe[c] == 1) { wBart = min(wBart, max(w, -uc)); ueberBart = min(ueberBart, uc); } }
+            if (weissGruppe[c] == 1) { wBart = min(wBart, max(w, -uc)); ueberBart = min(ueberBart, uc); wRoh = min(wRoh, w); } }
+          // Durchbruch: Schwarz zwischen Bart und Umriss, das hier dünner als durchA ist, nimmt das Weiß ganz; bis durchB nimmt es nur
+          // den inneren Teil (der Rand läuft spitz aus), dickeres bleibt. Dicke = Abstand zum Weiß + Abstand zum Umriss; Schwarz, das
+          // nach dem Bart gezeichnet wird (Nase), bleibt
+          if (durchB > 0.0 && schwarz < 0.0 && wRoh > 0.0 && ueberBart > 0.5) {
+            float tr = wRoh + u;
+            float e = tr <= durchA ? tr + 1.0 : durchA * clamp((durchB - tr) / max(durchB - durchA, 1e-3), 0.0, 1.0);
+            weiss = max(weiss, clamp(0.5 - (wRoh - e), 0.0, 1.0)); }
           // Bart und Vorderbeinfenster verschmelzen wie Tropfen, sobald sie sich nahekommen (Florian, 18.11.). Das Fenster schiebt
           // sich dafür bis 0,3 k unter Kopf, Ohren und Nase (schmale Haarspitzen und der Rand der Maske trennen dann nicht mehr);
           // sonst gilt die Malreihenfolge. Einfache weiche Vereinigung ohne Kantenrichtung: deren Ableitungen rauschen an Knicken.
@@ -353,7 +366,7 @@ export class FigurRenderer {
     // Die Vierecke um die Strecken sind je Teil so groß wie nötig (sie bestimmen die Zeit des ersten Durchgangs; Bohne und Beine
     // haben den längsten Umriss), kodiert wird für alle mit dem größten R.
     const { weissWeiss, ...schwarzFl } = fl;
-    const groesst = Math.max(...Object.values(schwarzFl), ...szene.verdecker.map((v) => v.staerke), ...teile.map((t) => t.rand ?? 0), szene.ohrspalt?.auslauf ?? 0);
+    const groesst = Math.max(...Object.values(schwarzFl), ...szene.verdecker.map((v) => v.staerke), ...teile.map((t) => t.rand ?? 0), szene.ohrspalt?.auslauf ?? 0, szene.durchbruch?.voll ?? 0);
     const grenze = this.halbFloat ? 96 : 24;
     const rBasis = Math.min(grenze, Math.max(16, groesst * s * 1.25 + 4));
     // mindestens k: Sättigt ein Feld innerhalb von k, verschiebt die weiche Vereinigung jede Kante des Barts
@@ -571,6 +584,11 @@ export class FigurRenderer {
     gl.uniform1f(this.ort(this.pBild, 'spaltBreite'), (sp?.breite ?? 0) * s);
     gl.uniform1f(this.ort(this.pBild, 'spaltAuslauf'), Math.max(1e-3, (sp?.auslauf ?? 1) * s));
     gl.uniform1i(this.ort(this.pBild, 'diagnose'), diagnose);
+    // Durchbruch in Bildpunkten, höchstens bis knapp unter das Band (darüber sind die Felder gesättigt)
+    const db = szene.durchbruch;
+    const durchB = db && db.voll > 0 ? Math.min(db.voll * s, R - 2) : 0;
+    gl.uniform1f(this.ort(this.pBild, 'durchB'), durchB);
+    gl.uniform1f(this.ort(this.pBild, 'durchA'), db && durchB > 0 ? Math.min(db.duenn * s, durchB) : 0);
     // weiche Malreihenfolge: Anteile je weißem Teil (höchstens MAX_WEISS) und schwarzem Teil
     const nr = new Int32Array(MAX_TEILE).fill(-1);
     const anteil = new Float32Array(MAX_WEISS * MAX_TEILE);

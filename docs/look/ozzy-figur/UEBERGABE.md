@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 abends: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in zweiter Fassung; 3D-Wege ruhen)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 spätabends: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° nach Florians Skizzen; 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -457,6 +457,45 @@ außen vor dem Kopf stehen; der Bart wurde zu einem Punkt rechts in der Mitte ge
 - **Offen:** sein Urteil. Unten rechts bei 145°–160° kleine Stufen, wo die Zacken der nahen Maske zum Rand des Rückens hochwandern (gab es
   vorher auch). Die Schnauze ist ab 96° eine glatte Rundung (die Stirnfranse vorn verschwindet dort). Stirnfranse bei 52°–82° wie oben.
 
+### Dritte Fassung nach Florians Skizzen (19.11. spätabends)
+
+Florian zur zweiten Fassung: „Die ohren sollen nicht drehen. sie sind sillhouetten. es reicht wenn sie etwas schmaler und wieder breiter
+werden. Das weiß muss über die schwarze outline laufen und smooth verschwinden wenn ozzy uns den hinterkopf zudreht. Die nase springt. Sie
+muss schmaler werden und die form dann ausskalieren bevor sie hinter den kopf dreht wie ein realistischer 3d "knubbel". die barthaare
+skaliere einfach nur klien und morphen nicht schön und realistisch beim hinterkopf zudrehen.“ Dazu Skizzen bei 6 %, etwa 36 % und 42 % der
+Drehung (21,6°, ≈130°, ≈151°; `vorlagen/ozzy_kopf_skizze_*`): „wie das weiß durch die outline an dr wange bricht und wieder zurückkommt. es
+sollen immer schöne verjüngungen ins weiß entstehen die smooth ein und auswachsen. nie eine durchgängige dünne outline.“ Und: „bei 36% könnte
+sogar noch ein wenig der nase zu sehen sein bevor sie zum hinterkopf verschwindet. see muss smooth ausfaden“. Skizze, vorher und nachher je
+Winkel: `docs/progress/ozzy-figur/2026-11-19-kopf360-3-skizzen.png`, Blatt `…-kopf360-3-blatt.png`, Video `…-kopf360-3.mp4`.
+
+- **Durchbruch statt Verdecken** (Renderer, `Szene.durchbruch`, Regel `durchbruch` 8, Regler in der Leiste; `verdecken` jetzt 0):
+  Schwarz zwischen dem Bart und dem Umriss, das dort dünner als 0,4 × 8 ist, nimmt das Weiß ganz; bis 8 nimmt es nur den inneren Teil (der
+  Rand läuft spitz aus), dickeres bleibt. Dicke je Bildpunkt = Abstand zum Weiß + Abstand zum Umriss; Schwarz über dem Bart (Nase) bleibt. Nur
+  zwischen den Schlüsseln (Gewicht |sin 4θ| zwischen Front und Profil, |sin 2θ| beim Wegdrehen): an seinen Zeichnungen ohne Wirkung. So bricht
+  bei 6 % das Weiß an der fernen Wange durch, oben und unten läuft der Rand spitz aus. Stärke 12 nahm unten an der Wange zu viel.
+- **Gesicht offen** (keine Klemme, kein Wickelrand mehr): Die Schnauze, wie er sie im Profil gezeichnet hat (Stirnfranse, offene Stirn,
+  Nase, nach oben auslaufender Kiefer), wird als Ganzes schmaler (`wegGedreht`, `wegBreite`: cos(1,25 φ), bei 130° 0,66, bei 151° 0,23, ab
+  162° 0), in voller Höhe, ihr rechter Rand bleibt der Rand des Kopfs. Als schmaler Streifen gleitet es über den Rand hinaus und liegt ganz
+  weggedreht außerhalb beider Seiten des Rückens.
+- **Nahe Maske übernimmt Stirnfranse und Kiefer** (Schlüssel `WICKEL` 96°–150°): Anker 8 wird die Spitze der Stirnfranse (erste Zeile, in
+  der das Weiß die ferne Maske erreicht), Anker 0 die Kinnspitze (tiefster Punkt der fernen Maske); die Stücke 7 → 8, 8 → 0, 0 → 1 folgen dem
+  Umriss aus naher Maske, ferner Maske und Weiß (`kurveDurch`, kleinste Quadrate), an der offenen Stirn 2 unter dem Weiß. Anker 8, 0 und 1
+  gehen mit dem Gesicht (so bleibt der Kiefer unter dem Bart), die übrigen von 90° zum Rücken. Die ferne Maske taucht danach unter wie bisher.
+- **Nase:** steht bis 94° (die erste Hälfte kommt im Profil zur Ruhe an), wird dann am rechten Rand schmaler und kleiner wie ein Knubbel
+  (`NASE_FORM`: Breite 0,85/0,6/0,4, Höhe 0,97/0,85/0,65 bei 100°/115°/130°), ist bei 140° ein Punkt und liegt danach hinter dem Weiß. Vorher
+  verlor sie gleich hinter 90° bis 4 Einheiten Breite je Grad und war bei 100° weg (der Sprung).
+- **Ohren als Silhouetten** (`RUECKEN_OHR`, `RUECKEN_ANKER`): Das Ohr links im Profil bleibt links und wird das linke des Rückens, das
+  mittlere wandert nach rechts; im Rücken tauschen die Ohren dafür ihre Rollen und laufen andersherum (Spitze zu Spitze, Ansatz zu Ansatz),
+  das Bild des Rückens bleibt dasselbe. Jedes behält seine Lehne. Versucht und verworfen: Umklappen über die Breite 0 (jedes Ohr stand kurz
+  als dünne Spitze über dem Kopf).
+- **Erste Hälfte:** Formen wie im Stand 06c26dc9 (bei 0°–90° und 270°–360° jeder Anker gleich); geändert ist dort nur das Bild durch den
+  Durchbruch.
+- **Geprüft:** an 0°, 45°, 90°, 180° jede Form 0,00 (im Rücken die Ohren mit getauschten Namen); 52 Tests grün; keine Sprünge über die ganze
+  Drehung (0,5°-Schritte, je vier Viertel). Proben: `scripts/ozzy-figur/teil-weg.ts` (Weg und Breite eines Teils je Grad),
+  `scripts/ozzy-figur/zeilen.ts` (je Zeile die rechten Kanten von Weiß und Masken).
+- **Offen:** sein Urteil. Stirnfranse bei 52°–82° wie oben. Unten rechts bei 145°–165° wandern die Zacken der nahen Maske weiter zum Rand des
+  Rückens (kleine Stufen).
+
 ## Fallen
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
@@ -546,3 +585,13 @@ außen vor dem Kopf stehen; der Bart wurde zu einem Punkt rechts in der Mitte ge
   Ruck (Sprungprobe mit allen vier Vierteln eines Schritts, ein Viertel allein übersieht ihn).
 - Teile ohne Schlüssel im Rücken (Bart, Ohrspalt) wechseln bei 180° die Seite: in der zweiten Hälfte gespiegelt aus der ersten nehmen.
   Über 180° gemischt wandern sie durch den Kopf (als Punkt unsichtbar, mit Fläche nicht).
+- Liegt Schwarz genau unter der Kante des Weiß, mischt die Kantenglättung beide zu einer feinen grauen Linie: das Schwarz ein paar Einheiten
+  unter das Weiß legen.
+- Ein Teil ohne Breite zeichnet der Renderer als Haarlinie, auch Weiß auf Schwarz. Was am Rand verschwindet, gleitet als schmaler Streifen
+  über den Rand hinaus. Der Rücken ist nicht symmetrisch (links 147, rechts 130): Was in der ersten Hälfte knapp außen liegt, liegt gespiegelt
+  nahe 180° innen. Ganz weggedrehtes darum außerhalb beider Seiten ablegen.
+- Ein neuer verborgener Schlüssel kurz hinter einem gezeichneten setzt die Bewegung dort mit einem Ruck in Gang (die Nase verlor gleich
+  hinter 90° bis 4 Einheiten Breite je Grad): einen Schlüssel zum Stehen danach setzen, dann läuft sie weich an.
+- Ohren, die im Rücken gespiegelt ankommen, drehen sich gemischt wie Zeiger; umgeklappt über die Breite 0 stehen sie kurz als dünne Spitze.
+  Silhouetten mit gleicher Lehne verbinden (`RUECKEN_OHR`). Proben, die den Rücken Anker für Anker nach Namen vergleichen, nehmen dort die
+  Ohren als Formen (getauscht, andersherum).

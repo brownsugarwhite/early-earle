@@ -75,7 +75,7 @@ const STEUER_KNOEPFE: { haltung: HaltungName; art: Art; titel: string }[] = [
 const steuerLage = (): Lage => ({ psi: 90, theta: steuerung.kopfWinkel, posen: steuerung.gewichte(), effekte: steuerung.effekte() });
 
 export function szeneBauen(name: SzenenName, t: number, fl: Fluessig, regeln: Regeln = REGELN): Szene {
-  if (name === 'steuern') return rasterVon(daten).szene(steuerLage(), fl, { verdecken: regeln.verdecken }, regeln.bohnenenden);
+  if (name === 'steuern') return rasterVon(daten).szene(steuerLage(), fl, { verdecken: regeln.verdecken, durchbruch: regeln.durchbruch }, regeln.bohnenenden);
   if (istDrehung(name)) return drehSzene(daten, name, t, fl, regeln);
   return vorlageSzene(daten, name, fl);
 }
@@ -163,6 +163,7 @@ function aufbauen(): void {
     </div>
     <div id="regelRegler">
       ${regler('verdecken', 'Verdecken', 30, zustand.regeln.verdecken)}
+      ${regler('durchbruch', 'Durchbruch', 30, zustand.regeln.durchbruch)}
       <label class="schalter"><input type="checkbox" id="bohnenenden" ${zustand.regeln.bohnenenden ? 'checked' : ''}> Bohnenenden an den Beinen</label>
     </div>
     <h2>Prüfen</h2>
@@ -232,6 +233,11 @@ function aufbauen(): void {
     const el = document.getElementById('verdecken') as HTMLInputElement;
     el.addEventListener('input', () => {
       zustand.regeln.verdecken = Number(el.value);
+      neu();
+    });
+    const du = document.getElementById('durchbruch') as HTMLInputElement;
+    du.addEventListener('input', () => {
+      zustand.regeln.durchbruch = Number(du.value);
       neu();
     });
     const b = document.getElementById('bohnenenden') as HTMLInputElement;
