@@ -145,8 +145,13 @@ const EPS = 1e-12;
  * Die Spur von `A` nach `B`: die Stücke je Dreieck auf dem geraden Weg über die Haut (Schnitt mit der Ebene durch beide Orte, die
  * die mittlere Normale ihrer Dreiecke enthält). Liegen beide im selben Dreieck, ist es ein Stück. Die Orte sollen nah beieinander
  * liegen (eine Farblinie ist dicht abgetastet); findet der Weg `B` nicht in `schritte` Dreiecken, null.
+ *
+ * `ebene`: die Normale der Schnittebene, wenn sie nicht aus den zwei Orten folgt (Etappe 2: der Vorhang längs des Blicks, wenn eine
+ * im Bild gelegte Kurve von einem Teil der Form auf einen dahinter springt; beide Orte liegen dann in dieser Ebene, und der Weg
+ * führt in ihr über die Haut vom einen zum anderen). `gegen`: im ersten Dreieck die andere der zwei Richtungen nehmen (der
+ * Schnitt einer Ebene mit der Haut ist ein Ring: Zum Ziel führen beide Wege herum, `spurImVorhang` nimmt den kürzeren).
  */
-export function spur(k: Karte, A: Ort, B: Ort, schritte = 400): Stueck[] | null {
+export function spur(k: Karte, A: Ort, B: Ort, schritte = 400, ebene?: V3, gegen = false): Stueck[] | null {
   if (A.t === B.t) return [{ t: A.t, b0: A.w[1], c0: A.w[2], b1: B.w[1], c1: B.w[2], ein: -1, aus: -1 }];
   const P = k.netz.pos;
   const tri = k.netz.tri;
@@ -161,7 +166,7 @@ export function spur(k: Karte, A: Ort, B: Ort, schritte = 400): Stueck[] | null 
   // (zwei Flächen, die sich genau entgegenstehen: die eine nehmen)
   if (Math.hypot(n[0], n[1], n[2]) < 1e-9) n = na;
   // die Ebene: enthält d und n; ihr Maß quer dazu
-  let m: V3 = [d[1] * n[2] - d[2] * n[1], d[2] * n[0] - d[0] * n[2], d[0] * n[1] - d[1] * n[0]];
+  let m: V3 = ebene ? [ebene[0], ebene[1], ebene[2]] : [d[1] * n[2] - d[2] * n[1], d[2] * n[0] - d[0] * n[2], d[0] * n[1] - d[1] * n[0]];
   const ml = Math.hypot(m[0], m[1], m[2]);
   if (ml < EPS) {
     // d längs der Normalen (zwei Orte übereinander): irgendeine Ebene durch d
@@ -203,7 +208,7 @@ export function spur(k: Karte, A: Ort, B: Ort, schritte = 400): Stueck[] | null 
       const x = P[3 * i]! + lam * (P[3 * j]! - P[3 * i]!);
       const y = P[3 * i + 1]! + lam * (P[3 * j + 1]! - P[3 * i + 1]!);
       const z = P[3 * i + 2]! + lam * (P[3 * j + 2]! - P[3 * i + 2]!);
-      const w = laengs(x, y, z);
+      const w = gegen && kommt < 0 ? -laengs(x, y, z) : laengs(x, y, z);
       // im ersten Dreieck schneidet die Ebene zwei Kanten: die in Richtung des Ziels; danach gibt es nur noch eine andere
       if (w > besteWeit) {
         besteWeit = w;
@@ -211,7 +216,7 @@ export function spur(k: Karte, A: Ort, B: Ort, schritte = 400): Stueck[] | null 
         besteLam = lam;
       }
     }
-    if (beste < 0 || (kommt < 0 && besteWeit <= 0)) return null;
+    if (beste < 0 || (kommt < 0 && besteWeit <= 0 && !ebene)) return null;
     // die Kreuzung in den Gewichten dieses Dreiecks: auf der Kante von Ecke e nach e + 1
     const w: [number, number, number] = [0, 0, 0];
     w[beste] = 1 - besteLam;
@@ -231,6 +236,36 @@ export function spur(k: Karte, A: Ort, B: Ort, schritte = 400): Stueck[] | null 
     kommt = f;
   }
   return null;
+}
+
+/**
+ * Der Weg von `A` nach `B` in einer gegebenen Ebene über die Haut (Normale `ebene`; beide Orte liegen in ihr): von den zwei Wegen
+ * um den Ring herum der kürzere. Null: Die zwei liegen nicht auf demselben Ring (oder weiter als `schritte` Dreiecke auseinander).
+ */
+export function spurImVorhang(k: Karte, A: Ort, B: Ort, ebene: V3, schritte = 3000): Stueck[] | null {
+  const P = k.netz.pos;
+  const tri = k.netz.tri;
+  const lang = (st: readonly Stueck[]): number => {
+    let s = 0;
+    for (const q of st) {
+      const a = 3 * tri[3 * q.t]!;
+      const b = 3 * tri[3 * q.t + 1]!;
+      const c = 3 * tri[3 * q.t + 2]!;
+      const db = q.b1 - q.b0;
+      const dc = q.c1 - q.c0;
+      const x = db * (P[b]! - P[a]!) + dc * (P[c]! - P[a]!);
+      const y = db * (P[b + 1]! - P[a + 1]!) + dc * (P[c + 1]! - P[a + 1]!);
+      const z = db * (P[b + 2]! - P[a + 2]!) + dc * (P[c + 2]! - P[a + 2]!);
+      s += Math.sqrt(x * x + y * y + z * z);
+    }
+    return s;
+  };
+  const hin = spur(k, A, B, schritte, ebene, false);
+  // (der andere Weg herum lohnt nur, wenn er durch weniger Dreiecke führt als der erste)
+  const her = spur(k, A, B, hin ? hin.length : schritte, ebene, true);
+  if (!hin) return her;
+  if (!her) return hin;
+  return lang(her) < lang(hin) ? her : hin;
 }
 
 export function dreieckNormale(P: ArrayLike<number>, tri: ArrayLike<number>, t: number): V3 {

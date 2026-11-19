@@ -11,7 +11,8 @@
  *
  * Ketten laufen nie längs einer Kante (`RAND` in `ort.ts` hält sie davon weg). Wo zwei sich im Inneren eines Dreiecks kreuzen,
  * sind sie dort geteilt (`kreuzungenTeilen` in `ketten.ts`): Um die Kreuzung liegen so viele Zellen, wie Ketten an ihr hängen, je
- * eine zwischen zwei Nachbarn im Umlauf (Etappe 2). Nicht behandelt: eine Kreuzung genau auf einer Kante des Netzes.
+ * eine zwischen zwei Nachbarn im Umlauf (Etappe 2). Kreuzen sich zwei genau auf einer Kante des Netzes (eine Farblinie und ihr
+ * Spiegelbild auf der Mitte), wird nicht geteilt: Dort ordnet der Umlauf am Rand des Dreiecks die zwei nach ihrer Richtung.
  */
 import type { Karte, Ort } from './ort';
 import { type Kette, jeDreieck } from './ketten';
@@ -31,6 +32,24 @@ export type Flaechen = {
 function lambdaAuf(e: number, b: number, c: number): number {
   const w = [1 - b - c, b, c];
   return Math.min(1, Math.max(0, w[(e + 1) % 3]!));
+}
+
+/**
+ * Der Winkel, unter dem eine Kette vom Rand des Dreiecks ins Innere läuft, gegen die Richtung des Umlaufs auf der Kante e gemessen
+ * (0 … π). `vorn`: Sie beginnt dort (sonst endet sie dort: gemessen wird vom Rand weg).
+ */
+function winkelAmRand(e: number, p: readonly number[], vorn: boolean): number {
+  const dx = e === 0 ? 1 : e === 1 ? -1 : 0;
+  const dy = e === 0 ? 0 : e === 1 ? 1 : -1;
+  const n = p.length;
+  // (das erste Stück mit Länge)
+  for (let i = 2; i + 1 < n; i += 2) {
+    const vx = vorn ? p[i]! - p[0]! : p[n - 2 - i]! - p[n - 2]!;
+    const vy = vorn ? p[i + 1]! - p[1]! : p[n - 1 - i]! - p[n - 1]!;
+    if (vx * vx + vy * vy < 1e-24) continue;
+    return Math.atan2(dx * vy - dy * vx, dx * vx + dy * vy);
+  }
+  return Math.PI / 2;
 }
 
 /**
@@ -116,13 +135,13 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
   /** je Dreieck mit Ketten: seine drei Kanten in Abschnitten, jeder mit dem Knoten seiner Zelle */
   const kanten = new Map<number, [Abschnitt[], Abschnitt[], Abschnitt[]]>();
   for (const [t, liste] of kd) {
-    type Ereignis = { e: number; lam: number; nach: number; vor: number };
+    type Ereignis = { e: number; lam: number; nach: number; vor: number; w: number };
     const er: Ereignis[] = [];
     liste.forEach((c, ki) => {
       const n = c.p.length;
       // (wo die Kette hereinkommt, liegt im Umlauf davor ihre linke Seite und danach ihre rechte; wo sie hinausgeht, umgekehrt)
-      if (c.ein >= 0) er.push({ e: c.ein, lam: lambdaAuf(c.ein, c.p[0]!, c.p[1]!), vor: seite(t, ki, 0), nach: seite(t, ki, 1) });
-      if (c.aus >= 0) er.push({ e: c.aus, lam: lambdaAuf(c.aus, c.p[n - 2]!, c.p[n - 1]!), vor: seite(t, ki, 1), nach: seite(t, ki, 0) });
+      if (c.ein >= 0) er.push({ e: c.ein, lam: lambdaAuf(c.ein, c.p[0]!, c.p[1]!), vor: seite(t, ki, 0), nach: seite(t, ki, 1), w: winkelAmRand(c.ein, c.p, true) });
+      if (c.aus >= 0) er.push({ e: c.aus, lam: lambdaAuf(c.aus, c.p[n - 2]!, c.p[n - 1]!), vor: seite(t, ki, 1), nach: seite(t, ki, 0), w: winkelAmRand(c.aus, c.p, false) });
       // ein freies Ende (nicht an einer Kreuzung): Um die Spitze herum ist es dieselbe Zelle
       if (!c.zu && ((c.ein < 0 && c.kEin === undefined) || (c.aus < 0 && c.kAus === undefined))) M.vereinen(seite(t, ki, 0), seite(t, ki, 1));
     });
@@ -145,6 +164,18 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
       for (let i = 0; i < arme.length; i++) M.vereinen(arme[i]!.ccw, arme[(i + 1) % arme.length]!.cw);
     }
     er.sort((x, y) => x.e + x.lam - (y.e + y.lam));
+    // Treffen sich zwei Ketten an derselben Stelle des Rands (eine Farblinie und ihr Spiegelbild auf der Mitte: Sie kreuzen sich genau
+    // auf einer Kante des Netzes), entscheidet ihre Richtung: Im Umlauf kommt zuerst die, die weiter zurück zeigt. Zwischen den
+    // zweien liegt der Keil; ohne diese Ordnung hinge die Zelle vor der Stelle an der Zelle dahinter.
+    for (let i = 0; i < er.length; ) {
+      let j = i + 1;
+      while (j < er.length && er[j]!.e === er[i]!.e && er[j]!.lam - er[j - 1]!.lam < 1e-9) j++;
+      if (j - i > 1) {
+        const teil = er.slice(i, j).sort((x, y) => y.w - x.w);
+        for (let q = 0; q < teil.length; q++) er[i + q] = teil[q]!;
+      }
+      i = j;
+    }
     const drei: [Abschnitt[], Abschnitt[], Abschnitt[]] = [[], [], []];
     if (!er.length) {
       for (let e = 0; e < 3; e++) drei[e]!.push({ von: 0, bis: 1, knoten: t });

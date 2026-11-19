@@ -214,6 +214,8 @@ const farbWerk = new FarbWerk(naechsterAuf);
  */
 const farbBlatt = new FarbBlatt(farbWerk);
 let farbAn = false;
+/** (für die Proben) wie weit eine Linie im letzten Bild hinter der Haut liegen durfte, ohne als verdeckt zu gelten (Welt) */
+let linienBias = 0;
 let malModus = false;
 /** die Farbe für die nächste Füllung (Bildschirmwerte 0 … 1) */
 let farbWahl: Farbe = [0.965, 0.769, 0.271];
@@ -4051,7 +4053,8 @@ function bild(dt: number): boolean {
   // Paint-Modus: Die Bemalung folgt der Haut (Netzwechsel, neue Lagen), auch wenn sie gerade nicht zu sehen ist
   const tFarbe = performance.now();
   if (zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && farbWerk.schritt(hautJetzt())) farbBild++;
-  const farbAn = farbeZeigen();
+  // (nicht `farbAn`: So heißt der Schalter, ob die Farblinien gerade bedient werden; er gilt weiter unten für Tintenlinie und Verdeckung)
+  const farbeDa = farbeZeigen();
   farbKostenBild = performance.now() - tFarbe;
   const zeigN = material !== null && werkGezeigt && zustand === 'ruhe' && !w.leer ? zeigeNetzAlle() : null;
   if (material !== null && werkGezeigt && zustand === 'ruhe' && zeigN && !w.leer) {
@@ -4088,7 +4091,7 @@ function bild(dt: number): boolean {
         jetzt: performance.now(),
         // die Farbe über dem hellen Solid: multipliziert mit seinem Bild (es bringt Hell und Dunkel selbst mit)
         ueberzug:
-          farbAn && material === 'Helles Solid'
+          farbeDa && material === 'Helles Solid'
             ? (r) => {
                 const t0 = performance.now();
                 farbWerk.anzeige.tiefeSchreiben(r, kam.aktiv, zeigN, true);
@@ -4096,7 +4099,7 @@ function bild(dt: number): boolean {
                 farbKostenBild += performance.now() - t0;
               }
             : null,
-        ueberzugStand: farbAn && material === 'Helles Solid' ? `${farbBild}|${werkHaut.version}|${malModus ? 1 : 0}` : '',
+        ueberzugStand: farbeDa && material === 'Helles Solid' ? `${farbBild}|${werkHaut.version}|${malModus && !farbAn ? 1 : 0}` : '',
       });
       if (unruhig) aktiv = true;
     } else {
@@ -4115,7 +4118,7 @@ function bild(dt: number): boolean {
         flach: !!facetten,
         // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
         danach:
-          farbAn && material === 'Wachs'
+          farbeDa && material === 'Wachs'
             ? (r, k) => {
                 const t0 = performance.now();
                 farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt });
@@ -4214,7 +4217,7 @@ function bild(dt: number): boolean {
       koerper: linienKoerper(),
       // die Verdeckung kommt mit dem Körper: Solange er noch blass ist, liegt alles vorn
       // (im Paint-Modus steht der Körper im Raum nur für die Tiefe da, mit Deckung 0: Dort gilt die Verdeckung ganz)
-      bias: (raum?.R ?? 0) * (KOERPER_BIAS + (farbAn && koerperDeckung <= 0.001 ? 0 : 2 * (1 - koerperDeckung))),
+      bias: (linienBias = (raum?.R ?? 0) * (KOERPER_BIAS + (farbAn && koerperDeckung <= 0.001 ? 0 : 2 * (1 - koerperDeckung)))),
       band: (raum?.R ?? 1) * KOERPER_BAND,
     };
     szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
@@ -8711,8 +8714,26 @@ const haken = {
     const h = hautJetzt();
     return (farbWerk.bemalung.ebenen[0]?.linien[nr]?.stuetzen ?? []).map((o) => farbWerk.lageImRaum(h, o));
   },
+  /** Etappe 2: unter einem Bildpunkt (CSS-Pixel) der Treffer des Rasters im Bild gegen den des Strahls (Abstand in Einheiten des Werks; −1: einer fehlt, −2: beide) */
+  farbRaster: (x: number, y: number): number => (farbAn ? farbBlatt.rasterGegenStrahl(x, y) : -2),
+  /** Etappe 2: die Linien, wie das Farb-Blatt sie dem Verhalten gibt (samt Spiegelbildern und Entwurf): je Linie ihre Proben im Bild (CSS-Pixel) */
+  farbNetz: (): { zu: boolean; punkte: number; x: number[]; y: number[]; z: number[]; hinten: number[] }[] =>
+    farbBlatt.netz.linien.map((l, i) => {
+      const P = farbBlatt.proben[i];
+      return { zu: l.zu, punkte: l.punkte.length, x: Array.from(P?.x ?? []), y: Array.from(P?.y ?? []), z: Array.from(P?.z ?? []), hinten: Array.from(P?.schicht ?? []) };
+    }),
+  /** Etappe 2: ab welcher Tiefe hinter der Haut eine Linie im letzten Bild als verdeckt galt, im Verhältnis zur Größe des Raums (0,02: die Verdeckung gilt ganz) */
+  farbVerdeckung: (): number => linienBias / (raum?.R ?? 1),
+  /** Etappe 2: die Stellen der Mitte (Spiegelebene), die im Bild zu sehen sind (CSS-Pixel) */
+  farbMitte: (): { x: number; y: number }[] => (farbAn ? farbBlatt.mitteSichtbar() : []),
+  /** Etappe 2: die Tiefe der Haut unter einem Bildpunkt (CSS-Pixel), im Maß der Tiefen von `farbNetz` (null: daneben) */
+  farbTiefe: (x: number, y: number): number | null => (farbAn ? farbBlatt.tiefeUnter(x, y) : null),
+  /** Etappe 2: wie oft die Kurve zwischen zwei Punkten im Bild und wie oft im Raum gelegt wurde, und was Legen und Ableiten gekostet haben */
+  farbGelegt: (): { bild: number; raum: number; vorhang: number; gerade: number; msLegen: number; abgeleitet: number; msAbleiten: number } => ({ ...farbBlatt.gelegt }),
+  /** Etappe 2: Liegt unter der Stelle des Bilds (CSS-Pixel) die Form, sodass P dort einen Punkt setzen könnte? */
+  farbOrtFrei: (x: number, y: number): boolean => farbAn && farbBlatt.ortFrei(x, y) !== null,
   /** Etappe 2: die Punkte der Farblinie `nr` im Bild (CSS-Pixel), mit Knick und ob sie Richtungen tragen; dazu, ob sie geschlossen ist */
-  farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: [number, number] | null; aus: [number, number] | null }[] } | null => {
+  farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: [number, number] | null; aus: [number, number] | null; z: number }[] } | null => {
     const h = hautJetzt();
     const l = farbWerk.bemalung.ebenen[0]?.linien[nr];
     if (!l) return null;
@@ -8734,7 +8755,8 @@ const haken = {
           const s2 = imBild([p[0] + v[0] / h.f, p[1] + v[1] / h.f, p[2] + v[2] / h.f]);
           return [s2[0] - x, s2[1] - y];
         };
-        return { x, y, i: q.i, knick: q.knick, ein: griff(q.ein), aus: griff(q.aus) };
+        // (z: wie weit der Punkt von der Spiegelebene entfernt ist, in Einheiten des Werks; genau 0: Er liegt auf der Mitte)
+        return { x, y, i: q.i, knick: q.knick, ein: griff(q.ein), aus: griff(q.aus), z: o.w[0] * h.haut.pos[3 * o.e[0] + 2]! + o.w[1] * h.haut.pos[3 * o.e[1] + 2]! + o.w[2] * h.haut.pos[3 * o.e[2] + 2]! };
       }),
     };
   },

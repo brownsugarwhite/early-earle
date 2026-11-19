@@ -4,7 +4,7 @@ import { type Saat, flaechenRechnen, naechsteSeite } from './flaechen';
 import { jeDreieck, kettenAller, stueckeVon } from './ketten';
 import { feinBei, feinEcken } from './fein';
 import { naechsterAuf } from './naechster';
-import { type Karte, type Naechster, type Netz, type Ort, karteVon, ortGespiegelt, ortLage, orteUebergeben, punkteZuordnen, spur } from './ort';
+import { type Karte, type Naechster, type Netz, type Ort, karteVon, ortGespiegelt, ortIn, ortLage, orteUebergeben, punkteZuordnen, spur } from './ort';
 import { ParallelTreffer, ortAusFein, strahlAufNetz } from './treffer';
 
 // ---------- Prüfnetz: eine Kugel aus einem unterteilten Oktaeder (spiegelgleich an z = 0, Punkte der Mitte genau in der Ebene) ----------
@@ -297,6 +297,99 @@ describe('Farbe: Ort, Spur, Ketten, Flächen', () => {
     expect(r.flaeche).toBeLessThan(1.005 * 2 * Math.PI * 100 * 40);
   });
 
+  it('über die Mitte gezeichnet: Der längere Teil gilt, auch wenn er auf der anderen Hälfte liegt; was hinausragt, fällt weg', () => {
+    let id = 1;
+    // ein Kreis um eine Achse, die 20° zur Hälfte z < 0 kippt: Der größere Teil liegt dort, ein Stück ragt über die Mitte
+    const w = (-20 * Math.PI) / 180;
+    const a: [number, number, number] = [Math.cos(w), 0, Math.sin(w)];
+    const u: [number, number, number] = [-Math.sin(w), 0, Math.cos(w)];
+    const rho = Math.sqrt(5100);
+    const treffer = Array.from({ length: 96 }, (_, i) => {
+      const t = (2 * Math.PI * (i + 0.29)) / 96;
+      return ortBei(netz, nah, 70 * a[0] + rho * Math.cos(t) * u[0], rho * Math.sin(t), 70 * a[2] + rho * Math.cos(t) * u[2]);
+    });
+    const linien = linienAusTreffern(k, treffer, true, true, () => id++);
+    expect(linien).toHaveLength(1);
+    const l = linien[0]!;
+    expect(l.zu).toBe(false);
+    const L = l.stuetzen.map((o) => ortLage(netz.pos, o));
+    // er liegt auf der Hälfte z ≥ 0, endet genau in der Ebene (ein Gewicht null), und ist das Spiegelbild des langen Teils
+    for (const p of L) expect(p[2]).toBeGreaterThanOrEqual(0);
+    expect(L[0]![2]).toBe(0);
+    expect(L[L.length - 1]![2]).toBe(0);
+    expect(Math.min(...l.stuetzen[0]!.w)).toBe(0);
+    for (const p of L) expect(Math.abs(p[0] * a[0] - p[2] * a[2] - 70)).toBeLessThan(1.5);
+    let lang = 0;
+    for (let i = 1; i < L.length; i++) lang += Math.hypot(L[i]![0] - L[i - 1]![0], L[i]![1] - L[i - 1]![1], L[i]![2] - L[i - 1]![2]);
+    expect(lang).toBeGreaterThan(0.55 * 2 * Math.PI * rho);
+    // mit dem Spiegelbild ist die Fläche zu: die Kappe um die gekippte Achse, auf z ≥ 0 gespiegelt, und ihr Spiegelbild
+    const { ketten, fehl } = kettenAller(k, linien, true);
+    expect(fehl).toHaveLength(0);
+    const saat = ortBei(netz, nah, 99, 5, 10);
+    const fl = flaechenRechnen(k, ketten, [
+      { ort: saat, farbe: 2 },
+      { ort: ortGespiegelt(k, saat)!, farbe: 2 },
+    ]);
+    expect(auswerten(k, fl, (p) => p[0] * a[0] - Math.abs(p[2]) * a[2] > 70).falsch).toBe(0);
+  });
+
+  it('ein Treffer genau in der Mitte gehört zu beiden Hälften: Von der Mitte zur Mitte gezeichnet bleibt die Farblinie, wie sie ist', () => {
+    let id = 1;
+    /** der Ort auf der Kante der Mittelebene, die (x, y) am nächsten liegt, im Dreieck der Hälfte `vz` */
+    const mitteOrt = (x: number, y: number, vz: number): Ort => {
+      let best: Ort | null = null;
+      let bestD = Infinity;
+      for (let t = 0; t < k.T; t++)
+        for (let e = 0; e < 3; e++) {
+          const i = netz.tri[3 * t + e]!, j = netz.tri[3 * t + ((e + 1) % 3)]!, f = netz.tri[3 * t + ((e + 2) % 3)]!;
+          if (netz.pos[3 * i + 2] !== 0 || netz.pos[3 * j + 2] !== 0 || netz.pos[3 * f + 2]! * vz <= 0) continue;
+          const mx = (netz.pos[3 * i]! + netz.pos[3 * j]!) / 2, my = (netz.pos[3 * i + 1]! + netz.pos[3 * j + 1]!) / 2;
+          const d = (mx - x) ** 2 + (my - y) ** 2;
+          if (d >= bestD) continue;
+          bestD = d;
+          const g: [number, number, number] = [0, 0, 0];
+          g[e] = 0.4;
+          g[(e + 1) % 3] = 0.6;
+          best = { t, e: [netz.tri[3 * t]!, netz.tri[3 * t + 1]!, netz.tri[3 * t + 2]!], w: g };
+        }
+      return best!;
+    };
+    // ein halber Kreis um die x-Achse auf z > 0, Anfang und Ende genau in der Ebene (der Anfang im Dreieck der anderen Hälfte)
+    const rho = Math.sqrt(1e4 - 3600);
+    const halb = Array.from({ length: 47 }, (_, i) => ortBei(netz, nah, 60, rho * Math.cos((Math.PI * (i + 1)) / 48), rho * Math.sin((Math.PI * (i + 1)) / 48)));
+    const anfang = mitteOrt(60, rho, -1);
+    const ende = mitteOrt(60, -rho, 1);
+    const linien = linienAusTreffern(k, [anfang, ...halb, ende], false, true, () => id++, [
+      { i: 0, ein: null, aus: null, knick: true },
+      { i: 24, ein: [0, 10, 0], aus: [0, -10, 0], knick: false },
+      { i: 48, ein: null, aus: null, knick: true },
+    ]);
+    expect(linien).toHaveLength(1);
+    const l = linien[0]!;
+    expect(l.stuetzen).toHaveLength(49);
+    expect(l.punkte.map((q) => q.i)).toEqual([0, 24, 48]);
+    expect(l.punkte[1]!.knick).toBe(false);
+    // die Enden bleiben genau in der Ebene und stehen im Dreieck der Hälfte z ≥ 0
+    for (const o of [l.stuetzen[0]!, l.stuetzen[48]!]) {
+      expect(ortLage(netz.pos, o)[2]).toBe(0);
+      expect(Math.max(...o.e.map((v) => netz.pos[3 * v + 2]!))).toBeGreaterThan(0);
+    }
+    const { ketten, fehl } = kettenAller(k, linien, true);
+    expect(fehl).toHaveLength(0);
+    const saat = ortBei(netz, nah, 99, 5, 10);
+    const fl = flaechenRechnen(k, ketten, [
+      { ort: saat, farbe: 2 },
+      { ort: ortGespiegelt(k, saat)!, farbe: 2 },
+    ]);
+    expect(auswerten(k, fl, (p) => p[0] > 60, 3).falsch).toBe(0);
+    // dieselbe Zeichnung, auf der anderen Hälfte weitergeführt (ein kurzes Stück): Es fällt weg, die Farblinie endet am Ort in der Ebene
+    const weiter = [anfang, ...halb, ende, ortBei(netz, nah, 60, -rho * Math.cos(0.1), -rho * Math.sin(0.1)), ortBei(netz, nah, 60, -rho * Math.cos(0.2), -rho * Math.sin(0.2))];
+    const linien2 = linienAusTreffern(k, weiter, false, true, () => id++);
+    expect(linien2).toHaveLength(1);
+    expect(linien2[0]!.stuetzen).toHaveLength(49);
+    expect(ortLage(netz.pos, linien2[0]!.stuetzen[48]!)[2]).toBe(0);
+  });
+
   it('ein kleiner geschlossener Zug in einem einzigen Dreieck: innen und außen sind getrennte Flächen', () => {
     const grob = kugel(1);
     const kg = karteVon(grob);
@@ -482,6 +575,66 @@ describe('Farbe: Ort, Spur, Ketten, Flächen', () => {
     // und außen: alles außerhalb beider Kreise
     const aussen = flaechenRechnen(k, ketten, [{ ort: ortBei(netz, nah, 0, 0, -100), farbe: 0 }]);
     expect(falsch(aussen, (p) => !inZ(p) && !inA(p))).toBe(0);
+  });
+
+  it('eine Farblinie quer über die Mitte kreuzt dort ihr Spiegelbild, genau auf einer Kante des Netzes: Linse, Sicheln und außen bleiben getrennt', () => {
+    // ein Kreis um eine Achse, die 20° aus der Mittelebene kippt: Er liegt auf beiden Hälften, sein Spiegelbild kreuzt ihn zweimal auf z = 0
+    for (const [grad, stufen] of [[20, 4], [8, 4], [33, 3]] as const) {
+      const netzH = stufen === 4 ? netz : kugel(stufen);
+      const kH = stufen === 4 ? k : karteVon(netzH);
+      const nahH = stufen === 4 ? nah : naechsterVon(netzH);
+      const w = (grad * Math.PI) / 180;
+      const a: [number, number, number] = [Math.cos(w), 0, Math.sin(w)];
+      const u: [number, number, number] = [-Math.sin(w), 0, Math.cos(w)];
+      const treffer = Array.from({ length: 96 }, (_, i) => {
+        const t = (2 * Math.PI * (i + 0.29)) / 96;
+        const o = ortBei(netzH, nahH, 70 * a[0] + Math.sqrt(5100) * Math.cos(t) * u[0], Math.sqrt(5100) * Math.sin(t), 70 * a[2] + Math.sqrt(5100) * Math.cos(t) * u[2]);
+        return ortIn(netzH, o.t, o.w[0], o.w[1], o.w[2]);
+      });
+      const linie = { id: 1, zu: true, stuetzen: treffer, punkte: [] };
+      const { ketten, fehl } = kettenAller(kH, [linie], true);
+      expect(fehl).toHaveLength(0);
+      // (auf einer Kante des Netzes wird nichts geteilt: Dort ordnet der Umlauf am Rand des Dreiecks)
+      expect(ketten.filter((c) => c.kEin !== undefined || c.kAus !== undefined)).toHaveLength(0);
+      const inA = (p: [number, number, number]): boolean => p[0] * a[0] + p[2] * a[2] > 70;
+      const inM = (p: [number, number, number]): boolean => p[0] * a[0] - p[2] * a[2] > 70;
+      const fern = (p: [number, number, number]): boolean => Math.abs(p[0] * a[0] + p[2] * a[2] - 70) > 3 && Math.abs(p[0] * a[0] - p[2] * a[2] - 70) > 3;
+      const falsch = (fl: ReturnType<typeof flaechenRechnen>, soll: (p: [number, number, number]) => boolean): number => {
+        let n = 0;
+        const mit = new Set(fl.rand.map((r) => r.t));
+        for (let t = 0; t < kH.T; t++) {
+          if (mit.has(t)) continue;
+          const p = ortLage(netzH.pos, { t, e: [netzH.tri[3 * t]!, netzH.tri[3 * t + 1]!, netzH.tri[3 * t + 2]!], w: [1 / 3, 1 / 3, 1 / 3] });
+          if (fern(p) && fl.ganz[t]! >= 0 !== soll(p)) n++;
+        }
+        for (const r of fl.rand) {
+          const e: [number, number, number] = [netzH.tri[3 * r.t]!, netzH.tri[3 * r.t + 1]!, netzH.tri[3 * r.t + 2]!];
+          const N = 12;
+          for (let i = 0; i < N; i++)
+            for (let j = 0; i + j < N; j++) {
+              const bb = (i + 1 / 3) / N, cc = (j + 1 / 3) / N;
+              const sN = naechsteSeite(r.ketten, bb, cc);
+              const an = (sN.seite === 0 ? r.ketten[sN.k]!.links : r.ketten[sN.k]!.rechts) >= 0;
+              const p = ortLage(netzH.pos, { t: r.t, e, w: [1 - bb - cc, bb, cc] });
+              if (fern(p) && an !== soll(p)) n++;
+            }
+        }
+        return n;
+      };
+      // die Linse über der Mitte: in beiden Kreisen
+      const linse = flaechenRechnen(kH, ketten, [{ ort: ortBei(netzH, nahH, 100, 0, 0), farbe: 0 }]);
+      expect(falsch(linse, (p) => inA(p) && inM(p))).toBe(0);
+      // eine Sichel: nur im gezeichneten Kreis (mit ihrem Spiegelbild: beide Sicheln)
+      const saat = ortBei(netzH, nahH, 100 * Math.cos(w + 0.6), 0, 100 * Math.sin(w + 0.6));
+      const sichel = flaechenRechnen(kH, ketten, [
+        { ort: saat, farbe: 0 },
+        { ort: ortGespiegelt(kH, saat)!, farbe: 0 },
+      ]);
+      expect(falsch(sichel, (p) => inA(p) !== inM(p))).toBe(0);
+      // außen
+      const aussen = flaechenRechnen(kH, ketten, [{ ort: ortBei(netzH, nahH, -100, 0, 0), farbe: 0 }]);
+      expect(falsch(aussen, (p) => !inA(p) && !inM(p))).toBe(0);
+    }
   });
 
   it('eine offene Farblinie begrenzt nur, wo sie liegt: Die Füllung läuft um ihre Enden', () => {

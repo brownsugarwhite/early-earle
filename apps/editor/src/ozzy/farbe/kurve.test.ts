@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { alsDatei, ausDatei, kopie, leereBemalung, linienAusTreffern, uebergeben } from './bemalung';
-import { punkteSchaetzen, richtungAus, richtungVektor, stueckLegen } from './kurve';
+import { punkteSchaetzen, richtungAus, richtungVektor, stueckImBild, stueckLegen } from './kurve';
 import { naechsterAuf } from './naechster';
 import { type Netz, type Ort, type V3, karteVon, ortIn, ortLage } from './ort';
+import { BildTreffer, strahlAufNetz } from './treffer';
 
 // ---------- Prüfnetz: eine Kugel aus einem unterteilten Oktaeder ----------
 
@@ -229,5 +230,144 @@ describe('Farbe, Etappe 2: Punkte, Richtungen, Kurve', () => {
     const v2 = vek(b2, fremd.pos, 0, 'aus')!;
     expect((v2[0] * vorher[0] + v2[1] * vorher[1] + v2[2] * vorher[2]) / (laenge(v2) * laenge(vorher))).toBeGreaterThan(0.99);
     expect(Math.abs(laenge(v2) - laenge(vorher))).toBeLessThan(1);
+  });
+  // ---------- die Kurve im Bild ----------
+
+  /** eine Kamera auf der z-Achse im Abstand D, die zum Ursprung schaut: Projektion · Ansicht, Ansicht, Strahl durch einen Bildpunkt */
+  const kamera = (D: number, W: number, H: number, brenn = 2) => {
+    // Ansicht: z' = z − D; Projektion: x' = brenn · x, y' = brenn · y · W / H, w' = −z'
+    const ansicht = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -D, 1];
+    const vp = [brenn, 0, 0, 0, 0, (brenn * W) / H, 0, 0, 0, 0, -1, -1, 0, 0, D - 1, D];
+    const strahl = (x: number, y: number): { o: V3; d: V3 } => {
+      const nx = (2 * x) / W - 1;
+      const ny = 1 - (2 * y) / H;
+      const d: V3 = [nx / brenn, (ny * H) / (brenn * W), -1];
+      const l = laenge(d);
+      return { o: [0, 0, D], d: [d[0] / l, d[1] / l, d[2] / l] };
+    };
+    const schirm = (p: V3): [number, number] => {
+      const w = D - p[2];
+      return [(((brenn * p[0]) / w + 1) / 2) * W, ((1 - (brenn * W * p[1]) / (H * w)) / 2) * H];
+    };
+    return { ansicht, vp, strahl, schirm };
+  };
+
+  it('das Raster im Bild trifft dasselbe Dreieck an derselben Stelle wie der Strahl über alle Dreiecke', () => {
+    const W = 800, H = 600;
+    const K = kamera(400, W, H);
+    const R = new BildTreffer(netz.pos, netz.tri, { f: 1, mx: 0, my: 0 }, K.vp, K.ansicht, W, H, [0, 0, 400], [0, 0, -1], 1);
+    let zahl = 0;
+    for (let y = 40; y < H; y += 37)
+      for (let x = 40; x < W; x += 41) {
+        const { o, d } = K.strahl(x, y);
+        const a = strahlAufNetz(netz.pos, netz.tri, o, d);
+        const b = R.treffer(x, y);
+        expect(!!a).toBe(!!b);
+        if (!a || !b) continue;
+        zahl++;
+        const pa = ortLage(netz.pos, ortIn(netz, a.f, a.w0, a.w1, a.w2));
+        const pb = ortLage(netz.pos, ortIn(netz, b.f, b.w0, b.w1, b.w2));
+        expect(ab(pa, pb)).toBeLessThan(0.05);
+        // die Tiefe: Abstand längs des Blicks
+        expect(Math.abs(b.tiefe - (400 - pa[2]))).toBeLessThan(0.05);
+      }
+    expect(zahl).toBeGreaterThan(40);
+    // mit einer glatten Anzeige (hier: dieselbe Kugel, jedes Dreieck in vier geteilt und auf die Kugel gelegt) trifft das Raster
+    // dieselbe feine Stelle wie der Strahl über alle ihre Dreiecke, auch am Rand der Kugel
+    const fp: number[] = Array.from(netz.pos);
+    const fi: number[] = [];
+    const mitte = new Map<string, number>();
+    const m = (a: number, b: number): number => {
+      const schl = a < b ? `${a},${b}` : `${b},${a}`;
+      let i = mitte.get(schl);
+      if (i === undefined) {
+        const x = [(fp[3 * a]! + fp[3 * b]!) / 2, (fp[3 * a + 1]! + fp[3 * b + 1]!) / 2, (fp[3 * a + 2]! + fp[3 * b + 2]!) / 2];
+        const l = Math.hypot(x[0]!, x[1]!, x[2]!) / 100;
+        i = fp.length / 3;
+        fp.push(x[0]! / l, x[1]! / l, x[2]! / l);
+        mitte.set(schl, i);
+      }
+      return i;
+    };
+    for (let t = 0; t < netz.tri.length; t += 3) {
+      const a = netz.tri[t]!, b = netz.tri[t + 1]!, c = netz.tri[t + 2]!;
+      const ab2 = m(a, b), bc = m(b, c), ca = m(c, a);
+      fi.push(a, ab2, ca, b, bc, ab2, c, ca, bc, ab2, bc, ca);
+    }
+    const RF = new BildTreffer(netz.pos, netz.tri, { f: 1, mx: 0, my: 0 }, K.vp, K.ansicht, W, H, [0, 0, 400], [0, 0, -1], 1, { pos: fp, index: fi, je: 4 });
+    let fein = 0;
+    for (let y = 30; y < H; y += 11)
+      for (let x = 150; x < 660; x += 13) {
+        const { o, d } = K.strahl(x, y);
+        const a = strahlAufNetz(fp, fi, o, d);
+        const b = RF.trefferFein(x, y, o, d);
+        expect(!!a).toBe(!!b);
+        if (!a || !b) continue;
+        fein++;
+        expect(b.f).toBe(a.f);
+        expect(Math.abs(b.s - a.s)).toBeLessThan(1e-9);
+        expect(Math.abs(b.tiefe - (400 - (o[2] + b.s * d[2])))).toBeLessThan(1e-6);
+      }
+    expect(fein).toBeGreaterThan(500);
+  });
+
+  it('im Bild gelegt: Die Kurve liegt unter der gezogenen Kurve, auch an einer steilen Stelle; die Orte liegen dicht', () => {
+    const W = 800, H = 600;
+    const K = kamera(400, W, H);
+    const R = new BildTreffer(netz.pos, netz.tri, { f: 1, mx: 0, my: 0 }, K.vp, K.ansicht, W, H, [0, 0, 400], [0, 0, -1], 1);
+    const unter = (x: number, y: number): Ort | null => {
+      const tr = R.treffer(x, y);
+      return tr ? ortIn(netz, tr.f, tr.w0, tr.w1, tr.w2) : null;
+    };
+    const ortUnter = (x: number, y: number): Ort => unter(x, y)!;
+    for (const [a, g1, g2, b] of [
+      // mitten auf der Kugel
+      [[380, 300], [30, -40], [-30, -40], [440, 310]],
+      // nah am Rand der Kugel (dort ist die Haut steil): die Richtungen zeigen zum Rand hin
+      [[560, 260], [22, 10], [20, -14], [565, 350]],
+    ] as const) {
+      const A = ortUnter(a[0], a[1]);
+      const B = ortUnter(b[0], b[1]);
+      const k: [[number, number], [number, number], [number, number], [number, number]] = [[a[0], a[1]], [a[0] + g1[0], a[1] + g1[1]], [b[0] + g2[0], b[1] + g2[1]], [b[0], b[1]]];
+      const orte = stueckImBild(k, A, B, unter, (o) => ortLage(netz.pos, o), (von, nach) => stueckLegen(netz, nah, von, null, nach, null));
+      expect(orte.length).toBeGreaterThan(8);
+      // die Kurve im Bild, fein abgetastet
+      const kurve: [number, number][] = Array.from({ length: 2001 }, (_, i) => {
+        const t = i / 2000, u = 1 - t;
+        return [u * u * u * k[0][0] + 3 * u * u * t * k[1][0] + 3 * u * t * t * k[2][0] + t * t * t * k[3][0], u * u * u * k[0][1] + 3 * u * u * t * k[1][1] + 3 * u * t * t * k[2][1] + t * t * t * k[3][1]];
+      });
+      let neben = 0;
+      for (const o of orte) {
+        const s = K.schirm(ortLage(netz.pos, o));
+        let best = Infinity;
+        for (const q of kurve) best = Math.min(best, (q[0] - s[0]) ** 2 + (q[1] - s[1]) ** 2);
+        neben = Math.max(neben, Math.sqrt(best));
+      }
+      expect(neben).toBeLessThan(0.05);
+      const alle = [A, ...orte, B].map((o) => ortLage(netz.pos, o));
+      let weit = 0;
+      for (let i = 1; i < alle.length; i++) weit = Math.max(weit, ab(alle[i - 1]!, alle[i]!));
+      expect(weit).toBeLessThan(1.6);
+    }
+  });
+
+  it('im Bild gelegt, über den Rand der Form hinaus gezogen: Was daneben liegt, überbrückt die Haut', () => {
+    const W = 800, H = 600;
+    const K = kamera(400, W, H);
+    const R = new BildTreffer(netz.pos, netz.tri, { f: 1, mx: 0, my: 0 }, K.vp, K.ansicht, W, H, [0, 0, 400], [0, 0, -1], 1);
+    const unter = (x: number, y: number): Ort | null => {
+      const tr = R.treffer(x, y);
+      return tr ? ortIn(netz, tr.f, tr.w0, tr.w1, tr.w2) : null;
+    };
+    // zwei Punkte nah am rechten Rand der Kugel, die Richtungen weit nach außen: Die Kurve verlässt die Form und kommt wieder
+    const A = unter(590, 250)!;
+    const B = unter(590, 350)!;
+    const orte = stueckImBild([[590, 250], [680, 260], [680, 340], [590, 350]], A, B, unter, (o) => ortLage(netz.pos, o), (von, nach) => stueckLegen(netz, nah, von, null, nach, null));
+    const alle = [A, ...orte, B].map((o) => ortLage(netz.pos, o));
+    let weit = 0;
+    for (let i = 1; i < alle.length; i++) weit = Math.max(weit, ab(alle[i - 1]!, alle[i]!));
+    // lückenlos (die Brücke hält höchstens 1,5 Einheiten Abstand) und auf der Seite zum Betrachter
+    expect(weit).toBeLessThan(3.1);
+    for (const p of alle) expect(p[2]).toBeGreaterThan(-5);
   });
 });

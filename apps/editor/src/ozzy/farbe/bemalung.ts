@@ -6,7 +6,7 @@
  * Etappe 1 kennt eine Ebene, geschlossene Farblinien und harte Kanten. Die Felder für später (Anker mit Richtungen, Breite der
  * Weichheit) kommen mit den Etappen, die sie brauchen.
  */
-import { type Karte, type Naechster, type Netz, type Ort, RAND, type V3, ortGespiegelt, ortGilt, ortIn, orteUebergeben, punkteZuordnen, spur } from './ort';
+import { type Karte, type Naechster, type Netz, type Ort, RAND, type V3, ortGespiegelt, ortGilt, ortIn, ortLage, orteUebergeben, punkteZuordnen, spur } from './ort';
 import type { LinieOrte } from './ketten';
 import { type FarbPunkt, type Richtung, punkteSchaetzen, richtungAus, richtungVektor } from './kurve';
 
@@ -141,15 +141,24 @@ export type TrefferPunkt = { i: number; ein: V3 | null; aus: V3 | null; knick: b
 
 /**
  * Aus einer Folge von Treffern auf der Haut (dicht, der Reihe nach, wie gezeichnet) werden Farblinien. An einer gespiegelten Form
- * (`gespiegelt`) gilt die Hälfte z ≥ 0: Liegt alles auf der anderen, wird es gespiegelt; läuft die Zeichnung über die Mittelebene,
- * bleibt der Teil auf der Hälfte z ≥ 0 und endet auf der Ebene (sein Spiegelbild schließt ihn). `zu`: Die Zeichnung ist geschlossen.
- * `naechsteId`: vergibt Kennungen. `punkte`: die Punkte der Zeichnung (fehlen sie, werden sie aus dem Verlauf geschätzt). Zurück:
- * die Farblinien (leer, wenn zu wenige Treffer bleiben).
+ * (`gespiegelt`) gilt die Hälfte z ≥ 0: Liegt alles auf der anderen, wird es gespiegelt. Läuft die Zeichnung über die Mittelebene,
+ * gilt ihr längerer Teil (auf der anderen Hälfte: gespiegelt); er endet auf der Ebene, sein Spiegelbild schließt ihn. Was über die
+ * Mitte hinausragt, fällt weg. Ein Treffer genau in der Mittelebene (ein Gewicht null gegenüber einer Kante dort) gehört zu beiden
+ * Hälften: An ihm endet ein Lauf, ohne dass geschnitten wird. `zu`: Die Zeichnung ist geschlossen. `naechsteId`: vergibt Kennungen.
+ * `punkte`: die Punkte der Zeichnung (fehlen sie, werden sie aus dem Verlauf geschätzt). Zurück: die Farblinien (leer, wenn zu
+ * wenige Treffer bleiben).
  */
 export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean, gespiegelt: boolean, naechsteId: () => number, punkte?: readonly TrefferPunkt[]): Farblinie[] {
-  const orte = treffer.map((o) => ortIn(k.netz, o.t, o.w[0], o.w[1], o.w[2]));
-  if (orte.length < (zu ? 3 : 2)) return [];
   const pos = k.netz.pos;
+  const spiegeln = gespiegelt && !!k.spiegel;
+  /** liegt der Ort in der Mittelebene (auf einer Kante dort: das Gewicht der Ecke gegenüber ist null)? */
+  const inEbene = (o: Ort): boolean => {
+    if (!spiegeln) return false;
+    for (let i = 0; i < 3; i++) if (o.w[i] === 0 && pos[3 * o.e[(i + 1) % 3]! + 2] === 0 && pos[3 * o.e[(i + 2) % 3]! + 2] === 0) return true;
+    return false;
+  };
+  let orte = treffer.map((o): Ort => (inEbene(o) ? { t: o.t, e: [o.e[0], o.e[1], o.e[2]], w: [o.w[0], o.w[1], o.w[2]] } : ortIn(k.netz, o.t, o.w[0], o.w[1], o.w[2])));
+  if (orte.length < (zu ? 3 : 2)) return [];
   const nachTreffer = new Map<number, TrefferPunkt>();
   for (const q of punkte ?? []) nachTreffer.set(q.i, q);
   /** eine Farblinie aus einem Lauf: `quelle` je Ort die Nummer seines Treffers (−1: neu, auf der Mittelebene); `gesp`: gespiegelt */
@@ -182,16 +191,38 @@ export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean
     return { id: naechsteId(), zu: runZu, stuetzen: st, punkte: P };
   };
   const alle = orte.map((_, i) => i);
-  if (!gespiegelt || !k.spiegel) return [linie(orte, alle, zu, false)];
-  const seite = orte.map((o) => haelfte(k.netz, o.t));
-  if (seite.every((s) => s < 0)) {
-    const g = orte.map((o) => ortGespiegelt(k, o));
-    if (g.some((o) => !o)) return [];
-    return [linie(g as Ort[], alle, zu, true)];
-  }
-  if (seite.every((s) => s > 0)) return [linie(orte, alle, zu, false)];
-  // über die Mitte gezeichnet: die Läufe auf der Hälfte z ≥ 0, jeder von der Ebene zur Ebene
+  if (!spiegeln) return [linie(orte, alle, zu, false)];
   const n = orte.length;
+  /** je Ort: +1 auf der Hälfte z ≥ 0, −1 auf der anderen, 0 in der Mittelebene */
+  let seite = orte.map((o) => (inEbene(o) ? 0 : haelfte(k.netz, o.t)));
+  let gesp = false;
+  if (seite.some((s) => s < 0)) {
+    // der längere Teil gilt: Liegt er auf der anderen Hälfte, wird die ganze Zeichnung gespiegelt
+    let plus = 0;
+    let minus = 0;
+    const L = orte.map((o) => ortLage(pos, o));
+    for (let i = 0; i < (zu ? n : n - 1); i++) {
+      const j = (i + 1) % n;
+      const d = Math.sqrt((L[j]![0] - L[i]![0]) ** 2 + (L[j]![1] - L[i]![1]) ** 2 + (L[j]![2] - L[i]![2]) ** 2);
+      if (seite[i]! >= 0 && seite[j]! >= 0) plus += d;
+      else if (seite[i]! <= 0 && seite[j]! <= 0) minus += d;
+      else {
+        plus += d / 2;
+        minus += d / 2;
+      }
+    }
+    if (minus > plus || !seite.some((s) => s > 0)) {
+      const g = orte.map((o) => ortGespiegelt(k, o));
+      if (g.some((o) => !o)) return [];
+      orte = g as Ort[];
+      seite = seite.map((s) => -s);
+      gesp = true;
+    }
+  }
+  // (was in der Mittelebene liegt, steht im Dreieck der Hälfte z ≥ 0)
+  orte = orte.map((o, i) => (seite[i] === 0 && haelfte(k.netz, o.t) < 0 ? (ortGespiegelt(k, o) ?? o) : o));
+  if (!seite.some((s) => s < 0)) return [linie(orte, alle, zu, gesp)];
+  // über die Mitte gezeichnet: die Läufe auf der Hälfte z ≥ 0, jeder von der Ebene zur Ebene
   /** der Ort auf der Mittelebene zwischen einem Ort davor (z ≥ 0) und einem dahinter (oder umgekehrt) */
   const aufEbene = (innen: Ort, aussen: Ort): Ort | null => {
     const st = spur(k, innen, aussen);
@@ -202,17 +233,20 @@ export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean
       const g = k.nachbar[3 * s.t + s.aus]!;
       if (g < 0 || haelfte(k.netz, Math.floor(g / 3)) > 0) continue;
       const tri = k.netz.tri;
-      return { t: s.t, e: [tri[3 * s.t]!, tri[3 * s.t + 1]!, tri[3 * s.t + 2]!], w: [1 - s.b1 - s.c1, s.b1, s.c1] };
+      const o: Ort = { t: s.t, e: [tri[3 * s.t]!, tri[3 * s.t + 1]!, tri[3 * s.t + 2]!], w: [1 - s.b1 - s.c1, s.b1, s.c1] };
+      // (genau auf die Kante der Ebene: Daran erkennt jeder, der die Farblinie liest, ihr Ende auf der Mitte)
+      aufKanteDerMitte(k, o);
+      return o;
     }
     return null;
   };
   const aus: Farblinie[] = [];
-  // an einem Wechsel von der anderen Hälfte auf diese beginnen (bei einer offenen Zeichnung am Anfang)
+  // an einem Wechsel auf diese Hälfte beginnen (bei einer offenen Zeichnung am Anfang)
   let start = 0;
   if (zu) {
     start = -1;
     for (let i = 0; i < n; i++)
-      if (seite[i]! > 0 && seite[(i - 1 + n) % n]! < 0) {
+      if (seite[i]! > 0 && seite[(i - 1 + n) % n]! <= 0) {
         start = i;
         break;
       }
@@ -220,11 +254,16 @@ export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean
   }
   let lauf: Ort[] | null = null;
   let quelle: number[] = [];
+  const schluss = (): void => {
+    if (lauf && lauf.length >= 2) aus.push(linie(lauf, quelle, false, gesp));
+    lauf = null;
+  };
   for (let j = 0; j < n; j++) {
     const i = (start + j) % n;
     const vor = (i - 1 + n) % n;
     const hatVor = zu || i > 0;
-    if (seite[i]! > 0) {
+    const s = seite[i]!;
+    if (s > 0) {
       if (!lauf) {
         lauf = [];
         quelle = [];
@@ -234,32 +273,30 @@ export function linienAusTreffern(k: Karte, treffer: readonly Ort[], zu: boolean
             lauf.push(m);
             quelle.push(-1);
           }
+        } else if (hatVor && seite[vor] === 0) {
+          // (der Ort davor liegt schon in der Ebene: Er ist der Anfang)
+          lauf.push(orte[vor]!);
+          quelle.push(vor);
         }
       }
       lauf.push(orte[i]!);
       quelle.push(i);
     } else if (lauf) {
-      const m = aufEbene(orte[vor]!, orte[i]!);
-      if (m) {
-        lauf.push(m);
-        quelle.push(-1);
+      if (s === 0) {
+        lauf.push(orte[i]!);
+        quelle.push(i);
+      } else {
+        const m = aufEbene(orte[vor]!, orte[i]!);
+        if (m) {
+          lauf.push(m);
+          quelle.push(-1);
+        }
       }
-      if (lauf.length >= 2) aus.push(linie(lauf, quelle, false, false));
-      lauf = null;
+      schluss();
     }
   }
-  if (lauf) {
-    // (geschlossen: Der Lauf endet am Wechsel vor dem Start)
-    if (zu) {
-      const letzter = (start - 1 + n) % n;
-      const m = seite[letzter]! < 0 ? aufEbene(lauf[lauf.length - 1]!, orte[letzter]!) : null;
-      if (m) {
-        lauf.push(m);
-        quelle.push(-1);
-      }
-    }
-    if (lauf.length >= 2) aus.push(linie(lauf, quelle, false, false));
-  }
+  // (eine offene Zeichnung, die auf dieser Hälfte endet)
+  schluss();
   return aus;
 }
 

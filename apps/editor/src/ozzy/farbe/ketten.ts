@@ -180,6 +180,11 @@ export function kreuzungenTeilen(ketten: readonly Kette[]): Kette[] {
           const amEndeA = (i === 0 && u < 1e-9 && A.kEin !== undefined) || (i + 4 >= A.p.length && u > 1 - 1e-9 && A.kAus !== undefined);
           const amEndeB = (j === 0 && v < 1e-9 && B.kEin !== undefined) || (j + 4 >= B.p.length && v > 1 - 1e-9 && B.kAus !== undefined);
           if (amEndeA || amEndeB) continue;
+          // (beide treffen sich auf dem Rand des Dreiecks, etwa eine Farblinie und ihr Spiegelbild auf der Mitte: Dort wird nicht
+          // geteilt, `flaechen.ts` ordnet die zwei im Umlauf am Rand)
+          const amRandA = (i === 0 && u < 1e-9 && A.ein >= 0) || (i + 4 >= A.p.length && u > 1 - 1e-9 && A.aus >= 0);
+          const amRandB = (j === 0 && v < 1e-9 && B.ein >= 0) || (j + 4 >= B.p.length && v > 1 - 1e-9 && B.aus >= 0);
+          if (amRandA && amRandB) continue;
           return { i, u, j, v, x: ax + u * ux, y: ay + u * uy };
         }
       }

@@ -7,9 +7,10 @@
  * Vektor ist die so gewichtete Summe der Ecken; er dreht und dehnt sich mit dem Dreieck, und beim Netzwechsel gehen die Zahlen wie
  * die Gewichte mit ihren Ecken.
  *
- * Die Kurve zwischen zwei Punkten (`stueckLegen`; die Idee ist `aufHautLegen` in der Vorlage `src/linien/raum.ts`): die
- * Bézier-Kurve im Raum aus den zwei Punkten und ihren Richtungen, auf die Haut gelegt. Gerechnet wird sie nur, wenn ein Punkt oder
- * eine Richtung angefasst wird; danach gehen ihre Orte mit der Haut mit wie alle anderen.
+ * Die Kurve zwischen zwei Punkten wird nur gerechnet, wenn ein Punkt oder eine Richtung angefasst wird; danach gehen ihre Orte
+ * mit der Haut mit wie alle anderen. Sind beide Punkte zu sehen, wird sie im Bild gelegt (`stueckImBild`: die Kurve, wie man sie
+ * zieht, längs des Blicks auf die Haut). Sonst im Raum (`stueckLegen`; die Idee ist `aufHautLegen` in der Vorlage
+ * `src/linien/raum.ts`): die Bézier-Kurve aus den zwei Lagen und ihren Richtungen, auf die Haut gelegt.
  *
  * Ohne DOM und ohne three: Die Tests laufen in Node.
  */
@@ -107,6 +108,109 @@ export function stueckLegen(netz: Netz, naechster: Naechster, A: Ort, gA: V3 | n
     teilen(mp, inHaut(r1), q2, d, nm, nd, k - 1);
   };
   teilen(p0, p1, p2, p3, dreieckNormale(netz.pos, netz.tri, A.t), dreieckNormale(netz.pos, netz.tri, B.t), tiefe);
+  return aus;
+}
+
+/**
+ * Die Orte der Kurve von A nach B, im Bild gelegt (ohne A und B selbst): die Bézier-Kurve aus vier Kontrollpunkten im Bild, jede
+ * Probe längs des Blicks auf die Haut. So liegt die Farblinie dort, wo man sie zieht, auch an einer steilen Stelle der Form (dort
+ * ist eine Richtung im Raum viel länger als ihr Bild; im Raum gelegt, verliefe sich die Kurve über die Haut).
+ *
+ * `unter`: der Ort der Haut unter einem Bildpunkt (null: daneben). `lage`: seine Lage (in den Einheiten von `weit`). Abgetastet
+ * wird so dicht, dass zwei Orte höchstens `weit` auseinander liegen; wo das im Bild nicht geht (die Kurve läuft über den Rand der
+ * Form oder springt von einem Teil auf einen anderen), führt `bruecke` über die Haut vom einen Ort zum anderen. Sie bekommt dazu
+ * die Stelle im Bild und die Richtung, in der die Kurve dort läuft (Länge 1): Daraus folgt der Vorhang längs des Blicks.
+ */
+export function stueckImBild(
+  k: readonly [readonly [number, number], readonly [number, number], readonly [number, number], readonly [number, number]],
+  A: Ort,
+  B: Ort,
+  unter: (x: number, y: number) => Ort | null,
+  lage: (o: Ort) => V3,
+  bruecke: (von: Ort, nach: Ort, x: number, y: number, tx: number, ty: number) => Ort[],
+  weit = 1.5,
+): Ort[] {
+  type Probe = { t: number; x: number; y: number; o: Ort | null; p: V3 | null };
+  const probe = (t: number): Probe => {
+    const u = 1 - t;
+    const b0 = u * u * u;
+    const b1 = 3 * u * u * t;
+    const b2 = 3 * u * t * t;
+    const b3 = t * t * t;
+    const x = b0 * k[0][0] + b1 * k[1][0] + b2 * k[2][0] + b3 * k[3][0];
+    const y = b0 * k[0][1] + b1 * k[1][1] + b2 * k[2][1] + b3 * k[3][1];
+    const o = unter(x, y);
+    return { t, x, y, o, p: o ? lage(o) : null };
+  };
+  const ab = (a: readonly [number, number], b: readonly [number, number]): number => Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
+  const lang = (ab(k[0], k[1]) + ab(k[1], k[2]) + ab(k[2], k[3]) + ab(k[0], k[3])) / 2;
+  const n = Math.max(1, Math.min(64, Math.ceil(lang / 4)));
+  let S: Probe[] = [{ t: 0, x: k[0][0], y: k[0][1], o: A, p: lage(A) }];
+  for (let i = 1; i < n; i++) S.push(probe(i / n));
+  S.push({ t: 1, x: k[3][0], y: k[3][1], o: B, p: lage(B) });
+  const fern = (u: Probe, v: Probe, mal: number): boolean => !u.p || !v.p || (u.p[0] - v.p[0]) ** 2 + (u.p[1] - v.p[1]) ** 2 + (u.p[2] - v.p[2]) ** 2 > (mal * weit) ** 2;
+  // dichter, wo zwei Nachbarn im Raum zu weit auseinander liegen (bis sie im Bild fast am selben Punkt stehen)
+  for (let runde = 0; runde < 12; runde++) {
+    const neu: Probe[] = [S[0]!];
+    let etwas = false;
+    for (let i = 1; i < S.length; i++) {
+      const u = S[i - 1]!;
+      const v = S[i]!;
+      if (fern(u, v, 1) && (v.x - u.x) ** 2 + (v.y - u.y) ** 2 > 0.1 && neu.length + S.length - i < 4000) {
+        neu.push(probe((u.t + v.t) / 2));
+        etwas = true;
+      }
+      neu.push(v);
+    }
+    S = neu;
+    if (!etwas) break;
+  }
+  const gut = S.filter((q) => q.o);
+  const aus: Ort[] = [];
+  for (let i = 1; i < gut.length; i++) {
+    const u = gut[i - 1]!;
+    const v = gut[i]!;
+    if (fern(u, v, 2)) {
+      // die Richtung der Kurve im Bild an dieser Stelle: von der einen Probe zur anderen; stehen sie fast am selben Punkt, ihre Ableitung
+      let tx = v.x - u.x;
+      let ty = v.y - u.y;
+      if (tx * tx + ty * ty < 1) {
+        const t = (u.t + v.t) / 2;
+        const w = 1 - t;
+        tx = 3 * w * w * (k[1][0] - k[0][0]) + 6 * w * t * (k[2][0] - k[1][0]) + 3 * t * t * (k[3][0] - k[2][0]);
+        ty = 3 * w * w * (k[1][1] - k[0][1]) + 6 * w * t * (k[2][1] - k[1][1]) + 3 * t * t * (k[3][1] - k[2][1]);
+        if (tx * tx + ty * ty < 1e-12) {
+          tx = k[3][0] - k[0][0];
+          ty = k[3][1] - k[0][1];
+        }
+      }
+      const tl = Math.sqrt(tx * tx + ty * ty);
+      for (const o of bruecke(u.o!, v.o!, (u.x + v.x) / 2, (u.y + v.y) / 2, tl > 1e-9 ? tx / tl : 1, tl > 1e-9 ? ty / tl : 0)) aus.push(o);
+    }
+    if (i < gut.length - 1) aus.push(v.o!);
+  }
+  return aus;
+}
+
+/**
+ * Aus einer Spur (`spur` in `ort.ts`: Stücke je Dreieck) die Orte dazwischen: je Stück seine Mitte, bei langen Stücken mehrere, höchstens
+ * `weit` auseinander. Die Enden der Spur selbst kommen nicht vor.
+ */
+export function orteAusSpur(netz: Netz, st: readonly { t: number; b0: number; c0: number; b1: number; c1: number }[], weit = 1.5): Ort[] {
+  const aus: Ort[] = [];
+  for (const s of st) {
+    const e: [number, number, number] = [netz.tri[3 * s.t]!, netz.tri[3 * s.t + 1]!, netz.tri[3 * s.t + 2]!];
+    const p = ortLage(netz.pos, { t: s.t, e, w: [1 - s.b0 - s.c0, s.b0, s.c0] });
+    const q = ortLage(netz.pos, { t: s.t, e, w: [1 - s.b1 - s.c1, s.b1, s.c1] });
+    const l = Math.sqrt((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2);
+    const n = Math.max(1, Math.ceil(l / weit));
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n;
+      const b = s.b0 + u * (s.b1 - s.b0);
+      const c = s.c0 + u * (s.c1 - s.c0);
+      aus.push(ortIn(netz, s.t, 1 - b - c, b, c));
+    }
+  }
   return aus;
 }
 

@@ -13,19 +13,20 @@
  * (ein Schritt für ⌘Z). Anders als Linien der Form darf eine Farblinie offen enden: ↩ beendet sie, wie sie ist; ein Klick auf den
  * ersten Punkt schließt sie.
  *
- * Stand: Punkte setzen, Richtungen ziehen, Faden, Schließen, ⌫, Esc; Punkte ziehen und löschen, ein Punkt mit P auf die
- * Farblinie; Richtungen drehen (Nadel, Ring, Knick und rund). Noch nicht: ein Stück an der Linie ziehen, das Spiegelbild greifen,
- * die Mitte.
+ * Die Mitte (gespiegelte Form): Nahe am Zeiger zeigt sie sich mit P als Punktreihe auf der Haut; ein neuer Punkt rastet auf ihr
+ * ein; eine fertig gezeichnete Farblinie endet an ihr, wie ein Ring der Form (`alsLinien`), ihr Spiegelbild schließt sie. Das Spiegelbild jeder Farblinie steht als eigene Zeile im Netz und wird
+ * gegriffen wie sie. Noch nicht: ein Stück an der Linie ziehen; ein Punkt, der über die Mitte gezogen wird, beendet die Farblinie
+ * dort nicht (sie kreuzt dann ihr Spiegelbild).
  */
 import { type Linie, type LinienProben, type Netz as LinienNetz, type Punkt, type Stueck, armGriff } from '../../linien/netz';
 import { type DrehBild, Dreher2D, type RichtungZiel } from '../../linien/richtung';
 import type { EntwurfInfo, FadenEnde, FadenProben, StiftOrt, V2 } from '../../linien/stift';
 import type { Raum, Ziel } from '../../linien/verhalten';
-import { type Farblinie, aktiveEbene } from './bemalung';
+import { type Farblinie, type TrefferPunkt, aktiveEbene, linienAusTreffern } from './bemalung';
 import type { FarbWerk, HautJetzt } from './farbwerk';
-import { type FarbPunkt, richtungAus, richtungVektor, stueckLegen } from './kurve';
-import { type Karte, type Ort, type V3, dreieckNormale, ortGespiegelt, ortIn, ortLage } from './ort';
-import { strahlAufNetz } from './treffer';
+import { type FarbPunkt, orteAusSpur, richtungAus, richtungVektor, stueckImBild, stueckLegen } from './kurve';
+import { type Karte, type Ort, type V3, dreieckNormale, ortGespiegelt, ortIn, ortLage, spurImVorhang } from './ort';
+import { BildTreffer, ortAusFein, strahlAufNetz } from './treffer';
 
 /** was das Blatt je Bild von der Ansicht braucht */
 export type Sicht = {
@@ -67,6 +68,8 @@ const zeileKopie = (z: Zeile): Zeile => ({
   teile: z.teile.map((t) => t.map(ortKopie)),
 });
 const lang = (v: V3 | null): number => (v ? Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) : 0);
+/** ein Punkt gilt erst als verdeckt, wenn die Stelle vor ihm so weit (Einheiten des Werks) von ihm weg liegt */
+const VERDECKT_AB = 4;
 /** ein Griff zählt erst ab dieser Länge (Einheiten des Werks) */
 const GRIFF_MIN = 1e-6;
 const griff = (v: V3 | null): V3 | null => (lang(v) > GRIFF_MIN ? v : null);
@@ -281,10 +284,133 @@ export class FarbBlatt implements Raum {
     return [b[0] - a[0], b[1] - a[1]];
   }
 
-  /** die Orte der Kurve von A nach B (ohne die zwei) */
-  private legen(A: BPunkt, gA: V3 | null, B: BPunkt, gB: V3 | null): Ort[] {
+  /**
+   * Für die Proben: wie oft eine Kurve im Bild und wie oft im Raum gelegt wurde; wie oft ein Sprung im Bild im Vorhang überbrückt
+   * wurde und wie oft gerade; die Zeit im Legen; wie oft die Bemalung nach einer Änderung neu abgeleitet wurde und die Zeit dafür.
+   */
+  readonly gelegt = { bild: 0, raum: 0, vorhang: 0, gerade: 0, msLegen: 0, abgeleitet: 0, msAbleiten: 0 };
+  private rasterGemerkt: { haut: object; version: number; schluessel: string; raster: BildTreffer } | null = null;
+  /** das Rechennetz als Raster im Bild dieser Ansicht (bleibt, solange Haut und Ansicht stehen) */
+  private bildRaster(): BildTreffer {
     const h = this.h!;
-    return stueckLegen(h.haut, this.fw.naechster(h), A.ort, griff(gA), B.ort, griff(gB));
+    const S = this.sicht!;
+    let schluessel = `${S.W},${S.H},${h.f},${h.mitte.x},${h.mitte.y}`;
+    for (let i = 0; i < 16; i++) schluessel += `,${S.vp[i]}`;
+    const g = this.rasterGemerkt;
+    schluessel += `,${h.stufen},${h.netz && h.netz.index.length === h.haut.tri.length * 4 ** h.stufen ? 1 : 0}`;
+    if (g && g.haut === h.haut && g.version === h.version && g.schluessel === schluessel) return g.raster;
+    const je = 4 ** h.stufen;
+    const fein = h.netz && h.netz.index.length === h.haut.tri.length * je ? { pos: h.netz.pos, index: h.netz.index, je } : null;
+    const raster = new BildTreffer(h.haut.pos, h.haut.tri, { f: h.f, mx: h.mitte.x, my: h.mitte.y }, S.vp, S.ansicht, S.W, S.H, S.auge, S.blick, S.wicklung, fein);
+    this.rasterGemerkt = { haut: h.haut, version: h.version, schluessel, raster };
+    return raster;
+  }
+
+  /**
+   * Der Ort unter einem Bildpunkt über das Raster dieser Ansicht, und seine Tiefe: auf der glatten Anzeige, wie `ortUnter` mit
+   * `genau` (dieselbe Fläche, die ein Klick trifft), nur für viele Bildpunkte schnell. Ohne glatte Anzeige auf dem Rechennetz.
+   */
+  private ortImRaster(x: number, y: number): { ort: Ort; tiefe: number } | null {
+    const h = this.h!;
+    const R = this.bildRaster();
+    if (h.netz && h.netz.index.length === h.haut.tri.length * 4 ** h.stufen) {
+      const { o, d } = this.sicht!.strahl(x, y);
+      const tr = R.trefferFein(x, y, o, d);
+      return tr ? { ort: ortAusFein(h.haut, h.stufen, tr), tiefe: tr.tiefe } : null;
+    }
+    const tr = R.treffer(x, y);
+    return tr ? { ort: ortIn(h.haut, tr.f, tr.w0, tr.w1, tr.w2), tiefe: tr.tiefe } : null;
+  }
+
+  /** für die Proben: die Tiefe der Haut unter einem Bildpunkt (wie die Tiefe der Punkte des Netzes; null: daneben) */
+  tiefeUnter(x: number, y: number): number | null {
+    if (!this.h || !this.sicht) return null;
+    return this.ortImRaster(x, y)?.tiefe ?? null;
+  }
+
+  /** für die Proben: unter einem Bildpunkt der Treffer des Rasters gegen den des Strahls (Abstand im Raum, Einheiten des Werks; −1: einer fehlt, −2: beide fehlen) */
+  rasterGegenStrahl(x: number, y: number): number {
+    const h = this.h;
+    if (!h || !this.sicht) return -2;
+    const tr = this.ortImRaster(x, y);
+    const o = this.ortUnter(x, y, true);
+    if (!tr && !o) return -2;
+    if (!tr || !o) return -1;
+    const p = ortLage(h.haut.pos, o);
+    const q = ortLage(h.haut.pos, tr.ort);
+    return Math.sqrt((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2);
+  }
+
+  /**
+   * Die Orte der Kurve von A nach B (ohne die zwei). Sind beide Punkte zu sehen, wird sie im Bild gelegt: die Kurve aus den zwei
+   * Punkten und den Bildern ihrer Richtungen, längs des Blicks auf die Haut (so liegt sie, wo man sie zieht). Sonst im Raum.
+   */
+  private legen(A: BPunkt, gA: V3 | null, B: BPunkt, gB: V3 | null): Ort[] {
+    const t0 = performance.now();
+    const orte = this.legenRechnen(A, gA, B, gB);
+    this.gelegt.msLegen += performance.now() - t0;
+    return orte;
+  }
+
+  private legenRechnen(A: BPunkt, gA: V3 | null, B: BPunkt, gB: V3 | null): Ort[] {
+    const h = this.h!;
+    const S = this.sicht!;
+    const nah = this.fw.naechster(h);
+    const wa = this.welt(A.ort);
+    const wb = this.welt(B.ort);
+    if (this.vorn(A.ort, wa) && this.vorn(B.ort, wb)) {
+      const a = this.schirm(wa);
+      const b = this.schirm(wb);
+      /**
+       * Steht nichts vor dem Punkt? (Verdeckt ist er, wenn unter seinem Bildpunkt eine andere Stelle der Form vorn liegt: weiter vorn
+       * und im Raum woanders.)
+       */
+      const frei = (s: [number, number, number], o: Ort): boolean => {
+        const tr = this.ortImRaster(s[0], s[1]);
+        if (!tr || tr.tiefe > s[2] - S.duldung) return true;
+        const p = ortLage(h.haut.pos, o);
+        const q = ortLage(h.haut.pos, tr.ort);
+        return (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2 < VERDECKT_AB ** 2;
+      };
+      if (frei(a, A.ort) && frei(b, B.ort)) {
+        this.gelegt.bild++;
+        const ga = this.griffImBild(A.ort, griff(gA));
+        const gb = this.griffImBild(B.ort, griff(gB));
+        return stueckImBild(
+          [
+            [a[0], a[1]],
+            [a[0] + ga[0], a[1] + ga[1]],
+            [b[0] + gb[0], b[1] + gb[1]],
+            [b[0], b[1]],
+          ],
+          A.ort,
+          B.ort,
+          (x, y) => this.ortImRaster(x, y)?.ort ?? null,
+          (o) => ortLage(h.haut.pos, o),
+          (von, nach, x, y, tx, ty) => {
+            // der Vorhang: die Ebene durch den Blick an dieser Stelle und die Richtung der Kurve im Bild. In ihr führt der Weg über
+            // die Haut vom einen Ort zum anderen (über den Rand eines Überhangs und hinter ihm weiter, im Bild genau unter der Kurve)
+            const r1 = S.strahl(x - tx, y - ty);
+            const r2 = S.strahl(x + tx, y + ty);
+            const p = this.welt(von);
+            const s1 = (p[0] - r1.o[0]) * r1.d[0] + (p[1] - r1.o[1]) * r1.d[1] + (p[2] - r1.o[2]) * r1.d[2];
+            const s2 = (p[0] - r2.o[0]) * r2.d[0] + (p[1] - r2.o[1]) * r2.d[1] + (p[2] - r2.o[2]) * r2.d[2];
+            const q: V3 = [r2.o[0] + s2 * r2.d[0] - r1.o[0] - s1 * r1.d[0], r2.o[1] + s2 * r2.d[1] - r1.o[1] - s1 * r1.d[1], r2.o[2] + s2 * r2.d[2] - r1.o[2] - s1 * r1.d[2]];
+            const d: V3 = [(r1.d[0] + r2.d[0]) / 2, (r1.d[1] + r2.d[1]) / 2, (r1.d[2] + r2.d[2]) / 2];
+            const m: V3 = [d[1] * q[2] - d[2] * q[1], d[2] * q[0] - d[0] * q[2], d[0] * q[1] - d[1] * q[0]];
+            const st = m[0] * m[0] + m[1] * m[1] + m[2] * m[2] > 1e-24 ? spurImVorhang(this.fw.karteFuer(h), von, nach, m) : null;
+            if (st) {
+              this.gelegt.vorhang++;
+              return orteAusSpur(h.haut, st);
+            }
+            this.gelegt.gerade++;
+            return stueckLegen(h.haut, nah, von, null, nach, null);
+          },
+        );
+      }
+    }
+    this.gelegt.raum++;
+    return stueckLegen(h.haut, nah, A.ort, griff(gA), B.ort, griff(gB));
   }
 
   // ---------- von der Bemalung zum Netz ----------
@@ -354,6 +480,29 @@ export class FarbBlatt implements Raum {
       if (t) for (const o of t) stuetzen.push(o);
     });
     return { id, zu: z.zu, stuetzen, punkte };
+  }
+
+  /**
+   * Eine fertig gezeichnete Zeile als Farblinien der Bemalung. An einer gespiegelten Form endet sie an der Mitte, wie ein Ring der
+   * Form (`linienAusTreffern`: Der längere Teil gilt, was über die Mitte hinausragt, fällt weg; das Spiegelbild schließt sie).
+   */
+  private alsLinien(z: Zeile): Farblinie[] {
+    const h = this.h!;
+    const b = this.fw.bemalung;
+    if (h.gespiegelt) {
+      const treffer: Ort[] = [];
+      const punkte: TrefferPunkt[] = [];
+      const m = z.punkte.length;
+      z.punkte.forEach((p, k) => {
+        punkte.push({ i: treffer.length, ein: z.zu || k > 0 ? griff(p.ein) : null, aus: z.zu || k < m - 1 ? griff(p.aus) : null, knick: p.knick });
+        treffer.push(p.ort);
+        const t = z.teile[k];
+        if (t) for (const o of t) treffer.push(o);
+      });
+      const linien = linienAusTreffern(this.fw.karteFuer(h), treffer, z.zu, true, () => b.naechste++, punkte);
+      if (linien.length) return linien;
+    }
+    return [this.linieVon(z, b.naechste++)];
   }
 
   /** je Bild: die Farblinien der aktiven Ebene (und der Entwurf) als Netz auf dem Bildschirm */
@@ -454,8 +603,11 @@ export class FarbBlatt implements Raum {
 
   /** nach einer Änderung an der Bemalung selbst: Sie wird neu abgeleitet (Flächen, Anzeige), das Netz neu gefüllt */
   private geaendert(): void {
+    const t0 = performance.now();
     this.fw.geaendert();
     if (this.h && this.sicht) this.bauen(this.h, this.sicht);
+    this.gelegt.abgeleitet++;
+    this.gelegt.msAbleiten += performance.now() - t0;
   }
 
   /** die Farblinie der Bemalung zu einer Zeile (nicht der Entwurf) */
@@ -849,8 +1001,57 @@ export class FarbBlatt implements Raum {
     return o ? { x: o.x, y: o.y, mitte: o.mitte } : null;
   }
 
-  mittePunkte(): number[] {
-    return [];
+  private mitteBildGemerkt: { haut: object; version: number; schluessel: string; punkte: Float32Array } | null = null;
+  /** die Mitte im Bild dieser Ansicht: je Kante der Spiegelebene, die zum Betrachter zeigt, ihre Mitte (x, y, Tiefe) */
+  private mitteImBild(): Float32Array {
+    const h = this.h!;
+    const S = this.sicht!;
+    let schluessel = `${S.W},${S.H},${h.f},${h.mitte.x},${h.mitte.y},${h.stufen}`;
+    for (let i = 0; i < 16; i++) schluessel += `,${S.vp[i]}`;
+    const g = this.mitteBildGemerkt;
+    if (g && g.haut === h.haut && g.version === h.version && g.schluessel === schluessel) return g.punkte;
+    const K = this.mitteKanten();
+    const I = h.haut.tri;
+    const aus: number[] = [];
+    for (let i = 0; i < K.length; i += 2) {
+      const t = K[i]!;
+      const f = K[i + 1]!;
+      const w: [number, number, number] = [0, 0, 0];
+      w[(f + 1) % 3] = 0.5;
+      w[(f + 2) % 3] = 0.5;
+      const o: Ort = { t, e: [I[3 * t]!, I[3 * t + 1]!, I[3 * t + 2]!], w };
+      const p = this.welt(o);
+      if (!this.vorn(o, p)) continue;
+      const s = this.schirm(p);
+      aus.push(s[0], s[1], s[2]);
+    }
+    const punkte = Float32Array.from(aus);
+    this.mitteBildGemerkt = { haut: h.haut, version: h.version, schluessel, punkte };
+    return punkte;
+  }
+
+  /** für die Proben: die Stellen der Mitte, die im Bild zu sehen sind (nichts steht davor) */
+  mitteSichtbar(): { x: number; y: number }[] {
+    if (!this.h || !this.sicht || !this.h.gespiegelt) return [];
+    const M = this.mitteImBild();
+    const aus: { x: number; y: number }[] = [];
+    for (let i = 0; i < M.length; i += 3) {
+      const tr = this.ortImRaster(M[i]!, M[i + 1]!);
+      if (!tr || tr.tiefe > M[i + 2]! - this.sicht.duldung) aus.push({ x: M[i]!, y: M[i + 1]! });
+    }
+    return aus;
+  }
+
+  /** die Mitte nahe am Zeiger als Punktreihe auf der Haut (wie in der Vorlage): je Punkt x, y, Tiefe, Gewicht (1 am Zeiger, 0 am Rand von `r`) */
+  mittePunkte(sx: number, sy: number, r: number): number[] {
+    if (!this.h || !this.sicht || !this.h.gespiegelt) return [];
+    const M = this.mitteImBild();
+    const aus: number[] = [];
+    for (let i = 0; i < M.length; i += 3) {
+      const d = Math.sqrt((M[i]! - sx) ** 2 + (M[i + 1]! - sy) ** 2);
+      if (d < r) aus.push(M[i]!, M[i + 1]!, M[i + 2]!, 1 - d / r);
+    }
+    return aus;
   }
 
   /** der Ort, an dem P ansetzt: frei unter dem Zeiger, oder dort, wo ein Punkt oder eine Linie des Netzes liegt (ein neuer Punkt an derselben Stelle) */
@@ -994,9 +1195,8 @@ export class FarbBlatt implements Raum {
       return -1;
     }
     this.fw.merken(h);
-    const b = this.fw.bemalung;
     this.endenRichten(e.z);
-    aktiveEbene(b).linien.push(this.linieVon(e.z, b.naechste++));
+    aktiveEbene(this.fw.bemalung).linien.push(...this.alsLinien(e.z));
     this.geaendert();
     this.nachSchritt();
     return this.netz.linien.length - 1;
