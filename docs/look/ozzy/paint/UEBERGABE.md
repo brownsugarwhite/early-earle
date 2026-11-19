@@ -1,4 +1,4 @@
-# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 16:35 Uhr)
+# Übergabe: Paint-Modus in Ozzy (Stand 19.11.2026, 17:05 Uhr)
 
 Florian will in Ozzy einen Paint-Modus mit Ebenen, einer Ebenen-Ansicht und einem neuen Material (sein Auftrag wörtlich im Plan).
 Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende jedes Blocks überschrieben.
@@ -9,10 +9,10 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | --- | --- |
 | Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`, Stand `3a091f14`). **Nicht zusammengeführt**, weder mit ihm noch mit `claude/ozzy` noch mit `main`; erst auf sein Wort, am Schluss. |
 | Fenster | `http://localhost:5215/ozzy.html`, Eintrag `ozzy-paint` in `.claude/launch.json`. Proben: `OZZY_URL=http://localhost:5215/ozzy.html`. Nie unter seinen Fenstern bauen (5205, 5211, 5194). |
-| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), **Abschnitt 13: Etappe 3, zweiter Schritt (Farben als Tropfen, Farbtropfen, Pipette)** |
+| Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (Abschnitt 13), **Abschnitt 14: Etappe 4, das Bild der Bedienung in zwei Fassungen** |
 | Recherche | [`docs/research/2026-11-19-zbrush-grundmaterial.md`](../../../research/2026-11-19-zbrush-grundmaterial.md) |
 | Seine Vorlagen | [`2026-11-19-zbrush-matcap-red-wax.png`](2026-11-19-zbrush-matcap-red-wax.png), [`2026-11-19-zbrush-red-wax-vierecke.webp`](2026-11-19-zbrush-red-wax-vierecke.webp) |
-| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-3-farben-bogen.jpg`, `…-paint-etappe-3-farben.mp4` (an „strange bird“); `…-paint-etappe-3-bogen.jpg`, `…-paint-etappe-3-tinte.mp4`, `…-paint-etappe-3-honig.mp4`; `…-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
+| Bilder und Filme | `docs/progress/ozzy/2026-11-19-paint-etappe-4-bedienung-bogen.jpg` (zusammengesetzt, nicht gebaut); `…-paint-etappe-3-farben-bogen.jpg`, `…-paint-etappe-3-farben.mp4` (an „strange bird“); `…-paint-etappe-3-bogen.jpg`, `…-paint-etappe-3-tinte.mp4`, `…-paint-etappe-3-honig.mp4`; `…-paint-etappe-2-bogen.jpg`, `…-paint-etappe-2.mp4` (an „strange bird“); `…-paint-etappe-1-bogen.jpg`, `…-paint-etappe-1.mp4`; davor `…-wachs-vergleich.png`, `…-wachs-strange-bird.png`, `…-dreiecke-zeigen.png`, `…-ebenen-ansicht-skizze.png` |
 
 ## 2. Stand
 
@@ -22,12 +22,12 @@ Das Maul kommt später in einer eigenen Sitzung. Diese Übergabe wird am Ende je
 | Schalter „Dreiecke zeigen“ | gebaut auf seinen Wunsch (Menü, `?facetten=1`). Sein Urteil steht aus. |
 | 1 Der Beweis | gebaut (19.11.). Vier von fünf Kriterien halten; die Bemalung kriecht bei weiten Zügen an der Form (Plan 9.3). Sein Wort danach: „Etappe 2 starten“. |
 | 2 Farblinien bedienen wie Linien | gebaut (19.11.). P direkt auf der Form, Punkte und Richtungen mit A, offen und gekreuzt, die Mitte. Beide Proben halten, an der Kugel und an „strange bird“. Was fehlt: Plan 11.4. Sein Wort danach: „Etappe 3 starten“ (kein Urteil in Worten). |
-| **3 Füllen mit dem Farbtropfen** | **gebaut (19.11.), sein Urteil steht aus.** Erster Schritt: Die Farbe läuft ein; sein Wort dazu: „Tinte“ (eingestellt; „Honig“ bleibt über `?fuellen=honig`). Zweiter Schritt: Farben als Tropfen unter der Leiste (antippen, ziehen und fallen lassen, Plus, Mülleimer), Farbtropfen (F), Pipette (I). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Was fehlt: Plan 13.4. |
-| 4 bis 7 | nicht begonnen. **Nichts davon ohne sein Wort bauen.** |
+| **3 Füllen mit dem Farbtropfen** | **gebaut (19.11.), sein Urteil steht aus.** Erster Schritt: Die Farbe läuft ein; sein Wort dazu: „Tinte“ (eingestellt; „Honig“ bleibt über `?fuellen=honig`). Zweiter Schritt: Farben als Tropfen unter der Leiste (antippen, ziehen und fallen lassen, Plus, Mülleimer), Farbtropfen (F), Pipette (I). Ihm vorgelegt mit Bildblatt und Film an „strange bird“. Was fehlt: Plan 13.4. Sein Wort danach: „Etappe 4 starten“ (kein Urteil in Worten). |
+| **4 Weichheit an Linien und Punkten** | **begonnen (19.11.), seine Wahl steht aus. Gebaut ist nichts.** Vorgelegt: ein Bildblatt mit zwei Fassungen der Bedienung (Fassung 1 „Tropfen ziehen“: ein Tropfen am Faden quer zur Farblinie an jedem gewählten Punkt; Fassung 2 „Wasser“: ein Werkzeug mit Ring, das längs der Kante malt). Mein Vorschlag: Fassung 1 zuerst. Bauweise und Kriterien: Plan 14.6. |
+| 5 bis 7 | nicht begonnen. **Nichts davon ohne sein Wort bauen.** |
 
-**Die Frage, die bei ihm liegt:** sein Urteil zu Etappe 3 (er probiert Tropfen, Farbtropfen und Pipette an einer seiner Formen)
-und was als Nächstes kommt: Etappe 4 (Weichheit an Farblinien und Punkten; zuerst ein Bild der Bedienung, zwei Fassungen zur
-Wahl) oder zuerst eine der Lücken (Plan 11.4 und 13.4). Dazu, ohne dass es aufhält: ob das Füllen mit A bleiben soll (Plan 13.3).
+**Die Frage, die bei ihm liegt:** welche Fassung der Bedienung gilt (1, 2, beide, oder anders). Erst danach wird Etappe 4
+gebaut. Dazu, ohne dass es aufhält: sein Urteil zu Etappe 3, und ob das Füllen mit A bleiben soll (Plan 13.3).
 
 ## 3. Was gebaut ist
 
@@ -124,6 +124,8 @@ Farbtropfen; mit dem Farbtropfen nimmt ⌥ die Farbe auf (kein Röntgen).
     `WEITE=15`, nicht bei 55. `DIAG=1`, `PROFIL=1`.
   - `[NAME=<Form>] [WEITE=20] node scripts/pruefen/ozzy-farbe-form.mjs [ordner]`: Etappe 1 an einer gesicherten Form.
   - `node scripts/pruefen/ozzy-material-fenster.mjs [ordner]`: die Materialien (2b Wachs, 2c Dreiecke zeigen).
+- Bildblatt der Etappe 4 (zusammengesetzt): `GPU=1 OZZY_URL=… node scripts/ozzy/paint-weich-szene.mjs <ordner>` nimmt die Szene
+  auf (Haut und Linien getrennt, `szene.js`), `node scripts/ozzy/paint-weich-bogen.mjs <ordner>` setzt das Blatt.
 - Filme: `OZZY_URL=… node scripts/ozzy/paint-farben-film.mjs <ziel.mp4>` (Etappe 3: Tropfen, Farbtropfen, Pipette; über der
   Leiste zeichnet der Film einen eigenen Pfeil, weil ein Mitschnitt den Zeiger des Systems nicht zeigt),
   `[ART=tinte|honig] node scripts/ozzy/paint-fuellen-film.mjs <ziel.mp4>` (Etappe 3: die Farbe läuft ein),
@@ -140,6 +142,10 @@ Farbtropfen; mit dem Farbtropfen nimmt ⌥ die Farbe auf (kein Röntgen).
   gemalt war, galt die Verdeckung der Linien nicht. Er heißt jetzt `farbeDa`. Wer dort einen Namen vergibt: vorher suchen.
 - **Was verdeckt ist, entscheidet die Anzeige der Linien je Bildpunkt** über die Tiefe des Körpers (er steht im Paint-Modus mit
   Deckung 0 in der Szene). Sieht man Linien durch die Form, zuerst `__ozzy.farbVerdeckung()` lesen (soll 0,02 sein).
+- **Der Blick steht nach dem Drehen mit der Maus nicht jedes Mal gleich:** Beim Loslassen läuft die Form mit Schwung nach, je
+  nach Takt verschieden weit (so fielen die Szenen der Filme verschieden aus). Für Bilder und Filme den Blick setzen:
+  `__ozzy.blickSetzen({ gier, neigung, zoom })`; oder vor dem Loslassen eine halbe Sekunde ruhen. Der Zoom mit dem Mausrad endet
+  bei 4; zwölf Schritte zu 100 sind schon mehr.
 - **Das Fenster im Browser-Bereich der App kann im Hintergrund langsam laufen** (einmal war die Form vier Sekunden nach dem
   Laden noch nicht da): nach dem Laden und zwischen den Handgriffen `__ozzy.bild(1 / 30)` einige Male rufen. Nach einer Probe dort `localStorage.removeItem('ozzy.farben')`, sonst bleiben die Farben der Probe stehen.
 - **Der Farbwähler des Systems** lässt sich in einer Probe nicht bedienen: Die Probe setzt `#farbe-farbe` (Wert, dann `input` und

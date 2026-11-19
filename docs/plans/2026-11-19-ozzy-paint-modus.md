@@ -1,14 +1,14 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand (19.11., 16:35 Uhr): Etappe 3 ist gebaut, dein Urteil steht aus.** Dein Wort zum Einlaufen: „Tinte“. Darauf der Rest der
-Etappe: Die Farben hängen als Tropfen unter der Leiste, dazu der Farbtropfen (F) und die Pipette (I). Bildblatt
-[`2026-11-19-paint-etappe-3-farben-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-3-farben-bogen.jpg), Film an „strange
-bird“ [`2026-11-19-paint-etappe-3-farben.mp4`](../progress/ozzy/2026-11-19-paint-etappe-3-farben.mp4); was gebaut, gemessen und
-für dich entschieden ist, steht in Abschnitt 13. Davor: das Einlaufen (Abschnitt 12), Etappe 2 (Abschnitt 11, Farblinien bedienen
-wie Linien), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 4 bis 7 warten
-auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
-zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
-[`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
+**Stand (19.11., 17:05 Uhr): Etappe 4 hat begonnen (dein Wort: „Etappe 4 starten“). Das Bild der Bedienung liegt vor, zwei
+Fassungen zur Wahl; deine Wahl steht aus.** Bildblatt
+[`2026-11-19-paint-etappe-4-bedienung-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-4-bedienung-bogen.jpg): weiche Kanten
+an „strange bird“, Fassung 1 „Tropfen ziehen“, Fassung 2 „Wasser“. Es ist zusammengesetzt, gebaut ist davon noch nichts; alles
+dazu in Abschnitt 14. Davor gebaut: Etappe 3 (Abschnitt 12 und 13: die Farbe läuft ein, dein Wort „Tinte“; Farben als Tropfen,
+Farbtropfen F, Pipette I), Etappe 2 (Abschnitt 11), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter
+„Dreiecke zeigen“. Etappe 5 bis 7 warten auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte,
+Spiegel und Nähte“ auf, nicht zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`).
+Übergabe des Strangs: [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
 ## Dein Auftrag (19.11.2026, wörtlich)
 
@@ -78,8 +78,8 @@ Geste wird von Anfang an auch für iPad und Stift gebaut (dort gibt es kein ⌥)
 | **0** Material „Wachs“ | das neue Material | gebaut; Vergleichsbild liegt vor |
 | **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | **gebaut (19.11.)**; Kriterien in 3.1, Messwerte in Abschnitt 9; dein Wort: „Etappe 2 starten“ |
 | **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | **gebaut (19.11.)**; Schritte in Abschnitt 10, Messwerte und Lücken in Abschnitt 11; Film an „strange bird“; dein Wort: „Etappe 3 starten“ |
-| **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | **gebaut (19.11.):** das Einlaufen (dein Wort: „Tinte“; Abschnitt 12), dann Farben als Tropfen unter der Leiste, Farbtropfen F, Pipette I (Abschnitt 13); Bildblatt und Film an „strange bird“; dein Urteil steht aus |
-| **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | zuerst ein Bild der Bedienung (zwei Fassungen zur Wahl), dann gebaut |
+| **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | **gebaut (19.11.):** das Einlaufen (dein Wort: „Tinte“; Abschnitt 12), dann Farben als Tropfen unter der Leiste, Farbtropfen F, Pipette I (Abschnitt 13); Bildblatt und Film an „strange bird“; dein Wort danach: „Etappe 4 starten“ |
+| **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | **begonnen (19.11.):** das Bild der Bedienung liegt vor, zwei Fassungen zur Wahl (Abschnitt 14); deine Wahl steht aus, dann wird gebaut |
 | **5** Ebenen | Ebene anlegen, ordnen, aus- und einblenden; Muster über Verläufen | ein Verlauf auf Ebene 1, Punkte auf Ebene 2, an deiner Form |
 | **6** Ebenen-Ansicht | die Form fächert auf, je Ebene eine Kopie; drehen, eine Kopie wählen und dort malen | zuerst ein Film (nebeneinander und schräg versetzt zur Wahl), dann gebaut |
 | **7** Mehrere Objekte, Spiegel, Verbund | jedes Objekt mit eigener Bemalung; Spiegel aus; Verschmelzen und Abziehen zeigen die Farben | Bild an zwei bemalten Objekten im Verbund |
@@ -641,3 +641,74 @@ wiederholt hielt sie (teuerstes Bild 3,5 ms).
   das Verhalten der Linien, wie bei Freihand und Formen); `farbWerkzeugTaste`, `farbAufnehmenBei`, `farbUnter`, `farbZug`; Haken
   `farbLeiste`, `farbUnter`. `farbwerk.ts`: `farbeBei`.
 - Film: `scripts/ozzy/paint-farben-film.mjs`. Bilder der Leiste in dreifacher Schärfe: `scripts/ozzy/paint-farben-blick.mjs`.
+
+## 14. Etappe 4, erster Schritt: weiche Kanten, zwei Fassungen der Bedienung zur Wahl (19.11.2026, auf dein Wort „Etappe 4 starten“)
+
+Bildblatt: [`2026-11-19-paint-etappe-4-bedienung-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-4-bedienung-bogen.jpg).
+Wie vereinbart zuerst ein Bild der Bedienung. **Gebaut ist davon noch nichts.**
+
+### 14.1 Was am Bild echt ist
+
+- **Echt:** deine Form „strange bird“ auf Wachs, von der Seite; eine Farblinie mit vier Punkten (ein Fleck auf der Flanke); die
+  Haut in zwei Aufnahmen aus dem Fenster, einmal ganz in Blau, einmal ganz in Hell.
+- **Gemischt:** der weiche Übergang. Je Bildpunkt sind die zwei Aufnahmen nach seinem Abstand zur Farblinie gemischt. Das ist die
+  Rechnung, die später die Grafikkarte macht; nur misst das Bild den Abstand im Bild, gebaut wird er längs der Haut gemessen.
+- **Gezeichnet:** der Tropfen am Faden, der Ring, der Zeiger daran.
+
+### 14.2 Was in beiden Fassungen gleich ist
+
+- Die Farblinie bleibt, wo sie ist. Der Verlauf liegt zu beiden Seiten von ihr, gleich weit.
+- Die Breite kann sich längs der Farblinie ändern und bis auf null gehen: Dort ist die Kante hart, dazwischen fließt die Breite.
+- Farbe bleibt Vektor: Gespeichert wird die Breite, kein Bild. Bei jedem Zoom wird der Verlauf neu gerechnet.
+- K schaltet weich und hart, ⌘Z nimmt jeden Schritt zurück.
+
+### 14.3 Fassung 1: Tropfen ziehen
+
+- An einem gewählten Punkt sitzt quer zur Farblinie ein kleiner Tropfen an einem Faden. **Wegziehen:** Der Verlauf öffnet sich an
+  diesem Punkt, so weit wie der Faden. **Zurückschieben:** Die Kante ist wieder hart. Hohl heißt hart, gefüllt heißt weich.
+- Die Breite gehört den Punkten der Farblinie; zwischen zwei Punkten fließt sie. Soll sich die Weichheit zwischen zwei Punkten
+  ändern, setzt P dort einen Punkt.
+- Mehrere Punkte oder die ganze Farblinie gewählt: K schaltet weich und hart, `[` und `]` machen den Verlauf breiter und schmaler.
+- **Dafür spricht:** genau und wiederholbar (eine Breite je Punkt); es ist, was du beschrieben hast („direkt an linien und
+  punkten“); derselbe Anfasser wie die Nadel an einem Punkt, wie das Breitenwerkzeug in Illustrator.
+- **Dagegen:** Jede Stelle mit eigener Weichheit braucht einen Punkt.
+
+### 14.4 Fassung 2: Wasser
+
+- Ein Werkzeug: ein klarer Tropfen in der Leiste, neben dem Farbtropfen. Der Zeiger ist ein Ring; so breit wird der Verlauf
+  (`[` und `]` ändern ihn). **Über die Kante fahren** macht sie nass: Sie verschwimmt, so breit wie der Ring. **⌥ + fahren**
+  trocknet: Die Kante ist dort wieder hart.
+- Die Weichheit hängt nicht an den Punkten der Farblinie. Man malt sie längs der Kante.
+- **Dafür spricht:** schnell und malerisch, nah am Wischen in Procreate; es braucht keine Punkte.
+- **Dagegen:** weniger genau zu wiederholen; ein Werkzeug mehr; die Breite steht nirgends an einem Punkt.
+
+### 14.5 Mein Vorschlag
+
+**Fassung 1 zuerst.** Sie ist, was du beschrieben hast, sie ist genau, und sie ist der kleinere Bau. Fassung 2 lässt sich später
+daraufsetzen: Das Wasser stellt dann dieselben Breiten ein und setzt, wo es nötig ist, selbst Punkte.
+
+### 14.6 Wie gebaut wird (nach deiner Wahl) und woran ich es messe
+
+- **Modell:** Jeder Punkt einer Farblinie bekommt eine Breite (Einheiten des Werks, 0 = hart). Die Datei bekommt eine neue
+  Version; alte bleiben lesbar.
+- **Zeichnen:** In den Dreiecken, durch die eine Farblinie läuft, rechnet die Grafikkarte den Abstand zur Farblinie schon je
+  Bildpunkt. Für breitere Verläufe trägt jeder Punkt des Rechennetzes den Abstand zur nächsten Farblinie, ihre Breite dort und
+  die Farbe jenseits: dieselbe Rechnung wie beim Einlaufen (Abschnitt 12), von den Farblinien aus statt vom Klick, und nur so
+  weit, wie der breiteste Verlauf reicht.
+- **Kriterien, vor dem Bau festgelegt:**
+  1. Breite null gibt genau das Bild von heute (0 von 255 Unterschied).
+  2. Der Verlauf ist an jeder Stelle so breit wie eingestellt (höchstens 1 Gerätepunkt oder 5 % daneben), bei 1-, 4- und
+     16-facher Vergrößerung.
+  3. Längs der Farblinie fließt die Breite stetig von Punkt zu Punkt; an einem Punkt mit Breite null ist die Kante einen
+     Gerätepunkt breit.
+  4. Kein Verlauf schlägt auf die Rückseite oder über eine andere Farblinie.
+  5. Tempo an „strange bird“: die Bemalung je Bild im Median höchstens 1 ms, das Neurechnen nach einem Handgriff höchstens 30 ms.
+  6. Sichern, Laden und ⌘Z halten die Breiten.
+  7. Geprüft an einer deiner Formen, mit Film.
+
+### 14.7 Für die Sitzung, die baut
+
+- Die Szene des Bildblatts: `scripts/ozzy/paint-weich-szene.mjs <ordner>` (nimmt Haut und Linien getrennt auf und schreibt
+  `szene.js`); das Blatt: `scripts/ozzy/paint-weich-bogen.mjs <ordner>` setzt `paint-weich-bogen.html` (mischt und zeichnet).
+- Neu für Filme und Bilder: `__ozzy.blickSetzen({ gier, neigung, zoom, schwenkX, schwenkY })` setzt den Blick ohne Schwung. Mit
+  der Maus gedreht, läuft die Form je nach Takt des Loslassens verschieden weit nach, und das Bild steht jedes Mal anders.

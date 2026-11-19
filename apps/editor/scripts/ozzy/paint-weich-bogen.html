@@ -1,0 +1,394 @@
+<!doctype html>
+<!--
+  Bildblatt zum Paint-Modus, Etappe 4 (Plan docs/plans/2026-11-19-ozzy-paint-modus.md, Abschnitt 14): weiche Kanten, zwei Fassungen
+  der Bedienung zur Wahl. Zusammengesetzt, nicht gebaut:
+  - Echt sind die Aufnahmen aus `szene.js` (`paint-weich-szene.mjs`): die Haut ganz in der Farbe des Körpers, ganz in der des
+    Flecks, die Farblinie mit ihren Punkten, der Verlauf der Farblinie im Bild.
+  - Der weiche Übergang ist aus den zwei Aufnahmen der Haut gemischt, je Bildpunkt nach seinem Abstand zur Farblinie im Bild und
+    der Breite, die dort gilt (im Fenster wird der Abstand später längs der Haut gemessen).
+  - Gezeichnet sind der Tropfen am Faden, der Ring und der Zeiger daran.
+  Gesetzt mit `paint-weich-bogen.mjs`.
+-->
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: Lobster;
+        src: url('LOBSTER');
+      }
+      html,
+      body {
+        margin: 0;
+        background: #fff;
+      }
+      body {
+        width: 2400px;
+        padding: 44px 44px 40px;
+        box-sizing: border-box;
+        font-family:
+          -apple-system,
+          'Helvetica Neue',
+          Helvetica,
+          Arial,
+          sans-serif;
+        color: #17202a;
+      }
+      h1 {
+        font-family: Lobster, serif;
+        font-weight: 400;
+        font-size: 64px;
+        margin: 0 0 6px;
+      }
+      p.unter {
+        font-size: 25px;
+        margin: 0 0 30px;
+        color: #4a5560;
+      }
+      h2 {
+        grid-column: 1 / -1;
+        font-family: Lobster, serif;
+        font-weight: 400;
+        font-size: 44px;
+        margin: 18px 0 -8px;
+      }
+      h2 small {
+        font-family:
+          -apple-system,
+          'Helvetica Neue',
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-size: 25px;
+        color: #4a5560;
+        margin-left: 14px;
+      }
+      .raster {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 30px 28px;
+      }
+      figure {
+        margin: 0;
+      }
+      figure canvas {
+        width: 100%;
+        display: block;
+        border: 1px solid #d5d9de;
+        border-radius: 10px;
+      }
+      figure.breit {
+        grid-column: 1 / -1;
+      }
+      figure.breit .paar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+      figcaption {
+        font-size: 23px;
+        line-height: 1.32;
+        margin-top: 10px;
+      }
+      figcaption b {
+        font-weight: 650;
+      }
+      p.fuss {
+        font-size: 21px;
+        line-height: 1.35;
+        color: #4a5560;
+        margin: 30px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Ozzy · Paint-Modus, Etappe 4: weiche Kanten</h1>
+    <p class="unter">19.11.2026 · zwei Fassungen der Bedienung zur Wahl · deine Form „strange bird“ von der Seite · zusammengesetzt aus Aufnahmen aus dem Fenster 5215, noch nichts davon ist gebaut</p>
+    <div class="raster">
+      <figure class="breit">
+        <div class="paar"><canvas id="w-hart"></canvas><canvas id="w-weich"></canvas></div>
+        <figcaption><b>Worum es geht.</b> Links die harte Kante, wie sie heute ist. Rechts dieselbe Farblinie mit Weichheit: oben breit, an den Seiten schmaler, unten läuft der Verlauf fließend in die harte Kante aus. Die Farblinie selbst bleibt, wo sie ist; der Verlauf liegt zu beiden Seiten von ihr.</figcaption>
+      </figure>
+      <h2>Fassung 1 · Tropfen ziehen <small>genau, an den Punkten der Farblinie (wie die Nadel an einem Punkt, wie das Breitenwerkzeug in Illustrator)</small></h2>
+      <figure>
+        <canvas id="a1"></canvas>
+        <figcaption><b>Punkt gewählt (A):</b> Quer zur Farblinie sitzt an ihm ein kleiner Tropfen an einem kurzen Faden. Hohl heißt: harte Kante.</figcaption>
+      </figure>
+      <figure>
+        <canvas id="a2"></canvas>
+        <figcaption><b>Den Tropfen wegziehen:</b> Der Verlauf öffnet sich an diesem Punkt, so weit wie der Faden. Zu den Nachbarpunkten hin läuft er fließend aus. Zurückschieben macht die Kante wieder hart.</figcaption>
+      </figure>
+      <figure>
+        <canvas id="a3"></canvas>
+        <figcaption><b>Mehrere Punkte gewählt:</b> Jeder zeigt seinen Tropfen. K schaltet weich und hart, [ und ] machen den Verlauf breiter und schmaler. Soll sich die Weichheit zwischen zwei Punkten ändern, setzt P dort einen Punkt.</figcaption>
+      </figure>
+      <h2>Fassung 2 · Wasser <small>frei, längs der Kante gemalt (wie Wischen in Procreate)</small></h2>
+      <figure>
+        <canvas id="b1"></canvas>
+        <figcaption><b>Werkzeug Wasser:</b> ein klarer Tropfen in der Leiste, neben dem Farbtropfen. Der Zeiger ist ein Ring mit dem klaren Tropfen: So breit wird der Verlauf ([ und ] ändern ihn).</figcaption>
+      </figure>
+      <figure>
+        <canvas id="b2"></canvas>
+        <figcaption><b>Über die Kante fahren:</b> Wo der Ring war, ist sie nass und verschwimmt, so breit wie der Ring. Wo er nicht war, bleibt sie hart; dazwischen läuft der Verlauf aus.</figcaption>
+      </figure>
+      <figure>
+        <canvas id="b3"></canvas>
+        <figcaption><b>⌥ + fahren trocknet:</b> Die Kante wird dort wieder hart. Die Weichheit hängt hier nicht an den Punkten der Farblinie, man malt sie längs der Kante.</figcaption>
+      </figure>
+    </div>
+    <p class="fuss">Echt sind die Haut (zwei Aufnahmen deiner Form, ganz in Blau und ganz in Hell, je Bildpunkt nach dem Abstand zur Farblinie gemischt), die Farblinie und ihre Punkte. Gezeichnet sind der Tropfen am Faden, der Ring und der Zeiger daran. Beide Fassungen stellen dieselbe Weichheit ein; sie lassen sich auch beide bauen.</p>
+    <script src="szene.js"></script>
+    <script>
+      const Z = window.SZENE;
+      const D = Z.dichte;
+      const TINTE = '#1f1a17';
+      const bild = (url) =>
+        new Promise((ok) => {
+          const i = new Image();
+          i.onload = () => ok(i);
+          i.src = url;
+        });
+      const pixel = async (url) => {
+        const i = await bild(url);
+        const c = new OffscreenCanvas(i.width, i.height);
+        const g = c.getContext('2d');
+        g.drawImage(i, 0, 0);
+        return g.getImageData(0, 0, i.width, i.height);
+      };
+      const weich = (u) => u * u * (3 - 2 * u);
+      // die Farblinie: ihre Länge bis zu jedem Ort, die Nummern ihrer Punkte
+      const N = Z.linie.length;
+      const lang = [0];
+      for (let i = 0; i < N; i++) {
+        const [a, b] = [Z.linie[i], Z.linie[(i + 1) % N]];
+        lang.push(lang[i] + Math.hypot(b.x - a.x, b.y - a.y));
+      }
+      const UMFANG = lang[N];
+      const anker = Z.punkte.map((p) => p.i);
+      /** die Breite an jedem Ort der Farblinie aus den Breiten ihrer Punkte: Zwischen zwei Punkten fließt sie */
+      const ausPunkten = (W) => {
+        const aus = new Float32Array(N);
+        for (let k = 0; k < anker.length; k++) {
+          const [i0, i1] = [anker[k], anker[(k + 1) % anker.length]];
+          const [w0, w1] = [W[k], W[(k + 1) % anker.length]];
+          const n = (i1 - i0 + N) % N || N;
+          const l0 = lang[i0];
+          const strecke = (lang[i1] - l0 + UMFANG) % UMFANG || UMFANG;
+          for (let j = 0; j < n; j++) {
+            const i = (i0 + j) % N;
+            aus[i] = w0 + (w1 - w0) * weich(((lang[i] - l0 + UMFANG) % UMFANG) / strecke);
+          }
+        }
+        return aus;
+      };
+      /** nass von Länge a bis b (im Umlauf), an den Enden über `rand` auslaufend; `trocken`: Stellen [von, bis], die wieder hart sind */
+      const nass = (a, b, w, rand, trocken = []) => {
+        const aus = new Float32Array(N);
+        const fenster = (l, von, bis, r) => {
+          const t = (l - von + UMFANG) % UMFANG;
+          const L = (bis - von + UMFANG) % UMFANG;
+          if (t > L) return 0;
+          return weich(Math.min(1, t / r)) * weich(Math.min(1, (L - t) / r));
+        };
+        for (let i = 0; i < N; i++) {
+          let f = fenster(lang[i], a, b, rand);
+          for (const [von, bis] of trocken) f *= 1 - fenster(lang[i], von, bis, rand * 0.7);
+          aus[i] = w * f;
+        }
+        return aus;
+      };
+      const HART = new Float32Array(N);
+      /** die Stelle der Farblinie bei der Länge l (CSS-Pixel im Bild) samt Richtung nach außen */
+      const stelle = (l) => {
+        l = ((l % UMFANG) + UMFANG) % UMFANG;
+        let i = 0;
+        while (i < N - 1 && lang[i + 1] < l) i++;
+        const [a, b] = [Z.linie[i], Z.linie[(i + 1) % N]];
+        const u = (l - lang[i]) / Math.max(1e-6, lang[i + 1] - lang[i]);
+        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, ...aussen(i) };
+      };
+      /** die Richtung quer zur Farblinie am Ort i, vom Fleck weg */
+      const aussen = (i) => {
+        const [a, b] = [Z.linie[(i - 4 + N) % N], Z.linie[(i + 4) % N]];
+        const L = Math.hypot(b.x - a.x, b.y - a.y);
+        let [nx, ny] = [(b.y - a.y) / L, -(b.x - a.x) / L];
+        const p = Z.linie[i];
+        if ((p.x - Z.mitte.x) * nx + (p.y - Z.mitte.y) * ny < 0) [nx, ny] = [-nx, -ny];
+        return { nx, ny };
+      };
+
+      /**
+       * Der Abstand jedes Bildpunkts eines Ausschnitts zur Farblinie (Bildpunkte, innen positiv) und der nächste Ort auf ihr; nur im
+       * Kasten um die Farblinie plus `rand`, sonst gilt außen.
+       */
+      const feld = (aus, B, H, rand) => {
+        const P = Z.linie.map((p) => [(p.x - aus.x) * D, (p.y - aus.y) * D]);
+        const sd = new Float32Array(B * H).fill(-1e6);
+        const ort = new Float32Array(B * H);
+        let [x0, y0, x1, y1] = [1e9, 1e9, -1e9, -1e9];
+        for (const [x, y] of P) [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+        [x0, y0, x1, y1] = [Math.max(0, Math.floor(x0 - rand)), Math.max(0, Math.floor(y0 - rand)), Math.min(B - 1, Math.ceil(x1 + rand)), Math.min(H - 1, Math.ceil(y1 + rand))];
+        for (let y = y0; y <= y1; y++)
+          for (let x = x0; x <= x1; x++) {
+            const [px, py] = [x + 0.5, y + 0.5];
+            let best = 1e18;
+            let wo = 0;
+            let innen = false;
+            for (let i = 0; i < N; i++) {
+              const [ax, ay] = P[i];
+              const [bx, by] = P[(i + 1) % N];
+              const [dx, dy] = [bx - ax, by - ay];
+              const u = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)));
+              const d = (px - ax - u * dx) ** 2 + (py - ay - u * dy) ** 2;
+              if (d < best) {
+                best = d;
+                wo = i + u;
+              }
+              if (ay > py !== by > py && px < ax + ((py - ay) / (by - ay)) * dx) innen = !innen;
+            }
+            sd[y * B + x] = (innen ? 1 : -1) * Math.sqrt(best);
+            ort[y * B + x] = wo;
+          }
+        return { sd, ort };
+      };
+      const LIN = new Float32Array(256).map((_, i) => (i / 255) ** 2.2);
+      /** die zwei Aufnahmen der Haut mischen: außen der Körper, innen der Fleck, dazwischen der Verlauf mit der Breite `breite` je Ort */
+      const mischen = (g, koerper, fleck, F, breite) => {
+        const [B, H] = [koerper.width, koerper.height];
+        const aus = g.createImageData(B, H);
+        for (let n = 0; n < B * H; n++) {
+          const i = Math.floor(F.ort[n]);
+          const u = F.ort[n] - i;
+          const w = Math.max(0.75, (breite[i % N] * (1 - u) + breite[(i + 1) % N] * u) * D);
+          const t = weich(Math.max(0, Math.min(1, 0.5 + F.sd[n] / (2 * w))));
+          for (let c = 0; c < 3; c++) aus.data[4 * n + c] = Math.round(255 * (LIN[koerper.data[4 * n + c]] * (1 - t) + LIN[fleck.data[4 * n + c]] * t) ** (1 / 2.2));
+          aus.data[4 * n + 3] = 255;
+        }
+        g.putImageData(aus, 0, 0);
+      };
+
+      // ---------- was gezeichnet ist ----------
+      const TROPFEN = new Path2D('M0 0C2.7 3.6 4.5 5.9 4.5 8.5a4.5 4.5 0 0 1-9 0C-4.5 5.9-2.7 3.6 0 0z');
+      /** der Tropfen am Faden: von der Stelle p quer zur Farblinie, `weit` Pixel nach außen; hohl (hart) oder gefüllt */
+      const tropfenAmFaden = (g, p, weit, gefuellt) => {
+        const [x, y] = [p.x + p.nx * weit, p.y + p.ny * weit];
+        g.strokeStyle = TINTE;
+        g.lineWidth = 0.9;
+        g.beginPath();
+        g.moveTo(p.x, p.y);
+        g.lineTo(x, y);
+        g.stroke();
+        g.save();
+        g.translate(x, y);
+        // (die Spitze zeigt zur Farblinie, der Tropfen hängt nach außen)
+        g.rotate(Math.atan2(p.ny, p.nx) - Math.PI / 2);
+        g.scale(0.92, 0.92);
+        g.fillStyle = gefuellt ? TINTE : '#ffffff';
+        g.fill(TROPFEN);
+        g.lineWidth = 1;
+        g.stroke(TROPFEN);
+        g.restore();
+        return { x: x + p.nx * 7, y: y + p.ny * 7 };
+      };
+      /** Ozzys Zeiger: ein kleiner weißer Pfeil, die Spitze an der Stelle */
+      const zeiger = (g, x, y) => {
+        g.save();
+        g.translate(x, y);
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.lineTo(10.4, 6.1);
+        g.lineTo(5.3, 7.3);
+        g.lineTo(3.5, 12);
+        g.closePath();
+        g.fillStyle = '#ffffff';
+        g.fill();
+        g.strokeStyle = TINTE;
+        g.lineWidth = 0.9;
+        g.lineJoin = 'round';
+        g.stroke();
+        g.restore();
+      };
+      /** der Ring des Wassers */
+      const ring = (g, x, y, r) => {
+        g.beginPath();
+        g.arc(x, y, r, 0, 2 * Math.PI);
+        g.strokeStyle = 'rgba(255,255,255,0.9)';
+        g.lineWidth = 2.6;
+        g.stroke();
+        g.strokeStyle = TINTE;
+        g.lineWidth = 0.9;
+        g.stroke();
+        // der klare Tropfen in seiner Mitte
+        g.save();
+        g.translate(x, y - 6.5);
+        g.fillStyle = 'rgba(255,255,255,0.6)';
+        g.fill(TROPFEN);
+        g.lineWidth = 1.05;
+        g.strokeStyle = TINTE;
+        g.stroke(TROPFEN);
+        g.restore();
+      };
+
+      (async () => {
+        const nah = { koerper: await pixel(Z.haut.koerper), fleck: await pixel(Z.haut.fleck) };
+        const weit = { koerper: await pixel(Z.hautWeit.koerper), fleck: await pixel(Z.hautWeit.fleck) };
+        const linien = {};
+        for (const [n, url] of Object.entries(Z.linien)) linien[n] = await bild(url);
+        const FN = feld(Z.aus, nah.koerper.width, nah.koerper.height, 70 * D);
+        const FW = feld(Z.weit, weit.koerper.width, weit.koerper.height, 70 * D);
+        const P = Z.punkte.map((p) => ({ x: p.x, y: p.y, ...aussen(p.i) }));
+        /** eine Tafel: die Haut mit der Breite je Ort, darüber die Linien eines Zustands, darüber das Gezeichnete (CSS-Pixel des Fensters) */
+        const tafel = (id, quelle, F, aus, breite, zustand, zeichnen) => {
+          const c = document.getElementById(id);
+          c.width = quelle.koerper.width;
+          c.height = quelle.koerper.height;
+          const g = c.getContext('2d');
+          mischen(g, quelle.koerper, quelle.fleck, F, breite);
+          if (zustand) g.drawImage(linien[zustand], 0, 0);
+          if (zeichnen) {
+            g.save();
+            g.scale(D, D);
+            g.translate(-aus.x, -aus.y);
+            zeichnen(g);
+            g.restore();
+          }
+        };
+        // oben weich und breit, an den Seiten schmaler, unten hart
+        const ZIEL = ausPunkten([24, 0, 14, 36]);
+        tafel('w-hart', weit, FW, Z.weit, HART, null, null);
+        tafel('w-weich', weit, FW, Z.weit, ZIEL, null, null);
+        // Fassung 1
+        tafel('a1', nah, FN, Z.aus, HART, 'gewaehlt', (g) => {
+          const e = tropfenAmFaden(g, P[0], 12, false);
+          zeiger(g, e.x + 9, e.y + 5);
+        });
+        tafel('a2', nah, FN, Z.aus, ausPunkten([30, 0, 0, 0]), 'gewaehlt', (g) => {
+          const e = tropfenAmFaden(g, P[0], 30, true);
+          zeiger(g, e.x - 5, e.y - 2);
+        });
+        const ALLE = [30, 0, 12, 22];
+        tafel('a3', nah, FN, Z.aus, ausPunkten(ALLE), 'alle', (g) => {
+          P.forEach((p, k) => tropfenAmFaden(g, p, Math.max(12, ALLE[k]), ALLE[k] > 0));
+        });
+        // Fassung 2: der Ring fährt von oben links im Uhrzeigersinn über die Kante
+        const [oben, rechts, unten] = [lang[anker[3]], UMFANG, lang[anker[1]]];
+        const R = 22;
+        tafel('b1', nah, FN, Z.aus, HART, 'ruhe', (g) => {
+          const s = stelle(oben - 26);
+          ring(g, s.x + s.nx * 32, s.y + s.ny * 32, R);
+        });
+        const bis = rechts + 0.42 * (unten - 0);
+        tafel('b2', nah, FN, Z.aus, nass(oben - 30, bis, R, 26), 'ruhe', (g) => {
+          const s = stelle(bis - 6);
+          ring(g, s.x, s.y, R);
+        });
+        const trocken = [rechts - 0.5 * (rechts - oben) - 26, rechts - 0.5 * (rechts - oben) + 26];
+        tafel('b3', nah, FN, Z.aus, nass(oben - 30, bis, R, 26, [trocken]), 'ruhe', (g) => {
+          const s = stelle((trocken[0] + trocken[1]) / 2 + 14);
+          ring(g, s.x, s.y, R);
+        });
+        document.body.dataset.fertig = '1';
+      })();
+    </script>
+  </body>
+</html>

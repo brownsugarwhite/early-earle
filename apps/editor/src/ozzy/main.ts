@@ -8591,6 +8591,21 @@ const haken = {
   },
   /** Blick: Ansicht, gewendet, wie flach, Gier und Neigung von Hand (rad), Maßstab (Bildpunkte je Pixel der Welt), Schwung */
   blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: kanteMitte, kanteSichtbar, rueckseite: rueckseite(ansicht), hinten: hintenJetzt?.zahl ?? 0, blatt: blattModus(), zoom: nutzer.zoom, schwenk: [nutzer.schwenkX, nutzer.schwenkY], stift: stiftGesehen, finger: finger.size, geste: geste !== null, vorKiste: vorKiste(nutzer.gier, nutzer.neigung), vorDreh: vorDreh !== null, vierWartet }),
+  /**
+   * Für Filme und Bilder: den Blick im Raum genau setzen (Gier und Neigung in rad, Zoom, Schwenk in CSS-Pixeln), ohne Schwung. Mit
+   * der Maus gedreht, läuft die Form je nach Takt des Loslassens verschieden weit nach; ein Bild soll jedes Mal gleich stehen. Der
+   * Zoom darf hier über das hinaus, was das Mausrad erlaubt (Bilder aus der Nähe). Zurück: der Blick danach.
+   */
+  blickSetzen: (b: { gier?: number; neigung?: number; zoom?: number; schwenkX?: number; schwenkY?: number }): { gier: number; neigung: number; zoom: number; schwenkX: number; schwenkY: number } => {
+    schwung = null;
+    if (b.gier !== undefined) nutzer.gier = b.gier;
+    if (b.neigung !== undefined) nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, b.neigung));
+    if (b.zoom !== undefined) nutzer.zoom = Math.max(0.3, Math.min(12, b.zoom));
+    if (b.schwenkX !== undefined) nutzer.schwenkX = b.schwenkX;
+    if (b.schwenkY !== undefined) nutzer.schwenkY = b.schwenkY;
+    anstossen();
+    return { ...nutzer };
+  },
   /** wie dunkel die Rückseite an einem Punkt (CSS) ist, und die Mitte der fernen Wand einer Achse im Bild (CSS) */
   dunkelBei: (x: number, y: number) => hintenBei(hintenJetzt, x * D, y * D),
   wandMitte: (achse: 0 | 1 | 2) => {

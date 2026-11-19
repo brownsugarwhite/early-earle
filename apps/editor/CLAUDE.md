@@ -491,6 +491,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   das Zeichen des Farbtropfens sind derselbe Pfad; wer einen ändert, ändert alle drei. (6) Mit dem Farbtropfen gilt ⌥ der
   Farbe: `roentgenZiel` nimmt `farbWerkzeug()` aus. Probe `ozzy-farbe-tropfen-fenster.mjs`, Film
   `scripts/ozzy/paint-farben-film.mjs`.
+- **Bilder und Filme: den Blick setzen, nicht mit der Maus drehen (19.11.).** Beim Loslassen läuft die Form mit Schwung nach
+  (`schwung`), je nach Takt verschieden weit: Dieselben Schritte geben jedes Mal ein etwas anderes Bild, und feste Stellen im
+  Skript treffen dann daneben. `__ozzy.blickSetzen({ gier, neigung, zoom, schwenkX, schwenkY })` setzt den Blick ohne Schwung
+  (Zoom bis 12; das Mausrad endet bei 4). Wo eine Stelle auf der Form gebraucht wird, sie suchen (`farbOrtFrei`, `farbTiefe`),
+  nicht festschreiben (`scripts/ozzy/paint-weich-szene.mjs`). Haut und Linien lassen sich getrennt aufnehmen: nach
+  `film(true)` und `bild()` sofort `#haut.toDataURL()` und `#linien.toDataURL()`.
 - **Jelly und helles Solid (18.11., `src/ozzy/gast.ts`):** `BlaupauseBild` aus `src/form/blaupause.ts` läuft unverändert als Gast
   auf der eigenen Fläche `#gast` (zweiter WebGL-Renderer mit Kantenglättung, über `#haut`, unter `#linien`). Was der Gast tut: (1)
   den Grund verbergen (`Reflect.get(bild, 'hgNetz')`: ein privates Feld; benennt die Design-Sitzung es um, steht eine Warnung in der
