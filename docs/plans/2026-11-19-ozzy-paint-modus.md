@@ -385,3 +385,27 @@ zurück).
 - Unter einem gewählten Ring hängt der Tropfen „Maul formen“; an der Wand des Tops kann er genau über einem Anfasser liegen. Und
   hinter der Form liegt der Griff der Raumecke: Ein Klick auf die Form genau dort klappt auf, statt zu füllen.
 
+## 10. Etappe 2: Schritte (begonnen am 19.11.2026, auf dein Wort „Etappe 2 starten“)
+
+Farblinien bedienen wie Linien. Jeder Schritt hat seine Probe; nach 2b und am Ende bekommst du Bild oder Film.
+
+| Schritt | Was du anfassen kannst | Probe |
+| --- | --- | --- |
+| **2a** Punkte und Richtungen | noch nichts Neues zu sehen: Jede Farblinie bekommt Punkte mit zwei Richtungen (wie eine Linie der Form) und behält sie über Umformen, Netzwechsel, Sichern und Laden | Tests |
+| **2b** P direkt auf der Form | im Raum und eingerastet: Klick setzt einen Punkt, Ziehen zieht die Richtungen, der Faden zeigt die Farblinie, wie sie wird; auf dem ersten Punkt schließen, ↩ beendet offen, ⌫ nimmt den letzten Punkt zurück, Esc bricht ab | im Fenster mit einzelnen Klicks: Die Punkte liegen unter den Klicks |
+| **2c** A greift | Punkt ziehen (er gleitet über die Haut), Richtung drehen (Nadel und Ring), Doppelklick Knick oder rund, mit P einen Punkt auf die Farblinie setzen, ⌫ löscht; Rahmen, Lasso, Doppelklick wählt die ganze Farblinie | im Fenster; die Füllung folgt der Farblinie |
+| **2d** Offen und gekreuzt | eine offene Farblinie begrenzt nur, wo sie liegt (die Füllung läuft um ihr Ende); zwei Farblinien, die sich kreuzen, trennen vier Flächen | Test und Fenster |
+| **2e** Die Mitte | P rastet auf die Mitte ein; eine Farblinie von der Mitte zur Mitte schließt sich mit ihrem Spiegelbild; auch auf der Spiegelseite zu greifen | im Fenster |
+
+**Am Ende:** Bauch, Schnauze und Augenrand an „strange bird“, jede Geste mit einzelnen Klicks, als Film.
+
+**Wie eine Farblinie zwischen zwei Punkten läuft** (wie in deiner Vorlage `raum.html`): Aus den zwei Punkten und ihren Richtungen
+entsteht die Kurve im Raum; sie wird Probe für Probe auf die Haut gelegt. Danach gehen ihre Orte mit der Haut mit. Neu gerechnet
+wird ein Stück nur, wenn du einen seiner zwei Punkte oder dessen Richtung anfasst; alles andere bleibt, wie es liegt.
+
+**Bauweise:** Eine Richtung steht im Maß des Dreiecks ihres Punkts (drei Zahlen zu seinen drei Ecken, Summe null: So dreht und
+dehnt sie sich mit der Haut, und beim Netzwechsel geht sie wie die Gewichte mit). Bedient wird über ein zweites Verhalten der
+Linien-Studie mit einem eigenen Modell (`farbe/farbBlatt.ts`, Schnittstelle `Raum` wie `werkBlatt.ts`): Im Paint-Modus gehören
+A und P den Farblinien, die Linien der Form stehen still. Die Farblinien zeichnet dann das Verhalten selbst (mit Schwellen,
+Tropfen und Nadel); verdeckt wird über die Tiefe des Körpers.
+
