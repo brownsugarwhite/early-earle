@@ -7743,6 +7743,16 @@ const ebenenStapel = new EbenenStapel(document.body, {
   zeigen: (id, an) => void ebeneZeigen(id, an),
   neu: () => void ebeneNeu(),
   ordnen: (id, platz, erster) => void ebeneOrdnen(id, platz, erster),
+  ordnenEnde: (geblieben) => {
+    // am Ende wieder am alten Platz (hin und zurück gezogen, oder aus dem Stapel heraus): Der Schritt des Zugs fällt weg
+    if (geblieben) return;
+    const e = rueckweg[rueckweg.length - 1];
+    if (e?.art !== 'farbe' || e.id !== aktivId) return;
+    rueckweg.pop();
+    farbWerk.zurueck(hautJetzt());
+    farbBild++;
+    anstossen();
+  },
   loeschen: (id) => void ebeneLoeschen(id),
   muell: (x, y) => document.elementFromPoint(x, y)?.closest('button') === leiste.muellKnopf,
 });

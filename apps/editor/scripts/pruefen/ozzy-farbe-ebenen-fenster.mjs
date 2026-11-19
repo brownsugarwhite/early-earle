@@ -443,11 +443,40 @@ const helfer = (t) => {
     await ziehen(S5.linse[0], S5.linse[1], S5.linse[0] - 300, S5.linse[1] + 10, { schritte: 16, takt: 20 });
     await s.waitForTimeout(450);
     const geblieben = await ebenen();
+    // in einem Zug eine Zeile hinunter und wieder hinauf: Nichts ist geordnet, kein Schritt bleibt
+    const weg0 = await O('rueckweg');
+    const S6 = await imStapel(oben);
+    await s.mouse.move(S6.linse[0], S6.linse[1], { steps: 3 });
+    await s.waitForTimeout(250);
+    await s.mouse.down();
+    for (let k = 1; k <= 10; k++) {
+      await s.mouse.move(S6.linse[0], S6.linse[1] + (S6.hoch * k) / 10);
+      await s.waitForTimeout(30);
+    }
+    await s.waitForTimeout(200);
+    const unterwegs = (await ebenen()).map((e) => e.id);
+    for (let k = 9; k >= 0; k--) {
+      await s.mouse.move(S6.linse[0], S6.linse[1] + (S6.hoch * k) / 10);
+      await s.waitForTimeout(30);
+    }
+    await s.mouse.up();
+    await s.waitForTimeout(450);
+    const hinZurueck = (await ebenen()).map((e) => e.id);
+    const weg1 = await O('rueckweg');
+    // die untere Ebene schräg aus dem Stapel auf den Mülleimer (auf dem Weg hinaus stünde ihre Linse oben): gelöscht; ⌘Z legt sie
+    // wieder nach unten, wo sie lag
+    const S7 = await imStapel(unten);
+    await ziehen(S7.linse[0], S7.linse[1], muell[0], muell[1], { schritte: 24, takt: 20 });
+    await s.waitForTimeout(450);
+    const eine = (await ebenen()).map((e) => e.id);
+    await s.keyboard.press('Meta+z');
+    await s.waitForTimeout(450);
+    const wiederZwei = (await ebenen()).map((e) => e.id);
     if (ordner) fs.writeFileSync(`${ordner}/ozzy-farbe-ebenen-67.png`, await s.screenshot());
     ok(
       '67 Der Stapel am Rand mit echten Klicks: Plus legt an, Tippen wählt, der Punkt blendet aus und ein, Ziehen ordnet, auf dem Mülleimer ist die Ebene gelöscht',
-      ausgeblendet === true && ohne !== null && ohne < 0.005 && eingeblendet && tiefer.join() === `${unten},${oben}` && stapelTiefer.join() === tiefer.join() && zugedeckt !== null && zugedeckt < 0.005 && hoeher.join() === `${oben},${unten}` && nachZ.join() === `${unten},${oben}` && drei.length === 3 && drei[0].aktiv && zwei.length === 2 && zwei.map((e) => e.id).join() === `${oben},${unten}` && geblieben.length === 2,
-      `Punkt: ausgeblendet ${ausgeblendet} (im Fleck ${z2(100 * (ohne ?? NaN))} % Rot), wieder eingeblendet ${eingeblendet}; eine Zeile tiefer gezogen: ${tiefer.join(', ')} (im Fleck ${z2(100 * (zugedeckt ?? NaN))} % Rot), wieder hinauf: ${hoeher.join(', ')}, ⌘Z: ${nachZ.join(', ')}; Plus: ${drei.length} Ebenen, die neue aktiv ${drei[0].aktiv}; auf den Mülleimer: ${zwei.length} Ebenen; neben den Mülleimer: ${geblieben.length}`,
+      ausgeblendet === true && ohne !== null && ohne < 0.005 && eingeblendet && tiefer.join() === `${unten},${oben}` && stapelTiefer.join() === tiefer.join() && zugedeckt !== null && zugedeckt < 0.005 && hoeher.join() === `${oben},${unten}` && nachZ.join() === `${unten},${oben}` && drei.length === 3 && drei[0].aktiv && zwei.length === 2 && zwei.map((e) => e.id).join() === `${oben},${unten}` && geblieben.length === 2 && unterwegs.join() === `${unten},${oben}` && hinZurueck.join() === `${oben},${unten}` && weg1 === weg0 && eine.join() === `${oben}` && wiederZwei.join() === `${oben},${unten}`,
+      `Punkt: ausgeblendet ${ausgeblendet} (im Fleck ${z2(100 * (ohne ?? NaN))} % Rot), wieder eingeblendet ${eingeblendet}; eine Zeile tiefer gezogen: ${tiefer.join(', ')} (im Fleck ${z2(100 * (zugedeckt ?? NaN))} % Rot), wieder hinauf: ${hoeher.join(', ')}, ⌘Z: ${nachZ.join(', ')}; Plus: ${drei.length} Ebenen, die neue aktiv ${drei[0].aktiv}; auf den Mülleimer: ${zwei.length} Ebenen; neben den Mülleimer: ${geblieben.length}; in einem Zug hinunter (${unterwegs.join(', ')}) und zurück: ${hinZurueck.join(', ')}, Rückweg ${weg1 === weg0 ? 'wie davor' : `„${weg0}“ → „${weg1}“`}; die untere schräg auf den Mülleimer: ${eine.join(', ')}, ⌘Z: ${wiederZwei.join(', ')}`,
     );
   }
 

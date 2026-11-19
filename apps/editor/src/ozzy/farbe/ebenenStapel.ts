@@ -30,6 +30,8 @@ export type EbenenZiele = {
   neu(): void;
   /** eine Ebene an einen anderen Platz legen (`platz`: von oben gezählt, 0 ganz oben); `erster`: der erste Tausch dieses Zugs */
   ordnen(id: number, platz: number, erster: boolean): void;
+  /** ein Zug, der geordnet hat, ist zu Ende; `geblieben`: Die Ebene liegt jetzt woanders als vorher (sonst war es kein Schritt) */
+  ordnenEnde(geblieben: boolean): void;
   /** eine Ebene mit allem, was auf ihr liegt, löschen */
   loeschen(id: number): void;
   /** liegt an dieser Stelle der Mülleimer? */
@@ -46,7 +48,8 @@ export class EbenenStapel {
   /** die Ebenen von oben nach unten, wie sie zuletzt gezeigt wurden */
   private reihe: number[] = [];
   private gezeigt = '';
-  private druck: { id: number; zeiger: number; x0: number; y0: number; x: number; y: number; zieht: boolean; geordnet: boolean; heraus: boolean } | null = null;
+  /** `platz0`, `platz`: wo die gezogene Ebene am Anfang lag und wo jetzt (von oben gezählt); `geordnet`: Der Zug hat sie schon einmal umgelegt */
+  private druck: { id: number; zeiger: number; x0: number; y0: number; x: number; y: number; zieht: boolean; geordnet: boolean; heraus: boolean; platz0: number; platz: number } | null = null;
 
   constructor(
     eltern: HTMLElement,
@@ -169,7 +172,8 @@ export class EbenenStapel {
     const knopf = (e.target as HTMLElement).closest<HTMLButtonElement>('button.ebene');
     const id = Number(knopf?.closest('li')?.dataset.id);
     if (!knopf || !Number.isFinite(id) || this.druck) return;
-    this.druck = { id, zeiger: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, zieht: false, geordnet: false, heraus: false };
+    const platz = this.reihe.indexOf(id);
+    this.druck = { id, zeiger: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, zieht: false, geordnet: false, heraus: false, platz0: platz, platz };
     this.liste.setPointerCapture(e.pointerId);
   }
 
@@ -188,14 +192,14 @@ export class EbenenStapel {
     const kasten = this.liste.getBoundingClientRect();
     d.heraus = d.x < kasten.left - HERAUS_AB || d.x > kasten.right + HERAUS_AB;
     z.li.classList.toggle('heraus', d.heraus);
-    if (!d.heraus) {
-      // im Stapel: Über welcher Zeile die Linse jetzt steht, dort liegt ihre Ebene
-      const hoch = z.li.offsetHeight || 1;
-      const platz = Math.max(0, Math.min(this.reihe.length - 1, Math.floor((d.y - kasten.top) / hoch)));
-      if (platz !== this.reihe.indexOf(d.id)) {
-        this.ziele.ordnen(d.id, platz, !d.geordnet);
-        d.geordnet = true;
-      }
+    // im Stapel: Über welcher Zeile die Linse jetzt steht, dort liegt ihre Ebene. Aus dem Stapel gezogen (auf dem Weg zum
+    // Mülleimer): Die Ebene liegt wieder, wo sie lag
+    const hoch = z.li.offsetHeight || 1;
+    const platz = d.heraus ? d.platz0 : Math.max(0, Math.min(this.reihe.length - 1, Math.floor((d.y - kasten.top) / hoch)));
+    if (platz !== d.platz) {
+      this.ziele.ordnen(d.id, platz, !d.geordnet);
+      d.geordnet = true;
+      d.platz = platz;
     }
     this.zugLegen();
   }
@@ -232,6 +236,8 @@ export class EbenenStapel {
     this.versatz = { x: 0, y: 0 };
     if (!d) return;
     if (this.liste.hasPointerCapture(d.zeiger)) this.liste.releasePointerCapture(d.zeiger);
+    // (ein Zug, der hin und zurück geordnet hat, war kein Schritt)
+    if (d.geordnet) this.ziele.ordnenEnde(d.platz !== d.platz0);
     const z = this.zeilen.get(d.id);
     if (z) {
       z.li.classList.remove('zieht', 'heraus');
