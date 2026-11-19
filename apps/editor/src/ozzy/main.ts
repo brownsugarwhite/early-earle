@@ -39,6 +39,7 @@ import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND } from './wachs';
 import { type Farbe, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
 import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
+import { richtungVektor } from './farbe/kurve';
 import { type BlattAnker, FarbWerk, type FarbStand, type HautJetzt } from './farbe/farbwerk';
 import { naechsterAuf } from './farbe/naechster';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
@@ -5296,7 +5297,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // (im Paint-Modus stehen die Linien der Form ebenso still: Dort gelten P, Freihand und Formen den Farblinien, ein Klick füllt)
   // Etappe 2: A und P gehören im Paint-Modus den Farblinien (im Raum und eingerastet); in den Vier Ansichten zeichnet P wie in
   // Etappe 1 auf dem Blatt
-  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p');
+  farbAn = stabil && malModus && vier < 0.001 && werkGezeigt && (raumWerkzeug === 'auswahl' || raumWerkzeug === 'p' || raumWerkzeug === 'lasso');
   bearbeitenAn = stabil && !objektModus() && (!malModus || farbAn || raumWerkzeug === 'p' || strichWerkzeug());
   modellSetzen(farbAn);
   // P in der Leiste, sobald das Werk bedient wird
@@ -8711,17 +8712,29 @@ const haken = {
     return (farbWerk.bemalung.ebenen[0]?.linien[nr]?.stuetzen ?? []).map((o) => farbWerk.lageImRaum(h, o));
   },
   /** Etappe 2: die Punkte der Farblinie `nr` im Bild (CSS-Pixel), mit Knick und ob sie Richtungen tragen; dazu, ob sie geschlossen ist */
-  farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: boolean; aus: boolean }[] } | null => {
+  farbPunkte: (nr = 0): { zu: boolean; orte: number; punkte: { x: number; y: number; i: number; knick: boolean; ein: [number, number] | null; aus: [number, number] | null }[] } | null => {
     const h = hautJetzt();
     const l = farbWerk.bemalung.ebenen[0]?.linien[nr];
     if (!l) return null;
+    const imBild = (p: [number, number, number]): [number, number] => {
+      const v = new Vector3(p[0], p[1], p[2]).project(kam.aktiv as Camera);
+      return [((v.x + 1) / 2) * W, ((1 - v.y) / 2) * H];
+    };
     return {
       zu: l.zu,
       orte: l.stuetzen.length,
       punkte: l.punkte.map((q) => {
-        const p = farbWerk.lageImRaum(h, l.stuetzen[q.i]!);
-        const v = new Vector3(p[0], p[1], p[2]).project(kam.aktiv as Camera);
-        return { x: ((v.x + 1) / 2) * W, y: ((1 - v.y) / 2) * H, i: q.i, knick: q.knick, ein: !!q.ein, aus: !!q.aus };
+        const o = l.stuetzen[q.i]!;
+        const p = farbWerk.lageImRaum(h, o);
+        const [x, y] = imBild(p);
+        // eine Richtung im Bild: vom Punkt zur Spitze ihres Vektors
+        const griff = (g: [number, number, number] | null): [number, number] | null => {
+          if (!g) return null;
+          const v = richtungVektor(h.haut.pos, o, g);
+          const s2 = imBild([p[0] + v[0] / h.f, p[1] + v[1] / h.f, p[2] + v[2] / h.f]);
+          return [s2[0] - x, s2[1] - y];
+        };
+        return { x, y, i: q.i, knick: q.knick, ein: griff(q.ein), aus: griff(q.aus) };
       }),
     };
   },

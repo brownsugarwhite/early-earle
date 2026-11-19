@@ -13,17 +13,18 @@
  * (ein Schritt für ⌘Z). Anders als Linien der Form darf eine Farblinie offen enden: ↩ beendet sie, wie sie ist; ein Klick auf den
  * ersten Punkt schließt sie.
  *
- * Stand 2b: Punkte setzen, Richtungen ziehen, Faden, Schließen, ⌫, Esc; Punkte ziehen und löschen, ein Punkt mit P auf die
- * Farblinie. Noch nicht: Richtungen drehen (Nadel), ein Stück an der Linie ziehen, das Spiegelbild greifen, die Mitte.
+ * Stand: Punkte setzen, Richtungen ziehen, Faden, Schließen, ⌫, Esc; Punkte ziehen und löschen, ein Punkt mit P auf die
+ * Farblinie; Richtungen drehen (Nadel, Ring, Knick und rund). Noch nicht: ein Stück an der Linie ziehen, das Spiegelbild greifen,
+ * die Mitte.
  */
-import type { Linie, LinienProben, Netz as LinienNetz, Punkt, Stueck } from '../../linien/netz';
-import type { DrehBild, RichtungZiel } from '../../linien/richtung';
+import { type Linie, type LinienProben, type Netz as LinienNetz, type Punkt, type Stueck, armGriff } from '../../linien/netz';
+import { type DrehBild, Dreher2D, type RichtungZiel } from '../../linien/richtung';
 import type { EntwurfInfo, FadenEnde, FadenProben, StiftOrt, V2 } from '../../linien/stift';
 import type { Raum, Ziel } from '../../linien/verhalten';
 import { type Farblinie, aktiveEbene } from './bemalung';
 import type { FarbWerk, HautJetzt } from './farbwerk';
 import { type FarbPunkt, richtungAus, richtungVektor, stueckLegen } from './kurve';
-import { type Ort, type V3, dreieckNormale, ortIn, ortLage } from './ort';
+import { type Karte, type Ort, type V3, dreieckNormale, ortGespiegelt, ortIn, ortLage } from './ort';
 import { strahlAufNetz } from './treffer';
 
 /** was das Blatt je Bild von der Ansicht braucht */
@@ -48,8 +49,11 @@ export type Sicht = {
 
 /** ein Punkt, wie das Blatt ihn führt: Ort, Richtungen als Vektoren (Einheiten des Werks), Knick */
 type BPunkt = { ort: Ort; ein: V3 | null; aus: V3 | null; knick: boolean };
-/** eine Farblinie, wie das Netz sie zeigt: ihre Punkte und je Stück die Orte dazwischen; `id` < 0: der Entwurf */
-type Zeile = { id: number; zu: boolean; punkte: BPunkt[]; teile: Ort[][] };
+/**
+ * Eine Farblinie, wie das Netz sie zeigt: ihre Punkte und je Stück die Orte dazwischen; `id` < 0: der Entwurf. `m`: das Spiegelbild
+ * einer Farblinie (an einer gespiegelten Form): Es wird gezeigt und gegriffen wie sie; was an ihm geschieht, geht gespiegelt an sie.
+ */
+type Zeile = { id: number; m: boolean; zu: boolean; punkte: BPunkt[]; teile: Ort[][] };
 /** der Entwurf mit P: die Zeile, dazu der Griff, mit dem das nächste Stück den letzten Punkt verlässt, und der am ersten für den Schluss */
 type Entwurf = { z: Zeile; aus: V3 | null; einErster: V3 | null; stapel: { z: Zeile; aus: V3 | null; einErster: V3 | null }[] };
 
@@ -57,6 +61,7 @@ const ortKopie = (o: Ort): Ort => ({ t: o.t, e: [o.e[0], o.e[1], o.e[2]], w: [o.
 const vKopie = (v: V3 | null): V3 | null => (v ? [v[0], v[1], v[2]] : null);
 const zeileKopie = (z: Zeile): Zeile => ({
   id: z.id,
+  m: z.m,
   zu: z.zu,
   punkte: z.punkte.map((p) => ({ ort: ortKopie(p.ort), ein: vKopie(p.ein), aus: vKopie(p.aus), knick: p.knick })),
   teile: z.teile.map((t) => t.map(ortKopie)),
@@ -134,6 +139,113 @@ export class FarbBlatt implements Raum {
     return tr ? ortIn(h.haut, tr.f, tr.w0, tr.w1, tr.w2) : null;
   }
 
+  // ---------- die Mitte (gespiegelte Form) ----------
+
+  private mitteGemerkt: { haut: object; version: number; kanten: Int32Array } | null = null;
+  /** die Kanten des Rechennetzes in der Spiegelebene: je Kante das Dreieck auf der Hälfte z ≥ 0 und die Nummer seiner Ecke gegenüber */
+  private mitteKanten(): Int32Array {
+    const h = this.h!;
+    const g = this.mitteGemerkt;
+    if (g && g.haut === h.haut && g.version === h.version) return g.kanten;
+    const P = h.haut.pos;
+    const I = h.haut.tri;
+    const aus: number[] = [];
+    if (h.gespiegelt)
+      for (let t = 0; t < I.length / 3; t++) {
+        for (let e = 0; e < 3; e++) {
+          const a = I[3 * t + e]!;
+          const b = I[3 * t + ((e + 1) % 3)]!;
+          const c = I[3 * t + ((e + 2) % 3)]!;
+          if (P[3 * a + 2] === 0 && P[3 * b + 2] === 0 && P[3 * c + 2]! > 0) aus.push(t, (e + 2) % 3);
+        }
+      }
+    const kanten = Int32Array.from(aus);
+    this.mitteGemerkt = { haut: h.haut, version: h.version, kanten };
+    return kanten;
+  }
+
+  /** liegt der Ort auf der Spiegelebene (auf einer Kante dort: das Gewicht der Ecke gegenüber ist null)? */
+  private aufMitte(o: Ort): boolean {
+    const h = this.h!;
+    if (!h.gespiegelt) return false;
+    const P = h.haut.pos;
+    for (let i = 0; i < 3; i++) if (o.w[i] === 0 && P[3 * o.e[(i + 1) % 3]! + 2] === 0 && P[3 * o.e[(i + 2) % 3]! + 2] === 0) return true;
+    return false;
+  }
+
+  /** der Ort auf der Spiegelebene, der einem Ort am nächsten liegt (im Raum), oder null (keine gespiegelte Form) */
+  private zurMitte(o: Ort): Ort | null {
+    const h = this.h!;
+    const K = this.mitteKanten();
+    if (!K.length) return null;
+    const P = h.haut.pos;
+    const I = h.haut.tri;
+    const p = ortLage(P, o);
+    let best: Ort | null = null;
+    let bestD = Infinity;
+    for (let i = 0; i < K.length; i += 2) {
+      const t = K[i]!;
+      const f = K[i + 1]!;
+      const a = I[3 * t + ((f + 1) % 3)]!;
+      const b = I[3 * t + ((f + 2) % 3)]!;
+      const ax = P[3 * a]!;
+      const ay = P[3 * a + 1]!;
+      const ex = P[3 * b]! - ax;
+      const ey = P[3 * b + 1]! - ay;
+      const l2 = ex * ex + ey * ey;
+      if (!(l2 > 0)) continue;
+      const u = Math.min(1, Math.max(0, ((p[0] - ax) * ex + (p[1] - ay) * ey) / l2));
+      const dx = p[0] - ax - u * ex;
+      const dy = p[1] - ay - u * ey;
+      const d = dx * dx + dy * dy + p[2] * p[2];
+      if (d >= bestD) continue;
+      bestD = d;
+      const w: [number, number, number] = [0, 0, 0];
+      w[(f + 1) % 3] = 1 - u;
+      w[(f + 2) % 3] = u;
+      best = { t, e: [I[3 * t]!, I[3 * t + 1]!, I[3 * t + 2]!], w };
+    }
+    return best;
+  }
+
+  /**
+   * Die Enden einer offenen Zeile, die auf der Mitte liegen, stehen im Dreieck der Hälfte, auf der die Farblinie dort läuft (ein Ort
+   * auf der Mitte gehört zu beiden Hälften; `zurMitte` gibt ihn auf der Hälfte z ≥ 0)
+   */
+  private endenRichten(z: Zeile): void {
+    const h = this.h!;
+    if (z.zu || !h.gespiegelt || z.punkte.length < 2) return;
+    const P = h.haut.pos;
+    const I = h.haut.tri;
+    const seite = (o: Ort): number => (P[3 * I[3 * o.t]! + 2]! + P[3 * I[3 * o.t + 1]! + 2]! + P[3 * I[3 * o.t + 2]! + 2]! >= 0 ? 1 : -1);
+    const m = z.punkte.length;
+    for (const [k, nachbar] of [
+      [0, z.teile[0]?.[0] ?? z.punkte[1]!.ort],
+      [m - 1, z.teile[m - 2]?.[z.teile[m - 2]!.length - 1] ?? z.punkte[m - 2]!.ort],
+    ] as const) {
+      const p = z.punkte[k]!;
+      if (!this.aufMitte(p.ort) || seite(p.ort) === seite(nachbar)) continue;
+      const g = ortGespiegelt(this.fw.karteFuer(h), p.ort);
+      if (g) p.ort = g;
+    }
+  }
+
+  /** so nah (Einheiten des Netzes) rastet ein neuer Punkt auf der Mitte ein */
+  fangMitte = 9;
+
+  /** der Ort unter dem Zeiger, auf der Mitte eingerastet, wenn sie nah genug liegt (und zum Betrachter zeigt) */
+  private ortMitFang(x: number, y: number, genau: boolean): { ort: Ort; x: number; y: number; mitte: boolean } | null {
+    const o = this.ortUnter(x, y, genau);
+    if (!o) return null;
+    const m = this.zurMitte(o);
+    if (m) {
+      const w = this.welt(m);
+      const s = this.schirm(w);
+      if (Math.hypot(s[0] - x, s[1] - y) < this.fangMitte && this.vorn(m, w)) return { ort: m, x: s[0], y: s[1], mitte: true };
+    }
+    return { ort: o, x, y, mitte: false };
+  }
+
   /** ein Griff auf dem Bildschirm (vom Punkt aus) als Vektor in der Haut am Ort (Einheiten des Werks): sein Bild ist der Griff */
   private griffVektor(o: Ort, v: V2): V3 | null {
     if (Math.hypot(v[0], v[1]) < 1e-9) return null;
@@ -187,7 +299,44 @@ export class FarbBlatt implements Raum {
     const teile: Ort[][] = [];
     const n = l.zu ? m : m - 1;
     for (let k = 0; k < n; k++) teile.push(l.stuetzen.slice(l.punkte[k]!.i + 1, k + 1 < m ? l.punkte[k + 1]!.i : l.stuetzen.length));
-    return { id: l.id, zu: l.zu, punkte, teile };
+    return { id: l.id, m: false, zu: l.zu, punkte, teile };
+  }
+
+  /** das Spiegelbild einer Zeile (jeder Ort im Spiegelbild seines Dreiecks, die Richtungen gespiegelt) oder null */
+  private gespiegelt(z: Zeile, k: Karte): Zeile | null {
+    const ort = (o: Ort): Ort | null => ortGespiegelt(k, o);
+    const v = (g: V3 | null): V3 | null => (g ? [g[0], g[1], -g[2]] : null);
+    const punkte: BPunkt[] = [];
+    for (const p of z.punkte) {
+      const o = ort(p.ort);
+      if (!o) return null;
+      punkte.push({ ort: o, ein: v(p.ein), aus: v(p.aus), knick: p.knick });
+    }
+    const teile: Ort[][] = [];
+    for (const T of z.teile) {
+      const G: Ort[] = [];
+      for (const q of T) {
+        const o = ort(q);
+        if (!o) return null;
+        G.push(o);
+      }
+      teile.push(G);
+    }
+    return { id: z.id, m: !z.m, zu: z.zu, punkte, teile };
+  }
+
+  /** die Zeilen aus der Bemalung: jede Farblinie und, an einer gespiegelten Form, ihr Spiegelbild */
+  private zeilenLesen(): Zeile[] {
+    const h = this.h!;
+    const k = h.gespiegelt ? this.fw.karteFuer(h) : null;
+    const aus: Zeile[] = [];
+    for (const l of aktiveEbene(this.fw.bemalung).linien) {
+      const z = this.zeileVon(l);
+      aus.push(z);
+      const g = k?.spiegel ? this.gespiegelt(z, k) : null;
+      if (g) aus.push(g);
+    }
+    return aus;
   }
 
   /** eine Zeile als Farblinie der Bemalung (ihre Orte der Reihe nach, die Richtungen im Maß ihrer Dreiecke) */
@@ -211,7 +360,7 @@ export class FarbBlatt implements Raum {
   bauen(h: HautJetzt, sicht: Sicht): void {
     this.h = h;
     this.sicht = sicht;
-    this.zeilen = aktiveEbene(this.fw.bemalung).linien.map((l) => this.zeileVon(l));
+    this.zeilen = this.zeilenLesen();
     if (this.ent) this.zeilen.push(this.ent.z);
     this.netzFuellen();
   }
@@ -228,7 +377,9 @@ export class FarbBlatt implements Raum {
       const lagen = z.punkte.map((p) => this.welt(p.ort));
       z.punkte.forEach((p, k) => {
         const s = this.schirm(lagen[k]!);
-        punkte.push({ x: s[0], y: s[1], sichtbar: true, verdeckt: !this.vorn(p.ort, lagen[k]!), z: s[2] });
+        // (ein Punkt auf der abgewandten Seite ist nicht zu sehen und nicht zu greifen: Die Bemalung liegt auf der Haut, nicht in ihr)
+        const vorn = this.vorn(p.ort, lagen[k]!);
+        punkte.push({ x: s[0], y: s[1], sichtbar: vorn, verdeckt: !vorn, z: s[2] });
         anker.push({ z: zi, k });
       });
       const m = z.punkte.length;
@@ -283,6 +434,8 @@ export class FarbBlatt implements Raum {
         si: Int32Array.from(sis),
         t: Float32Array.from(ts),
         halb: new Float32Array(N).fill(S.halb),
+        // (hinter dem Körper verschwindet die Farblinie, statt grün durchzuscheinen)
+        fein: new Float32Array(N).fill(1e-4),
         schicht: Uint8Array.from(hinten),
         laenge: N ? s[N - 1]! : 0,
         stueckS,
@@ -292,7 +445,11 @@ export class FarbBlatt implements Raum {
     this.netz.linien = linien;
     this.proben = proben;
     this.anker = anker;
-    this.struktur = `${linien.length}:${punkte.length}:${this.ent ? 'e' : ''}`;
+    // (der Entwurf steht hinten und zählt nicht zum Aufbau: Seine Punkte kommen dazu, ohne dass die anderen ihre Nummer wechseln)
+    this.struktur = this.zeilen
+      .filter((z) => z.id >= 0)
+      .map((z) => `${z.id}${z.m ? 'm' : ''}.${z.punkte.length}`)
+      .join(',');
   }
 
   /** nach einer Änderung an der Bemalung selbst: Sie wird neu abgeleitet (Flächen, Anzeige), das Netz neu gefüllt */
@@ -310,9 +467,11 @@ export class FarbBlatt implements Raum {
 
   /** eine Zeile zurück in die Bemalung schreiben (nach einem Handgriff an ihr) */
   private zeileSchreiben(zi: number): void {
-    const z = this.zeilen[zi];
+    const zz = this.zeilen[zi];
     const l = this.linieZu(zi);
-    if (!z || !l) return;
+    if (!zz || !l) return;
+    const z = zz.m ? this.gespiegelt(zz, this.fw.karteFuer(this.h!)) : zz;
+    if (!z) return;
     const neu = this.linieVon(z, l.id);
     l.zu = neu.zu;
     l.stuetzen = neu.stuetzen;
@@ -323,10 +482,17 @@ export class FarbBlatt implements Raum {
 
   private zugBeginnen(pis: readonly number[]): void {
     const punkte: { z: number; k: number; x: number; y: number }[] = [];
+    const schon = new Set<string>();
     for (const pi of pis) {
       const A = this.anker[pi];
       const p = this.netz.punkte[pi];
-      if (A && p && this.zeilen[A.z] && this.zeilen[A.z]!.id >= 0) punkte.push({ z: A.z, k: A.k, x: p.x, y: p.y });
+      const z = A ? this.zeilen[A.z] : undefined;
+      if (!A || !p || !z || z.id < 0) continue;
+      // (ein Punkt und sein Spiegelbild zugleich gewählt: Es zieht der erste)
+      const schl = `${z.id}.${A.k}`;
+      if (schon.has(schl)) continue;
+      schon.add(schl);
+      punkte.push({ z: A.z, k: A.k, x: p.x, y: p.y });
     }
     this.zug = { punkte, gemerkt: false };
     this.klickRueck = false;
@@ -340,13 +506,17 @@ export class FarbBlatt implements Raum {
     // (noch nicht bewegt: nichts zu tun, kein Schritt)
     if (!g.gemerkt && dx === 0 && dy === 0) return;
     // erst alle neuen Orte suchen: Verlässt einer die Form, bleibt alles stehen
-    const neu: (Ort | null)[] = g.punkte.map((q) => this.ortUnter(q.x + dx, q.y + dy, true));
+    const neu: (Ort | null)[] = g.punkte.map((q) => {
+      const o = this.ortUnter(q.x + dx, q.y + dy, true);
+      // (ein Punkt auf der Mitte bleibt auf ihr: Er gleitet an ihr entlang)
+      return o && this.aufMitte(this.zeilen[q.z]!.punkte[q.k]!.ort) ? this.zurMitte(o) : o;
+    });
     if (neu.some((o) => !o)) return;
     if (!g.gemerkt) {
       this.fw.merken(h);
       g.gemerkt = true;
       // (die Zeilen hängen an den Orten der Bemalung: nach dem Merken dieselben Objekte)
-      this.zeilen = aktiveEbene(this.fw.bemalung).linien.map((l) => this.zeileVon(l));
+      this.zeilen = this.zeilenLesen();
     }
     const pos = h.haut.pos;
     const betroffen = new Set<number>();
@@ -370,6 +540,7 @@ export class FarbBlatt implements Raum {
         if (!bewegt.has(si) && !bewegt.has(b)) continue;
         z.teile[si] = this.legen(z.punkte[si]!, z.punkte[si]!.aus, z.punkte[b]!, z.punkte[b]!.ein);
       }
+      this.endenRichten(z);
       this.zeileSchreiben(zi);
     }
     this.geaendert();
@@ -446,7 +617,7 @@ export class FarbBlatt implements Raum {
     const j = Math.min(T.length - 1, Math.max(0, Math.round(t * (T.length + 1)) - 1));
     const u = (j + 1) / (T.length + 1);
     this.fw.merken(h);
-    this.zeilen = aktiveEbene(this.fw.bemalung).linien.map((l) => this.zeileVon(l));
+    this.zeilen = this.zeilenLesen();
     const zz = this.zeilen[zi]!;
     const aa = zz.punkte[si]!;
     const bb = zz.punkte[(si + 1) % m]!;
@@ -498,18 +669,20 @@ export class FarbBlatt implements Raum {
   punkteLoeschen(pis: number[]): boolean {
     const h = this.h;
     if (!h || this.ent) return false;
-    const weg = new Map<number, Set<number>>();
+    // (je Farblinie: Ein Punkt und sein Spiegelbild sind derselbe; gearbeitet wird an der Zeile, die zuerst genannt ist)
+    const weg = new Map<number, { zi: number; ks: Set<number> }>();
     for (const pi of pis) {
       const A = this.anker[pi];
-      if (!A || !this.zeilen[A.z] || this.zeilen[A.z]!.id < 0) continue;
-      if (!weg.has(A.z)) weg.set(A.z, new Set());
-      weg.get(A.z)!.add(A.k);
+      const z = A ? this.zeilen[A.z] : undefined;
+      if (!A || !z || z.id < 0) continue;
+      if (!weg.has(z.id)) weg.set(z.id, { zi: A.z, ks: new Set() });
+      weg.get(z.id)!.ks.add(A.k);
     }
     if (!weg.size) return false;
     this.fw.merken(h);
-    this.zeilen = aktiveEbene(this.fw.bemalung).linien.map((l) => this.zeileVon(l));
+    this.zeilen = this.zeilenLesen();
     const ebene = aktiveEbene(this.fw.bemalung);
-    for (const [zi, ks] of weg) {
+    for (const { zi, ks } of weg.values()) {
       const z = this.zeilen[zi]!;
       const m = z.punkte.length;
       const bleibt = z.punkte.map((_, k) => k).filter((k) => !ks.has(k));
@@ -563,20 +736,85 @@ export class FarbBlatt implements Raum {
     return this.sicht?.duldung ?? 1e6;
   }
 
-  // ---------- Dreher: Richtungen (Schritt 2c) ----------
+  // ---------- Dreher: Richtungen ----------
+  // Gedreht wird im Bild, mit der Rechnung der Linien-Studie (`Dreher2D`: Winkel folgt dem Zeiger, Schwung klebt am Ring, ⌥ reißt
+  // los, in die Flucht rastet ein). Was sie am Netz ändert (die zwei Griffe des Punkts, sein Knick), wird hier die Richtung in der
+  // Haut, deren Bild der Griff ist; die zwei Stücke am Punkt werden neu gelegt.
 
-  drehenBeginnen(_z: RichtungZiel, _kippen: boolean, _hebel: number): [number, number] | null {
-    return null;
+  private dreher = new Dreher2D(
+    () => this.netz,
+    (n) => this.vomDreher(n),
+  );
+  private drehZiel: RichtungZiel | null = null;
+  private drehGemerkt = false;
+
+  private vomDreher(n: LinienNetz): void {
+    const z = this.drehZiel;
+    const h = this.h;
+    if (!z || !h) return;
+    const zi = this.zeileDerLinie(z.li);
+    if (zi < 0 || this.zeilen[zi]!.id < 0) return;
+    if (!this.drehGemerkt) {
+      this.fw.merken(h);
+      this.drehGemerkt = true;
+      this.zeilen = this.zeilenLesen();
+    }
+    const zeile = this.zeilen[zi]!;
+    const l = n.linien[z.li];
+    const p = zeile.punkte[z.k];
+    if (!l || !p) return;
+    const aus = armGriff(l, z.k, 'aus');
+    const ein = armGriff(l, z.k, 'ein');
+    if (aus) p.aus = this.griffVektor(p.ort, aus);
+    if (ein) p.ein = this.griffVektor(p.ort, ein);
+    p.knick = !!l.knick?.[z.k];
+    const m = zeile.punkte.length;
+    const stuecke = new Set<number>();
+    if (z.k < zeile.teile.length) stuecke.add(z.k);
+    if (z.k > 0) stuecke.add(z.k - 1);
+    else if (zeile.zu) stuecke.add(m - 1);
+    for (const si of stuecke) {
+      const a = zeile.punkte[si]!;
+      const b = zeile.punkte[(si + 1) % m]!;
+      zeile.teile[si] = this.legen(a, a.aus, b, b.ein);
+    }
+    this.zeileSchreiben(zi);
+    this.geaendert();
   }
-  drehenZiehen(): void {}
-  drehenEnden(): void {}
+
+  drehenBeginnen(z: RichtungZiel, kippen: boolean, hebel: number): [number, number] | null {
+    const zi = this.zeileDerLinie(z.li);
+    if (zi < 0 || this.zeilen[zi]!.id < 0 || !this.h || this.ent) return null;
+    const spitze = this.dreher.drehenBeginnen(z, kippen, hebel);
+    if (!spitze) return null;
+    this.drehZiel = z;
+    this.drehGemerkt = false;
+    return spitze;
+  }
+  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number): void {
+    this.dreher.drehenZiehen(cx, cy, alt, dt);
+  }
+  drehenEnden(): void {
+    this.dreher.drehenEnden();
+    if (this.drehGemerkt) this.nachSchritt();
+    this.drehGemerkt = false;
+  }
   drehBild(): DrehBild | null {
-    return null;
+    return this.dreher.drehBild();
   }
-  knickUmschalten(): boolean | null {
-    return null;
+  /** Doppelklick auf eine Richtung: Knick oder rund (beim Runden dreht `ausrichten` sie danach in die Flucht) */
+  knickUmschalten(z: RichtungZiel): boolean | null {
+    const zi = this.zeileDerLinie(z.li);
+    if (zi < 0 || this.zeilen[zi]!.id < 0 || !this.h || this.ent) return null;
+    this.drehZiel = z;
+    this.drehGemerkt = false;
+    const r = this.dreher.knickUmschalten(z);
+    if (this.drehGemerkt) this.nachSchritt();
+    return r;
   }
-  ausrichten(): void {}
+  ausrichten(t: number): void {
+    this.dreher.ausrichten(t);
+  }
 
   // ---------- Werkzeug P ----------
 
@@ -599,14 +837,16 @@ export class FarbBlatt implements Raum {
       erster: this.entPunkt(0),
       letzter: this.entPunkt(m - 1),
       anzahl: m,
-      haengt: false,
+      // (auf der Mitte begonnen: Ein Punkt auf der Mitte macht die Farblinie fertig; ihr Spiegelbild schließt sie)
+      haengt: this.aufMitte(erster.ort),
       aus: this.griffImBild(letzter.ort, e.aus),
       einErster: this.griffImBild(erster.ort, e.einErster),
     };
   }
 
   ortFrei(x: number, y: number): { x: number; y: number; mitte: boolean } | null {
-    return this.ortUnter(x, y, false) ? { x, y, mitte: false } : null;
+    const o = this.ortMitFang(x, y, false);
+    return o ? { x: o.x, y: o.y, mitte: o.mitte } : null;
   }
 
   mittePunkte(): number[] {
@@ -615,7 +855,7 @@ export class FarbBlatt implements Raum {
 
   /** der Ort, an dem P ansetzt: frei unter dem Zeiger, oder dort, wo ein Punkt oder eine Linie des Netzes liegt (ein neuer Punkt an derselben Stelle) */
   private ortFuer(o: StiftOrt): Ort | null {
-    if (o.art === 'frei') return this.ortUnter(o.x, o.y, true);
+    if (o.art === 'frei') return this.ortMitFang(o.x, o.y, true)?.ort ?? null;
     if (o.art === 'punkt') {
       const A = this.anker[o.pi];
       const p = A ? this.zeilen[A.z]?.punkte[A.k] : undefined;
@@ -627,7 +867,7 @@ export class FarbBlatt implements Raum {
 
   private entGeaendert(): void {
     if (this.h && this.sicht) {
-      this.zeilen = aktiveEbene(this.fw.bemalung).linien.map((l) => this.zeileVon(l));
+      this.zeilen = this.zeilenLesen();
       if (this.ent) this.zeilen.push(this.ent.z);
       this.netzFuellen();
     }
@@ -637,7 +877,7 @@ export class FarbBlatt implements Raum {
     if (!this.h) return null;
     const ort = this.ortFuer(o);
     if (!ort) return null;
-    this.ent = { z: { id: -1, zu: false, punkte: [{ ort, ein: null, aus: null, knick: true }], teile: [] }, aus: null, einErster: null, stapel: [] };
+    this.ent = { z: { id: -1, m: false, zu: false, punkte: [{ ort, ein: null, aus: null, knick: true }], teile: [] }, aus: null, einErster: null, stapel: [] };
     this.entGeaendert();
     return this.entPunkt(0);
   }
@@ -755,6 +995,7 @@ export class FarbBlatt implements Raum {
     }
     this.fw.merken(h);
     const b = this.fw.bemalung;
+    this.endenRichten(e.z);
     aktiveEbene(b).linien.push(this.linieVon(e.z, b.naechste++));
     this.geaendert();
     this.nachSchritt();

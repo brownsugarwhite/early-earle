@@ -116,6 +116,11 @@ export class FarbWerk {
     this.tri = s.haut?.tri ?? null;
   }
 
+  /** die Karte des Rechennetzes, wie es jetzt ist (Nachbarn, Spiegelbilder der Dreiecke) */
+  karteFuer(h: HautJetzt): Karte {
+    return this.karteJetzt(h);
+  }
+
   private karteJetzt(h: HautJetzt): Karte {
     if (!this.karte || this.karte.netz !== h.haut) this.karte = karteVon(h.haut);
     return this.karte;
