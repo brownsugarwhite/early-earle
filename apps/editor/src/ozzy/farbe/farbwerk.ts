@@ -9,7 +9,7 @@
  */
 import type { HautNetz } from '../../anfang/haut';
 import { FarbAnzeige } from './anzeige';
-import { type Bemalung, type BemalungDatei, type Farbe, aktiveEbene, alsDatei, ausDatei, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, uebergeben } from './bemalung';
+import { type Bemalung, type BemalungDatei, type Farbe, aktiveEbene, alleOrte, alsDatei, ausDatei, giltFuer, istLeer, kopie, leereBemalung, linienAusTreffern, ortZahl, uebergeben } from './bemalung';
 import { feinBei } from './fein';
 import { type Flaechen, type Saat, flaechenRechnen } from './flaechen';
 import { kettenAller, stueckeVon } from './ketten';
@@ -63,8 +63,17 @@ export class FarbWerk {
   private schritte: Schritt[] = [];
   /** die Bemalung, wie sie auf einem Netz war, als das Werk es verließ (für ⌘Z im Werk zurück auf dieses Netz) */
   private jeNetz = new WeakMap<object, Bemalung>();
-  /** was beim letzten Netzwechsel geschah (für Proben) */
-  wechsel = { zahl: 0, weit: 0, groesst: 0, ms: 0, zurueckgeholt: 0 };
+  /**
+   * Was bei den Netzwechseln geschah (für Proben): ihre Zahl; wie viele Orte dabei in ihrem Dreieck blieben (`gehalten`) und wie
+   * viele neu gesucht wurden; wie weit der fernste gesuchte neben der neuen Haut lag (zuletzt und je); die Zeit des letzten; wie oft
+   * die Bemalung eines früheren Netzes zurückkam (⌘Z im Werk).
+   */
+  wechsel = { zahl: 0, gehalten: 0, gesucht: 0, weit: 0, groesst: 0, ms: 0, zurueckgeholt: 0, ruck: 0, ruckSonst: 0 };
+  /** die Lagen aller Orte in den zwei Bildern davor (Rechennetz): Daran misst `wechsel.ruck`, wie weit die Bemalung im Bild eines
+   * Netzwechsels neben dem Weg liegt, den sie bis dahin nahm (und `ruckSonst` dasselbe in den Bildern ohne Wechsel) */
+  private lagenVor: Float64Array | null = null;
+  private lagenDavor: Float64Array | null = null;
+  private lagenFrei: Float64Array | null = null;
   /** Farblinien, deren Weg sich zuletzt nicht finden ließ */
   fehl: number[] = [];
   /** die Strecken der Farblinien im Raum (für die Striche an Wänden und in Ansichten), und wofür sie gelten */
@@ -87,6 +96,8 @@ export class FarbWerk {
     this.flaechen = null;
     this.anzeige.leeren();
     this.streckenGemerkt = null;
+    this.lagenVor = null;
+    this.lagenDavor = null;
   }
 
   /** das aktive Objekt ruht von jetzt an: seine Bemalung mitgeben */
@@ -116,10 +127,12 @@ export class FarbWerk {
    */
   schritt(h: HautJetzt): boolean {
     let neu = false;
+    let gewechselt = false;
     if (this.haut !== h.haut || this.tri !== h.haut.tri) {
       const alt = this.haut;
       if (alt && !this.leer && !gleicheDreiecke(alt.tri, h.haut.tri)) {
         const t0 = performance.now();
+        gewechselt = true;
         // der Stand auf dem Netz, das jetzt geht, bleibt gemerkt
         this.jeNetz.set(alt, kopie(this.bemalung));
         const k = this.karteJetzt(h);
@@ -129,9 +142,11 @@ export class FarbWerk {
           this.bemalung = kopie(gemerkt);
           this.wechsel.zurueckgeholt++;
         } else {
-          const weit = uebergeben(alt.pos, k, this.naechsterFuer(h.haut), this.bemalung);
-          this.wechsel.weit = weit;
-          this.wechsel.groesst = Math.max(this.wechsel.groesst, weit);
+          const r = uebergeben(alt.pos, alt.n, k, this.naechsterFuer(h.haut), this.bemalung);
+          this.wechsel.weit = r.weit;
+          this.wechsel.groesst = Math.max(this.wechsel.groesst, r.weit);
+          this.wechsel.gehalten += r.gehalten;
+          this.wechsel.gesucht += r.gesucht;
         }
         this.wechsel.zahl++;
         this.wechsel.ms = performance.now() - t0;
@@ -158,10 +173,48 @@ export class FarbWerk {
     }
     const bewegt = this.gezeigt !== h.version;
     this.gezeigt = h.version;
+    if (bewegt || gewechselt) this.ruckMessen(h, gewechselt);
     // (die Anzeige des Werks zeigt alle Dreiecke der Haut in ihrer Reihenfolge, je 4^stufen feine: nur dann passt die Bemalung darauf)
     if (h.netz.index.length === h.haut.tri.length * 4 ** h.stufen) this.anzeige.setzen(h.netz, h.stufen, this.flaechen, this.farben, bewegt);
     else this.anzeige.leeren();
     return neu || bewegt;
+  }
+
+  /**
+   * Für Proben: wie weit die Orte in diesem Bild neben dem Weg liegen, den sie in den zwei Bildern davor nahmen (die zweite
+   * Differenz ihrer Lagen). Im Bild eines Netzwechsels zeigt das einen Ruck der Bemalung; sonst ist es die Beschleunigung des Zugs.
+   */
+  private ruckMessen(h: HautJetzt, gewechselt: boolean): void {
+    const n = ortZahl(this.bemalung);
+    // (drei Puffer im Wechsel: Je Bild wird keiner neu angelegt, solange die Zahl der Orte bleibt)
+    const frei = this.lagenFrei;
+    const jetzt = frei && frei.length === 3 * n ? frei : new Float64Array(3 * n);
+    const p: V3 = [0, 0, 0];
+    let i = 0;
+    for (const o of alleOrte(this.bemalung)) {
+      ortLage(h.haut.pos, o, p);
+      jetzt[i++] = p[0];
+      jetzt[i++] = p[1];
+      jetzt[i++] = p[2];
+    }
+    const a = this.lagenDavor;
+    const b = this.lagenVor;
+    if (a && b && a.length === jetzt.length && b.length === jetzt.length) {
+      let g2 = 0;
+      for (let j = 0; j < jetzt.length; j += 3) {
+        const x = jetzt[j]! - 2 * b[j]! + a[j]!;
+        const y = jetzt[j + 1]! - 2 * b[j + 1]! + a[j + 1]!;
+        const z = jetzt[j + 2]! - 2 * b[j + 2]! + a[j + 2]!;
+        const d2 = x * x + y * y + z * z;
+        if (d2 > g2) g2 = d2;
+      }
+      const g = Math.sqrt(g2);
+      if (gewechselt) this.wechsel.ruck = Math.max(this.wechsel.ruck, g);
+      else this.wechsel.ruckSonst = Math.max(this.wechsel.ruckSonst, g);
+    }
+    this.lagenFrei = a;
+    this.lagenDavor = b;
+    this.lagenVor = jetzt;
   }
 
   private ableiten(h: HautJetzt): void {
@@ -206,7 +259,7 @@ export class FarbWerk {
     this.schritt(h);
     this.bemalung = s.vorher;
     // (hat das Netz seitdem gewechselt, ohne dass sich die Form geändert hätte, geht der Stand von damals mit)
-    if (s.haut !== h.haut && !istLeer(s.vorher) && !gleicheDreiecke(s.haut.tri, h.haut.tri)) uebergeben(s.haut.pos, this.karteJetzt(h), this.naechsterFuer(h.haut), this.bemalung);
+    if (s.haut !== h.haut && !istLeer(s.vorher) && !gleicheDreiecke(s.haut.tri, h.haut.tri)) uebergeben(s.haut.pos, s.haut.n, this.karteJetzt(h), this.naechsterFuer(h.haut), this.bemalung);
     this.alt = true;
     return true;
   }

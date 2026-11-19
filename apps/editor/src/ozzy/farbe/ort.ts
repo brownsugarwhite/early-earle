@@ -2,9 +2,9 @@
  * Ozzy, Paint-Modus, Etappe 1 (19.11.2026; Plan `docs/plans/2026-11-19-ozzy-paint-modus.md`): der Ort auf der Haut.
  *
  * Alles Gemalte hängt an der Haut selbst: Ein Ort ist ein Dreieck des Rechennetzes und eine Lage darin (drei Gewichte). Bewegt sich
- * die Haut, bewegt sich der Ort mit, ohne Rechnung. Wird neu vernetzt, geht jeder Ort an die Stelle der neuen Haut, die ihm am
- * nächsten liegt (`orteUebergeben`; alte und neue Haut sind in dem Moment dieselbe Fläche, nur anders unterteilt). Am Rechenkern
- * und am Werk ändert dieses Modul nichts: Es liest nur Lagen und Dreiecke.
+ * die Haut, bewegt sich der Ort mit, ohne Rechnung. Wird neu vernetzt, bleibt ein Ort in seinem Dreieck, wenn es das im neuen Netz
+ * noch gibt (die Punkte des Netzes sind das Material der Haut: `punkteZuordnen`); sonst geht er an die Stelle der neuen Haut, die
+ * ihm am nächsten liegt (`orteUebergeben`). Am Rechenkern und am Werk ändert dieses Modul nichts: Es liest nur Lagen und Dreiecke.
  *
  * Dazu die Spur: der gerade Weg zwischen zwei nahen Orten über die Dreiecke hinweg (der Schnitt der Haut mit der Ebene durch beide
  * Orte und ihre mittlere Normale, wie `abzweigen` im Kern ihn für Linien der Form nimmt). Sie liefert je Dreieck ein gerades Stück
@@ -257,23 +257,154 @@ export function dreieckNormale(P: ArrayLike<number>, tri: ArrayLike<number>, t: 
 export type Naechster = (x: number, y: number, z: number) => { t: number; wa: number; wb: number; wc: number; d2: number };
 
 /**
- * Netzwechsel: Jeder Ort geht an die Stelle der neuen Haut, die seiner Lage auf der alten am nächsten liegt. `altPos`: die Lagen der
- * alten Haut im Moment des Wechsels (ihre Punkte stehen im Ort). Zurück: der größte Abstand, den ein Ort dabei zurücklegte (ein Maß
- * dafür, wie verschieden die zwei Flächen waren).
+ * Netzwechsel, erster Teil: Welcher Punkt der neuen Haut ist ein Punkt der alten? Die Punkte des Netzes sind das Material der Haut.
+ * Das Werk lässt beim Wechsel fast alle stehen und ordnet sie so: Die gebliebenen stehen vorn, in ihrer alten Reihenfolge
+ * (`netzGewachsen` in `werk.ts`), neue dahinter. Die zwei Reihen werden deshalb nebeneinander abgeschritten:
+ *
+ * - Liegt der neue Punkt am Ort des alten (näher als ein Viertel seiner kürzesten Kante), ist es derselbe.
+ * - Sonst fehlt vielleicht der alte (zusammengelegt): Dann passt der neue zu einem der nächsten alten, und der danach auch.
+ *   Oder der neue ist dazugekommen (zurück auf ein älteres Netz): dasselbe von der anderen Seite.
+ * - Weder noch: Der Punkt hat sich in diesem Bild weiter bewegt (ein schneller Zug). Er bleibt ohne Zuordnung, die Reihe läuft
+ *   weiter. (Ihn nur nach der Reihenfolge zuzuordnen wäre geraten: Ein falscher Punkt gäbe einen Zacken in der Farblinie.)
+ *
+ * Die Reihenfolge sagt also nur, welcher neue Punkt in Frage kommt; ob er es ist, entscheidet der Ort. Zurück: je altem Punkt der
+ * neue oder −1; null, wenn die zwei Netze nichts miteinander zu tun haben (weniger als ein Fünftel zugeordnet: eine geladene
+ * Form, ein Schnitt zweier Objekte). Dann wird jeder Ort gesucht.
  */
-export function orteUebergeben(altPos: ArrayLike<number>, neu: Netz, naechster: Naechster, orte: Iterable<Ort>): number {
-  const p: V3 = [0, 0, 0];
+export function punkteZuordnen(altPos: ArrayLike<number>, nAlt: number, neu: Netz): Int32Array | null {
+  const Q = neu.pos;
+  const I = neu.tri;
+  const n = neu.n;
+  if (!n || !nAlt) return null;
+  // je neuem Punkt das Quadrat seiner kürzesten Kante
+  const kurz = new Float64Array(n).fill(Infinity);
+  for (let t = 0; t < I.length; t += 3)
+    for (let e = 0; e < 3; e++) {
+      const a = I[t + e]!;
+      const b = I[t + ((e + 1) % 3)]!;
+      const l2 = (Q[3 * a]! - Q[3 * b]!) ** 2 + (Q[3 * a + 1]! - Q[3 * b + 1]!) ** 2 + (Q[3 * a + 2]! - Q[3 * b + 2]!) ** 2;
+      if (l2 < kurz[a]!) kurz[a] = l2;
+      if (l2 < kurz[b]!) kurz[b] = l2;
+    }
+  const nah = (a: number, i: number): boolean => {
+    if (a >= nAlt || i >= n) return false;
+    const d2 = (Q[3 * i]! - altPos[3 * a]!) ** 2 + (Q[3 * i + 1]! - altPos[3 * a + 1]!) ** 2 + (Q[3 * i + 2]! - altPos[3 * a + 2]!) ** 2;
+    return d2 <= kurz[i]! / 16;
+  };
+  /** ein Sprung im Versatz gilt nur, wenn auch das Paar danach passt (oder es keins mehr gibt) */
+  const zweiNah = (a: number, i: number): boolean => nah(a, i) && (a + 1 >= nAlt || i + 1 >= n || nah(a + 1, i + 1));
+  const zu = new Int32Array(nAlt).fill(-1);
+  const VORAUS = 32;
+  let a = 0;
+  let i = 0;
+  let zahl = 0;
+  while (a < nAlt && i < n) {
+    if (nah(a, i)) {
+      zu[a] = i;
+      zahl++;
+      a++;
+      i++;
+      continue;
+    }
+    let k = 1;
+    while (k <= VORAUS && !zweiNah(a + k, i)) k++;
+    if (k <= VORAUS) {
+      a += k;
+      continue;
+    }
+    k = 1;
+    while (k <= VORAUS && !zweiNah(a, i + k)) k++;
+    if (k <= VORAUS) {
+      i += k;
+      continue;
+    }
+    a++;
+    i++;
+  }
+  return zahl >= 0.2 * Math.min(nAlt, n) ? zu : null;
+}
+
+/**
+ * Netzwechsel, zweiter Teil: Jeder Ort geht an seine Stelle auf der neuen Haut. `altPos`: die Lagen der alten Haut im Moment des
+ * Wechsels (ihre Punkte stehen im Ort); `zu`: je altem Punkt der neue (`punkteZuordnen`; ohne: alle werden gesucht).
+ *
+ * Gibt es das Dreieck eines Orts im neuen Netz noch (seine drei Punkte sind geblieben und bilden wieder ein Dreieck), bleibt er darin
+ * mit denselben Gewichten: Die Bemalung sitzt am Material und rührt sich bei einem Netzwechsel nicht, auch wenn sich die Haut im
+ * selben Bild bewegt hat. Sonst (das Dreieck wurde geteilt, gedreht oder zusammengelegt) geht er an die Stelle der neuen Haut, die
+ * ihm am nächsten liegt, von der Lage aus, die seine gebliebenen Punkte jetzt haben.
+ *
+ * Zurück: wie viele Orte in ihrem Dreieck blieben (`gehalten`), wie viele gesucht wurden und wie weit der fernste von ihnen neben der
+ * neuen Haut lag (`weit`).
+ */
+export function orteUebergeben(altPos: ArrayLike<number>, neu: Karte, naechster: Naechster, orte: Iterable<Ort>, zu: Int32Array | null = null): { weit: number; gehalten: number; gesucht: number } {
+  const netz = neu.netz;
+  const Q = netz.pos;
+  const tri = netz.tri;
   let weit = 0;
+  let gehalten = 0;
+  let gesucht = 0;
+  const j: [number, number, number] = [-1, -1, -1];
   for (const o of orte) {
-    ortLage(altPos, o, p);
-    const r = naechster(p[0], p[1], p[2]);
-    const g = ortIn(neu, r.t, r.wa, r.wb, r.wc);
+    if (zu) {
+      j[0] = zu[o.e[0]] ?? -1;
+      j[1] = zu[o.e[1]] ?? -1;
+      j[2] = zu[o.e[2]] ?? -1;
+    } else j[0] = j[1] = j[2] = -1;
+    if (j[0] >= 0 && j[1] >= 0 && j[2] >= 0) {
+      const t = neu.dreieck(j[0], j[1], j[2]);
+      if (t >= 0) {
+        // dasselbe Dreieck, vielleicht mit anderer Reihenfolge der Ecken: Die Gewichte gehen mit ihren Punkten
+        const e: [number, number, number] = [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!];
+        const w: [number, number, number] = [0, 0, 0];
+        for (let i = 0; i < 3; i++) w[e.indexOf(j[i]!)] = o.w[i]!;
+        o.t = t;
+        o.e = e;
+        o.w = w;
+        gehalten++;
+        continue;
+      }
+    }
+    // die Lage aus den gebliebenen Punkten, wie sie jetzt liegen; ein verschwundener Punkt geht mit ihrer mittleren Verschiebung mit
+    let sx = 0;
+    let sy = 0;
+    let sz = 0;
+    let m = 0;
+    for (let i = 0; i < 3; i++) {
+      if (j[i]! < 0) continue;
+      sx += Q[3 * j[i]!]! - altPos[3 * o.e[i]!]!;
+      sy += Q[3 * j[i]! + 1]! - altPos[3 * o.e[i]! + 1]!;
+      sz += Q[3 * j[i]! + 2]! - altPos[3 * o.e[i]! + 2]!;
+      m++;
+    }
+    if (m) {
+      sx /= m;
+      sy /= m;
+      sz /= m;
+    }
+    let x = 0;
+    let y = 0;
+    let z = 0;
+    for (let i = 0; i < 3; i++) {
+      const g = o.w[i]!;
+      if (j[i]! >= 0) {
+        x += g * Q[3 * j[i]!]!;
+        y += g * Q[3 * j[i]! + 1]!;
+        z += g * Q[3 * j[i]! + 2]!;
+      } else {
+        x += g * (altPos[3 * o.e[i]!]! + sx);
+        y += g * (altPos[3 * o.e[i]! + 1]! + sy);
+        z += g * (altPos[3 * o.e[i]! + 2]! + sz);
+      }
+    }
+    const r = naechster(x, y, z);
+    const g = ortIn(netz, r.t, r.wa, r.wb, r.wc);
     o.t = g.t;
     o.e = g.e;
     o.w = g.w;
     weit = Math.max(weit, r.d2);
+    gesucht++;
   }
-  return Math.sqrt(weit);
+  return { weit: Math.sqrt(weit), gehalten, gesucht };
 }
 
 /** Gehört der Ort noch zu diesem Netz (seine drei Punkte bilden das Dreieck mit seiner Nummer)? */

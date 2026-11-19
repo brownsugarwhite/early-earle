@@ -6,7 +6,7 @@
  * Etappe 1 kennt eine Ebene, geschlossene Farblinien und harte Kanten. Die Felder für später (Anker mit Richtungen, Breite der
  * Weichheit) kommen mit den Etappen, die sie brauchen.
  */
-import { type Karte, type Naechster, type Netz, type Ort, RAND, ortGespiegelt, ortGilt, ortIn, orteUebergeben, spur } from './ort';
+import { type Karte, type Naechster, type Netz, type Ort, RAND, ortGespiegelt, ortGilt, ortIn, orteUebergeben, punkteZuordnen, spur } from './ort';
 import type { LinieOrte } from './ketten';
 
 export type Farbe = [number, number, number];
@@ -43,6 +43,9 @@ export function* alleOrte(b: Bemalung): Generator<Ort> {
   }
 }
 
+/** die Zahl aller Orte der Bemalung */
+export const ortZahl = (b: Bemalung): number => b.ebenen.reduce((s, e) => s + e.fuellungen.length + e.linien.reduce((t, l) => t + l.stuetzen.length, 0), 0);
+
 /** Passt die Bemalung zu diesem Netz (jeder Ort nennt ein Dreieck, das es so gibt)? */
 export function giltFuer(netz: Netz, b: Bemalung): boolean {
   for (const o of alleOrte(b)) if (!ortGilt(netz, o)) return false;
@@ -50,19 +53,21 @@ export function giltFuer(netz: Netz, b: Bemalung): boolean {
 }
 
 /**
- * Netzwechsel: alle Orte an die neue Haut übergeben (`ort.ts`). Orte auf der Mittelebene (Enden einer Farblinie dort) bleiben auf
- * ihr: Sie werden auf die Kante der Mittelebene zurückgelegt, die ihnen am nächsten ist. Zurück: der größte Weg eines Orts.
+ * Netzwechsel: alle Orte an die neue Haut übergeben (`ort.ts`: Wer sein Dreieck behält, bleibt; die anderen werden gesucht). Orte
+ * auf der Mittelebene (Enden einer Farblinie dort) bleiben auf ihr: Sie werden auf die Kante der Mittelebene zurückgelegt, die
+ * ihnen am nächsten ist. `nAlt`: Zahl der Punkte der alten Haut. Zurück: wie viele Orte blieben, wie viele gesucht wurden und wie
+ * weit der fernste von ihnen neben der neuen Haut lag.
  */
-export function uebergeben(altPos: ArrayLike<number>, neu: Karte, naechster: Naechster, b: Bemalung): number {
+export function uebergeben(altPos: ArrayLike<number>, nAlt: number, neu: Karte, naechster: Naechster, b: Bemalung): { weit: number; gehalten: number; gesucht: number } {
   const aufMitte = new Set<Ort>();
   for (const e of b.ebenen)
     for (const l of e.linien) {
       if (l.zu) continue;
       for (const o of [l.stuetzen[0], l.stuetzen[l.stuetzen.length - 1]]) if (o && Math.min(o.w[0], o.w[1], o.w[2]) < RAND / 2) aufMitte.add(o);
     }
-  const weit = orteUebergeben(altPos, neu.netz, naechster, alleOrte(b));
+  const r = orteUebergeben(altPos, neu, naechster, alleOrte(b), punkteZuordnen(altPos, nAlt, neu.netz));
   for (const o of aufMitte) aufKanteDerMitte(neu, o);
-  return weit;
+  return r;
 }
 
 /** Vorzeichen der Hälfte, auf der ein Dreieck liegt (z ≥ 0: +1); an einer gespiegelten Form liegt kein Dreieck quer zur Mittelebene */

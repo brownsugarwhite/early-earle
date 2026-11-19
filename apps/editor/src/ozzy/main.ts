@@ -215,6 +215,9 @@ let farbDruck: { x: number; y: number; zeit: number } | null = null;
 let farbBild = 0;
 /** so breit steht eine Farblinie im Paint-Modus auf der Form (CSS-Pixel) */
 const FARBLINIE_BREITE = 1.25;
+/** was die Bemalung je Bild kostet (ms auf dem Prozessor: der Haut folgen und zeichnen), die letzten Bilder; für Proben */
+const farbKosten: number[] = [];
+let farbKostenBild = 0;
 const hautJetzt = (): HautJetzt => ({ haut: werk.haut, gespiegelt: !werk.istFrei(), netz: werkHaut.netz, stufen: werkHaut.stufen, version: werkHaut.version, f: werkHaut.f, mitte: werkHaut.mitte });
 /** die zwei Gründe, auf denen gemalt wird (Florian: „das helle solid“ und das Material wie in ZBrush) */
 const istMalgrund = (): boolean => material === 'Wachs' || material === 'Helles Solid';
@@ -4037,8 +4040,10 @@ function bild(dt: number): boolean {
   // ein festes Material statt der Seifenhaut (Florian, 18.11.): Die Seifenhaut zeichnet nur ihren Grund (Papier, dunkle Rückseite),
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
   // Paint-Modus: Die Bemalung folgt der Haut (Netzwechsel, neue Lagen), auch wenn sie gerade nicht zu sehen ist
+  const tFarbe = performance.now();
   if (zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && farbWerk.schritt(hautJetzt())) farbBild++;
   const farbAn = farbeZeigen();
+  farbKostenBild = performance.now() - tFarbe;
   const zeigN = material !== null && werkGezeigt && zustand === 'ruhe' && !w.leer ? zeigeNetzAlle() : null;
   if (material !== null && werkGezeigt && zustand === 'ruhe' && zeigN && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
@@ -4076,8 +4081,10 @@ function bild(dt: number): boolean {
         ueberzug:
           farbAn && material === 'Helles Solid'
             ? (r) => {
+                const t0 = performance.now();
                 farbWerk.anzeige.tiefeSchreiben(r, kam.aktiv, zeigN, true);
                 farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt() });
+                farbKostenBild += performance.now() - t0;
               }
             : null,
         ueberzugStand: farbAn && material === 'Helles Solid' ? `${farbBild}|${werkHaut.version}|${malModus ? 1 : 0}` : '',
@@ -4100,7 +4107,11 @@ function bild(dt: number): boolean {
         // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
         danach:
           farbAn && material === 'Wachs'
-            ? (r, k) => farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt })
+            ? (r, k) => {
+                const t0 = performance.now();
+                farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt });
+                farbKostenBild += performance.now() - t0;
+              }
             : null,
       });
     }
@@ -4110,6 +4121,10 @@ function bild(dt: number): boolean {
     haut.zeichnen(kam.aktiv, w, []);
   }
   mess.teile[3] = performance.now() - tz;
+  if (!farbWerk.leer) {
+    farbKosten.push(farbKostenBild);
+    if (farbKosten.length > 2000) farbKosten.splice(0, 1000);
+  }
   let diff = -1;
   let p99 = -1;
   if (mess.an && mess.pixel && mess.bereich) {
@@ -4947,8 +4962,9 @@ function linienDerAnsicht(vp: Matrix4): void {
   const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(achse)) - 0.97) / 0.025));
   const s = flach * flach * t * t * (3 - 2 * t);
   if (s < 0.01) return;
-  // ruhende Objekte: ihre Linien als feine Striche (ihren Umriss zeichnet die Hülle des weißen Körpers)
-  if (ruhende.length)
+  // ruhende Objekte: ihre Linien als feine Striche (ihren Umriss zeichnet die Hülle des weißen Körpers); im Paint-Modus dazu die
+  // Farblinien des aktiven Objekts (die Farbe selbst steht eingerastet noch nicht)
+  if (ruhende.length || (malModus && !farbWerk.leer))
     streckenZeichnen(
       ruheLinien(),
       (x, y, z) => {
@@ -5010,8 +5026,8 @@ function felderLinien(f: Falt, m: Moment): void {
     return [x, y];
   };
   for (const n of ['seite', 'front', 'top'] as const) {
-    // ruhende Objekte: ihre Linien als feine Striche in jedem Feld
-    if (ruhende.length) {
+    // ruhende Objekte: ihre Linien als feine Striche in jedem Feld (im Paint-Modus dazu die Farblinien des aktiven Objekts)
+    if (ruhende.length || (malModus && !farbWerk.leer)) {
       K.bereich = BEREICH_VON[n];
       streckenZeichnen(ruheLinien(), (x, y, z) => mischen(n, new Vector3(x, y, z)), (linienWerte.innen / 2) * D * breite(n === 'front' ? 0 : n === 'top' ? 1 : 2, false));
       K.bereich = 0;
@@ -7398,7 +7414,8 @@ function farbSchritt<T>(tun: () => T): T {
 function farbStiftZiel(a: 'seite' | 'front' | 'top', anker: werk.StiftAnker[], vorn: number | undefined): boolean {
   // (von welcher Seite man auf das Blatt schaut: wie `objektBei`; ohne Angabe die Seite, von der das Blatt gewöhnlich gesehen wird)
   const zahl = farbSchritt(() => farbWerk.linieAusBlatt(hautJetzt(), a, anker as BlattAnker[], vorn ?? (a === 'front' ? -1 : 1), true));
-  werk.G.meldung = zahl ? 'Farblinie auf der Haut · Klick auf die Form füllt' : 'Keine Farblinie: ganz auf der Form zeichnen';
+  // (eingerastet steht die Farbe noch nicht: Gefüllt wird im Raum, wo sie zu sehen ist)
+  werk.G.meldung = zahl ? (flach > 0.5 ? 'Farblinie auf der Haut · gefüllt wird im Raum (Taste 0): Klick auf die Form' : 'Farblinie auf der Haut · Klick auf die Form füllt') : 'Keine Farblinie: ganz auf der Form zeichnen';
   return zahl > 0;
 }
 /** ein Klick auf die Form im Raum: die Farbfläche dort füllen */
@@ -8589,6 +8606,44 @@ const haken = {
   farbLinie: (a: 'seite' | 'front' | 'top', anker: BlattAnker[], vorn?: number): number => farbSchritt(() => farbWerk.linieAusBlatt(hautJetzt(), a, anker, vorn ?? (a === 'front' ? -1 : 1), true)),
   /** an der Stelle des Bilds (CSS-Pixel) füllen, wie ein Klick im Paint-Modus; `farbe`: Bildschirmwerte 0 … 1 */
   farbFuellen: (x: number, y: number, farbe?: [number, number, number]): boolean => farbFuellenBei(x, y, farbe ?? farbWahl),
+  /** die Orte der Farblinie `nr` im Raum (Welt), auf der glatten Anzeige */
+  farbLinieImRaum: (nr = 0): number[][] => {
+    const h = hautJetzt();
+    return (farbWerk.bemalung.ebenen[0]?.linien[nr]?.stuetzen ?? []).map((o) => farbWerk.lageImRaum(h, o));
+  },
+  /** wie weit Punkte im Raum (Welt) neben der gezeigten Haut des aktiven Objekts liegen (für Proben: Hat sich die Haut dort bewegt?) */
+  hautAbstand: (punkte: number[][]): number[] => {
+    const netz = werkHaut.netz;
+    if (!netz) return punkte.map(() => NaN);
+    const nah = naechsterAuf({ pos: netz.pos, tri: netz.index, n: netz.pos.length / 3 });
+    return punkte.map((p) => Math.sqrt(nah(p[0]!, p[1]!, p[2]!).d2));
+  },
+  /** was die Bemalung je Bild kostete (ms auf dem Prozessor), über die Bilder seit dem letzten Leeren; `leeren`: von vorn zählen */
+  farbKosten: (leeren = false): { bilder: number; median: number; p95: number; groesst: number } => {
+    const A = [...farbKosten].sort((a, b) => a - b);
+    if (leeren) farbKosten.length = 0;
+    return { bilder: A.length, median: A[Math.floor(A.length / 2)] ?? 0, p95: A[Math.floor(0.95 * A.length)] ?? 0, groesst: A[A.length - 1] ?? 0 };
+  },
+  /**
+   * Eine Prüfsumme über die Form des Werks (Lagen und Dreiecke der Haut, Proben und Lagen der Linien): Sie ändert sich mit jeder
+   * Zahl der Form. Die Bemalung liest die Form nur; nach einem Handgriff am Bemalen muss die Summe dieselbe sein.
+   */
+  werkSumme: (): string => {
+    let h = 2166136261;
+    const dazu = (feld: ArrayBufferView): void => {
+      const B = new Uint8Array(feld.buffer, feld.byteOffset, feld.byteLength);
+      for (let i = 0; i < B.length; i++) h = Math.imul(h ^ B[i]!, 16777619);
+    };
+    dazu(werk.haut.pos);
+    dazu(werk.haut.tri);
+    dazu(werk.haut.spiegel);
+    for (const l of werk.loops) {
+      dazu(l.ruhe);
+      dazu(l.s);
+      dazu(Float64Array.from(l.punkte.flatMap((q) => [q.ref.x, q.ref.y, q.ref.z])));
+    }
+    return `${werk.haut.n}:${werk.haut.tri.length / 3}:${werk.loops.length}:${(h >>> 0).toString(16)}`;
+  },
   /** die Orte der Farblinie `nr` im Bild (CSS-Pixel), auf der glatten Anzeige; dazu die Tiefe (kleiner: näher) */
   farbLinieImBild: (nr = 0): { x: number; y: number; z: number }[] => {
     const h = hautJetzt();

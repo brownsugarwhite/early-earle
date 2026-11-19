@@ -4,7 +4,7 @@ import { type Saat, flaechenRechnen, naechsteSeite } from './flaechen';
 import { jeDreieck, kettenAller, stueckeVon } from './ketten';
 import { feinBei, feinEcken } from './fein';
 import { naechsterAuf } from './naechster';
-import { type Karte, type Naechster, type Netz, type Ort, karteVon, ortGespiegelt, ortLage, spur } from './ort';
+import { type Karte, type Naechster, type Netz, type Ort, karteVon, ortGespiegelt, ortLage, orteUebergeben, punkteZuordnen, spur } from './ort';
 import { ParallelTreffer, ortAusFein, strahlAufNetz } from './treffer';
 
 // ---------- Prüfnetz: eine Kugel aus einem unterteilten Oktaeder (spiegelgleich an z = 0, Punkte der Mitte genau in der Ebene) ----------
@@ -50,6 +50,48 @@ function kugel(stufen: number, r = 100, drehung = 0): Netz & { spiegel: Int32Arr
   const spiegel = new Int32Array(n);
   for (let i = 0; i < n; i++) spiegel[i] = wo.get(schl(pos[3 * i]!, pos[3 * i + 1]!, -pos[3 * i + 2]!)) ?? -1;
   return { pos, tri: Uint32Array.from(T.flat()), n, spiegel };
+}
+
+/** die Kante (a, b) teilen: Der neue Punkt kommt hinten dazu (wie beim Verdichten) */
+function kanteTeilen(netz: Netz & { pos: Float64Array; tri: Uint32Array }, a: number, b: number): Netz & { pos: Float64Array; tri: Uint32Array } {
+  const m = netz.n;
+  const pos = new Float64Array(3 * (m + 1));
+  pos.set(netz.pos);
+  for (let c = 0; c < 3; c++) pos[3 * m + c] = (netz.pos[3 * a + c]! + netz.pos[3 * b + c]!) / 2;
+  const T: number[] = [];
+  for (let t = 0; t < netz.tri.length; t += 3) {
+    const e = [netz.tri[t]!, netz.tri[t + 1]!, netz.tri[t + 2]!];
+    const ia = e.indexOf(a);
+    const ib = e.indexOf(b);
+    if (ia < 0 || ib < 0) {
+      T.push(...e);
+      continue;
+    }
+    // (a, b, c) wird (a, m, c) und (m, b, c), im selben Umlaufsinn
+    const e1 = [...e];
+    e1[ib] = m;
+    const e2 = [...e];
+    e2[ia] = m;
+    T.push(...e1, ...e2);
+  }
+  return { pos, tri: Uint32Array.from(T), n: m + 1 };
+}
+
+/** die Kante (u, v) zusammenlegen: v fällt weg, die Punkte danach rücken auf (die gebliebenen behalten ihre Reihenfolge) */
+function ohnePunkt(netz: Netz & { pos: Float64Array; tri: Uint32Array }, u: number, v: number): Netz & { pos: Float64Array; tri: Uint32Array } {
+  const T: number[] = [];
+  for (let t = 0; t < netz.tri.length; t += 3) {
+    const e = [netz.tri[t]!, netz.tri[t + 1]!, netz.tri[t + 2]!].map((x) => (x === v ? u : x));
+    if (e[0] === e[1] || e[1] === e[2] || e[2] === e[0]) continue;
+    T.push(...e.map((x) => (x > v ? x - 1 : x)));
+  }
+  const pos = new Float64Array(3 * (netz.n - 1));
+  for (let i = 0, j = 0; i < netz.n; i++) {
+    if (i === v) continue;
+    pos.set(netz.pos.subarray(3 * i, 3 * i + 3), 3 * j);
+    j++;
+  }
+  return { pos, tri: Uint32Array.from(T), n: netz.n - 1 };
 }
 
 /** der nächste Ort auf einem Netz, über alle Dreiecke (für Tests genügt das) */
@@ -295,9 +337,11 @@ describe('Farbe: Ort, Spur, Ketten, Flächen', () => {
     // dieselbe Kugel, anders unterteilt (um die z-Achse gedreht: spiegelgleich bleibt sie)
     const neu = kugel(4, 100, 0.3);
     const kn = karteVon(neu);
-    const weit = uebergeben(netz.pos, kn, naechsterVon(neu), b);
-    // die zwei Netze liegen höchstens um die Pfeilhöhe eines Dreiecks auseinander
-    expect(weit).toBeLessThan(0.5);
+    const ue = uebergeben(netz.pos, netz.n, kn, naechsterVon(neu), b);
+    // die zwei Netze haben keine gemeinsamen Punkte (nur die Pole): Jeder Ort wird gesucht
+    expect(ue.gehalten).toBe(0);
+    // sie liegen höchstens um die Pfeilhöhe eines Dreiecks auseinander
+    expect(ue.weit).toBeLessThan(0.5);
     const nachher = b.ebenen[0]!.linien[0]!.stuetzen.map((o) => ortLage(neu.pos, o));
     let groesst = 0;
     vorher.forEach((p, i) => (groesst = Math.max(groesst, Math.hypot(p[0] - nachher[i]![0], p[1] - nachher[i]![1], p[2] - nachher[i]![2]))));
@@ -314,6 +358,73 @@ describe('Farbe: Ort, Spur, Ketten, Flächen', () => {
     // die Kopie von vorher ist unberührt (für ⌘Z)
     expect(sicher.ebenen[0]!.linien[0]!.stuetzen[0]!.t).not.toBe(-1);
     expect(sicher.ebenen[0]!.linien[0]!.stuetzen.map((o) => ortLage(netz.pos, o))).toEqual(vorher);
+  });
+
+  it('Netzwechsel wie im Werk: Wer sein Dreieck behält, bleibt darin sitzen, auch wenn sich die Haut im selben Bild bewegt hat', () => {
+    const alt = kugel(3);
+    const orte = kreisUmZ(alt, naechsterVon(alt), 85, 100, 60);
+    const lagenAlt = orte.map((o) => ortLage(alt.pos, o));
+    const gewichteAlt = orte.map((o) => [...o.w].sort());
+    // das neue Netz, wie das Werk es hinterlässt: eine Kante unter dem Ring geteilt (ihr Punkt steht hinten), eine andere
+    // zusammengelegt (ihr Punkt fehlt, die Punkte danach rücken auf)
+    const [a0, b0] = [orte[0]!.e[0], orte[0]!.e[1]];
+    const o30 = orte[30]!;
+    const [u, v] = o30.e[0] < o30.e[1] ? [o30.e[0], o30.e[1]] : [o30.e[1], o30.e[0]];
+    expect(new Set([a0, b0, u, v]).size).toBe(4);
+    const neu = ohnePunkt(kanteTeilen(alt, a0, b0), u, v);
+    // und die Haut hat sich im selben Bild bewegt (ein Zug läuft): um rund 3 Einheiten, von Ort zu Ort verschieden
+    const weg = (p: ArrayLike<number>, i = 0): [number, number, number] => [2 + 0.01 * p[i + 1]!, 1 - 0.008 * p[i]!, 1.5 + 0.005 * p[i + 2]!];
+    for (let i = 0; i < neu.n; i++) {
+      const d = weg(neu.pos, 3 * i);
+      for (let c = 0; c < 3; c++) neu.pos[3 * i + c] = neu.pos[3 * i + c]! + d[c]!;
+    }
+    // die Zuordnung: kein falscher Punkt, und fast alle (der zusammengelegte fehlt; die zwei Enden der geteilten Kante haben jetzt
+    // eine halb so lange kürzeste Kante und sind bei dieser Bewegung nicht mehr sicher zu erkennen)
+    const zu = punkteZuordnen(alt.pos, alt.n, neu)!;
+    expect(zu).not.toBeNull();
+    let falsch = 0;
+    let zahl = 0;
+    for (let a = 0; a < alt.n; a++) {
+      if (zu[a]! < 0) continue;
+      zahl++;
+      if (a === v || zu[a] !== (a > v ? a - 1 : a)) falsch++;
+    }
+    expect(falsch).toBe(0);
+    expect(zahl).toBe(alt.n - 3);
+    expect(zu[a0]).toBe(-1);
+    expect(zu[b0]).toBe(-1);
+    const r = orteUebergeben(alt.pos, karteVon(neu), naechsterVon(neu), orte, zu);
+    // nur die Orte in den geteilten und zusammengelegten Dreiecken werden gesucht
+    expect(r.gesucht).toBeGreaterThan(0);
+    expect(r.gesucht).toBeLessThan(25);
+    expect(r.gehalten).toBe(orte.length - r.gesucht);
+    let gleich = 0;
+    let groesst = 0;
+    orte.forEach((o, i) => {
+      // wo der Ort liegen muss: mit der Haut mitgegangen
+      const d = weg(lagenAlt[i]!);
+      const p = ortLage(neu.pos, o);
+      const fern = Math.hypot(p[0] - lagenAlt[i]![0] - d[0], p[1] - lagenAlt[i]![1] - d[1], p[2] - lagenAlt[i]![2] - d[2]);
+      groesst = Math.max(groesst, fern);
+      const w = [...o.w].sort();
+      if (w.every((x, k) => Math.abs(x - gewichteAlt[i]![k]!) < 1e-12)) {
+        gleich++;
+        expect(fern).toBeLessThan(1e-9);
+      }
+    });
+    expect(gleich).toBe(r.gehalten);
+    // die gesuchten liegen dort, wo die Haut jetzt ist (am zusammengelegten Punkt hat sie sich um die Sehne geändert)
+    expect(groesst).toBeLessThan(3);
+    // ohne Zuordnung blieben alle am alten Ort im Raum stehen: um die Bewegung der Haut daneben
+    const stehen = kreisUmZ(alt, naechsterVon(alt), 85, 100, 60);
+    orteUebergeben(alt.pos, karteVon(neu), naechsterVon(neu), stehen, null);
+    let daneben = 0;
+    stehen.forEach((o, i) => {
+      const d = weg(lagenAlt[i]!);
+      const p = ortLage(neu.pos, o);
+      daneben = Math.max(daneben, Math.hypot(p[0] - lagenAlt[i]![0] - d[0], p[1] - lagenAlt[i]![1] - d[1], p[2] - lagenAlt[i]![2] - d[2]));
+    });
+    expect(daneben).toBeGreaterThan(2);
   });
 
   it('Sichern und Laden: Die Bemalung kommt Ort für Ort zurück; auf einem fremden Netz wird sie abgewiesen', () => {
