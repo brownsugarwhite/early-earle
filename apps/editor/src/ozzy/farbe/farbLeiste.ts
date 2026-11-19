@@ -23,7 +23,7 @@ function tropfen(mehr = ''): SVGSVGElement {
 }
 
 const SPEICHER = 'ozzy.farben';
-/** die Farben am Anfang (Florian stellt seine eigenen ein): hell, Gelb, Orange, Rot, Magenta, Blau, Grün, Tinte */
+/** die Farben am Anfang (Florian stellt seine eigenen ein): hell, Gelb, Orange, Rot, Magenta, Blau, Grün, fast Schwarz */
 const GRUND = ['#fbf6ea', '#f6c445', '#f08a3c', '#e4503a', '#d6438a', '#3f7fd0', '#3c9d7a', '#1f1a17'];
 const GRUND_WAHL = 1;
 /** so viele Farben stehen höchstens in der Leiste (jede weitere ersetzt die gewählte) */

@@ -28,7 +28,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   **Formen beginnen mit drei Loops**, Abschnitt 11; Etappe 5 als Verbund, Abschnitt 13; offen: Sitz der Loops, Hilfsloop greifen).
 - **Sitzung „Paint-Modus“ (seit 19.11.):** Zweig `claude/reverent-feynman-1efdd3` (auf dem Stand der Objekte, nicht
   zusammengeführt), Fenster 5215 (`ozzy-paint`). Einstieg: [`docs/look/ozzy/paint/UEBERGABE.md`](docs/look/ozzy/paint/UEBERGABE.md)
-  (gebaut: „Wachs“, Etappe 1 und 2, von 3 das Einlaufen der Farbe; sein Urteil dazu steht aus).
+  (gebaut: „Wachs“, Etappe 1 bis 3; sein Urteil zu Etappe 3 steht aus).
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

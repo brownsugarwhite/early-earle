@@ -476,6 +476,21 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `ableiten` beendet ein Einlaufen (Netzwechsel, Handgriff an einer Farblinie, ⌘Z); nur eine eben gesetzte Füllung läuft neu ein.
   (6) Im Testbrowser ist das Einlaufen ohne `fuellen=` aus: Die Proben der Etappen 1 und 2 lesen die Farbe gleich nach dem Klick.
   Probe `ozzy-farbe-fliessen-fenster.mjs`, Film `scripts/ozzy/paint-fuellen-film.mjs`, Tests `fliessen.test.ts`.
+- **Paint-Modus, Etappe 3, zweiter Schritt (19.11.; Plan, Abschnitt 13): Farben als Tropfen, Farbtropfen (F), Pipette (I).**
+  `farbe/farbLeiste.ts` hält die Farben (Tropfen unter der Leiste, `localStorage` `ozzy.farben`) und meldet an `main.ts`
+  (`FarbZiele`: gewählt, Zug, fallen, Mülleimer). Merke: (1) `raumWerkzeug` hat den Typ `LeistenWerkzeug` (`leiste.ts`: die
+  Werkzeuge des Blatts, dazu `tropfen` und `pipette`); das Blatt kennt die zwei nicht (`werkzeugGewaehlt` lässt sie nicht durch).
+  (2) Mit `farbWerkzeug()` bekommt das Verhalten der Linien keinen Zeiger (wie bei Freihand und Formen: `zeigerWeg`, kein
+  `zeigerSetzen`, Ozzys eigener Pfeil): So hängt nichts am Zeiger, und derselbe Weg wie bei A (`farbDruck`) füllt oder nimmt
+  auf. `farbAn` gilt dabei weiter, sonst stünden die Farblinien anders da. (3) Das Farbfeld `#farbe-farbe` muss in der Seite
+  bleiben: Es öffnet den Farbwähler des Systems (`showPicker`, sonst `click`), und Proben und Filme setzen darüber die gewählte
+  Farbe (`input`, `change`). Unsichtbar ist es über Deckung null, nicht über `hidden` (ob ein Feld ohne Kasten den Wähler
+  öffnet, ist nicht geprüft). (4) Ein
+  Tropfen wird im `pointerdown` der Reihe gefangen (`setPointerCapture`): Beim Ziehen bekommt die Zeichenfläche keine Bewegung,
+  der Ort kommt aus dem Ereignis (`farbZug`), nicht aus `zeiger`. (5) Die Tropfen der Leiste, der am Zeiger (`ozzy.html`) und
+  das Zeichen des Farbtropfens sind derselbe Pfad; wer einen ändert, ändert alle drei. (6) Mit dem Farbtropfen gilt ⌥ der
+  Farbe: `roentgenZiel` nimmt `farbWerkzeug()` aus. Probe `ozzy-farbe-tropfen-fenster.mjs`, Film
+  `scripts/ozzy/paint-farben-film.mjs`.
 - **Jelly und helles Solid (18.11., `src/ozzy/gast.ts`):** `BlaupauseBild` aus `src/form/blaupause.ts` läuft unverändert als Gast
   auf der eigenen Fläche `#gast` (zweiter WebGL-Renderer mit Kantenglättung, über `#haut`, unter `#linien`). Was der Gast tut: (1)
   den Grund verbergen (`Reflect.get(bild, 'hgNetz')`: ein privates Feld; benennt die Design-Sitzung es um, steht eine Warnung in der

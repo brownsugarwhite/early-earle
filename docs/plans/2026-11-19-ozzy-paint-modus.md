@@ -1,12 +1,12 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand (19.11., 16:10 Uhr): Etappe 3 hat begonnen (dein Wort: „Etappe 3 starten“). Die Farbe läuft ein, in zwei Fassungen zur
-Wahl; dein Urteil dazu steht aus.** Wie vereinbart zuerst zur Ansicht: Bildblatt
-[`2026-11-19-paint-etappe-3-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-3-bogen.jpg), Filme
-[„Tinte“](../progress/ozzy/2026-11-19-paint-etappe-3-tinte.mp4) und [„Honig“](../progress/ozzy/2026-11-19-paint-etappe-3-honig.mp4);
-was gebaut und gemessen ist und was von Etappe 3 noch fehlt, steht in Abschnitt 12. Davor: Etappe 2 (Abschnitt 11, Farblinien
-bedienen wie Linien), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 4 bis 7
-warten auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
+**Stand (19.11., 16:35 Uhr): Etappe 3 ist gebaut, dein Urteil steht aus.** Dein Wort zum Einlaufen: „Tinte“. Darauf der Rest der
+Etappe: Die Farben hängen als Tropfen unter der Leiste, dazu der Farbtropfen (F) und die Pipette (I). Bildblatt
+[`2026-11-19-paint-etappe-3-farben-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-3-farben-bogen.jpg), Film an „strange
+bird“ [`2026-11-19-paint-etappe-3-farben.mp4`](../progress/ozzy/2026-11-19-paint-etappe-3-farben.mp4); was gebaut, gemessen und
+für dich entschieden ist, steht in Abschnitt 13. Davor: das Einlaufen (Abschnitt 12), Etappe 2 (Abschnitt 11, Farblinien bedienen
+wie Linien), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 4 bis 7 warten
+auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
 zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
 [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
@@ -78,7 +78,7 @@ Geste wird von Anfang an auch für iPad und Stift gebaut (dort gibt es kein ⌥)
 | **0** Material „Wachs“ | das neue Material | gebaut; Vergleichsbild liegt vor |
 | **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | **gebaut (19.11.)**; Kriterien in 3.1, Messwerte in Abschnitt 9; dein Wort: „Etappe 2 starten“ |
 | **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | **gebaut (19.11.)**; Schritte in Abschnitt 10, Messwerte und Lücken in Abschnitt 11; Film an „strange bird“; dein Wort: „Etappe 3 starten“ |
-| **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | **begonnen (19.11.):** das Einlaufen in zwei Fassungen und der Tropfen am Zeiger sind gebaut, Filme liegen vor (Abschnitt 12); dein Urteil steht aus, danach der Rest (Farben in der Leiste, Taste F, Pipette) |
+| **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | **gebaut (19.11.):** das Einlaufen (dein Wort: „Tinte“; Abschnitt 12), dann Farben als Tropfen unter der Leiste, Farbtropfen F, Pipette I (Abschnitt 13); Bildblatt und Film an „strange bird“; dein Urteil steht aus |
 | **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | zuerst ein Bild der Bedienung (zwei Fassungen zur Wahl), dann gebaut |
 | **5** Ebenen | Ebene anlegen, ordnen, aus- und einblenden; Muster über Verläufen | ein Verlauf auf Ebene 1, Punkte auf Ebene 2, an deiner Form |
 | **6** Ebenen-Ansicht | die Form fächert auf, je Ebene eine Kopie; drehen, eine Kopie wählen und dort malen | zuerst ein Film (nebeneinander und schräg versetzt zur Wahl), dann gebaut |
@@ -509,6 +509,8 @@ Wie vereinbart zuerst zur Ansicht, bevor der Rest der Etappe gebaut wird. Bildbl
 bird“ (je rund 20 Sekunden): [„Tinte“](../progress/ozzy/2026-11-19-paint-etappe-3-tinte.mp4),
 [„Honig“](../progress/ozzy/2026-11-19-paint-etappe-3-honig.mp4).
 
+**Dein Wort dazu (19.11.): „Tinte“.** Sie ist eingestellt. „Honig“ bleibt erreichbar (`?fuellen=honig`, Feinregler „Füllen“).
+
 ### 12.1 Was du siehst und anfassen kannst
 
 - **Der Farbtropfen hängt am Zeiger:** im Paint-Modus mit A, über der Form, wo ein Klick füllen würde, in der gewählten Farbe.
@@ -540,11 +542,12 @@ und 2 halten weiter.
 | Der Farbtropfen am Zeiger | mit A über der Form zu sehen, neben der Form und mit P nicht | ja |
 | Im gewöhnlichen Browser, ohne Angabe in der Adresse | „Tinte“ läuft: an „strange bird“ 1,05 s für den ganzen Körper, Vorbereiten 9 ms, keine Fehler in der Konsole | ja |
 
-### 12.3 Was von Etappe 3 noch fehlt (nach deinem Urteil)
+### 12.3 Was nach diesem Schritt noch fehlte
 
 - **Farben als Tropfen in der Leiste** (statt des einen Farbfelds), **Taste F** als eigenes Werkzeug „Farbtropfen“, die
-  **Pipette** (I: Farbe von der Form aufnehmen).
-- **Am iPad** gibt es keinen Zeiger, also keinen hängenden Tropfen; das Einlaufen selbst ist dort ungeprüft.
+  **Pipette** (I: Farbe von der Form aufnehmen): **gebaut auf dein Wort „Tinte“, Abschnitt 13.**
+- **Am iPad** gibt es keinen Zeiger, also keinen hängenden Tropfen (dafür seit Abschnitt 13 das Ziehen eines Tropfens aus der
+  Leiste); das Einlaufen selbst ist dort ungeprüft.
 - **Eingerastet und in den Vier Ansichten** steht weiter keine Farbe (Lücke aus Etappe 1).
 - **Die Dauer richtet sich nach der fernsten Stelle der Fläche,** auch wenn sie auf der Rückseite liegt: Bei „Tinte“ läuft es am
   ganzen Körper von „strange bird“ nach dem sichtbaren Teil noch eine halbe Sekunde unsichtbar weiter (das stört nicht, ein neuer
@@ -561,3 +564,80 @@ und 2 halten weiter.
 - `farbe/farbwerk.ts`: `FLIESSEN` (die zwei Fassungen), `fliessWerte`, `fliessen(dt)` je Bild, `fliesst`, `flussStand`.
   `main.ts`: Feinregler „Füllen“ (`fuellWerte`), `farbTropfenZeigen`, `farbTropfenFallen`, Haken `farbFluss`, `farbFliessen`.
 - Im Testbrowser ist das Einlaufen ohne `fuellen=` in der Adresse aus (die Proben lesen die Farbe gleich nach dem Klick).
+
+## 13. Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (19.11.2026, auf dein Wort „Tinte“)
+
+Bildblatt: [`2026-11-19-paint-etappe-3-farben-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-3-farben-bogen.jpg). Film in
+echter Zeit an „strange bird“ (29 Sekunden):
+[`2026-11-19-paint-etappe-3-farben.mp4`](../progress/ozzy/2026-11-19-paint-etappe-3-farben.mp4).
+
+### 13.1 Was du siehst und anfassen kannst
+
+- **Die Farben hängen als kleine Tropfen unter der Leiste,** sobald du mit B im Paint-Modus bist. Der gewählte hängt tiefer und
+  ist größer.
+  - **Antippen** wählt eine Farbe.
+  - **Den gewählten noch einmal antippen** ändert seine Farbe (der Farbwähler des Systems).
+  - **Der hohle Tropfen mit dem Plus** legt eine neue Farbe an.
+  - **Ziehen:** Der Tropfen hängt am Zeiger. Über der Form losgelassen, fällt er und füllt dort, wie Farbe ziehen in Procreate.
+    Das geht mit jedem Werkzeug und braucht keinen Zeiger, also auch mit dem Stift. Auf dem Mülleimer losgelassen, ist die Farbe
+    verworfen. Sonst kehrt er zurück.
+  - Deine Farben bleiben über das Neuladen.
+- **Farbtropfen (F, oder sein Zeichen in der Leiste):** Die gewählte Farbe hängt am Zeiger, überall über der Form, auch über
+  einer Farblinie. Jeder Klick auf die Form füllt; Punkte und Farblinien lassen sich damit nicht greifen. Das Zeichen in der
+  Leiste trägt die gewählte Farbe. ⌥ + Klick nimmt die Farbe unter dem Zeiger auf. F noch einmal oder A: zurück zu den Punkten.
+- **Pipette (I, oder ihr Zeichen in der Leiste):** Am Zeiger steht ein Ring in der Farbe, die unter ihm liegt (gestrichelt und
+  leer, wo keine liegt). Ein Klick nimmt sie auf: Steht sie schon bei den Tropfen, ist ihr Tropfen gewählt, sonst kommt sie als
+  neuer dazu. Danach gilt gleich der Farbtropfen.
+- **Der Tropfen am Zeiger und die Tropfen der Leiste haben dieselbe Form** wie das Zeichen des Farbtropfens (bis dahin war der am
+  Zeiger eckiger).
+
+### 13.2 Gemessen
+
+Probe `ozzy-farbe-tropfen-fenster.mjs` (an einer Kugel, mit echten Klicks). Die Proben der Etappen 1 und 2 und die zum Einlaufen
+halten weiter. Eine Zeile riss einmal: das Tempo beim Drehen aus Etappe 1, als drei Proben hintereinander liefen; allein
+wiederholt hielt sie (teuerstes Bild 3,5 ms).
+
+| Was | gemessen | hält? |
+| --- | --- | --- |
+| Nur im Paint-Modus | vor B: keine Farben und keine zwei Werkzeuge in der Leiste, F und I tun nichts (mit Hinweis); nach B ist beides da | ja |
+| F hängt überall und greift nichts | mit A am Punkt einer Farblinie hängt der Punkt am Zeiger, kein Tropfen; mit F dort der Tropfen und sonst nichts; ein Klick dort: eine Füllung mehr, nichts gewählt, die Farblinie unverändert | ja |
+| Antippen wählt, F füllt mit der Farbe | Blau angetippt: gewählt #3f7fd0, das Zeichen in der Leiste ist blau; im Fünfeck steht danach Blau | ja |
+| Pipette | Ring über Blau in Blau, über freier Haut leer; Klick auf freie Haut: nichts ändert sich (mit Hinweis); Klick auf Blau: sein Tropfen ist gewählt (weiter 8 Tropfen), es gilt der Farbtropfen; eine Farbe, die nicht in der Leiste stand, kommt als neunter Tropfen dazu | ja |
+| ⌥ + Klick mit dem Farbtropfen | nimmt die Farbe auf, füllt nicht | ja |
+| Ziehen | im Zug hängt der Tropfen am Zeiger, in der Leiste bleibt die Hülle; auf der Form losgelassen: eine Füllung mehr in dieser Farbe; neben der Form: nichts; auf dem Mülleimer: ein Tropfen weniger, keine Füllung | ja |
+| Farbe ändern, Neuladen | der gewählte Tropfen bekommt die neue Farbe; nach dem Neuladen stehen dieselben Farben da | ja |
+| B aus dem Farbtropfen heraus | zurück bei den Punkten, die Farben sind weg | ja |
+| Der Farbwähler | der zweite Tipp auf den gewählten Tropfen und das Plus öffnen ihn ohne Fehler (einmal geprüft; was man darin wählt, nicht) | ja |
+| Im gewöhnlichen Browser | im Fenster 5215 mit echten Klicks an „strange bird“: Blau antippen, Farbtropfen wählen, Klick füllt (läuft 1,04 s ein), keine Fehler | ja |
+
+### 13.3 Für dich entschieden (sag, wenn du es anders willst)
+
+- **Mit A füllt ein Klick auf freie Haut weiter wie bisher.** Stört dich das beim Bearbeiten (ein Klick knapp neben einen Punkt
+  füllt), nehme ich das Füllen aus A heraus; dann füllen nur der Farbtropfen und das Ziehen.
+- **Acht Farben am Anfang** (hell, Gelb, Orange, Rot, Magenta, Blau, Grün, fast Schwarz): Platzhalter. Deine kommen über das Plus
+  und den Farbwähler; höchstens 14 Tropfen.
+- **Die Farben gehören zum Browser, nicht zur Form.** Jede Form zeigt dieselben Tropfen. Die Farben einer geladenen Form holst du
+  mit der Pipette.
+- **Nach der Pipette gilt der Farbtropfen** (aufnehmen, dann füllen).
+- **F und I gelten nur im Paint-Modus.** Mit dem Farbtropfen gibt es kein Röntgen: ⌥ nimmt dort die Farbe auf.
+
+### 13.4 Was fehlt
+
+- **Am iPad ungeprüft.** Gebaut ist es für den Stift (die Werkzeuge als Knöpfe in der Leiste, Ziehen ohne Zeiger), gesehen habe
+  ich es dort nicht.
+- **Der Farbwähler ist der des Systems** (am Mac ein kleines Fenster, am iPad der von iPadOS). Ein eigener im Stil von Ozzy wäre
+  ein eigener Schritt.
+- **Eingerastet und in den Vier Ansichten** steht weiter keine Farbe (Lücke aus Etappe 1); Füllen und Aufnehmen gehen dort nicht.
+- **Die Pipette nimmt nur die Farbe von Füllungen,** nicht den Ton des Materials und nicht, was das Licht daraus macht.
+- Aus Abschnitt 12.3 unverändert: die Dauer nach der fernsten Stelle, der Streifen schmaler als ein Dreieck.
+
+### 13.5 Für die Sitzung, die baut
+
+- `farbe/farbLeiste.ts` (`FarbLeiste`): die Tropfen, Wählen, Ziehen, Farbwähler, `localStorage` (`ozzy.farben`). Was beim Wählen,
+  Ziehen und Fallen geschieht, bestimmt `main.ts` (`FarbZiele`). Das Farbfeld `#farbe-farbe` bleibt unsichtbar in der Seite: Es
+  öffnet den Farbwähler, und Proben und Filme setzen darüber die gewählte Farbe.
+- `leiste.ts`: `LeistenWerkzeug` (die Werkzeuge des Blatts, dazu `tropfen` und `pipette`), `malZeigen`, `farbeZeigen`,
+  `muellKnopf`. `main.ts`: `raumWerkzeug` hat diesen Typ; `farbWerkzeug()` (Farbtropfen oder Pipette: Der Zeiger geht nicht an
+  das Verhalten der Linien, wie bei Freihand und Formen); `farbWerkzeugTaste`, `farbAufnehmenBei`, `farbUnter`, `farbZug`; Haken
+  `farbLeiste`, `farbUnter`. `farbwerk.ts`: `farbeBei`.
+- Film: `scripts/ozzy/paint-farben-film.mjs`. Bilder der Leiste in dreifacher Schärfe: `scripts/ozzy/paint-farben-blick.mjs`.
