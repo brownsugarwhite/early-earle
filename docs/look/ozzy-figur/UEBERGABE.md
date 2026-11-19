@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 vormittags: A, B, C gebaut; D: Abläufe mit Charakter, nichts rutscht, Steuerung per Knopf)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 mittags: 2,5D A–D gebaut; Beweis 3D aus seinen Zeichnungen, ozzy-raum.html)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -325,6 +325,35 @@ positionierungen haben.“ Plan: Abschnitt 12c.
   sind 9 bis 15 % größer (Fläche) als im Stehen, das nahe Hinterbein im Sitzen 21 %; die Fenster im Liegen bis 150 %, im Sitzen 118
   bis 123 %; die Bohne im Sitzen 83 %, im Liegen 109 %. Beim Wechsel wachsen und schrumpfen sie deshalb. Angleichen nur auf sein Wort.
 
+## Beweis 3D: Ozzy als Körper aus seinen Zeichnungen (19.11. mittags)
+
+Florian (19.11.): „ich spreche von der 360 grad drehung. Es kann eigentlich nicht sein dass wir jetzt tage an so einfachen
+animationen … rumdoktorn … verdacht dass … wir für jeden übergang eine extra animation brauchen“. Diagnose und Vorschlag:
+[`docs/plans/2026-11-19-ozzy-figur-3d.md`](../../plans/2026-11-19-ozzy-figur-3d.md); er: „Ja, 3D-Beweis“. Am 2,5D-Körper wird nicht
+weitergebaut, bis er entscheidet.
+
+- **Seite** `apps/editor/ozzy-raum.html` (Port 5213 wie die Figur): Winkel 0–360°, „Drehen ▶“, Knöpfe je 45°, Florians Zeichnung rot
+  darüber (0°, 45°, 90°, 180°, 270°). Schalter: `?weiss=0` nur die schwarze Form, `?bunt=1` Teile farbig, `?sicht=0` ohne
+  Sichtbarkeit, `?weissArt=fest` Weiß als feste Bemalung (Versuch, schlechter), `?h=` Rasterweite des Netzes, `?k=` Rundung.
+- **Körper** (`raum/koerper.ts`): jedes Teil (Bohne, Kopf mit Bart, Nase, Ohren, Beine, Schwanz, Keile) aus Front (X, Y) und Seite
+  (Z, Y): innen, wo beide Umrisse innen sind, je Höhe ein elliptischer Querschnitt im Rechteck der beiden Intervalle (eines je Zeile:
+  die Hülle; Kerben schneidet der Umriss als Rille ein), in der Höhe geglättet (σ 4). Teile weich vereinigt (k 3). Paarteile sind in Z
+  gleich (das nahe Teil der Seite); die fernen schauen beim Blick von der Seite vor, wie Florian sie zeichnet (`PaarKarte`: Rechteck
+  des nahen auf das des fernen abgebildet, mit sin²ψ). Schwanz und hinterer Keil nehmen ihre Breite aus der Rückansicht.
+- **Netz** (`raum/netz.ts`): Surface Nets auf 2,5 Einheiten (grob nach fein), Ecken mit Newton auf die Fläche, Normalen aus dem
+  Abstandsfeld; rund 100 000 Ecken, gebaut im Worker in gut 2 s.
+- **Weiß** (`raum/masken.ts`, `raum/zeichner.ts`): je Ansicht (Front, Seite, Rücken; links = Seite gespiegelt) das sichtbare Weiß
+  seiner Zeichnung als Abstandsfeld. Der Zeichner (three.js, flach, ohne Licht und Outline) mischt die beiden nächsten Ansichten nach
+  dem Winkel, jede nur, wo sie die Fläche sieht (je Schlüsselansicht ein Tiefenbild wie bei Schatten, Abstand wächst mit der Schräge,
+  vier Proben) und gewichtet nach der Richtung der Fläche (Front auf seitlichen Flächen zog Streifen).
+- **Probe** (`scripts/ozzy-figur/raum-probe.mjs`, Ergebnis `2026-11-19-raum-probe.json`): Deckung 0° 98,7 %, 90° 96,1 %, 180° 90,5 %;
+  Tempo Chrome 2,6 ms, Safari 2,0 ms je Bild. Bilder `2026-11-19-raum-ansichten.png` (3D neben seinen Zeichnungen), `-deckung.png`,
+  `-umlauf.png` (20°-Schritte), `-bildfolge.png` (5°), Video `-umlauf.mp4`.
+- **Was trägt:** Umriss und Drehung (0–360° ohne Haken und Stufen), Front und Seite seiner Zeichnungen, Tempo.
+- **Was nicht trägt:** das Weiß zwischen den Ansichten (zwei Zeichnungen legen verschiedenes Weiß an dieselbe Stelle, gemischt wird
+  es unruhig) und der Rücken (seine Rückansicht ist kein Spiegelbild der Front). Weiterer Weg: das Weiß einmal im Raum festlegen
+  (auf den Körper gemalt, etwa in Blender auf diesem Netz, oder je Merkmal aus einer Ansicht), die Rückansicht als Spiegel der Front.
+
 ## Fallen
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
@@ -334,6 +363,14 @@ positionierungen haben.“ Plan: Abschnitt 12c.
 - Ein Rückgrat gegen die gemischte Richtung statt gegen die tatsächliche Linie Hüfte–Fuß schlägt eine S-Kurve unter den Boden, sobald
   der Boden den Fuß anhebt.
 - Eine Sprungprobe mit einer einzigen Schrittweite hält schnelle Bewegung (Absprung, Aufprall) für Sprünge: zwei Schrittweiten.
+- 3D aus zwei Ansichten: Getrennte Intervalle einer Zeile (Kerben, Bartzacken, zwei Kopfhälften) ergaben je einen Strang über die
+  ganze Tiefe, schräg als Grate sichtbar: je Zeile ein Intervall (die Hülle). Eine Lücke zwischen zwei Teilen einer Ansicht (Scheitel)
+  wird im Raum ein Schlitz: Teile mit ihrem Weiß vereinigen. Ein Sprung des Intervalls von Zeile zu Zeile wird eine Stufe, die keine
+  Ansicht sieht (schwarze Linie): in der Höhe glätten.
+- Füllen mehrerer Linienzüge in einem Durchgang mit Umlaufzahl löscht Überlappungen mit verschiedenem Umlaufsinn aus: je Linienzug
+  füllen, dann vereinigen.
+- Projizierte Zeichnungen brauchen eine Sichtprüfung je Pixel (Tiefenbild) mit Abstand nach der Schräge; je Ecke geprüft oder mit
+  festem Abstand gibt es Treppen und feine Streifen.
 - Den Ort einer Pfote an den Ankern ihrer Sohle messen, nicht an der Kontaktfläche (Punkte bis 1 über dem tiefsten): Hebt sich die
   Zehe um 2, wandert die Mitte der Kontaktfläche um 10, ohne dass etwas rutscht.
 - Die Verschiebung in der Steuerung nie an den gezeigten Gewichten mit dem Anker des Abschnitts messen, in dem der Leitpunkt schon

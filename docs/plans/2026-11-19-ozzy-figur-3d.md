@@ -1,6 +1,6 @@
 # Ozzy-Figur: 3D aus deinen Zeichnungen statt Morph der Zeichnungen (Vorschlag, 19.11.2026)
 
-**Stand: Vorschlag, wartet auf Florians Wort.** Nichts davon ist gebaut.
+**Stand: Beweis gebaut (Florian, 19.11.: „Ja, 3D-Beweis“), Ergebnis in Abschnitt 6.** Sein Urteil steht aus.
 
 Anlass, Florian (19.11.): „ich spreche von der 360 grad drehung. Es kann eigentlich nicht sein dass wir jetzt tage an so einfachen
 animationen eines so einfachen characters rumdoktorn... Wo ist das problem? Wie geht es besser. Ich habe auch den verdacht dass die
@@ -70,3 +70,22 @@ Skelett mit Stehen, Sitzen und Liegen, freie Übergänge mit stehenden Pfoten, d
 
 Ozzy als Netz mit Skelett aus Blender (von dir oder von mir über Blender gebaut); Skelett und Logik wie oben. Vorteil: Du formst ihn
 direkt. Nachteil: Deine SVGs sind dann nur Vorlage, das Weiß wird eine Textur, und jede Formänderung ist Handarbeit.
+
+## 6. Ergebnis des Beweises (19.11.)
+
+Seite `apps/editor/ozzy-raum.html` (Port 5213), Code `apps/editor/src/ozzy-figur/raum/`, Probe `scripts/ozzy-figur/raum-probe.mjs`,
+Bilder und Video `docs/progress/ozzy-figur/2026-11-19-raum-*`.
+
+| Probe | Ergebnis |
+| --- | --- |
+| 1 Drehung 0–360° | Körper und Kopf drehen frei; der Umriss läuft ohne Haken und Stufen ✓ |
+| 2 Deckung des Schwarz | 0° Front 98,7 % ✓ · 90° Seite 96,1 % (knapp unter 97: Spitze des fernen Ohrs, Nasenspitze) · 180° Rücken 90,5 % ✗ (siehe unten) |
+| 3 Weiß zwischen den Ansichten | an den Schlüsselwinkeln genau seine Zeichnung; dazwischen unruhig (Fenster der Beine, Bartkanten) ✗ |
+| 4 Tempo am Mac | Chrome 2,6 ms (95 %: 6,3), Safari 2,0 ms (5,0) je Bild ✓; iPhone misst Florian |
+
+- **Rücken:** Ein Körper zeigt von hinten genau das Spiegelbild seiner Front. Florians Rückansicht hat Beine und Ohren an denselben
+  Stellen wie die Front (nicht gespiegelt), und seine Front ist ungleich (Deckung mit dem eigenen Spiegelbild 73 %). Mehr als rund
+  91 % sind von hinten deshalb mit keinem Körper möglich.
+- **Weiß:** Das Weiß kommt aus seinen Zeichnungen und wird zwischen zwei Ansichten gemischt. Wo zwei Zeichnungen verschiedenes Weiß
+  an dieselbe Stelle legen (Beinfenster vorn und von der Seite), wird es zwischen den Ansichten unruhig. Sauber wird es erst, wenn das
+  Weiß einmal im Raum liegt (auf den Körper gemalt), statt aus mehreren Zeichnungen gemischt zu werden.

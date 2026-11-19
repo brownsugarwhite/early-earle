@@ -1,0 +1,40 @@
+{
+ "zeit": "2026-11-19T09:01:20.198Z",
+ "deckung": {
+  "0°=front": {
+   "deckung": 98.7,
+   "nur3D": 502,
+   "nurZeichnung": 1580
+  },
+  "90°=profil": {
+   "deckung": 96.1,
+   "nur3D": 3541,
+   "nurZeichnung": 4709
+  },
+  "180°=back": {
+   "deckung": 90.5,
+   "nur3D": 7717,
+   "nurZeichnung": 19313
+  }
+ },
+ "tempo": {
+  "chrome": {
+   "median": 2.5999999046325684,
+   "p95": 6.300000190734863
+  },
+  "webkit": {
+   "median": 2,
+   "p95": 5
+  }
+ },
+ "bau": {
+  "import": 12,
+  "koerper": 124,
+  "netz": 2088,
+  "masken": 144
+ },
+ "fehler": {
+  "chrome": [],
+  "webkit": []
+ }
+}
