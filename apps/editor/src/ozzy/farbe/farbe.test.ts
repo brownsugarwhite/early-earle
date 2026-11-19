@@ -427,6 +427,74 @@ describe('Farbe: Ort, Spur, Ketten, Flächen', () => {
     expect(daneben).toBeGreaterThan(2);
   });
 
+  it('zwei Farblinien, die sich kreuzen, trennen vier Flächen: gefüllt wird nur die Linse zwischen ihnen', () => {
+    // zwei Kreise gleicher Größe, um die z-Achse und um eine Achse 30° daneben: Sie kreuzen sich an zwei Stellen
+    const a: [number, number, number] = [0.5, 0, Math.sqrt(0.75)];
+    const u: [number, number, number] = [Math.sqrt(0.75), 0, -0.5];
+    const kreisUm = (schritte = 96): Ort[] =>
+      Array.from({ length: schritte }, (_, i) => {
+        const w = (2 * Math.PI * i) / schritte;
+        return ortBei(netz, nah, 80 * a[0] + 60 * Math.cos(w) * u[0], 60 * Math.sin(w), 80 * a[2] + 60 * Math.cos(w) * u[2]);
+      });
+    let id = 1;
+    const linien = [...linienAusTreffern(k, kreisUmZ(netz, nah, 80), true, false, () => id++), ...linienAusTreffern(k, kreisUm(), true, false, () => id++)];
+    const { ketten, fehl } = kettenAller(k, linien, false);
+    expect(fehl).toHaveLength(0);
+    // an den zwei Kreuzungen sind die Ketten geteilt: je Kreuzung vier Enden
+    const anKreuzung = ketten.filter((c) => c.kEin !== undefined).length + ketten.filter((c) => c.kAus !== undefined).length;
+    expect(anKreuzung).toBe(8);
+    const inZ = (p: [number, number, number]): boolean => p[2] > 80;
+    const inA = (p: [number, number, number]): boolean => p[0] * a[0] + p[2] * a[2] > 80;
+    // die Linse: in beiden Kreisen
+    const linse = flaechenRechnen(k, ketten, [{ ort: ortBei(netz, nah, 25.9, 0, 96.6), farbe: 0 }]);
+    const r1 = auswerten(k, linse, (p) => inZ(p) && inA(p));
+    expect(r1.proben).toBeGreaterThan(200);
+    expect(r1.falsch).toBe(0);
+    // eine Sichel: nur im Kreis um z
+    const sichel = flaechenRechnen(k, ketten, [{ ort: ortBei(netz, nah, -40, 0, 91.7), farbe: 0 }]);
+    // (Stichproben näher als 3 Einheiten an einer der zwei Linien zählen nicht: Die Linien sind Streckenzüge, keine Kreise)
+    const fern = (p: [number, number, number]): boolean => Math.abs(p[2] - 80) > 3 && Math.abs(p[0] * a[0] + p[2] * a[2] - 80) > 3;
+    /** falsch gefärbte Stichproben: die Mitten der Dreiecke ohne Kette und ein Raster in denen mit Ketten */
+    const falsch = (fl: ReturnType<typeof flaechenRechnen>, soll: (p: [number, number, number]) => boolean): number => {
+      let n = 0;
+      const mit = new Set(fl.rand.map((r) => r.t));
+      for (let t = 0; t < k.T; t++) {
+        if (mit.has(t)) continue;
+        const p = ortLage(netz.pos, { t, e: [netz.tri[3 * t]!, netz.tri[3 * t + 1]!, netz.tri[3 * t + 2]!], w: [1 / 3, 1 / 3, 1 / 3] });
+        if (fern(p) && fl.ganz[t]! >= 0 !== soll(p)) n++;
+      }
+      for (const r of fl.rand) {
+        const e: [number, number, number] = [netz.tri[3 * r.t]!, netz.tri[3 * r.t + 1]!, netz.tri[3 * r.t + 2]!];
+        const N = 12;
+        for (let i = 0; i < N; i++)
+          for (let j = 0; i + j < N; j++) {
+            const bb = (i + 1 / 3) / N, cc = (j + 1 / 3) / N;
+            const sN = naechsteSeite(r.ketten, bb, cc);
+            const an = (sN.seite === 0 ? r.ketten[sN.k]!.links : r.ketten[sN.k]!.rechts) >= 0;
+            const p = ortLage(netz.pos, { t: r.t, e, w: [1 - bb - cc, bb, cc] });
+            if (fern(p) && an !== soll(p)) n++;
+          }
+      }
+      return n;
+    };
+    expect(falsch(linse, (p) => inZ(p) && inA(p))).toBe(0);
+    expect(falsch(sichel, (p) => inZ(p) && !inA(p))).toBe(0);
+    // und außen: alles außerhalb beider Kreise
+    const aussen = flaechenRechnen(k, ketten, [{ ort: ortBei(netz, nah, 0, 0, -100), farbe: 0 }]);
+    expect(falsch(aussen, (p) => !inZ(p) && !inA(p))).toBe(0);
+  });
+
+  it('eine offene Farblinie begrenzt nur, wo sie liegt: Die Füllung läuft um ihre Enden', () => {
+    let id = 1;
+    // ein halber Kreis um den Pol
+    const halb = kreisUmZ(netz, nah, 80).slice(0, 49);
+    const linien = linienAusTreffern(k, halb, false, false, () => id++);
+    const { ketten } = kettenAller(k, linien, false);
+    const fl = flaechenRechnen(k, ketten, [{ ort: ortBei(netz, nah, 0, 0, 100), farbe: 0 }]);
+    // alles ist eine Fläche
+    expect(auswerten(k, fl, () => true).falsch).toBe(0);
+  });
+
   it('Sichern und Laden: Die Bemalung kommt Ort für Ort zurück; auf einem fremden Netz wird sie abgewiesen', () => {
     let id = 1;
     const b = leereBemalung();

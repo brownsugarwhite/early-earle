@@ -19,7 +19,18 @@ export type LinieOrte = { id: number; zu: boolean; stuetzen: Ort[] };
  * `ein`, `aus`: die Kante, auf der sie beginnt und endet (−1: im Inneren, ein freies Ende oder ein geschlossener Zug). `zu`: ein
  * geschlossener Zug ganz in diesem Dreieck (der letzte Punkt ist der erste).
  */
-export type Kette = { t: number; linie: number; p: number[]; ein: number; aus: number; zu: boolean; gespiegelt: boolean };
+export type Kette = {
+  t: number;
+  linie: number;
+  p: number[];
+  ein: number;
+  aus: number;
+  zu: boolean;
+  gespiegelt: boolean;
+  /** Etappe 2: Die Kette beginnt (`kEin`) oder endet (`kAus`) an einer Kreuzung im Inneren des Dreiecks (ihre Nummer im Dreieck) */
+  kEin?: number;
+  kAus?: number;
+};
 
 /** die Stücke einer Farblinie der Reihe nach (null: Ein Weg zwischen zwei Orten ließ sich nicht finden) */
 export function stueckeVon(k: Karte, l: LinieOrte): Stueck[] | null {
@@ -131,7 +142,77 @@ export function kettenAller(k: Karte, linien: readonly LinieOrte[], spiegeln: bo
         if (m) ketten.push(m);
       }
   }
-  return { ketten, fehl };
+  return { ketten: kreuzungenTeilen(ketten), fehl };
+}
+
+/**
+ * Etappe 2: Wo sich zwei Ketten im selben Dreieck kreuzen, werden beide dort geteilt: Aus zwei Ketten werden vier, die an der
+ * Kreuzung enden oder beginnen (`kAus`, `kEin`). So trennen zwei gekreuzte Farblinien vier Flächen (`flaechen.ts` verbindet an
+ * einer Kreuzung je zwei Nachbarn im Umlauf). Eine Kette, die sich selbst kreuzt, bleibt, wie sie ist.
+ */
+export function kreuzungenTeilen(ketten: readonly Kette[]): Kette[] {
+  const aus: Kette[] = [];
+  for (const liste of jeDreieck(ketten).values()) {
+    if (liste.length < 2) {
+      for (const c of liste) aus.push(c);
+      continue;
+    }
+    let L = liste.slice();
+    let knoten = 0;
+    /** die erste Kreuzung zweier Ketten: Stück i von A bei u, Stück j von B bei v; nicht an einem Ende, an dem beide schon geteilt sind */
+    const finden = (A: Kette, B: Kette): { i: number; u: number; j: number; v: number; x: number; y: number } | null => {
+      for (let i = 0; i + 3 < A.p.length; i += 2) {
+        const ax = A.p[i]!;
+        const ay = A.p[i + 1]!;
+        const ux = A.p[i + 2]! - ax;
+        const uy = A.p[i + 3]! - ay;
+        for (let j = 0; j + 3 < B.p.length; j += 2) {
+          const bx = B.p[j]!;
+          const by = B.p[j + 1]!;
+          const vx = B.p[j + 2]! - bx;
+          const vy = B.p[j + 3]! - by;
+          const d = ux * vy - uy * vx;
+          if (Math.abs(d) < 1e-18) continue;
+          const u = ((bx - ax) * vy - (by - ay) * vx) / d;
+          const v = ((bx - ax) * uy - (by - ay) * ux) / d;
+          if (u < 0 || u > 1 || v < 0 || v > 1) continue;
+          // (am gemeinsamen Ende zweier schon geteilter Ketten: dieselbe Kreuzung, nicht noch einmal)
+          const amEndeA = (i === 0 && u < 1e-9 && A.kEin !== undefined) || (i + 4 >= A.p.length && u > 1 - 1e-9 && A.kAus !== undefined);
+          const amEndeB = (j === 0 && v < 1e-9 && B.kEin !== undefined) || (j + 4 >= B.p.length && v > 1 - 1e-9 && B.kAus !== undefined);
+          if (amEndeA || amEndeB) continue;
+          return { i, u, j, v, x: ax + u * ux, y: ay + u * uy };
+        }
+      }
+      return null;
+    };
+    const teilen = (c: Kette, i: number, x: number, y: number, k: number): [Kette, Kette] => {
+      const vorn: Kette = { ...c, p: [...c.p.slice(0, i + 2), x, y], aus: -1, zu: false, kAus: k };
+      const hinten: Kette = { ...c, p: [x, y, ...c.p.slice(i + 2)], ein: -1, zu: false, kEin: k };
+      if (c.kEin === undefined) delete vorn.kEin;
+      if (c.kAus === undefined) delete hinten.kAus;
+      return [vorn, hinten];
+    };
+    for (let runde = 0; runde < 200; runde++) {
+      let gefunden = false;
+      for (let a = 0; a < L.length && !gefunden; a++)
+        for (let b = a + 1; b < L.length && !gefunden; b++) {
+          const A = L[a]!;
+          const B = L[b]!;
+          // (ein geschlossener Zug im Dreieck wird nicht geteilt: Er hat keinen Anfang)
+          if (A.zu || B.zu) continue;
+          const k = finden(A, B);
+          if (!k) continue;
+          const [a1, a2] = teilen(A, k.i, k.x, k.y, knoten);
+          const [b1, b2] = teilen(B, k.j, k.x, k.y, knoten);
+          knoten++;
+          L = [...L.slice(0, a), a1, a2, ...L.slice(a + 1, b), b1, b2, ...L.slice(b + 1)];
+          gefunden = true;
+        }
+      if (!gefunden) break;
+    }
+    for (const c of L) aus.push(c);
+  }
+  return aus;
 }
 
 /** die Ketten nach Dreieck geordnet */

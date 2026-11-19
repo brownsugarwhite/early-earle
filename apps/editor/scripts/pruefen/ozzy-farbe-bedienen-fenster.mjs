@@ -13,7 +13,9 @@
 //      geschlossen, die Füllung folgt ihr.
 //   5  ⌘Z nimmt alles in der Reihenfolge zurück; die Form des Werks bleibt Zahl für Zahl dieselbe.
 //   6  Von hinten gesehen ist kein Punkt der Farblinie zu greifen (nichts hängt am Zeiger).
-//   7  Keine Fehler in der Konsole.
+//   8  Zwei Farblinien, die sich kreuzen, trennen vier Flächen (gefüllt wird nur die Überlappung); eine offene Farblinie
+//      begrenzt nur, wo sie liegt (die Füllung läuft um ihre Enden).
+//   9  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 OZZY_URL=http://localhost:5215/ozzy.html node scripts/pruefen/ozzy-farbe-bedienen-fenster.mjs [ordner für Bilder]
 import fs from 'node:fs';
 import { auf } from './ozzy-teile.mjs';
@@ -286,6 +288,47 @@ ok(
   `Rückweg „${weg5}“; nach ⌘Z (Farblinien/Füllungen/Punkte der ersten): ${schritte.join(' → ')}; Form unberührt ${summe5 === summe0}`,
 );
 
+// ---------- 8 gekreuzt und offen ----------
+// zwei Vierecke, die sich überlappen: vier Flächen (die Überlappung, je der Rest eines Vierecks, das Übrige)
+await s.keyboard.press('p');
+await s.waitForTimeout(300);
+for (const V of [
+  [[640, 380], [740, 380], [740, 470], [640, 470]],
+  [[700, 430], [800, 430], [800, 520], [700, 520]],
+]) {
+  for (const [x, y] of [...V, V[0]]) await klick(x, y);
+  await s.waitForTimeout(400);
+}
+await s.keyboard.press('a');
+await s.waitForTimeout(300);
+await klick(722, 452);
+await s.waitForTimeout(500);
+const f8 = await O('farbe');
+const c8 = { mitte: await farbeBei(716, 446), eins: await farbeBei(665, 405), zwei: await farbeBei(775, 495), aussen: await farbeBei(760, 350) };
+await bild('8-gekreuzt');
+// eine offene Farblinie daneben, dann außen gefüllt: Die Farbe läuft um ihre Enden und füllt alles Übrige, die Vierecke nicht
+await s.keyboard.press('p');
+await s.waitForTimeout(300);
+await klick(630, 490);
+await klick(665, 530);
+await s.keyboard.press('Enter');
+await s.waitForTimeout(500);
+await s.keyboard.press('a');
+await s.waitForTimeout(300);
+await klick(640, 530);
+await s.waitForTimeout(500);
+const c8b = { jenseits: await farbeBei(660, 500), eins: await farbeBei(665, 405), weit: await farbeBei(760, 350) };
+await bild('8b-offen');
+ok(
+  '8 zwei gekreuzte Farblinien trennen vier Flächen; eine offene begrenzt nur, wo sie liegt',
+  f8.linien === 2 && f8.fuellungen === 1 && f8.fehl === 0 && gelb(c8.mitte) && !gelb(c8.eins) && !gelb(c8.zwei) && !gelb(c8.aussen) && gelb(c8b.jenseits) && gelb(c8b.weit) && !gelb(c8b.eins),
+  `gefüllt in der Überlappung: dort ${c8.mitte.join(', ')} (gelb), im Rest des einen Vierecks ${c8.eins.join(', ')}, des anderen ${c8.zwei.join(', ')}, außen ${c8.aussen.join(', ')} · neben der offenen Farblinie gefüllt: jenseits von ihr ${c8b.jenseits.join(', ')} und weit weg ${c8b.weit.join(', ')} (gelb), im Viereck ${c8b.eins.join(', ')}`,
+);
+for (let i = 0; i < 5; i++) {
+  await s.keyboard.press('Meta+z');
+  await s.waitForTimeout(350);
+}
+
 // ---------- 6 von hinten nichts zu greifen ----------
 // noch einmal zeichnen, dann die Ansicht um die Hochachse auf die Rückseite drehen (ins Leere ziehen)
 await s.keyboard.press('p');
@@ -322,6 +365,6 @@ ok(
   `von vorn hängt der Punkt am Zeiger (${haengtVorn}); nach dem Drehen (Gier ${z2(blick.gier)}) hängt an keinem der fünf Punkte etwas (${!haengtHinten})`,
 );
 
-ok('7 keine Fehler in der Konsole', fehler.length === 0, [...new Set(fehler)].slice(0, 3).join(' | '));
+ok('9 keine Fehler in der Konsole', fehler.length === 0, [...new Set(fehler)].slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
 await browser.close();

@@ -9,7 +9,9 @@
  * entscheidet die Anzeige je Bildpunkt (`anzeige.ts`); darum braucht hier nichts geschnitten zu werden, und die Kante zwischen zwei
  * Farben ist bei jedem Zoom scharf.
  *
- * Voraussetzung (Etappe 1): Ketten kreuzen einander nicht und laufen nie längs einer Kante (`RAND` in `ort.ts` hält sie davon weg).
+ * Ketten laufen nie längs einer Kante (`RAND` in `ort.ts` hält sie davon weg). Wo zwei sich im Inneren eines Dreiecks kreuzen,
+ * sind sie dort geteilt (`kreuzungenTeilen` in `ketten.ts`): Um die Kreuzung liegen so viele Zellen, wie Ketten an ihr hängen, je
+ * eine zwischen zwei Nachbarn im Umlauf (Etappe 2). Nicht behandelt: eine Kreuzung genau auf einer Kante des Netzes.
  */
 import type { Karte, Ort } from './ort';
 import { type Kette, jeDreieck } from './ketten';
@@ -121,9 +123,27 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
       // (wo die Kette hereinkommt, liegt im Umlauf davor ihre linke Seite und danach ihre rechte; wo sie hinausgeht, umgekehrt)
       if (c.ein >= 0) er.push({ e: c.ein, lam: lambdaAuf(c.ein, c.p[0]!, c.p[1]!), vor: seite(t, ki, 0), nach: seite(t, ki, 1) });
       if (c.aus >= 0) er.push({ e: c.aus, lam: lambdaAuf(c.aus, c.p[n - 2]!, c.p[n - 1]!), vor: seite(t, ki, 1), nach: seite(t, ki, 0) });
-      // ein freies Ende: Um die Spitze herum ist es dieselbe Zelle
-      if (!c.zu && (c.ein < 0 || c.aus < 0)) M.vereinen(seite(t, ki, 0), seite(t, ki, 1));
+      // ein freies Ende (nicht an einer Kreuzung): Um die Spitze herum ist es dieselbe Zelle
+      if (!c.zu && ((c.ein < 0 && c.kEin === undefined) || (c.aus < 0 && c.kAus === undefined))) M.vereinen(seite(t, ki, 0), seite(t, ki, 1));
     });
+    // Kreuzungen: Die Ketten, die an einer hängen, im Umlauf geordnet; zwischen zwei Nachbarn liegt eine Zelle
+    const anKreuzung = new Map<number, { w: number; ccw: number; cw: number }[]>();
+    liste.forEach((c, ki) => {
+      const n = c.p.length;
+      const dazu = (knoten: number, dx: number, dy: number, beginnt: boolean): void => {
+        // (von der Kreuzung weg gesehen: Beginnt die Kette hier, liegt gegen den Uhrzeiger ihre linke Seite, sonst ihre rechte)
+        const e = { w: Math.atan2(dy, dx), ccw: seite(t, ki, beginnt ? 0 : 1), cw: seite(t, ki, beginnt ? 1 : 0) };
+        const l = anKreuzung.get(knoten);
+        if (l) l.push(e);
+        else anKreuzung.set(knoten, [e]);
+      };
+      if (c.kEin !== undefined && n >= 4) dazu(c.kEin, c.p[2]! - c.p[0]!, c.p[3]! - c.p[1]!, true);
+      if (c.kAus !== undefined && n >= 4) dazu(c.kAus, c.p[n - 4]! - c.p[n - 2]!, c.p[n - 3]! - c.p[n - 1]!, false);
+    });
+    for (const arme of anKreuzung.values()) {
+      arme.sort((x, y) => x.w - y.w);
+      for (let i = 0; i < arme.length; i++) M.vereinen(arme[i]!.ccw, arme[(i + 1) % arme.length]!.cw);
+    }
     er.sort((x, y) => x.e + x.lam - (y.e + y.lam));
     const drei: [Abschnitt[], Abschnitt[], Abschnitt[]] = [[], [], []];
     if (!er.length) {
