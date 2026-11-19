@@ -639,6 +639,21 @@ export class FarbWerk {
     return null;
   }
 
+  /**
+   * Der Name der obersten sichtbaren Ebene über der aktiven, die an diesem Ort eine Füllung hat: Sie deckt dort, was auf der aktiven
+   * liegt. null: Dort deckt nichts.
+   */
+  deckerUeber(h: HautJetzt, ort: Ort): string | null {
+    if (this.alt || this.altNur.size || this.haut !== h.haut || this.sichtAlt()) this.schritt(h);
+    const E = this.bemalung.ebenen;
+    const aktiv = aktiveEbene(this.bemalung).id;
+    for (let i = E.length - 1; i >= 0 && E[i]!.id !== aktiv; i--) {
+      const st = this.staende.get(E[i]!.id);
+      if (st && fuellungBei(st.flaechen, ort) >= 0) return E[i]!.name;
+    }
+    return null;
+  }
+
   // ---------- Etappe 5: der Stapel der Ebenen ----------
 
   /** die Farblinien, die gerade bedient werden: die der aktiven Ebene, solange sie zu sehen ist */

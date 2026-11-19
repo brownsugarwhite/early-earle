@@ -217,6 +217,11 @@ describe('Farbe, Etappe 5: Ebenen auf der Haut', () => {
     expect(fw.abgeleitet).toBe(1);
     expect(unten.fuellungen.length).toBe(vorher.fuellungen + 1);
     expect(fw.farbeBei(h, pol)).toEqual(GELB);
+    // (das sagt die Meldung beim Füllen: Die obere Ebene deckt hier; an der oberen selbst deckt nichts)
+    expect(fw.deckerUeber(h, pol)).toBe('Ebene 2');
+    fw.ebeneWaehlen(oben);
+    expect(fw.deckerUeber(h, pol)).toBeNull();
+    fw.ebeneWaehlen(1);
     expect(fw.ebeneZeigen(oben, false)).toBe(true);
     expect(fw.farbeBei(h, pol)).toEqual(ROT);
     // (bedient werden nur die Farblinien der aktiven Ebene)

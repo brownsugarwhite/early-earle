@@ -501,7 +501,7 @@ const helfer = (t) => {
 {
   const t = await auf({ form: 'strange bird', dichte: 2, extra: 'material=wachs&fuellen=0' });
   const { s, O, geladen, klick, fehler } = t;
-  const { zieh, ebenen } = helfer(t);
+  const { zieh } = helfer(t);
   await geladen();
   await O('blickSetzen', { gier: -0.62, neigung: 0, zoom: 4 });
   await s.waitForTimeout(1500);

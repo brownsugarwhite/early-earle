@@ -4317,7 +4317,7 @@ function bild(dt: number): boolean {
         ? 'Pipette · Klick auf die Form nimmt die Farbe dort auf · A: zurück zu den Punkten'
         : farbAn && raumWerkzeug === 'auswahl' && bearbeiten.auswahl.size > 0
         ? 'Punkt gewählt · den Tropfen am Faden wegziehen: Die Kante wird dort weich, zurückschieben: hart · K weich oder hart · [ ] schmaler, breiter · ⌫ löscht den Punkt · Esc'
-        : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · F Farbtropfen: Klick auf die Form füllt bis an die Farblinien · I Pipette · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
+        : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · F Farbtropfen: Klick auf die Form füllt bis an die Farblinien · I Pipette · Ebenen: der Stapel rechts · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
       : zustand === 'ruhe' && werkGezeigt && objektModus()
@@ -7915,7 +7915,10 @@ function farbFuellenBei(x: number, y: number, farbe: Farbe = farbWahl): boolean 
     return false;
   }
   farbSchritt(() => farbWerk.fuellen(h, ort, farbe));
+  // (Etappe 5: Liegt eine Ebene darüber, die hier deckt, ist die neue Füllung nicht zu sehen: Das sagt die Meldung)
+  const decker = farbWerk.deckerUeber(h, ort);
   if (!istMalgrund()) werk.G.meldung = 'Gefüllt · zu sehen auf hellem Solid und Wachs (Taste M)';
+  else if (decker) werk.G.meldung = `Gefüllt auf „${aktiveEbene(farbWerk.bemalung).name}“ · „${decker}“ liegt darüber und deckt hier`;
   if (!farbTropfen.hidden) farbTropfenFallen(x, y);
   return true;
 }
