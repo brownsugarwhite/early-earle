@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° nach Florians Skizzen 6–42 %; 3D-Wege ruhen)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in fünfter Fassung nach Florians Skizzen; 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -496,7 +496,9 @@ Winkel: `docs/progress/ozzy-figur/2026-11-19-kopf360-3-skizzen.png`, Blatt `…-
 - **Offen:** sein Urteil. Stirnfranse bei 52°–82° wie oben. Unten rechts bei 145°–165° wandern die Zacken der nahen Maske weiter zum Rand des
   Rückens (kleine Stufen).
 
-### Vierte Fassung nach den Skizzen bei 30 % und 40 % (19.11. nachts)
+### Vierte Fassung nach den Skizzen bei 30 % und 40 % (19.11. nachts; zurückgenommen)
+
+**Zurückgenommen** (Florian: „jetzt wurde es schlechter“, siehe fünfte Fassung); geblieben ist nur der Bildausschnitt.
 
 Florian: „hier noch eine ergänzung für 30 und 40%. es wird schon deutlich besser. Die Ohren sollten auch etwas weiter zusammen sein von der
 seite, dass der drehungseffekt besser wirkt. Feile weiter“ (Skizzen `vorlagen/ozzy_kopf_skizze_30prozent.png`, `…_40prozent.png`; 30 % = 108°,
@@ -519,7 +521,42 @@ Gesicht am Rand) passt dazu nicht, gebaut ist nach der neueren. Skizze, vorher u
   136°–138° (Gesicht verschwindet, Ohr geht an seinen Platz), wie seine Skizzen von 36 % zu 40 %.
 - **Offen:** sein Urteil. Stirnfranse bei 52°–82°.
 
+### Fünfte Fassung: zurück zur dritten, sanft gefeilt (19.11. nachts)
+
+Florian zur vierten Fassung: „oh. jetzt wurde es schlechter die riesen lücke an ohr. der kopf rutscht nach links. Es sieht nichtmehr smooth
+aus“, und zu seinem Bild bei 114°: „du musst doch sehn dass das ihr schwebt unddie bewegung nicht smooth ist“. Die vierte Fassung war bei 148°
+schon der Rücken; danach schob nur noch der Versatz den fertigen Kopf nach links (Schwerpunkt des Schwarz 320 → 375 zwischen 132° und 144°,
+dann 30 Bildpunkte zurück). `raster.ts` steht deshalb wieder auf der dritten Fassung (71531665), darauf drei sanfte Änderungen. Blatt
+(3. Fassung, 4. Fassung, neu; darunter das linke Ohr vergrößert): `docs/progress/ozzy-figur/2026-11-19-kopf360-5-blatt.png`, Skizzen
+`…-kopf360-5-skizzen.png`, Video `…-kopf360-5.mp4`.
+
+- **Linkes Ohr sitzt an** (`HINTERKOPF_ZOEGERN` 2): Die Anker der nahen Maske, die im Profil am Hinterkopf liegen (links der Mitte ihres
+  Kastens, ohne Stirnfranse, Kinn und Kieferspitze), gehen gleichmäßig beschleunigt zum Rücken (Anteil des Wegs = Anteil der Drehung hoch 2).
+  Vorher liefen die Anker unter dem Ohr ab 100° zur Mitte des Rückens, bevor die ferne Maske links stand; unter dem Ohr blieb eine Kerbe (bei
+  114° am tiefsten, auch schon in der dritten Fassung). Versucht und verworfen: alle Anker außer der Schnauze langsamer (die Unterkante wurde
+  eine Diagonale, rechts stand ein Kasten).
+- **Ohren von der Seite näher** (`OHR_ZOEGERN` 1,6): Das mittlere Ohr geht gleichmäßig beschleunigt an seinen Platz; Zwischenschlüssel nur bei
+  110° und 125°, danach holt es weich auf (am schnellsten bei 144°–156°, 1,3 Einheiten je Grad) und kommt bei 180° langsam an. Versucht und
+  verworfen: Zwischenschlüssel bis 170° (rechts neben dem Ohr eine runde Schulter bei 150°–162°, gespiegelt sprang das linke Ohr hinter 180°;
+  siehe Fallen).
+- **Gesicht etwas früher weg** (`GESICHT_WEG_BIS` 156°, vorher 162°): Breite cos φ, bei 129° 0,6, bei 144° 0,28. Die nahe Maske folgt dem
+  Gesicht bis 140° (`WICKEL` endet dort) und rundet danach zum Rücken. Sie gleitet nicht mit dem Gesicht über den Rand (`wegMaske`), sonst stand
+  rechts ein schwarzer Kasten.
+- **Bildausschnitt** aus der vierten Fassung bleibt (nur das Schwarz).
+- **Geprüft:** 0°–90° und 270°–360° jeder Anker gleich wie in der dritten Fassung; an 0°, 45°, 90°, 180° jede Form 0,00; 52 Tests grün; keine
+  Sprünge (2°-Schritte, je vier Viertel, 88°–272°). Der Schwerpunkt des Schwarz steigt wie in der dritten Fassung (+33 auf 24°, vorher +34), am
+  höchsten bei 150° statt 156°. Beide Ohren laufen weich durch 180° (bremsen, kehren um).
+- **Offen:** sein Urteil. Bei 144° (40 %) ist noch ein schmaler Streifen Gesicht zu sehen, in seiner Skizze schon der ganze Rücken. Ganz nach
+  der Skizze hieße: Rücken bei 144° fertig, dann steht der Kopf bis 216° still oder rutscht (vierte Fassung). Stirnfranse bei 52°–82°.
+
 ## Fallen
+
+- Schlüssel kurz vor 180° werden in die zweite Hälfte gespiegelt (Teil n bei 360° − w ist der gespiegelte Partner bei w). Florians Rücken ist
+  nicht spiegelgleich: Zwischen 180° und dem ersten gespiegelten Schlüssel holt jedes Teil die Abweichung nach. Liegt dieser Schlüssel nah an
+  180°, springt es dort (Zwischenschlüssel des mittleren Ohrs bis 170°: das linke Ohr lief hinter 180° 37 Einheiten in 10°). Zwischenschlüssel
+  nicht näher als rund 40° an 180° setzen und die Ohren um 180° prüfen (`npx vite-node scripts/ozzy-figur/teil-weg.ts ohrA 170 196 2`).
+- Wer Anker eines Teils verzögert, nimmt nur die am Umriss, der stehen bleiben soll. Verzögerte Anker an der Unterkante ziehen zwischen sich
+  und den mitgehenden eine gerade Kante.
 
 - Eine harte Grenze in einer Suche (Faltgrenze, „lang genug“) macht die Form unstetig, sobald die Kurve an der Grenze liegt: gedämpfte
   feste Schrittzahl und sanftes Zurücknehmen statt Halbierungssuche mit Verzweigung. Prüfen mit Schritten von 1/200 und feiner.
