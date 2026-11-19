@@ -218,13 +218,12 @@ export class EbenenStapel {
   private loslassen(e: PointerEvent, gilt: boolean): void {
     const d = this.druck;
     if (!d || e.pointerId !== d.zeiger) return;
+    // (vor dem Aufräumen gefragt: Danach gleitet die Linse zurück und läge noch unter dem Zeiger, über dem Mülleimer)
+    const aufMuell = gilt && d.zieht && d.heraus && this.reihe.length > 1 && this.ziele.muell(e.clientX, e.clientY);
     this.zugEnde();
     if (!gilt) return;
-    if (!d.zieht) {
-      this.ziele.waehlen(d.id);
-      return;
-    }
-    if (d.heraus && this.reihe.length > 1 && this.ziele.muell(e.clientX, e.clientY)) this.ziele.loeschen(d.id);
+    if (!d.zieht) this.ziele.waehlen(d.id);
+    else if (aufMuell) this.ziele.loeschen(d.id);
   }
 
   private zugEnde(): void {

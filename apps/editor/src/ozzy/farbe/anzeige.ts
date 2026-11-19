@@ -41,6 +41,7 @@ import {
   DoubleSide,
   DstColorFactor,
   DynamicDrawUsage,
+  EqualDepth,
   FloatType,
   Group,
   HalfFloatType,
@@ -50,8 +51,6 @@ import {
   NoBlending,
   OneFactor,
   OneMinusSrcAlphaFactor,
-  OrthographicCamera,
-  PlaneGeometry,
   RGBAFormat,
   RGFormat,
   Scene,
@@ -839,6 +838,12 @@ export class FarbAnzeige {
 }
 
 const NULL_ZAHLEN = { innen: 0, rand: 0, ketten: 0, punkte: 0, fuellungen: 0, weich: 0 };
+/**
+ * Der Körper (alles, was verdeckt) ohne Farbe: für die Tiefe und, über dem hellen Solid mit mehreren Ebenen, für den Durchgang, der
+ * das Sammelbild mit dem Grund verrechnet. `invariant`: Beide Durchgänge müssen Bit für Bit dieselbe Tiefe geben (der zweite
+ * zeichnet nur, wo sie gleich ist).
+ */
+const KOERPER_VERTEX = 'invariant gl_Position; void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
 
 /**
  * Etappe 5: der Stapel der Ebenen im Bild. Er hält je Ebene ihre `FarbAnzeige`, weiß, welche gezeichnet werden und in welcher
@@ -933,7 +938,7 @@ export class FarbStapel {
     if (!this.tiefe) {
       const geo = new BufferGeometry();
       const mat = new ShaderMaterial({
-        vertexShader: 'void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        vertexShader: KOERPER_VERTEX,
         fragmentShader: 'void main() { gl_FragColor = vec4(0.0); }',
         colorWrite: false,
         side: DoubleSide,
@@ -968,34 +973,34 @@ export class FarbStapel {
     renderer.autoClear = auto;
   }
 
-  private sammel: { ziel: WebGLRenderTarget; weiss: Mesh; ende: { szene: Scene; kamera: OrthographicCamera } } | null = null;
+  private sammel: { ziel: WebGLRenderTarget; weiss: Mesh; ende: { szene: Scene; material: ShaderMaterial } } | null = null;
   /**
    * Helles Solid mit mehreren Ebenen: alle Ebenen in ein eigenes Bild (auf dem weißen Körper, oben deckt unten), dann dieses Bild
-   * einmal mit dem multiplizieren, was im gebundenen Ziel steht. In einem Durchgang gezeichnet: Ein Ziel mit Kantenglättung gibt
-   * nach jedem Durchgang seine Farbe frei. An einem Bildpunkt, den der Körper nur zum Teil deckt, steht im Sammelbild die Farbe mal
-   * diesen Teil; geteilt durch ihn ist es wieder die Farbe (so bleibt am Umriss kein heller Saum).
+   * einmal mit dem multiplizieren, was im gebundenen Ziel steht.
+   *
+   * - Das Sammelbild entsteht in einem Durchgang: Ein Ziel mit Kantenglättung gibt nach jedem Durchgang seine Farbe frei.
+   * - An einem Bildpunkt, den der Körper nur zum Teil deckt, steht im Sammelbild die Farbe mal diesen Teil; geteilt durch ihn ist
+   *   es wieder die Farbe.
+   * - Multipliziert wird nicht über die ganze Fläche, sondern mit dem Körper selbst: nur an den Stellen eines Bildpunkts, die er
+   *   deckt (am Umriss blieben sonst die Stellen daneben nicht, wie sie sind: Dort steht die Kante des hellen Solids), und an
+   *   jeder nur einmal (nur die vorderste Fläche: Tiefe gleich der zuvor geschriebenen).
    */
   private sammeln(renderer: WebGLRenderer, kamera: Camera, netz: HautNetz): void {
     const T = this.tiefeFuer(netz, true);
     if (!this.sammel) {
       const ziel = new WebGLRenderTarget(4, 4, { samples: 4, depthBuffer: true });
-      const weiss = new Mesh(
-        T.geo,
-        new ShaderMaterial({
-          vertexShader: 'void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-          fragmentShader: 'void main() { gl_FragColor = vec4(1.0); }',
-          side: DoubleSide,
-        }),
-      );
+      const weiss = new Mesh(T.geo, new ShaderMaterial({ vertexShader: KOERPER_VERTEX, fragmentShader: 'void main() { gl_FragColor = vec4(1.0); }', side: DoubleSide }));
       weiss.frustumCulled = false;
       weiss.visible = false;
       weiss.renderOrder = -1;
       this.szene.add(weiss);
       const material = new ShaderMaterial({
-        uniforms: { tBild: { value: ziel.texture } },
-        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-        fragmentShader: 'uniform sampler2D tBild; varying vec2 vUv; void main() { vec4 c = texture2D(tBild, vUv); gl_FragColor = vec4(c.a > 0.002 ? c.rgb / c.a : vec3(1.0), 1.0); }',
-        depthTest: false,
+        uniforms: { tBild: { value: ziel.texture }, uGroesse: { value: new Vector2(4, 4) } },
+        vertexShader: KOERPER_VERTEX,
+        fragmentShader: 'uniform sampler2D tBild; uniform vec2 uGroesse; void main() { vec4 c = texture2D(tBild, gl_FragCoord.xy / uGroesse); gl_FragColor = vec4(c.a > 0.002 ? c.rgb / c.a : vec3(1.0), 1.0); }',
+        side: DoubleSide,
+        forceSinglePass: true,
+        depthFunc: EqualDepth,
         depthWrite: false,
         transparent: true,
         // multiplizieren, wie eine einzelne Ebene über dem hellen Solid (die Deckung des Bilds bleibt)
@@ -1005,15 +1010,16 @@ export class FarbStapel {
         blendSrcAlpha: ZeroFactor,
         blendDstAlpha: OneFactor,
       });
-      const flaeche = new Mesh(new PlaneGeometry(2, 2), material);
-      flaeche.frustumCulled = false;
+      const koerper = new Mesh(T.geo, material);
+      koerper.frustumCulled = false;
       const szene = new Scene();
-      szene.add(flaeche);
-      this.sammel = { ziel, weiss, ende: { szene, kamera: new OrthographicCamera(-1, 1, 1, -1, 0, 1) } };
+      szene.add(koerper);
+      this.sammel = { ziel, weiss, ende: { szene, material } };
     }
     const S = this.sammel;
     const g = renderer.getDrawingBufferSize(this.groesse);
     if (S.ziel.width !== g.x || S.ziel.height !== g.y) S.ziel.setSize(g.x, g.y);
+    (S.ende.material.uniforms.uGroesse!.value as Vector2).copy(g);
     const farbe = renderer.getClearColor(this.merkFarbe);
     const alpha = renderer.getClearAlpha();
     const vorher = renderer.getRenderTarget();
@@ -1025,7 +1031,9 @@ export class FarbStapel {
     S.weiss.visible = false;
     renderer.setRenderTarget(vorher);
     renderer.setClearColor(farbe, alpha);
-    renderer.render(S.ende.szene, S.ende.kamera);
+    // die Tiefe des Körpers ins Ziel, dann der Körper selbst, wo er vorn liegt: mal dem Sammelbild
+    this.tiefeSchreiben(renderer, kamera, netz, false);
+    renderer.render(S.ende.szene, kamera);
   }
 
   /**
