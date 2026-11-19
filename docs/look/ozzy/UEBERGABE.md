@@ -11,7 +11,8 @@ Grundmaterial, in Magenta), der Schalter „Dreiecke zeigen“, Etappe 1 des Pai
 harte Kante), Etappe 2 (Farblinien bedienen wie Linien: P direkt auf der Form, Punkte und Richtungen, die Mitte) und Etappe 3
 (die Farbe läuft ein, sein Wort: „Tinte“; Farben als Tropfen unter der Leiste, Farbtropfen F, Pipette I), Etappe 4 (weiche
 Kanten: an gewählten Punkten einer Farblinie ein Tropfen am Faden, sein Wort: „Fassung 1“) und Etappe 5 (Ebenen: am rechten Rand
-ein Stapel liegender Tropfen, je Ebene eine Linse; oben deckt unten); Florians Urteil zu Etappe 5 steht aus. Alles dazu:
+ein Stapel liegender Tropfen, je Ebene eine Linse; oben deckt unten). Etappe 6 (die Ebenen-Ansicht: die Form fächert auf, je
+Ebene eine Kopie) hat begonnen: ein Probebau auf Wachs in zwei Fassungen zur Wahl, Florians Wahl steht aus. Alles dazu:
 [`paint/UEBERGABE.md`](paint/UEBERGABE.md).
 
 **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11. mittags, eigener Zweig).** Zweig `claude/ozzy-donut-mirror-system-7a31b7`
