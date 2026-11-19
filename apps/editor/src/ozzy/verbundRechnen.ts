@@ -50,6 +50,12 @@ export type VerbundTeil = {
   abzieher: boolean;
   /** Breite der Rundung an seinen Nähten (im Raum; 0: Kante) */
   rund: number;
+  /**
+   * Das Netz zu `schl` steht nicht an seinem Ort: Es wird erst so abgebildet (3 × 4, spaltenweise: die drei Spalten der Drehung und
+   * Größe, dann der Versatz). Für einen Zug am ganzen Objekt: Sein Körper wird einmal angelegt und danach nur noch abgebildet (das
+   * Anlegen kostet je Stand sonst so viel wie der halbe Schnitt). Nur Drehung, Versatz und gleichmäßige Größe.
+   */
+  abbildung?: number[] | null;
 };
 /** ein Körper: was verschmilzt (`halten`) und was davon abgezogen wird; Kennungen der Objekte */
 export type VerbundKoerper = { halten: number[]; abziehen: number[] };
@@ -70,6 +76,8 @@ export type VerbundErgebnis = {
   /** größter Abstand der Dehnung von 1 (sie klingt in der Anzeige nach) */
   dehnungRest: number;
   ms: number;
+  /** die Dauer in Teilen (ms): Körper der Objekte anlegen, schneiden, Netz herausholen, Naht und Rundung und Umrisse */
+  teile?: [number, number, number, number];
   fehler?: string;
 };
 
@@ -144,18 +152,11 @@ export class VerbundSpeicher {
     const mesh = new Mesh({ numProp: PROP, vertProperties: vp, triVerts: tri, runOriginalID: Uint32Array.of(orig) });
     // (Punkte auf harten Linien sind in der Anzeige je Seite doppelt: an gleicher Lage wieder verbinden)
     mesh.merge();
-    let m = new Manifold(mesh);
+    const m = new Manifold(mesh);
     const status = m.status();
     if (status !== 'NoError') {
       m.delete();
       throw new Error(`Die Haut von Form ${teil.id} ist kein geschlossener Körper (${status})`);
-    }
-    if (teil.spiegelbild) {
-      const s = m.mirror([0, 0, 1]);
-      const beide = Manifold.union(m, s);
-      m.delete();
-      s.delete();
-      m = beide;
     }
     const e: Eintrag = { schl: teil.schl, m, orig };
     this.herkunft.set(orig, teil.id);
@@ -261,6 +262,9 @@ function mittlererEigenwert(a00: number, a01: number, a02: number, a11: number, 
   return 3 * q - e1 - e3;
 }
 
+/** Länge eines Vektors (in den inneren Schleifen statt `Math.hypot`: Das ist dort um ein Vielfaches langsamer) */
+const lang = (x: number, y: number, z: number): number => Math.sqrt(x * x + y * y + z * z);
+
 type Seite = { id: number; abzieher: boolean; rund: number };
 type Kanten = { a: Int32Array; b: Int32Array; t1: Int32Array; t2: Int32Array; n: number };
 
@@ -363,7 +367,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       }
     }
     for (const o of [6 * s, 6 * s + 3]) {
-      const l = Math.hypot(sM[o]!, sM[o + 1]!, sM[o + 2]!) || 1;
+      const l = lang(sM[o]!, sM[o + 1]!, sM[o + 2]!) || 1;
       sM[o]! /= l;
       sM[o + 1]! /= l;
       sM[o + 2]! /= l;
@@ -389,7 +393,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     const e = naht[i]!;
     const a = 3 * K.a[e]!;
     const b = 3 * K.b[e]!;
-    const l = Math.hypot(pos[b]! - pos[a]!, pos[b + 1]! - pos[a + 1]!, pos[b + 2]! - pos[a + 2]!);
+    const l = lang(pos[b]! - pos[a]!, pos[b + 1]! - pos[a + 1]!, pos[b + 2]! - pos[a + 2]!);
     const mx = (pos[a]! + pos[b]!) / 2;
     const my = (pos[a + 1]! + pos[b + 1]!) / 2;
     const mz = (pos[a + 2]! + pos[b + 2]!) / 2;
@@ -430,7 +434,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     if (haufen.schl > sR[s]!) continue;
     for (let j = grad[s]!; j < grad[s + 1]!; j++) {
       const q = nb[j]!;
-      const k = sR[s]! + STEIGUNG * Math.hypot(sx(q, 0) - sx(s, 0), sx(q, 1) - sx(s, 1), sx(q, 2) - sx(s, 2));
+      const k = sR[s]! + STEIGUNG * lang(sx(q, 0) - sx(s, 0), sx(q, 1) - sx(s, 1), sx(q, 2) - sx(s, 2));
       if (k < sR[q]!) {
         sR[q] = k;
         haufen.rein(k, q);
@@ -449,9 +453,9 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     const c0 = sM[o + 1]! * sM[o + 5]! - sM[o + 2]! * sM[o + 4]!;
     const c1 = sM[o + 2]! * sM[o + 3]! - sM[o]! * sM[o + 5]!;
     const c2 = sM[o]! * sM[o + 4]! - sM[o + 1]! * sM[o + 3]!;
-    const sinus = Math.hypot(c0, c1, c2);
-    const sinHalb = Math.hypot(sM[o]! + sM[o + 3]!, sM[o + 1]! + sM[o + 4]!, sM[o + 2]! + sM[o + 5]!) / 2;
-    const cosHalb = Math.hypot(sM[o]! - sM[o + 3]!, sM[o + 1]! - sM[o + 4]!, sM[o + 2]! - sM[o + 5]!) / 2;
+    const sinus = lang(c0, c1, c2);
+    const sinHalb = lang(sM[o]! + sM[o + 3]!, sM[o + 1]! + sM[o + 4]!, sM[o + 2]! + sM[o + 5]!) / 2;
+    const cosHalb = lang(sM[o]! - sM[o + 3]!, sM[o + 1]! - sM[o + 4]!, sM[o + 2]! - sM[o + 5]!) / 2;
     const R = sBreite[s]!;
     const r = ring[finde(s)]!;
     sK[s] = Math.min(R * sinus, 4 * NAHT_ANTEIL * r * sinHalb);
@@ -479,7 +483,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       t1 = v * a1;
       t2 = v * a2;
     }
-    const tl = Math.hypot(t0, t1, t2) || 1;
+    const tl = lang(t0, t1, t2) || 1;
     t0 /= tl;
     t1 /= tl;
     t2 /= tl;
@@ -492,7 +496,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     sT[o + 4] = -g * (t2 * sM[o + 3]! - t0 * sM[o + 5]!);
     sT[o + 5] = -g * (t0 * sM[o + 4]! - t1 * sM[o + 3]!);
     for (const p of [o, o + 3]) {
-      const l = Math.hypot(sT[p]!, sT[p + 1]!, sT[p + 2]!) || 1;
+      const l = lang(sT[p]!, sT[p + 1]!, sT[p + 2]!) || 1;
       sT[p]! /= l;
       sT[p + 1]! /= l;
       sT[p + 2]! /= l;
@@ -531,7 +535,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     const ax = sx(s, 0);
     const ay = sx(s, 1);
     const az = sx(s, 2);
-    nd = Math.hypot(px - ax, py - ay, pz - az);
+    nd = lang(px - ax, py - ay, pz - az);
     nq = s;
     nl = 0;
     for (let j = grad[s]!; j < grad[s + 1]!; j++) {
@@ -542,7 +546,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       const uu = ux * ux + uy * uy + uz * uz;
       if (!(uu > 0)) continue;
       const l = Math.max(0, Math.min(1, ((px - ax) * ux + (py - ay) * uy + (pz - az) * uz) / uu));
-      const d = Math.hypot(px - ax - l * ux, py - ay - l * uy, pz - az - l * uz);
+      const d = lang(px - ax - l * ux, py - ay - l * uy, pz - az - l * uz);
       if (d < nd) {
         nd = d;
         nq = q;
@@ -550,6 +554,9 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       }
     }
   };
+  // (jeden Nachbarn je Punkt nur einmal, und nicht noch einmal gegen dieselbe Stelle der Naht: Sonst rechnete jeder Punkt den
+  // Abstand jedes Nachbarn zweimal je Dreieck, das war die Hälfte der ganzen Rundung)
+  const besucht = new Int32Array(V).fill(-1);
   while (haufen.n) {
     const c = haufen.raus();
     if (haufen.schl > weit[c]!) continue;
@@ -558,7 +565,8 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       const t = eck[j]!;
       for (let k = 0; k < 3; k++) {
         const n = gleich[tri[3 * t + k]!]!;
-        if (n === c || platz[n]! >= 0) continue;
+        if (n === c || platz[n]! >= 0 || besucht[n] === c || quelle[n] === s) continue;
+        besucht[n] = c;
         const r = seite[n]!;
         if (r !== sL1[s] && r !== sL2[s]) continue;
         naechste(pos[3 * n]!, pos[3 * n + 1]!, pos[3 * n + 2]!, s);
@@ -582,7 +590,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
   }
   for (let c = 0; c < V; c++) {
     if (quelle[c]! < 0) continue;
-    const l = Math.hypot(nC[3 * c]!, nC[3 * c + 1]!, nC[3 * c + 2]!) || 1;
+    const l = lang(nC[3 * c]!, nC[3 * c + 1]!, nC[3 * c + 2]!) || 1;
     nC[3 * c]! /= l;
     nC[3 * c + 1]! /= l;
     nC[3 * c + 2]! /= l;
@@ -638,7 +646,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
         for (let j = grad[a]!; j < grad[a + 1]!; j++) {
           const q = nb[j]!;
           if (marke[q] === s || sL1[q] !== sL1[s] || sL2[q] !== sL2[s]) continue;
-          const d = weg[a]! + Math.hypot(sx(q, 0) - sx(a, 0), sx(q, 1) - sx(a, 1), sx(q, 2) - sx(a, 2));
+          const d = weg[a]! + lang(sx(q, 0) - sx(a, 0), sx(q, 1) - sx(a, 1), sx(q, 2) - sx(a, 2));
           if (d > R) continue;
           marke[q] = s;
           weg[q] = d;
@@ -669,7 +677,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       let a0 = nx + ka * ds * tx;
       let a1 = ny + ka * ds * ty;
       let a2 = nz + ka * ds * tz;
-      const al = Math.hypot(a0, a1, a2) || 1;
+      const al = lang(a0, a1, a2) || 1;
       a0 /= al;
       a1 /= al;
       a2 /= al;
@@ -694,7 +702,9 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     let lo = 0;
     let flo = F(0);
     if (flo < 0) {
-      let hi = Math.max(w, 1e-3 * k);
+      // (ein guter Anfang: zwischen zwei Ebenen im Winkel der zwei Normalen wäre es genau w · (1 + cos) / sin)
+      const cos = -(nx * mx + ny * my + nz * mz);
+      let hi = Math.min(reich, Math.max(1e-3 * k, (1.15 * w * (1 + cos)) / Math.sqrt(Math.max(1e-4, 1 - cos * cos))));
       let fhi = F(hi);
       for (let n = 0; fhi < 0 && hi < reich && n < 40; n++) {
         lo = hi;
@@ -705,7 +715,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       // (zwischen lo und hi wechselt das Vorzeichen: die Sehne, mit Halbieren der Seite, die stehen bleibt)
       if (fhi >= 0) {
         let seiteVorher = 0;
-        for (let n = 0; n < 24 && hi - lo > 1e-4 * k; n++) {
+        for (let n = 0; n < 24 && hi - lo > 1e-3 * k; n++) {
           const x = (lo * fhi - hi * flo) / (fhi - flo);
           const fx = F(x);
           if (fx < 0) {
@@ -719,11 +729,11 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
             if (seiteVorher === 1) flo /= 2;
             seiteVorher = 1;
           }
-          if (Math.abs(fx) < 1e-5 * k) break;
+          if (Math.abs(fx) < 1e-4 * k) break;
         }
       }
     }
-    const fl = Math.hypot(f0, f1, f2) || 1;
+    const fl = lang(f0, f1, f2) || 1;
     f0 /= fl;
     f1 /= fl;
     f2 /= fl;
@@ -748,7 +758,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
       const n0 = e0 + f0;
       const n1 = e1 + f1;
       const n2 = e2 + f2;
-      const nl2 = Math.hypot(n0, n1, n2) || 1;
+      const nl2 = lang(n0, n1, n2) || 1;
       sNor[o] = n0 / nl2;
       sNor[o + 1] = n1 / nl2;
       sNor[o + 2] = n2 / nl2;
@@ -760,7 +770,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     const n0 = sNor[o]! + sNor[o + 3]!;
     const n1 = sNor[o + 1]! + sNor[o + 4]!;
     const n2 = sNor[o + 2]! + sNor[o + 5]!;
-    const nl2 = Math.hypot(n0, n1, n2) || 1;
+    const nl2 = lang(n0, n1, n2) || 1;
     sGem[3 * s] = n0 / nl2;
     sGem[3 * s + 1] = n1 / nl2;
     sGem[3 * s + 2] = n2 / nl2;
@@ -795,7 +805,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     let m0 = sM[oa]! + l * (sM[qa]! - sM[oa]!);
     let m1 = sM[oa + 1]! + l * (sM[qa + 1]! - sM[oa + 1]!);
     let m2 = sM[oa + 2]! + l * (sM[qa + 2]! - sM[oa + 2]!);
-    const ml = Math.hypot(m0, m1, m2) || 1;
+    const ml = lang(m0, m1, m2) || 1;
     m0 /= ml;
     m1 /= ml;
     m2 /= ml;
@@ -835,14 +845,14 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     t0 -= hn * nx;
     t1 -= hn * ny;
     t2 -= hn * nz;
-    const tl = Math.hypot(t0, t1, t2) || 1;
+    const tl = lang(t0, t1, t2) || 1;
     // Zuerst die nächste Stelle der Naht selbst, mit denselben Werten gelegt: Der Punkt rückt wie die Naht dort (zwischen ihren zwei
     // Punkten gemischt), dazu um das, worin sich sein eigener Weg von diesem unterscheidet. So gehen Punkte dicht an der Naht genau
     // mit ihr mit: Dort liegen Dreiecke, schmaler als jeder Unterschied zweier Rechnungen, sie klappten sonst um.
     let a0 = sM[oe]! + l * (sM[qe]! - sM[oe]!);
     let a1 = sM[oe + 1]! + l * (sM[qe + 1]! - sM[oe + 1]!);
     let a2 = sM[oe + 2]! + l * (sM[qe + 2]! - sM[oe + 2]!);
-    const al = Math.hypot(a0, a1, a2) || 1;
+    const al = lang(a0, a1, a2) || 1;
     a0 /= al;
     a1 /= al;
     a2 /= al;
@@ -853,7 +863,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     b0 -= ha * a0;
     b1 -= ha * a1;
     b2 -= ha * a2;
-    const bl = Math.hypot(b0, b1, b2) || 1;
+    const bl = lang(b0, b1, b2) || 1;
     legen(cx, cy, cz, a0, a1, a2, b0 / bl, b1 / bl, b2 / bl, ke, cx, cy, cz, m0, m1, m2, ko, sig, k, 0, reich);
     const g0 = r0 - cx;
     const g1 = r1 - cy;
@@ -899,7 +909,7 @@ function runden(pos: Float32Array, nor: Float32Array, tri: Uint32Array, gleich: 
     const n0 = (1 - mm) * (nor[3 * v]! + dreh[3 * c]!) + mm * fuss[3 * c]! + korr[3 * c]!;
     const n1 = (1 - mm) * (nor[3 * v + 1]! + dreh[3 * c + 1]!) + mm * fuss[3 * c + 1]! + korr[3 * c + 1]!;
     const n2 = (1 - mm) * (nor[3 * v + 2]! + dreh[3 * c + 2]!) + mm * fuss[3 * c + 2]! + korr[3 * c + 2]!;
-    const nl3 = Math.hypot(n0, n1, n2) || 1;
+    const nl3 = lang(n0, n1, n2) || 1;
     nor[3 * v] = n0 / nl3;
     nor[3 * v + 1] = n1 / nl3;
     nor[3 * v + 2] = n2 / nl3;
@@ -972,7 +982,7 @@ function nachbearbeiten(M: MeshT, seiteVon: (orig: number) => Seite): Stueck {
       n1 = y;
       n2 = z;
     }
-    const l = Math.hypot(n0, n1, n2) || 1;
+    const l = lang(n0, n1, n2) || 1;
     nor[3 * v] = n0 / l;
     nor[3 * v + 1] = n1 / l;
     nor[3 * v + 2] = n2 / l;
@@ -1091,6 +1101,13 @@ export function verbundRechnen(w: Wasm, auftrag: VerbundAuftrag, speicher: Verbu
     const eintrag = new Map<number, Eintrag>();
     const teilVon = new Map<number, VerbundTeil>();
     const fehlt: number[] = [];
+    const zeit: [number, number, number, number] = [0, 0, 0, 0];
+    let uhr = performance.now();
+    const stopp = (i: number): void => {
+      const jetzt = performance.now();
+      zeit[i]! += jetzt - uhr;
+      uhr = jetzt;
+    };
     for (const teil of auftrag.teile) {
       teilVon.set(teil.id, teil);
       const e = speicher.holen(teil.id, teil.schl) ?? (teil.netz ? speicher.anlegen(w, teil) : null);
@@ -1098,6 +1115,7 @@ export function verbundRechnen(w: Wasm, auftrag: VerbundAuftrag, speicher: Verbu
       else fehlt.push(teil.id);
     }
     if (fehlt.length) return leer({ fehlt });
+    stopp(0);
     const seiteVon = (orig: number): Seite => {
       const id = speicher.objektVon(orig);
       const t = id === undefined ? undefined : teilVon.get(id);
@@ -1105,18 +1123,37 @@ export function verbundRechnen(w: Wasm, auftrag: VerbundAuftrag, speicher: Verbu
     };
     const stuecke: Stueck[] = [];
     const beisst = new Set<number>();
+    // die Körper der Objekte, wie sie in den Schnitt gehen: an ihren Ort gebracht (`abbildung`), samt Spiegelbild (beides kostet
+    // nichts: Die Bibliothek merkt sich die Abbildung nur)
+    const koerperVon = new Map<number, ManifoldT[]>();
+    for (const teil of auftrag.teile) {
+      let m = eintrag.get(teil.id)!.m;
+      const a = teil.abbildung;
+      if (a && a.length === 12) temp.push((m = m.transform([a[0]!, a[1]!, a[2]!, 0, a[3]!, a[4]!, a[5]!, 0, a[6]!, a[7]!, a[8]!, 0, a[9]!, a[10]!, a[11]!, 1])));
+      const liste = [m];
+      if (teil.spiegelbild) {
+        const s = m.mirror([0, 0, 1]);
+        temp.push(s);
+        liste.push(s);
+      }
+      koerperVon.set(teil.id, liste);
+    }
     for (const k of auftrag.koerper) {
-      const halten = k.halten.map((id) => eintrag.get(id)!.m);
+      const halten = k.halten.flatMap((id) => koerperVon.get(id)!);
       if (!halten.length) continue;
       let u = halten[0]!;
       if (halten.length > 1) temp.push((u = Manifold.union(halten)));
-      if (k.abziehen.length) temp.push((u = Manifold.difference([u, ...k.abziehen.map((id) => eintrag.get(id)!.m)])));
+      if (k.abziehen.length) temp.push((u = Manifold.difference([u, ...k.abziehen.flatMap((id) => koerperVon.get(id)!)])));
       if (u.isEmpty()) {
         // (alles weggenommen: Die Abzieher bleiben als solche zu sehen)
         for (const id of k.abziehen) beisst.add(id);
         continue;
       }
-      const st = nachbearbeiten(u.getMesh(), seiteVon);
+      stopp(1);
+      const netzRoh = u.getMesh();
+      stopp(2);
+      const st = nachbearbeiten(netzRoh, seiteVon);
+      stopp(3);
       for (const id of st.beisst) beisst.add(id);
       stuecke.push(st);
     }
@@ -1158,7 +1195,8 @@ export function verbundRechnen(w: Wasm, auftrag: VerbundAuftrag, speicher: Verbu
       i0 += n.index.length;
       n0 += s.naht.length;
     }
-    return { nr: auftrag.nr, netz, naht, umriss, beisst: [...beisst], fehlt: [], dehnungRest: rest, ms: performance.now() - t0 };
+    stopp(3);
+    return { nr: auftrag.nr, netz, naht, umriss, beisst: [...beisst], fehlt: [], dehnungRest: rest, ms: performance.now() - t0, teile: zeit };
   } catch (e) {
     return leer({ fehler: e instanceof Error ? e.message : String(e) });
   } finally {

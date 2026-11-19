@@ -1118,6 +1118,87 @@ function netzKopie(h: WerkHaut, stufe: number): VerbundNetz | null {
   return { pos: n.pos.slice(0, 3 * N), normal: n.normal.slice(0, 3 * N), index: s.index.slice(), hoehe: n.hoehe.slice(0, N), blatt: n.blatt.slice(0, 2 * N), dehnung: n.dehnung.slice(0, N) };
 }
 
+/**
+ * Ein Zug am ganzen Objekt (V; G, S, R) bildet seine Haut nur ab (verschieben, drehen, gleichmäßig skalieren). Für den Verbund heißt
+ * das: Der Rechner legt den Körper des Objekts einmal an (aus der Haut zu Beginn des Zugs) und bildet ihn danach je Stand nur ab; das
+ * Anlegen kostete sonst je Stand so viel wie der halbe Schnitt. Gemerkt: der Zug, die Haut zu seinem Beginn auf der groben Stufe und
+ * vier Punkte der Haut des Werks, die einen Raum aufspannen (aus ihren Lagen jetzt folgt die Abbildung; `inv`: die Umkehrung ihrer
+ * drei Kanten zu Beginn, zeilenweise).
+ */
+let verbundZug: { zug: werk.FormZug; kennung: number; schl: string; netz: VerbundNetz; ecken: [number, number, number, number]; inv: number[] } | null = null;
+function verbundZugMerken(): void {
+  verbundZug = null;
+  const z = werk.formZug;
+  // (steht für die Haut noch eine Rechnung aus, zeigt sie nicht den Stand, von dem der Zug ausgeht: dann wie immer)
+  if (!z || !verbundVon.size || !ruhende.length || !werkHaut.netz || werkNeu) return;
+  const P = z.pos0;
+  const n = P.length / 3;
+  if (n < 4) return;
+  const p = (v: number, x: number): number => P[3 * v + x]!;
+  let i0 = 0;
+  let i1 = 0;
+  for (let v = 1; v < n; v++) {
+    if (p(v, 0) < p(i0, 0)) i0 = v;
+    if (p(v, 0) > p(i1, 0)) i1 = v;
+  }
+  const a = [p(i1, 0) - p(i0, 0), p(i1, 1) - p(i0, 1), p(i1, 2) - p(i0, 2)];
+  const kreuz = (u: number[], w: number[]): number[] => [u[1]! * w[2]! - u[2]! * w[1]!, u[2]! * w[0]! - u[0]! * w[2]!, u[0]! * w[1]! - u[1]! * w[0]!];
+  const weg = (v: number): number[] => [p(v, 0) - p(i0, 0), p(v, 1) - p(i0, 1), p(v, 2) - p(i0, 2)];
+  // am weitesten von der Geraden durch die ersten zwei, dann am weitesten von der Ebene durch die ersten drei
+  let i2 = -1;
+  let best = 0;
+  for (let v = 0; v < n; v++) {
+    const k = kreuz(weg(v), a);
+    const l = k[0]! * k[0]! + k[1]! * k[1]! + k[2]! * k[2]!;
+    if (l > best) {
+      best = l;
+      i2 = v;
+    }
+  }
+  if (i2 < 0) return;
+  const b = weg(i2);
+  const nrm = kreuz(a, b);
+  let i3 = -1;
+  best = 0;
+  for (let v = 0; v < n; v++) {
+    const d = weg(v);
+    const h = Math.abs(d[0]! * nrm[0]! + d[1]! * nrm[1]! + d[2]! * nrm[2]!);
+    if (h > best) {
+      best = h;
+      i3 = v;
+    }
+  }
+  if (i3 < 0) return;
+  const c = weg(i3);
+  const det = a[0]! * (b[1]! * c[2]! - b[2]! * c[1]!) + a[1]! * (b[2]! * c[0]! - b[0]! * c[2]!) + a[2]! * (b[0]! * c[1]! - b[1]! * c[0]!);
+  const groesse = Math.hypot(a[0]!, a[1]!, a[2]!);
+  if (!(Math.abs(det) > 1e-6 * groesse * groesse * groesse)) return;
+  const stufe = werkHaut.stufeMitHoechstens(VERBUND_IM_ZUG);
+  const netz = netzKopie(werkHaut, stufe);
+  if (!netz) return;
+  const bc = kreuz(b, c);
+  const ca = kreuz(c, a);
+  const ab = kreuz(a, b);
+  verbundZug = { zug: z, kennung: werkHaut.kennung, schl: `${werkHaut.kennung}.${werkHaut.version}.${stufe}.zug`, netz, ecken: [i0, i1, i2, i3], inv: [...bc, ...ca, ...ab].map((x) => x / det) };
+}
+/** die Abbildung der Haut vom Beginn des gemerkten Zugs auf ihre Lage jetzt, im Raum (3 × 4, spaltenweise; `VerbundTeil.abbildung`) */
+function verbundZugAbbildung(zb: NonNullable<typeof verbundZug>): number[] {
+  const P0 = zb.zug.pos0;
+  const P = werk.haut.pos;
+  const [i0, i1, i2, i3] = zb.ecken;
+  const kante = (Q: ArrayLike<number>, v: number, x: number): number => Q[3 * v + x]! - Q[3 * i0 + x]!;
+  // M bildet die drei Kanten von damals auf die von jetzt ab: M = [f1 f2 f3] · inv
+  const M: number[] = [];
+  for (let j = 0; j < 3; j++) for (let x = 0; x < 3; x++) M.push(kante(P, i1, x) * zb.inv[j]! + kante(P, i2, x) * zb.inv[3 + j]! + kante(P, i3, x) * zb.inv[6 + j]!);
+  const mal = (v: number[]): number[] => [0, 1, 2].map((x) => M[x]! * v[0]! + M[3 + x]! * v[1]! + M[6 + x]! * v[2]!);
+  // im Werk: q = M · p + t; im Raum (Lage / f + Mitte) dieselbe Drehung und Größe, der Versatz t / f + Mitte − M · Mitte
+  const mp = mal([P0[3 * i0]!, P0[3 * i0 + 1]!, P0[3 * i0 + 2]!]);
+  const f = werkHaut.f;
+  const mitte = [werkHaut.mitte.x, werkHaut.mitte.y, 0];
+  const mm = mal(mitte);
+  return [...M, ...[0, 1, 2].map((x) => (P[3 * i0 + x]! - mp[x]!) / f + mitte[x]! - mm[x]!)];
+}
+
 /** Wird gerade etwas gezogen oder läuft etwas nach? Dann rechnet der Verbund auf der groben Stufe mit. */
 const verbundEilig = (): boolean => werk.zug !== null || werk.formZug !== null || werk.nachlauf !== null || objektZug !== null || tastenZug !== null || spiegelFahrt !== null || werkHaut.fliesst;
 
@@ -1164,13 +1245,21 @@ function verbundSoll(): VerbundSoll | null {
   }
   if (!koerper.length) return null;
   const eilig = verbundEilig();
+  // (das aktive Objekt wird als Ganzes gezogen: sein Körper vom Beginn des Zugs, nur abgebildet)
+  const zb = verbundZug && werk.formZug === verbundZug.zug && verbundZug.kennung === werkHaut.kennung ? verbundZug : null;
   const glieder: VerbundGlied[] = [...dabei.values()].map((o) => {
-    const stufe = eilig ? o.h.stufeMitHoechstens(VERBUND_IM_ZUG) : o.h.stufen;
     const klein = Math.min(o.k.x1 - o.k.x0, o.k.y1 - o.k.y0, o.k.z1 - o.k.z0) / 2;
     const rund = o.st?.art && o.st.rund ? Math.round(o.st.breite * klein * 50) / 50 : 0;
-    return { id: o.id, schl: `${o.h.kennung}.${o.h.version}.${stufe}.${o.h.spiegelbild ? 1 : 0}`, netz: () => netzKopie(o.h, stufe), spiegelbild: o.h.spiegelbild, abzieher: o.st?.art === 'abziehen', rund };
+    const abzieher = o.st?.art === 'abziehen';
+    if (zb && o.h === werkHaut) {
+      const n = zb.netz;
+      const kopie = (): VerbundNetz => ({ pos: n.pos.slice(), normal: n.normal.slice(), index: n.index.slice(), hoehe: n.hoehe.slice(), blatt: n.blatt.slice(), dehnung: n.dehnung.slice() });
+      return { id: o.id, schl: zb.schl, netz: kopie, spiegelbild: o.h.spiegelbild, abzieher, rund, abbildung: verbundZugAbbildung(zb) };
+    }
+    const stufe = eilig ? o.h.stufeMitHoechstens(VERBUND_IM_ZUG) : o.h.stufen;
+    return { id: o.id, schl: `${o.h.kennung}.${o.h.version}.${stufe}.${o.h.spiegelbild ? 1 : 0}`, netz: () => netzKopie(o.h, stufe), spiegelbild: o.h.spiegelbild, abzieher, rund };
   });
-  const schl = `${eilig ? 'g' : 'f'}#${koerper.map((k) => `${k.halten.join(',')}-${k.abziehen.join(',')}`).join('/')}#${glieder.map((g) => `${g.id}:${g.schl}:${g.abzieher ? 1 : 0}:${g.rund}`).join('|')}`;
+  const schl = `${eilig ? 'g' : 'f'}#${koerper.map((k) => `${k.halten.join(',')}-${k.abziehen.join(',')}`).join('/')}#${glieder.map((g) => `${g.id}:${g.schl}:${g.abzieher ? 1 : 0}:${g.rund}${g.abbildung ? `:${g.abbildung.map((x) => x.toFixed(4)).join(',')}` : ''}`).join('|')}`;
   return { schl, eilig, glieder, koerper, alle: os.map((o) => o.id) };
 }
 
@@ -1180,6 +1269,7 @@ function verbundSoll(): VerbundSoll | null {
  * (er wird nur neu gerechnet, wenn sich eine Lage ändert). Wahr: Es bewegt sich noch etwas.
  */
 function verbundPflegen(dt: number): boolean {
+  if (verbundZug && werk.formZug !== verbundZug.zug) verbundZug = null;
   let aktiv = verbund.pflegen(verbundSoll());
   const b = verbund.bild;
   if (b !== verbundGezeigt) {
@@ -6625,6 +6715,8 @@ function objektZugBeginnen(k: 'g' | 's' | 'r', x: number, y: number, modal: bool
   const XY = F.her(x, y);
   if (!XY) return false;
   if (!werk.formZugStarten(k, F.a, XY[0], XY[1], gespiegelt)) return false;
+  // (für den Verbund: die Haut von jetzt merken; der Zug bildet sie nur ab)
+  verbundZugMerken();
   objektZug = { F, modal, sx: x, sy: y, gespiegelt };
   objektGewaehlt = true;
   if (modal) werk.G.meldung = `${k === 'g' ? 'G: das Objekt verschieben · X, Y, Z: nur längs dieser Achse' : k === 's' ? 'S: das Objekt skalieren' : 'R: das Objekt drehen'} · Klick oder ↩: fertig · Esc: zurück`;
@@ -7744,6 +7836,7 @@ const haken = {
         : null,
       verdeckt: [aktivId, ...ruhende.map((r) => r.id)].filter((id) => verbundVerdeckt(id)),
       geist: aktivGeist(),
+      abgebildet: !!soll?.glieder.some((g) => g.abbildung),
       // (der Rauminhalt der gezeigten Haut jedes Objekts für sich, zum Vergleich mit dem Verbund)
       netze: [{ id: aktivId, h: werkHaut }, ...ruhende.map((r) => ({ id: r.id, h: r.haut }))].map((o) => ({ id: o.id, inhalt: o.h.netz ? netzInhalt(o.h.netz) : 0, punkte: (o.h.netz?.pos.length ?? 0) / 3, stufen: o.h.stufen })),
     };

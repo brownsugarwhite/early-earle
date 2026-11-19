@@ -6,7 +6,8 @@ import type { HautNetz } from '../anfang/haut';
 import type { VerbundAuftrag, VerbundErgebnis, VerbundKoerper, VerbundNetz } from './verbundRechnen';
 
 /** ein Objekt im Verbund: sein Stand (`schl`) und, erst wenn der Rechner es braucht, eine Kopie seiner gezeigten Haut */
-export type VerbundGlied = { id: number; schl: string; netz: () => VerbundNetz | null; spiegelbild: boolean; abzieher: boolean; rund: number };
+/** `abbildung`: Das Netz zu `schl` wird erst so an seinen Ort gebracht (ein Zug am ganzen Objekt, `VerbundTeil.abbildung`) */
+export type VerbundGlied = { id: number; schl: string; netz: () => VerbundNetz | null; spiegelbild: boolean; abzieher: boolean; rund: number; abbildung?: number[] | null };
 /** was zu sehen sein soll: die Körper, ihre Glieder, und ob gerade gezogen wird (dann auf der groben Stufe) */
 export type VerbundSoll = { schl: string; eilig: boolean; glieder: VerbundGlied[]; koerper: VerbundKoerper[]; alle: number[] };
 /** was zu sehen ist: das Netz aller Körper, ihre Nähte und Umrisse, wer darin aufgeht und welche Abzieher beißen */
@@ -31,7 +32,7 @@ export class Verbund {
   bild: VerbundBild | null = null;
   fehler = '';
   /** für Proben: Aufträge, Dauer der letzten (Rechner; samt Weg hin und zurück), je grob und fein */
-  stand = { auftraege: [0, 0], ms: [0, 0], runde: [0, 0], verworfen: 0 };
+  stand = { auftraege: [0, 0], ms: [0, 0], runde: [0, 0], verworfen: 0, teile: [[0, 0, 0, 0], [0, 0, 0, 0]] };
   private zaehler = 0;
   private mindest = 0;
   private kanaele: [Kanal, Kanal] = [kanal(), kanal()];
@@ -97,7 +98,7 @@ export class Verbund {
       liste.unshift(g.schl);
       liste.length = Math.min(2, liste.length);
       k.hat.set(g.id, liste);
-      teile.push({ id: g.id, schl: g.schl, netz, spiegelbild: g.spiegelbild, abzieher: g.abzieher, rund: g.rund });
+      teile.push({ id: g.id, schl: g.schl, netz, spiegelbild: g.spiegelbild, abzieher: g.abzieher, rund: g.rund, abbildung: g.abbildung ?? null });
     }
     const nr = ++this.zaehler;
     k.laeuft = { nr, soll, seit: performance.now() };
@@ -113,6 +114,7 @@ export class Verbund {
     k.laeuft = null;
     if (!l || l.nr !== e.nr) return;
     this.stand.ms[i] = e.ms;
+    if (e.teile) this.stand.teile[i] = e.teile;
     this.stand.runde[i] = performance.now() - l.seit;
     if (e.fehlt.length) {
       // der Rechner hat diese Netze nicht mehr: beim nächsten Auftrag wieder mitschicken

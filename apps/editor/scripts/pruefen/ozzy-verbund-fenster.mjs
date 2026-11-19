@@ -12,7 +12,8 @@
 //   3  Wieder zusammenschieben: Die Naht ist wieder da (nichts war dafür zu schalten).
 //   4  Abziehen: Das gewählte Objekt beißt ein Loch und steht blass im Bild; der Rauminhalt ist der des Verbunds mit Kante minus das
 //      Objekt (auf 1 %). K rundet den Rand: weniger Inhalt.
-//   5  Das Loch verschieben (V, Ziehen): Sein Rand fährt mit; nach dem Loslassen steht der Verbund wieder in voller Feinheit.
+//   5  Das Loch verschieben (V, Ziehen): Sein Rand fährt mit (der Rechner bildet den Körper des Objekts dabei nur ab); nach dem
+//      Loslassen steht der Verbund wieder in voller Feinheit, an derselben Stelle.
 //   6  Wählen: Ein Klick auf die Wand des Lochs wählt das Objekt, das abzieht (nachdem das andere gewählt war).
 //   7  Sichern und Laden: Die Zustände kommen wieder, der Verbund bildet sich neu mit demselben Rauminhalt.
 //   8  ⌥ + Klick wendet an (Etappe 4): eine Form, die Naht ein Loop mit Kante.
@@ -180,7 +181,7 @@ ok(
 const vor5 = await O('verbund');
 const ort5 = [];
 await objektZiehen(0, -70, 8, async (v) => {
-  if (v.bild?.nahtKasten) ort5.push({ y: (v.bild.nahtKasten[2] + v.bild.nahtKasten[3]) / 2, eilig: v.bild.eilig });
+  if (v.bild?.nahtKasten) ort5.push({ y: (v.bild.nahtKasten[2] + v.bild.nahtKasten[3]) / 2, eilig: v.bild.eilig, abgebildet: v.abgebildet });
 });
 await bild('verbund-5-loch-im-zug');
 await steht();
@@ -190,8 +191,8 @@ const y0 = (vor5.bild.nahtKasten[2] + vor5.bild.nahtKasten[3]) / 2;
 const y1 = (nach5.bild.nahtKasten[2] + nach5.bild.nahtKasten[3]) / 2;
 ok(
   '5 das Loch verschieben: sein Rand fährt im Zug mit (grob), danach steht der Verbund wieder in voller Feinheit',
-  ort5.length >= 5 && ort5.some((o) => o.eilig) && ort5[ort5.length - 1].y < y0 - 30 && y1 < y0 - 40 && nach5.bild.eilig === false && nach5.bild.beisst.includes(2) && nach5.bild.punkte > 3 * (ort5.length ? 1 : 1),
-  `Mitte des Rands (y): vorher ${y0.toFixed(0)}, im Zug ${ort5.map((o) => o.y.toFixed(0)).join(' ')}, danach ${y1.toFixed(0)}; danach ${nach5.bild.punkte} Punkte (fein: ${!nach5.bild.eilig}), im Rechner ${Math.round(nach5.bild.ms)} ms`,
+  ort5.length >= 5 && ort5.some((o) => o.eilig) && ort5.every((o) => o.abgebildet) && ort5[ort5.length - 1].y < y0 - 30 && y1 < y0 - 40 && Math.abs(ort5[ort5.length - 1].y - y1) < 3 && nach5.bild.eilig === false && !nach5.abgebildet && nach5.bild.beisst.includes(2),
+  `Mitte des Rands (y): vorher ${y0.toFixed(0)}, im Zug ${ort5.map((o) => o.y.toFixed(0)).join(' ')}, danach ${y1.toFixed(0)}; im Zug nur abgebildet: ${ort5.every((o) => o.abgebildet)}; danach ${nach5.bild.punkte} Punkte (fein: ${!nach5.bild.eilig}), im Rechner ${Math.round(nach5.bild.ms)} ms`,
 );
 
 // ---------- 6 wählen durch die Wand des Lochs ----------

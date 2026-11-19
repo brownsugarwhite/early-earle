@@ -264,6 +264,39 @@ describe('Verbund (Etappe 5): der Rechner', () => {
     expect(hauch.hals).toBeLessThan(0.12);
   });
 
+  it('abgebildet statt neu angelegt: derselbe Verbund (ein Zug am ganzen Objekt schickt nur noch die Abbildung)', () => {
+    const sp = new VerbundSpeicher();
+    const gross = teil(1, kugel(0, 0, 0, R, 4), { schl: 'g' });
+    // das kleine an seinem Ort …
+    const dort = rechne({ teile: [gross, teil(2, kugel(D, 0.2, 0.1, r, 4), { schl: 'dort', abzieher: true, rund: 0.2 })], koerper: [{ halten: [1], abziehen: [2] }] }, sp);
+    // … und dasselbe aus dem Ursprung, um die Achse z um 90 Grad gedreht und dorthin geschoben (Spalten der Drehung, dann der Versatz)
+    const basis = teil(2, kugel(0, 0, 0, r, 4), { schl: 'basis', abzieher: true, rund: 0.2 });
+    const hin = rechne({ teile: [{ ...gross, netz: null }, { ...basis, abbildung: [0, 1, 0, -1, 0, 0, 0, 0, 1, D, 0.2, 0.1] }], koerper: [{ halten: [1], abziehen: [2] }] }, sp);
+    expect(hin.fehler).toBeUndefined();
+    expect(hin.beisst).toEqual([2]);
+    expect(offeneKanten(hin.netz!)).toBe(0);
+    expect(umgeklappt(hin.netz!).flaeche).toBeLessThan(1e-5);
+    // (das gedrehte Netz schneidet an anderen Stellen: derselbe Körper, nicht dieselben Punkte)
+    expect(Math.abs(inhalt(hin.netz!) / inhalt(dort.netz!) - 1)).toBeLessThan(2e-3);
+    // die Wand des Lochs zeigt in das Loch, auch gedreht
+    const n = hin.netz!;
+    let wand = 0;
+    for (let v = 0; v < n.pos.length / 3; v++) {
+      const dx = D - n.pos[3 * v]!;
+      const dy = 0.2 - n.pos[3 * v + 1]!;
+      const dz = 0.1 - n.pos[3 * v + 2]!;
+      if (Math.abs(Math.hypot(dx, dy, dz) - r) > 1e-3 || Math.hypot(n.pos[3 * v]!, n.pos[3 * v + 1]!, n.pos[3 * v + 2]!) > R - 0.15) continue;
+      wand++;
+      expect(dx * n.normal[3 * v]! + dy * n.normal[3 * v + 1]! + dz * n.normal[3 * v + 2]!).toBeGreaterThan(0.9 * r);
+    }
+    expect(wand).toBeGreaterThan(30);
+    // noch einmal an anderem Ort: Das Netz muss nicht wieder kommen
+    const weiter = rechne({ teile: [{ ...gross, netz: null }, { ...basis, netz: null, abbildung: [1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0] }], koerper: [{ halten: [1], abziehen: [2] }] }, sp);
+    expect(weiter.beisst).toEqual([]);
+    expect(weiter.fehlt).toEqual([]);
+    sp.leeren();
+  });
+
   it('Spiegelbild und Speicher: das Spiegelbild gehört dazu, ein bekanntes Netz muss nicht noch einmal kommen', () => {
     const sp = new VerbundSpeicher();
     const a = teil(1, kugel(0, 0, 0.5, R, 3), { spiegelbild: true, schl: 's1' });
