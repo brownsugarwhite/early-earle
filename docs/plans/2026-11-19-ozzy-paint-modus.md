@@ -1,13 +1,13 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand (19.11., 18:10 Uhr): Etappe 4 ist gebaut (dein Wort: „Fassung 1“), dein Urteil steht aus.** Weiche Kanten: An jedem
-gewählten Punkt einer Farblinie sitzt quer zu ihr ein Tropfen an einem Faden; wegziehen macht die Kante dort weich, K und die
-eckigen Klammern stellen sie an mehreren Punkten. Bildblatt
-[`2026-11-19-paint-etappe-4-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-4-bogen.jpg), Film an „strange bird“
-[`2026-11-19-paint-etappe-4.mp4`](../progress/ozzy/2026-11-19-paint-etappe-4.mp4); was gebaut, gemessen und für dich entschieden
-ist und was fehlt, steht in Abschnitt 15. Davor: das Bild der Bedienung (Abschnitt 14), Etappe 3 (Abschnitt 12 und 13), Etappe 2
-(Abschnitt 11), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 5 bis 7
-warten auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
+**Stand (19.11., 19:50 Uhr): Etappe 5 ist gebaut (dein Wort: „Etappe 5 starten“), dein Urteil steht aus.** Ebenen: Am rechten
+Rand steht ein Stapel liegender Tropfen, je Ebene eine Linse in ihren Farben; oben liegt, was deckt. Das Plus legt eine Ebene an,
+antippen wählt, wo du malst, der Punkt daneben blendet aus und ein, ziehen ordnet, auf den Mülleimer gezogen ist sie gelöscht.
+Bildblatt [`2026-11-19-paint-etappe-5-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-5-bogen.jpg), Film an „strange bird“
+[`2026-11-19-paint-etappe-5.mp4`](../progress/ozzy/2026-11-19-paint-etappe-5.mp4); was gebaut, gemessen und für dich entschieden
+ist und was fehlt, steht in Abschnitt 16. Davor: Etappe 4, weiche Kanten (Abschnitt 14 und 15), Etappe 3 (Abschnitt 12 und 13),
+Etappe 2 (Abschnitt 11), Etappe 1 (Abschnitt 9), das Material „Wachs“ (Abschnitt 2), der Schalter „Dreiecke zeigen“. Etappe 6
+und 7 warten auf dein Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht
 zusammengeführt), eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
 [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
@@ -80,8 +80,8 @@ Geste wird von Anfang an auch für iPad und Stift gebaut (dort gibt es kein ⌥)
 | **1** Der Beweis: eine Farblinie, eine Füllung | Paint-Modus einschalten; mit P eine geschlossene Farblinie auf die Form zeichnen; ein Klick füllt sie; zurück zur Form, umformen: Die Bemalung geht mit | **gebaut (19.11.)**; Kriterien in 3.1, Messwerte in Abschnitt 9; dein Wort: „Etappe 2 starten“ |
 | **2** Farblinien bedienen wie Linien | A, P, Freihand, Formen, Lasso, Löschen an Farblinien; offene Farblinien, Kreuzungen, Anschluss an die Mitte | **gebaut (19.11.)**; Schritte in Abschnitt 10, Messwerte und Lücken in Abschnitt 11; Film an „strange bird“; dein Wort: „Etappe 3 starten“ |
 | **3** Füllen mit dem Farbtropfen | Farbe wählen, in eine Farbfläche tippen: Die Farbe läuft als Tropfen über die Haut bis an die Farblinien | **gebaut (19.11.):** das Einlaufen (dein Wort: „Tinte“; Abschnitt 12), dann Farben als Tropfen unter der Leiste, Farbtropfen F, Pipette I (Abschnitt 13); Bildblatt und Film an „strange bird“; dein Wort danach: „Etappe 4 starten“ |
-| **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | **gebaut (19.11.):** das Bild der Bedienung (Abschnitt 14), dein Wort „Fassung 1“, dann der Bau (Abschnitt 15: der Tropfen am Faden, K, `[` `]`); alle sieben Kriterien halten; Bildblatt und Film an „strange bird“; dein Urteil steht aus |
-| **5** Ebenen | Ebene anlegen, ordnen, aus- und einblenden; Muster über Verläufen | ein Verlauf auf Ebene 1, Punkte auf Ebene 2, an deiner Form |
+| **4** Weichheit an Linien und Punkten | K hart oder weich, Tropfen an der Farblinie für die Breite, `[` `]` | **gebaut (19.11.):** das Bild der Bedienung (Abschnitt 14), dein Wort „Fassung 1“, dann der Bau (Abschnitt 15: der Tropfen am Faden, K, `[` `]`); alle sieben Kriterien halten; Bildblatt und Film an „strange bird“; dein Wort danach: „Etappe 5 starten“ |
+| **5** Ebenen | Ebene anlegen, ordnen, aus- und einblenden; Muster über Verläufen | **gebaut (19.11.):** der Stapel am rechten Rand (Abschnitt 16); alle zehn Kriterien halten; Bildblatt und Film an „strange bird“ (ein Verlauf auf Ebene 1, Punkte auf Ebene 2); dein Urteil steht aus |
 | **6** Ebenen-Ansicht | die Form fächert auf, je Ebene eine Kopie; drehen, eine Kopie wählen und dort malen | zuerst ein Film (nebeneinander und schräg versetzt zur Wahl), dann gebaut |
 | **7** Mehrere Objekte, Spiegel, Verbund | jedes Objekt mit eigener Bemalung; Spiegel aus; Verschmelzen und Abziehen zeigen die Farben | Bild an zwei bemalten Objekten im Verbund |
 
@@ -787,3 +787,103 @@ Etappen 1 bis 3 halten weiter.
 - **Bedienung:** `farbBlatt.breitenGriffe` (Stelle, Richtung quer, Pixel je Einheit), in `main.ts` `weichGriffe`,
   `weichGriffeZeichnen`, `weichZug`, `weichTaste`; Haken `farbBreite`, `farbWeichGriffe`, `farbWeich`.
 - Film: `scripts/ozzy/paint-weich-film.mjs`; Standbilder: `scripts/ozzy/paint-weich-blick.mjs`.
+
+## 16. Etappe 5, gebaut: Ebenen (19.11.2026, auf dein Wort „Etappe 5 starten“)
+
+Bildblatt: [`2026-11-19-paint-etappe-5-bogen.jpg`](../progress/ozzy/2026-11-19-paint-etappe-5-bogen.jpg) (alles echt, aus dem
+Fenster). Film in echter Zeit an „strange bird“ (58 Sekunden):
+[`2026-11-19-paint-etappe-5.mp4`](../progress/ozzy/2026-11-19-paint-etappe-5.mp4).
+
+### 16.1 Was du siehst und anfassen kannst
+
+- **Der Stapel am rechten Rand** (nur im Paint-Modus): je Ebene eine kleine Linse, ein liegender Tropfen, in den Farben ihrer
+  Füllungen (leer: weiß). Oben liegt, was deckt.
+- **Das Plus** (die hohle Linse über dem Stapel) legt eine neue, leere Ebene an: über der, an der du gerade malst. An der neuen
+  malst du dann.
+- **Eine Linse antippen:** An dieser Ebene malst du jetzt. Ihre Linse ist größer und steht vor. Nur ihre Farblinien sind zu
+  sehen und zu greifen; P, Füllen, K und der Tropfen am Faden gelten ihr.
+- **Der Punkt neben der Linse** blendet die Ebene aus und wieder ein. Ausgeblendet ist die Linse hohl und der Punkt ein Ring.
+- **Eine Linse ziehen** ordnet: Sie geht mit dem Zeiger, die anderen rücken, und die Form zeigt sofort, was dann oben liegt.
+- **Eine Linse zur Seite aus dem Stapel und auf den Mülleimer ziehen:** Die Ebene ist mit allem darauf gelöscht (die letzte
+  bleibt). ⌘Z holt sie zurück.
+- **Muster über Verläufen:** Was auf einer oberen Ebene liegt, deckt, was darunter liegt; wo sie nichts hat, scheint die untere
+  durch. Eine weiche Kante einer oberen Ebene läuft in die Farbe der Ebene darunter aus.
+- ⌘Z nimmt Anlegen, Löschen und Ordnen zurück. Sichern und Laden halten die Ebenen, ihre Reihenfolge, was ausgeblendet ist und
+  wo du malst. Auf Wachs und auf dem hellen Solid.
+- Die Pipette nimmt die Farbe, die du siehst (die der obersten Ebene an der Stelle). Liegt beim Füllen eine Ebene darüber, die
+  dort deckt, sagt es die Zeile unten.
+
+### 16.2 Gemessen
+
+Probe `ozzy-farbe-ebenen-fenster.mjs` (an einer Kugel und an „strange bird“, der Stapel mit echten Klicks), dazu zwölf Tests ohne
+Fenster. Alle Proben der Etappen 1 bis 4 und die der Materialien halten weiter.
+
+| Kriterium | gemessen | hält? |
+| --- | --- | --- |
+| 60 Eine leere oder ausgeblendete Ebene ändert keinen Bildpunkt | mit einer leeren Ebene darüber und mit einer ausgeblendeten: 0 von 255, auf Wachs und auf hellem Solid | ja |
+| 61 Oben deckt unten | ein roter Fleck auf der oberen Ebene über einer blauen: im Fleck 100,00 % Rot, daneben 0,00 %; das Innere des Flecks ist dasselbe Bild wie ohne die untere Ebene (0 von 255, beide Gründe); helles Solid: im Fleck steht 252, 0, 0 (nicht mit dem Blau vermischt) | ja |
+| 62 Ordnen | die Ebene mit dem Fleck nach unten: das Bild ist das der blauen Ebene allein (0 von 255, beide Gründe); ⌘Z legt sie zurück (0 von 255 gegen vorher) | ja |
+| 63 Aus- und einblenden | ausgeblendet gegen das Bild ohne sie: 0 von 255; wieder eingeblendet gegen das Bild mit ihr: 0 von 255 | ja |
+| 64 Eine weiche Kante der oberen Ebene läuft in die untere aus, so breit wie eingestellt | eingestellt 19,26 Pixel zu jeder Seite, gemessen 18,96; die Mitte liegt 0,33 Pixel neben der Farblinie; gemischt wie innerhalb einer Ebene | ja |
+| 65 Gemalt wird auf der aktiven Ebene | P und Füllen an der unteren Ebene kommen dort an (eine Farblinie, zwei Füllungen), die obere bleibt; zu greifen sind nur die Farblinien der aktiven Ebene | ja |
+| 66 ⌘Z, Sichern, Laden | ⌘Z nimmt Anlegen und Löschen zurück (die gelöschte Ebene kommt mit Farblinie und Füllung wieder); geladen: dieselben Ebenen, dieselbe Reihenfolge, dieselbe ausgeblendet, an derselben wird gemalt | ja |
+| 67 Der Stapel mit echten Klicks | Plus, Antippen, der Punkt, Ziehen und der Mülleimer tun, was sie sollen; ein Zug hin und zurück ist kein Schritt; schräg aus dem Stapel gelöscht, legt ⌘Z die Ebene wieder an ihren Platz | ja |
+| 68 Tempo an „strange bird“ mit drei Ebenen | ein Handgriff rechnet nur seine Ebene neu: 2,6 bis 4,7 ms (erlaubt 30); ein Bild samt Grafikkarte bei 2880 × 1800: eine Ebene 11,4 ms, drei Ebenen mit harten Kanten 11,8 ms, die oberste weich 15,1 ms; die Bemalung kostet den Prozessor je Bild 0,3 ms (erlaubt 1) | ja |
+| 69 Keine Fehler in der Konsole | keine | ja |
+| An einer deiner Formen, mit Film | „strange bird“: ein Verlauf auf Ebene 1, vier Punkte auf Ebene 2 | ja |
+
+### 16.3 Für dich entschieden (sag, wenn du es anders willst)
+
+- **Antippen wählt, der Punkt blendet aus.** Im Plan stand „tippen blendet aus und ein“. Dann fehlte ein Griff, um zu sagen, wo
+  gemalt wird; darum hat jede Ebene zwei Stellen: die Linse und den Punkt.
+- **Der Stapel steht am rechten Rand, auf halber Höhe.** Die Linsen sind so klein wie die Farbtropfen.
+- **Eine neue Ebene liegt über der, an der du malst** (nicht immer ganz oben).
+- **Zu sehen und zu greifen sind nur die Farblinien der Ebene, an der du malst.** Die der anderen Ebenen stehen nicht im Bild.
+- **Wer an einer ausgeblendeten Ebene malt, blendet sie damit ein.**
+- **Aus- und Einblenden und die Wahl der Ebene sind keine Schritte für ⌘Z** (wie eine Auswahl). Anlegen, Löschen und Ordnen sind
+  Schritte.
+- **Höchstens zwölf Ebenen.**
+- **Zwischen zwei Ebenen mischt eine weiche Kante wie innerhalb einer Ebene.** (Ohne Zutun mischte sie auf Wachs heller.)
+- **Die Namen zählen von selbst** („Ebene 1“, „Ebene 2“). Sie stehen nur im Hinweis unter dem Zeiger.
+
+### 16.4 Was fehlt
+
+- **Umbenennen, zusammenlegen, verdoppeln und eine Deckkraft je Ebene** gibt es nicht.
+- **Am iPad ungeprüft.** Linse und Punkt lassen sich mit dem Stift treffen; für einen Finger sind sie klein (30 × 12 Punkte).
+- **Kein Tastenkürzel** für die Ebenen.
+- **Mehrere Ebenen brauchen Platz auf der Grafikkarte:** über dem hellen Solid immer, auf Wachs, sobald eine obere Ebene weiche
+  Kanten hat, ein bis zwei Bilder mehr in der Größe des Fensters. Beim ersten Mal ruckt es einmal (rund eine Viertelsekunde).
+  Am iPad ungeprüft.
+- **Auf Wachs, solange eine Füllung einläuft,** mischt eine weiche Kante einer oberen Ebene für diese Sekunde etwas heller in
+  die Ebene darunter als danach.
+- **Je Ebene gilt weiter, was an Etappe 4 fehlt:** Ein Verlauf endet etwas vor einer anderen Farblinie derselben Ebene, zwei
+  Verläufe können sich an einer Stufe treffen.
+- **Die Ebenen-Ansicht** (die Form fächert auf) ist Etappe 6.
+- **Eingerastet und in den Vier Ansichten** steht weiter keine Farbe; der Stapel steht dort, und P zeichnet auf die Ebene, an
+  der du malst.
+
+### 16.5 Für die Sitzung, die baut
+
+- **Modell:** `Bemalung.ebenen` zählt von unten nach oben; `Ebene.aus` (ausgeblendet). `bemalung.ts`: `ebeneNeu`,
+  `ebeneLoeschen`, `ebeneOrdnen`, `sichtUebernehmen` (was man sieht und wo man malt, geht in einen früheren Stand über:
+  `FarbWerk.zurueck` und der Weg zurück auf ein altes Netz), `EBENEN_HOECHSTENS`. Datei: Version 3 bleibt, `aus` fehlt, wenn die
+  Ebene zu sehen ist.
+- **Farbwerk:** je Ebene, die gezeichnet wird (zu sehen und nicht leer), ein `EbeneStand` (Flächen, Farben, weiche Kanten).
+  Neu gerechnet wird nur, was sich geändert hat: `geaendert()` meint die aktive Ebene (`altNur`), `alt` alle; `sichtAlt` merkt,
+  wenn eine Ebene aus- oder eingeblendet, gelöscht oder leer geworden ist. `merken(h, zeigen)` blendet die aktive Ebene ein.
+  `ebeneNeu`, `ebeneLoeschen`, `ebeneOrdnen` (Schritte), `ebeneWaehlen`, `ebeneZeigen` (keine Schritte), `ebenenStand()` (für den
+  Stapel, von oben nach unten), `bedienbar` (die Farblinien der aktiven Ebene, solange sie zu sehen ist), `farbeBei` (von oben
+  nach unten), `deckerUeber`.
+- **Anzeige:** `anzeige.ts`. `FarbAnzeige` ist jetzt die Bemalung einer Ebene, `FarbStapel` hält sie, ordnet sie (`renderOrder`,
+  alle Materialien stehen in der Reihe der durchscheinenden Dinge) und zeichnet alle in einem Durchgang. Über dem hellen Solid
+  mit mehreren Ebenen immer, auf Wachs nur, wenn eine Ebene über der untersten weiche Kanten hat und keine Füllung einläuft,
+  wird gesammelt (`sammeln`): alle Ebenen in ein eigenes Bild (Bildschirmwerte, oben deckt unten), dann der Körper selbst mit
+  diesem Bild über den Grund (helles Solid: multipliziert, Tiefe gleich der zuvor geschriebenen; Wachs: mit Hell, Dunkel und
+  Glanz, die Deckung am Umriss aus einem zweiten Bild). Die Felder der glatten Anzeige teilen alle Ebenen (`gemeinsam`).
+- **Bedienung:** `farbe/ebenenStapel.ts` (das Element `#ebenen`; `EbenenZiele`), Stile in `ozzy.css`; in `main.ts`
+  `ebenenStapel`, `ebeneWaehlen`, `ebeneZeigen`, `ebeneNeu`, `ebeneOrdnen`, `ebeneLoeschen`, `ebenenGeaendert`. Haken für Proben:
+  `farbEbenen()` (Ebenen von oben nach unten, was die Anzeige zuletzt tat, wie viele Ebenen neu gerechnet wurden),
+  `farbEbene(was, id, wert)`, `farbSammeln(an)` (für Messungen: auf Wachs nie sammeln). `farbe().ebenen` zählt von unten.
+- Film: `scripts/ozzy/paint-ebenen-film.mjs`; Standbilder: `scripts/ozzy/paint-ebenen-blick.mjs`; beide bauen die Szene mit
+  `scripts/ozzy/paint-ebenen-szene.mjs` (ein kleines Fenster, 760 × 560: Leiste, Form und Stapel stehen zusammen im Bild).
+

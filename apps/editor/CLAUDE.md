@@ -506,6 +506,26 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Tropfen am Faden wird vor dem Verhalten der Linien gegriffen (`weichGriffBei` im Drücken); beim Ziehen bekommt das Verhalten
   trotzdem den Zeiger (`zeigerSetzen`), sonst bleibt sein Pfeil stehen. (7) ⌘Z leert die Auswahl: Danach gibt es keine Tropfen,
   eine Probe liest die Breite dann über `farbPunkte`. Probe `ozzy-farbe-weich-fenster.mjs`, Tests `weich.test.ts`.
+- **Paint-Modus, Etappe 5 (19.11.; Plan, Abschnitt 16): Ebenen.** `Bemalung.ebenen` zählt von unten nach oben, `Ebene.aus` ist
+  ausgeblendet; `farbwerk.ts` hält je Ebene, die gezeichnet wird, ihren abgeleiteten Stand, `anzeige.ts` je Ebene eine
+  `FarbAnzeige`, `FarbStapel` zeichnet alle; der Stapel am Rand ist `farbe/ebenenStapel.ts` (`#ebenen`). Merke: (1) three
+  zeichnet alles Deckende vor allem Durchscheinenden, gleich was `renderOrder` sagt: Alle Materialien der Bemalung stehen darum
+  in der Reihe der durchscheinenden (`transparent: true`; wo sie decken, ist das Überblenden trotzdem aus). (2) Über dem hellen
+  Solid wird multipliziert, dort deckt nichts von selbst: Mehrere Ebenen werden erst gesammelt (`FarbStapel.sammeln`: alle
+  Ebenen in ein eigenes Bild, Bildschirmwerte, oben deckt unten) und dann einmal verrechnet, mit dem Körper selbst statt über
+  die ganze Fläche (sonst färbt es am Umriss die Stellen neben dem Körper mit) und nur, wo die Tiefe gleich der zuvor
+  geschriebenen ist (`invariant gl_Position` in beiden Programmen). (3) Auf Wachs deckt schon das Überlagern; gesammelt wird
+  dort nur, wenn eine Ebene über der untersten weiche Kanten hat (überlagert mischte sie im Licht, heller als innerhalb einer
+  Ebene) und keine Füllung einläuft. Das Sammeln kostet bei 2880 × 1800 rund 3,5 ms je Bild: nicht ohne Not einschalten. Am
+  Umriss steht im Sammelbild alles mal dem Teil des Bildpunkts, den der Körper deckt; für das Wachs steht dieser Teil in einem
+  zweiten Bild (sonst schiene am Umriss Wachs durch die Farbe). (4) Ein Ziel mit Kantenglättung gibt nach jedem Durchgang seine
+  Farbe frei: Alles, was hinein soll, in einer Szene, ein Durchgang. (5) Neu gerechnet wird nur die geänderte Ebene
+  (`geaendert()` meint die aktive; `alt` alle); wer einen Handgriff baut, der eine andere Ebene ändert, setzt `alt`. (6) Was man
+  sieht und wo man malt (`aus`, `aktiv`), sind keine Schritte: `sichtUebernehmen` trägt sie in jeden Stand, der zurückkommt
+  (⌘Z, zurück auf ein altes Netz). `merken(h)` blendet die aktive Ebene ein; Handgriffe am Stapel rufen `merken(h, false)`.
+  (7) Die Haken `farbPunkte`, `farbBreite`, `farbLinieImBild` meinen die aktive Ebene; `farbe().ebenen` zählt von unten,
+  `farbEbenen().ebenen` von oben. (8) Was ein Bild kostet, samt Grafikkarte messen (`mitKarte`): Die Zeit von `bild()` allein
+  zeigte vom Sammeln nichts. Probe `ozzy-farbe-ebenen-fenster.mjs`, Tests `ebenen.test.ts`.
 - **Bilder und Filme: den Blick setzen, nicht mit der Maus drehen (19.11.).** Beim Loslassen läuft die Form mit Schwung nach
   (`schwung`), je nach Takt verschieden weit: Dieselben Schritte geben jedes Mal ein etwas anderes Bild, und feste Stellen im
   Skript treffen dann daneben. `__ozzy.blickSetzen({ gier, neigung, zoom, schwenkX, schwenkY })` setzt den Blick ohne Schwung
