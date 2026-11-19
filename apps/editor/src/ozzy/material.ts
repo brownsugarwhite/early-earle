@@ -190,6 +190,11 @@ export type FesteWerte = {
    * Rechnung statt der glatten Anzeige.
    */
   flach?: boolean;
+  /**
+   * Paint-Modus (19.11.): nach der Haut ins selbe Ziel zeichnen (mit ihrer Tiefe, vor dem Überlegen über den Grund): die Farbe auf der
+   * Haut (`farbe/anzeige.ts`)
+   */
+  danach?: ((r: WebGLRenderer, kamera: Camera) => void) | null;
 };
 
 export class FesteHaut {
@@ -374,6 +379,7 @@ export class FesteHaut {
     r.setClearColor(0x000000, 0);
     r.clear(true, true, true);
     r.render(this.szene, kamera);
+    w.danach?.(r, kamera);
     r.setRenderTarget(null);
     this.ende.material.uniforms.tBild!.value = this.ziel.texture;
     this.ende.material.uniforms.uDeckung!.value = Math.max(0, Math.min(1, w.deckung));

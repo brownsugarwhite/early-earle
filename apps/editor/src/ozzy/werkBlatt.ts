@@ -162,6 +162,11 @@ const bez = (k: readonly number[], t: number): [number, number] => {
 };
 
 export class WerkBlatt implements Raum {
+  /**
+   * Paint-Modus (19.11., `farbe/farbwerk.ts`): Ist das gesetzt, geht eine fertige Zeichnung (P, Freihand, Formen) nicht ins Werk,
+   * sondern hierhin: das Blatt, die Anker im Blatt, die Seite, von der man schaut. Zurück: ob etwas daraus wurde.
+   */
+  stiftZiel: ((a: Ansicht, anker: werk.StiftAnker[], vorn: number | undefined) => boolean) | null = null;
   netz: Netz = { punkte: [], linien: [] };
   proben: LinienProben[] = [];
   roh: RoheLinie[] = [];
@@ -1513,6 +1518,7 @@ export class WerkBlatt implements Raum {
       anker.push({ X: XY[0], Y: XY[1], aus: g ? [g[0] - XY[0], g[1] - XY[1]] : null });
     }
     if (anker.length < 3) return false;
+    if (this.stiftZiel) return this.stiftZiel(F.a, anker, F.vorn);
     const vorher = werk.loops.length;
     werk.G.stift = { a: F.a, anker, zieht: false, ...(F.vorn !== undefined ? { vorn: F.vorn } : {}) };
     werk.stiftFertig();
@@ -1572,6 +1578,11 @@ export class WerkBlatt implements Raum {
 
   beginnen(o: StiftOrt): number | null {
     if (werk.zug || werk.G.abzweig) return null;
+    // (im Paint-Modus hängt P nie an den Linien der Form: Auch auf einem Punkt oder einer Linie beginnt eine freie Zeichnung)
+    if (this.stiftZiel && o.art !== 'frei') {
+      const [zx, zy] = this.zeiger();
+      o = { art: 'frei', x: zx, y: zy };
+    }
     if (o.art === 'frei') {
       const fl = this.flaecheUnter(o.x, o.y);
       const F = this.flaechen[fl];
@@ -1678,6 +1689,13 @@ export class WerkBlatt implements Raum {
       werk.G.abzweig = null;
       if (!ab?.start) return -1;
       werk.abzweigungErstellen(E.a, ab.von, E.nach, ab.start, ab.vorher, E.anker, this.flaechen[E.fl]?.vorn);
+    } else if (this.stiftZiel) {
+      // Paint-Modus: Die Zeichnung geht nicht ins Werk (sie formt nichts), sondern wird eine Farblinie auf der Haut
+      if (E.anker.length >= 3) this.stiftZiel(E.a, E.anker, this.flaechen[E.fl]?.vorn);
+      else werk.G.meldung = 'Farblinie: mindestens drei Punkte, dann den ersten anklicken (oder ↩)';
+      this.bauen(this.flaechen);
+      this.geaendert();
+      return -1;
     } else {
       // S8 und C2 (P statt L): im Leeren begonnen, über die Form, im Leeren geendet, mit ↩ beendet: ein Loop rundum, in dieser
       // Ansicht genau auf dem Strich (gerade oder gebogen, beliebig viele Punkte; die Punkte auf der Form werden Punkte des Loops)

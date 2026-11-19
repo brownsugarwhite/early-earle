@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { alsDatei, ausDatei, kopie, leereBemalung, linienAusTreffern, uebergeben } from './bemalung';
 import { type Saat, flaechenRechnen, naechsteSeite } from './flaechen';
 import { jeDreieck, kettenAller, stueckeVon } from './ketten';
+import { feinBei, feinEcken } from './fein';
+import { naechsterAuf } from './naechster';
 import { type Karte, type Naechster, type Netz, type Ort, karteVon, ortGespiegelt, ortLage, spur } from './ort';
+import { ParallelTreffer, ortAusFein, strahlAufNetz } from './treffer';
 
 // ---------- Prüfnetz: eine Kugel aus einem unterteilten Oktaeder (spiegelgleich an z = 0, Punkte der Mitte genau in der Ebene) ----------
 
@@ -345,5 +348,59 @@ describe('Farbe: Ort, Spur, Ketten, Flächen', () => {
     expect(r.falsch).toBe(0);
     expect(r.flaeche).toBeGreaterThan(0.97 * 2 * Math.PI * 100 * 40);
     expect(r.flaeche).toBeLessThan(1.005 * 2 * Math.PI * 100 * 40);
+  });
+
+  it('die schnelle Suche findet denselben nächsten Ort wie der Durchgang über alle Dreiecke', () => {
+    const schnell = naechsterAuf(netz);
+    let z = 12345;
+    const zufall = (): number => ((z = (z * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff) * 2 - 1;
+    for (let i = 0; i < 300; i++) {
+      // Punkte dicht an der Kugel und einige weit weg
+      const l = i % 10 === 0 ? 30 + 200 * Math.abs(zufall()) : 100 + 2 * zufall();
+      const p = [zufall(), zufall(), zufall()];
+      const n = Math.hypot(p[0]!, p[1]!, p[2]!) || 1;
+      const a = schnell((l * p[0]!) / n, (l * p[1]!) / n, (l * p[2]!) / n);
+      const b = nah((l * p[0]!) / n, (l * p[1]!) / n, (l * p[2]!) / n);
+      expect(Math.sqrt(a.d2)).toBeLessThanOrEqual(Math.sqrt(b.d2) + 1e-6);
+    }
+  });
+
+  it('Treffer auf der glatten Anzeige werden Orte im groben Dreieck: fein und grob meinen dieselbe Stelle', () => {
+    // die „glatte Anzeige“ hier: jedes Dreieck des Netzes zweimal in vier geteilt, flach (dieselbe Reihenfolge wie GlattPlan)
+    const stufen = 2;
+    const je = 4 ** stufen;
+    const E = feinEcken(stufen);
+    const pos: number[] = [];
+    const index: number[] = [];
+    for (let t = 0; t < k.T; t++)
+      for (let j = 0; j < je; j++)
+        for (let e = 0; e < 3; e++) {
+          const b = E[6 * j + 2 * e]!, c = E[6 * j + 2 * e + 1]!;
+          const p = ortLage(netz.pos, { t, e: [netz.tri[3 * t]!, netz.tri[3 * t + 1]!, netz.tri[3 * t + 2]!], w: [1 - b - c, b, c] });
+          index.push(pos.length / 3);
+          pos.push(p[0], p[1], p[2]);
+        }
+    const P = Float32Array.from(pos), I = Uint32Array.from(index);
+    // ein Strahl von oben auf die Kugel
+    const tr = strahlAufNetz(P, I, [20, 30, 500], [0, 0, -1])!;
+    expect(tr).not.toBeNull();
+    const o = ortAusFein(netz, stufen, tr);
+    const p = ortLage(netz.pos, o);
+    expect(p[0]).toBeCloseTo(20, 5);
+    expect(p[1]).toBeCloseTo(30, 5);
+    expect(p[2]).toBeGreaterThan(90);
+    // dieselbe Stelle über das Raster gleichgerichteter Strahlen
+    const raster = new ParallelTreffer(P, I, [0, 0, -1]);
+    const tr2 = raster.treffer([20, 30, 500])!;
+    const o2 = ortAusFein(netz, stufen, tr2);
+    expect(o2.t).toBe(o.t);
+    expect(o2.w[1]).toBeCloseTo(o.w[1], 6);
+    // und zurück: Die Stelle im groben Dreieck liegt im feinen Dreieck des Treffers
+    const f = feinBei(stufen, o.w[1], o.w[2]);
+    expect(o.t * je + f.j).toBe(tr.f);
+    expect(Math.min(...f.w)).toBeGreaterThanOrEqual(-1e-6);
+    // von unten trifft der Strahl die andere Seite
+    const unten = ortLage(netz.pos, ortAusFein(netz, stufen, new ParallelTreffer(P, I, [0, 0, 1]).treffer([20, 30, -500])!));
+    expect(unten[2]).toBeLessThan(-90);
   });
 });

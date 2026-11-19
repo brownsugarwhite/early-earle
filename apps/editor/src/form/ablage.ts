@@ -8,6 +8,7 @@
 // Ohne DOM: Das Fenster, die Tests und die Messskripte (`scripts/pruefen/form-netzguete.ts`) lesen dieselbe Datei.
 import type { Loop, V3 } from '@ee/shape/dicht';
 import type { FlacheHaut } from './verfeinern';
+import type { BemalungDatei } from '../ozzy/farbe/bemalung';
 
 export type WesenStand = {
   /** mittlere Kante des Startnetzes: das Maß für Verdichten, Kreuzungen und die Genauigkeit der Linien */
@@ -47,6 +48,11 @@ export type WesenStand = {
    * denen des Prüffensters (dann: ein Objekt, Spiegel mit Clipping). Das Prüffenster liest davon nichts: Es lädt diese Form allein.
    */
   ozzy?: OzzySzene;
+  /**
+   * Ozzy, Paint-Modus (19.11.2026): die Bemalung dieser Form (Ebenen mit Farblinien und Füllungen, als Orte auf `haut`). Fehlt in
+   * älteren Dateien und wenn nichts gemalt ist; das Prüffenster liest davon nichts.
+   */
+  farbe?: BemalungDatei;
 };
 /** ein Objekt in Ozzy: seine Kennung, sein Spiegel (`werk.G.clipping`, `werk.G.spiegelbild`) und sein Maß im Raum (Ort = Werk / f + mitte) */
 export type OzzyObjekt = {

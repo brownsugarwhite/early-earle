@@ -175,3 +175,40 @@ export function wachsKugel(groesse: number, farbton: number = WACHS_FARBTON_GRUN
   }
   return daten;
 }
+
+// ---------- das Wachs unter Gemaltem (Paint-Modus, Etappe 1) ----------
+
+const linearVon = (c: number): number => linear(c / 255);
+/** das Rot des Körpers der Vorlage, unterhalb des Glanzes (dort trägt das Bild nur die Farbe des Körpers und sein Hell und Dunkel) */
+const KOERPER_BEI: [number, number] = [0, -0.3];
+
+/**
+ * Hell, Dunkel und Glanz des Wachses ohne seine Farbe, für Gemaltes: In ZBrush färbt Red Wax jede gemalte Farbe rot ein. Hier gilt
+ * die Farbe des Wachses nur, wo nichts gemalt ist; eine gemalte Fläche bekommt vom Wachs nur das Licht. Dazu wird das Kugelbild der
+ * Vorlage zerlegt (in linearen Werten): Bild = Körperfarbe · Helligkeit + Weiß · Glanz. Zurück je Normale (u, v): die Helligkeit
+ * (1 an der Stelle `KOERPER_BEI`) und der Glanz (Anteil Weiß, 0 … 1). Eine Fläche in der Farbe des Körpers sieht damit aus wie das
+ * Wachs selbst.
+ */
+export function wachsLicht(u: number, v: number): [number, number] {
+  const [r0, g0, b0] = wachsVorlage(KOERPER_BEI[0], KOERPER_BEI[1]).map(linearVon) as [number, number, number];
+  const [r, g, b] = wachsVorlage(u, v).map(linearVon) as [number, number, number];
+  // Grün und Blau über dem, was der rote Körper bei dieser Helligkeit selbst an Grün und Blau hätte: der weiße Anteil
+  const kg = g0 / r0;
+  const kb = b0 / r0;
+  const glanz = Math.max(0, Math.min((g - kg * r) / (1 - kg), (b - kb * r) / (1 - kb)));
+  return [Math.max(0, r - glanz) / r0, glanz];
+}
+
+/** `wachsLicht` als Feld für eine Textur (`groesse` × `groesse`, je Stelle Helligkeit und Glanz, Zeile 0 unten), wie `wachsKugel` */
+export function wachsLichtBild(groesse: number, rand = 0.495): Float32Array {
+  const daten = new Float32Array(groesse * groesse * 2);
+  for (let y = 0; y < groesse; y++) {
+    const v = ((y + 0.5) / groesse - 0.5) / rand;
+    for (let x = 0; x < groesse; x++) {
+      const [hell, glanz] = wachsLicht(((x + 0.5) / groesse - 0.5) / rand, v);
+      daten[(y * groesse + x) * 2] = hell;
+      daten[(y * groesse + x) * 2 + 1] = glanz;
+    }
+  }
+  return daten;
+}

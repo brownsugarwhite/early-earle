@@ -37,6 +37,9 @@ import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
 import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND } from './wachs';
+import { type Farbe, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
+import { type BlattAnker, FarbWerk, type FarbStand, type HautJetzt } from './farbe/farbwerk';
+import { naechsterAuf } from './farbe/naechster';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
@@ -194,6 +197,32 @@ let dreieckeZeigen = ((): boolean => {
     return false;
   }
 })();
+/**
+ * Paint-Modus (19.11., Plan `docs/plans/2026-11-19-ozzy-paint-modus.md`, Etappe 1). Florian: „Im paint mode will ich mit gewohnten
+ * tools linien auf die haut einzeichnen. Unabhängig von den linen des liniennetzes. […] Die flächen zwischen den linien kann ich dann
+ * […] einfärben und sie haben dann eine harte kante“. Das Farbwerk (`farbe/farbwerk.ts`) hält die Bemalung des aktiven Objekts:
+ * Farblinien (Orte auf der Haut) und Füllungen. Mit B schaltet der Paint-Modus: P, Freihand und Formen zeichnen dann Farblinien statt
+ * Linien der Form (`werkBlatt.stiftZiel`), ein Klick auf die Form füllt. Zu sehen ist die Farbe auf den zwei Gründen (helles Solid,
+ * Wachs), auch außerhalb des Paint-Modus; die Farblinien selbst nur im Paint-Modus.
+ */
+const farbWerk = new FarbWerk(naechsterAuf);
+let malModus = false;
+/** die Farbe für die nächste Füllung (Bildschirmwerte 0 … 1) */
+let farbWahl: Farbe = [0.965, 0.769, 0.271];
+/** auf die Form gedrückt (Paint-Modus): Ohne Weg wird gefüllt, mit dem ersten Weg gedreht */
+let farbDruck: { x: number; y: number; zeit: number } | null = null;
+/** zählt jede Änderung am Bild der Bemalung (für Zeichenflächen, die nur bei Änderungen neu zeichnen) */
+let farbBild = 0;
+/** so breit steht eine Farblinie im Paint-Modus auf der Form (CSS-Pixel) */
+const FARBLINIE_BREITE = 1.25;
+const hautJetzt = (): HautJetzt => ({ haut: werk.haut, gespiegelt: !werk.istFrei(), netz: werkHaut.netz, stufen: werkHaut.stufen, version: werkHaut.version, f: werkHaut.f, mitte: werkHaut.mitte });
+/** die zwei Gründe, auf denen gemalt wird (Florian: „das helle solid“ und das Material wie in ZBrush) */
+const istMalgrund = (): boolean => material === 'Wachs' || material === 'Helles Solid';
+/**
+ * Ist die Bemalung jetzt zu sehen: in der Ruhe, auf einem der zwei Gründe, am aktiven Objekt für sich (Etappe 1: Im Verbund, mit
+ * „Dreiecke zeigen“ und in der Pose noch nicht)
+ */
+const farbeZeigen = (): boolean => zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && !werk.grund;
 let gastStand: { netz: unknown; version: number } | null = null;
 /**
  * Das grüne Material: Sein Renderer (three/webgpu und das Earle-Material aus `@ee/render`) wird erst geladen, wenn es gewählt ist;
@@ -599,6 +628,8 @@ type Ruhend = {
    * feine Striche an den Wänden und in den Ansichten (ohne Punkte; zu greifen sind sie, sobald das Objekt aktiv ist)
    */
   linien: Float32Array;
+  /** Paint-Modus: seine Bemalung (sie ruht mit ihm; gezeigt wird sie in Etappe 1 nur am aktiven Objekt) */
+  farbe?: FarbStand;
 };
 /**
  * Etappe 4: Das aktive Objekt hat ein anderes aufgenommen (verschmolzen oder abgezogen). `n`: so viele Schritte hatte das Werk davor;
@@ -665,7 +696,7 @@ let objektZaehler = 1;
  * ist wieder da und aktiv). Die Schritte selbst liegen wie bisher im Rückweg jedes Objekts (`werk.zurueck`); `rueckwegAbgleichen`
  * liest daran ab, was dazugekommen oder schon zurückgenommen ist.
  */
-type RueckEintrag = { art: 'schritt'; id: number } | { art: 'geloescht'; teil: Ruhend };
+type RueckEintrag = { art: 'schritt'; id: number } | { art: 'geloescht'; teil: Ruhend } | { art: 'farbe'; id: number };
 const rueckweg: RueckEintrag[] = [];
 /** je Objekt: so viele seiner Schritte stehen im gemeinsamen Rückweg */
 const rueckZahl = new Map<number, number>();
@@ -696,6 +727,20 @@ function rueckwegAnders(): boolean {
   for (;;) {
     const e = rueckweg[rueckweg.length - 1];
     if (!e) return false;
+    if (e.art === 'farbe') {
+      // ein Handgriff am Bemalen (Paint-Modus): an dem Objekt, an dem er geschah
+      if (e.id !== aktivId) {
+        if (!ruhende.some((r) => r.id === e.id)) {
+          rueckweg.pop();
+          continue;
+        }
+        if (!objektAktivieren(e.id)) return true;
+      }
+      rueckweg.pop();
+      if (farbWerk.zurueck(hautJetzt())) werk.G.meldung = '⌘Z: die Bemalung einen Schritt zurück';
+      farbBild++;
+      return true;
+    }
     if (e.art === 'geloescht') {
       if (!objektAblegenJetzt()) {
         werk.G.meldung = '⌘Z: erst den laufenden Handgriff beenden';
@@ -890,6 +935,8 @@ function objektAblegenJetzt(): Ruhend | null {
   if (!werkForm || !werkGezeigt || !werkHaut.zeigeNetz || tastenZug || objektZug || spiegelFahrt) return null;
   rueckwegAbgleichen();
   const k = werkMasseWeltAktiv();
+  // (die Bemalung auf den Stand der Haut bringen, bevor sie mit dem Objekt ruht)
+  if (k && !farbWerk.leer) farbWerk.schritt(hautJetzt());
   const stand = k ? werk.objektAblegen() : null;
   if (!stand || !k) return null;
   const f = werkHaut.f;
@@ -912,6 +959,7 @@ function objektAblegenJetzt(): Ruhend | null {
     treffer: { pos, tri: Uint32Array.from(werk.haut.tri), spiegelbild: werkHaut.spiegelbild },
     kasten: k,
     linien: linienImRaum(),
+    farbe: farbWerk.ablegen(),
   };
   ruhende.push(r);
   werkFelder.leeren();
@@ -939,6 +987,8 @@ function objektAufnehmenJetzt(r: Ruhend): void {
   werkBlatt.neueForm();
   werkFelder.leeren();
   werk.objektAufnehmen(r.stand);
+  farbWerk.aufnehmen(r.farbe);
+  farbBild++;
   werk.anzeige.allesZeigen();
   uebergabe = null;
   uebergabeStart = null;
@@ -2081,6 +2131,8 @@ function werkFormAnlegen(): void {
   if (werkForm && werkForm.stand === blatt.stand && (werkForm.geladen !== undefined || mitteLinie() || werkForm.ohneLinie)) return;
   // (eine neu angelegte Form beginnt mit Spiegel und Clipping; bleibt die Form des Werks nach „Luft ablassen“, bleibt auch ihr Spiegel)
   spiegelGrundstellung();
+  // (und ohne Bemalung: Die gehört zur Form, die es bis eben gab)
+  farbWerk.neu();
   const ab = abtasten(silhouette, 2);
   let x0 = Infinity;
   let x1 = -Infinity;
@@ -2168,6 +2220,9 @@ function standAufsBlatt(o: Geladen): string {
   spiegelGrundstellung();
   aktivId = o.id;
   const text = werk.wesenUebernehmen(o.stand, o.name);
+  // Paint-Modus: die Bemalung der Datei (sie gehört zum Netz der Datei; hat das Werk beim Laden neu vernetzt, geht sie mit)
+  farbWerk.ausDatei(o.stand.farbe, o.stand.haut);
+  farbBild++;
   // (der Schritt, den das Übernehmen angelegt hat, führte zur Form des vorigen Objekts zurück: Jedes Objekt beginnt mit leerem Rückweg)
   werk.zurueck.length = 0;
   werk.G.clipping = o.spiegel.clipping;
@@ -2566,6 +2621,8 @@ function neu(behalten = false): void {
   }
   werkHaut.neueForm();
   werkBlatt.neueForm();
+  farbWerk.neu();
+  if (malModus) malSetzen(false);
   zustand = 'blatt';
   T = 0;
   blatt.leeren();
@@ -3640,7 +3697,9 @@ function streckenGemerkt(g: { teile: Float32Array[]; aus: Float32Array } | null,
 let ruheLinienGemerkt: { teile: Float32Array[]; aus: Float32Array } | null = null;
 function ruheLinien(): Float32Array {
   const b = verbundGezeigt;
-  ruheLinienGemerkt = streckenGemerkt(ruheLinienGemerkt, [...ruhende.filter((r) => !(verbundVerdeckt(r.id) && b?.abzieher.has(r.id))).map((r) => r.linien), ...(b ? [b.naht] : [])]);
+  // (im Paint-Modus dazu die Farblinien des aktiven Objekts: An den Wänden und eingerastet steht die Farbe selbst noch nicht)
+  const farblinien = malModus && zustand === 'ruhe' && werkGezeigt && !farbWerk.leer ? [farbWerk.strecken(hautJetzt())] : [];
+  ruheLinienGemerkt = streckenGemerkt(ruheLinienGemerkt, [...ruhende.filter((r) => !(verbundVerdeckt(r.id) && b?.abzieher.has(r.id))).map((r) => r.linien), ...(b ? [b.naht] : []), ...farblinien]);
   return ruheLinienGemerkt.aus;
 }
 /** die Umrisse der ruhenden Objekte von einer Achse (wo der Umriss des aktiven nicht über `umrissJetzt` gezeichnet wird) */
@@ -3977,6 +4036,9 @@ function bild(dt: number): boolean {
   const tz = performance.now();
   // ein festes Material statt der Seifenhaut (Florian, 18.11.): Die Seifenhaut zeichnet nur ihren Grund (Papier, dunkle Rückseite),
   // darüber liegt die Haut des Werks mit dem Material. Beim Aufblasen selbst bleibt es die Seifenhaut (die Blase der Studie).
+  // Paint-Modus: Die Bemalung folgt der Haut (Netzwechsel, neue Lagen), auch wenn sie gerade nicht zu sehen ist
+  if (zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && farbWerk.schritt(hautJetzt())) farbBild++;
+  const farbAn = farbeZeigen();
   const zeigN = material !== null && werkGezeigt && zustand === 'ruhe' && !w.leer ? zeigeNetzAlle() : null;
   if (material !== null && werkGezeigt && zustand === 'ruhe' && zeigN && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
@@ -4010,6 +4072,15 @@ function bild(dt: number): boolean {
         kante: werk.MK / werkHaut.f,
         heim: [heim.x, heim.y, heim.z],
         jetzt: performance.now(),
+        // die Farbe über dem hellen Solid: multipliziert mit seinem Bild (es bringt Hell und Dunkel selbst mit)
+        ueberzug:
+          farbAn && material === 'Helles Solid'
+            ? (r) => {
+                farbWerk.anzeige.tiefeSchreiben(r, kam.aktiv, zeigN, true);
+                farbWerk.anzeige.zeichnen(r, kam.aktiv, { modus: 'hell', linie: malModus ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt() });
+              }
+            : null,
+        ueberzugStand: farbAn && material === 'Helles Solid' ? `${farbBild}|${werkHaut.version}|${malModus ? 1 : 0}` : '',
       });
       if (unruhig) aktiv = true;
     } else {
@@ -4021,7 +4092,17 @@ function bild(dt: number): boolean {
         feste.netzSetzen(festN, wicklungVon(festN));
         festeStand = { netz: festN, version: werkHaut.version };
       }
-      feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen, spiegelSchnitt: spiegelSchnittJetzt(), flach: !!facetten });
+      feste.zeichnen(kam.aktiv, material, {
+        schnitt: schnittJetzt,
+        deckung: 1 - 0.7 * roentgen,
+        spiegelSchnitt: spiegelSchnittJetzt(),
+        flach: !!facetten,
+        // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
+        danach:
+          farbAn && material === 'Wachs'
+            ? (r, k) => farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt })
+            : null,
+      });
     }
   } else {
     gast.aus();
@@ -4135,6 +4216,10 @@ function bild(dt: number): boolean {
   const h =
     zustand === 'ruhe' && werkGezeigt && roentgen > 0.5
       ? 'Röntgen: auch Punkte und Linien hinter der Form greifen · ⌥ loslassen: zurück'
+      : zustand === 'ruhe' && werkGezeigt && malModus
+      ? bearbeiten.stift
+        ? 'Paint-Modus · P: eine Farblinie zeichnen (an einer Wand oder eingerastet), auf dem ersten Punkt schließen · Esc'
+        : 'Paint-Modus · P zeichnet eine Farblinie · Klick auf die Form füllt bis an die Farblinien · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
       : zustand === 'ruhe' && werkGezeigt && objektModus()
@@ -4503,7 +4588,7 @@ function wandLinien(vp: Matrix4, m: Moment): void {
     };
     const r = r0 * st * (0.82 + 0.18 * ueber);
     // ruhende Objekte: ihre Linien als feine Striche an jeder Wand
-    if (ruhende.length) streckenZeichnen(ruheLinien(), legen, r * ruheBreite());
+    if (ruhende.length || (malModus && !farbWerk.leer)) streckenZeichnen(ruheLinien(), legen, r * ruheBreite());
     // mit dem Werk zeichnet `werkLinien` alle Linien; hier bleibt in Front und Top der Umriss der Haut (an der Rückwand nur der der
     // ruhenden Objekte: Der des aktiven ist dort seine Linie)
     if (werkGezeigt && achse === 2 && mitteDa()) {
@@ -5180,7 +5265,8 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   const { flaechen, stabil } = flaechenJetzt(vp, m);
   werkBlatt.bauen(flaechen, uhr);
   // (mit V, im Objekt-Modus, bedient das Verhalten die Linien nicht: Sie stehen still, ohne Punkte)
-  bearbeitenAn = stabil && !objektModus();
+  // (im Paint-Modus stehen die Linien der Form ebenso still: Dort gelten P, Freihand und Formen den Farblinien, ein Klick füllt)
+  bearbeitenAn = stabil && !objektModus() && !(malModus && raumWerkzeug !== 'p' && !strichWerkzeug());
   // P in der Leiste, sobald das Werk bedient wird
   if (stabil !== pErlaubt) {
     pErlaubt = stabil;
@@ -6259,6 +6345,13 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  // Paint-Modus: auf die Form gedrückt: Mit dem ersten Weg wird gedreht (ohne Weg füllt das Loslassen)
+  if (farbDruck) {
+    if (!drehen && Math.hypot(x - farbDruck.x, y - farbDruck.y) >= FELD_KLICK_WEG) drehenBeginnen(farbDruck.x, farbDruck.y, farbDruck.zeit);
+    if (drehen) drehenZiehen(x, y, e.timeStamp);
+    anstossen();
+    return;
+  }
   // C4: auf ein Feld gedrückt: Mit dem ersten Weg entscheidet sich, ob es gezogen wird (gewählt) oder ob gedreht wird (wie bisher)
   if (feldDruck) {
     const d = feldDruck;
@@ -6553,6 +6646,12 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // Paint-Modus (Etappe 1): Ein Klick auf die Form füllt die Farbfläche dort; mit dem ersten Weg wird stattdessen gedreht
+  if (malModus && werkGezeigt && raumWerkzeug === 'auswahl' && pinselHier(x, y)) {
+    farbDruck = { x, y, zeit: e.timeStamp };
+    anstossen();
+    return;
+  }
   // Punkte (A) mit mehreren Objekten: Ein Klick auf ein ruhendes Objekt macht es zum aktiven (seine Linien und Punkte erscheinen).
   // Nicht, wo etwas vom aktiven am Zeiger hängt oder das aktive davor liegt
   if (bearbeitenAn && raumWerkzeug === 'auswahl' && ruhende.length && !bearbeiten.haengt) {
@@ -6596,7 +6695,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     }
   }
   // C4: ein Feld der Haut (zwischen Linien) in einer flachen Ansicht: Der Klick wählt es, an einem gewählten Feld ziehen bewegt es
-  if (raumWerkzeug === 'auswahl' && !bearbeiten.stift && !e.shiftKey) {
+  if (raumWerkzeug === 'auswahl' && !bearbeiten.stift && !e.shiftKey && !malModus) {
     const f = feldTreffen(x, y);
     if (f) {
       feldDruck = { x, y, zeit: e.timeStamp, fl: f.fl, t: f.t, gewaehlt: werkFelder.istGewaehlt(f.t.tri), zieht: false };
@@ -6673,6 +6772,16 @@ const loslassen = (e: PointerEvent): void => {
     blatt.loslassen();
     anstossen();
     return;
+  }
+  // Paint-Modus: auf die Form gedrückt und ohne Weg losgelassen: füllen (mit Weg wurde gedreht, das endet unten wie jedes Drehen)
+  if (farbDruck) {
+    const d = farbDruck;
+    farbDruck = null;
+    if (!drehen) {
+      farbFuellenBei(d.x, d.y);
+      anstossen();
+      return;
+    }
   }
   // C4: auf ein Feld gedrückt: ohne Weg ein Klick (es wird gewählt), sonst endet sein Zug
   if (feldDruck) {
@@ -7070,6 +7179,7 @@ window.addEventListener('keydown', (e) => {
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
   else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
+  else if ((k === 'b' || k === 'B') && zustand === 'ruhe' && werkGezeigt && !e.repeat) malSetzen(!malModus);
   else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && (objektModus() || !werk.G.auswahl.length) && verbundRundSchalten()) {
     // Etappe 5: am Objekt (V, oder mit A ohne gewählte Punkte) schaltet K die Naht seines Verbunds zwischen rund und Kante
   } else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt && !objektModus()) {
@@ -7181,12 +7291,17 @@ function tastenStand(): void {
     netzKnopfStand = raumNetz;
     tasten.querySelector<HTMLButtonElement>('button[data-netz]')?.setAttribute('aria-pressed', String(raumNetz));
   }
+  if (malModus !== malKnopfStand) {
+    malKnopfStand = malModus;
+    tasten.querySelector<HTMLButtonElement>('button[data-malen]')?.setAttribute('aria-pressed', String(malModus));
+  }
   const jetzt = zustand === 'blatt' ? '' : vierZiel > 0.5 ? 'vier' : ansicht;
   if (jetzt === tastenStandVorher) return;
   tastenStandVorher = jetzt;
   for (const b of tasten.querySelectorAll<HTMLButtonElement>('button[data-ansicht]')) b.setAttribute('aria-pressed', String(b.dataset.ansicht === jetzt));
 }
 let netzKnopfStand = false;
+let malKnopfStand = false;
 
 function waehlenTaste(w: Werkzeug): void {
   blatt.werkzeugSetzen(w);
@@ -7260,6 +7375,68 @@ function dreieckeSetzen(an: boolean): void {
   anstossen();
 }
 dreieckeSchalter.addEventListener('change', () => dreieckeSetzen(dreieckeSchalter.checked));
+
+// ---------- Paint-Modus (Etappe 1) ----------
+
+const farbWahlFeld = $<HTMLLabelElement>('farbe-wahl');
+const farbWahlEingabe = $<HTMLInputElement>('farbe-farbe');
+farbWahlEingabe.addEventListener('input', () => {
+  const h = farbWahlEingabe.value;
+  farbWahl = [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+});
+/** ein Handgriff am Bemalen: Kommt ein Schritt dazu, steht er im gemeinsamen Rückweg (⌘Z nimmt ihn zurück, in der Reihenfolge aller Schritte) */
+function farbSchritt<T>(tun: () => T): T {
+  rueckwegAbgleichen();
+  const n = farbWerk.schrittZahl;
+  const aus = tun();
+  if (farbWerk.schrittZahl > n) rueckweg.push({ art: 'farbe', id: aktivId });
+  farbBild++;
+  anstossen();
+  return aus;
+}
+/** eine fertige Zeichnung (P, Freihand, Formen) auf einem Blatt wird eine Farblinie auf der Haut */
+function farbStiftZiel(a: 'seite' | 'front' | 'top', anker: werk.StiftAnker[], vorn: number | undefined): boolean {
+  // (von welcher Seite man auf das Blatt schaut: wie `objektBei`; ohne Angabe die Seite, von der das Blatt gewöhnlich gesehen wird)
+  const zahl = farbSchritt(() => farbWerk.linieAusBlatt(hautJetzt(), a, anker as BlattAnker[], vorn ?? (a === 'front' ? -1 : 1), true));
+  werk.G.meldung = zahl ? 'Farblinie auf der Haut · Klick auf die Form füllt' : 'Keine Farblinie: ganz auf der Form zeichnen';
+  return zahl > 0;
+}
+/** ein Klick auf die Form im Raum: die Farbfläche dort füllen */
+function farbFuellenBei(x: number, y: number, farbe: Farbe = farbWahl): boolean {
+  if (ruhende.length && objektBei(x, y) !== aktivId) {
+    werk.G.meldung = 'Füllen: am gewählten Objekt (V wählt ein anderes)';
+    return false;
+  }
+  const { o, d } = kam.strahl(x, y, W, H);
+  const h = hautJetzt();
+  const ort = farbWerk.ortUnterStrahl(h, [o.x, o.y, o.z], [d.x, d.y, d.z]);
+  if (!ort) {
+    werk.G.meldung = 'Füllen: auf die Form klicken';
+    return false;
+  }
+  farbSchritt(() => farbWerk.fuellen(h, ort, farbe));
+  if (!istMalgrund()) werk.G.meldung = 'Gefüllt · zu sehen auf hellem Solid und Wachs (Taste M)';
+  return true;
+}
+/** den Paint-Modus schalten */
+function malSetzen(an: boolean): void {
+  malModus = an;
+  farbBild++;
+  farbDruck = null;
+  werkBlatt.stiftZiel = an ? farbStiftZiel : null;
+  farbWahlFeld.hidden = !an;
+  if (an) {
+    // gemalt wird auf einem der zwei Gründe (Florian: „Als Basismaterial für den paint mode kannst du erstmal das helle solid benutzen“)
+    if (!istMalgrund()) materialSetzen('Helles Solid');
+    if (objektModus() || raumWerkzeug === 'lasso') werkzeugImRaum('auswahl');
+    werkFelder.leeren();
+    werk.G.meldung = 'Paint-Modus: P zeichnet eine Farblinie auf die Haut, ein Klick auf die Form füllt · B: zurück zur Form';
+  } else {
+    if (bearbeiten.stift || strichWerkzeug()) werkzeugImRaum('auswahl');
+    werk.G.meldung = 'Zurück bei der Form';
+  }
+  anstossen();
+}
 
 const regler = $<HTMLElement>('regler');
 const marke = $<HTMLButtonElement>('marke');
@@ -7343,13 +7520,20 @@ async function formSichern(name: string): Promise<string> {
   for (const t0 = performance.now(); rechnet() && performance.now() - t0 < 5000; ) await new Promise((weiter) => setTimeout(weiter, 30));
   if (werk.zug) return 'Sichern: bitte erst den Zug beenden';
   const st = werk.standJetzt();
+  // Paint-Modus: die Bemalung jeder Form als zusätzlicher Teil ihres Stands (fehlt, wo nichts gemalt ist)
+  const fd = farbWerk.alsDatei(hautJetzt());
+  if (fd) st.farbe = fd;
+  const mitFarbe = (stand: WesenStand, f: FarbStand | undefined): WesenStand => {
+    if (f && !farbeLeer(f.bemalung)) stand.farbe = farbeAlsDatei(f.bemalung);
+    return stand;
+  };
   // Ozzy: der Spiegel dieser Form, ihr Maß im Raum und die weiteren Objekte der Szene (jedes mit seinem Stand)
   // (Etappe 5: dazu je Objekt, ob es verschmilzt oder abzieht, und wie seine Naht gerundet ist)
   const vb = (id: number): { verbund?: NonNullable<OzzyObjekt['verbund']> } => {
     const v = verbundVon.get(id);
     return v?.art ? { verbund: { art: v.art, rund: v.rund, breite: v.breite } } : {};
   };
-  const weitere = ruhende.map((r) => ({ id: r.id, spiegel: { clipping: r.stand.clipping, spiegelbild: r.stand.spiegelbild }, mass: { f: r.haut.f, mitte: { ...r.haut.mitte } }, ...vb(r.id), stand: werk.standAus(r.stand.stand) }));
+  const weitere = ruhende.map((r) => ({ id: r.id, spiegel: { clipping: r.stand.clipping, spiegelbild: r.stand.spiegelbild }, mass: { f: r.haut.f, mitte: { ...r.haut.mitte } }, ...vb(r.id), stand: mitFarbe(werk.standAus(r.stand.stand), r.farbe) }));
   st.ozzy = { id: aktivId, spiegel: { clipping: werk.G.clipping, spiegelbild: werk.G.spiegelbild }, mass: { f: werkHaut.f, mitte: { ...werkHaut.mitte } }, ...vb(aktivId), objekte: weitere };
   // ein Stand, der nicht in Ordnung ist, überschriebe sonst eine gute Datei (und ließe sich nicht wieder laden)
   const mangel = pruefen(st) ?? weitere.map((o) => pruefen(o.stand)).find((x) => x !== null) ?? null;
@@ -7885,7 +8069,7 @@ const haken = {
   /** der gemeinsame Rückweg: seine Einträge der Reihe nach (für die Probe) */
   rueckweg: () => {
     rueckwegAbgleichen();
-    return rueckweg.map((e) => (e.art === 'schritt' ? `s${e.id}` : `x${e.teil.id}`)).join(' ');
+    return rueckweg.map((e) => (e.art === 'schritt' ? `s${e.id}` : e.art === 'farbe' ? `f${e.id}` : `x${e.teil.id}`)).join(' ');
   },
   /** Etappe 3: Blasen die Formen einer Reihe noch auf (mehrere Silhouetten auf einem Blatt)? */
   reihe: () => (reihe ? { warten: reihe.warten.length, zahl: reihe.zahl, imRaum: reihe.imRaum } : null),
@@ -8393,6 +8577,28 @@ const haken = {
       rechnen: { punkte: werk.haut.n, dreiecke: g ? g.index.length / 3 : 0 },
       anzeige: { punkte: z ? z.pos.length / 3 : 0, dreiecke: z ? z.index.length / 3 : 0, stufen: werkHaut.stufen },
     };
+  },
+  /** Paint-Modus schalten oder lesen */
+  malen: (an?: boolean): boolean => {
+    if (an !== undefined && an !== malModus) malSetzen(an);
+    return malModus;
+  },
+  /** die Bemalung des aktiven Objekts: Zahlen, Lagen der Orte (Einheiten des Werks), was die Anzeige zeichnet */
+  farbe: () => ({ ...farbWerk.auskunft(hautJetzt()), modus: malModus, zeigt: farbeZeigen(), bild: farbBild }),
+  /** eine Farblinie aus einer Zeichnung im Blatt einer Ansicht (Anker in Einheiten des Werks, wie P sie gibt); zurück: wie viele dazukamen */
+  farbLinie: (a: 'seite' | 'front' | 'top', anker: BlattAnker[], vorn?: number): number => farbSchritt(() => farbWerk.linieAusBlatt(hautJetzt(), a, anker, vorn ?? (a === 'front' ? -1 : 1), true)),
+  /** an der Stelle des Bilds (CSS-Pixel) füllen, wie ein Klick im Paint-Modus; `farbe`: Bildschirmwerte 0 … 1 */
+  farbFuellen: (x: number, y: number, farbe?: [number, number, number]): boolean => farbFuellenBei(x, y, farbe ?? farbWahl),
+  /** die Orte der Farblinie `nr` im Bild (CSS-Pixel), auf der glatten Anzeige; dazu die Tiefe (kleiner: näher) */
+  farbLinieImBild: (nr = 0): { x: number; y: number; z: number }[] => {
+    const h = hautJetzt();
+    const l = farbWerk.bemalung.ebenen[0]?.linien[nr];
+    if (!l) return [];
+    return l.stuetzen.map((o) => {
+      const p = farbWerk.lageImRaum(h, o);
+      const v = new Vector3(p[0], p[1], p[2]).project(kam.aktiv as Camera);
+      return { x: ((v.x + 1) / 2) * W, y: ((1 - v.y) / 2) * H, z: v.z };
+    });
   },
   /** ein festes Material wählen (Name wie im Menü) oder mit null die Seifenhaut; zurück: was jetzt gilt */
   material: (m?: string | null): string => {

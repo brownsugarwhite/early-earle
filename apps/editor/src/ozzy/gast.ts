@@ -60,6 +60,13 @@ export type GastWerte = {
   heim: [number, number, number];
   /** Zeit (ms) */
   jetzt: number;
+  /**
+   * Paint-Modus (19.11.): nach dem Bild des Gasts auf dieselbe Fläche zeichnen (die Farbe auf der Haut, `farbe/anzeige.ts`); das
+   * Fenster des Renderers ist dann wieder die ganze Fläche. `ueberzugStand`: ändert er sich, wird neu gezeichnet, auch wenn sonst
+   * alles steht.
+   */
+  ueberzug?: ((r: WebGLRenderer) => void) | null;
+  ueberzugStand?: string;
 };
 
 /** Grundwerte des Editors (`teststand` in `editor.ts`): so zeigt sein 3D-Fenster das Jelly */
@@ -464,7 +471,7 @@ export class GastHaut {
     // steht alles (Kamera, Haut, Größe, Material), bleibt das Bild stehen
     const pe = kamera.projectionMatrix.elements;
     const me = kamera.matrixWorld.elements;
-    const stand = `${art}|${this.b}|${this.h}|${this.dpr}|${w.abstand}|${w.kante}|${pe.join(',')}|${me.join(',')}`;
+    const stand = `${art}|${this.b}|${this.h}|${this.dpr}|${w.abstand}|${w.kante}|${pe.join(',')}|${me.join(',')}|${w.ueberzugStand ?? ''}`;
     if (stand === this.stand && !unruhig && this.sichtbar) return false;
     this.stand = stand;
 
@@ -672,6 +679,11 @@ export class GastHaut {
     };
     bild.zeichne(fenster);
     r.setScissorTest(false);
+    if (w.ueberzug) {
+      r.setRenderTarget(null);
+      r.setViewport(0, 0, this.b, this.h);
+      w.ueberzug(r);
+    }
     if (this.genau) {
       // einen Bildpunkt zurücklesen: erst dann ist die Grafikkarte wirklich fertig (`finish` allein wartet im Browser nicht)
       const gl = r.getContext();

@@ -371,6 +371,41 @@ body.wende-an #hinweis {
   user-select: none;
   white-space: nowrap;
 }
+/* Paint-Modus (Etappe 1): die Farbe für die nächste Füllung, unter der Leiste. Vorläufig: die Farben als Tropfen kommen mit Etappe 3 */
+#farbe-wahl {
+  position: fixed;
+  left: 50%;
+  top: 88px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 12px;
+  border: 1px solid #e0e5e8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--leise);
+  user-select: none;
+}
+#farbe-wahl[hidden] {
+  display: none;
+}
+#farbe-wahl input {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+#farbe-wahl input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+#farbe-wahl input::-webkit-color-swatch {
+  border: 1px solid #e0e5e8;
+  border-radius: 50%;
+}
 #info {
   position: fixed;
   right: 14px;
