@@ -73,7 +73,10 @@ Gemaltes nicht ein; die Ebenen-Ansicht als aufgefächerter Raum (Skizze).
 
 - **Frischer Arbeitsbaum:** erst `pnpm install --frozen-lockfile --prefer-offline`, sonst läuft nichts.
 - **Vorschau-Server:** vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51` ansehen und danach prüfen, dass 5194, 5205, 5211 und
-  5213 noch laufen. Beim Start von 5215 blieb alles stehen.
+  5213 noch laufen, und später noch einmal: Gleich nach dem Start von 5215 (09:31) lief alles; eine halbe Stunde später war 5211
+  (das Fenster der Objekte) weg, ohne dass diese Sitzung es beendet hätte. **Diese Sitzung hat 5211 um 10:06 wieder gestartet
+  (Eintrag `ozzy-objekte`, derselbe Arbeitsbaum der Objekte, unverändert); es hängt seitdem an ihr.** Endet diese Sitzung, kann es
+  wieder verschwinden.
 - **Bilder der Haut allein:** `__ozzy.film(true)`, `__ozzy.bild(1 / 60)`, dann sofort `#haut.toDataURL()`; danach `film(false)`.
   Ein Bildschirmfoto der Seite trägt auch die Linien des Raums.
 - **Die Kante der hinteren Raumecke** liegt bei allen festen Materialien als feine Linie über der Form (auch bei Solid und Zebra,
