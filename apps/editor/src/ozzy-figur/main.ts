@@ -14,11 +14,12 @@ import { abflachen, type Form } from './form';
 import { ABLAEUFE, type Art, dauerVon } from './ablauf';
 import { HALTUNGEN, type HaltungName } from './haltung';
 import { pruefhakenAnlegen } from './pruefen';
-import type { Lage } from './raster';
+import { KOPF, type Lage } from './raster';
 import { type Ansicht, type Diagnose, EXAKT, FigurRenderer, FLUESSIG, type Fluessig, type Szene } from './renderer';
 import { HaltungsSteuerung } from './steuerung';
-import { ankerVon, drehLage, drehSzene, type Drehung, istAblauf, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
+import { ankerVon, drehLage, drehSzene, type Drehung, istAblauf, korrekturenSetzen, rasterVon, REGELN, type Regeln, szenenKasten, vorlageSzene } from './szenen';
 import { ANSICHTEN, type AnsichtName, importieren } from './vorlagen/import';
+import { FigurWerkzeug } from './werkzeug';
 
 export const SVG_TEXTE: Record<string, string> = {
   'ozzy_front.svg': frontSvg,
@@ -128,6 +129,30 @@ const zustand = {
   dauer: false,
 };
 
+// Bearbeiten (werkzeug.ts): wo der Kopf über θ dreht, sind seine Teile wie in Illustrator zu bearbeiten
+const BEARBEITBAR: SzenenName[] = ['kopf360', 'kopf', 'drehen'];
+/** eingepasste Ansicht des letzten Bilds (ohne Zoom des Werkzeugs) */
+let basisAnsicht: Ansicht = { massstab: 1, x0: 0, y0: 0 };
+const werkzeug = new FigurWerkzeug(oben, document.getElementById('buehne')!, {
+  lage: () => (BEARBEITBAR.includes(zustand.szene) ? drehLage(zustand.szene as Drehung, zustand.t) : null),
+  kopfteile: (lage) => rasterVon(daten).teile(lage).filter((x) => KOPF.includes(x.name)),
+  ansicht: () => basisAnsicht,
+  korrekturenSetzen,
+  korrekturAus: (teil, lage, form) => rasterVon(daten).korrekturAus(teil, lage, form),
+  winkelSetzen: (theta) => {
+    zustand.laeuft = false;
+    const th = ((theta % 360) + 360) % 360;
+    if (zustand.szene === 'kopf360') zustand.t = th / 360;
+    else if (th <= 90) zustand.t = th / 90;
+    else {
+      zustand.szene = 'kopf360';
+      zustand.t = th / 360;
+    }
+    neu();
+  },
+  neu: () => neu(),
+});
+
 function aufbauen(): void {
   const knoepfe = SZENEN.map((s) => `<button type="button" class="knopf" data-szene="${s.name}">${s.titel}</button>`).join('');
   const regler = (id: string, titel: string, max: number, wert: number, schritt = 0.5): string =>
@@ -148,6 +173,7 @@ function aufbauen(): void {
       <label class="regler"><span>Winkel</span><input type="range" id="winkel" min="0" max="90" step="0.5" value="${zustand.t * 90}"><output for="winkel"></output></label>
       <div class="knoepfe"><button type="button" class="knopf" id="spielen">Drehen ▶</button></div>
     </div>
+    ${werkzeug.leisteHtml()}
     <h2>Look</h2>
     <div class="knoepfe"><button type="button" class="knopf" id="exakt">exakt</button><button type="button" class="knopf" id="fluessig">flüssig</button></div>
     <div id="fluessigRegler">
@@ -174,6 +200,7 @@ function aufbauen(): void {
     <p class="hinweis">Werte in Einheiten deiner SVGs. „exakt“ zeichnet deine Vorlage genau; „flüssig“ verschmilzt die Paare.</p>
     <h2>Import</h2>
     <ul id="bericht">${daten.bericht.map((b) => `<li>${b.art === 'fehler' ? '✗' : b.art === 'warnung' ? '!' : b.art === 'abgleich' ? '↔' : '·'} ${b.text}</li>`).join('')}</ul>`;
+  werkzeug.leisteVerbinden();
   leiste.querySelectorAll<HTMLButtonElement>('[data-szene]').forEach((b) =>
     b.addEventListener('click', () => {
       zustand.szene = b.dataset.szene as SzenenName;
@@ -189,7 +216,7 @@ function aufbauen(): void {
     .querySelectorAll<HTMLButtonElement>('[data-haltung]')
     .forEach((b) => b.addEventListener('click', () => haltungSetzen(b.dataset.haltung as HaltungName, (b.dataset.art as Art) ?? 'normal')));
   window.addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey || werkzeug.an) return;
     const k = STEUER_KNOEPFE[Number(e.key) - 1];
     if (k) haltungSetzen(k.haltung, k.art);
   });
@@ -206,7 +233,7 @@ function aufbauen(): void {
   });
   const winkel = document.getElementById('winkel') as HTMLInputElement;
   winkel.addEventListener('input', () => {
-    zustand.t = Number(winkel.value) / 90;
+    zustand.t = Number(winkel.value) / (zustand.szene === 'kopf360' ? 360 : 90);
     zustand.laeuft = false;
     neu();
   });
@@ -277,10 +304,15 @@ function anzeigen(): void {
   document.getElementById('exakt')!.classList.toggle('an', !zustand.fluessig);
   document.getElementById('fluessig')!.classList.toggle('an', zustand.fluessig);
   document.getElementById('spielen')!.textContent = zustand.laeuft ? 'Anhalten ■' : 'Drehen ▶';
-  (document.getElementById('winkel') as HTMLInputElement).value = String(zustand.t * 90);
+  // die 360°-Drehung des Kopfs in ihren Grad (vorher zeigte der Regler ein Viertel davon)
+  const voll = zustand.szene === 'kopf360';
+  const winkelRegler = document.getElementById('winkel') as HTMLInputElement;
+  winkelRegler.max = voll ? '360' : '90';
+  winkelRegler.value = String(zustand.t * (voll ? 360 : 90));
+  werkzeug.anzeigen(BEARBEITBAR.includes(zustand.szene));
   leiste.querySelectorAll('output').forEach((o) => {
     const el = document.getElementById(o.htmlFor.value) as HTMLInputElement | null;
-    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : istAblauf(zustand.szene) ? `${Math.round(zustand.t * 100)} %` : `${Math.round(zustand.t * 90)}°`) : el.id === 'kopfwinkel' ? `${el.value}°` : el.value;
+    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : istAblauf(zustand.szene) ? `${Math.round(zustand.t * 100)} %` : voll ? `${(Math.round(zustand.t * 720) / 2).toString().replace('.', ',')}°` : `${Math.round(zustand.t * 90)}°`) : el.id === 'kopfwinkel' ? `${el.value}°` : el.value;
   });
 }
 
@@ -295,9 +327,12 @@ function zeichnen(): void {
     oben.height = renderer.hoehe;
   }
   ansicht = einpassen(zustand.szene, renderer.breite, renderer.hoehe, 56 * dpr, 24 * dpr);
+  basisAnsicht = ansicht;
   // Steuerung: Das Bild folgt Ozzys Lage in der Welt (er verschiebt sich, damit Pfoten und Hintern stehen bleiben)
   if (zustand.szene === 'steuern') ansicht = { ...ansicht, x0: ansicht.x0 + kamera.x };
+  ansicht = werkzeug.mitZoom(ansicht);
   const szene = szeneBauen(zustand.szene, zustand.t, zustand.fluessig ? zustand.fl : EXAKT, zustand.regeln);
+  werkzeug.ersetzen(szene);
   renderer.zeichne(szene, ansicht, zustand.diagnose);
   ctx.clearRect(0, 0, oben.width, oben.height);
   // Boden mit Marken in der Welt: Folgt das Bild Ozzy, sieht man am Boden, dass er sich bewegt und nicht rutscht
@@ -329,6 +364,7 @@ function zeichnen(): void {
       ctx.stroke();
     }
   }
+  werkzeug.zeichnen(ctx);
 }
 
 // Tempo: gleitend über die letzten Bilder
@@ -409,4 +445,6 @@ function bild(jetzt: number): void {
 aufbauen();
 window.addEventListener('resize', neu);
 neu();
+void werkzeug.laden();
+(window as unknown as { __ozzyWerkzeug: FigurWerkzeug }).__ozzyWerkzeug = werkzeug;
 pruefhakenAnlegen({ daten, renderer, svgTexte: SVG_TEXTE, szeneBauen, vorlageFuer, einpassen, steuerung, ansichtsDateien: Object.fromEntries(Object.entries(ANSICHTEN).map(([k, v]) => [k, v.datei])) });

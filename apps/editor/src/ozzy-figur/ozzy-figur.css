@@ -154,6 +154,52 @@ body {
   color: var(--leise);
   margin: 6px 0 0;
 }
+#leiste h3.unter {
+  margin: 14px 0 4px;
+  font: 600 12px/1.3 system-ui, -apple-system, sans-serif;
+}
+#schluesselListe {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+#schluesselListe li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0;
+}
+#schluesselListe li.leer {
+  color: var(--leise);
+}
+#schluesselListe .eintrag {
+  flex: 1;
+  text-align: left;
+  appearance: none;
+  border: 1px solid var(--haar);
+  background: var(--papier);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+#schluesselListe .eintrag:hover {
+  border-color: var(--leise);
+}
+#schluesselListe .weg {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--leise);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+#schluesselListe .weg:hover {
+  color: #c00;
+}
 #bericht {
   margin: 6px 0 0;
   padding: 0 0 0 14px;

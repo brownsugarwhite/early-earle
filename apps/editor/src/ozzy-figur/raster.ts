@@ -20,6 +20,18 @@ export interface Schluessel {
   form: Form;
 }
 
+/**
+ * Florians Schlüssel aus dem Werkzeug (werkzeug.ts, Plan 2026-11-19-ozzy-figur-werkzeug.md): Form eines Kopfteils bei einem Winkel der
+ * ersten Hälfte (0°–180°, Kopfkoordinaten wie die Schlüssel aus den Vorlagen); die zweite Hälfte ist gespiegelt
+ */
+export interface KopfKorrektur {
+  teil: TeilName;
+  w: number;
+  form: Form;
+}
+/** gebaute Schlüssel eines Teils, die näher als so viele Grad an einem von Florians Schlüsseln liegen, fallen weg (sonst ein Sprung dazwischen) */
+const KORREKTUR_NAH = 4;
+
 /** Form zwischen Schlüsseln: Anker per PCHIP, Griffe nach Winkel (stetig abgewickelt) und Länge; glatt bleibt glatt */
 export function formAusSchluesseln(keys: readonly Schluessel[], w: number): Form {
   const xs = keys.map((k) => k.w);
@@ -178,7 +190,7 @@ export interface RasterRegeln {
 /** Rand der Fenster in ihrem Bein während eines Haltungswechsels (Figur-Einheiten) */
 const FENSTER_RAND_WECHSEL = 0;
 const KOERPER: TeilName[] = ['bohne', 'beinRV', 'beinRH', 'beinLV', 'beinLH', 'keilV', 'keilH', 'fensterRV', 'fensterRH', 'fensterLV', 'schwanz', 'schwanzW'];
-const KOPF: TeilName[] = ['ohrB', 'ohrSpalt', 'ohrA', 'kopfB', 'kopfA', 'bartA', 'bartB', 'nase'];
+export const KOPF: TeilName[] = ['ohrB', 'ohrSpalt', 'ohrA', 'kopfB', 'kopfA', 'bartA', 'bartB', 'nase'];
 const BEINE: TeilName[] = ['beinRV', 'beinRH', 'beinLV', 'beinLH'];
 const KLEMME_AUSSEN = 6.5;
 /** Klemme eines verdeckten Fensters: so tief im Gips, dass der schmale Streifen ganz darunter liegt */
@@ -204,7 +216,7 @@ const einheit = (v: Punkt): Punkt => {
 const stauchen = (f: Form, fx: number, ax: number): Form => abbilden(f, (q) => [ax + (q[0] - ax) * fx, q[1]]);
 
 /** Kopf über den ganzen Kreis (Florian, 19.11.: „die 360 grad drehung vom kopf in 2d fertig machen“): Spiegelpartner je Kopfteil */
-const PARTNER_KOPF: Record<string, TeilName> = { kopfA: 'kopfB', kopfB: 'kopfA', bartA: 'bartB', bartB: 'bartA', ohrA: 'ohrB', ohrB: 'ohrA', nase: 'nase', ohrSpalt: 'ohrSpalt' };
+export const PARTNER_KOPF: Record<string, TeilName> = { kopfA: 'kopfB', kopfB: 'kopfA', bartA: 'bartB', bartB: 'bartA', ohrA: 'ohrB', ohrB: 'ohrA', nase: 'nase', ohrSpalt: 'ohrSpalt' };
 /**
  * Rücken: Florian hat ihn aus der gespiegelten Front gebaut. Wie eingelesen läuft er gleichsinnig mit dem Profil: Der Hinterkopf des Profils
  * wird die Mitte des Rückens, das Gesicht dessen rechter Rand (so dreht sich ein Kopf). Nach der Front umnummeriert (Anker j an der Stelle
@@ -240,14 +252,6 @@ const GESICHT_WEG_BIS = 156;
  * Ohr, bis die ferne Maske dort steht (sonst schwebt das Ohr über einer Kerbe)
  */
 const HINTERKOPF_ZOEGERN = 2;
-/**
- * Rechts unten ohne Klumpen (Florian, 19.11.: „zwischen 156 bis 180 verklumpen rechts unten die schwarzen zacken“): Bei diesem Winkel liegen
- * die Anker der nahen Maske zwischen ihrer rechten Seite und ihrer tiefsten Spitze auf einem glatten Bogen. Davor ziehen sich die Zacken
- * des Kiefers ein, danach wachsen die des Rückens heraus (vorher wanderte die Kieferspitze quer durch die Zacken)
- */
-const RECHTS_GLATT = 160;
-/** der Unterschied des Rückens zu seinem Spiegelbild ist in der zweiten Hälfte bei 360° − ASYM_BIS verteilt (vor dem Gesicht) */
-const ASYM_BIS = 144;
 /**
  * Ohren (Florian, 19.11.: „die ohren sollten auch etwas weiter zusammen sein von der seite, dass der drehungseffekt besser wirkt“): Das
  * mittlere Ohr liegt von der Seite (bis 125°) auf einem gleichmäßig beschleunigten Weg zu seinem Platz im Rücken (Anteil des Wegs = Anteil
@@ -289,38 +293,6 @@ function umnummerieren(f: Form, b: (j: number, n: number) => number, andersherum
 function kopfGespiegelt(name: TeilName, f: Form): Form {
   const m = abbilden(f, (q) => [-q[0], q[1]]);
   return name === 'nase' ? umnummerieren(m, (j) => NASE_SPIEGEL[j]!, true) : m;
-}
-
-/** Unterschied zweier Formen gleicher Ankerzahl (a − b je Anker und Griff), sonst null */
-function formUnterschied(a: Form, b: Form): Form | null {
-  if (a.length !== b.length) return null;
-  const minus = (q: Punkt, r: Punkt): Punkt => [q[0] - r[0], q[1] - r[1]];
-  return a.map((x, j) => ({ p: minus(x.p, b[j]!.p), i: minus(x.i, b[j]!.i), o: minus(x.o, b[j]!.o) }));
-}
-
-/** Form plus k-mal ein Unterschied */
-function formPlus(f: Form, d: Form, k: number): Form {
-  const plus = (q: Punkt, r: Punkt): Punkt => [q[0] + k * r[0], q[1] + k * r[1]];
-  return f.map((x, j) => ({ p: plus(x.p, d[j]!.p), i: plus(x.i, d[j]!.i), o: plus(x.o, d[j]!.o) }));
-}
-
-/** kubisches Stück (Anfang, Griff, Griff, Ende) an den Anteilen ts (aufsteigend) geteilt, je Teilstück dieselbe Kurve */
-function stueckTeilen(c: [Punkt, Punkt, Punkt, Punkt], ts: number[]): [Punkt, Punkt, Punkt, Punkt][] {
-  const mitte = (q: Punkt, r: Punkt, u: number): Punkt => [q[0] + (r[0] - q[0]) * u, q[1] + (r[1] - q[1]) * u];
-  const aus: [Punkt, Punkt, Punkt, Punkt][] = [];
-  let rest = c;
-  let t0 = 0;
-  for (const t of ts) {
-    const u = (t - t0) / (1 - t0);
-    const q0 = mitte(rest[0], rest[1], u), q1 = mitte(rest[1], rest[2], u), q2 = mitte(rest[2], rest[3], u);
-    const r0 = mitte(q0, q1, u), r1 = mitte(q1, q2, u);
-    const s = mitte(r0, r1, u);
-    aus.push([rest[0], q0, r0, s]);
-    rest = [s, r1, q2, rest[3]];
-    t0 = t;
-  }
-  aus.push(rest);
-  return aus;
 }
 
 /** Teil verschwindet: alle Anker und Griffe auf einem Punkt (keine Fläche, auch keine Linie) */
@@ -410,8 +382,11 @@ export class FigurRaster {
   private readonly ansichten: Record<AnsichtName, FigurAnsicht>;
   /** Haltungen in der Seite (Etappe D1) */
   private haltungen: Haltungen | null = null;
+  /** Florians Schlüssel aus dem Werkzeug */
+  private readonly korrekturen: readonly KopfKorrektur[];
 
-  constructor(d: FigurDaten) {
+  constructor(d: FigurDaten, korrekturen: readonly KopfKorrektur[] = []) {
+    this.korrekturen = korrekturen;
     const { front, viertel, logo, profil } = d.ansichten;
     this.ansichten = d.ansichten;
     const k = (a: FigurAnsicht, n: TeilName): Form => inKoerper(a, teilVon(a, n)!.form);
@@ -499,6 +474,8 @@ export class FigurRaster {
       const o0 = schwerpunkt(this.kopf.get('ohrA')!.find((s) => s.w === 0)!.form);
       this.kopf.get('ohrSpalt')!.unshift({ w: 0, form: verschieben(keil45, o0[0] - o45[0], o0[1] - o45[1]) });
     }
+    // Florians Schlüssel bis 90° (dahinter nach den gebauten, in rueckseiteBauen)
+    for (const z of this.korrekturen) if (z.w <= 90) this.korrekturEinsetzen(z);
     const anschluss = this.anschlussBauen();
     this.rueckseiteBauen();
     // erste Hälfte (0°–90°) mit ihrem eigenen Anschluss im Profil, gespiegelt für die zweite (270°–360°)
@@ -652,10 +629,8 @@ export class FigurRaster {
     const b90 = keyBei('kopfB', 90)!;
     let x0 = -Infinity;
     for (const q of punkteVon(b90)) x0 = Math.max(x0, q[0]);
-    // an der Kurve gemessen, nicht an den Ankern: Die Wange des Rückens wölbt sich zwischen zwei Ankern weiter hinaus (sonst lag das
-    // weggedrehte Gesicht gespiegelt hinter 180° im Schwarz und zeichnete sich als weißer Faden)
     let xAus = xr;
-    for (const n of ['kopfA', 'kopfB'] as TeilName[]) for (const q of punkteVon(keyBei(n, 180)!)) xAus = Math.max(xAus, Math.abs(q[0]));
+    for (const n of ['kopfA', 'kopfB'] as TeilName[]) for (const a of keyBei(n, 180)!) xAus = Math.max(xAus, Math.abs(a.p[0]));
     const weg = (f: Form, w: number): Form => wegGedreht(f, w, x0, xr + GESICHT_AUSSEN, xAus + 2 * GESICHT_AUSSEN);
     // die Maske selbst gleitet nicht über den Rand hinaus (das wäre ein schwarzer Kasten am rechten Rand)
     const wegMaske = (f: Form, w: number): Form => wegGedreht(f, w, x0, xr + GESICHT_AUSSEN);
@@ -734,44 +709,6 @@ export class FigurRaster {
         neu.push({ w, form: basis });
       }
       dazu('kopfA', ...neu);
-      // rechts unten ein glatter Bogen (RECHTS_GLATT): von der rechten Seite (der rechteste Anker der unteren Hälfte im Rücken) zur tiefsten
-      // Spitze, die Anker dazwischen gleichmäßig darauf
-      const r180 = keyBei('kopfA', 180)!;
-      const kr = kasten(r180);
-      let tief = 0;
-      let rechts = -1;
-      r180.forEach((x, j) => {
-        if (x.p[1] > r180[tief]!.p[1]) tief = j;
-        if (x.p[1] > (kr[1] + kr[3]) / 2 && (rechts < 0 || x.p[0] > r180[rechts]!.p[0])) rechts = j;
-      });
-      const zwischenAnker: number[] = [];
-      for (let j = (rechts + 1) % n; j !== tief; j = (j + 1) % n) zwischenAnker.push(j);
-      if (rechts >= 0 && rechts !== tief && zwischenAnker.length > 0 && zwischenAnker.length < n - 2) {
-        const k = kopie(zwischen('kopfA', RECHTS_GLATT));
-        const a0 = k[rechts]!;
-        const a1 = k[tief]!;
-        const richtung = (v: Punkt, sonst: Punkt): Punkt => {
-          const l = Math.hypot(v[0], v[1]);
-          if (l > 1e-6) return [v[0] / l, v[1] / l];
-          const m = Math.hypot(sonst[0], sonst[1]);
-          return [sonst[0] / m, sonst[1] / m];
-        };
-        const sehne: Punkt = [a1.p[0] - a0.p[0], a1.p[1] - a0.p[1]];
-        const L = Math.hypot(sehne[0], sehne[1]);
-        const t0 = richtung([a0.p[0] - a0.i[0], a0.p[1] - a0.i[1]], sehne);
-        const t1 = richtung([a1.p[0] - a1.i[0], a1.p[1] - a1.i[1]], sehne);
-        const m = zwischenAnker.length + 1;
-        const stuecke = stueckTeilen(
-          [a0.p, [a0.p[0] + (t0[0] * L) / 3, a0.p[1] + (t0[1] * L) / 3], [a1.p[0] - (t1[0] * L) / 3, a1.p[1] - (t1[1] * L) / 3], a1.p],
-          zwischenAnker.map((_, q) => (q + 1) / m),
-        );
-        a0.o = stuecke[0]![1];
-        zwischenAnker.forEach((j, q) => {
-          k[j] = { p: stuecke[q + 1]![0], i: stuecke[q]![2], o: stuecke[q + 1]![1] };
-        });
-        a1.i = stuecke[m - 1]![2];
-        dazu('kopfA', { w: RECHTS_GLATT, form: k });
-      }
     }
     // Nase: kommt im Profil zur Ruhe, wird dann am rechten Rand schmaler und kleiner wie ein Knubbel, der sich wegdreht (Florian: „sie muss
     // schmaler werden und die form dann ausskalieren, bevor sie hinter den kopf dreht“, bei 36 % „noch ein wenig der nase“), verschwindet
@@ -815,27 +752,49 @@ export class FigurRaster {
       const bLinks = abbilden(b180, (q) => [xa + (q[0] - kb[0]) * 0.12, cyb + (q[1] - (kb[1] + kb[3]) / 2) * 0.55]);
       dazu('kopfB', { w: MASKE_UNTER, form: bUnter }, { w: MASKE_LINKS, form: bLinks }, { w: MASKE_DA, form: b180 });
     }
+    // Florians Schlüssel hinter 90°: nach den gebauten, vor dem Spiegeln (so gelten sie gespiegelt auch in der zweiten Hälfte)
+    for (const z of this.korrekturen) if (z.w > 90) this.korrekturEinsetzen(z);
     for (const keys of this.kopf.values()) keys.sort((x, y) => x.w - y.w);
     const erste = new Map([...this.kopf].map(([n, keys]) => [n, keys.map((x) => ({ w: x.w, form: x.form }))]));
     for (const [n, keys] of this.kopf) {
-      // Florians Rücken ist nicht spiegelgleich (links breiter als rechts): Die gespiegelten Schlüssel des Partners bekommen den Unterschied
-      // des Rückens zu seinem Spiegelbild dazu, voll bei 180°, weich auslaufend bis 360° − ASYM_BIS (sonst holte jedes Teil ihn zwischen
-      // 180° und dem ersten gespiegelten Schlüssel nach, ein Sprung, wo der nah an 180° liegt). Danach ist die zweite Hälfte wieder genau
-      // gespiegelt: Das Gesicht (Bart ohne Rücken, immer genau gespiegelt) liegt dann wie in der ersten Hälfte auf der Maske
-      const eigen180 = erste.get(n)!.find((x) => x.w === 180)?.form;
-      const partner180 = erste.get(PARTNER_KOPF[n]!)!.find((x) => x.w === 180)?.form;
-      const asym = eigen180 && partner180 ? formUnterschied(eigen180, kopfGespiegelt(n, partner180)) : null;
-      for (const x of erste.get(PARTNER_KOPF[n]!)!) {
-        if (x.w <= 0 || x.w >= 180) continue;
-        const m = kopfGespiegelt(n, x.form);
-        const u = Math.min(1, Math.max(0, (x.w - ASYM_BIS) / (180 - ASYM_BIS)));
-        const anteil = u * u * (3 - 2 * u);
-        keys.push({ w: 360 - x.w, form: asym && anteil > 0 ? formPlus(m, asym, anteil) : m });
-      }
+      for (const x of erste.get(PARTNER_KOPF[n]!)!) if (x.w > 0 && x.w < 180) keys.push({ w: 360 - x.w, form: kopfGespiegelt(n, x.form) });
       const vorn = erste.get(n)!.find((x) => x.w === 0)!.form;
       keys.push({ w: 360, form: n === 'ohrSpalt' ? kopfGespiegelt(n, vorn) : vorn });
       keys.sort((x, y) => x.w - y.w);
     }
+  }
+
+  /**
+   * Einer von Florians Schlüsseln: ersetzt den Schlüssel des Teils an seinem Winkel. Gebaute Schlüssel desselben Teils näher als
+   * KORREKTUR_NAH fallen weg; seine gezeichneten (0°, 45°, 90°, 180°, Zwischenschlüssel) und seine anderen bleiben
+   */
+  private korrekturEinsetzen(z: KopfKorrektur): void {
+    const keys = this.kopf.get(z.teil);
+    if (!keys?.length || keys[0]!.form.length !== z.form.length) return;
+    const fest = (w: number): boolean =>
+      w === 0 || w === 45 || w === 90 || w === 180 || ZWISCHEN.some((x) => x.teil === z.teil && x.w === w) || this.korrekturen.some((x) => x !== z && x.teil === z.teil && x.w === w);
+    for (let i = keys.length - 1; i >= 0; i--) {
+      const w = keys[i]!.w;
+      if (w === z.w || (Math.abs(w - z.w) < KORREKTUR_NAH && !fest(w))) keys.splice(i, 1);
+    }
+    keys.push({ w: z.w, form: z.form });
+    keys.sort((x, y) => x.w - y.w);
+  }
+
+  /**
+   * Ein Kopfteil, wie Florian es bei dieser Lage bearbeitet hat (Figurkoordinaten, wie `teile` es liefert), als Schlüssel: in
+   * Kopfkoordinaten, der Winkel auf 0,5° gerundet; in der zweiten Hälfte als gespiegelter Partner in der ersten (die zweite ist die erste
+   * gespiegelt). Bei 360° ist es der Schlüssel bei 0°
+   */
+  korrekturAus(teil: TeilName, lage: Lage, form: Form): KopfKorrektur {
+    const thetaKreis = ((lage.theta % 360) + 360) % 360;
+    const hals = this.halsBei(Math.max(0, Math.min(90, lage.psi)));
+    const [vx, vy] = this.versatzBei(thetaKreis);
+    const kopf = verschieben(form, -(hals[0] + vx), -(hals[1] + vy));
+    const w = Math.round(thetaKreis * 2) / 2;
+    if (w <= 180) return { teil, w, form: kopf };
+    if (w >= 360) return { teil, w: 0, form: kopf };
+    return { teil: PARTNER_KOPF[teil]!, w: 360 - w, form: kopfGespiegelt(teil, kopf) };
   }
 
   /** Versatz des Kopfs vom Hals bei θ (0°–360°; die zweite Hälfte gespiegelt) */

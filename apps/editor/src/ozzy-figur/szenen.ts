@@ -4,7 +4,7 @@
 import type { Form } from './form';
 import { ABLAEUFE, type AblaufName, ablaufBei, type AnkerOrt, dauerVon } from './ablauf';
 import type { HaltungName } from './haltung';
-import { FigurRaster, type Lage } from './raster';
+import { FigurRaster, type KopfKorrektur, type Lage } from './raster';
 import type { Fluessig, Gruppe, RenderTeil, Szene } from './renderer';
 import type { AnsichtName, FigurDaten, TeilName } from './vorlagen/import';
 
@@ -103,15 +103,24 @@ export function drehLage(art: Drehung, t: number, anker?: AnkerOrt): Lage {
   return { psi: w, theta: 0 };
 }
 
-const raster = new WeakMap<FigurDaten, FigurRaster>();
+const raster = new WeakMap<FigurDaten, { stand: number; r: FigurRaster }>();
+/** Florians Schlüssel aus dem Werkzeug; jede Änderung baut das Raster neu (rund 0,1 s) */
+let korrekturen: readonly KopfKorrektur[] = [];
+let korrekturStand = 0;
+export function korrekturenSetzen(liste: readonly KopfKorrektur[]): void {
+  korrekturen = liste;
+  korrekturStand++;
+}
 /** Ort dessen, was in einem Abschnitt stehen bleibt, aus dem Raster der Figur (Kopf vorn) */
 export function ankerVon(d: FigurDaten): AnkerOrt {
   const r = rasterVon(d);
   return (g, anker) => r.ankerX(g, 0, anker);
 }
 export function rasterVon(d: FigurDaten): FigurRaster {
-  let r = raster.get(d);
-  if (!r) raster.set(d, (r = new FigurRaster(d)));
+  const e = raster.get(d);
+  if (e && e.stand === korrekturStand) return e.r;
+  const r = new FigurRaster(d, korrekturen);
+  raster.set(d, { stand: korrekturStand, r });
   return r;
 }
 

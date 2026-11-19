@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in sechster Fassung nach Florians Skizzen; 3D-Wege ruhen)
+# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in fünfter Fassung, dazu das Werkzeug zum Selbst-Bearbeiten (Stufe 1); 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -549,7 +549,12 @@ dann 30 Bildpunkte zurück). `raster.ts` steht deshalb wieder auf der dritten Fa
 - **Offen:** sein Urteil. Bei 144° (40 %) ist noch ein schmaler Streifen Gesicht zu sehen, in seiner Skizze schon der ganze Rücken. Ganz nach
   der Skizze hieße: Rücken bei 144° fertig, dann steht der Kopf bis 216° still oder rutscht (vierte Fassung). Stirnfranse bei 52°–82°.
 
-### Sechste Fassung: Zacken rechts unten, saubere Spitzen (19.11. nachts)
+### Sechste Fassung: Zacken rechts unten, saubere Spitzen (19.11. nachts; Formen zurückgenommen)
+
+**Formen zurückgenommen** (Florian: „ohman, jetzt ist es wieder viel schlechter geworden. Siehst du das denn nicht. Du siehst doch selbst
+wenn die haare beim morph zeklumpen und der kopf hässlich slided“): `raster.ts` wieder wie die fünfte Fassung (33f13ebf; die sechste verschob
+die Masken bei 144°–216° um bis zu 68 Einheiten). Geblieben sind die sauberen Spitzen im Renderer (erster Punkt unten). Danach baute ich ihm
+das Werkzeug (nächster Abschnitt).
 
 Florian zur fünften Fassung: „ok, besser. Ich finde zwischen 156 bis 180 verklumpen rechts unten die schwarzen zacken nicht schön. Und
 bekommst du das „ausverjüngen“ der schwarzen kontur noch sauberer hin. Vorallem bei der unteren Gesichtshälfte“. Vorher und nachher:
@@ -579,7 +584,36 @@ bekommst du das „ausverjüngen“ der schwarzen kontur noch sauberer hin. Vora
 - **Offen:** sein Urteil, auch zur fast geraden Unterkante bei 156°. Bei 144° noch ein Streifen Gesicht (seine Antwort steht aus). Stirnfranse
   bei 52°–82°.
 
+## Werkzeug: Formen selbst bearbeiten (Stufe 1, 19.11. nachts)
+
+Florian: „ursprünglich war geplant dass ich sowas doch selbst anpassen kann indem du mich posen und unsaubere stellen in den übergängen
+einfach selbst anpassen lässt. Baue mir dazu vektorbearbeitungstools wie in illutrator ein.“ Plan:
+[`docs/plans/2026-11-19-ozzy-figur-werkzeug.md`](../../plans/2026-11-19-ozzy-figur-werkzeug.md). Bild: `docs/progress/ozzy-figur/2026-11-19-werkzeug.png`.
+
+- **Bedienung** (Szenen „Kopf dreht 360°“, „Kopf dreht“, „Ozzy dreht sich“; Knopf „Bearbeiten“ oder Taste B; `werkzeug.ts`): Direktauswahl (A),
+  Auswahl (V), Ankerpunkt umwandeln (⇧C). ⇧ wählt mehrere Anker, ein Rahmen lässt sich überall außer auf Ankern aufziehen, Pfeiltasten
+  verschieben (⇧ 10), ⌥ am Griff macht eine Ecke. ⌘ + Scrollen zoomt (Trackpad: zusammenziehen), Scrollen oder Leertaste + Ziehen verschiebt,
+  ⌘0 zeigt die ganze Figur. „,“ und „.“ drehen um 1° (⇧ 5°). ⌘Z, ⇧⌘Z. Liste „Deine Schlüssel“ (hinspringen, löschen). Auf Touch: Anker ziehen,
+  mit zwei Fingern zoomen (nicht am Gerät geprüft). Keine Punkte hinzufügen oder löschen.
+- **Schlüssel** (`raster.ts`: `KopfKorrektur`, `korrekturEinsetzen`, `korrekturAus`): Jede Änderung wird die Form des Teils bei diesem Winkel
+  (0,5°), in Kopfkoordinaten. Bis 90° wird sie vor dem Anschluss der ersten Hälfte eingesetzt, dahinter nach den gebauten Schlüsseln und vor
+  dem Spiegeln. Gebaute Schlüssel desselben Teils näher als 4° fallen weg; 0°, 45°, 90°, 180° und der gezeichnete Zwischenschlüssel bleiben
+  (außer er ändert genau dort). In der zweiten Hälfte wird eine Änderung der gespiegelte Schlüssel des Partners in der ersten: Eine Änderung
+  bei 210° ist gespiegelt die bei 150°.
+- **Ablage:** `docs/look/ozzy-figur/schluessel.json` (eine Zeile je Schlüssel, Anker als [px, py, ix, iy, ox, oy]), geschrieben über den
+  Dev-Server (`vite.config.ts`, `/__ozzy-figur/schluessel`), gelesen beim Öffnen. Jede Änderung baut das Raster neu (rund 0,13 s); beim Ziehen
+  zeigt das Werkzeug die gezogene Form direkt (`ersetzen`).
+- **Winkelregler** der 360°-Szene zeigt jetzt den echten Winkel (vorher ein Viertel davon).
+- **Geprüft** (`node scripts/ozzy-figur/werkzeug-probe.mjs` aus `apps/editor`; sichert seine Schlüssel und schreibt sie zurück): Anker,
+  glatter Griff (Knick bleibt 0°), Griff mit ⌥ (Ecke), Ankerpunkt hin und zurück, Auswahl, Pfeiltasten, Rahmen, Winkel, Änderung bei 210° gilt
+  gespiegelt bei 150°, Zoom, Datei, Zurück und Wieder, nach dem Neuladen derselbe Stand. Ohne Schlüssel alles wie vorher (Schlüssel 0,00,
+  52 Tests). Zwei kräftig gezogene Schlüssel bei 150° ergeben keinen Sprung (größte Änderung je 2° 11 370, ohne 11 244).
+- **Offen:** sein Urteil zur Bedienung; Stufe 2 (Körper) und 3 (Haltungen, Abläufe) nach seinem Wort; Illustrator-Rundweg später.
+
 ## Fallen
+
+- Proben und Prüfaufrufe sehen Florians Schlüssel aus `schluessel.json` (die Seite lädt sie beim Öffnen). Wer gegen den Stand ohne seine
+  Schlüssel vergleicht, liest die Datei vorher und schreibt sie danach zurück (wie `werkzeug-probe.mjs`). Nie seine Schlüssel löschen.
 
 - Schlüssel kurz vor 180° werden in die zweite Hälfte gespiegelt (Teil n bei 360° − w ist der gespiegelte Partner bei w). Florians Rücken ist
   nicht spiegelgleich. Seit der sechsten Fassung bekommen gespiegelte Schlüssel über `ASYM_BIS` den Unterschied weich dazu; vorher holte jedes

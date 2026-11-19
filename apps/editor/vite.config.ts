@@ -127,10 +127,71 @@ function wesenAblage(): Plugin {
   };
 }
 
+/**
+ * Schlüssel aus dem Werkzeug der Ozzy-Figur (nur im Dev-Server; 19.11.2026): Florians Korrekturen der Kopfdrehung als eine Datei im Repo,
+ * `docs/look/ozzy-figur/schluessel.json`. Die Seite liest sie beim Öffnen und schreibt sie nach jeder Änderung.
+ *   GET /__ozzy-figur/schluessel   die Datei (ohne Datei: keine Schlüssel)
+ *   PUT /__ozzy-figur/schluessel   schreiben (überschreibt), nur JSON mit einer Liste „kopf“, nur von der eigenen Seite
+ */
+function figurSchluessel(): Plugin {
+  const datei = fileURLToPath(new URL('../../docs/look/ozzy-figur/schluessel.json', import.meta.url));
+  return {
+    name: 'ee-figur-schluessel',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__ozzy-figur/schluessel', (req, res) => {
+        const antworten = (status: number, text: string, art = 'text/plain; charset=utf-8'): void => {
+          res.statusCode = status;
+          res.setHeader('content-type', art);
+          res.setHeader('cache-control', 'no-store');
+          res.end(text);
+        };
+        if (req.method === 'GET') {
+          antworten(200, fs.existsSync(datei) ? fs.readFileSync(datei, 'utf8') : '{"version":1,"kopf":[]}\n', 'application/json; charset=utf-8');
+          return;
+        }
+        if (req.method !== 'PUT') {
+          antworten(405, 'nur GET und PUT');
+          return;
+        }
+        const origin = req.headers.origin;
+        if (origin && new URL(origin).host !== req.headers.host) {
+          antworten(403, 'nur von der eigenen Seite');
+          return;
+        }
+        const teile: Buffer[] = [];
+        let bytes = 0;
+        req.on('data', (t: Buffer) => {
+          bytes += t.length;
+          if (bytes > 5e6) req.destroy();
+          else teile.push(t);
+        });
+        req.on('end', () => {
+          try {
+            const text = Buffer.concat(teile).toString('utf8');
+            const j = JSON.parse(text) as { kopf?: unknown };
+            if (!Array.isArray(j.kopf)) {
+              antworten(400, 'keine Schlüsseldatei');
+              return;
+            }
+            const neben = `${datei}.neu`;
+            fs.writeFileSync(neben, text);
+            fs.renameSync(neben, datei);
+            antworten(200, 'gesichert');
+          } catch (e) {
+            antworten(500, e instanceof Error ? e.message : String(e));
+          }
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
   plugins: [
     wesenAblage(),
+    figurSchluessel(),
     react(),
     ...(web
       ? []
