@@ -166,6 +166,26 @@ in der Übergabe.
   gemalt ist. Eine gemalte Fläche bekommt vom Wachs das Hell und Dunkel und den Glanz, aber ihre eigene Farbe. So bleibt die Form
   beim Malen lesbar, und die Farben stimmen.
 
+## 8. Nachtrag (19.11., nach deiner Antwort): die kleinen Vierecke
+
+Deine Frage: „Bei z-Brush sieht man ja die kleinen vierecke auf der haut und unsere ist ganz glatt. Liegt das an der dichte bei uns
+oder ist das weichgezeichnet. Ich hätte gerne einen schalter der die dreiecke so zeichnet wie z-brush die vierecke.“ Dein zweites
+Bild: [`2026-11-19-zbrush-red-wax-vierecke.webp`](../look/ozzy/paint/2026-11-19-zbrush-red-wax-vierecke.webp) (ZBrush 3.1, eine
+Figur in Red Wax, 282 114 Punkte).
+
+- **Es ist weichgezeichnet, an der Dichte liegt es nicht.** ZBrush gibt jedem Viereck eine einzige Farbe (die Richtung des
+  ganzen Vierecks); darum sieht man jedes, auch bei 282 114 Punkten. Ozzy zeigt nicht das Netz, mit dem gerechnet wird, sondern
+  eine glatte Anzeige davon: Jedes Dreieck wird je Stufe in vier gewölbte geteilt, und die Farbe läuft weich von Ecke zu Ecke.
+- **In Zahlen, an „strange bird“:** Das Netz der Rechnung hat 7 437 Punkte und 14 870 Dreiecke. Die glatte Anzeige macht daraus
+  je nach Zoom 59 480 bis 237 920 Dreiecke. Unser Rechennetz ist also viel gröber als das von ZBrush in deinem Bild.
+- **Der Schalter ist gebaut:** im Menü „Dreiecke zeigen“ (gemerkt), bei Solid, Zebra und Wachs. Dann zeichnet Ozzy das Netz der
+  Rechnung selbst, jedes Dreieck in einer Farbe, wie ZBrush seine Vierecke. Bei uns sind es Dreiecke, verschieden groß (das Netz
+  ist dichter, wo die Form es braucht). Bild: [`2026-11-19-dreiecke-zeigen.png`](../progress/ozzy/2026-11-19-dreiecke-zeigen.png).
+- **Grenzen:** Im Verbund (Verschmelzen, Abziehen) zeigt der Schalter die Dreiecke des Schnitts, nicht die des Rechennetzes. Die
+  Seifenhaut, Jelly, helles Solid und Grün bleiben glatt.
+- **Dein zweites Bild zeigt auch die Vertiefungen** (die eingedrückten Stempel sind innen dunkler). Daran ließe sich der Teil
+  ausmessen, der im Nachbau fehlt (Abschnitt 6). Ich habe ihn nicht angefasst; sag, wenn du ihn willst.
+
 ## Quellen
 
 1. Maxon, ZBrush-Hilfe, „Materials“: https://help.maxon.net/zbr/en-us/Content/html/user-guide/materials-lights-rendering/materials/materials.html

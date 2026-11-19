@@ -9,6 +9,9 @@
 //   2b Wachs (M weiter; 19.11., Florian: „Das Basismaterial, so wie es Z-Brush benutzt, aber mehr in magenta statt rot“): die Form in
 //      Magenta (Rot und Blau über Grün) mit weichem Verlauf, kein Umriss in Tinte um die Form, das Papier bleibt weiß; mit dem
 //      Farbton 0 (Feinregler „Material Wachs“) ist sie rot wie ZBrush.
+//   2c „Dreiecke zeigen“ (19.11., Florian: „einen schalter der die dreiecke so zeichnet wie z-brush die vierecke“): Mit dem Schalter
+//      zeichnet das Wachs das Netz der Rechnung, jedes Dreieck in einer Farbe: Auf der Form springt die Helligkeit an den Kanten der
+//      Dreiecke (viel mehr Knicke im Verlauf als in der glatten Anzeige); ohne ihn ist es wieder glatt.
 //   3  Jelly (M weiter): die Form in Türkis auf dem weißen Raum (der dunkle Grund des Blaupause-Editors bleibt weg); das Bild des
 //      Gasts liegt auf Ozzys Bild der Haut (höchstens 0,5 Gerätepunkte daneben).
 //   4  Helles Solid (M weiter): der Körper weiß und lavendel, die Kante in Petrol; kein Türkis, kein dunkler Grund, keine Platten in
@@ -67,9 +70,20 @@ const farben = async (name) => {
       else if (max - min < 14) grau++;
       else bunt++;
     }
+    // Knicke auf der Form: drei Nachbarpunkte in Magenta, deren Rot nicht auf einer Geraden liegt (um wenigstens 3 Stufen daneben).
+    // Ein weicher Verlauf, auch ein steiler, hat keine; an der Kante zweier flacher Dreiecke springt die Helligkeit.
+    let paare = 0, spruenge = 0;
+    const istWachs = (i) => P[i] > P[i + 1] + 25 && P[i + 2] > P[i + 1] + 10 && P[i] < 200;
+    for (let y = 0; y < bild.height; y++)
+      for (let x = 1; x + 1 < bild.width; x++) {
+        const i = 4 * (y * bild.width + x);
+        if (!istWachs(i - 4) || !istWachs(i) || !istWachs(i + 4)) continue;
+        paare++;
+        if (Math.abs(P[i - 4] - 2 * P[i] + P[i + 4]) >= 3) spruenge++;
+      }
     const mitte = 4 * (Math.floor(bild.height / 2) * bild.width + Math.floor(bild.width / 2));
     const a = (x) => x / n;
-    return { wachs: a(wachs), rot: a(rot), sand: a(sand), tinte: a(tinte), weiss: a(weiss), grau: a(grau), bunt: a(bunt), tuerkis: a(tuerkis), petrol: a(petrol), lavendel: a(lavendel), rosa: a(rosa), gruen: a(gruen), punkt: a(punkt), mitte: [P[mitte], P[mitte + 1], P[mitte + 2]] };
+    return { spruenge: paare ? spruenge / paare : 0, wachs: a(wachs), rot: a(rot), sand: a(sand), tinte: a(tinte), weiss: a(weiss), grau: a(grau), bunt: a(bunt), tuerkis: a(tuerkis), petrol: a(petrol), lavendel: a(lavendel), rosa: a(rosa), gruen: a(gruen), punkt: a(punkt), mitte: [P[mitte], P[mitte + 1], P[mitte + 2]] };
   }, png.toString('base64'));
 };
 const p = (x) => `${(100 * x).toFixed(1).replace('.', ',')} %`;
@@ -106,6 +120,19 @@ ok(
   '2b Wachs: Magenta mit weichem Verlauf, ohne Umriss; Farbton 0 ist rot wie ZBrush',
   (await O('material')) === 'Wachs' && f2b.wachs > 0.05 && f2b.sand < 0.002 && f2b.rot < 0.01 && f2b.weiss > 0.3 && f2b.tinte < f1.tinte + 0.03 && reglerDa && f2c.rot > 0.03 && f2c.wachs < 0.02,
   `Magenta ${p(f2b.wachs)}, rot ${p(f2b.rot)}, sehr dunkel ${p(f2b.tinte)}, weiß ${p(f2b.weiss)}; mit Farbton 0: rot ${p(f2c.rot)}, Magenta ${p(f2c.wachs)}`,
+);
+// 2c Dreiecke zeigen: das Netz der Rechnung, jedes Dreieck in einer Farbe
+const f2glatt = await farben('wachs-glatt');
+const d1 = await O('dreiecke', true);
+await s.waitForTimeout(700);
+const f2flach = await farben('wachs-dreiecke');
+const d0 = await O('dreiecke', false);
+await s.waitForTimeout(700);
+const f2wieder = await farben('wachs-wieder-glatt');
+ok(
+  '2c Dreiecke zeigen: jedes Dreieck des Rechennetzes in einer Farbe, ohne den Schalter wieder glatt',
+  d1.an && !d0.an && d1.rechnen.dreiecke > 100 && d1.anzeige.dreiecke >= d1.rechnen.dreiecke && f2flach.spruenge > 3 * f2glatt.spruenge + 0.01 && f2wieder.spruenge < 1.5 * f2glatt.spruenge + 0.003 && f2flach.wachs > 0.05,
+  `Knicke im Verlauf auf der Form: glatt ${p(f2glatt.spruenge)}, mit Dreiecken ${p(f2flach.spruenge)}, wieder glatt ${p(f2wieder.spruenge)}; Netz der Rechnung ${d1.rechnen.punkte} Punkte, ${d1.rechnen.dreiecke} Dreiecke; glatte Anzeige ${d1.anzeige.dreiecke} Dreiecke (${d1.anzeige.stufen} Stufen)`,
 );
 // 3 Jelly
 await s.keyboard.press('m');

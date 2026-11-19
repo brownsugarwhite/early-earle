@@ -178,6 +178,22 @@ let material: Material | null = ((): Material | null => {
 })();
 /** das Netz, das `feste` gerade zeigt (Stand der glatten Anzeige) */
 let festeStand: { netz: unknown; version: number } | null = null;
+/**
+ * „Dreiecke zeigen“ (Florian, 19.11.: „Bei z-Brush sieht man ja die kleinen vierecke auf der haut und unsere ist ganz glatt. […] Ich
+ * hätte gerne einen schalter der die dreiecke so zeichnet wie z-brush die vierecke“): Die festen Materialien (Solid, Zebra, Wachs)
+ * zeichnen dann das Netz, mit dem gerechnet wird, jedes Dreieck flach in einer Farbe, statt der glatten Anzeige (die jedes Dreieck
+ * je Stufe in vier gewölbte teilt und über die Ecken weich schattiert). Im Menü gemerkt; `?facetten=0|1` für Proben (nicht
+ * `dreiecke=`: Das ist ein Schalter des Werks, die Größe des Startnetzes).
+ */
+let dreieckeZeigen = ((): boolean => {
+  const wahl = params.get('facetten');
+  if (wahl !== null) return wahl === '1';
+  try {
+    return localStorage.getItem('ozzy.facetten') === '1';
+  } catch {
+    return false;
+  }
+})();
 let gastStand: { netz: unknown; version: number } | null = null;
 /**
  * Das grüne Material: Sein Renderer (three/webgpu und das Earle-Material aus `@ee/render`) wird erst geladen, wenn es gewählt ist;
@@ -784,6 +800,48 @@ function zeigeNetzAlle(): HautNetz | null {
     z.dehnung.set(a.dehnung);
   }
   return g.netz;
+}
+
+/** die Haut eines Objekts mit den Dreiecken seines Rechennetzes (dieselben Punkte wie die glatte Anzeige: Die Verfeinerung hängt neue nur an) */
+function grobesNetz(h: WerkHaut): HautNetz | null {
+  const z = h.zeigeNetz;
+  const g = h.netzAufStufe(0);
+  if (!z || !g || !h.netz) return null;
+  if (!h.spiegelbild) return { ...z, index: g.index };
+  // samt Spiegelbild: seine Punkte stehen hinter denen des Netzes, seine Dreiecke laufen andersherum (wie `WerkHaut.zeigeNetz`)
+  const N = h.netz.pos.length / 3;
+  const I = g.index.length;
+  const index = new Uint32Array(2 * I);
+  index.set(g.index);
+  for (let i = 0; i < I; i += 3) {
+    index[I + i] = g.index[i]! + N;
+    index[I + i + 1] = g.index[i + 2]! + N;
+    index[I + i + 2] = g.index[i + 1]! + N;
+  }
+  return { ...z, index };
+}
+
+/**
+ * „Dreiecke zeigen“: wie `zeigeNetzAlle`, aber jedes Objekt mit den Dreiecken seines Rechennetzes. Der Verbund hat kein Rechennetz
+ * (er ist aus den gezeigten Häuten geschnitten): Er steht mit den Dreiecken seines Schnitts darin.
+ */
+let facettenGemerkt: { pos: Float32Array | null; index: Uint32Array | null; version: number; verbund: HautNetz | null; ruhe: string; netz: HautNetz } | null = null;
+function facettenNetz(): HautNetz | null {
+  const a = verbundVerdeckt(aktivId) ? null : werkHaut;
+  const pos = a?.zeigeNetz?.pos ?? null;
+  const index = a?.netzAufStufe(0)?.index ?? null;
+  const vb = verbundGezeigt?.netz ?? null;
+  const ruhe = ruhende.filter((r) => r.haut.zeigeNetz && !verbundVerdeckt(r.id));
+  const ruheSchl = ruhe.map((r) => `${r.id}:${r.haut.kennung}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}`).join('|');
+  const allein = !vb && !ruhe.length;
+  const g = facettenGemerkt;
+  // (allein teilt das Netz seine Felder mit der Anzeige und geht von selbst mit; vereint ist es eine Kopie)
+  if (g && g.pos === pos && g.index === index && g.verbund === vb && g.ruhe === ruheSchl && (allein || g.version === werkHaut.version)) return g.netz;
+  const teile = [a ? grobesNetz(a) : null, vb, ...ruhe.map((r) => grobesNetz(r.haut))].filter((n): n is HautNetz => n !== null);
+  if (!teile.length) return null;
+  const netz = teile.length === 1 ? teile[0]! : netzeVereinen(teile);
+  facettenGemerkt = { pos, index, version: werkHaut.version, verbund: vb, ruhe: ruheSchl, netz };
+  return netz;
 }
 
 /**
@@ -3956,11 +4014,14 @@ function bild(dt: number): boolean {
       if (unruhig) aktiv = true;
     } else {
       gast.aus();
-      if (!festeStand || festeStand.netz !== zeigN || festeStand.version !== werkHaut.version) {
-        feste.netzSetzen(zeigN, wicklungVon(zeigN));
-        festeStand = { netz: zeigN, version: werkHaut.version };
+      // „Dreiecke zeigen“: das Netz der Rechnung, flach schattiert, statt der glatten Anzeige
+      const facetten = dreieckeZeigen ? facettenNetz() : null;
+      const festN = facetten ?? zeigN;
+      if (!festeStand || festeStand.netz !== festN || festeStand.version !== werkHaut.version) {
+        feste.netzSetzen(festN, wicklungVon(festN));
+        festeStand = { netz: festN, version: werkHaut.version };
       }
-      feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen, spiegelSchnitt: spiegelSchnittJetzt() });
+      feste.zeichnen(kam.aktiv, material, { schnitt: schnittJetzt, deckung: 1 - 0.7 * roentgen, spiegelSchnitt: spiegelSchnittJetzt(), flach: !!facetten });
     }
   } else {
     gast.aus();
@@ -7183,6 +7244,23 @@ startLoopsSchalter.addEventListener('change', () => {
   werk.G.meldung = startLoops ? 'Beim nächsten Aufblasen beginnt die Form mit drei Loops (Seite, quer, längs)' : 'Beim nächsten Aufblasen ohne die Start-Loops (wie eine Blase, ohne Linien)';
 });
 
+// „Dreiecke zeigen“ (19.11.): die festen Materialien zeichnen das Netz der Rechnung flach
+const dreieckeSchalter = $<HTMLInputElement>('dreiecke');
+dreieckeSchalter.checked = dreieckeZeigen;
+function dreieckeSetzen(an: boolean): void {
+  dreieckeZeigen = an;
+  dreieckeSchalter.checked = an;
+  try {
+    localStorage.setItem('ozzy.facetten', an ? '1' : '0');
+  } catch {
+    // ohne Speicher gilt es nur bis zum Neuladen
+  }
+  const fest = material !== null && (FESTE_MATERIALIEN as readonly string[]).includes(material);
+  werk.G.meldung = an ? (fest ? 'Dreiecke des Netzes, jedes in einer Farbe' : 'Dreiecke zeigen gilt bei Solid, Zebra und Wachs (Taste M)') : 'Glatte Anzeige';
+  anstossen();
+}
+dreieckeSchalter.addEventListener('change', () => dreieckeSetzen(dreieckeSchalter.checked));
+
 const regler = $<HTMLElement>('regler');
 const marke = $<HTMLButtonElement>('marke');
 /** S13 (liquid drop, Idee 1): Das Menü wächst als Tropfen aus „Ozzy“ und fließt beim Schließen dorthin zurück (CSS `#regler`, `.zu`) */
@@ -8305,6 +8383,17 @@ const haken = {
   ablassen,
   neu,
   fassung: fassungSetzen,
+  /** „Dreiecke zeigen“ schalten oder lesen; dazu, wie viele Punkte und Dreiecke das Netz der Rechnung und das der glatten Anzeige haben */
+  dreiecke: (an?: boolean): { an: boolean; rechnen: { punkte: number; dreiecke: number }; anzeige: { punkte: number; dreiecke: number; stufen: number } } => {
+    if (an !== undefined) dreieckeSetzen(an);
+    const g = werkHaut.netzAufStufe(0);
+    const z = werkHaut.netz;
+    return {
+      an: dreieckeZeigen,
+      rechnen: { punkte: werk.haut.n, dreiecke: g ? g.index.length / 3 : 0 },
+      anzeige: { punkte: z ? z.pos.length / 3 : 0, dreiecke: z ? z.index.length / 3 : 0, stufen: werkHaut.stufen },
+    };
+  },
   /** ein festes Material wählen (Name wie im Menü) oder mit null die Seifenhaut; zurück: was jetzt gilt */
   material: (m?: string | null): string => {
     if (m !== undefined) materialSetzen(m === null ? null : (MATERIALIEN.find((x) => x.toLowerCase() === m.toLowerCase()) ?? null));

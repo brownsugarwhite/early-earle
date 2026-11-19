@@ -1,7 +1,7 @@
 # Ozzy: Paint-Modus mit Ebenen, Ebenen-Ansicht und neuem Material (Plan, 19.11.2026)
 
-**Stand:** Plan zur Freigabe. Gebaut ist bisher nur das neue Material (Abschnitt 2). Der Paint-Modus selbst beginnt nach deinem
-Wort. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht zusammengeführt),
+**Stand (19.11., 10:15 Uhr): freigegeben für Etappe 1.** Deine Antwort: „Du kannst dann mit Etappe 1 starten.“ Gebaut sind das
+neue Material (Abschnitt 2) und der Schalter „Dreiecke zeigen“; Etappe 1 läuft. Zweig `claude/reverent-feynman-1efdd3` (baut auf dem Stand „Objekte, Spiegel und Nähte“ auf, nicht zusammengeführt),
 eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Übergabe des Strangs:
 [`docs/look/ozzy/paint/UEBERGABE.md`](../look/ozzy/paint/UEBERGABE.md).
 
@@ -20,6 +20,17 @@ eigenes Fenster `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`). Überg
 > Als Basismaterial für den paint mode kannst du erstmal das helle solid benutzen und außerdem häte ich gerne noch ein weiteres material. Das Basismaterial, so wie es Z-Brush benutz, aber mehr in magenta statt rot. Recherchiere genau wie das material bei z-Brush gemacht ist.
 
 Dein Bild dazu: [`docs/look/ozzy/paint/2026-11-19-zbrush-matcap-red-wax.png`](../look/ozzy/paint/2026-11-19-zbrush-matcap-red-wax.png).
+
+## Deine Antworten (19.11.2026, 10:10 Uhr, wörtlich)
+
+> 1. Ja, pinsel machn wir vllt später
+> 2. -40 sieht gut aus. Bei z-Brush sieht man ja die kleinen vierecke auf der haut und unsere ist ganz glatt. Liegt das an der dichte bei uns oder ist das weichgezeichnet. Ich hätte gerne einen schalter der die dreiecke so zeichnet wie z-brush die vierecke.
+>
+> Du kannst dann mit Etappe 1 starten.
+
+Daraus: Im Paint-Modus gelten deine Werkzeuge aus Ozzy, ein Pinsel vielleicht später. Der Farbton −40 des Wachses gilt. Der
+Schalter ist gebaut (Menü „Dreiecke zeigen“; Antwort auf deine Frage in der Recherche, Abschnitt 8). Dein zweites Bild:
+[`2026-11-19-zbrush-red-wax-vierecke.webp`](../look/ozzy/paint/2026-11-19-zbrush-red-wax-vierecke.webp).
 
 ## 1. Kurz: was ich vorschlage
 
@@ -48,7 +59,9 @@ Recherche mit Quellen: [`docs/research/2026-11-19-zbrush-grundmaterial.md`](../r
   unter „Material Wachs“.
 - Bild: [`2026-11-19-wachs-vergleich.png`](../progress/ozzy/2026-11-19-wachs-vergleich.png) (ZBrush neben Ozzy, sechs Farbtöne),
   an deiner Form [`2026-11-19-wachs-strange-bird.png`](../progress/ozzy/2026-11-19-wachs-strange-bird.png).
-- **Dein Urteil steht aus:** ob es ZBrush trifft, und welcher Farbton.
+- **Dein Urteil (19.11.):** „-40 sieht gut aus.“ Dazu dein Wunsch nach den sichtbaren Dreiecken: gebaut als Schalter „Dreiecke
+  zeigen“ im Menü (bei Solid, Zebra, Wachs: das Netz der Rechnung, jedes Dreieck in einer Farbe). Bild:
+  [`2026-11-19-dreiecke-zeigen.png`](../progress/ozzy/2026-11-19-dreiecke-zeigen.png).
 
 ## 3. Etappen
 
@@ -222,11 +235,8 @@ zeige ich dir als Film, bevor ich baue.
 
 ## 6. Fragen, die den nächsten Schritt aufhalten
 
-1. **Gibst du den Plan frei?** Dann beginne ich mit Etappe 1 (dem Beweis).
-2. **Stimmt meine Lesart von „gewohnte Tools“?** Ich baue im Paint-Modus deine Werkzeuge aus Ozzy (A, P, Freihand, Ellipse, Lasso,
-   K), keinen freien Pinsel. Sagst du nichts dazu, baue ich es so.
-
-Kein Aufhalten, aber dein Urteil steht aus: das Material „Wachs“ (trifft es ZBrush, welcher Farbton).
+Beide beantwortet am 19.11. (oben, „Deine Antworten“): Der Plan ist für Etappe 1 frei; „gewohnte Tools“ sind deine Werkzeuge aus
+Ozzy, ein Pinsel vielleicht später. Offen ist nichts, was Etappe 1 aufhält.
 
 ## 7. Bauweise (für die Sitzung, die baut)
 

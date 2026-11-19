@@ -184,6 +184,12 @@ export type FesteWerte = {
   deckung: number;
   /** der Schnitt an der Spiegelebene, wie `HautWerte.spiegelSchnitt` (Rand in Welteinheiten; fehlt: kein Schnitt) */
   spiegelSchnitt?: number | null;
+  /**
+   * „Dreiecke zeigen“ (Florian, 19.11.: „einen Schalter, der die Dreiecke so zeichnet wie ZBrush die Vierecke“): jedes Dreieck des
+   * gegebenen Netzes flach, mit einer Farbe (die Normale der Fläche statt der gemittelten der Ecken). Ozzy gibt dazu das Netz der
+   * Rechnung statt der glatten Anzeige.
+   */
+  flach?: boolean;
 };
 
 export class FesteHaut {
@@ -208,6 +214,7 @@ export class FesteHaut {
   private netz: HautNetz | null = null;
   private wicklung = 0;
   private dpr = 1;
+  private flach = false;
   /** der Schnitt an der Spiegelebene, für alle Materialien derselbe Wert */
   private readonly spiegel: SpiegelSchnitt = { uSpiegel: { value: -1 } };
 
@@ -342,6 +349,15 @@ export class FesteHaut {
     if (sn && Math.hypot(sn[0], sn[1], sn[2]) > 1e-9) this.ebene.set(new Vector3(sn[0], sn[1], sn[2]), -sn[3]);
     else this.ebene.set(new Vector3(0, 0, 1), 1e9);
     this.spiegel.uSpiegel.value = w.spiegelSchnitt ?? -1;
+    const flach = !!w.flach;
+    if (flach !== this.flach) {
+      this.flach = flach;
+      // (das Solid ist ein Toon-Material von three: Es kennt die Eigenschaft nicht von sich aus, sein Shader liest sie aber)
+      for (const m of [this.solid, this.zebra, this.wachs] as (Material & { flatShading: boolean })[]) {
+        m.flatShading = flach;
+        m.needsUpdate = true;
+      }
+    }
     if (art === 'Wachs') this.wachsBereiten();
     this.koerper.material = art === 'Zebra' ? this.zebra : art === 'Wachs' ? this.wachs : this.solid;
     // der Umriss gehört zum Solid des Prüffensters; die Zebra-Matcap lag im alten Editor ohne Umriss auf dem Körper, und ZBrush
