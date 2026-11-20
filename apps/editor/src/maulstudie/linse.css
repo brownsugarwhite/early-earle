@@ -154,3 +154,23 @@
 .reihe.gilt circle {
   fill: var(--reihe, var(--tinte));
 }
+
+/* ---------- die Farbe des Teils: eine Perle in dieser Farbe; das Farbfeld des Systems liegt unsichtbar in der Mitte ---------- */
+.farbperle {
+  cursor: pointer;
+}
+.farbperle circle {
+  stroke: var(--tinte);
+  stroke-width: 0.75;
+}
+.linse-farbfeld {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}

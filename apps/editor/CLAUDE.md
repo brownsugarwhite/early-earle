@@ -781,6 +781,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Anzahl fällt es (`mitAnzahl`). (38) Die Weiche für die Zähne hört in der Fangphase an `#buehne` zu und fängt den Zeiger dort:
   Wer an der Bühne etwas Neues greifen lässt, prüft den Vorrang (Linse offen: Zähne zuerst; zu: `zielJetzt`, `haengt`). (39)
   Treffer und Marken rechnen mit `zaehneNetzVon`, nicht mit `zaehnePlan`. (40) Bei offener Linse lässt ⌫ nie die Luft ab.
+  **Etappe 5, vierte Scheibe: Zähne außen und Farbe (20.11.; Plan 12.18):** `zahnBild.ts`, `MaulZaehne.farbe`. Merke: (41) Auf
+  Wachs, Solid und Zebra stehen die Zähne nicht im Netz des Körpers (`zeigeNetzAlle(true)`), `zahnBild` zeichnet sie im `danach`
+  in ihrer Farbe; alle anderen nehmen `zeigeNetzAlle()` mit Zähnen. (42) Ein Sitz unter null versetzt nur den Fuß
+  (`ZahnPlatz.vor`): den Fuß eines Zahns aus `zahnRahmen` nehmen. (43) `MaulZaehne` nie aus `{ oben, unten }` neu bauen (die
+  Farbe ginge verloren). (44) Puffer von three wiederverwenden statt Attribute zu ersetzen (`ZahnBild.setzen`).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

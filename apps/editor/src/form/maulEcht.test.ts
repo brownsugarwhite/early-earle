@@ -496,7 +496,7 @@ describe('das Maul als echte Form', () => {
     expect(ausgelaufen).toBeGreaterThan(100);
   });
 
-  it('die Zähne: oben zwölf, unten elf, spiegelgleich; zu stecken sie im Maul, offen zeigen sie zum anderen Kiefer; die Werte der Linse; einzelne Zähne', async () => {
+  it('die Zähne: oben zwölf, unten elf, spiegelgleich; zu stecken sie im Maul, offen zeigen sie zum anderen Kiefer; die Werte der Linse; einzelne Zähne; Zähne außen', async () => {
     const wasm = await manifoldLaden();
     const d = kugel();
     const mk = mittlereKante(d.h);
@@ -672,6 +672,45 @@ describe('das Maul als echte Form', () => {
     expect(Math.hypot(Ra.x[0] - Rb.x[0], Ra.x[1] - Rb.x[1], Ra.x[2] + Rb.x[2])).toBeLessThan(1e-6);
     // (längs zeigt von der Spitze nach hinten: Ein Schritt in dieser Richtung führt weiter von der Spitze weg)
     expect(Math.hypot(...Ra.ort.map((x, j) => x + 0.5 * Ra.x[j]! - spitze[j]!))).toBeGreaterThan(Math.hypot(...Ra.ort.map((x, j) => x - spitze[j]!)));
+    // ---- Zähne außen (vierte Scheibe): ein Sitz unter null steht vor der Lippe ----
+    expect(sitz.min).toBe(-1.2);
+    expect(ohne.every((q) => q.aussen === 0 && q.vor === 0)).toBe(true);
+    const draussen = mit({ ...R0, sitz: -0.6 });
+    expect(draussen.length).toBe(12);
+    for (const q of draussen) {
+      expect(q.aussen).toBeCloseTo(0.6 * q.breit, 9);
+      // der Fuß steht von seiner Linie in der Wand aus um `vor` versetzt, in der Wand (quer zu ihrer Normalen)
+      const R = zahnRahmen(q, h.pos);
+      const weg = R.ort.map((x, j) => x - fussVon(q)[j]!);
+      expect(q.vor).toBeGreaterThan(q.aussen);
+      expect(Math.hypot(...weg)).toBeCloseTo(q.vor, 6);
+      expect(Math.abs(punkt(weg, R.n))).toBeLessThan(1e-6 * (1 + q.vor));
+    }
+    // zu: Im Maul hat kein Zahn Länge, außen behält er sie (ganz, sobald er um seine halbe Tiefe draußen steht; die Vorlage „Tropfen“ ist 0,72 tief)
+    const achse = (n: { pos: Float32Array }, nr: number, zahl: number): number => {
+      const m = n.pos.length / 3 / zahl;
+      const sp = 3 * (nr * m + m - 1);
+      const fu = 3 * (nr * m + m - 2);
+      return Math.hypot(n.pos[sp]! - n.pos[fu]!, n.pos[sp + 1]! - n.pos[fu + 1]!, n.pos[sp + 2]! - n.pos[fu + 2]!);
+    };
+    const aussenZu = zaehneNetz(draussen, h.pos, 1, { x: 0, y: 0 }, () => 0, () => 1)!;
+    const aussenOffen = zaehneNetz(draussen, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1)!;
+    for (let nr = 0; nr < draussen.length; nr++) {
+      const frei = Math.min(1, draussen[nr]!.aussen / (0.5 * 0.72 * draussen[nr]!.mass));
+      const teil = achse(aussenZu, nr, draussen.length) / achse(aussenOffen, nr, draussen.length);
+      expect(frei).toBeGreaterThan(0);
+      expect(teil).toBeGreaterThan(0.8 * frei);
+      expect(teil).toBeLessThanOrEqual(1 + 1e-6);
+    }
+    const weitDraussen = mit({ ...R0, sitz: -1.2, groesse: 0.3 });
+    const wZu = zaehneNetz(weitDraussen, h.pos, 1, { x: 0, y: 0 }, () => 0, () => 1)!;
+    const wOffen = zaehneNetz(weitDraussen, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1)!;
+    if (weitDraussen.every((q) => q.aussen >= 0.5 * 0.72 * q.mass)) expect(Math.max(...Array.from(wZu.pos, (x, j) => Math.abs(x - wOffen.pos[j]!)))).toBeLessThan(1e-6);
+    // ein einzelner Zahn über die Lippe hinaus gerückt: Sein Versatz gilt bis `SITZ_AUSSEN`, weiter hinaus hält ihn die Lippe fest
+    const hinaus = platzVon(mit(eigenSetzen(R0, [4], (e) => ({ ...e, dz: -0.9 }))), 4);
+    expect(hinaus.dz).toBeCloseTo(-0.9, 9);
+    expect(hinaus.aussen).toBeCloseTo(0.4 * hinaus.breit, 9);
+    expect(platzVon(mit(eigenSetzen(R0, [4], (e) => ({ ...e, dz: -9 }))), 4).dz).toBeCloseTo(-1.2 - R0.sitz, 9);
     // der weiche Wechsel der Vorlage: Das Netz dazwischen hat dieselben Punkte und Dreiecke; am Anfang ist es die alte, am Ende die neue Form
     const halb = zaehneNetz(plaetze, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1, null, () => formNetzGemischt(0, 2, 0.5))!;
     expect(halb.pos.length).toBe(offen.pos.length);

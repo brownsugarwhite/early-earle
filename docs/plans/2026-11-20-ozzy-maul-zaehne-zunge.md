@@ -979,3 +979,34 @@ Größe und Vorlage, der Rahmen eines Zahns an der Haut. Die Proben des Mauls un
 **Was von Etappe 5 noch fehlt:** Zähne außen vor der Lippe, eine eigene Farbe, die Perlen Biegung und Wurzel. Bild:
 `docs/progress/ozzy/2026-11-20-maul-etappe5-einzelner-zahn.jpg`. Offenes:
 [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 73.
+
+### 12.18 Etappe 5, vierte Scheibe: Zähne außen und die Farbe der Zähne (20.11.)
+
+Deine Antwort (20.11.): „Ja, Zähne außen“.
+
+**In Ozzy:**
+
+- **Zähne außen:** Die Perle `S` (Sitz) dreht jetzt bis vor die Lippe (die Linse zeigt dann „außen 0.4“). Ein Zahn außen steht
+  neben der Lippe, zeigt wie alle zum anderen Kiefer und behält seine Länge, auch wenn das Maul zu ist: Geschlossen liegen die
+  oberen über dem Unterkiefer, die unteren über dem Oberkiefer. Stehen beide Reihen außen, greifen sie von außen ineinander.
+- **Ein einzelner Zahn:** Ein gewählter Zahn lässt sich über die Lippe hinaus rücken, höchstens 1,2 Breiten des Zahnfleischs
+  weit; weiter hinaus hält ihn die Lippe fest. So schaut ein Hauer bei geschlossenem Maul heraus.
+- **Farbe:** Auf Wachs, Solid und Zebra tragen die Zähne ihre eigene Farbe, am Anfang Elfenbein. Eine Perle unten an der Linse
+  zeigt sie; ein Tipp darauf öffnet den Farbwähler des Systems. Alle Zähne tragen dieselbe Farbe, der Zahn in der Linse auch.
+
+**Wie:** Ein Zahn mit einem Sitz unter null hängt weiter an der Wand seines Kiefers (an der Linie dicht hinter der Lippe); sein
+Fuß ist von dort längs der Wand über die Lippe hinaus versetzt. Die Länge: im Maul höchstens der Spalt der Kiefer; außen die
+volle, sobald der Zahn um seine halbe Tiefe vor der Lippe steht, dazwischen anteilig. Die Farbe steht am Maul
+(`G.maul.zaehne.farbe`). Auf den festen Materialien stehen die Zähne nicht mehr im Netz des Körpers: Sie werden danach als
+eigenes Netz ins selbe Ziel gezeichnet (`zahnBild.ts`), mit dem Kugelbild des Wachses ohne seine Farbe mal ihrer Farbe.
+
+**Geprüft** im Fenster (`ozzy-maul-zaehne-fenster.mjs`, F1, F2, A1, A2, an „teat firefish“ auf Wachs): Ein Bildpunkt auf einem
+Zahn ist elfenbein (rot 210, grün 200, blau 176), nach dem Setzen von Blau blau, ⌘Z gibt Elfenbein zurück; mit `S` und dem Rad der
+Maus liegt der Sitz beider Reihen bei −0,45, jeder Zahn steht 5 Einheiten vor der Lippe; bei geschlossenem Maul ist der längste
+Zahn 27,5 lang und 13 Zähne sind im Bild zu treffen (im Maul hätte keiner Länge). Im Modell (Test „die Zähne“): der Fuß vor der
+Lippe, die Länge bei geschlossenem Maul, ein Zahn über die Lippe gerückt. Einmal jedes Material angesehen (Solid, Zebra, Wachs,
+helles Solid, Jelly, Seifenhaut): keine Fehler; das helle Solid zeigt die Zähne weiß wie den Körper, die Seifenhaut als Blasen.
+
+**Was an den Zähnen noch fehlt:** die Perlen Biegung und Wurzel, eine Farbe je Reihe oder je Zahn, die Farbe auf den übrigen
+Materialien. Bilder: `docs/progress/ozzy/2026-11-20-maul-etappe5-zaehne-aussen.jpg`, `…-zahnfarbe.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 79.

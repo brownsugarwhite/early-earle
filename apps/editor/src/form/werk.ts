@@ -375,7 +375,8 @@ export type ZahnReihe = { anzahl: number; groesse: number; neigung: number; verl
  * (`dz`, Breiten des Zahnfleischs), mit eigener Vorlage, eigenem Faktor der Größe, oder gezogen (`weg`: Dort ist eine Lücke).
  */
 export type ZahnEigen = { ds?: number; dz?: number; form?: number; faktor?: number; weg?: true };
-export type MaulZaehne = { oben: ZahnReihe; unten: ZahnReihe };
+/** die zwei Reihen und, wenn sie eine eigene trägt, die Farbe der Zähne (`#rrggbb`; fehlt: Elfenbein) */
+export type MaulZaehne = { oben: ZahnReihe; unten: ZahnReihe; farbe?: string };
 /* in G: maul */
 /**
  * Die Fressen-Pose: Knochen (Grad) und Blendshape, je Punkt der Haut die Verschiebung gegen die Grundform vor den Knochen (null:
@@ -1022,7 +1023,7 @@ export function zaehneSetzen(z: MaulZaehne | null, schritt = true): boolean {
   if (schritt) zurueck.push(schnappschuss());
   const { zaehne: _alt, ...rest } = m;
   void _alt;
-  G.maul = z ? { ...rest, zaehne: { oben: { ...z.oben }, unten: { ...z.unten } } } : rest;
+  G.maul = z ? { ...rest, zaehne: { ...z, oben: { ...z.oben }, unten: { ...z.unten } } } : rest;
   anzeige.allesZeigen();
   return true;
 }
@@ -6072,7 +6073,7 @@ export function standAnwenden(st: WesenStand): string {
           id: st.maul.id,
           ...(st.maul.echt === true ? { echt: true as const } : {}),
           ...(typeof st.maul.ersteUnten === 'boolean' ? { ersteUnten: st.maul.ersteUnten } : {}),
-          ...(st.maul.zaehne ? { zaehne: { oben: { ...st.maul.zaehne.oben }, unten: { ...st.maul.zaehne.unten } } } : {}),
+          ...(st.maul.zaehne ? { zaehne: { ...st.maul.zaehne, oben: { ...st.maul.zaehne.oben }, unten: { ...st.maul.zaehne.unten } } } : {}),
         }
       : null,
     pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null, linien: st.pose.linien ?? null },

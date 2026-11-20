@@ -17,6 +17,11 @@
 // Dritte Scheibe (einzelne Zähne): Eine Reihe kann für einzelne Zähne eigene Werte tragen (`ZahnReihe.eigen`: gerückt, eigene
 // Vorlage, eigene Größe, gezogen). `zahnPlaetze` liest sie mit; `zahnRahmen` gibt Ort und Richtungen eines Zahns an der gezeigten
 // Haut (zum Rücken im Bild), `eigenSetzen` schreibt eigene Werte, `partner` nennt das Spiegelbild.
+//
+// Vierte Scheibe (Zähne außen): Ein Sitz unter null steht vor der Lippe. Der Zahn hängt dann weiter an der Wand seines Kiefers
+// (an der Linie dicht hinter der Lippe), sein Fuß ist aber längs der Wand über die Lippe hinaus versetzt (`ZahnPlatz.vor`): Er
+// steht außen neben der Lippe, zeigt wie alle zum anderen Kiefer und behält seine Länge, auch wenn das Maul zu ist
+// (`ZahnPlatz.aussen`, `zaehneNetz`).
 // Ohne DOM.
 import type { MaulZaehne, ZahnEigen, ZahnReihe } from '../form/werk';
 import { ZAHN_FORMEN, type ZahnForm, mischen, zahnNetz } from '../maulstudie/zahn';
@@ -32,7 +37,7 @@ import type { Karte, Ort } from './farbe/ort';
  */
 export function zaehnePaar(z: MaulZaehne, anzahl: number): MaulZaehne {
   const n = Math.max(1, Math.round(anzahl));
-  return { oben: mitAnzahl(z.oben, n), unten: { ...mitAnzahl(z.unten, n - 1), bis: (z.oben.bis * (n - 1)) / n } };
+  return { ...z, oben: mitAnzahl(z.oben, n), unten: { ...mitAnzahl(z.unten, n - 1), bis: (z.oben.bis * (n - 1)) / n } };
 }
 /** eine Reihe mit anderer Anzahl: Was einzelne Zähne eigen hatten, fällt (ihre Nummern meinen dann andere Zähne) */
 export function mitAnzahl(r: ZahnReihe, anzahl: number): ZahnReihe {
@@ -65,9 +70,15 @@ const REIHE_ANFANG: ZahnReihe = { anzahl: 12, groesse: 0.92, neigung: 0.12, verl
 /** die Zähne, mit denen ein Maul beginnt: oben zwölf, unten elf (in den Lücken der oberen: `zaehnePaar`), Vorlage „Tropfen“ */
 export const ZAEHNE_ANFANG: MaulZaehne = zaehnePaar({ oben: REIHE_ANFANG, unten: REIHE_ANFANG }, 12);
 
-/** der Sitz einer Reihe: mindestens ein Stück hinter der Lippe (in Breiten des Zahnfleischs), höchstens dieser Anteil der Tiefe der Tasche */
+/**
+ * Der Sitz (Abstand von der Lippe in Breiten des Zahnfleischs): Die Linie in der Wand, an der ein Zahn hängt, liegt mindestens
+ * `SITZ_MIN` hinter der Lippe und höchstens bei diesem Anteil der Tiefe der Tasche. Ein kleinerer Sitz versetzt den Fuß von dort
+ * längs der Wand zur Lippe hin und über sie hinaus: unter null steht der Zahn außen, höchstens `SITZ_AUSSEN` weit („höchstens ein
+ * Stück vor der Lippe“).
+ */
 const SITZ_MIN = 0.15;
 const SITZ_TIEF = 0.66;
+export const SITZ_AUSSEN = -1.2;
 /** zwischen diesen Werten liegt der eigene Faktor der Größe eines Zahns */
 export const FAKTOR_MIN = 0.3;
 export const FAKTOR_MAX = 3.2;
@@ -76,7 +87,7 @@ type TaschenFeld = NonNullable<ReturnType<typeof taschenFeld>>;
 export function sitzGrenzen(k: Karte, tasche: MaulTasche, feld: TaschenFeld | null = taschenFeld(k, tasche)): { min: number; max: number } | null {
   if (!feld) return null;
   const breit = zahnfleischBreit(tasche, feld.dMax);
-  return breit > 1e-9 ? { min: SITZ_MIN, max: Math.max(SITZ_MIN, (SITZ_TIEF * feld.dMax) / breit) } : null;
+  return breit > 1e-9 ? { min: SITZ_AUSSEN, max: Math.max(SITZ_MIN, (SITZ_TIEF * feld.dMax) / breit) } : null;
 }
 
 /** der Platz eines Zahns: an zwei Orten der Wand (Hälfte z ≥ 0) und dem Anteil dazwischen */
@@ -108,6 +119,10 @@ export type ZahnPlatz = {
   /** die Maße dazu: Reichweite seiner Reihe und Breite des Zahnfleischs (Einheiten des Werks) */
   lang: number;
   breit: number;
+  /** so weit ist sein Fuß von seinen zwei Orten aus längs der Wand zur Lippe hin versetzt (Einheiten des Werks; 0: Er steht auf seiner Linie) */
+  vor: number;
+  /** so weit steht er vor der Lippe (Einheiten des Werks; 0: im Maul) */
+  aussen: number;
 };
 
 const lage = (P: ArrayLike<number>, o: Ort): [number, number, number] => [
@@ -174,8 +189,12 @@ export function zahnPlaetze(
       linien.set(schl, fertig);
       return fertig;
     };
+    /** der Sitz, wie er gilt: nicht tiefer als die Tasche es zulässt, nicht weiter vor der Lippe als `SITZ_AUSSEN` */
+    const sitzTief = breit > 1e-9 ? Math.max(SITZ_MIN, (SITZ_TIEF * feld.dMax) / breit) : SITZ_MIN;
+    const sitzGilt = (sitz: number): number => Math.max(SITZ_AUSSEN, Math.min(sitzTief, sitz));
     const basis = linieBei(reihe.sitz);
     if (!basis) continue;
+    const sitzReihe = sitzGilt(reihe.sitz);
     const lang = basis.ganz * Math.max(0.1, Math.min(1, reihe.bis));
     if (!(lang > 1e-6)) continue;
     const platz = Math.min((2 * lang) / reihe.anzahl, 0.34 * tasche.lang);
@@ -188,8 +207,9 @@ export function zahnPlaetze(
       const gespiegelt = l > lang + 1e-9;
       const regel = Math.abs(lang - l);
       // ein gerückter Zahn: auf der Linie seines eigenen Sitzes, so weit von der Spitze wie sein Platz plus sein Versatz; er bleibt
-      // auf seiner Wand (zwischen Spitze und hinterem Ende)
-      const linie = (eigen?.dz ? linieBei(reihe.sitz + eigen.dz) : null) ?? basis;
+      // auf seiner Wand (zwischen Spitze und hinterem Ende). Ein Sitz vor der Linie dicht an der Lippe versetzt nur den Fuß.
+      const sitz = sitzGilt(reihe.sitz + (eigen?.dz ?? 0));
+      const linie = (eigen?.dz ? linieBei(sitz) : null) ?? basis;
       const vonSpitze = Math.max(0, Math.min(linie.ganz, regel + (eigen?.ds ?? 0) * lang));
       const { teil, orte, L } = linie;
       let j = 1;
@@ -226,9 +246,11 @@ export function zahnPlaetze(
         i,
         form: vorlageNr(eigen?.form ?? reihe.form),
         ds: (vonSpitze - regel) / lang,
-        dz: linie.sitz - basis.sitz,
+        dz: sitz - sitzReihe,
         lang,
         breit,
+        vor: Math.max(0, linie.sitz - sitz) * breit,
+        aussen: Math.max(0, -sitz) * breit,
       });
     }
   }
@@ -259,7 +281,14 @@ function rahmenRoh(q: ZahnPlatz, P: ArrayLike<number>): { ort: [number, number, 
   const xn = x[0] * n[0] + x[1] * n[1] + x[2] * n[2];
   x = richtung([0, 0, 0], [x[0] - xn * n[0], x[1] - xn * n[1], x[2] - xn * n[2]]);
   const zl0 = kreuz(n, x);
-  return { ort, x, n, zl: [q.lippe * zl0[0], q.lippe * zl0[1], q.lippe * zl0[2]] };
+  const zl: [number, number, number] = [q.lippe * zl0[0], q.lippe * zl0[1], q.lippe * zl0[2]];
+  // (ein Sitz dicht an oder vor der Lippe: Der Fuß steht von seiner Linie aus längs der Wand zur Lippe hin versetzt)
+  if (q.vor > 0) {
+    ort[0] += q.vor * zl[0];
+    ort[1] += q.vor * zl[1];
+    ort[2] += q.vor * zl[2];
+  }
+  return { ort, x, n, zl };
 }
 /**
  * Ort und Richtungen eines Zahns, wie er steht (ein Spiegelbild bei z ≤ 0), an der Haut mit den Lagen `P` (in Einheiten des
@@ -273,7 +302,7 @@ export function zahnRahmen(q: ZahnPlatz, P: ArrayLike<number>): { ort: [number, 
 }
 
 /** das Netz eines Zahns (ohne Wurzel): Lagen, Normalen, Dreiecke und die Länge seiner Krone. Jede Form hat gleich viele Punkte und Dreiecke */
-export type FormNetz = { pos: Float32Array; nor: Float32Array; idx: Uint32Array; laenge: number };
+export type FormNetz = { pos: Float32Array; nor: Float32Array; idx: Uint32Array; laenge: number; tiefe: number };
 function netzAus(f: ZahnForm): FormNetz {
   const geo = zahnNetz(f, false);
   geo.computeVertexNormals();
@@ -283,6 +312,7 @@ function netzAus(f: ZahnForm): FormNetz {
     nor: Float32Array.from(geo.getAttribute('normal').array),
     idx: index ? Uint32Array.from(index.array) : Uint32Array.from({ length: geo.getAttribute('position').count }, (_, q) => q),
     laenge: f.laenge,
+    tiefe: f.tiefe,
   };
   geo.dispose();
   return g;
@@ -345,10 +375,13 @@ export function zaehneNetz(
     const s = Math.sin(q.reihe.neigung);
     const Y: [number, number, number] = [n[0] * c + zl[0] * s, n[1] * c + zl[1] * s, n[2] * c + zl[2] * s];
     const Z: [number, number, number] = [zl[0] * c - n[0] * s, zl[1] * c - n[1] * s, zl[2] * c - n[2] * s];
-    // die Länge: nie länger als der Spalt der Kiefer dort (zu: null), und so weit, wie der Zahn schon gesprossen ist
+    // die Länge: im Maul nie länger als der Spalt der Kiefer dort (zu: null); vor der Lippe behält der Zahn seine Länge (ganz,
+    // sobald er um seine halbe Tiefe draußen steht); und so weit, wie er schon gesprossen ist
     const w = Math.max(0, Math.min(1, wuchs(q.vorn)));
     const voll = g.laenge * q.mass;
-    const lam = w * (voll > 1e-9 ? Math.max(0, Math.min(1, (0.92 * spalt(q.r)) / voll)) : 0);
+    const imMaul = voll > 1e-9 ? Math.max(0, Math.min(1, (0.92 * spalt(q.r)) / voll)) : 0;
+    const frei = q.aussen > 0 ? Math.min(1, q.aussen / Math.max(1e-9, 0.5 * g.tiefe * q.mass)) : 0;
+    const lam = w * (imMaul + (1 - imMaul) * frei);
     const dick = q.mass * (0.35 + 0.65 * w) * (lam > 0 ? 1 : 0);
     const sz = q.gespiegelt ? -1 : 1;
     const k = g.pos.length / 3;

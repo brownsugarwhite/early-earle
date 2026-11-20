@@ -42,6 +42,10 @@ ob du beide Reihen stellst oder eine allein. Solange die Linse offen ist, steht 
 Spiegelbild, ein dritter ihn allein. Formenring und `G` stellen dann nur ihn, Ziehen rückt ihn auf dem Zahnfleisch, ⌫ zieht ihn
 (Lücke). So geht ein Hauer auf einer Seite.
 
+**Etappe 5, vierte Scheibe (20.11.):** Die Perle `S` dreht den Sitz bis vor die Lippe: Zähne außen behalten ihre Länge und liegen
+bei geschlossenem Maul über dem anderen Kiefer. Ein gewählter Zahn lässt sich über die Lippe hinaus rücken. Auf Wachs, Solid und
+Zebra tragen die Zähne ihre eigene Farbe (am Anfang Elfenbein; die Perle unten an der Linse stellt sie).
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -149,16 +153,15 @@ Spiegelbild, ein dritter ihn allein. Formenring und `G` stellen dann nur ihn, Zi
 49. **Rillen am Gaumen, Farben für Zähne und Zunge:** Rillen lassen sich als Farblinien ziehen (nicht ausprobiert); Zähne und Zunge
     gibt es noch nicht.
 
-### An den Zähnen (Etappe 5, drei Scheiben)
+### An den Zähnen (Etappe 5, vier Scheiben)
 
 50. ~~Die Linse fehlt in Ozzy~~ gebaut (zweite Scheibe). **Es fehlen** die Perlen „Biegung“ und „Wurzel“ der Studie und eine
     für die Reichweite der Reihe. Stellst du beide Reihen zusammen, hält die Linse die Teilung (unten einer weniger, in den
     Lücken der oberen); stellst du eine Reihe allein, greifen sie nicht mehr sicher ineinander.
 51. ~~Zähne wählen und rücken fehlt~~ gebaut (dritte Scheibe): Reihe, Zahn mit Spiegelbild, Zahn allein; rücken; ⌫ zieht ihn.
     Was daran offen ist: Punkte 66 bis 73.
-52. **Die Zähne tragen die Farbe der Form** (auf Wachs sind sie Wachs). Elfenbein kommt mit einer Farbe für das Teil.
-53. **Zu stecken alle Zähne im Maul.** Zähne außen vor der Lippe, die geschlossen über dem anderen Kiefer liegen (dein Bild 07),
-    fehlen. Darum schaut auch ein Hauer bei geschlossenem Maul nicht heraus: Innen wird er nie länger als der Spalt der Kiefer.
+52. ~~Die Zähne tragen die Farbe der Form~~ gebaut (vierte Scheibe) für Wachs, Solid und Zebra. Offen: Punkt 77.
+53. ~~Zähne außen vor der Lippe fehlen~~ gebaut (vierte Scheibe). Offen: Punkte 74 bis 76 und 78.
 54. **Wie lang ein Zahn sein darf,** liest Ozzy aus den Winkeln der Knochen (der Spalt der Kiefer an seiner Stelle). Hat das Maul
     geschlossen eine Lücke (getrennte Lippen) oder formt die Pose die Kiefer um, zählt das nicht mit. Zähne dürfen einander und
     den anderen Kiefer schneiden.
@@ -186,11 +189,11 @@ Spiegelbild, ein dritter ihn allein. Formenring und `G` stellen dann nur ihn, Zi
     Rand), verschieben nicht.
 63. **Das Gefühl des Drehreglers** (Rasten alle 15°, Nachlauf, Ticken, Rad der Maus) ist das der Studie. Am iPad und mit dem
     Stift nicht geprüft.
-64. **Der Zahn in der Linse ist elfenbein,** die Zähne im Maul tragen die Farbe der Form (Punkt 52).
+64. ~~Der Zahn in der Linse ist elfenbein, die Zähne im Maul tragen die Farbe der Form~~ erledigt: Beide tragen die Farbe der
+    Zähne (auf Wachs, Solid und Zebra).
 65. **Was die Linse wählt, steht nicht in ⌘Z:** welche Reihe gilt, welche Perle und welcher Zahn gewählt ist. Nach ⌘Z zeigt sie
     die Werte, die gelten.
-66. **Ein gerückter Zahn bleibt im Maul** (mindestens 0,15 Breiten des Zahnfleischs hinter der Lippe). „Höchstens ein Stück vor
-    der Lippe“ aus dem Konzept fehlt, wie die Zähne außen (Punkt 53).
+66. ~~Ein gerückter Zahn bleibt im Maul~~ erledigt: Er lässt sich bis 1,2 Breiten des Zahnfleischs vor die Lippe rücken.
 67. **Ziehen an einem Zahn, der nicht gewählt ist, tut nichts** (es dreht auch nicht die Ansicht). Erst antippen, dann ziehen.
 68. **Die Marke ist ein Ring an der Zahnspitze.** Eine gewählte Reihe hat im Bild keine Marke (das sagen die Perlen der Linse).
     Ob die Form vor einem gewählten Zahn steht, misst die Marke grob am Rechennetz.
@@ -201,6 +204,18 @@ Spiegelbild, ein dritter ihn allein. Formenring und `G` stellen dann nur ihn, Zi
     zur Tiefe des Mauls). An stark gekrümmtem Zahnfleisch und an getrennten Lippen nicht geprüft.
 72. **Ein gezogener Zahn kommt nur mit ⌘Z zurück** (oder mit der Anzahl, mit der alles Eigene fällt).
 73. **Geschätzt:** die Größe eines einzelnen Zahns zwischen 30 und 320 % seiner Reihe; die Marke (16 Bildpunkte).
+74. **Zähne außen stehen neben der Lippe in der Ebene des Mauls** (wie in der Studie), nicht auf der Haut des Kiefers. Wölbt
+    sich der andere Kiefer dort weiter nach außen, als der Zahn steht, steckt der Zahn in ihm. Angesehen nur an „teat firefish“.
+75. **Bei offener Linse steht das Maul offen:** Wie Zähne außen bei geschlossenem Maul liegen, siehst du erst, wenn du die Linse
+    schließt (Esc oder der Tropfen).
+76. **Zwischen „im Maul“ und „außen“** (ein Sitz knapp unter null) hat ein Zahn bei geschlossenem Maul einen Teil seiner Länge:
+    die volle erst, wenn er um seine halbe Tiefe vor der Lippe steht.
+77. **Die Farbe gilt allen Zähnen;** je Reihe oder je Zahn eine eigene ist nicht gebaut, „einen Farbtropfen auf das Teil ziehen“
+    (Konzept) auch nicht: Die Farbe stellt die Perle der Linse. Sie zeigt sich auf Wachs, Solid und Zebra, nicht in der
+    Ebenen-Ansicht (X) und nicht in „Dreiecke zeigen“. Helles Solid und Jelly zeigen die Zähne wie den Körper (auf hellem Solid
+    sind sie damit weiß), die Seifenhaut als Blasen. Auf Solid haben die Zähne keinen Umriss.
+78. **Einen Zahn über die Lippe rücken** habe ich nur im Modell geprüft (sein Versatz), nicht mit dem Zeiger im Fenster.
+79. **Der Farbwähler** ist der des Systems; am iPad nicht geprüft.
 
 ### Kleines
 

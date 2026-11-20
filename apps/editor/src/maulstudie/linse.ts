@@ -40,6 +40,8 @@ export type LinsenZiele = {
   form: (i: number) => void;
   perlen: Perle[];
   reihen?: LinsenReihe[];
+  /** die Farbe des Teils (`#rrggbb`): Eine Perle am Rad zeigt sie und öffnet den Farbwähler des Systems; der Zahn in der Linse trägt sie */
+  farbe?: { name: string; wert: () => string; setzen: (hex: string) => void };
 };
 
 /**
@@ -102,6 +104,8 @@ export class Linse {
   /** der wievielte Griff am Drehregler es ist (einmal Greifen und Drehen samt Nachlauf, oder ein Zug am Rad der Maus) */
   private griff = 0;
   private radMausZeit = 0;
+  /** das Farbfeld des Systems (unsichtbar, aber in der Seite: Nur so öffnet es den Farbwähler) */
+  private farbfeld: HTMLInputElement | null = null;
 
   constructor(
     feld: HTMLElement,
@@ -118,6 +122,20 @@ export class Linse {
     feld.appendChild(this.leinwand);
     this.svg = el('svg', { class: 'linse-ringe' });
     feld.appendChild(this.svg);
+    if (ziele.farbe) {
+      const f = document.createElement('input');
+      f.type = 'color';
+      f.className = 'linse-farbfeld';
+      f.tabIndex = -1;
+      f.setAttribute('aria-label', ziele.farbe.name);
+      f.addEventListener('input', () => {
+        ziele.farbe?.setzen(f.value);
+        this.zeigen();
+        this.lauf();
+      });
+      feld.appendChild(f);
+      this.farbfeld = f;
+    }
     this.renderer = new WebGLRenderer({ canvas: this.leinwand, antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0xffffff, 0);
@@ -283,6 +301,16 @@ export class Linse {
       reihen.appendChild(g);
     });
     s.appendChild(reihen);
+    // die Farbe des Teils: eine Perle unten am Rad (zwischen dem Tropfen zum Größerziehen und den Perlen des Drehreglers)
+    if (this.ziele.farbe) {
+      const a = Math.PI * 0.42;
+      const g = el('g', { transform: `translate(${(Math.cos(a) * (r2 + 2)).toFixed(2)},${(Math.sin(a) * (r2 + 2)).toFixed(2)})`, class: 'farbperle' });
+      g.appendChild(el('circle', { r: 9 }));
+      const tt = el('title');
+      tt.textContent = this.ziele.farbe.name;
+      g.appendChild(tt);
+      s.appendChild(g);
+    }
     // die Zahl: steht nur, solange gedreht wird
     this.zahl = el('text', { y: R - 16, class: 'linse-zahl' });
     s.appendChild(this.zahl);
@@ -299,6 +327,11 @@ export class Linse {
     s.querySelectorAll<SVGGElement>('.ring-zeichen').forEach((g) => g.classList.toggle('gilt', Number(g.dataset.i) === this.gewaehlt));
     s.querySelectorAll<SVGGElement>('.perle').forEach((g) => g.classList.toggle('gilt', Number(g.dataset.i) === this.perle));
     s.querySelectorAll<SVGGElement>('.reihe').forEach((g) => g.classList.toggle('gilt', !!this.ziele.reihen?.[Number(g.dataset.i)]?.an()));
+    if (this.ziele.farbe) {
+      const farbe = this.ziele.farbe.wert();
+      s.querySelector<SVGCircleElement>('.farbperle circle')?.setAttribute('fill', farbe);
+      this.material.color.set(farbe);
+    }
     // der Tropfen an der Marke dehnt sich in Drehrichtung und schnappt beim Rasten zurück
     const t = s.querySelector<SVGCircleElement>('.rad-tropfen');
     if (t) {
@@ -374,7 +407,11 @@ export class Linse {
       const ziel = e.target as Element;
       let art: 'formen' | 'rad' | 'zahn' | 'groesse';
       if (ziel.closest('.linse-griff')) art = 'groesse';
-      else if (ziel.closest('.reihe')) {
+      else if (ziel.closest('.farbperle')) {
+        // (der Farbwähler geht beim Klick auf: Nur der gilt auf jedem Gerät als Eingabe von Hand)
+        e.stopPropagation();
+        return;
+      } else if (ziel.closest('.reihe')) {
         this.ziele.reihen?.[Number((ziel.closest('.reihe') as SVGGElement).dataset.i)]?.tippen();
         this.tick(false);
         this.zeigen();
@@ -463,6 +500,19 @@ export class Linse {
     };
     this.feld.addEventListener('pointerup', ende);
     this.feld.addEventListener('pointercancel', ende);
+    // die Perle der Farbe: der Farbwähler des Systems, mit der Farbe von jetzt; was dort gewählt wird, ist ein Griff
+    this.feld.addEventListener('click', (e) => {
+      const f = this.farbfeld;
+      if (!f || !this.ziele.farbe || !(e.target as Element).closest('.farbperle')) return;
+      this.griff++;
+      f.value = this.ziele.farbe.wert();
+      this.tick(false);
+      try {
+        f.showPicker();
+      } catch {
+        f.click();
+      }
+    });
     // das Rad der Maus dreht den Drehregler
     this.feld.addEventListener(
       'wheel',

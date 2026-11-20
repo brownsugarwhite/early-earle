@@ -1,4 +1,4 @@
-// Ozzy, die Zähne und ihre Linse (Plan „Maul, Zähne, Zunge“, Etappe 5, erste bis dritte Scheibe, 20.11.2026), an „teat firefish“
+// Ozzy, die Zähne und ihre Linse (Plan „Maul, Zähne, Zunge“, Etappe 5, erste bis vierte Scheibe, 20.11.2026), an „teat firefish“
 // (NAME) auf Wachs. Kriterien:
 //   Z1 Mit dem Maul hängt unter der Leiste der Tropfen „Zähne“; Zähne gibt es noch keine, die Linse ist zu.
 //   Z2 Ein Tipp: Das Maul hat zwei Zahnreihen (oben zwölf, unten elf), sie sprießen bei offenem Maul. Die Linse ist offen (sie gilt
@@ -21,6 +21,12 @@
 //   W6 ⌫ zieht ihn: Die obere Reihe hat einen Zahn weniger, sein Spiegelbild steht noch; ⌘Z bringt ihn zurück.
 //   W7 Ein Tipp auf die Bühne neben den Zähnen hebt die Wahl am Zahn auf, die Linse bleibt offen. ⌫ ohne gewählten Zahn lässt bei
 //      offener Linse nicht die Luft ab. Die Anzahl gedreht: Was einzelne Zähne eigen hatten, fällt.
+//   F1 Auf Wachs tragen die Zähne ihre eigene Farbe: Ein Bildpunkt auf einem Zahn ist hell und fast farblos (Elfenbein), nicht Wachs.
+//   F2 Die Farbe an der Linse gesetzt (das Farbfeld der Perle): Die Zähne tragen sie im Bild, ein Schritt für ⌘Z; ⌘Z gibt Elfenbein
+//      zurück.
+//   A1 Die Perle „S“ und das Rad der Maus zurück: Der Sitz beider Reihen liegt unter null, jeder Zahn steht vor der Lippe.
+//   A2 Die Linse zu: Das Maul ist zu, und die Zähne stehen außen in ihrer Länge (im Maul hätte keiner eine); wenigstens drei sind
+//      im Bild zu treffen. ⌘Z: wieder im Maul, zu hat keiner Länge.
 //   Z3 „Fressen“ an: Die Zähne stehen im offenen Maul (ihr Netz ist endlich; der längste ist zwischen 5 und 45 Einheiten lang). Den
 //      Unterkiefer weiter geöffnet: Sie gehen mit, keiner wird kürzer. In der Pose stellt die Linse wie in der Grundform (eine Rast am
 //      Rad der Maus: 12 → 13 und 12; ⌘Z nimmt es zurück).
@@ -404,6 +410,85 @@ if (z2.werte && z2.linse.offen) {
     }
     const wEnde = await O('zaehne');
     if (!(wEnde.werte.oben.anzahl === 12 && wEnde.werte.oben.eigen === undefined && wEnde.linse.reihen.oben && wEnde.linse.reihen.unten)) ok('(nach der dritten Scheibe wieder der Stand davor)', false, `oben ${wEnde.werte.oben.anzahl}, Eigenes ${JSON.stringify(wEnde.werte.oben.eigen)}, gilt ${JSON.stringify(wEnde.linse.reihen)}`);
+  }
+  // ---- vierte Scheibe: die Farbe der Zähne, Zähne außen ----
+  {
+    /** die Farbe eines Bildpunkts der Haut (CSS-Pixel), gleich nach einem Bild gelesen */
+    const punktFarbe = (x, y) =>
+      s.evaluate(
+        ([px, py]) => {
+          window.__ozzy.bild();
+          const c = document.getElementById('haut');
+          const D = c.width / c.getBoundingClientRect().width;
+          const k = document.createElement('canvas');
+          k.width = k.height = 3;
+          const z = k.getContext('2d');
+          z.drawImage(c, Math.round(px * D) - 1, Math.round(py * D) - 1, 3, 3, 0, 0, 3, 3);
+          const d = z.getImageData(1, 1, 1, 1).data;
+          return [d[0], d[1], d[2], d[3]];
+        },
+        [x, y],
+      );
+    const vorn = (await O('zaehneImBild')).filter((t) => t.trifft && !t.unten).sort((a, b) => Math.abs(a.i - 5.5) - Math.abs(b.i - 5.5))[0];
+    // F1 Elfenbein
+    const f1 = await punktFarbe(vorn.bild[0], vorn.bild[1]);
+    const hell = (f) => f[3] > 200 && f[1] > 0.75 * f[0] && f[2] > 0.55 * f[0] && f[0] > 90;
+    ok('F1 auf Wachs tragen die Zähne ihre eigene Farbe: ein Bildpunkt auf einem Zahn ist hell und fast farblos (Elfenbein), nicht Wachs', hell(f1) && (await O('zaehne')).werte.farbe === undefined, `Zahn ${vorn.i} oben, Bildpunkt rot ${f1[0]}, grün ${f1[1]}, blau ${f1[2]}`);
+    await bild('5h-elfenbein');
+    // F2 eine andere Farbe über das Farbfeld der Linse
+    const sv = (await O('kiefer')).schritte;
+    await s.evaluate(() => {
+      const f = document.querySelector('#linse .linse-farbfeld');
+      f.value = '#2244ee';
+      f.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await s.waitForTimeout(500);
+    const f2 = await punktFarbe(vorn.bild[0], vorn.bild[1]);
+    const w2 = await O('zaehne');
+    const perle = await s.evaluate(() => document.querySelector('#linse .farbperle circle')?.getAttribute('fill'));
+    await zurueck();
+    const f2b = await punktFarbe(vorn.bild[0], vorn.bild[1]);
+    const w2b = await O('zaehne');
+    ok(
+      'F2 die Farbe an der Linse gesetzt: die Zähne tragen sie im Bild, ein Schritt für ⌘Z; ⌘Z gibt Elfenbein zurück',
+      w2.werte.farbe === '#2244ee' && f2[2] > 1.3 * f2[0] && perle === '#2244ee' && (await O('kiefer')).schritte === sv && w2b.werte.farbe === undefined && hell(f2b) && w2.werte.oben.anzahl === 12,
+      `gesetzt ${w2.werte.farbe}: Bildpunkt rot ${f2[0]}, grün ${f2[1]}, blau ${f2[2]}; die Perle ${perle}; nach ⌘Z ${w2b.werte.farbe ?? 'Elfenbein'}: rot ${f2b[0]}, grün ${f2b[1]}, blau ${f2b[2]}`,
+    );
+    // A1 der Sitz vor die Lippe: die Perle „S“, das Rad der Maus zurück (gut neun Rasten)
+    {
+      const [x, y] = await anLinse(perleGrad(4), PERLEN);
+      await klick(x, y);
+      await mausRad(-2.5);
+    }
+    const a1 = await O('zaehne');
+    ok(
+      'A1 die Perle „S“ und das Rad der Maus zurück: der Sitz beider Reihen liegt unter null, jeder Zahn steht vor der Lippe',
+      a1.linse.perle === 'S' && a1.werte.oben.sitz < -0.3 && a1.werte.unten.sitz < -0.3 && a1.plaetze.length === 23 && a1.plaetze.every((q) => q.aussen > 0) && a1.netz.endlich,
+      `Sitz oben ${a1.werte.oben.sitz.toFixed(2)}, unten ${a1.werte.unten.sitz.toFixed(2)}; vor der Lippe ${Math.min(...a1.plaetze.map((q) => q.aussen)).toFixed(1)} bis ${Math.max(...a1.plaetze.map((q) => q.aussen)).toFixed(1)} Einheiten`,
+    );
+    await bild('5i-aussen-offen');
+    // A2 die Linse zu: das Maul ist zu, die Zähne stehen außen in ihrer Länge
+    await s.click('#zaehne-tropfen');
+    await s.waitForTimeout(1300);
+    const a2 = await O('zaehne');
+    const ka = await O('kiefer');
+    const zuSehen = (await O('zaehneImBild')).filter((t) => t.trifft).length;
+    await bild('5j-aussen-zu');
+    await zurueck();
+    await s.waitForTimeout(500);
+    const a2b = await O('zaehne');
+    ok(
+      'A2 die Linse zu: das Maul ist zu, und die Zähne stehen außen in ihrer Länge; ⌘Z: wieder im Maul, zu hat keiner Länge',
+      !a2.linse.offen && ka.blick === 0 && a2.lang > 5 && zuSehen >= 3 && a2b.werte.oben.sitz === 0.5 && a2b.werte.unten.sitz === 0.5 && a2b.lang < 0.01,
+      `zu: längster Zahn ${a2.lang.toFixed(1)}, im Bild zu treffen ${zuSehen}; nach ⌘Z: Sitz ${a2b.werte.oben.sitz}, längster ${a2b.lang.toFixed(3)}`,
+    );
+    // die Linse wieder auf, die Perle „#“ wieder gewählt (so erwartet es der Rest der Probe)
+    await s.click('#zaehne-tropfen');
+    await s.waitForTimeout(900);
+    {
+      const [x, y] = await anLinse(perleGrad(0), PERLEN);
+      await klick(x, y);
+    }
   }
   // L6 Esc schließt die Linse (ist noch etwas gewählt, leert das erste Esc die Auswahl); der Tropfen öffnet und schließt sie
   const b0 = await O('bearbeiten');

@@ -7,9 +7,9 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 **Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. in Ozzy die erste Scheibe von Etappe 1 (das
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
 in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
-Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält), dazu drei Scheiben von Etappe 5 (Zähne sprießen und gehen mit den
-Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen). Von Etappe 5 fehlen die Zähne außen und die Farbe. Als
-Nächstes, auf Florians Wort: Etappe 6 (Zunge).** Offenes steht
+Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält) und Etappe 5 in vier Scheiben (Zähne sprießen und gehen mit den
+Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe). Als Nächstes, auf Florians
+Wort: Etappe 6 (Zunge).** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -265,6 +265,34 @@ die Perlen Biegung und Wurzel.
    gezeigten Haut (`zahnRahmen`: längs nach hinten, zur Lippe); liegen sie im Bild fast ineinander, gilt nur die längere. Je
    Bewegung ein Schritt.
 7. **`zaehneImBild()`** (Haken) schießt je Zahn Strahlen gegen die ganze Anzeige: nur für Proben, nicht je Bild.
+
+## Etappe 5 in Ozzy, vierte Scheibe: Zähne außen und ihre Farbe (20.11.)
+
+**Was es gibt:** Der Sitz geht bis vor die Lippe (Perle `S`, „außen“; ein einzelner Zahn durch Rücken): Zähne außen behalten
+ihre Länge. Die Zähne tragen auf Wachs, Solid und Zebra ihre eigene Farbe (Elfenbein; die Perle unten an der Linse stellt sie).
+Plan, 12.18. **Was fehlt:** die Perlen Biegung und Wurzel, eine Farbe je Reihe oder Zahn, die Farbe auf den übrigen Materialien.
+
+**Wo:** `src/ozzy/zaehne.ts` (`SITZ_AUSSEN`, `ZahnPlatz.vor` und `aussen`, die Länge außen in `zaehneNetz`), `src/ozzy/zahnBild.ts`
+(die Zähne als eigenes Netz in ihrer Farbe), `src/form/werk.ts` (`MaulZaehne.farbe`), `src/ozzy/main.ts` (`zahnBild`,
+`zeigeNetzAlle(true)`, `ruheNetzGemerkt.ohneZaehne`, in `feste.zeichnen` das `danach`), `maulstudie/linse.ts`
+(`LinsenZiele.farbe`, die Perle und das Farbfeld). Probe: `ozzy-maul-zaehne-fenster.mjs` (F1, F2, A1, A2).
+
+**Was man wissen muss:**
+
+1. **Ein Sitz unter null versetzt nur den Fuß:** Der Zahn hängt weiter an zwei Orten der Wand (an der Linie bei `SITZ_MIN`),
+   `ZahnPlatz.vor` ist der Weg von dort längs der Wand zur Lippe und darüber hinaus, `aussen` der Teil vor der Lippe. Wer den Fuß
+   eines Zahns braucht, nimmt `zahnRahmen`, nicht die zwei Orte.
+2. **Die Länge außen** rechnet `zaehneNetz` (`frei`). Die Abkürzung in `zaehneRechnen` („zu ändert sich an den Zähnen nichts“)
+   gilt nur, solange kein Zahn außen steht: Der ist auch zu zu sehen und muss mit der Haut mitgehen.
+3. **Wer `MaulZaehne` neu zusammensetzt, behält die übrigen Felder** (`{ ...z, oben, unten }`): Dort steht die Farbe.
+4. **Auf den festen Materialien stehen die Zähne nicht im Netz des Körpers** (`zeigeNetzAlle(true)`); `zahnBild` zeichnet sie im
+   `danach` von `feste.zeichnen`, vor der Bemalung. Nicht in der Ebenen-Ansicht (Kopien) und nicht in „Dreiecke zeigen“: Dort
+   bleiben sie Teil des Körpers oder fehlen wie bisher. Alles andere (Seifenhaut, Jelly, helles Solid, Grün, der weiße Körper
+   der Linienansichten) nimmt weiter `zeigeNetzAlle()` mit den Zähnen.
+5. **`ZahnBild.setzen` füllt die vorhandenen Puffer,** solange sich die Zahl der Punkte nicht ändert: three gibt die Puffer eines
+   ersetzten Attributs nicht frei.
+6. **Die Perle der Farbe öffnet den Farbwähler beim `click`** (nur der gilt auf jedem Gerät als Eingabe von Hand); das Farbfeld
+   liegt unsichtbar in der Linse (`.linse-farbfeld`, Deckung null, nicht `hidden`). Proben setzen die Farbe darüber (`input`).
 
 ## Die Studie in einem Absatz
 

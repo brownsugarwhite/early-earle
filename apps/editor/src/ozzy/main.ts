@@ -21,7 +21,7 @@
 import './adresse';
 import { MAUL_WINKEL_MAX, eckenAuto, istEcke } from '@ee/shape/dicht';
 import { KIEFER_MAX } from '../form/maulEcht';
-import { type Camera, Color, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
+import { type Camera, Color, type DataTexture, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
 import { FASSUNGEN, type Fassung, Haut, type HautNetz, type HautWerte } from '../anfang/haut';
@@ -42,6 +42,7 @@ import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, 
 import { istMaulEbene, taschenFeld } from './farbe/maulEbene';
 import { FAKTOR_MAX, FAKTOR_MIN, type FormNetz, ZAEHNE_ANFANG, type ZahnPlatz, eigenSetzen, formGemischt, formNetzGemischt, mitAnzahl, partner, sitzGrenzen, vorlageNr, zaehneNetz, zaehnePaar, zahnPlaetze, zahnRahmen } from './zaehne';
 import { strahlAufNetz } from './farbe/treffer';
+import { ZAHN_FARBE, ZahnBild } from './zahnBild';
 import { Linse, type Perle, grauesKugelbild } from '../maulstudie/linse';
 import { ZAHN_FORMEN } from '../maulstudie/zahn';
 import { EbenenStapel } from './farbe/ebenenStapel';
@@ -185,6 +186,11 @@ const renderer = new WebGLRenderer({ canvas: leinwandHaut, antialias: false, alp
 const haut = new Haut(renderer);
 /** die Haut des Werks mit einem festen Material statt der Seifenhaut (Solid, Zebra, Wachs) */
 const feste = new FesteHaut(renderer);
+/** Maul, Etappe 5: die Zähne in ihrer Farbe auf den festen Materialien (`zahnBild.ts`); angelegt, sobald ein Maul Zähne hat */
+let zahnBild: ZahnBild | null = null;
+/** das Kugelbild des Wachses ohne seine Farbe (Hell, Dunkel, Glanz): für die Zähne im Bild und den Zahn in der Linse */
+let zahnKugelbild: DataTexture | null = null;
+const zahnKugel = (): DataTexture => (zahnKugelbild ??= grauesKugelbild(wachsKugel(256), 256));
 feste.wachsFarbton(wachsWerte.farbton);
 const gast = new GastHaut(leinwandGast);
 const anzeige = new FluessigeAnzeige(leinwandLinien);
@@ -849,7 +855,8 @@ function rueckwegAnders(): boolean {
 let ruheSicht = 1;
 const RUHE_AUF_DEM_BLATT = 0.38;
 /** das Netz aller ruhenden Objekte, wie die Seifenhaut es zeigt (neu, wenn sich ihre Reihe ändert) */
-let ruheNetzGemerkt: { schl: string; netz: HautNetz | null } = { schl: '', netz: null };
+/** `ohneZaehne`: dasselbe ohne das Netz der Zähne (für die Materialien, die die Zähne für sich in ihrer Farbe zeichnen) */
+let ruheNetzGemerkt: { schl: string; netz: HautNetz | null; ohneZaehne: HautNetz | null } = { schl: '', netz: null, ohneZaehne: null };
 /** Maul, Etappe 5: die Zähne des aktiven Objekts als Netz an der gezeigten Haut (null: keine), und ein Zähler seiner Stände */
 let zaehneNetzJetzt: HautNetz | null = null;
 let zaehneVersion = 0;
@@ -892,17 +899,21 @@ function netzeVereinen(netze: readonly HautNetz[], sicht?: readonly number[]): H
  * dessen Netz selbst. Was in einem Verbund aufgeht (Etappe 5), steht nicht für sich darin. Ändert sich nur das aktive, wird sein
  * Teil überschrieben; neu angelegt wird nur, wenn sich die Teile ändern.
  */
-let alleNetz: { teile: HautNetz[]; version: number; netz: HautNetz } | null = null;
-function zeigeNetzAlle(): HautNetz | null {
+type AlleNetz = { teile: HautNetz[]; version: number; netz: HautNetz };
+let alleNetz: AlleNetz | null = null;
+/** dasselbe ohne die Zähne (`zeigeNetzAlle(true)`): Beide werden im selben Bild gebraucht, jedes behält seinen Stand */
+let alleNetzOhneZaehne: AlleNetz | null = null;
+function zeigeNetzAlle(ohneZaehne = false): HautNetz | null {
   const eigen = werkHaut.zeigeNetz;
   if (!eigen) return null;
   const a = verbundVerdeckt(aktivId) ? null : eigen;
-  const teile = [a, verbundGezeigt?.netz ?? null, ruheNetzGemerkt.netz].filter((n): n is HautNetz => n !== null);
+  const teile = [a, verbundGezeigt?.netz ?? null, ohneZaehne ? ruheNetzGemerkt.ohneZaehne : ruheNetzGemerkt.netz].filter((n): n is HautNetz => n !== null);
   if (teile.length <= 1) return teile[0] ?? null;
-  let g = alleNetz;
+  let g = ohneZaehne ? alleNetzOhneZaehne : alleNetz;
   if (!g || g.teile.length !== teile.length || g.teile.some((t, i) => t !== teile[i])) {
     g = { teile, version: werkHaut.version, netz: netzeVereinen(teile) };
-    alleNetz = g;
+    if (ohneZaehne) alleNetzOhneZaehne = g;
+    else alleNetz = g;
     // (nur das aktive schneidet die Anzeige an der Spiegelebene, und nur an ihm klingt eine Dehnung; es steht vorn)
     if (a) {
       g.netz.seite.set(a.seite);
@@ -980,7 +991,8 @@ function ruheZeigen(): void {
   if (schl === ruheNetzGemerkt.schl) return;
   const netze = [...teile.map((r) => r.haut.zeigeNetz!), ...(zn ? [zn] : [])];
   const netz = netze.length ? netzeVereinen(netze, [...teile.map((r) => (blass(r) ? GEIST_SICHT : 1)), ...(zn ? [1] : [])]) : null;
-  ruheNetzGemerkt = { schl, netz };
+  const ohneZaehne = !zn ? netz : teile.length ? netzeVereinen(teile.map((r) => r.haut.zeigeNetz!), teile.map((r) => (blass(r) ? GEIST_SICHT : 1))) : null;
+  ruheNetzGemerkt = { schl, netz, ohneZaehne };
   haut.ruheSetzen(netz, 0);
 }
 
@@ -4184,7 +4196,14 @@ function bild(dt: number): boolean {
       gast.aus();
       // „Dreiecke zeigen“: das Netz der Rechnung, flach schattiert, statt der glatten Anzeige
       const facetten = dreieckeZeigen ? facettenNetz() : null;
-      const festN = facetten ?? zeigN;
+      // Maul, Etappe 5: Die Zähne tragen ihre eigene Farbe. Sie stehen dann nicht im Netz des Körpers, sondern werden danach für
+      // sich ins selbe Ziel gezeichnet (`zahnBild`). Nicht in der Ebenen-Ansicht (dort steht je Ebene eine Kopie des Körpers, die
+      // Zähne bleiben Teil von ihm) und nicht, wenn das aktive Objekt im Verbund aufgeht.
+      const zaehneFuerSich = !facetten && !kopien && !!zaehneNetzJetzt && !verbundVerdeckt(aktivId);
+      const festN = facetten ?? (zaehneFuerSich ? (zeigeNetzAlle(true) ?? zeigN) : zeigN);
+      const zb = zaehneFuerSich ? (zahnBild ??= new ZahnBild(zahnKugel())) : zahnBild;
+      zb?.setzen(zaehneFuerSich ? zaehneNetzJetzt : null);
+      const zahnFarbe = werk.G.maul?.zaehne?.farbe ?? ZAHN_FARBE;
       if (!festeStand || festeStand.netz !== festN || festeStand.version !== werkHaut.version) {
         feste.netzSetzen(festN, wicklungVon(festN));
         festeStand = { netz: festN, version: werkHaut.version };
@@ -4196,10 +4215,12 @@ function bild(dt: number): boolean {
         spiegelSchnitt: spiegelSchnittJetzt(),
         flach: !!facetten,
         kopien,
-        // die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
+        // die Zähne in ihrer Farbe; dann die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
         danach:
-          farbeDa && material === 'Wachs'
+          zaehneFuerSich || (farbeDa && material === 'Wachs')
             ? (r, k) => {
+                if (zaehneFuerSich) zb?.zeichnen(r, k, zahnFarbe, schnittJetzt);
+                if (!(farbeDa && material === 'Wachs')) return;
                 const t0 = performance.now();
                 farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt, verdeckt: zeigN, kopien });
                 farbKostenBild += performance.now() - t0;
@@ -9201,7 +9222,8 @@ function zaehneRechnen(): void {
   // (zu und fertig gesprossen ändert sich an den Zähnen nichts: Sie stecken im Maul)
   const stand = `${zaehnePlan?.schl}|${werkHaut.version}|${mt.toFixed(3)}|${auf.toFixed(5)}|${Math.min(2, t).toFixed(3)}`;
   if (stand === zaehneStand && zaehneNetzJetzt) return;
-  if (auf === 0 && t >= 2 && mt >= 1 && zaehneNetzJetzt && zaehneStand.endsWith('|0.00000|2.000') && zaehnePlan && zaehneStand.startsWith(`${zaehnePlan.schl}|`)) return;
+  // (das gilt nicht, wenn ein Zahn außen vor der Lippe steht: Der ist auch zu zu sehen und geht mit der Haut mit)
+  if (auf === 0 && t >= 2 && mt >= 1 && zaehneNetzJetzt && zaehneStand.endsWith('|0.00000|2.000') && zaehnePlan && zaehneStand.startsWith(`${zaehnePlan.schl}|`) && !plaetze.some((q) => q.aussen > 0)) return;
   zaehneStand = stand;
   const P = werk.alsAnzeige(() => werk.haut.pos);
   // von der Spitze nach hinten: Jeder Zahn wächst über ein Drittel der Zeit, der hinterste beginnt nach zwei Dritteln
@@ -9282,7 +9304,7 @@ function wahlZaehne(z: werk.MaulZaehne): number[] {
 /** die Vorlage, die die Linse zeigt: die des gewählten Zahns, sonst die der führenden Reihe */
 const linseForm = (z: werk.MaulZaehne): number => vorlageNr(zahnWahl ? (z[zahnWahl.kiefer].eigen?.[zahnWahl.i]?.form ?? z[zahnWahl.kiefer].form) : z[linseFuehrt()].form);
 /** die Reihen, denen die Linse gilt, mit `f` ändern */
-const reihenStellen = (z: werk.MaulZaehne, f: (r: werk.ZahnReihe) => werk.ZahnReihe): werk.MaulZaehne => ({ oben: linseReihen.oben ? f(z.oben) : z.oben, unten: linseReihen.unten ? f(z.unten) : z.unten });
+const reihenStellen = (z: werk.MaulZaehne, f: (r: werk.ZahnReihe) => werk.ZahnReihe): werk.MaulZaehne => ({ ...z, oben: linseReihen.oben ? f(z.oben) : z.oben, unten: linseReihen.unten ? f(z.unten) : z.unten });
 
 /** die Werte der Zähne von der Linse aus ändern (`was`: welcher Griff es ist, für die Schritte von ⌘Z) */
 function zaehneStellen(was: string, neu: (z: werk.MaulZaehne) => werk.MaulZaehne): void {
@@ -9347,7 +9369,8 @@ const perleGroesse: Perle = {
     }),
   zeigen: (w) => `${Math.round(w * 100)} %`,
 };
-const perleSitz = perleReihe('sitz', 0.15, 2.4, 'S', 'Sitz', (w) => w.toFixed(1));
+// (der Sitz: Abstand von der Lippe in Breiten des Zahnfleischs; unter null steht die Reihe außen vor der Lippe)
+const perleSitz = perleReihe('sitz', -1.2, 2.4, 'S', 'Sitz', (w) => (w < -0.005 ? `außen ${(-w).toFixed(1)}` : Math.max(0, w).toFixed(1)));
 const zahnPerlen: Perle[] = [
   perleAnzahl,
   perleGroesse,
@@ -9402,9 +9425,11 @@ function linseOeffnen(): void {
   if (!z) return;
   zahnLinse ??= new Linse(
     linseEl,
-    grauesKugelbild(wachsKugel(256), 256),
+    zahnKugel(),
     {
       perlen: zahnPerlen,
+      // die Farbe der Zähne (alle tragen dieselbe): eine Perle am Rad öffnet den Farbwähler des Systems
+      farbe: { name: 'Farbe der Zähne', wert: () => werk.G.maul?.zaehne?.farbe ?? ZAHN_FARBE, setzen: (hex) => zaehneStellen('farbe', (z) => ({ ...z, farbe: hex })) },
       reihen: [
         { name: 'Obere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: '#e8306a', an: () => linseReihen.oben, tippen: () => linseReiheTippen('oben') },
         { name: 'Untere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: '#1f3cf0', an: () => linseReihen.unten, tippen: () => linseReiheTippen('unten') },
@@ -10568,7 +10593,7 @@ const haken = {
     return {
       werte: werk.G.maul?.zaehne ?? null,
       tropfen: !zaehneTropfen.hidden,
-      plaetze: plaetze.map((q) => ({ unten: q.unten, gespiegelt: q.gespiegelt, mass: q.mass, vorn: q.vorn, r: q.r, i: q.i, form: q.form, ds: q.ds, dz: q.dz })),
+      plaetze: plaetze.map((q) => ({ unten: q.unten, gespiegelt: q.gespiegelt, mass: q.mass, vorn: q.vorn, r: q.r, i: q.i, form: q.form, ds: q.ds, dz: q.dz, aussen: q.aussen })),
       // die Wahl am Zahn (dritte Scheibe) und wie viele Marken stehen
       wahl: zahnWahl ? { ...zahnWahl } : null,
       marken: zahnMarken.filter((el) => !el.hidden).length,
