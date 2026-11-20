@@ -60,6 +60,16 @@ vec2 insBild(vec3 p) {
   vec4 c = uProj * uView * vec4(p, 1.0);
   return c.xy / c.w * 0.5 + 0.5;
 }
+/** Lage in der Welt aus uv und Tiefe (Abstand vor der Kamera), für beide Kameras */
+vec3 lageAusTiefe(vec2 uv, float z) {
+  vec2 ndc = uv * 2.0 - 1.0;
+  vec4 a = uProjInv * vec4(ndc, -1.0, 1.0);
+  vec4 b = uProjInv * vec4(ndc, 1.0, 1.0);
+  a /= a.w;
+  b /= b.w;
+  float t = (-z - a.z) / (b.z - a.z);
+  return (uViewInv * vec4(mix(a.xyz, b.xyz, t), 1.0)).xyz;
+}
 /** Richtung des Blicks (Welt) durch uv */
 vec3 blickDurch(vec2 uv) {
   vec4 a = uProjInv * vec4(uv * 2.0 - 1.0, -1.0, 1.0);

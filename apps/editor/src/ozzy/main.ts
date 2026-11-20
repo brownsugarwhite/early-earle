@@ -9843,11 +9843,12 @@ const haken = {
     return material ?? FASSUNGEN[fassung]!;
   },
   /** die Shader: wählen (Name), Bühne und Regler setzen; zurück: Wahl, Zeit des letzten Bilds (ms), Zahl der Bilder */
-  shader: (id?: string, o?: { buehne?: boolean; regler?: Record<string, number> }) => {
+  shader: (id?: string, o?: { buehne?: boolean; regler?: Record<string, number>; neu?: boolean }) => {
     if (id !== undefined) {
       if (material !== MATERIAL_SHADER) materialSetzen(MATERIAL_SHADER);
       shaderWahl.waehlen(id);
     }
+    if (o?.neu) shaderHaut.neu();
     if (o?.buehne !== undefined) shaderWahl.buehne = o.buehne;
     for (const [k, v] of Object.entries(o?.regler ?? {})) shaderWahl.reglerSetzen(k, v);
     anstossen();

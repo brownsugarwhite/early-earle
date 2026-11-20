@@ -8,6 +8,7 @@ import { COMICDRUCK } from './comicdruck';
 import { DAVINCI } from './davinci';
 import { EINE_LINIE } from './eineLinie';
 import { ERDE42 } from './erde42';
+import { FEUER } from './feuer';
 import { GLITCH } from './glitch';
 import { INDRAJAL } from './indrajal';
 import { MARKER } from './marker';
@@ -15,4 +16,4 @@ import { MULTIPLANE } from './multiplane';
 import { PUNK } from './punk';
 import { TINTENFLECK } from './tintenfleck';
 
-export const VOREINSTELLUNGEN: Voreinstellung[] = [COMICDRUCK, AQUARELL, INDRAJAL, PUNK, MARKER, TINTENFLECK, DAVINCI, GLITCH, ERDE42, MULTIPLANE, EINE_LINIE];
+export const VOREINSTELLUNGEN: Voreinstellung[] = [COMICDRUCK, AQUARELL, INDRAJAL, PUNK, MARKER, TINTENFLECK, DAVINCI, GLITCH, ERDE42, MULTIPLANE, EINE_LINIE, FEUER];

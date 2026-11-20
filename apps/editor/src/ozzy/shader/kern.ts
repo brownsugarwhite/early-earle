@@ -392,6 +392,14 @@ export class ShaderKern {
     r.render(this.flaecheSzene, this.flaecheKamera);
   }
 
+  /** ein Ziel leeren */
+  loeschen(ziel: WebGLRenderTarget, farbe: [number, number, number, number] = [0, 0, 0, 0]): void {
+    const r = this.r;
+    r.setRenderTarget(ziel);
+    r.setClearColor(this.loeschFarbe.setRGB(farbe[0], farbe[1], farbe[2]), farbe[3]);
+    r.clear(true, true, false);
+  }
+
   /** eine fremde Szene (Teilchen, Linien) in ein Ziel */
   szene(szene: Scene, kamera: Camera, ziel: WebGLRenderTarget | null, loeschen: [number, number, number, number] | null = null): void {
     const r = this.r;

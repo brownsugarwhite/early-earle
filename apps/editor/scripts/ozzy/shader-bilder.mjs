@@ -46,7 +46,7 @@ try {
   if (Object.keys(blick).length) await O('blickSetzen', blick);
   const liste = nur.length ? nur : (await O('shader')).liste;
   for (const id of liste) {
-    await O('shader', id, { buehne: process.env.BUEHNE !== '0' });
+    await O('shader', id, { buehne: process.env.BUEHNE !== '0', neu: true });
     await s.waitForTimeout(WARTEN);
     const m = await O('shader');
     const bild = await s.evaluate(() => {

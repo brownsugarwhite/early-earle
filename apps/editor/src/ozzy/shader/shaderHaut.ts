@@ -81,6 +81,11 @@ export class ShaderHaut {
     return unruhig;
   }
 
+  /** den Shader beim nächsten Bild neu beginnen (Zeit von vorn, Simulation leer) */
+  neu(): void {
+    this.laufId = null;
+  }
+
   /** nicht zu sehen: nichts zu tun (der laufende Shader bleibt für den nächsten Blick) */
   aus(): void {
     this.letzte = performance.now();
