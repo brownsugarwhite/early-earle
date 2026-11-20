@@ -1118,6 +1118,12 @@ export class WerkBlatt implements Raum {
       if (!XY0) return;
       z.los = true;
       werk.G.maus = { a, X: XY0[0], Y: XY0[1] };
+      // getrennte Lippen, die noch aufeinanderliegen: Die Seite des Zeigers nimmt die Lippe (über der Linie die obere)
+      {
+        const [zx, zy] = this.zeiger();
+        const XYz = F.her(zx, zy, z.T);
+        if (XYz) werk.lippeNachZeiger(a, XYz[0] - XY0[0], XYz[1] - XY0[1]);
+      }
       if (werk.griffWartet()) werk.G.gegriffen = { a, X: XY0[0], Y: XY0[1], m: z.m, griff: null, seit: performance.now() };
       else werk.zugStarten(null, a, XY0[0], XY0[1], z.m);
     }

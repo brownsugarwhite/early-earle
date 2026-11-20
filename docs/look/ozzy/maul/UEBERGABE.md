@@ -6,8 +6,9 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 
 **Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. in Ozzy die erste Scheibe von Etappe 1 (das
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
-in Ozzy“ und „Etappe 2 in Ozzy“. **Als Nächstes, auf Florians Wort: Etappe 3 („Lippen trennen“, Über- und Unterbiss; davor die
-Probe P3).** Offenes steht nummeriert in
+in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält).
+Als Nächstes, auf Florians Wort: Etappe 4 (die Ebene „Maul“: Farben, Zahnfleischlinie; davor die Probe P4).** Offenes steht
+nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
 
@@ -112,6 +113,35 @@ Mundwinkel (rosa oben, blau unten). Ziehen dreht den Kiefer; unter 2° rastet er
    mehr nur über ihre Lage: So gilt sie auch, wenn ihre Mitte nach hinten gezogen ist (nicht ausprobiert).
 6. **Mit `G.maul` sperrt das Werk** Spiegel aus, den Schnitt an der Mitte und Verschmelzen/Abziehen (für jedes Maul).
 7. Eine Probe, die den Blick wechselt (Raum, Zoom), liest die Orte der Tropfen danach neu (`kiefer()`).
+
+## Etappe 3 in Ozzy: die Lippen (20.11.)
+
+**Was es gibt:** „Lippen trennen“ und „Lippen verbinden“ (der Tropfen `#maul-tropfen`, hinter dem Mundwinkel, solange ein Punkt
+der Lippe gewählt ist). Getrennt hat jede Lippe ihre Punkte; Über- und Unterbiss und Lücken auch geschlossen. Plan, 12.13.
+
+**Wo:** `werk.ts`: `lippenTrennen`, `lippenVerbinden`, `lippenGetrennt`, `maulLippe`, `lippeGewaehlt`, `lippeNachZeiger`,
+`maulSeitenMerken`; `MaulZustand` trägt `echt` und `ersteUnten` (auch in `ablage.ts`). `maulEcht.ts`: `maulLage` gibt je Kiefer
+eine `KieferLage` (`oben`, `unten`), `kieferSeiten` und `maulEchtAmLoop` nehmen die feste Zuordnung. `werkBlatt.ziehen` ruft
+`lippeNachZeiger` beim Beginn eines Zugs. `main.ts`: der Tropfen in `maulUiZeigen`, `kieferJetzt` (Tropfen mit Abstand im Bild),
+Haken `__ozzy.lippen()`. Probe: `ozzy-maul-fenster.mjs`, Kriterien 13 bis 16; Test „getrennte Lippen“ in `maulEcht.test.ts`.
+
+**Was man wissen muss:**
+
+1. **Getrennt heißt: Die Lippe trägt kein `maulLinie` mehr.** Sie ist dann ein Ring wie jeder andere (kein Zwilling irgendwo im
+   Werk). Dass sie das Maul als echte Form ist, steht am Maul (`G.maul.echt`); `istMaulEcht(l)` fragt beides.
+2. **Welche Hälfte die Unterlippe ist, steht am Maul (`ersteUnten`),** gelesen beim Schneiden (und beim Laden älterer Stände,
+   solange die Lippen aufeinanderliegen). Nie neu aus der Lage lesen, wenn die Lippen getrennt sind: An der Kugel kippte es nach
+   dem Kürzen der Unterlippe (Test).
+3. **Zwei Punkte am selben Ort:** Wo getrennte Lippen aufeinanderliegen, wählt `lippeNachZeiger` beim Beginn des Zugs den Punkt
+   der Lippe, auf deren Seite der Zeiger liegt. Das Ziel des Verhaltens kann dabei ein Punkt einer anderen Linie sein, die dort
+   an der Lippe hängt (der Anker einer Kreuzung nennt seinen ersten Punkt): Gesucht wird über den Ort.
+4. **Tropfen über Punkten:** Ein Knopf über der Zeichenfläche fängt den Griff ab. Der Tropfen „Lippen verbinden“ hing erst unter
+   dem Mundwinkel, genau über der Unterlippe (die Probe traf ihn, und die Lippen waren wieder verbunden); die Kiefertropfen saßen
+   bei kleinem Bild auf der Lippenspitze. Wer einen neuen Tropfen an die Form hängt, hält Abstand zu dem, was man dort greift.
+5. **Der Zeiger klebt:** Das Verhalten der Linien behält sein Ziel, bis ein neues deutlich näher ist. Eine Probe, die zwei dicht
+   beieinanderliegende Punkte nacheinander greift, führt den Zeiger dazwischen weit weg.
+6. **Die Zählung des Werks (`umgeschlagen`) schlägt an getrennten Lippen an** (4 bis 6 an der Lippe und in der Tasche): gegen
+   den Ort prüfen (Kriterium 15), nicht gegen null.
 
 ## Die Studie in einem Absatz
 

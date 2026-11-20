@@ -17,7 +17,8 @@ export type WesenStand = {
   loops: Loop[];
   /** nächste Kennung für Loops und für Kreuzungen */
   ids: [number, number];
-  maul: { id: number } | null;
+  /** `echt`: ein Maul als echte Form (seit dem 20.11.), auch mit getrennten Lippen; `ersteUnten`: welche Hälfte der Lippe die untere ist */
+  maul: { id: number; echt?: true; ersteUnten?: boolean } | null;
   /**
    * `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose; dazu die Stelle
    * `s` jedes Punkts und die Länge der Linie, als der Versatz gemerkt wurde (daran findet die Pose ihre Punkte wieder, wenn die

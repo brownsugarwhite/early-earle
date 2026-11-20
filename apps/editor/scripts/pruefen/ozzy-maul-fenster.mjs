@@ -22,6 +22,15 @@
 //   11 „Fressen“ an: Das Maul bleibt offen, die Tropfen stehen an den geöffneten Kieferspitzen. Der obere Tropfen dreht den
 //      Oberkiefer allein, der untere den Unterkiefer; bis zum größten Winkel faltet nichts; knapp vor „zu“ rastet der Kiefer zu.
 //   12 „Fressen“ aus: Die Grundform ist, wie sie war (zu). Das Drehen der Anzeige dauert unter 4 ms.
+// Etappe 3 (die Lippen, 20.11.), danach:
+//   13 Ein Punkt der Lippe angeklickt: Am Mundwinkel hängt „Lippen trennen“. Angetippt: Die Lippe ist kein zusammengeklappter Loop
+//      mehr, die Form hat sich nicht bewegt, der Tropfen heißt „Lippen verbinden“.
+//   14 Wo die Lippen noch aufeinanderliegen, nimmt die Seite des Zeigers die Lippe: knapp unter der Linie gegriffen und nach unten
+//      gezogen, geht nur der Punkt der Unterlippe; knapp darüber und nach oben nur der der Oberlippe. Das Werk kommt zur Ruhe.
+//   15 Überbiss (wie Florians Blatt 06, oben lang, unten zurück): Jeder Punkt der Unterlippe wandert ein Viertel zum Mundwinkel
+//      hin. Die Oberlippe bleibt, das Werk kommt zur Ruhe, außen schlägt nichts um; der Tropfen des Unterkiefers sitzt an seiner
+//      kürzeren Spitze. Geöffnet faltet nichts.
+//   16 „Lippen verbinden“: Die Lippen liegen wieder aufeinander (Zwillinge), das Werk kommt zur Ruhe.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;x,y;…' (Werk, von vorn zum Mundwinkel)] node scripts/pruefen/ozzy-maul-fenster.mjs [ordner für Bilder]
 //   FRISCH=1: statt einer gesicherten Form eine frisch gezeichnete (ein Oval, aufgeblasen, mit den drei Start-Loops); die Linie
 //   des Mauls wird dann aus ihrem Kasten genommen (von links in die Form).
@@ -171,7 +180,7 @@ else {
   await s.keyboard.press('a');
   await s.waitForTimeout(500);
   const p4 = await O('pose');
-  ok('4 an der Lippe des neuen Mauls hängt der alte Tropfen nicht', p4.tropfen === null, `Tropfen ${p4.tropfen ?? 'keiner'}`);
+  ok('4 an der Lippe des neuen Mauls hängt der alte Tropfen nicht (dort steht „Lippen trennen“)', p4.tropfen === null || p4.tropfen === 'Lippen trennen', `Tropfen ${p4.tropfen ?? 'keiner'}`);
   // im Raum mit Wachs: das geschlossene Maul von der Seite und von vorn (nur als Bild, kein Kriterium)
   await s.keyboard.press('0');
   await s.waitForTimeout(1800);
@@ -367,6 +376,181 @@ else {
         !p12.an && k12.spalt < 0.2 && weit < 0.05 && k12a.ms < 4,
         `Grundform höchstens ${Number.isFinite(weit) ? komma(weit, 3) : 'anderes Netz'} neben vorher; Lippen ${komma(k12.spalt, 2)}; Drehen der Anzeige ${komma(k12a.ms, 2)} ms`,
       );
+      // ---------- Etappe 3: die Lippen ----------
+      {
+        const d3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+        const lippeJetzt = async () => (await O('werkLinienDaten')).find((l) => l.maulEcht);
+        const L0 = await lippeJetzt();
+        const n = L0.punkte.length;
+        const iW = (n - 1) / 2;
+        // ein Punktpaar zwischen Spitze und Mundwinkel und eins näher am Mundwinkel
+        const iA = Math.max(1, Math.round(iW / 2));
+        const iB = Math.min(iW - 1, iA + 1);
+        const imBild = (p) => O('werkImBild', { x: p.x, y: p.y, z: p.z });
+        // 13 anklicken, trennen
+        const qA = await imBild(L0.punkte[iA]);
+        await klick(qA.x, qA.y);
+        const p13 = await O('pose');
+        const haut13 = (await O('pose', true)).haut;
+        if (p13.tropfen === 'Lippen trennen') await s.click('#maul-tropfen');
+        await s.waitForTimeout(500);
+        const L13 = await lippeJetzt();
+        const p13b = await O('pose');
+        const haut13b = (await O('pose', true)).haut;
+        let bewegt13 = 0;
+        if (haut13 && haut13b && haut13.length === haut13b.length) for (let i = 0; i < haut13.length; i++) bewegt13 = Math.max(bewegt13, Math.abs(haut13[i] - haut13b[i]));
+        else bewegt13 = Infinity;
+        ok(
+          '13 an der gewählten Lippe „Lippen trennen“: danach kein zusammengeklappter Loop mehr, die Form unbewegt, der Tropfen „Lippen verbinden“',
+          p13.tropfen === 'Lippen trennen' && (await O('lippen')) === true && !!L13 && L13.maulLinie === null && L13.punkte.length === n && bewegt13 < 1e-9 && p13b.tropfen === 'Lippen verbinden',
+          `Tropfen vorher „${p13.tropfen ?? 'keiner'}“, danach „${p13b.tropfen ?? 'keiner'}“; Lippe ${L13 ? `maulLinie ${L13.maulLinie}, ${L13.punkte.length} Punkte, echt ${L13.maulEcht}` : 'fehlt'}; Form bewegt ${bewegt13}`,
+        );
+        /** an einem Punktpaar ziehen: `seite` Bildpunkte neben der Linie drücken (+ unten), um `weg` (Werk) ziehen; zurück: wie weit jeder der zwei Punkte ging */
+        const paarZiehen = async (i, seite, weg) => {
+          const j = n - 1 - i;
+          const V = await lippeJetzt();
+          const a = V.punkte[i];
+          const von = await imBild(a);
+          const nach = await imBild({ x: a.x + weg.x, y: a.y + weg.y, z: a.z });
+          await s.mouse.move(von.x - 160, von.y + 160);
+          await s.waitForTimeout(250);
+          await s.mouse.move(von.x, von.y + seite);
+          await s.waitForTimeout(300);
+          await s.mouse.down();
+          for (let k = 1; k <= 8; k++) {
+            await s.mouse.move(von.x + ((nach.x - von.x) * k) / 8, von.y + seite + ((nach.y - von.y) * k) / 8);
+            await s.waitForTimeout(40);
+          }
+          await s.mouse.up();
+          await ruhig();
+          const N = await lippeJetzt();
+          return { i: d3(N.punkte[i], V.punkte[i]), j: d3(N.punkte[j], V.punkte[j]), dyI: N.punkte[i].y - V.punkte[i].y, dyJ: N.punkte[j].y - V.punkte[j].y, n: N.punkte.length };
+        };
+        if (L13 && L13.maulLinie === null) {
+          // 14 die Seite des Zeigers nimmt die Lippe
+          const u14 = (await O('werk')).umgeschlagen;
+          const zA = await paarZiehen(iA, 3, { x: 0, y: -10 });
+          const zB = await paarZiehen(iB, -3, { x: 0, y: 6 });
+          const w14 = await O('werk');
+          // unten: genau einer der zwei ging (nach unten), oben: genau der andere der Hälfte ging (nach oben)
+          const untenI = zA.i > 5 && zA.j < 0.01;
+          const untenJ = zA.j > 5 && zA.i < 0.01;
+          const obenPasst = untenI ? zB.j > 3 && zB.i < 0.01 : zB.i > 3 && zB.j < 0.01;
+          ok(
+            '14 wo die Lippen aufeinanderliegen, nimmt die Seite des Zeigers die Lippe: unten gegriffen nur die Unterlippe, oben nur die Oberlippe',
+            (untenI || untenJ) && obenPasst && zA.n === n && zB.n === n,
+            `unter der Linie nach unten: Punkt ${iA} ging ${zA.i.toFixed(2)}, sein Gegenüber ${zA.j.toFixed(2)}; über der Linie nach oben: Punkt ${iB} ging ${zB.i.toFixed(2)}, sein Gegenüber ${zB.j.toFixed(2)}; umgeschlagen ${u14} → ${w14.umgeschlagen}; Meldung: ${w14.meldung}`,
+          );
+          await bild('12-lippen-getrennt');
+          // 15 Überbiss: die Unterlippe ein Viertel kürzer. Jeder ihrer Punkte wandert ein Viertel seines Wegs zum Mundwinkel hin, vom
+          // Mundwinkel aus der Reihe nach (so überholt kein Punkt seinen Nachbarn)
+          const kV = await K();
+          const V = await lippeJetzt();
+          const W = V.punkte[iW];
+          const reihe = untenI ? Array.from({ length: iW }, (_, k) => iW - 1 - k) : Array.from({ length: iW }, (_, k) => iW + 1 + k);
+          const spitzeUnten = untenI ? 0 : n - 1;
+          const u15 = (await O('werk')).umgeschlagen;
+          const f = 0.25;
+          let fehlZug = 0;
+          for (const i of reihe) {
+            const vorZug = await lippeJetzt();
+            const P = vorZug.punkte[i];
+            const ziel = { x: P.x + (W.x - P.x) * f, y: P.y + (W.y - P.y) * f, z: P.z };
+            const von = await imBild(P);
+            const nach = await imBild(ziel);
+            // (der Zeiger hängt noch am zuletzt gegriffenen Punkt, wenn der dicht daneben liegt: erst weg, dann hin)
+            await s.mouse.move(von.x - 160, von.y + 160);
+            await s.waitForTimeout(250);
+            await s.mouse.move(von.x, von.y + 3);
+            await s.waitForTimeout(300);
+            await s.mouse.down();
+            for (let k = 1; k <= 8; k++) {
+              await s.mouse.move(von.x + ((nach.x - von.x) * k) / 8, von.y + 3 + ((nach.y - von.y) * k) / 8);
+              await s.waitForTimeout(40);
+            }
+            await s.mouse.up();
+            await ruhig();
+            const Ln = await lippeJetzt();
+            const Pn = Ln.punkte[i];
+            fehlZug = Math.max(fehlZug, Math.hypot(Pn.x - ziel.x, Pn.y - ziel.y));
+            if (process.env.DIAG === '1') {
+              const andere = Ln.punkte.map((q, k) => [k, d3(q, vorZug.punkte[k])]).filter((e) => e[1] > 0.01);
+              console.log(`  Zug an Punkt ${i}: Ziel ${Math.hypot(ziel.x - P.x, ziel.y - P.y).toFixed(1)} weit, Rest ${Math.hypot(Pn.x - ziel.x, Pn.y - ziel.y).toFixed(2)}; bewegt: ${andere.map(([k, d]) => `${k}: ${d.toFixed(2)}`).join(', ') || 'nichts'}; im Bild von ${von.x.toFixed(0)}/${von.y.toFixed(0)} nach ${nach.x.toFixed(0)}/${nach.y.toFixed(0)}; Auswahl ${JSON.stringify((await O('werk')).auswahl ?? null)}`);
+            }
+          }
+          const N = await lippeJetzt();
+          const w15 = await O('werk');
+          const k15 = await K();
+          // Was das Werk als umgeschlagen zählt, liegt an der Lippe oder in der Tasche (dort stehen Wände steil gegeneinander: Die
+          // Zählung misst jedes Dreieck gegen die Normalen seiner Ecken) oder außen: Außen darf nichts liegen. „An der Lippe“ heißt
+          // hier: in der Seite höchstens 15 neben dem Streckenzug durch die Punkte einer Lippe.
+          const um15 = (await O('umgeschlagen')).liste;
+          const nebenLippe = (x, y) => {
+            let best = Infinity;
+            for (let k = 0; k + 1 < N.punkte.length; k++) {
+              const a = N.punkte[k];
+              const b = N.punkte[k + 1];
+              const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2 || 1;
+              const u = Math.max(0, Math.min(1, ((x - a.x) * (b.x - a.x) + (y - a.y) * (b.y - a.y)) / l2));
+              best = Math.min(best, Math.hypot(x - a.x - u * (b.x - a.x), y - a.y - u * (b.y - a.y)));
+            }
+            return best;
+          };
+          const aussen15 = um15.filter((t) => nebenLippe(t.mitte[0], t.mitte[1]) > 15);
+          if (process.env.DIAG === '1') for (const t of um15) console.log(`  umgeschlagen: Mitte ${t.mitte.map((v) => v.toFixed(1)).join(', ')}; Fläche ${t.flaeche.toFixed(3)}; ${nebenLippe(t.mitte[0], t.mitte[1]).toFixed(1)} neben der Lippe`);
+          const gingUnten = d3(N.punkte[spitzeUnten], V.punkte[spitzeUnten]);
+          let gingOben = 0;
+          for (let i = 0; i < n; i++) if (i !== iW && !reihe.includes(i)) gingOben = Math.max(gingOben, d3(N.punkte[i], V.punkte[i]));
+          await bild('13-ueberbiss');
+          if (ordner) {
+            // der Überbiss im Raum mit Wachs, zu: schräg von vorn unten (die Unterseite des Oberkiefers liegt frei) und von der Seite
+            await s.keyboard.press('0');
+            await s.waitForTimeout(1800);
+            await O('material', 'wachs');
+            await O('blickSetzen', { gier: -1.45, neigung: -0.35, zoom: 4 });
+            await s.waitForTimeout(1200);
+            await bild('13b-ueberbiss-wachs-unten');
+            await O('blickSetzen', { gier: -1.15, neigung: 0.12, zoom: 4 });
+            await s.waitForTimeout(1200);
+            await bild('13c-ueberbiss-wachs');
+            await s.keyboard.press('1');
+            await s.waitForTimeout(1800);
+          }
+          // geöffnet (der untere Tropfen gehalten)
+          const k15b = await K();
+          let offen = null;
+          if (k15b.unten) {
+            await s.mouse.move(k15b.unten.x, k15b.unten.y);
+            await s.waitForTimeout(250);
+            await s.mouse.down();
+            await s.waitForTimeout(1000);
+            offen = await K();
+            await bild('14-ueberbiss-offen');
+            await s.mouse.up();
+            await s.waitForTimeout(1000);
+          }
+          const soll = f * Math.hypot(W.x - V.punkte[spitzeUnten].x, W.y - V.punkte[spitzeUnten].y);
+          ok(
+            '15 Überbiss: die Unterlippe ein Viertel kürzer, die Oberlippe bleibt, das Werk kommt zur Ruhe, nichts schlägt um; geöffnet faltet nichts',
+            fehlZug < 0.5 && Math.abs(gingUnten - soll) < 0.1 * soll && gingOben < 0.01 && aussen15.length === 0 && !!k15.unten && !!kV.unten && Math.abs(k15.unten.x - kV.unten.x) > 5 && !!offen && offen.gefaltet === 0,
+            `${reihe.length} Punkte der Unterlippe gezogen (größter Rest zum Ziel ${fehlZug.toFixed(2)}); ihre Spitze ging ${gingUnten.toFixed(1)} (soll ${soll.toFixed(1)}), die Oberlippe höchstens ${gingOben.toFixed(3)}; als umgeschlagen gezählt ${u15} → ${um15.length}, davon außen (weiter als 15 von der Lippe) ${aussen15.length}; Tropfen unten ${kV.unten ? kV.unten.x.toFixed(0) : '?'} → ${k15.unten ? k15.unten.x.toFixed(0) : '?'} (oben ${k15.oben ? k15.oben.x.toFixed(0) : '?'}); geöffnet ${offen ? `${offen.gefaltet} gefaltet, Dehnung ${offen.gedehnt.toFixed(2)}` : 'nicht geprüft'}; Meldung: ${w15.meldung}`,
+          );
+          // 16 verbinden
+          await O('lippen', 'verbinden');
+          await ruhig();
+          const L16 = await lippeJetzt();
+          let paarWeit = 0;
+          if (L16 && L16.punkte.length % 2 === 1) for (let k = 0; k < (L16.punkte.length - 1) / 2; k++) paarWeit = Math.max(paarWeit, d3(L16.punkte[k], L16.punkte[L16.punkte.length - 1 - k]));
+          else paarWeit = Infinity;
+          const w16 = await O('werk');
+          ok(
+            '16 „Lippen verbinden“: die Lippen liegen wieder aufeinander, das Werk kommt zur Ruhe',
+            (await O('lippen')) === false && !!L16 && L16.maulLinie !== null && paarWeit < 0.2,
+            `Lippe ${L16 ? `maulLinie ${L16.maulLinie}, ${L16.punkte.length} Punkte` : 'fehlt'}; die Paare liegen höchstens ${Number.isFinite(paarWeit) ? paarWeit.toFixed(3) : 'ungepaart'} auseinander; umgeschlagen ${w16.umgeschlagen}; Meldung: ${w16.meldung}`,
+          );
+          await bild('15-verbunden');
+        }
+      }
       if (ordner) {
         // der Blick ins Maul im Raum mit Wachs (Grundform, der untere Tropfen gehalten; nur als Bild)
         await s.keyboard.press('0');
@@ -387,7 +571,7 @@ else {
         await s.waitForTimeout(1800);
       }
       // die Schritte der Kiefer zurücknehmen, bis nur noch das Maul bleibt
-      for (let i = 0; i < 12 && (await K()).schritte > k8.schritte; i++) {
+      for (let i = 0; i < 24 && (await K()).schritte > k8.schritte; i++) {
         await s.keyboard.press('Meta+z');
         await s.waitForTimeout(500);
       }

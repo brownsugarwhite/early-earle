@@ -8792,11 +8792,39 @@ function maulUiZeigen(): void {
       if (!ort || p.y > ort.y) ort = { x: p.x, y: p.y };
     });
   }
+  // Etappe 3: An der gewählten Lippe des Mauls als echte Form hängt am Mundwinkel „Lippen trennen“ (sind sie getrennt: „Lippen
+  // verbinden“)
+  let lippenText: string | null = null;
+  if (!ort && an && !werk.grund && !werk.zug && !werk.maulLauf && !bearbeiten.stift && werkFelder.anzahl === 0 && werk.lippeGewaehlt()) {
+    const lippe = werk.maulLippe();
+    const iW = lippe ? lippe.punkte.findIndex((q) => q.mundwinkel) : -1;
+    if (lippe && iW >= 0) {
+      werkBlatt.anker.forEach((A, pi) => {
+        const p = werkBlatt.netz.punkte[pi];
+        if (ort || !p?.sichtbar || !A.werk.some((w) => w.id === lippe.id && w.i === iW)) return;
+        ort = { x: p.x, y: p.y };
+      });
+      const mw = ort as { x: number; y: number } | null;
+      if (mw) {
+        lippenText = werk.lippenGetrennt() ? 'Lippen verbinden' : 'Lippen trennen';
+        // hinter dem Mundwinkel, von den Lippen weg (unter ihm verdeckte er die Punkte der Unterlippe): in der Verlängerung der Knochen
+        const k = kieferJetzt();
+        if (k) {
+          const vp = vpJetzt();
+          const [hx, hy] = projizieren(werkInWelt({ x: k.C.x, y: k.C.y, z: 0 }), vp);
+          const [sx, sy] = projizieren(werkInWelt({ x: (k.oben.ruhe.x + k.unten.ruhe.x) / 2, y: (k.oben.ruhe.y + k.unten.ruhe.y) / 2, z: 0 }), vp);
+          const weit = Math.hypot(hx - sx, hy - sy);
+          // (der Knopf ist rund 130 breit und 26 hoch und hängt 14 unter seinem Ort: seine Mitte kommt 82 hinter den Mundwinkel)
+          if (weit > 1e-6) ort = { x: mw.x + ((hx - sx) / weit) * 82, y: mw.y + ((hy - sy) / weit) * 82 - 27 };
+        }
+      }
+    }
+  }
   const o = ort as { x: number; y: number } | null;
   maulTropfen.hidden = !o;
   if (o) maulLetzterOrt = { x: o.x, y: o.y + 26 };
-  if (o && (l || werkBlatt.maulStrich)) {
-    const text = werkBlatt.maulStrich || (l && maulHart(l)) ? 'Maul' : 'Maul formen';
+  if (o && (l || werkBlatt.maulStrich || lippenText)) {
+    const text = lippenText ?? (werkBlatt.maulStrich || (l && maulHart(l)) ? 'Maul' : 'Maul formen');
     if (maulTropfen.textContent !== text) maulTropfen.textContent = text;
     maulTropfen.style.left = `${o.x.toFixed(1)}px`;
     maulTropfen.style.top = `${(o.y + 14).toFixed(1)}px`;
@@ -8876,6 +8904,16 @@ maulTropfen.addEventListener('click', () => {
       });
     return;
   }
+  // Etappe 3: am Maul als echte Form trennt oder verbindet der Tropfen die Lippen
+  if (werk.maulLippe()) {
+    if (werk.zug || werk.maulLauf || werk.grund) return;
+    if (werk.lippenGetrennt()) werk.lippenVerbinden();
+    else werk.lippenTrennen();
+    werk.anzeige.allesZeigen();
+    werkNeu = true;
+    anstossen();
+    return;
+  }
   const l = maulRing();
   if (!l || werk.istMaulEcht(l) || werk.zug || werk.maulLauf || werk.grund) return;
   // eine weiche Linie: das Maul formen (das Werk zeigt die Schritte und nimmt so lange nichts an); eine harte: sie ist das Maul
@@ -8953,6 +8991,21 @@ function zeigerAufMitte(x: number, y: number): { x: number; y: number } | null {
   return { x: (a.x - werkHaut.mitte.x) * werkHaut.f, y: (a.y - werkHaut.mitte.y) * werkHaut.f };
 }
 
+/** Abstand der Tropfen von ihrer Kieferspitze im Bild (CSS-Pixel, nach vorn und zur Seite): So bleiben die Punkte der Lippe an der Spitze zu greifen */
+const KIEFER_VOR_PX = 36;
+const KIEFER_SEIT_PX = 18;
+/** die Knochen der Kiefer, die Tropfen mit Abstand im Bild (das Maß an der Spiegelebene: Bildpunkte je Einheit des Werks) */
+function kieferJetzt(): ReturnType<typeof werk.kieferKnochen> {
+  const k0 = werk.kieferKnochen();
+  if (!k0) return null;
+  const vp = vpJetzt();
+  const [ax, ay] = projizieren(werkInWelt({ x: k0.C.x, y: k0.C.y, z: 0 }), vp);
+  const [bx, by] = projizieren(werkInWelt({ x: k0.C.x + k0.lang, y: k0.C.y, z: 0 }), vp);
+  const [cx, cy] = projizieren(werkInWelt({ x: k0.C.x, y: k0.C.y + k0.lang, z: 0 }), vp);
+  const jeEinheit = Math.max(Math.hypot(bx - ax, by - ay), Math.hypot(cx - ax, cy - ay)) / D / k0.lang;
+  return jeEinheit > 1e-6 ? werk.kieferKnochen(KIEFER_VOR_PX / jeEinheit, KIEFER_SEIT_PX / jeEinheit) : k0;
+}
+
 /**
  * Die Tropfen der Kiefer nach dem Stand des Werks (jedes Bild) und der Blick ins Maul: In der Grundform läuft die Öffnung der Anzeige
  * ihrem Ziel nach (offen, solange ein Tropfen gehalten wird). Zurück: ob es weitere Bilder braucht.
@@ -8961,7 +9014,7 @@ function kieferUiZeigen(): boolean {
   const jetzt = performance.now();
   const dt = Math.min(0.05, Math.max(0, (jetzt - kieferZeit) / 1000));
   kieferZeit = jetzt;
-  const k = zustand === 'ruhe' && werkGezeigt ? werk.kieferKnochen() : null;
+  const k = zustand === 'ruhe' && werkGezeigt ? kieferJetzt() : null;
   // ---- der Blick ins Maul ----
   let braucht = false;
   if (!k || werk.grund) {
@@ -9021,7 +9074,7 @@ function kieferUiZeigen(): boolean {
 
 /** der Winkel des Zeigers um den Mundwinkel in der Spiegelebene (Bogenmaß), null: von hier aus nicht zu lesen */
 function kieferZeigerWinkel(x: number, y: number): number | null {
-  const k = werk.kieferKnochen();
+  const k = kieferJetzt();
   const q = k ? zeigerAufMitte(x, y) : null;
   if (!k || !q) return null;
   const dx = q.x - k.C.x;
@@ -9044,7 +9097,7 @@ for (const [name, oben] of [
   const el = kieferEl[name].tropfen;
   el.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 || kieferZug || werk.zug || werk.maulLauf) return;
-    const k = werk.kieferKnochen();
+    const k = kieferJetzt();
     if (!k) return;
     const [x, y] = lageIm(e);
     kieferZug = { oben, x0: x, y0: y, yLetzt: y, w: kieferZeigerWinkel(x, y), roh: k[name].grad, bewegt: false, vorher: werk.schnappschuss() };
@@ -9061,7 +9114,7 @@ for (const [name, oben] of [
   el.addEventListener('pointermove', (e) => {
     const z = kieferZug;
     if (!z || z.oben !== oben) return;
-    const k = werk.kieferKnochen();
+    const k = kieferJetzt();
     if (!k) return;
     const [x, y] = lageIm(e);
     // erst nach ein paar Bildpunkten Weg dreht der Kiefer (Halten allein öffnet nur den Blick)
@@ -9682,7 +9735,7 @@ const haken = {
    * stehen), die größte Dehnung einer Kante und wie lange das Drehen der Anzeige dauert (ms, Mittel aus zehn).
    */
   kiefer: () => {
-    const k = werk.kieferKnochen();
+    const k = kieferJetzt();
     const ort = (el: HTMLElement): { x: number; y: number } | null => (el.hidden ? null : { x: parseFloat(el.style.left), y: parseFloat(el.style.top) });
     const l = werk.G.maul ? werk.loops[werk.loopNr(werk.G.maul.id)] : undefined;
     const R = werk.haut.pos;
@@ -9753,6 +9806,17 @@ const haken = {
       ms,
       schritte: werk.zurueck.length,
     };
+  },
+  /** Maul, Etappe 3: die Lippen trennen oder verbinden (ohne Angabe: nur lesen); zurück, ob sie getrennt sind (null: kein solches Maul) */
+  lippen: (was?: 'trennen' | 'verbinden'): boolean | null => {
+    if (was === 'trennen') werk.lippenTrennen();
+    else if (was === 'verbinden') werk.lippenVerbinden();
+    if (was) {
+      werk.anzeige.allesZeigen();
+      werkNeu = true;
+      anstossen();
+    }
+    return werk.lippenGetrennt();
   },
   /** eine geschlossene Silhouette setzen (CSS-Pixel des Blatts), wie mit P gezeichnet; `dazu`: auf dem Blatt eines neuen Objekts (nach dem Plus), die anderen Objekte bleiben */
   form(anker: { x: number; y: number; ein?: [number, number]; aus?: [number, number] }[], dazu = false): void {

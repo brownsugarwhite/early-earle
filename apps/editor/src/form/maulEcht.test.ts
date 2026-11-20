@@ -244,17 +244,22 @@ describe('das Maul als echte Form', () => {
     expect(L).not.toBeNull();
     // das Scharnier ist der Mundwinkel der Zeichnung, die Lippe läuft nach vorn links unten: Der Unterkiefer liegt links von ihr
     expect(Math.hypot(L.C.x - linie[0]!.x, L.C.y - linie[0]!.y)).toBeLessThan(1);
-    expect(L.lang).toBeGreaterThan(80);
+    expect(L.unten.lang).toBeGreaterThan(80);
+    expect(Math.abs(L.oben.lang - L.unten.lang)).toBeLessThan(1);
     expect(L.untenLinks).toBe(true);
+    expect(L.unten.links).toBe(true);
+    expect(L.oben.links).toBe(false);
     // die Tropfen sitzen vor der Kieferspitze, oben über unten
-    expect(kieferTropfenRuhe(L, true).y).toBeGreaterThan(kieferTropfenRuhe(L, false).y);
+    expect(kieferTropfenRuhe(L.oben).y).toBeGreaterThan(kieferTropfenRuhe(L.unten).y);
     const m = maulEchtAmLoop(h, r.loops, lippe, ecke)!;
     expect(m).not.toBeNull();
     expect(m.drehsinn).toBe(1);
     expect(m.offen.every((x) => x === 0)).toBe(true);
     // (im Zug gilt das Ergebnis für dieselbe Haut weiter)
     expect(maulEchtAmLoop(h, r.loops, lippe, ecke, { wieVorher: m })).toBe(m);
-    const sk = kieferSeiten(h, r.loops, lippe.id, { profil: L.profil, C: L.C });
+    const sk = kieferSeiten(h, r.loops, lippe.id, { profil: (L.ersteUnten ? L.unten : L.oben).profil, C: L.C });
+    // (welche Hälfte welcher Kiefer ist, liest `maulLage` am Netz neben der Lippe, `kieferSeiten` an der Haut außen: beide gleich)
+    expect(sk.ersteSeite > 0 === L.untenLinks).toBe(L.ersteUnten);
     const innen = (v: number): boolean => !sk.aussen[v] || sk.lippe.has(v);
     const a0 = lippe.proben[0]!.ecken[0];
     const a1 = lippe.proben[lippe.proben.length - 1]!.ecken[0];
@@ -319,6 +324,106 @@ describe('das Maul als echte Form', () => {
       }
       expect(Math.abs(theta[hinten]!)).toBeLessThan(0.01);
     }
+  });
+
+  it('getrennte Lippen: die Unterlippe kürzer gezogen, jeder Kiefer liest seine eigene Lippe, die Rechnung kommt zur Ruhe', async () => {
+    const wasm = await manifoldLaden();
+    const d = kugel();
+    const mk = mittlereKante(d.h);
+    const linie = [
+      { x: -50, y: 20 },
+      { x: -100, y: 0 },
+      { x: -150, y: -18 },
+      { x: -190, y: -30 },
+    ];
+    const r = maulSchneidenMit(wasm, { haut: d.h, loops: d.loops }, linie, { ...IDS, mk });
+    if ('fehler' in r) throw new Error(r.fehler);
+    const nd = nadelnZusammenlegen(r.haut, r.loops, mk);
+    const h = nd ? nd.haut : r.haut;
+    const loops = nd ? nd.loops : r.loops;
+    expect(rechnen(h, loops).steht).toBe(true);
+    const lippe = loops.find((l) => istMaulLinie(l))!;
+    const eckeVon = (): number => {
+      const sW = lippe.punkte.find((p) => p.mundwinkel)!.s;
+      let e = 1;
+      for (let j = 1; j < lippe.proben.length - 1; j++) if (Math.abs(lippe.s[j]! - sW) < Math.abs(lippe.s[e]! - sW)) e = j;
+      return e;
+    };
+    const vorher = maulLage(h, lippe, eckeVon())!;
+    // trennen: Die Punkte gelten nicht mehr für beide Lippen
+    delete lippe.maulLinie;
+    expect(zwillinge(lippe)).toBeNull();
+    // die Unterlippe ein Fünftel kürzer: jeder ihrer Punkte (und was an ihm hängt) zum Mundwinkel hin, ihre Griffe im selben Maß
+    const iW = lippe.punkte.findIndex((p) => p.mundwinkel);
+    const W = lippe.punkte[iW]!.ref;
+    const f = 0.8;
+    const untere = lippe.punkte.map((_, i) => i).filter((i) => (vorher.ersteUnten ? i < iW : i > iW));
+    for (const i of untere) {
+      const p = lippe.punkte[i]!;
+      const neu = { x: W.x + (p.ref.x - W.x) * f, y: W.y + (p.ref.y - W.y) * f, z: p.ref.z };
+      p.ref = neu;
+      p.cur = { ...neu };
+      if (p.ein) p.ein = { x: p.ein.x * f, y: p.ein.y * f, z: p.ein.z };
+      if (p.aus) p.aus = { x: p.aus.x * f, y: p.aus.y * f, z: p.aus.z };
+      if (p.kreuzung === undefined) continue;
+      for (const o of loops)
+        for (const q of o.punkte)
+          if (o !== lippe && q.kreuzung === p.kreuzung) {
+            q.ref = { ...neu };
+            q.cur = { ...neu };
+          }
+    }
+    {
+      // (der Griff des Mundwinkels zur Unterlippe hin geht mit)
+      const w = lippe.punkte[iW]!;
+      const zurUnteren = vorher.ersteUnten ? w.ein : w.aus;
+      if (zurUnteren) {
+        zurUnteren.x *= f;
+        zurUnteren.y *= f;
+      }
+    }
+    const e = rechnen(h, loops);
+    expect(e.steht).toBe(true);
+    expect(kantenFehler(h)).toBe(0);
+    expect(paarFehler(h)).toBe(0);
+    const ecke = eckeVon();
+    // welche Hälfte die Unterlippe ist, steht seit dem Schneiden fest und wird mitgegeben: Aus der Lage gelesen kippt es hier (die
+    // Haut des gekürzten Unterkiefers liegt in der Seite über seiner Lippe)
+    expect(maulLage(h, lippe, ecke)!.ersteUnten).not.toBe(vorher.ersteUnten);
+    const L = maulLage(h, lippe, ecke, vorher.ersteUnten)!;
+    expect(L.ersteUnten).toBe(vorher.ersteUnten);
+    expect(L.unten.lang).toBeLessThan(0.9 * vorher.unten.lang);
+    expect(Math.abs(L.oben.lang - vorher.oben.lang)).toBeLessThan(0.03 * vorher.oben.lang);
+    expect(kieferTropfenRuhe(L.oben).y).toBeGreaterThan(kieferTropfenRuhe(L.unten).y);
+    // die Kiefer: nichts faltet, die Drehung ist spiegelgleich
+    const m = maulEchtAmLoop(h, loops, lippe, ecke, { ersteUnten: vorher.ersteUnten })!;
+    expect(m).not.toBeNull();
+    // der Unterkiefer öffnet zu seiner Seite: Die Spitze der Unterlippe geht nach unten, die der Oberlippe nach oben
+    const theta = kieferWinkel(m, { kiefer: 34, schaedel: 8 })!;
+    {
+      const spU = lippe.proben[vorher.ersteUnten ? 0 : lippe.proben.length - 1]!.ecken[0];
+      const spO = lippe.proben[vorher.ersteUnten ? lippe.proben.length - 1 : 0]!.ecken[0];
+      const Zs = knochenDrehen(h.pos, theta, m.gelenk);
+      expect(Zs[3 * spU + 1]!).toBeLessThan(h.pos[3 * spU + 1]! - 5);
+      expect(Zs[3 * spO + 1]!).toBeGreaterThan(h.pos[3 * spO + 1]! + 1);
+    }
+    for (let v = 0; v < h.n; v++) expect(theta[h.spiegel[v]!]).toBe(theta[v]);
+    const Z = knochenDrehen(h.pos, theta, m.gelenk);
+    const normale = (P: ArrayLike<number>, t: number): [number, number, number] => {
+      const [a, b, c] = [3 * h.tri[t]!, 3 * h.tri[t + 1]!, 3 * h.tri[t + 2]!];
+      const [ux, uy, uz] = [P[b]! - P[a]!, P[b + 1]! - P[a + 1]!, P[b + 2]! - P[a + 2]!];
+      const [vx, vy, vz] = [P[c]! - P[a]!, P[c + 1]! - P[a + 1]!, P[c + 2]! - P[a + 2]!];
+      return [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    };
+    let gefaltet = 0;
+    for (let t = 0; t < h.tri.length; t += 3) {
+      const n0 = normale(h.pos, t);
+      if (Math.hypot(n0[0], n0[1], n0[2]) < 1e-3) continue;
+      const w = (theta[h.tri[t]!]! + theta[h.tri[t + 1]!]! + theta[h.tri[t + 2]!]!) / 3;
+      const n1 = normale(Z, t);
+      if ((Math.cos(w) * n0[0] - Math.sin(w) * n0[1]) * n1[0] + (Math.sin(w) * n0[0] + Math.cos(w) * n0[1]) * n1[1] + n0[2] * n1[2] < 0) gefaltet++;
+    }
+    expect(gefaltet).toBe(0);
   });
 
   it('sagt, warum es nicht geht: die Linie trifft die Form nicht', async () => {

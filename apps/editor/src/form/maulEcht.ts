@@ -85,6 +85,8 @@ export function kieferSeiten(
   loops: readonly Loop[],
   lippeId: number,
   R: MaulRahmen,
+  /** die Seite der ersten Hälfte der Kette, wenn sie feststeht (bei getrennten Lippen sagt die Lage der Haut neben der Lippe sie nicht mehr sicher) */
+  ersteFest?: 1 | -1,
 ): { seite: Int8Array; aussen: Uint8Array; lippe: Set<number>; ersteSeite: 1 | -1; getrennt: boolean } {
   const lage = (v: number): { s: number; d: number; hinten: boolean } => R.profil.naechster(h.pos[3 * v]!, h.pos[3 * v + 1]!);
   const beiC = (v: number): number => Math.hypot(h.pos[3 * v]! - R.C.x, h.pos[3 * v + 1]! - R.C.y);
@@ -141,7 +143,7 @@ export function kieferSeiten(
     let summe = 0;
     for (const v of teil) for (const u of h.nachbarn[v]!) if (aussen[u] && !fest[u]) summe += lage(u).d;
     // (die zweite Lippe ist die andere Seite, auch wenn ihre Nachbarn einmal knapp anders summieren)
-    const s: 1 | -1 = nr === 0 ? (summe >= 0 ? 1 : -1) : ersteSeite === 1 ? -1 : 1;
+    const s: 1 | -1 = nr === 0 ? (ersteFest ?? (summe >= 0 ? 1 : -1)) : ersteSeite === 1 ? -1 : 1;
     if (nr === 0) ersteSeite = s;
     for (const v of teil)
       for (const w of paarVon(h, v)) {
@@ -633,64 +635,110 @@ function auslauf(winkel: number): { hintenAb: number; aussenBis: number } {
 const anteil = (phi: number, lnR: number, f: { hintenAb: number; aussenBis: number }): number =>
   (phi <= f.hintenAb ? 1 : 1 - rampe(f.hintenAb, Math.PI, phi)) * (lnR <= 0 ? 1 : 1 - rampe(0, f.aussenBis, lnR));
 
-/** Wo das Maul liegt, aus seiner Lippe gelesen (alles in der Seitenebene, x und y des Werks) */
-export type MaulLage = {
-  /** der Mundwinkel: das Scharnier der Kiefer */
-  C: V2;
-  /** die Lippe, vom Mundwinkel nach vorn */
+/** Ein Kiefer, aus seiner Lippe gelesen (alles in der Seitenebene, x und y des Werks) */
+export type KieferLage = {
+  /** seine Lippe, vom Mundwinkel nach vorn */
   profil: Profil;
   /** ihre Länge */
   lang: number;
-  /** Richtung der Lippe am Mundwinkel (nach vorn; über ihr erstes Fünftel gemittelt) */
+  /** ihre Richtung am Mundwinkel (nach vorn; über ihr erstes Fünftel gemittelt) */
   t0: V2;
   /** die Kieferspitze (das vordere Ende der Lippe) und die Richtung der Lippe dort */
   spitze: V2;
   tSpitze: V2;
-  /** der Unterkiefer liegt links der Laufrichtung (vom Mundwinkel nach vorn gesehen); er öffnet dann gegen den Uhrzeigersinn */
+  /** der Kiefer liegt links seiner Lippe (vom Mundwinkel nach vorn gesehen); er öffnet dann gegen den Uhrzeigersinn */
+  links: boolean;
+};
+/** Wo das Maul liegt, aus seiner Lippe gelesen */
+export type MaulLage = {
+  /** der Mundwinkel: das Scharnier der Kiefer */
+  C: V2;
+  /** die Richtung des Mauls am Mundwinkel (nach vorn): die Mitte zwischen den zwei Lippen dort */
+  t0: V2;
+  oben: KieferLage;
+  unten: KieferLage;
+  /** der Unterkiefer liegt links der Laufrichtung (vom Mundwinkel nach vorn gesehen) */
   untenLinks: boolean;
+  /** die erste Hälfte der Kette der Lippe (vom Anfang des Rings zum Mundwinkel) ist die Unterlippe */
+  ersteUnten: boolean;
 };
 
 /**
- * Die Lage des Mauls aus seiner Lippe: `ecke` ist die Probe am Mundwinkel. Gelesen wird die erste Hälfte der Kette (die zweite
- * liegt um den Haarspalt daneben). Null: Die Lippe hat in der Seite keine Länge.
+ * Die Lage des Mauls aus seiner Lippe: `ecke` ist die Probe am Mundwinkel. Jeder Kiefer liest seine Hälfte der Kette (zusammen
+ * liegen die zwei um den Haarspalt nebeneinander, getrennt hat jede ihre eigene Form).
+ *
+ * `ersteUnten`: ob die erste Hälfte die Unterlippe ist. Das steht fest, sobald das Maul geschnitten ist, und wird mitgegeben
+ * (das Werk merkt es sich am Maul): Sind die Lippen getrennt und gezogen, sagt es keine Lage mehr sicher (bei einem Überbiss liegt
+ * die Unterlippe über dem Rand der Oberlippe; an einer Kugel lag nach dem Kürzen der Unterlippe die Haut ihres Kiefers in der Seite
+ * auf der anderen Seite ihrer Linie). Ohne Angabe, solange die Lippen aufeinanderliegen: Die Haut eines Kiefers liegt auf seiner
+ * Seite seiner Lippe. Null: Eine Lippe hat in der Seite keine Länge.
  */
-export function maulLage(h: Haut, lippe: Loop, ecke: number): MaulLage | null {
-  if (ecke <= 0 || ecke >= lippe.proben.length) return null;
+export function maulLage(h: Haut, lippe: Loop, ecke: number, ersteUnten?: boolean): MaulLage | null {
+  const n = lippe.proben.length;
+  if (ecke <= 0 || ecke >= n - 1) return null;
   const ort = (j: number): V2 => {
     const v = lippe.proben[j]!.ecken[0];
     return { x: h.pos[3 * v]!, y: h.pos[3 * v + 1]! };
   };
-  const C = ort(ecke);
-  // vom Mundwinkel nach vorn; vorn läuft die Lippe um die Schnauze zur Mitte: Dort liegen ihre Punkte in der Seite fast aufeinander
-  const P: V2[] = [C];
-  let lang = 0;
-  for (let j = ecke - 1; j >= 0; j--) {
-    const q = ort(j);
-    const d = Math.hypot(q.x - P[P.length - 1]!.x, q.y - P[P.length - 1]!.y);
-    if (d < 1e-6) continue;
-    lang += d;
-    P.push(q);
-  }
-  if (P.length < 2 || !(lang > 1e-6)) return null;
-  const profil = new Profil(P);
   const richtung = (a: V2, b: V2): V2 => {
     const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
     return { x: (b.x - a.x) / l, y: (b.y - a.y) / l };
   };
-  const spitze = P[P.length - 1]!;
-  const t0 = richtung(C, profil.ort(0.2 * lang));
-  const tSpitze = richtung(profil.ort(0.8 * lang), spitze);
+  const C = ort(ecke);
+  /** eine Hälfte, vom Mundwinkel nach vorn (vorn läuft die Lippe um die Schnauze zur Mitte: Dort liegen ihre Punkte in der Seite fast aufeinander) */
+  const haelfte = (schritt: 1 | -1): Omit<KieferLage, 'links'> | null => {
+    const P: V2[] = [C];
+    let lang = 0;
+    for (let j = ecke + schritt; j >= 0 && j < n; j += schritt) {
+      const q = ort(j);
+      const d = Math.hypot(q.x - P[P.length - 1]!.x, q.y - P[P.length - 1]!.y);
+      if (d < 1e-6) continue;
+      lang += d;
+      P.push(q);
+    }
+    if (P.length < 2 || !(lang > 1e-6)) return null;
+    const profil = new Profil(P);
+    const spitze = P[P.length - 1]!;
+    return { profil, lang, t0: richtung(C, profil.ort(0.2 * lang)), spitze, tSpitze: richtung(profil.ort(0.8 * lang), spitze) };
+  };
+  const erste = haelfte(-1);
+  const zweite = haelfte(1);
+  if (!erste || !zweite) return null;
   // unten ist die Seite, deren Normale nach unten zeigt: links der Laufrichtung liegt (−t.y, t.x)
-  const sehne = richtung(C, spitze);
-  return { C, profil, lang, t0, spitze, tSpitze, untenLinks: sehne.x < 0 };
+  const untenLinks = 0.5 * (erste.spitze.x + zweite.spitze.x) - C.x < 0;
+  let ersteLinks: boolean;
+  if (ersteUnten !== undefined) ersteLinks = ersteUnten === untenLinks;
+  else {
+    // auf welcher Seite der ersten Lippe ihr Kiefer liegt: ihre Nachbarn im Netz (Haut außen und ihre Wand der Tasche) gegen ihre Linie
+    const kette = new Set(lippe.proben.map((q) => q.ecken[0]));
+    let summe = 0;
+    for (let j = 2; j < ecke - 1; j++)
+      for (const u of h.nachbarn[lippe.proben[j]!.ecken[0]]!) if (!kette.has(u)) summe += erste.profil.naechster(h.pos[3 * u]!, h.pos[3 * u + 1]!).d;
+    if (summe === 0) summe = erste.t0.x * (zweite.spitze.y - erste.spitze.y) - erste.t0.y * (zweite.spitze.x - erste.spitze.x) > 0 ? -1 : 1;
+    ersteLinks = summe > 0;
+    ersteUnten = ersteLinks === untenLinks;
+  }
+  const a: KieferLage = { ...erste, links: ersteLinks };
+  const b: KieferLage = { ...zweite, links: !ersteLinks };
+  const mx = erste.t0.x + zweite.t0.x;
+  const my = erste.t0.y + zweite.t0.y;
+  const ml = Math.hypot(mx, my);
+  return { C, t0: ml > 1e-9 ? { x: mx / ml, y: my / ml } : erste.t0, oben: ersteUnten ? b : a, unten: ersteUnten ? a : b, untenLinks, ersteUnten };
 }
 
-/** Wo der Tropfen eines Knochens in Ruhe sitzt: ein Stück vor der Kieferspitze, auf der Seite seines Kiefers (wie in der Studie) */
-export function kieferTropfenRuhe(L: MaulLage, oben: boolean): V2 {
-  const t = L.tSpitze;
-  // (links der Laufrichtung liegt der Oberkiefer, wenn der Unterkiefer rechts liegt, und umgekehrt)
-  const s = (oben !== L.untenLinks ? 1 : -1) * 0.12 * L.lang;
-  return { x: L.spitze.x + t.x * 0.14 * L.lang - t.y * s, y: L.spitze.y + t.y * 0.14 * L.lang + t.x * s };
+/**
+ * Wo der Tropfen eines Knochens in Ruhe sitzt: ein Stück vor der Spitze seines Kiefers, auf dessen Seite.
+ * `mindVor`, `mindSeit`: so weit mindestens (Einheiten des Werks), damit er im Bild die Punkte an der Spitze nicht verdeckt.
+ */
+export function kieferTropfenRuhe(K: KieferLage, mindVor = 0, mindSeit = 0): V2 {
+  // in der Verlängerung des Knochens (vom Mundwinkel zur Spitze): Die Richtung der Lippe an ihrer Spitze wackelt, sobald dort ein
+  // Punkt gezogen ist, und der Tropfen spränge mit
+  const C = K.profil.p[0]!;
+  const l = Math.hypot(K.spitze.x - C.x, K.spitze.y - C.y);
+  const t = l > 1e-9 ? { x: (K.spitze.x - C.x) / l, y: (K.spitze.y - C.y) / l } : K.tSpitze;
+  const vor = Math.max(0.14 * K.lang, mindVor);
+  const s = (K.links ? 1 : -1) * Math.max(0.12 * K.lang, mindSeit);
+  return { x: K.spitze.x + t.x * vor - t.y * s, y: K.spitze.y + t.y * vor + t.x * s };
 }
 
 /** je Punkt der Haut: sein Winkel um das Scharnier gegen die Lippe (Bogenmaß, 0 … π), ln(Abstand / Reichweite) und ob er zum Unterkiefer gehört */
@@ -709,22 +757,32 @@ const kieferFelder = new WeakMap<MaulAmLoop, KieferFeld>();
  * rechnet `kieferWinkel` (weit geöffnet laufen die Drehungen breiter aus). `wieVorher`: Gilt es für dieselbe Haut, gilt es weiter
  * (im Zug).
  */
-export function maulEchtAmLoop(h: Haut, loops: readonly Loop[], lippe: Loop, ecke: number, opt: { wieVorher?: MaulAmLoop | null } = {}): MaulAmLoop | null {
+export function maulEchtAmLoop(
+  h: Haut,
+  loops: readonly Loop[],
+  lippe: Loop,
+  ecke: number,
+  /** `ersteUnten`: wie in `maulLage` (steht fest, sobald das Maul geschnitten ist) */
+  opt: { wieVorher?: MaulAmLoop | null; ersteUnten?: boolean | undefined } = {},
+): MaulAmLoop | null {
   const T = h.tri.length / 3;
   const alt = opt.wieVorher;
   if (alt && alt.gewicht.length === h.n && alt.offen.length === T && kieferFelder.has(alt)) return alt;
-  const L = maulLage(h, lippe, ecke);
+  const L = maulLage(h, lippe, ecke, opt.ersteUnten);
   if (!L) return null;
-  const sk = kieferSeiten(h, loops, lippe.id, { profil: L.profil, C: L.C });
+  // (die Seiten liest `kieferSeiten` gegen die erste Hälfte der Kette: ihre Lippe und der Mundwinkel; welche Seite sie ist, steht fest)
+  const ersteLage = L.ersteUnten ? L.unten : L.oben;
+  const sk = kieferSeiten(h, loops, lippe.id, { profil: ersteLage.profil, C: L.C }, ersteLage.links ? 1 : -1);
   const unten: 1 | -1 = L.untenLinks ? 1 : -1;
-  const reich = KIEFER_REICHWEITE * L.lang;
-  /** ein Ort der Seite um das Scharnier: Winkel gegen die Lippe, ln(r / Reichweite), hinter dem Mundwinkel, links der Geraden durch ihn */
+  /** ln der Reichweite je Kiefer: Jeder reicht so weit, wie seine eigene Lippe lang ist */
+  const lnReich = { unten: Math.log(KIEFER_REICHWEITE * L.unten.lang), oben: Math.log(KIEFER_REICHWEITE * L.oben.lang) };
+  /** ein Ort der Seite um das Scharnier: Winkel gegen die Richtung des Mauls, ln(r), hinter dem Mundwinkel, links der Geraden durch ihn */
   const umC = (x: number, y: number): { phi: number; lnR: number; hinten: boolean; links: boolean } => {
     const dx = x - L.C.x;
     const dy = y - L.C.y;
     const r = Math.hypot(dx, dy);
     const vor = dx * L.t0.x + dy * L.t0.y;
-    return { phi: r > 1e-9 ? Math.acos(Math.max(-1, Math.min(1, vor / r))) : 0, lnR: r > 1e-9 ? Math.log(r / reich) : -Infinity, hinten: vor < 0, links: L.t0.x * dy - L.t0.y * dx >= 0 };
+    return { phi: r > 1e-9 ? Math.acos(Math.max(-1, Math.min(1, vor / r))) : 0, lnR: r > 1e-9 ? Math.log(r) : -1e6, hinten: vor < 0, links: L.t0.x * dy - L.t0.y * dx >= 0 };
   };
   const feld: KieferFeld = { phi: new Float32Array(h.n), lnR: new Float32Array(h.n), unten: new Uint8Array(h.n) };
   for (let v = 0; v < h.n; v++) {
@@ -732,13 +790,15 @@ export function maulEchtAmLoop(h: Haut, loops: readonly Loop[], lippe: Loop, eck
     const innen = !sk.aussen[v] || sk.lippe.has(v);
     const seite = !innen && o.hinten ? (o.links ? 1 : -1) : sk.seite[v]!;
     feld.phi[v] = o.phi;
-    feld.lnR[v] = Math.max(-1e6, o.lnR);
+    feld.lnR[v] = Math.max(-1e6, o.lnR - (seite === unten ? lnReich.unten : lnReich.oben));
     feld.unten[v] = seite === unten ? 1 : 0;
   }
   // genau spiegelgleich (die Seiten werden der Reihe nach über das Netz verteilt: Ein Paar bekommt die Seite seines ersten Punkts)
   for (let v = 0; v < h.n; v++) {
     const sp = h.spiegel[v]!;
-    if (sp > v) feld.unten[sp] = feld.unten[v]!;
+    if (sp <= v) continue;
+    feld.unten[sp] = feld.unten[v]!;
+    feld.lnR[sp] = feld.lnR[v]!;
   }
   const klein = auslauf(0);
   const gewicht = new Float32Array(h.n);
@@ -750,11 +810,12 @@ export function maulEchtAmLoop(h: Haut, loops: readonly Loop[], lippe: Loop, eck
   const erste = rund(kette.slice(0, ecke + 1).reverse());
   const zweite = rund(kette.slice(ecke));
   const ersteUnten = sk.ersteSeite === unten;
-  /** das Feld an einem Ort der Seite, für den Kiefer auf dieser Seite der Lippe (bei kleinen Winkeln) */
+  /** das Feld an einem Ort der Seite, für den Kiefer auf dieser Seite seiner Lippe (bei kleinen Winkeln) */
   const bei = (x: number, y: number, fuerUnten: boolean): number => {
     const o = umC(x, y);
-    const links = o.hinten ? o.links : L.profil.naechster(x, y).d >= 0;
-    return (links === L.untenLinks) === fuerUnten ? anteil(o.phi, o.lnR, klein) : 0;
+    const K = fuerUnten ? L.unten : L.oben;
+    const links = o.hinten ? o.links : K.profil.naechster(x, y).d >= 0;
+    return links === K.links ? anteil(o.phi, o.lnR - (fuerUnten ? lnReich.unten : lnReich.oben), klein) : 0;
   };
   const m: MaulAmLoop = {
     positionen: Float32Array.from(h.pos),
@@ -764,7 +825,7 @@ export function maulEchtAmLoop(h: Haut, loops: readonly Loop[], lippe: Loop, eck
     lippeOben: ersteUnten ? zweite : erste,
     lippeUnten: ersteUnten ? erste : zweite,
     gelenk: { x: L.C.x, y: L.C.y },
-    linie: [...L.profil.p].reverse().map((q) => ({ x: q.x, y: q.y })),
+    linie: [...L.oben.profil.p].reverse().map((q) => ({ x: q.x, y: q.y })),
     drehsinn: unten,
     gewichtBei: (x, y) => bei(x, y, true),
     schaedelBei: (x, y) => bei(x, y, false),
@@ -773,7 +834,7 @@ export function maulEchtAmLoop(h: Haut, loops: readonly Loop[], lippe: Loop, eck
     gewichtOben,
     gradientOben: new Float32Array(2 * h.n),
     innenUnten: new Uint8Array(0),
-    unten: null,
+    unten: [...L.unten.profil.p].reverse().map((q) => ({ x: q.x, y: q.y })),
     tiefe: () => 0,
     offen: new Uint8Array(T),
     kantenOffen: new Set<number>(),

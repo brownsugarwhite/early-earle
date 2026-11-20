@@ -21,6 +21,11 @@ einer Haarlinie zum Mundwinkel, rosa oben, blau unten. Ziehen dreht den Kiefer; 
 öffnet Halten das Maul für einen Blick, Loslassen schließt es; „Fressen“ lässt es offen. Nach dem Schneiden zeigt sich das Maul
 einmal. Die Knochen drehen nur die Anzeige; die Linien liegen auch geöffnet auf der Haut.
 
+**Etappe 3 (20.11.):** Ist ein Punkt der Lippe gewählt, hängt hinter dem Mundwinkel „Lippen trennen“. Danach hat jede Lippe ihre
+eigenen Punkte; wo sie noch aufeinanderliegen, greifst du über der Linie die Oberlippe, darunter die Unterlippe. So entstehen
+Überbiss, Unterbiss und Lücken, auch geschlossen. Jeder Kiefer hat seinen Tropfen an seiner eigenen Spitze. „Lippen verbinden“
+legt die Unterlippe wieder auf die Oberlippe.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -49,7 +54,7 @@ einmal. Die Knochen drehen nur die Anzeige; die Linien liegen auch geöffnet auf
 ### Was noch nicht da ist (die Etappen)
 
 9. ~~Öffnen (Etappe 2)~~ gebaut; was daran offen ist, steht unter „An den Kiefern“.
-10. **„Lippen trennen“** (Etappe 3), Über- und Unterbiss. Zu zieht ein Punkt beide Lippen; das geht.
+10. ~~„Lippen trennen“ (Etappe 3)~~ gebaut; was daran offen ist, steht unter „An den Lippen“.
 11. **Die Ebene „Maul“** im Paint-Modus (Etappe 4), Zähne (5), Zunge (6), Posen und Backen.
 
 ### Nicht geprüft
@@ -81,6 +86,31 @@ einmal. Die Knochen drehen nur die Anzeige; die Linien liegen auch geöffnet auf
 28. **Im Übergang ist ein Griff nicht genau die Tangente der gezeigten Linie,** und ein Klick auf die Linie trifft dort die Kurve
     aus gedrehten Punkten und Griffen (gezeichnet wird sie jetzt genau).
 29. **Das Vorstellen nach dem Schneiden** (einmal auf und zu, anderthalb Sekunden) ist geschätzt, ebenso das Tempo beim Blick.
+
+### An den Lippen (Etappe 3)
+
+30. **Die Farben der Lippen fehlen** (zu türkis, oben rosa, unten blau, Mundwinkel schwarz, dein Blatt 05): Die Anzeige der Linien
+    kennt nur eine Tinte (`src/linien/fluessig.ts`). Welche Lippe welche ist, zeigen bisher nur die zwei Tropfen.
+31. **Welche Lippe du greifst, wo beide noch aufeinanderliegen,** sagt die Seite des Zeigers (über der Linie die obere). Am Zeiger
+    ist das nicht zu sehen; und er „klebt“ am zuletzt gegriffenen Punkt, wenn der dicht daneben liegt (so ist das Verhalten der
+    Linien gebaut).
+32. **Einen Kiefer als Ganzes rücken** (sein Knochen lässt sich schieben) fehlt. Alle Punkte einer Lippe wählen und mit G oder S
+    ziehen: nicht ausprobiert.
+33. **„Lippen verbinden“ nimmt die Oberlippe als Vorlage;** die eigene Form der Unterlippe geht verloren (⌘Z holt sie zurück). Die
+    Linien in der Tasche behalten ihre Form: Innen liegt das Maul danach nicht mehr genau aufeinander (an der frischen Form zählte
+    das Werk danach 10 umgeschlagene Dreiecke, nicht angesehen).
+34. **Nach einem Überbiss zählt das Werk 4 bis 6 umgeschlagene Dreiecke,** an der Lippe und in der Tasche am Mundwinkel, außen
+    keins. Nicht einzeln angesehen (verwandt mit Punkt 17, der Klinge).
+35. **Die Unterseite des Oberkiefers, die beim Überbiss frei wird,** ist die Wand der Tasche (der Gaumen): Haut der Form, gehalten
+    von Lippe, Mitte und Rachenlinie. Ob sie sich so formen lässt, wie dein Rex es braucht (der Oberkiefer als Deckel über dem
+    Unterkiefer), ist nicht ausprobiert; dein Blatt 06 ist nicht nachgebaut.
+36. **In der Pose lässt sich eine getrennte Lippe ziehen** (gesperrt ist dort nur der zusammengeklappte Loop): nicht geprüft.
+37. **Die Abstände der Tropfen im Bild** sind geschätzt: „Lippen trennen“ 82 Bildpunkte hinter dem Mundwinkel (unter ihm verdeckte
+    er die Punkte der Unterlippe), die Kiefertropfen 36 vor und 18 neben ihrer Spitze (sonst verdecken sie die Punkte dort).
+38. **Im Code:** Welche Hälfte der Lippe die untere ist, merkt sich das Maul beim Schneiden (`G.maul.ersteUnten`). Wer die Kette
+    der Lippe je umdreht, dreht das mit.
+39. **K an einer getrennten Lippe, Punkte auf nur einer Lippe setzen oder löschen, Kreuzungen neuer Linien mit einer Lippe:** nicht
+    geprüft.
 
 ### Kleines
 

@@ -355,7 +355,12 @@ export let naechsteKreuzung = 1;
 /* in G: radius */
 /* in G: meldung */
 /** Das Maul: der Loop, dessen schmale Form die Öffnung ist. Der Mundwinkel ist ein Punkt dieses Loops (`mundwinkel`). */
-export type MaulZustand = { id: number } | null;
+/**
+ * Das Maul der Form: die Kennung seiner Lippe. `echt`: als echte Form geschnitten (`maulSchneiden`), auch mit getrennten Lippen;
+ * `ersteUnten`: Die erste Hälfte der Kette der Lippe ist die Unterlippe (beim Schneiden gelesen und gemerkt: Getrennt gezogen
+ * sagt es die Lage nicht mehr sicher).
+ */
+export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean } | null;
 /* in G: maul */
 /**
  * Die Fressen-Pose: Knochen (Grad) und Blendshape, je Punkt der Haut die Verschiebung gegen die Grundform vor den Knochen (null:
@@ -862,8 +867,12 @@ export async function objektVerbinden(teil: ObjektStand, k: number, d: V3, art: 
   return true;
 }
 
-/** Die Lippe eines Mauls, das als echte Form geschnitten wurde (`maulSchneiden`): ein Maul aus einer Linie mit dem Haarspalt */
-export const istMaulEcht = (l: Loop): boolean => istMaulLinie(l) && l.maulLinie === MAUL_HAAR;
+/**
+ * Die Lippe eines Mauls, das als echte Form geschnitten wurde (`maulSchneiden`). Solange ihre Punkte für beide Lippen gelten, ist
+ * sie ein Maul aus einer Linie mit dem Haarspalt; sind die Lippen getrennt (`lippenTrennen`), ist sie ein Ring wie jeder andere,
+ * und das Maul der Form merkt sich, was sie ist (`G.maul.echt`).
+ */
+export const istMaulEcht = (l: Loop): boolean => (istMaulLinie(l) && l.maulLinie === MAUL_HAAR) || (!!G.maul?.echt && G.maul.id === l.id);
 
 /**
  * Das Maul als echte Form (Plan „Maul, Zähne, Zunge“, Etappe 1, 20.11.2026): Aus einer Linie, von der Seite gezeichnet, vom
@@ -919,7 +928,8 @@ export async function maulSchneiden(a: Ansicht, anker: readonly StiftAnker[], in
   // (die Lippe ist der letzte Loop: an ihr sieht `nadelnWeg` nach kurzen Kanten)
   nadelnWeg();
   // Mit dem Maul gibt es die Pose „Fressen“ schon fertig (oben wenig, unten weit): Die Lippe ist das Maul der Form
-  G.maul = { id: r.lippe };
+  G.maul = { id: r.lippe, echt: true };
+  maulSeitenMerken();
   pose = { kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null };
   maulBlick = 0;
   // gewählt ist die Lippe als Ganzes mit ihren sichtbaren Punkten (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
@@ -927,6 +937,136 @@ export async function maulSchneiden(a: Ansicht, anker: readonly StiftAnker[], in
   G.auswahl = l ? [{ l: r.lippe, i: -1 }, ...l.punkte.flatMap((q, i) => (istSichtbar(q) ? [{ l: r.lippe, i }] : []))] : [];
   G.meldung = `Maul (${((performance.now() - t0) / 1000).toFixed(1)} s): Die Lippe ist eine Linie mit Kante, ihre Punkte gelten für beide Lippen · im Maul liegen zwei Linien · ⌘Z nimmt es zurück`;
   // das Netz am Maul ist neu: Die Haut setzt sich und räumt auf wie nach einer Kante
+  hautNeuRechnen();
+  anzeige.geometrieNeu();
+  anzeige.allesZeigen();
+  return true;
+}
+
+/**
+ * Welche Hälfte der Lippe die Unterlippe ist, am Maul merken: gelesen, solange die Lippen aufeinanderliegen (dann ist es eindeutig),
+ * und nur, wenn es noch nicht feststeht.
+ */
+function maulSeitenMerken(): void {
+  const m = G.maul;
+  if (!m?.echt || m.ersteUnten !== undefined) return;
+  const alle = grund ? grund.loops : loops;
+  const l = alle.find((x) => x.id === m.id);
+  const L = l && istMaulLinie(l) ? maulLage(grund ? grund.haut : haut, l, mundwinkelVon(l)) : null;
+  if (L) G.maul = { ...m, ersteUnten: L.ersteUnten };
+}
+/** die Lippe des Mauls als echte Form (null: Die Form hat keins) */
+export function maulLippe(): Loop | null {
+  const l = G.maul?.echt ? loops[loopNr(G.maul.id)] : undefined;
+  return l ?? null;
+}
+/** Die Lippen des Mauls sind getrennt: Jede hat ihre eigenen Punkte (null: kein Maul als echte Form) */
+export function lippenGetrennt(): boolean | null {
+  const l = maulLippe();
+  return l ? !istMaulLinie(l) : null;
+}
+
+/** Ist ein Punkt der Lippe des Mauls gewählt (sie selbst, einer ihrer Punkte, oder ein Punkt einer Linie, die dort an ihr hängt)? */
+export function lippeGewaehlt(): boolean {
+  const l = maulLippe();
+  if (!l) return false;
+  return G.auswahl.some((w) => {
+    if (w.l === l.id) return true;
+    const k = w.i >= 0 ? loops[loopNr(w.l)]?.punkte[w.i]?.kreuzung : undefined;
+    return k !== undefined && l.punkte.some((q) => q.kreuzung === k);
+  });
+}
+/** so nah liegen zwei Punkte getrennter Lippen, die noch aufeinanderliegen (Einheiten des Werks; der Haarspalt ist 0,06) */
+export const LIPPEN_NAH = 0.3;
+/**
+ * Getrennte Lippen, die noch aufeinanderliegen: Am selben Ort stehen zwei Punkte, einer je Lippe, und der Zeiger kann sie nicht
+ * unterscheiden. Welche Lippe gemeint ist, sagt die Seite der Lippenlinie, auf der der Zeiger beim Beginn des Zugs liegt: zum
+ * Oberkiefer hin die Oberlippe, zum Unterkiefer hin die Unterlippe (wie man einen Reißverschluss aufzieht). `dX`, `dY`: der Zeiger
+ * gegen den gegriffenen Punkt im Blatt der Ansicht. Gewählt ist danach der Punkt dieser Lippe.
+ */
+export function lippeNachZeiger(a: Ansicht, dX: number, dY: number): void {
+  const l = maulLippe();
+  if (!l || grund || istMaulLinie(l) || G.auswahl.length !== 1) return;
+  const w = G.auswahl[0]!;
+  const p = w.i >= 0 ? loops[loopNr(w.l)]?.punkte[w.i] : undefined;
+  const iW = l.punkte.findIndex((q) => q.mundwinkel);
+  if (!p || iW < 0) return;
+  const nah = (q: LoopPunkt): boolean => abstand(q.ref, p.ref) < LIPPEN_NAH;
+  const erste = l.punkte.findIndex((q, i) => i < iW && nah(q));
+  const zweite = l.punkte.findIndex((q, i) => i > iW && nah(q));
+  if (erste < 0 || zweite < 0) return;
+  const L = maulLage(haut, l, mundwinkelVon(l), G.maul?.ersteUnten);
+  if (!L) return;
+  const d = inWelt(a, dX, dY);
+  // quer zur Lippe an dieser Stelle, in der Seite: links ihrer Laufrichtung (vom Mundwinkel nach vorn) positiv
+  const K = L.ersteUnten ? L.unten : L.oben;
+  const t = K.profil.tangente(K.profil.naechster(p.ref.x, p.ref.y).s);
+  const quer = t.x * d.y - t.y * d.x;
+  if (quer === 0) return;
+  G.auswahl = [{ l: l.id, i: K.links === quer > 0 ? erste : zweite }];
+}
+
+/**
+ * „Lippen trennen“ (Plan „Maul, Zähne, Zunge“, Etappe 3, 20.11.; Florian: „Man hat dann einen Button ‚Lippen trennen‘ und kann diese
+ * dann auch im geschlossenen Zustand separat bearbeiten, um Über- und Unterbiss zu erstellen“): Die Punkte der Lippe gelten nicht
+ * mehr für beide Lippen. Aus dem zusammengeklappten Loop wird ein Ring, dessen zwei Hälften (Oberlippe und Unterlippe) sich im
+ * Mundwinkel treffen; jede lässt sich für sich ziehen, und die Haut ihres Kiefers geht mit. An der Form ändert sich dabei nichts.
+ * Ein Schritt für ⌘Z. Nur in der Grundform. Zurück: ob es geschehen ist.
+ */
+export function lippenTrennen(): boolean {
+  const l = maulLippe();
+  const warum = !l ? 'Die Form hat kein Maul' : !istMaulLinie(l) ? 'Die Lippen sind schon getrennt' : grund ? 'Lippen trennst du in der Grundform (erst „Fressen“ aus)' : !objektRuht() ? 'erst den laufenden Handgriff beenden' : '';
+  if (warum || !l) {
+    G.meldung = `Lippen trennen: ${warum}`;
+    anzeige.statusZeigen();
+    return false;
+  }
+  zurueck.push(schnappschuss());
+  delete l.maulLinie;
+  G.meldung = 'Lippen getrennt: Jede Lippe hat jetzt ihre Punkte. Wo sie noch aufeinanderliegen, greifst du über der Linie die Oberlippe, darunter die Unterlippe · „Lippen verbinden“ legt sie wieder aufeinander';
+  anzeige.allesZeigen();
+  return true;
+}
+
+/**
+ * „Lippen verbinden“: Die Unterlippe wird wieder das Abbild der Oberlippe (um den Haarspalt um den Mundwinkel gedreht); hat eine
+ * Lippe inzwischen einen Punkt mehr, bekommt ihn die andere an derselben Stelle. Punkte anderer Linien an den Kreuzungen der
+ * Unterlippe gehen mit; danach setzt sich die Haut auf die Linien. Ein Schritt für ⌘Z. Nur in der Grundform.
+ */
+export function lippenVerbinden(): boolean {
+  const l = maulLippe();
+  const warum = !l ? 'Die Form hat kein Maul' : istMaulLinie(l) ? 'Die Lippen liegen schon aufeinander' : grund ? 'Lippen verbindest du in der Grundform (erst „Fressen“ aus)' : !objektRuht() ? 'erst den laufenden Handgriff beenden' : '';
+  if (warum || !l) {
+    G.meldung = `Lippen verbinden: ${warum}`;
+    anzeige.statusZeigen();
+    return false;
+  }
+  const vorher = schnappschuss();
+  // welche Hälfte die Oberlippe ist, sagt das Netz (bei einem Überbiss liegt die Unterlippe vorn höher)
+  const lage = maulLage(haut, l, mundwinkelVon(l), G.maul?.ersteUnten);
+  l.maulLinie = MAUL_HAAR;
+  const bewegt = zwillingeAngleichen(l) < 0 ? null : zwillingeFestlegen(l, lage ? (lage.ersteUnten ? 'zweite' : 'erste') : obereLippe(l));
+  if (!bewegt) {
+    wiederherstellen(vorher);
+    G.meldung = 'Lippen verbinden: Die zwei Lippen ließen sich nicht paaren';
+    anzeige.statusZeigen();
+    return false;
+  }
+  zurueck.push(vorher);
+  hintergrundVerwerfen();
+  for (const i of bewegt) {
+    const q = l.punkte[i]!;
+    if (q.kreuzung === undefined) continue;
+    for (const o of loops) {
+      if (o === l) continue;
+      for (const r of o.punkte) {
+        if (r.kreuzung !== q.kreuzung) continue;
+        r.ref = { ...q.ref };
+        r.cur = { ...q.ref };
+      }
+    }
+  }
+  G.meldung = 'Lippen verbunden: Jeder Punkt gilt wieder für beide Lippen';
   hautNeuRechnen();
   anzeige.geometrieNeu();
   anzeige.allesZeigen();
@@ -1161,7 +1301,7 @@ export const maulIstGeformt = (): boolean => {
 export function maulSchnitt(h: Haut, l: Loop, ecke: number, wieVorher: MaulAmLoop | null, alle: readonly Loop[] = loops): MaulAmLoop | null {
   // Das Maul als echte Form (Etappe 2, 20.11.): Welcher Kiefer ein Punkt ist, steht in seinen Linien (`maulEchtAmLoop`); zu liegen
   // Gaumen und Boden aufeinander, die Lage sagt dort nichts
-  if (istMaulEcht(l)) return maulEchtAmLoop(h, alle, l, ecke, { wieVorher });
+  if (istMaulEcht(l)) return maulEchtAmLoop(h, alle, l, ecke, { wieVorher, ersteUnten: G.maul?.id === l.id ? G.maul.ersteUnten : undefined });
   return l.maulGeformt ? maulGeformtAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher }) : maulAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher });
 }
 
@@ -1251,22 +1391,22 @@ export function kieferStellen(oben: boolean, grad: number): number {
 /**
  * Die zwei Knochen des Mauls als echte Form, wie sie zu zeigen sind (in der Seitenebene des Werks): das Scharnier (der Mundwinkel),
  * die Länge der Lippe und je Kiefer der Ort seines Tropfens in Ruhe (ein Stück vor der Kieferspitze), sein Winkel (Grad, von „zu“)
- * und sein Drehsinn beim Öffnen (+1 gegen den Uhrzeigersinn). `gezeigt`: der Anteil, um den die Anzeige gerade öffnet. Null: Die
- * Form hat kein solches Maul.
+ * und sein Drehsinn beim Öffnen (+1 gegen den Uhrzeigersinn). `gezeigt`: der Anteil, um den die Anzeige gerade öffnet. `mindVor`,
+ * `mindSeit`: so weit sitzt ein Tropfen mindestens vor und neben seiner Kieferspitze (Einheiten des Werks). Null: Die Form hat
+ * kein solches Maul.
  */
-export function kieferKnochen(): { C: V2; lang: number; gezeigt: number; oben: { ruhe: V2; grad: number; sinn: 1 | -1 }; unten: { ruhe: V2; grad: number; sinn: 1 | -1 } } | null {
+export function kieferKnochen(mindVor = 0, mindSeit = 0): { C: V2; lang: number; gezeigt: number; oben: { ruhe: V2; grad: number; sinn: 1 | -1 }; unten: { ruhe: V2; grad: number; sinn: 1 | -1 } } | null {
   if (!G.maul) return null;
   const l = loops[loopNr(G.maul.id)];
   if (!l || !istMaulEcht(l)) return null;
-  const L = maulLage(haut, l, mundwinkelVon(l));
+  const L = maulLage(haut, l, mundwinkelVon(l), G.maul?.ersteUnten);
   if (!L) return null;
-  const sinnUnten: 1 | -1 = L.untenLinks ? 1 : -1;
   return {
     C: L.C,
-    lang: L.lang,
+    lang: Math.max(L.oben.lang, L.unten.lang),
     gezeigt: grund ? 1 : maulBlick,
-    oben: { ruhe: kieferTropfenRuhe(L, true), grad: pose.schaedel, sinn: sinnUnten === 1 ? -1 : 1 },
-    unten: { ruhe: kieferTropfenRuhe(L, false), grad: pose.kiefer, sinn: sinnUnten },
+    oben: { ruhe: kieferTropfenRuhe(L.oben, mindVor, mindSeit), grad: pose.schaedel, sinn: L.oben.links ? 1 : -1 },
+    unten: { ruhe: kieferTropfenRuhe(L.unten, mindVor, mindSeit), grad: pose.kiefer, sinn: L.unten.links ? 1 : -1 },
   };
 }
 
@@ -5815,7 +5955,7 @@ export function standJetzt(): WesenStand {
     haut: hautFlach(haut),
     loops,
     ids: [naechsteId, naechsteKreuzung],
-    maul: G.maul ? { id: G.maul.id } : null,
+    maul: G.maul ? { ...G.maul } : null,
     // `inRuhe`: In der Pose sind `haut` und `loops` dieses Stands ihre Ruhe (bis zum 14.11. die gedrehte Lage)
     pose: { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta, linien: pose.linien ?? null, inRuhe: true },
     grund: grund ? { haut: hautFlach(grund.haut), loops: grund.loops } : null,
@@ -5832,7 +5972,7 @@ export function standAus(s: Schnappschuss): WesenStand {
     haut: hautFlach({ ...s.haut, pos: s.pos }),
     loops: s.loops,
     ids: [s.ids[0], s.ids[1]],
-    maul: s.maul ? { id: s.maul.id } : null,
+    maul: s.maul ? { ...s.maul } : null,
     pose: { kiefer: s.pose.kiefer, schaedel: s.pose.schaedel, delta: s.pose.delta, linien: s.pose.linien ?? null, inRuhe: true },
     grund: s.grund ? { haut: hautFlach({ ...s.grund.haut, pos: s.grund.pos }), loops: s.grund.loops } : null,
     ruhe: s.ruhe ? { setzen: s.ruhe.setzen, nurInRuhe: s.ruhe.nurInRuhe, verdichten: s.ruhe.verdichten, ziele: s.ruhe.ziele } : null,
@@ -5866,7 +6006,7 @@ export function standAnwenden(st: WesenStand): string {
     pos: Float64Array.from(h.pos),
     auswahl: [],
     ids: [st.ids[0], st.ids[1]],
-    maul: st.maul ? { id: st.maul.id } : null,
+    maul: st.maul ? { id: st.maul.id, ...(st.maul.echt === true ? { echt: true as const } : {}), ...(typeof st.maul.ersteUnten === 'boolean' ? { ersteUnten: st.maul.ersteUnten } : {}) } : null,
     pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null, linien: st.pose.linien ?? null },
     grund: g && st.grund ? { haut: g, pos: Float64Array.from(g.pos), loops: st.grund.loops.map(kopieLoop) } : null,
     ruhe: st.ruhe ? { setzen: st.ruhe.setzen === true, nurInRuhe: st.ruhe.nurInRuhe === true, verdichten: st.ruhe.verdichten === true, ziele: zieleAus(st) } : null,
@@ -5893,13 +6033,15 @@ export function standAnwenden(st: WesenStand): string {
   G.stift = null;
   wiederherstellen(s);
   maulBlick = 0;
-  // Ein Maul als echte Form ist das Maul der Form (ein Stand von Etappe 1 vermerkt es noch nicht und kennt seine Pose nicht)
-  if (!G.maul && !grund) {
-    const lippe = loops.find(istMaulEcht);
-    if (lippe) {
-      G.maul = { id: lippe.id };
+  // Ein Maul als echte Form ist das Maul der Form (ein Stand von Etappe 1 vermerkt es noch nicht und kennt seine Pose nicht; einer
+  // von Etappe 2 vermerkt noch nicht, dass es echt ist)
+  {
+    const lippe = (grund ? grund.loops : loops).find((l) => istMaulLinie(l) && l.maulLinie === MAUL_HAAR);
+    if (lippe && !G.maul && !grund) {
+      G.maul = { id: lippe.id, echt: true };
       if (!pose.delta) pose = { kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null };
-    }
+    } else if (lippe && G.maul?.id === lippe.id) G.maul = { ...G.maul, echt: true };
+    maulSeitenMerken();
   }
   // Ein Stand, der vor dem 14.11. in der Pose gesichert wurde, enthält ihre gedrehte Lage: einmal in ihre Ruhe zurückgedreht, die
   // Linien dort neu abgelesen

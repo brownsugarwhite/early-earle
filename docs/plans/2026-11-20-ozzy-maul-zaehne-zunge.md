@@ -817,3 +817,31 @@ neben dem Umriss, nicht gemessen: jetzt je Ort vom Pfad der Ruhe, `stueckeGezeig
 Nicht gebaut aus der Zeile des Plans: der Tropfen für die Reichweite und das verschiebbare Scharnier. Bilder:
 `docs/progress/ozzy/2026-11-20-maul-etappe2-fressen.jpg`, `…-weit.jpg`, `…-blick.jpg`. Offenes:
 [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md).
+
+### 12.13 Probe P3 und Etappe 3: gebaut (20.11.)
+
+Deine Antwort (20.11.): „Ja, Etappe 3“. Die Probe P3 habe ich, wie angekündigt, selbst gerechnet, gleich im Fenster mit dem
+Handgriff selbst (Kriterien 13 bis 16 von `ozzy-maul-fenster.mjs`).
+
+**P3 hält** an „teat firefish“ und an einem frischen Oval: Nach „Lippen trennen“ lässt sich jede Lippe für sich ziehen, die Form
+kommt zur Ruhe, die andere Lippe bleibt genau stehen (0,000). Der Überbiss (jeder Punkt der Unterlippe ein Viertel zum Mundwinkel
+hin, oben lang, unten zurück) steht zu und offen im Bild; geöffnet faltet nichts. Auch eine Lücke hält (ein Punkt der Unterlippe 10
+nach unten, einer der Oberlippe 6 nach oben: das Maul steht dort auch geschlossen offen). Was das Werk danach als umgeschlagen
+zählt (4 bis 6 Dreiecke), liegt an der Lippe und in der Tasche am Mundwinkel, außen nichts. Dein Blatt 06 selbst (Rex) ist nicht
+nachgebaut: Die Form gibt es nicht in `wesen/`.
+
+**In Ozzy:** Ist ein Punkt der Lippe gewählt, hängt hinter dem Mundwinkel der Tropfen „Lippen trennen“. Danach gelten die Punkte
+nicht mehr für beide Lippen: Oberlippe und Unterlippe sind die zwei Hälften eines Rings, die sich im Mundwinkel treffen. Wo sie
+noch aufeinanderliegen, stehen zwei Punkte am selben Ort; welche Lippe du greifst, sagt die Seite des Zeigers (über der Linie die
+obere, darunter die untere). Jeder Kiefer liest seine Lage jetzt aus seiner eigenen Lippe: Sein Tropfen sitzt an seiner Spitze, er
+reicht so weit, wie seine Lippe lang ist. „Lippen verbinden“ (derselbe Tropfen) macht die Unterlippe wieder zum Abbild der
+Oberlippe. Beides ein Schritt für ⌘Z.
+
+**Wie:** Trennen nimmt der Lippe nur die Marke des zusammengeklappten Loops (`maulLinie`); die Form ändert sich dabei nicht. Das
+Maul der Form merkt sich, dass es echt ist und welche Hälfte der Kette die Unterlippe ist (`G.maul.echt`, `ersteUnten`). **Das zu
+merken ist nötig:** Aus der Lage gelesen kippte die Zuordnung an einer Kugel, sobald die Unterlippe gekürzt war (Test). Am
+Rechenkern ist nichts geändert.
+
+Nicht gebaut: die Farben der Lippen (türkis, rosa, blau: Die Anzeige der Linien kennt nur eine Tinte), ein Kiefer als Ganzes
+gerückt, ein Zeichen am Zeiger, welche Lippe er greifen würde. Bilder: `docs/progress/ozzy/2026-11-20-maul-etappe3-ueberbiss.jpg`,
+`…-ueberbiss-offen.jpg`. Offenes: [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 30 bis 39.
