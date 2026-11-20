@@ -37,10 +37,12 @@ import { type FeldTreffer, werkFelder } from './werkFelder';
 import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
 import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
-import { WACHS_FARBTON_GRUND } from './wachs';
+import { WACHS_FARBTON_GRUND, wachsKugel } from './wachs';
 import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
-import { istMaulEbene } from './farbe/maulEbene';
-import { ZAEHNE_ANFANG, type ZahnPlatz, zaehneNetz, zahnPlaetze } from './zaehne';
+import { istMaulEbene, taschenFeld } from './farbe/maulEbene';
+import { type FormNetz, ZAEHNE_ANFANG, type ZahnPlatz, formGemischt, formNetzGemischt, sitzGrenzen, vorlageNr, zaehneNetz, zaehnePaar, zahnPlaetze } from './zaehne';
+import { Linse, type Perle, grauesKugelbild } from '../maulstudie/linse';
+import { ZAHN_FORMEN } from '../maulstudie/zahn';
 import { EbenenStapel } from './farbe/ebenenStapel';
 import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
 import { FarbLeiste, alsHex as farbeAlsHex } from './farbe/farbLeiste';
@@ -7442,6 +7444,9 @@ window.addEventListener('keydown', (e) => {
       // zuerst die Auswahl leeren
       bearbeiten.eingabe('esc');
       werk.G.auswahl = [];
+    } else if (linseOffen()) {
+      // Maul, Etappe 5: Ist nichts angefangen und nichts gewählt, schließt Esc die Linse der Zähne
+      linseSchliessen();
     } else if (faecher.ziel > 0.5) {
       // Etappe 6: Ist nichts angefangen und nichts gewählt, schiebt Esc die Kopien wieder zu einer Form zusammen
       faecherSetzen(false);
@@ -9053,8 +9058,9 @@ function kieferUiZeigen(): boolean {
       braucht = true;
     }
   } else {
-    // (offen, solange ein Tropfen gehalten wird, und im Paint-Modus, solange die Ebene „Maul“ gewählt ist)
-    let ziel = kieferZug || (maulEbeneAktiv() && farbeMoeglich()) ? 1 : 0;
+    // (offen, solange ein Tropfen gehalten wird, im Paint-Modus, solange die Ebene „Maul“ gewählt ist, und solange die Linse der
+    // Zähne offen ist: Sonst sähe man nicht, was man stellt. Wird an der Form gezogen, ist es so lange zu.)
+    let ziel = kieferZug || (maulEbeneAktiv() && farbeMoeglich()) || (linseOffen() && !werk.zug) ? 1 : 0;
     if (kieferSchau && !kieferZug) {
       const t = (jetzt - kieferSchau.t0) / (kieferSchau.ms ?? KIEFER_SCHAU_MS);
       if (t >= 1 || werk.zug) kieferSchau = null;
@@ -9069,20 +9075,25 @@ function kieferUiZeigen(): boolean {
       braucht = true;
     } else if (kieferSchau) braucht = true;
   }
-  // ---- die Zähne sprießen; der Tropfen „Zähne“ unter der Leiste, solange das Maul noch keine hat ----
+  // ---- die Zähne sprießen; der Tropfen „Zähne“ unter der Leiste, solange es ein Maul gibt (er öffnet und schließt die Linse) ----
   if (zahnWuchs) {
     if (jetzt - zahnWuchs.t0 > ZAHN_WUCHS_MS + 80) zahnWuchs = null;
     werkNeu = true;
     braucht = true;
   }
   {
-    const zeigen = !!k && !werk.G.maul?.zaehne && bearbeitenAn && !malModus && vier < 0.02 && !werk.zug && !werk.maulLauf && !reihe && !werkBlatt.maulStrich;
+    const darf = !!k && bearbeitenAn && !malModus && vier < 0.02 && !werk.maulLauf && !reihe;
+    const zeigen = darf && !werk.zug && !werkBlatt.maulStrich;
     zaehneTropfen.hidden = !zeigen;
     if (zeigen) {
       const r = leisteEl.getBoundingClientRect();
       zaehneTropfen.style.left = `${(r.left + r.width / 2).toFixed(1)}px`;
       zaehneTropfen.style.top = `${(r.bottom + 10).toFixed(1)}px`;
     }
+    // (die Linse bleibt, wenn das Bearbeiten nur kurz ruht, etwa beim Wechsel der Ansicht; sie schließt, wenn es nichts mehr zu stellen
+    // gibt: kein Maul, zurück auf dem Blatt, Paint-Modus, Vier Ansichten, Objekte)
+    if (linseSchritt(zustand === 'ruhe' && !!werk.maulLippe() && !malModus && vierZiel < 0.5 && !objektModus() && !reihe)) braucht = true;
+    zaehneTropfen.setAttribute('aria-pressed', linseOffen() ? 'true' : 'false');
   }
   // ---- die Tropfen ----
   const an =
@@ -9123,6 +9134,17 @@ function kieferUiZeigen(): boolean {
 const zaehneTropfen = $<HTMLButtonElement>('zaehne-tropfen');
 const leisteEl = $<HTMLElement>('leiste');
 let zaehnePlan: { haut: object; schl: string; plaetze: ZahnPlatz[] } | null = null;
+/** das Feld der Tasche (der Abstand von der Lippe) und die Grenzen des Sitzes: Sie hängen an Netz und Tasche, nicht an den Werten der Zähne */
+let zaehneFeld: { haut: object; tiefe: number; tasche: NonNullable<ReturnType<typeof werk.maulTasche>>; feld: ReturnType<typeof taschenFeld>; sitz: { min: number; max: number } | null } | null = null;
+function zaehneFeldJetzt(): typeof zaehneFeld {
+  if (zaehneFeld && zaehneFeld.haut === werk.haut && (zaehneFeld.tiefe === werk.zurueck.length || werk.zug)) return zaehneFeld;
+  const tasche = werk.maulTasche();
+  if (!tasche) return (zaehneFeld = null);
+  const karte = farbWerk.karteFuer(hautJetzt());
+  const feld = taschenFeld(karte, tasche);
+  zaehneFeld = { haut: werk.haut, tiefe: werk.zurueck.length, tasche, feld, sitz: sitzGrenzen(karte, tasche, feld) };
+  return zaehneFeld;
+}
 /** die Zähne sprießen gerade (von der Spitze nach hinten) */
 let zahnWuchs: { t0: number } | null = null;
 const ZAHN_WUCHS_MS = 1100;
@@ -9137,8 +9159,8 @@ function zaehnePlaetzeJetzt(): ZahnPlatz[] {
   }
   const schl = `${werk.zurueck.length}|${JSON.stringify(z)}`;
   if (zaehnePlan && zaehnePlan.haut === werk.haut && (zaehnePlan.schl === schl || werk.zug)) return zaehnePlan.plaetze;
-  const tasche = werk.maulTasche();
-  const plaetze = tasche ? zahnPlaetze(farbWerk.karteFuer(hautJetzt()), tasche, tasche.C, z) : [];
+  const fz = zaehneFeldJetzt();
+  const plaetze = fz ? zahnPlaetze(farbWerk.karteFuer(hautJetzt()), fz.tasche, fz.tasche.C, z, fz.feld) : [];
   zaehnePlan = { haut: werk.haut, schl, plaetze };
   return plaetze;
 }
@@ -9154,12 +9176,16 @@ function zaehneRechnen(): void {
     return;
   }
   const k = werk.kieferKnochen();
-  const auf = k ? ((k.oben.grad + k.unten.grad) * k.gezeigt * Math.PI) / 180 : 0;
+  // (wird in der Grundform an der Form gezogen, steht die Anzeige zu, auch wenn der Blick ins Maul noch ausklingt: Dann stecken die Zähne im Maul)
+  const auf = k && werk.anzeigeDreht() ? ((k.oben.grad + k.unten.grad) * k.gezeigt * Math.PI) / 180 : 0;
   const t = zahnWuchs ? (performance.now() - zahnWuchs.t0) / ZAHN_WUCHS_MS : 2;
+  // der weiche Wechsel der Vorlage (Formenring): je Bild ein Netz zwischen der alten und der neuen
+  const m = zahnMorph;
+  const mt = m ? Math.max(0, Math.min(1, (performance.now() - m.t0) / ZAHN_MORPH_MS)) : 1;
   // (zu und fertig gesprossen ändert sich an den Zähnen nichts: Sie stecken im Maul)
-  const stand = `${zaehnePlan?.schl}|${werkHaut.version}|${auf.toFixed(5)}|${Math.min(2, t).toFixed(3)}`;
+  const stand = `${zaehnePlan?.schl}|${werkHaut.version}|${mt.toFixed(3)}|${auf.toFixed(5)}|${Math.min(2, t).toFixed(3)}`;
   if (stand === zaehneStand && zaehneNetzJetzt) return;
-  if (auf === 0 && t >= 2 && zaehneNetzJetzt && zaehneStand.endsWith('|0.00000|2.000') && zaehnePlan && zaehneStand.startsWith(`${zaehnePlan.schl}|`)) return;
+  if (auf === 0 && t >= 2 && mt >= 1 && zaehneNetzJetzt && zaehneStand.endsWith('|0.00000|2.000') && zaehnePlan && zaehneStand.startsWith(`${zaehnePlan.schl}|`)) return;
   zaehneStand = stand;
   const P = werk.alsAnzeige(() => werk.haut.pos);
   // von der Spitze nach hinten: Jeder Zahn wächst über ein Drittel der Zeit, der hinterste beginnt nach zwei Dritteln
@@ -9168,20 +9194,227 @@ function zaehneRechnen(): void {
     const x = Math.max(0, Math.min(1, (t - (1 - vorn) * 0.66) / 0.34));
     return x * x * (3 - 2 * x);
   };
+  let formVon: ((q: ZahnPlatz) => FormNetz | null) | undefined;
+  if (m && mt < 1) {
+    const weich = mt * mt * (3 - 2 * mt);
+    const je: { oben?: FormNetz; unten?: FormNetz } = {};
+    formVon = (q) => {
+      const von = q.unten ? m.unten : m.oben;
+      return von === null ? null : (je[q.unten ? 'unten' : 'oben'] ??= formNetzGemischt(von, q.reihe.form, weich));
+    };
+  }
   // (ein neues Netz je Stand: Wer die Netze zusammensetzt, erkennt den Wechsel am Netz selbst)
-  zaehneNetzJetzt = zaehneNetz(plaetze, P, werkHaut.f, werkHaut.mitte, (r) => 2 * r * Math.sin(auf / 2), wuchs);
+  zaehneNetzJetzt = zaehneNetz(plaetze, P, werkHaut.f, werkHaut.mitte, (r) => 2 * r * Math.sin(auf / 2), wuchs, null, formVon);
   zaehneVersion++;
 }
 zaehneTropfen.addEventListener('click', () => {
-  if (werk.zug || werk.maulLauf || !werk.maulLippe() || werk.G.maul?.zaehne) return;
-  if (!werk.zaehneSetzen(ZAEHNE_ANFANG)) return;
-  // sie sprießen bei offenem Maul (zu stecken sie im Maul und wären nicht zu sehen)
-  const jetzt = performance.now();
-  zahnWuchs = { t0: jetzt + 260 };
-  if (!werk.grund) kieferSchau = { t0: jetzt, ms: 3000 };
+  if (werk.zug || werk.maulLauf || !werk.maulLippe()) return;
+  if (!werk.G.maul?.zaehne) {
+    if (!werk.zaehneSetzen(ZAEHNE_ANFANG)) return;
+    // sie sprießen bei offenem Maul (zu stecken sie im Maul und wären nicht zu sehen); die Linse hält es offen
+    zahnWuchs = { t0: performance.now() + 260 };
+    linseOeffnen();
+  } else if (linseOffen()) linseSchliessen();
+  else linseOeffnen();
   werkNeu = true;
   anstossen();
 });
+
+// ---------- Die Linse der Zähne (Maul, Etappe 5, zweite Scheibe) ----------
+//
+// Der Tropfen „Zähne“ öffnet oben rechts die Linse (`maulstudie/linse.ts`): der Zahn groß im Raum, um ihn der Formenring (die acht
+// Vorlagen) und der Drehregler (Anzahl, Größe, Neigung, Verlauf, Sitz; welche Zahl er stellt, sagen die Perlen). Zwei Perlen in den
+// Farben der Kiefer sagen, wem die Linse gilt: beiden Reihen (so beginnt sie) oder einer allein. Solange sie offen ist, steht das
+// Maul offen. Was gedreht wird, gilt sofort; je Griff ein Schritt für ⌘Z.
+const linseEl = $<HTMLElement>('linse');
+let zahnLinse: Linse | null = null;
+/** wem die Linse gilt */
+let linseReihen: { oben: boolean; unten: boolean } = { oben: true, unten: true };
+/** der letzte Griff an der Linse (`griff`: der wievielte am Drehregler): Was in einem Griff an derselben Sache gedreht wird, ist ein Schritt für ⌘Z */
+let linseGriff: { was: string; griff: number; tiefe: number } | null = null;
+/** der weiche Wechsel der Vorlage: je Kiefer die Vorlage von vorher (null: Diese Reihe wechselt nicht) */
+let zahnMorph: { oben: number | null; unten: number | null; t0: number } | null = null;
+const ZAHN_MORPH_MS = 320;
+/** was die Linse zuletzt gezeigt hat (Werte und Reihen): Ändert es sich von außen (⌘Z), zeigt sie es neu */
+let linseStand = '';
+/** woran ihre Lage hängt (Höhe des Fensters, ihre Größe, die Tafel „Fressen“) */
+let linseLage = '';
+const LINSE_GROESSE = 200;
+/** Durchmesser der ganzen Linse mit ihren Ringen (CSS-Pixel): das runde Feld und der Rand der Ringe (`linse.ts`, `bauen`) */
+const linseBreit = (): number => (zahnLinse?.innen ?? LINSE_GROESSE) + 132;
+
+const linseOffen = (): boolean => !!zahnLinse?.istOffen;
+/** die Reihe, deren Werte die Linse zeigt (gilt sie beiden: die obere) */
+const linseFuehrt = (): 'oben' | 'unten' => (linseReihen.oben ? 'oben' : 'unten');
+const linseBeide = (): boolean => linseReihen.oben && linseReihen.unten;
+/** die Reihen, denen die Linse gilt, mit `f` ändern */
+const reihenStellen = (z: werk.MaulZaehne, f: (r: werk.ZahnReihe) => werk.ZahnReihe): werk.MaulZaehne => ({ oben: linseReihen.oben ? f(z.oben) : z.oben, unten: linseReihen.unten ? f(z.unten) : z.unten });
+
+/** die Werte der Zähne von der Linse aus ändern (`was`: welcher Griff es ist, für die Schritte von ⌘Z) */
+function zaehneStellen(was: string, neu: (z: werk.MaulZaehne) => werk.MaulZaehne): void {
+  const z = werk.G.maul?.zaehne;
+  if (!z || werk.zug || werk.maulLauf) return;
+  const g = linseGriff;
+  const griff = zahnLinse?.griffNr ?? -1;
+  // (ein neuer Schritt, wenn es ein neuer Griff ist, eine andere Sache, oder wenn dazwischen etwas anderes geschah, etwa ⌘Z)
+  const schritt = !g || g.was !== was || g.griff !== griff || g.tiefe !== werk.zurueck.length;
+  if (!werk.zaehneSetzen(neu(z), schritt)) return;
+  linseGriff = { was, griff, tiefe: werk.zurueck.length };
+  werkNeu = true;
+  anstossen();
+}
+
+const perleReihe = (name: 'groesse' | 'neigung' | 'verlauf' | 'sitz', min: number, max: number, kurz: string, lang: string, zeigen: (w: number) => string): Perle => ({
+  kurz,
+  name: lang,
+  min,
+  max,
+  schritt: 0.1,
+  rastet: false,
+  wert: () => werk.G.maul?.zaehne?.[linseFuehrt()][name] ?? 0,
+  setzen: (w) => zaehneStellen(kurz, (z) => reihenStellen(z, (r) => ({ ...r, [name]: w }))),
+  zeigen,
+});
+const perleAnzahl: Perle = {
+  kurz: '#',
+  name: 'Anzahl',
+  min: 1,
+  max: 40,
+  schritt: 1,
+  rastet: true,
+  wert: () => werk.G.maul?.zaehne?.[linseFuehrt()].anzahl ?? 0,
+  // beide Reihen zusammen: dieselbe Teilung, unten ein Zahn weniger (die unteren stehen in den Lücken der oberen); eine Reihe allein:
+  // nur ihre Anzahl (null: Diese Reihe hat keine Zähne)
+  setzen: (w) => zaehneStellen('#', (z) => (linseBeide() ? zaehnePaar(z, Math.max(1, Math.round(w))) : reihenStellen(z, (r) => ({ ...r, anzahl: Math.max(0, Math.round(w)) })))),
+  zeigen: (w) => String(Math.round(w)),
+};
+const perleSitz = perleReihe('sitz', 0.15, 2.4, 'S', 'Sitz', (w) => w.toFixed(1));
+const zahnPerlen: Perle[] = [
+  perleAnzahl,
+  perleReihe('groesse', 0.3, 2.6, 'G', 'Größe', (w) => `${Math.round(w * 100)} %`),
+  perleReihe('neigung', -0.6, 1.2, 'N', 'Neigung', (w) => `${Math.round((w * 180) / Math.PI)}°`),
+  perleReihe('verlauf', 0, 0.9, 'V', 'Verlauf', (w) => `${Math.round(w * 100)} %`),
+  perleSitz,
+];
+
+/** eine Perle der Reihen ist angetippt: Die Linse gilt dieser Reihe allein; noch einmal: wieder beiden */
+function linseReiheTippen(welche: 'oben' | 'unten'): void {
+  const allein = linseReihen[welche] && !linseBeide();
+  linseReihen = allein ? { oben: true, unten: true } : { oben: welche === 'oben', unten: welche === 'unten' };
+  linseGriff = null;
+  anstossen();
+}
+
+/** die Linse zeigt, was gilt: die Vorlage und den Zahn der führenden Reihe, die Grenzen der Perlen */
+function linseAuffrischen(): void {
+  const z = werk.G.maul?.zaehne;
+  if (!zahnLinse || !z) return;
+  perleAnzahl.min = linseBeide() ? 1 : 0;
+  const sitz = zaehneFeldJetzt()?.sitz;
+  if (sitz) {
+    perleSitz.min = sitz.min;
+    perleSitz.max = sitz.max;
+  }
+  const f = vorlageNr(z[linseFuehrt()].form);
+  if (f !== zahnLinse.vorlage) {
+    zahnLinse.vorlageZeigen(f);
+    if (!zahnMorph) zahnLinse.zahnSetzen(ZAHN_FORMEN[f]!.form);
+  }
+  zahnLinse.auffrischen();
+}
+
+/** die Unterkante der Tafel „Fressen“, zuletzt gemessen (0: noch nie) */
+let fressenUnten = 0;
+/**
+ * Wo die Linse steht: oben rechts, unter der Tafel „Fressen“. Gemessen wird der Platz der Tafel im Layout, nicht ihr Bild: Sie
+ * fliegt beim Erscheinen aus dem Tropfen „Maul“ ein (`fressenQuellen`) und stünde sonst im Flug irgendwo. Ist die Tafel gerade
+ * versteckt (beim Wechsel der Ansicht), gilt ihr letzter Platz: Die Linse springt nicht.
+ */
+function linseLegen(): void {
+  if (!fressen.hidden) fressenUnten = fressen.offsetTop + fressen.offsetHeight;
+  linseEl.style.top = `${Math.round(Math.min(Math.max(0, H - linseBreit()), fressenUnten > 0 ? fressenUnten + 2 : 2))}px`;
+}
+
+function linseOeffnen(): void {
+  const z = werk.G.maul?.zaehne;
+  if (!z) return;
+  zahnLinse ??= new Linse(
+    linseEl,
+    grauesKugelbild(wachsKugel(256), 256),
+    {
+      perlen: zahnPerlen,
+      reihen: [
+        { name: 'Obere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: '#e8306a', an: () => linseReihen.oben, tippen: () => linseReiheTippen('oben') },
+        { name: 'Untere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: '#1f3cf0', an: () => linseReihen.unten, tippen: () => linseReiheTippen('unten') },
+      ],
+      form: (i) => {
+        const zz = werk.G.maul?.zaehne;
+        if (!zz) return;
+        const von = { oben: linseReihen.oben && vorlageNr(zz.oben.form) !== i ? vorlageNr(zz.oben.form) : null, unten: linseReihen.unten && vorlageNr(zz.unten.form) !== i ? vorlageNr(zz.unten.form) : null };
+        // (jede Vorlage ist ein eigener Schritt)
+        linseGriff = null;
+        zaehneStellen('form', (y) => reihenStellen(y, (r) => ({ ...r, form: i })));
+        linseGriff = null;
+        if (von.oben !== null || von.unten !== null) zahnMorph = { ...von, t0: performance.now() };
+      },
+    },
+    LINSE_GROESSE,
+  );
+  linseReihen = { oben: true, unten: true };
+  linseGriff = null;
+  zahnMorph = null;
+  // (die Linse hält das Maul offen: Die Schau nach dem Schneiden endet)
+  kieferSchau = null;
+  linseLegen();
+  linseLage = '';
+  const f = vorlageNr(z.oben.form);
+  zahnLinse.oeffnen(ZAHN_FORMEN[f]!.form, f);
+  linseStand = '';
+  anstossen();
+}
+function linseSchliessen(): void {
+  zahnLinse?.schliessen();
+  zahnMorph = null;
+  linseGriff = null;
+  anstossen();
+}
+/**
+ * Die Linse je Bild: Sie schließt, wenn es nichts mehr zu stellen gibt (`darf`: es gibt ein Maul, und Ozzy ist in einem Zustand,
+ * in dem man Zähne stellt), zeigt neu, was sich von außen geändert hat (⌘Z), und führt den weichen Wechsel der Vorlage. Zurück:
+ * ob es weitere Bilder braucht.
+ */
+function linseSchritt(darf: boolean): boolean {
+  if (!linseOffen() || !zahnLinse) {
+    zahnMorph = null;
+    return false;
+  }
+  const z = werk.G.maul?.zaehne;
+  if (!darf || !z) {
+    linseSchliessen();
+    return true;
+  }
+  const stand = `${JSON.stringify(z)}|${linseReihen.oben}|${linseReihen.unten}|${zaehneFeld?.tiefe ?? -1}`;
+  if (stand !== linseStand) {
+    linseStand = stand;
+    linseAuffrischen();
+  }
+  const lage = `${H}|${zahnLinse.innen}|${fressen.hidden}`;
+  if (lage !== linseLage) {
+    linseLage = lage;
+    linseLegen();
+  }
+  const m = zahnMorph;
+  if (!m) return false;
+  const t = (performance.now() - m.t0) / ZAHN_MORPH_MS;
+  const von = linseFuehrt() === 'oben' ? m.oben : m.unten;
+  const nach = vorlageNr(z[linseFuehrt()].form);
+  if (t >= 1) {
+    zahnMorph = null;
+    zahnLinse.zahnSetzen(ZAHN_FORMEN[nach]!.form);
+  } else if (von !== null) zahnLinse.zahnSetzen(formGemischt(von, nach, t * t * (3 - 2 * t)));
+  werkNeu = true;
+  return true;
+}
 
 /** der Winkel des Zeigers um den Mundwinkel in der Spiegelebene (Bogenmaß), null: von hier aus nicht zu lesen */
 function kieferZeigerWinkel(x: number, y: number): number | null {
@@ -9962,6 +10195,19 @@ const haken = {
       netz: n ? { punkte: n.pos.length / 3, dreiecke: n.index.length / 3, endlich: n.pos.every((x) => Number.isFinite(x)) } : null,
       lang,
       spriesst: zahnWuchs !== null,
+      // die Linse: offen, wem sie gilt, welche Perle und welche Vorlage, ihre Mitte im Fenster und der Durchmesser ihres runden Felds
+      linse: ((): { offen: boolean; reihen: { oben: boolean; unten: boolean }; perle: string; vorlage: number; mitte: [number, number]; innen: number; wechselt: boolean } => {
+        const r = linseEl.getBoundingClientRect();
+        return {
+          offen: linseOffen(),
+          reihen: { ...linseReihen },
+          perle: zahnPerlen[zahnLinse?.perleNr ?? 0]?.kurz ?? '',
+          vorlage: zahnLinse?.vorlage ?? -1,
+          mitte: [r.left + r.width / 2, r.top + r.height / 2],
+          innen: zahnLinse?.innen ?? 0,
+          wechselt: zahnMorph !== null,
+        };
+      })(),
     };
   },
   /** Maul, Etappe 3: die Lippen trennen oder verbinden (ohne Angabe: nur lesen); zurück, ob sie getrennt sind (null: kein solches Maul) */

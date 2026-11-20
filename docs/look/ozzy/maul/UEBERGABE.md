@@ -7,8 +7,9 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 **Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. in Ozzy die erste Scheibe von Etappe 1 (das
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
 in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
-Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält), dazu die erste Scheibe von Etappe 5 (Zähne sprießen und gehen
-mit den Kiefern mit). Als Nächstes, auf Florians Wort: der Rest von Etappe 5 (die Linse, Zähne wählen und rücken).** Offenes steht
+Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält), dazu zwei Scheiben von Etappe 5 (Zähne sprießen und gehen mit den
+Kiefern mit; die Linse stellt sie). Als Nächstes, auf Florians Wort: der Rest von Etappe 5 (Zähne wählen und rücken) oder
+Etappe 6 (Zunge).** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -200,6 +201,39 @@ den ruhenden Netzen), `ozzy.html` (`#zaehne-tropfen`). Zahnformen: `src/maulstud
    halben Zahn weniger weit (`bis` 0,788 = 0,86 · 11 / 12). So haben beide Reihen dieselbe Teilung, und die unteren Zähne stehen
    in den Lücken der oberen (der Test prüft es). Wer die Linse einbaut, hält das beim Stellen der Anzahl.
 7. **Ein Zahn hat 640 Dreiecke** (die Vorlage der Studie, unverändert): 23 Zähne sind 14 720. Fürs Backen gröber nehmen.
+
+## Etappe 5 in Ozzy, zweite Scheibe: die Linse (20.11.)
+
+**Was es gibt:** Der Tropfen „Zähne“ bleibt unter der Leiste und öffnet und schließt die Linse oben rechts (unter der Tafel
+„Fressen“): Formenring (acht Vorlagen, weicher Wechsel), Drehregler mit den Perlen `#`, `G`, `N`, `V`, `S`, zwei Perlen für die
+Reihen (rosa oben, blau unten: antippen = nur diese Reihe, noch einmal = beide). Solange sie offen ist, steht das Maul offen.
+Plan, 12.16. **Was fehlt:** Zähne im Bild antippen und rücken, ein Zahn ohne Spiegelbild, Zähne außen, Farbe, die Perlen
+Biegung und Wurzel.
+
+**Wo:** `src/maulstudie/linse.ts` und `linse.css` (die Linse selbst; auch die Studie benutzt sie), `src/ozzy/main.ts` („Die Linse
+der Zähne“: `linseOeffnen`, `linseSchliessen`, `linseSchritt` je Bild, `zaehneStellen`, `zahnPerlen`, `linseLegen`),
+`src/ozzy/zaehne.ts` (`zaehnePaar`, `sitzGrenzen`, `formNetzGemischt`), `ozzy.html` (`#linse`), `ozzy.css` (`#linse`, der
+gedrückte Tropfen). Probe: `GPU=1 node scripts/pruefen/ozzy-maul-zaehne-fenster.mjs [ordner]` (Z1 bis Z6, L1 bis L7); Haken
+`__ozzy.zaehne().linse`.
+
+**Was man wissen muss:**
+
+1. **Die Linse gehört Studie und Ozzy.** Was Ozzy braucht, ist dort wahlfrei (`LinsenZiele.reihen`, die Größe am Anfang). Nach
+   Änderungen `maul.html` einmal laden und die Linse öffnen (`__maul.zaehne(true); __maul.waehlen('oben')`).
+2. **Schritte für ⌘Z zählt der Griff, nicht die Zeit:** `zaehneStellen(was, …)` legt einen an, wenn es ein neuer Griff ist
+   (`Linse.griffNr`: einmal Greifen und Drehen samt Nachlauf, oder ein Zug am Rad der Maus), eine andere Sache, oder wenn
+   dazwischen etwas anderes geschah. (Erst hatte ich 0,9 s als Grenze: Wer langsam dreht, bekam mehrere Schritte.)
+3. **Die Linse schließt nur, wenn es nichts mehr zu stellen gibt** (kein Maul, zurück auf dem Blatt, Paint-Modus, Vier
+   Ansichten, Objekte). `bearbeitenAn` ist beim Wechsel der Ansicht kurz falsch: Daran darf sie nicht hängen.
+4. **Lagen neben einer Tafel am Layout messen** (`offsetTop`, `offsetHeight`), nicht an ihrem Bild: Die Tafel „Fressen“ fliegt
+   beim Erscheinen aus dem Tropfen „Maul“ ein (`fressenQuellen`), ihr `getBoundingClientRect` steht dann irgendwo im Bild.
+5. **Das Feld `#linse` ist rund ausgeschnitten** (`clip-path`): Die Ecken gehören der Bühne. Alles, was die Linse zeichnet, muss
+   im Kreis liegen (`rand` in `Linse.bauen`).
+6. **In der Grundform hält die Linse den Blick ins Maul offen** (`kieferUiZeigen`). Wird an der Form gezogen, ist die Anzeige zu
+   (`werk.anzeigeDreht`), die Zähne haben dann die Länge null (`zaehneRechnen`).
+7. **Das Feld der Tasche** (`taschenFeld`) wird je Netz und Schritt einmal gerechnet (`zaehneFeldJetzt`), nicht je gestelltem Wert.
+8. **Die Probe:** 60° sind rechnerisch genau vier Rasten, sie dreht 62°. Am Rad der Maus zählt Playwright bei zwei Gerätepunkten
+   je CSS-Pixel den halben Weg (`mausRad`). Ein Esc zu viel lässt die Luft ab (zurück aufs Blatt).
 
 ## Die Studie in einem Absatz
 

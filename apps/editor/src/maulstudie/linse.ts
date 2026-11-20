@@ -11,8 +11,12 @@
  *
  * Die „Haptik“ kommt aus Bild und Ton: Das iPad hat keinen Motor dafür, und im Browser gibt es am iPhone keinen verlässlichen Weg.
  * Wo ein Gerät vibrieren kann (`navigator.vibrate`), tickt es zusätzlich in der Hand.
+ *
+ * Seit der zweiten Scheibe von Etappe 5 steht die Linse auch in Ozzy (`ozzy/main.ts`, „Die Linse der Zähne“). Dafür kam dazu: die
+ * Perlen der Reihen (`LinsenZiele.reihen`: wem die Linse gilt), die Größe am Anfang, `vorlageZeigen` und `auffrischen` (wenn sich
+ * die Werte von außen ändern, etwa mit ⌘Z). Das Aussehen steht in `linse.css`.
  */
-import { AmbientLight, Color, DataTexture, DirectionalLight, Group, Mesh, MeshMatcapMaterial, PerspectiveCamera, Scene, WebGLRenderer, DoubleSide } from 'three';
+import { AmbientLight, Color, DataTexture, DirectionalLight, Group, Mesh, MeshMatcapMaterial, PerspectiveCamera, RGBAFormat, SRGBColorSpace, Scene, WebGLRenderer, DoubleSide } from 'three';
 import { ZAHN_FORMEN, zahnNetz, zahnUmriss, type ZahnForm } from './zahn';
 
 export type Perle = {
@@ -28,11 +32,36 @@ export type Perle = {
   zeigen: (w: number) => string;
 };
 
+/** wem die Linse gilt: je Reihe eine Perle in ihrer Farbe (`an`: sie gilt ihr gerade; `tippen`: die Perle wurde angetippt) */
+export type LinsenReihe = { name: string; farbe: string; an: () => boolean; tippen: () => void };
+
 export type LinsenZiele = {
   /** eine Vorlage ist gewählt (Index in `ZAHN_FORMEN`) */
   form: (i: number) => void;
   perlen: Perle[];
+  reihen?: LinsenReihe[];
 };
+
+/**
+ * Ein Kugelbild ohne Farbe (nur Hell, Dunkel und Glanz) aus einem farbigen (`daten`: `groesse` × `groesse`, RGBA): die Matcap für
+ * den Zahn in der Linse. Heller gestellt, damit ein Zahn nicht so dunkel schattiert wie das Wachs.
+ */
+export function grauesKugelbild(daten: Uint8Array, groesse: number): DataTexture {
+  const n = groesse * groesse;
+  const grau = new Uint8Array(n * 4);
+  const hell = (i: number): number => 0.2126 * daten[4 * i]! + 0.7152 * daten[4 * i + 1]! + 0.0722 * daten[4 * i + 2]!;
+  let max = 1;
+  for (let i = 0; i < n; i++) max = Math.max(max, hell(i));
+  for (let i = 0; i < n; i++) {
+    const l = Math.round(255 * Math.pow(hell(i) / max, 0.55));
+    grau[4 * i] = grau[4 * i + 1] = grau[4 * i + 2] = l;
+    grau[4 * i + 3] = 255;
+  }
+  const bild = new DataTexture(grau, groesse, groesse, RGBAFormat);
+  bild.colorSpace = SRGBColorSpace;
+  bild.needsUpdate = true;
+  return bild;
+}
 
 const NS = 'http://www.w3.org/2000/svg';
 const el = <K extends keyof SVGElementTagNameMap>(name: K, attr: Record<string, string | number> = {}): SVGElementTagNameMap[K] => {
@@ -70,12 +99,18 @@ export class Linse {
   private neigZahn = 0.15;
   /** der Tropfen an der Marke: wie weit er vom letzten Rasten noch ausgelenkt ist */
   private tropfenAus = 0;
+  /** der wievielte Griff am Drehregler es ist (einmal Greifen und Drehen samt Nachlauf, oder ein Zug am Rad der Maus) */
+  private griff = 0;
+  private radMausZeit = 0;
 
   constructor(
     feld: HTMLElement,
     grau: DataTexture,
     private readonly ziele: LinsenZiele,
+    /** Durchmesser des runden Felds am Anfang (CSS-Pixel) */
+    groesse = 240,
   ) {
+    this.groesse = groesse;
     this.feld = feld;
     feld.innerHTML = '';
     this.leinwand = document.createElement('canvas');
@@ -100,6 +135,37 @@ export class Linse {
 
   get istOffen(): boolean {
     return this.offen;
+  }
+  /** welche Perle des Drehreglers gilt (Nummer in `ziele.perlen`) */
+  get perleNr(): number {
+    return this.perle;
+  }
+  /** welche Vorlage an der Marke steht */
+  get vorlage(): number {
+    return this.gewaehlt;
+  }
+  /** Durchmesser des runden Felds (CSS-Pixel) */
+  get innen(): number {
+    return this.groesse;
+  }
+  /** der wievielte Griff am Drehregler es ist: Wer Schritte für ⌘Z zählt, legt je Griff einen an */
+  get griffNr(): number {
+    return this.griff;
+  }
+  /** eine Vorlage an die Marke stellen, ohne sie zu melden (die Werte haben sich von außen geändert) */
+  vorlageZeigen(i: number): void {
+    if (i === this.gewaehlt) return;
+    this.gewaehlt = i;
+    let zielW = this.winkelVon(i);
+    while (zielW - this.formWinkel > Math.PI) zielW -= 2 * Math.PI;
+    while (zielW - this.formWinkel < -Math.PI) zielW += 2 * Math.PI;
+    this.formZiel = zielW;
+    this.lauf();
+  }
+  /** Perlen und Reihen neu zeichnen (was gilt, hat sich von außen geändert) */
+  auffrischen(): void {
+    this.zeigen();
+    this.lauf();
   }
 
   oeffnen(form: ZahnForm, vorlage: number): void {
@@ -144,7 +210,8 @@ export class Linse {
     s.innerHTML = '';
     const G = this.groesse;
     const R = G / 2;
-    const rand = 58;
+    // (so breit, dass Perlen und Tropfen im Kreis des Felds liegen: Wo eine Seite das Feld rund ausschneidet, bleibt alles heil)
+    const rand = 66;
     const W = G + 2 * rand;
     this.feld.style.width = `${W}px`;
     this.feld.style.height = `${W}px`;
@@ -200,6 +267,18 @@ export class Linse {
       perlen.appendChild(g);
     });
     s.appendChild(perlen);
+    // wem die Linse gilt: je Reihe eine Perle (oben rechts am Rad, die erste zuoberst)
+    const reihen = el('g', { class: 'reihen' });
+    (this.ziele.reihen ?? []).forEach((r, i) => {
+      const a = -Math.PI * (0.3 - 0.115 * i);
+      const g = el('g', { transform: `translate(${(Math.cos(a) * (r2 + 2)).toFixed(2)},${(Math.sin(a) * (r2 + 2)).toFixed(2)})`, class: 'reihe', 'data-i': i, style: `--reihe:${r.farbe}` });
+      g.appendChild(el('circle', { r: 9 }));
+      const tt = el('title');
+      tt.textContent = r.name;
+      g.appendChild(tt);
+      reihen.appendChild(g);
+    });
+    s.appendChild(reihen);
     // die Zahl: steht nur, solange gedreht wird
     this.zahl = el('text', { y: R - 16, class: 'linse-zahl' });
     s.appendChild(this.zahl);
@@ -215,6 +294,7 @@ export class Linse {
     s.querySelector<SVGGElement>('.ring-rad')?.setAttribute('transform', `rotate(${((this.radWinkel * 180) / Math.PI).toFixed(2)})`);
     s.querySelectorAll<SVGGElement>('.ring-zeichen').forEach((g) => g.classList.toggle('gilt', Number(g.dataset.i) === this.gewaehlt));
     s.querySelectorAll<SVGGElement>('.perle').forEach((g) => g.classList.toggle('gilt', Number(g.dataset.i) === this.perle));
+    s.querySelectorAll<SVGGElement>('.reihe').forEach((g) => g.classList.toggle('gilt', !!this.ziele.reihen?.[Number(g.dataset.i)]?.an()));
     // der Tropfen an der Marke dehnt sich in Drehrichtung und schnappt beim Rasten zurück
     const t = s.querySelector<SVGCircleElement>('.rad-tropfen');
     if (t) {
@@ -290,13 +370,21 @@ export class Linse {
       const ziel = e.target as Element;
       let art: 'formen' | 'rad' | 'zahn' | 'groesse';
       if (ziel.closest('.linse-griff')) art = 'groesse';
-      else if (ziel.closest('.perle')) {
+      else if (ziel.closest('.reihe')) {
+        this.ziele.reihen?.[Number((ziel.closest('.reihe') as SVGGElement).dataset.i)]?.tippen();
+        this.tick(false);
+        this.zeigen();
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      } else if (ziel.closest('.perle')) {
         this.perle = Number((ziel.closest('.perle') as SVGGElement).dataset.i);
         const p = this.ziele.perlen[this.perle]!;
         this.zahlZeigen(`${p.name} ${p.zeigen(p.wert())}`);
         this.tick(false);
         this.zeigen();
         e.preventDefault();
+        e.stopPropagation();
         return;
       } else if (d < R) art = 'zahn';
       else if (d < R + 33) art = 'formen';
@@ -307,6 +395,7 @@ export class Linse {
       const zeichen = ziel.closest('.ring-zeichen') as SVGGElement | null;
       zug = { art, w: winkel(e), x: e.clientX, y: e.clientY, t: performance.now(), weg: 0, g0: this.groesse, d0: d, zeichen: zeichen ? Number(zeichen.dataset.i) : null };
       this.radSchwung = 0;
+      if (art === 'rad') this.griff++;
       if (art === 'formen') this.formZiel = null;
       this.feld.classList.add(`zieht-${art}`);
       e.preventDefault();
@@ -375,6 +464,10 @@ export class Linse {
       'wheel',
       (e) => {
         e.preventDefault();
+        // (ein Zug am Rad der Maus ist ein Griff: Was nach einer Pause kommt, ist der nächste)
+        const jetzt = performance.now();
+        if (jetzt - this.radMausZeit > 350) this.griff++;
+        this.radMausZeit = jetzt;
         this.radDrehen(-e.deltaY * 0.004);
         this.lauf();
       },

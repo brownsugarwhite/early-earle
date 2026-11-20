@@ -770,8 +770,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (`G.maul.zaehne`, `werk.zaehneSetzen`). Merke: (29) Plätze und Netz sind abgeleitet (`zaehnePlaetzeJetzt`, `zaehneRechnen` nach
   `werkHaut.rechnen`); ein Zahn hängt an zwei Orten der Wand wie die Bemalung. (30) Ihr Netz steht bei den ruhenden Netzen
   (`ruheZeigen`): Wer dort oder in `zeigeNetzAlle` etwas ändert, denkt an die Zähne. (31) Zu hat jeder Zahn die Länge null.
-  (32) Die Zahnformen und die Linse liegen in `src/maulstudie/` (die Linse ist in Ozzy noch nicht eingebaut). Probe:
-  `ozzy-maul-zaehne-fenster.mjs` (Z1 bis Z6).
+  (32) Die Zahnformen und die Linse liegen in `src/maulstudie/`. Probe: `ozzy-maul-zaehne-fenster.mjs` (Z1 bis Z6, L1 bis L7).
+  **Etappe 5, zweite Scheibe: die Linse (20.11.; Plan 12.16):** `maulstudie/linse.ts` und `linse.css` gehören Studie und Ozzy;
+  die Anbindung steht in `main.ts` („Die Linse der Zähne“). Merke: (33) ⌘Z-Schritte je Griff (`Linse.griffNr`), nicht nach Zeit.
+  (34) Die Linse schließt nicht, wenn `bearbeitenAn` kurz falsch ist (Wechsel der Ansicht). (35) Lagen neben einer Tafel über
+  `offsetTop` messen, nicht über `getBoundingClientRect` (Tafeln fliegen ein). (36) `#linse` ist rund ausgeschnitten: Alles
+  Gezeichnete muss im Kreis liegen.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

@@ -31,7 +31,7 @@ import { type Saat, flaechenRechnen } from '../ozzy/farbe/flaechen';
 import { kettenAller } from '../ozzy/farbe/ketten';
 import { MAUL_EBENE, maulEbeneBauen } from '../ozzy/farbe/maulEbene';
 import { karteVon, ortGespiegelt } from '../ozzy/farbe/ort';
-import { ZAEHNE_ANFANG, zaehneNetz, zahnPlaetze } from '../ozzy/zaehne';
+import { ZAEHNE_ANFANG, formNetzGemischt, sitzGrenzen, zaehneNetz, zaehnePaar, zahnPlaetze } from '../ozzy/zaehne';
 import { manifoldLaden } from './naht';
 
 const R = 150;
@@ -496,7 +496,7 @@ describe('das Maul als echte Form', () => {
     expect(ausgelaufen).toBeGreaterThan(100);
   });
 
-  it('die Zähne: oben zwölf, unten elf, spiegelgleich; zu stecken sie im Maul, offen zeigen sie zum anderen Kiefer', async () => {
+  it('die Zähne: oben zwölf, unten elf, spiegelgleich; zu stecken sie im Maul, offen zeigen sie zum anderen Kiefer; die Werte der Linse', async () => {
     const wasm = await manifoldLaden();
     const d = kugel();
     const mk = mittlereKante(d.h);
@@ -544,14 +544,40 @@ describe('das Maul als echte Form', () => {
       const ort = a.map((x, i) => x + q.u * (b[i]! - x));
       return q.gespiegelt ? [ort[0]!, ort[1]!, -ort[2]!] : ort;
     };
-    const obere = plaetze.filter((q) => !q.unten).map(fussVon);
-    let versatz = Infinity;
-    for (const q of plaetze.filter((q2) => q2.unten)) {
-      const f = fussVon(q);
-      const weiten = obere.map((o) => Math.hypot(o[0]! - f[0]!, o[1]! - f[1]!, o[2]! - f[2]!)).sort((x, y) => x - y);
-      versatz = Math.min(versatz, weiten[0]! / weiten[1]!);
+    const versatzVon = (pl: typeof plaetze): number => {
+      const obere = pl.filter((q) => !q.unten).map(fussVon);
+      let versatz = Infinity;
+      for (const q of pl.filter((q2) => q2.unten)) {
+        const f = fussVon(q);
+        const weiten = obere.map((o) => Math.hypot(o[0]! - f[0]!, o[1]! - f[1]!, o[2]! - f[2]!)).sort((x, y) => x - y);
+        versatz = Math.min(versatz, weiten[0]! / weiten[1]!);
+      }
+      return versatz;
+    };
+    expect(versatzVon(plaetze)).toBeGreaterThan(0.6);
+    // die Linse stellt beide Reihen zusammen (`zaehnePaar`): unten immer einer weniger, und sie greifen bei jeder Anzahl ineinander
+    const tasche = { innen, lippe: lippe.proben.map((q) => q.ecken[0]), lang: L.unten.lang, kiefer };
+    for (const anzahl of [3, 5, 8, 17]) {
+      const paar = zaehnePaar(ZAEHNE_ANFANG, anzahl);
+      expect(paar.oben.anzahl).toBe(anzahl);
+      expect(paar.unten.anzahl).toBe(anzahl - 1);
+      expect(paar.oben.bis).toBe(ZAEHNE_ANFANG.oben.bis);
+      const pl = zahnPlaetze(k, tasche, L.C, paar);
+      expect(pl.filter((q) => !q.unten).length).toBe(anzahl);
+      expect(pl.filter((q) => q.unten).length).toBe(anzahl - 1);
+      expect(versatzVon(pl)).toBeGreaterThan(0.6);
     }
-    expect(versatz).toBeGreaterThan(0.6);
+    // ein Zahn oben, keiner unten: Die untere Reihe ist leer
+    expect(zahnPlaetze(k, tasche, L.C, zaehnePaar(ZAEHNE_ANFANG, 1)).map((q) => q.unten)).toEqual([false]);
+    // der Sitz: Zwischen seinen Grenzen ändert er die Plätze, darüber nicht mehr
+    const sitz = sitzGrenzen(k, tasche)!;
+    expect(sitz.max).toBeGreaterThan(sitz.min);
+    const mitSitz = (w: number): number[] => zahnPlaetze(k, tasche, L.C, { oben: { ...ZAEHNE_ANFANG.oben, sitz: w }, unten: { ...ZAEHNE_ANFANG.unten, sitz: w } }).flatMap(fussVon);
+    const amRand = mitSitz(sitz.max);
+    const darueber = mitSitz(sitz.max + 1);
+    expect(Math.max(...amRand.map((x, i) => Math.abs(x - darueber[i]!)))).toBeLessThan(1e-9);
+    const innenDrin = mitSitz((sitz.min + sitz.max) / 2);
+    expect(Math.max(...amRand.map((x, i) => Math.abs(x - innenDrin[i]!)))).toBeGreaterThan(0.1);
     // zu (kein Spalt): Jeder Zahn steckt im Maul, er hat keine Ausdehnung
     const je = (n: { pos: Float32Array }, nr: number): { min: number[]; max: number[] } => {
       const m = n.pos.length / 3 / plaetze.length;
@@ -583,6 +609,15 @@ describe('das Maul als echte Form', () => {
       if (plaetze[q]!.unten) expect(b.max[1]! - fuss[1]!).toBeGreaterThan(fuss[1]! - b.min[1]!);
       else expect(fuss[1]! - b.min[1]!).toBeGreaterThan(b.max[1]! - fuss[1]!);
     }
+    // der weiche Wechsel der Vorlage: Das Netz dazwischen hat dieselben Punkte und Dreiecke; am Anfang ist es die alte, am Ende die neue Form
+    const halb = zaehneNetz(plaetze, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1, null, () => formNetzGemischt(0, 2, 0.5))!;
+    expect(halb.pos.length).toBe(offen.pos.length);
+    expect(halb.index.length).toBe(offen.index.length);
+    expect(halb.pos.every((x) => Number.isFinite(x))).toBe(true);
+    const alt = zaehneNetz(plaetze, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1, null, () => formNetzGemischt(0, 2, 0))!;
+    expect(Math.max(...Array.from(alt.pos, (x, i) => Math.abs(x - offen.pos[i]!)))).toBeLessThan(1e-6);
+    expect(formNetzGemischt(0, 2, 1).laenge).toBeCloseTo(2.7, 6);
+    expect(formNetzGemischt(0, 2, 0.5).laenge).toBeCloseTo((1.35 + 2.7) / 2, 6);
     // spiegelgleich: zu jedem Punkt eines gespiegelten Zahns gibt es den seines Zwillings bei −z
     const nr = plaetze.findIndex((q) => q.gespiegelt);
     const zw = plaetze.findIndex((q) => !q.gespiegelt && q.unten === plaetze[nr]!.unten && Math.abs(q.vorn - plaetze[nr]!.vorn) < 1e-9 && q.vorn < 0.99);

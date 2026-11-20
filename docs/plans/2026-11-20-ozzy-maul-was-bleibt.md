@@ -34,6 +34,10 @@ ziehst.
 **Etappe 5, erste Scheibe (20.11.):** Unter der Leiste hängt mit dem Maul der Tropfen „Zähne“. Ein Tipp: Aus beiden Kiefern
 sprießen Zähne (oben zwölf, unten elf, Vorlage „Tropfen“, vorn größer). Sie gehen mit ihrem Kiefer mit; zu stecken sie im Maul.
 
+**Etappe 5, zweite Scheibe (20.11.):** Der Tropfen „Zähne“ öffnet und schließt oben rechts die Linse. Der Formenring wechselt die
+Vorlage (acht Formen), der Drehregler stellt Anzahl, Größe, Neigung, Verlauf und Sitz. Zwei Perlen (rosa oben, blau unten) sagen,
+ob du beide Reihen stellst oder eine allein. Solange die Linse offen ist, steht das Maul offen.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -141,27 +145,43 @@ sprießen Zähne (oben zwölf, unten elf, Vorlage „Tropfen“, vorn größer).
 49. **Rillen am Gaumen, Farben für Zähne und Zunge:** Rillen lassen sich als Farblinien ziehen (nicht ausprobiert); Zähne und Zunge
     gibt es noch nicht.
 
-### An den Zähnen (Etappe 5, erste Scheibe)
+### An den Zähnen (Etappe 5, erste und zweite Scheibe)
 
-50. **Die Linse fehlt in Ozzy** (Formenring, Drehregler mit Perlen): Anzahl, Größe, Neigung, Verlauf, Sitz und die Vorlage lassen
-    sich noch nicht stellen. Die acht Vorlagen und die Linse der Studie sind da und warten auf den Einbau. Mit ihr muss die
-    Reichweite der unteren Reihe der Anzahl folgen: Nur mit den Werten am Anfang stehen die unteren Zähne in den Lücken der oberen.
+50. ~~Die Linse fehlt in Ozzy~~ gebaut (zweite Scheibe). **Es fehlen** die Perlen „Biegung“ und „Wurzel“ der Studie und eine
+    für die Reichweite der Reihe. Stellst du beide Reihen zusammen, hält die Linse die Teilung (unten einer weniger, in den
+    Lücken der oberen); stellst du eine Reihe allein, greifen sie nicht mehr sicher ineinander.
 51. **Zähne wählen und rücken fehlt:** eine Reihe antippen, einen einzelnen Zahn, ihn auf dem Zahnfleisch ziehen; ein Zahn ohne
-    Spiegelbild (dein Hauer auf einer Seite).
+    Spiegelbild (dein Hauer auf einer Seite). Die Reihe wählst du bisher an den zwei Perlen der Linse, nicht am Zahn.
 52. **Die Zähne tragen die Farbe der Form** (auf Wachs sind sie Wachs). Elfenbein kommt mit einer Farbe für das Teil.
 53. **Zu stecken alle Zähne im Maul.** Zähne außen vor der Lippe, die geschlossen über dem anderen Kiefer liegen (dein Bild 07),
     fehlen.
 54. **Wie lang ein Zahn sein darf,** liest Ozzy aus den Winkeln der Knochen (der Spalt der Kiefer an seiner Stelle). Hat das Maul
     geschlossen eine Lücke (getrennte Lippen) oder formt die Pose die Kiefer um, zählt das nicht mit. Zähne dürfen einander und
     den anderen Kiefer schneiden.
-55. **Tempo:** Dreht sich ein Kiefer, wird mit Zähnen in jedem Bild das Netz der Anzeige neu zusammengesetzt. Nicht gemessen.
+55. **Tempo:** Dreht sich ein Kiefer oder wird ein Wert gestellt, wird mit Zähnen in jedem Bild das Netz der Anzeige neu
+    zusammengesetzt. Einmal gemessen in der Probe (nicht an deinem Gerät): Ein gestellter Wert kostet rund 4 ms je Bild (30
+    statt 26 ms). Der größere Posten sind die 26 ms, die ein Bild mit offenem Maul dort ohnehin braucht: 13 ms die Linien an
+    den Wänden, 8 ms das Netz der Linien (bei offenem Maul in jedem Bild neu gebaut). Beide rechnen nach dem Code an der Form,
+    nicht an den Zähnen; ohne Zähne habe ich nicht gemessen. Gehört in den Feinschliff.
 56. **Nicht geprüft:** Zähne an getrennten oder stark geformten Lippen, mit mehreren Objekten im Verbund, in „Dreiecke zeigen“
     (dort fehlen sie), Sichern und Laden im Fenster. Ob die unteren Zähne an deiner Form in den Lücken der oberen stehen, habe
     ich nur im Modell an einer Kugel geprüft.
-57. **Nehmen lassen sich die Zähne nur mit ⌘Z.** Der Tropfen „Zähne“ ist nach dem Tipp weg.
-58. **Geschätzt:** wie lange sie sprießen (1,1 s, das Maul steht dafür 3 s offen), die Werte am Anfang (aus der Studie).
+57. **Alle Zähne auf einmal nimmt nur ⌘Z.** Eine Reihe allein lässt sich an der Linse auf null Zähne drehen.
+58. **Geschätzt:** wie lange sie sprießen (1,1 s), wie lange eine Vorlage in die nächste übergeht (0,32 s), die Werte am Anfang
+    (aus der Studie).
 59. **Fein gerastert:** Jeder Zahn hat 640 Dreiecke, alle 23 zusammen 14 720. Fürs Spiel (höchstens 8 000 je Form) muss das
     Backen die Zähne gröber nehmen.
+60. **Esc schließt die Linse erst, wenn nichts mehr gewählt ist.** Nach dem Schneiden ist die Lippe gewählt: Dann leert das
+    erste Esc die Auswahl, das zweite schließt die Linse. Ein Tipp ins Leere schließt sie nicht.
+61. **Ziehst du bei offener Linse an der Form,** geht das Maul so lange zu und danach wieder auf (in der Grundform wird am
+    geschlossenen Maul gerechnet). In „Fressen“ bleibt es offen.
+62. **Die Linse steht fest oben rechts** unter der Tafel „Fressen“. Sie kann über der Zeichnung an der Wand liegen und über dem
+    Tropfen „Lippen trennen“; mit offenen Feinreglern habe ich sie nicht geprüft. Größer ziehen geht (der Tropfen an ihrem
+    Rand), verschieben nicht.
+63. **Das Gefühl des Drehreglers** (Rasten alle 15°, Nachlauf, Ticken, Rad der Maus) ist das der Studie. Am iPad und mit dem
+    Stift nicht geprüft.
+64. **Der Zahn in der Linse ist elfenbein,** die Zähne im Maul tragen die Farbe der Form (Punkt 52).
+65. **Was die Linse wählt, steht nicht in ⌘Z:** welche Reihe gilt und welche Perle. Nach ⌘Z zeigt sie die Werte, die gelten.
 
 ### Kleines
 

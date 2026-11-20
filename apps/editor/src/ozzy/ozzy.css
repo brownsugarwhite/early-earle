@@ -1,4 +1,5 @@
 /* Ozzy (16.11.2026): Designsystem „liquid drop“. Papier, Tinte, Haarlinien; Lobster für Gruß und Namen (Florian, 15.11.) */
+@import '../maulstudie/linse.css';
 @font-face {
   font-family: 'Lobster';
   src: url('../../../../assets/fonts/lobster/Lobster-Regular.ttf') format('truetype');
@@ -275,6 +276,25 @@ body.wende-an #hinweis {
 }
 .maul-tropfen[hidden],
 .fressen[hidden] {
+  display: none;
+}
+/* Maul, Etappe 5: Der Tropfen „Zähne“ ist gedrückt, solange die Linse offen ist. Die Linse (`maulstudie/linse.css`) steht oben
+   rechts unter der Tafel „Fressen“ (`linseLegen`); sie ist rund ausgeschnitten, ihre Ecken gehören der Bühne. */
+#zaehne-tropfen[aria-pressed='true'] {
+  background: var(--tinte);
+  color: var(--papier);
+}
+#linse {
+  right: 0;
+  top: 2px;
+  z-index: 4;
+  clip-path: circle(50%);
+  /* (wie die Tafeln: Papier, durch das die Bühne nur verschwommen scheint, damit die Ringe über jeder Form zu lesen sind) */
+  background: color-mix(in srgb, var(--papier) 78%, transparent);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+#linse[hidden] {
   display: none;
 }
 /* Maul, Etappe 2: die zwei Knochen der Kiefer. Je eine Haarlinie vom Mundwinkel zum Tropfen vor der Kieferspitze; oben rosa, unten

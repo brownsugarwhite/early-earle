@@ -905,3 +905,40 @@ gegenüber.)
 lassen sich in Ozzy noch nicht stellen), Zähne wählen und rücken, ein Zahn ohne Spiegelbild, Zähne außen vor der Lippe, die Farbe
 (die Zähne tragen die Farbe der Form). Bild: `docs/progress/ozzy/2026-11-20-maul-etappe5-zaehne.jpg`. Offenes:
 [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 59.
+
+### 12.16 Etappe 5, zweite Scheibe: die Linse (20.11.)
+
+Deine Antwort (20.11.): „Ja, die Linse“.
+
+**In Ozzy:** Der Tropfen „Zähne“ bleibt unter der Leiste. Der erste Tipp lässt die Zähne sprießen und öffnet oben rechts, unter
+der Tafel „Fressen“, die Linse; danach öffnet und schließt er sie. In der Linse steht der Zahn groß im Raum (ziehen dreht ihn),
+um ihn liegen zwei Ringe:
+
+- **Der Formenring** mit den acht Vorlagen: ein Zeichen antippen oder den Ring drehen; was an der Marke steht, gilt. Die Zähne
+  gehen weich in die neue Form über.
+- **Der Drehregler:** Die Perlen sagen, was er stellt: `#` Anzahl, `G` Größe, `N` Neigung, `V` Verlauf, `S` Sitz. Er rastet, läuft
+  nach und tickt; die Zahl steht, solange gedreht wird. Das Rad der Maus dreht mit.
+- **Zwei Perlen in den Farben der Kiefer** (rosa: obere Reihe, blau: untere) sagen, wem die Linse gilt. Am Anfang beiden Reihen.
+  Eine Perle antippen: nur diese Reihe; noch einmal: wieder beide.
+- **Beide Reihen zusammen:** unten immer ein Zahn weniger, in den Lücken der oberen. Eine Reihe allein lässt sich bis auf null
+  Zähne drehen.
+- Solange die Linse offen ist, steht das Maul offen. Esc oder der Tropfen schließt sie. Jeder Griff ist ein Schritt für ⌘Z.
+
+**Wie:** Die Linse ist die der Studie (`maulstudie/linse.ts`, ihr Aussehen jetzt in `linse.css`); neu sind die Perlen der Reihen.
+Sie stellt nur Werte am Maul (`G.maul.zaehne`); Plätze und Netz der Zähne folgen wie in der ersten Scheibe. „Beide zusammen“ ist
+eine Regel an einer Stelle (`zaehnePaar`: dieselbe Teilung, unten einer weniger).
+
+**Geprüft** im Fenster (`ozzy-maul-zaehne-fenster.mjs`, Z1 bis Z6 und L1 bis L7, an „teat firefish“ auf Wachs, mit echten
+Zeigergesten): der Drehregler um gut 60° gedreht sind vier Rasten, 12 → 16 Zähne; ein Tipp auf „Spitz“; die Perle „G“ und das
+Rad der Maus; die untere Reihe allein; ⌘Z Griff für Griff; Esc; an der Form ziehen bei offener Linse; die Linse in „Fressen“.
+Im Modell (Test „die Zähne“): Die Reihen greifen bei 3, 5, 8, 12 und 17 Zähnen ineinander (an einer Kugel). Die Studie läuft
+weiter (einmal geladen, Linse geöffnet, keine Fehler). Die Proben des Mauls und der Ebene „Maul“ halten.
+
+**Gemessen** (einmal, in der Probe, nicht an deinem Gerät): Ein gestellter Wert kostet 3 ms und je Bild rund 4 ms mehr (30 statt
+26 ms). Ein Bild mit offenem Maul braucht dort also rund 26 ms, auch wenn kein Wert gestellt wird: davon 13 ms die Linien an den
+Wänden und 8 ms das Netz der Linien. Diese zwei Posten rechnen nach dem Code an der Form, nicht an den Zähnen; ohne Zähne habe
+ich nicht gemessen (Liste, Punkt 55).
+
+**Was von Etappe 5 noch fehlt:** Zähne im Bild antippen (Reihe, einzelner Zahn) und rücken, ein Zahn ohne Spiegelbild, Zähne
+außen vor der Lippe, die Farbe, die Perlen Biegung und Wurzel. Bild: `docs/progress/ozzy/2026-11-20-maul-etappe5-linse.jpg`.
+Offenes: [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 65.
