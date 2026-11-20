@@ -18,5 +18,14 @@
     "von": "2026-11-20T21:55+01:00",
     "bis": "2026-11-20T22:10+01:00",
     "dauerMin": 15
+  },
+  {
+    "etappe": "M0",
+    "welle": "Plan-Nachtrag (nur der Schreiber; Gegenprüfung und Nacharbeit nach der Pause)",
+    "workflow": "wf_285c5b1d-7d5",
+    "agenten": 1,
+    "von": "2026-11-20T22:02+01:00",
+    "bis": "2026-11-20T22:36+01:00",
+    "dauerMin": 34
   }
 ]

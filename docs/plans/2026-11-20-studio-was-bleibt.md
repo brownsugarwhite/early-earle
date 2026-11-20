@@ -116,6 +116,9 @@ kommen nach `docs/progress/studio/proben/`.
    und wieder zum Stehen; dazu ein Satz von ihr: Macht es Spaß, was nervt? Aufnahme: `m2-tapsen-nicole.mp4`. Ergebnis: offen.
 6. **M2 · Einmal, freiwillig: Safari-Automation einschalten.** Im Terminal `safaridriver --enable`, dann in Safari unter „Entwickler“ die
    Einstellung „Entfernte Automation erlauben“. Danach misst Studio am Mac im echten Safari statt in einer Nachbildung. Ergebnis: offen.
+   Hinweis (20.11., nach M0): Das Werkzeug dafür (webdriverio 10.2.0) lädt unter Node 25.8.1 auf deinem Mac und läuft bis zur Verbindung
+   mit dem Treiber. Eine Sitzung im echten Safari braucht `safaridriver --enable`; das machst du (oben). Bis dahin misst Studio in WebKit
+   von Playwright.
 7. **M3 · Werkbank-Probe 1 (Kopf).** Probe-Projekt `…:5217/?projekt=werkbank-probe`, am Mac und am iPad mit Stift: Ohr bei 150° glätten;
    mit P einen Anker setzen; bei 210° formen und sehen, dass sich der Partner bei 150° ändert; vor dem Zug die roten Ringe sehen und einen
    gebauten Schlüssel ruhen lassen; die rutschende Nase mit ⇧Z finden. Kriterium: vier von fünf ohne Hilfe, kein Zug an einer Stelle, die

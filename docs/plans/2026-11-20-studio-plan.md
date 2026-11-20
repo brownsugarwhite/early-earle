@@ -21,7 +21,7 @@ für Ozzy, 12 Umsetzung. Im Text heißen sie „Bereich 3“ und so weiter.
 „Bestanden“ sagt nur Florian. Der Bau wartet auf kein Urteil (F1): Was Florian entscheidet oder prüft, sammelt die Liste.
 
 **Inhalt:** 1 Umfang der Fassung 1 · 2 Architektur · 3 Datenmodell · 4 Schnittstellen · 5 Etappen · 6 Ozzy in Studio ·
-7 Teststrategie · 8 Tempo-Budget und Messseite · 9 Risiken, Rückfälle, Abbruchregeln · 10 Was Florian wann sieht
+7 Teststrategie · 8 Tempo-Budget und Messseite · 9 Risiken, Rückfälle, Abbruchregeln · 10 Was Florian wann sieht · Nachtrag nach M0
 
 ---
 
@@ -69,12 +69,12 @@ zuerst als Bildfolgen (M11.3, A24).
 | `@ee/studio-laufzeit` | `packages/studio-laufzeit` | Verträge, Bauplan, Regler, Form, Knochen, Posen, Figurphysik, Bausteine, Logik, Takt; `editor/` mit Rückrechnung, Wächtern, Handgriffen | rechnen, format | nein |
 | `@ee/studio-welt` | `packages/studio-welt` | Box2D 3.2 über `box2d3-wasm/compat` hinter `WeltAdapter` | laufzeit und format (nur `import type`), rechnen, box2d3-wasm | nein |
 | `@ee/studio-bild` | `packages/studio-bild` | WebGL2-Renderer mit Abstandsfeldern, Zeichenmodell, Effekte, Kostenampel | laufzeit und format (nur `import type`) | ja |
-| `@ee/studio-ton` | `packages/studio-ton` | Klangplaner ohne DOM, Ausgabe über Web Audio, Freigabe, Wachhund, Musik | laufzeit und format (nur `import type`) | nur `ausgabe.ts`, `freigabe.ts` |
+| `@ee/studio-ton` | `packages/studio-ton` | Klangplaner ohne DOM, Ausgabe über Web Audio, Freigabe, Wachhund, Musik | laufzeit und format (nur `import type`) | nur `ausgabe.ts`, `freigabe.ts` (erzwungen ab M7.0; bis dahin hat das Paket keine Quellen und DOM in der ganzen `tsconfig.json`) |
 | `@ee/studio-autorig` | `packages/studio-autorig` | Autorig als reine Funktion | format, rechnen, earcut | nein |
 | `@ee/studio` | `apps/studio` | Editor, Messseite, Prüfseite, Seite P1, Zusammensetzung der Server-Erweiterungen beider Apps | alle Pakete, react, react-dom, idb, `@zag-js/*`, opentype.js | ja |
 | `@ee/ozzy-spiel` | `apps/ozzy-spiel` | die Demo: Laden, Vollbild, Eingabe, Freigabe des Tons, Hülle | format (nur `laden` und Typen wie `Dokument`, `Diff`), laufzeit (ohne `editor/`), welt, bild, ton; in `vite.config.ts` nur `spielPlugins` aus `apps/studio/server/plugins.ts` (läuft im Server, nie im Code des Spiels; Befund 2) | ja |
-| `@ee/studio-uebernahme` | `tools/studio-uebernahme` | Übernahme der Kopfdrehung, der Haltungen und Abläufe als Daten; Paritätstest; Konfiguration des Vergleichsservers 5294 | format, store, ablage, laufzeit, rechnen; **als einziges** relativ `apps/editor/src/ozzy-figur/`; `vite` nur in `vergleich.vite.config.ts` | nein |
-| `@ee/studio-inhalt` | `tools/studio-inhalt` | Skripte, die den Inhalt der Demo über Handgriffe anlegen; synthetische Klänge; Glyphen aus Lobster; Probe-Projekte | format, store, ablage, laufzeit, rechnen, opentype.js | nein |
+| `@ee/studio-uebernahme` | `tools/studio-uebernahme` | Übernahme der Kopfdrehung, der Haltungen und Abläufe als Daten; Paritätstest; Konfiguration des Vergleichsservers 5294 | format, store, ablage, laufzeit, rechnen, Node (läuft mit `tsx` in Node); **als einziges** relativ `apps/editor/src/ozzy-figur/`; `vite` nur in `vergleich.vite.config.ts` | nein (Node); `lib` mit DOM nur für die Typen des Prototyps (`FigurRaster`, M1.8) |
+| `@ee/studio-inhalt` | `tools/studio-inhalt` | Skripte, die den Inhalt der Demo über Handgriffe anlegen; synthetische Klänge; Glyphen aus Lobster; Probe-Projekte | format, store, ablage, laufzeit, rechnen, opentype.js, Node (läuft mit `tsx` in Node) | nein (Node) |
 
 **Warum getrennte Pakete statt eines Pakets mit Unterordnern.** (1) Die Grenze „ohne DOM“ steht in der `lib` jeder `tsconfig.json`; ein
 einziges Paket kann je Ordner keine eigene `lib` haben. (2) pnpm lässt ein Paket nur importieren, was in seiner `package.json` steht;
@@ -84,15 +84,33 @@ legt sie einmal an.
 
 **Paketform.** Jedes Paket: `"type": "module"`, `"exports": { "./*": "./src/*.ts" }`, keine Sammeldatei `index.ts`. Importiert wird je
 Modul: `import { koordinatenMischen } from '@ee/studio-laufzeit/form/koordinaten'`. So gibt es keine gemeinsame Datei, in die jedes
-Paket eine Zeile schreiben müsste. Skripte je Paket: `typecheck` (`tsc --noEmit -p tsconfig.json`), `test` (`vitest run`). In
+Paket eine Zeile schreiben müsste. Skripte je Paket: `typecheck` (`node ../../scripts/studio-typen.mjs`, in jedem Studio-Paket, auch
+Ablage, Apps und Werkzeugen; unten), `test` (`vitest run`). In
 `apps/studio` und `apps/ozzy-spiel` begrenzt `vitest.config.ts` auf `include: ['src/**/*.test.ts', 'test/**/*.test.ts']` (wie
 `apps/editor`), damit die Playwright-Specs in `e2e/` nie in vitest laufen, weder im Paket noch im Wurzellauf. Die
 `tsconfig.json` erweitert `tsconfig.base.json` (die Basis selbst ändert niemand, 2.5); ohne DOM mit `"lib": ["ES2022"], "types": []` wie
-`packages/shape`, `studio-ablage` mit `"types": ["node"]`. Anders als `packages/shape` ohne `rootDir`: tsc prüft über `exports` die
-Quellen importierter Studio-Pakete mit, und `rootDir` lehnte sie ab (TS6059, am 20.11. nachgeprüft). Jede `tsconfig.json` nimmt die
-eigene `vitest.config.ts` in `include` auf, damit Pakete, deren erste Quelle erst später kommt (`studio-ablage` M1.6, `studio-welt`
-M2.1, `studio-ton` M7.3, `studio-autorig` M9.1), nicht an „No inputs were found“ (TS18003) scheitern; jede `vitest.config.ts` setzt
-`passWithNoTests: true` wie `apps/editor`.
+`packages/shape`, `studio-ablage` und beide Werkzeuge mit `"types": ["node"]`, beide Apps mit `"types": ["vite/client", "node"]`. Anders
+als `packages/shape` ohne `rootDir`: tsc prüft über `exports` die Quellen importierter Studio-Pakete mit, und `rootDir` lehnte sie ab
+(TS6059, am 20.11. nachgeprüft). Jede `tsconfig.json` nimmt die eigene `vitest.config.ts` in `include` auf, damit Pakete, deren erste
+Quelle erst später kommt
+(`studio-ablage` M1.6, `studio-welt` M2.1, `studio-ton` M7.3, `studio-autorig` M9.1), nicht an „No inputs were found“ (TS18003)
+scheitern; jede `vitest.config.ts` setzt `passWithNoTests: true` wie `apps/editor`, dazu `pool: 'forks'` und
+`execArgv: ['--import=<file-URL von apps/studio/scripts/proben/schutz.mjs>']` (aus `new URL(…, import.meta.url).href`): Jeder
+Testprozess läuft mit dem Schreibhaken, gleich wie vitest gestartet wird (im Paket, aus der Wurzel, in `studio:pruefen`; 6.3).
+
+**Quellen ohne Node.** Über die Typen von vitest (in `vitest.config.ts` und den Tests) kommen die Node-Typen in jedes Programm, auch
+mit `"types": []`. Darum hat jedes Paket ohne Node (rechnen, format, store, laufzeit, welt, bild, ton, autorig) neben der
+`tsconfig.json` (alles: Quellen, Tests, Konfiguration) eine `tsconfig.quellen.json`: `"extends": "./tsconfig.json"`,
+`"include": ["src"]`, `"exclude": ["src/**/*.test.ts", "src/**/*.testhilfe.ts"]`, also die Quellen ohne Node (bild und ton mit DOM).
+`scripts/studio-typen.mjs` prüft im Ordner des Pakets zuerst `tsconfig.json` und, wenn sie grün ist, die `tsconfig.quellen.json`,
+sofern es sie gibt und `src/` Quellen außer Tests hat (sonst übersprungen, kein TS18003). Hilfen nur für Tests, die Node brauchen,
+heißen `*.testhilfe.ts`.
+
+**Abhängigkeiten für Werkzeuge und Tests.** `@types/node` ^24.0.0 steht in den devDependencies von `studio-ablage`, beider Apps und
+beider Werkzeuge; `studio-store` hat `@ee/studio-rechnen` als devDependency (der Strom mit Saat in den Store-Tests von M1.5; `src/`
+des Stores nimmt rechnen nicht). `tools/studio-uebernahme/tsconfig.json` hat `"lib": ["ES2022", "DOM", "DOM.Iterable"]`, weil M1.8 den
+`FigurRaster` des Prototyps importiert, dessen Typen DOM brauchen (`renderer.ts`); das Werkzeug läuft trotzdem in Node. Dass DOM in
+`studio-ton` nur in `ausgabe.ts` und `freigabe.ts` vorkommt, erzwingt ab M7.0 eine eigene tsconfig ohne DOM über die übrigen Dateien.
 
 ### 2.2 Ordner und Dateien
 
@@ -107,13 +125,20 @@ packages/studio-format/src/    typen/{grund,projekt,figur,form,knochen,posen,phy
                                arten/{register,bausteine,chips,effekte,zusatz}.ts
                                kennung.ts versionen.ts anker.ts pruefen.ts schreiben.ts laden.ts dateien.ts quellen.ts schrift.ts
                                migrationen/{register,kern-0-1}.ts  svg/{lesen,paaren,importieren}.ts
+                               schema.test.ts (M0: Typen und Schemas in beide Richtungen)  pruefdaten.test.ts (M0: testfigur.json
+                                 gegen die Schemas, 3.5 und den Steckbrief aus 5.3; M1.2 ergänzt den Rundweg)
 packages/studio-format/        pruefdaten/{testfigur.json,ozzy-rollen.json,prototyp-schluessel-2026-11-20.json}
+packages/studio-{rechnen,format,store,laufzeit,welt,bild,ton,autorig}/
+                               tsconfig.quellen.json (Quellen ohne Tests, ohne Node; 2.1)
 packages/studio-store/src/     typen.ts store.ts diff.ts verlauf.ts schutz.ts zusammenfuehren.ts
 packages/studio-ablage/src/    ablage.ts revision.ts sicherung.ts beobachter.ts sitzung.ts live.ts merker.ts plugin.ts
 packages/studio-laufzeit/src/  vertrag/{bauplan,lauf,bildstand,bilddaten,zeichenmodell,welt,baustein,chip,zusatz,eingabe,ereignis,
                                         warum,editor,weltAttrappe}.ts
+                               vertrag/{bilddaten,feldbreiten,welt,weltAttrappe}.test.ts (M0: BildDaten anlegen und leeren;
+                                 Feldbreiten als typeof-Kopie; VIELECK_PUNKTE gleich der Grenze im Schema; die Attrappe)
                                fassade.ts
                                bauplan/{bauen,ordnung,regler,form,knochen,abflachen,posen,physik,logik,zeichen}.ts
+                                 (ordnung.ts samt ankerBereiche und istGeschlossen, 4.3)
                                regler/{hand,durchlauf,ausgleich,mischen}.ts
                                form/{anker,koordinaten,rahmenRest,linear,ruhen,listen,ansicht,zusatz,spiegel,spitzen,wechsel,fluechtig,
                                      abflachen}.ts
@@ -134,12 +159,13 @@ packages/studio-laufzeit/src/  vertrag/{bauplan,lauf,bildstand,bilddaten,zeichen
                                editor/handgriffe/{logik,form,projekt,posen,knochen,welt,physik,text}.ts
 packages/studio-welt/src/      laden.ts adapter.ts koerper.ts huellen.ts gelenke.ts finger.ts federbein.ts kraftpaar.ts
                                abfragen.ts lesen.ts ereignisse.ts snapshot.ts ragdoll.ts vertrag.test.ts
-packages/studio-bild/src/      zeichner.ts kontext.ts uebersetzen.ts felder.ts rahmen.ts feldsaetze.ts gebacken.ts welt.ts
-                               kreise.ts ampel.ts shader/{strecken,felder,bild}.ts
+packages/studio-bild/src/      zeichner.ts (Typen seit M0) kontext.ts uebersetzen.ts felder.ts rahmen.ts feldsaetze.ts gebacken.ts
+                               welt.ts kreise.ts ampel.ts shader/{strecken,felder,bild}.ts
                                effekte/{register,verschmelzen,dicke,kanten,verdecken,weissNachgeben,kontaktschatten,
                                         bodenschatten,beinschattierung,dithering,linien,staub,spritzer,wasser,regen,
                                         kameraNass,himmel,schmierbild,aufprallbild,zittern,bewegungslinien,
                                         verformung,schein,aufloesen}.ts
+                               effekte/register.test.ts (M0: Eintragen, doppelt, Beitrag deterministisch)
 packages/studio-ton/src/       planer.ts stimmen.ts synth.ts ausgabe.ts freigabe.ts wachhund.ts musik.ts
 packages/studio-autorig/src/   autorig.ts graph.ts achse.ts rollen.ts ungarisch.ts gewichte.ts waerme.ts nebenprodukte.ts
                                probewackeln.ts vorlagen/{vierbeiner,allgemein}.ts
@@ -164,14 +190,16 @@ apps/studio/src/               main.ts pruefhaken.ts pruefseite.ts betrachter.ts
                                messen/{messen,ampel,statistik,ergebnis,szenen}.ts  messen/bloecke/{b0,b1,b2,b3,b4,b5,b6,b7,b8,b9}.ts
                                p1/{p1,ozzyKoerper,hinsetzen,tapsen,anzeige}.ts  export/bildfolge.ts
 apps/studio/e2e/               *.spec.ts  bild/*.spec.ts (Bildtests der Bildpakete)  seiten/<paket>.html (Prüfseiten der Pakete)
+                               seiten.spec.ts (M0: die vier Seiten, Lobster, COOP und COEP nur auf der Messseite)
                                bilder/ (freigegebene Ausschnitte, nur Mac)
-apps/studio/scripts/proben/    m1-kopfdrehung.mjs m1-rahmen-rest.mjs m1-front-periodisch.mjs m2-p1.mjs m2-messen.mjs
-                               m3-werkbank.mjs m4-ablaeufe.mjs m4-werkbank.mjs m5-spielwiese.mjs m6-iphone.mjs m6-effekte.mjs
-                               m7-morgen.mjs m8-pannen.mjs m9-mittag.mjs m9-bezugsrahmen.mjs m9-bohne.mjs m10-abend.mjs
-                               m11-tag.mjs schutz.mjs
+apps/studio/scripts/proben/    m0-vertrag.mjs (Probe M0 a) m1-kopfdrehung.mjs m1-rahmen-rest.mjs m1-front-periodisch.mjs m2-p1.mjs
+                               m2-messen.mjs m3-werkbank.mjs m4-ablaeufe.mjs m4-werkbank.mjs m5-spielwiese.mjs m6-iphone.mjs
+                               m6-effekte.mjs m7-morgen.mjs m8-pannen.mjs m9-mittag.mjs m9-bezugsrahmen.mjs m9-bohne.mjs
+                               m10-abend.mjs m11-tag.mjs schutz.mjs
 apps/studio/test/              grenzen.test.ts handgriffe.test.ts erweiterung.test.ts beweise.test.ts
-apps/ozzy-spiel/               index.html vite.config.ts capacitor.config.ts ios/ src/{main,laden,eingabe,huelle,live}.ts
-                               test/keinSpielcode.test.ts
+apps/ozzy-spiel/               index.html vite.config.ts playwright.config.ts capacitor.config.ts ios/
+                               src/{main,laden,eingabe,huelle,live}.ts
+                               test/keinSpielcode.test.ts  e2e/seite.spec.ts (M0: Titel in Lobster, Fläche im Vollbild)
 tools/studio-uebernahme/src/   uebernahme.ts kennungen.ts kopf.ts koerper.ts haltungen.ts ablaeufe.ts renderregeln.ts
                                prototyp-werte.ts paritaet.test.ts haltungen.test.ts prototyp-werte.test.ts
 tools/studio-uebernahme/       vergleich.vite.config.ts (Vergleichsserver 5294: Wurzel apps/editor, eigener Zwischenspeicher; 6.3)
@@ -184,29 +212,50 @@ content/studio/                .gitignore (enthält .sicherung/)  .sicherung/<pr
 content/studio/ozzy/           projekt.json figuren/*.json szenen/*.json vorlagen/<hash>.svg klaenge/<hash>.m4a laeufe/*.json
 content/studio/<probe>/        Probe-Projekte werkbank-probe (M3, M4) und bedienprobe (M7), geöffnet mit ?projekt=<probe>
 docs/progress/studio/          aufwand.json tempo/*.json m<n>-*.png|mp4 proben/m<n>-<name>.<mp4|png|json> (Aufnahmen aus Teil B)
-scripts/studio-pruefen.mjs     (Wurzel) Typen, Lint und Tests aller Studio-Pakete mit kurzer Ausgabe
+scripts/studio-pruefen.mjs     (Wurzel) Typen, Lint, Tests und Lizenzen aller Studio-Pakete mit kurzer Ausgabe
 scripts/studio-stand.mjs       (Wurzel) baut beide Apps in einen neuen Stand-Ordner und schreibt erst danach dist/aktuell (2.4)
+scripts/studio-typen.mjs       (Wurzel) Skript `typecheck` jedes Studio-Pakets: tsconfig.json, dann tsconfig.quellen.json (2.1)
 ```
 
-**Zusammenbau-Dateien** (Befund 15): Nur die Integration ändert sie; der Vertragsschritt legt sie leer an, `uebernahme.ts` und
-`inhalt.ts` gehören ihr nach ihrem ersten Paket (M1.8, M5.6). Nach jeder Welle verdrahtet die Integration sie, damit die nächste Welle
+**Zusammenbau-Dateien** (Befund 15): Nur die Integration ändert sie; der Vertragsschritt legt sie leer an. `uebernahme.ts` und
+`inhalt.ts` gibt es seit M0: Sie verstehen die Aufrufe aus 2.4 (`aufrufLesen`), führen aus (`uebernehmen`, `inhaltAusfuehren`), laufen
+nur, wenn die Datei direkt gestartet wird, und haben leere Register (`SCHRITTE` je `{ name, kopf, laufen() }`; `SKRIPTE` und
+`PROBEPROJEKTE` je `{ name, laufen() }`; Namen aus Kleinbuchstaben, Ziffern und Bindestrich). Die Pakete der Übernahme und des Inhalts
+(M1.8, M3.2, M4.4, M5.6 und später) exportieren ihre Schritte und Skripte in dieser Form aus eigenen Dateien; die Integration trägt sie
+ein. Nach jeder Welle verdrahtet die Integration sie, damit die nächste Welle
 sie benutzen kann: `studio-laufzeit/src/fassade.ts`, `bauplan/bauen.ts`, `apps/studio/src/main.ts`, `befehle/alle.ts`, `pruefhaken.ts`,
 `apps/studio/server/plugins.ts`, die Registerlisten (`studio-format/src/arten/register.ts`, `studio-laufzeit/src/bausteine/register.ts`,
 `physik/chips.ts`, `posen/zusatzarten.ts`, `studio-bild/src/effekte/register.ts`), `tools/studio-uebernahme/src/uebernahme.ts` und
-`tools/studio-inhalt/src/inhalt.ts`. **Gemeinsame Dateien** legt der Vertragsschritt fertig an: `studio-format/src/{anker,kennung,
+`tools/studio-inhalt/src/inhalt.ts`. In den Registerlisten gehört nur die Liste dem Zusammenbau; ihre Typen und Hilfen sind Vertrag
+(etwa `EffektZeichnung`, `effektZeichnungEintragen` und `effektZeichnungVon` in `studio-bild/src/effekte/register.ts`, 4.6; die Suchen
+`chipart`, `bausteinart`, `zusatzart`, 4.5). **Gemeinsame Dateien** legt der Vertragsschritt fertig an: `studio-format/src/{anker,kennung,
 versionen}.ts`, `studio-rechnen` (mit vorläufigen Winkelfunktionen über `Math` und SHA-256; `winkel.ts` und `exp.ts` stellt die
-Integration nach M1 Welle A auf den Port der fdlibm um), `studio-laufzeit/src/bauplan/{ordnung,regler}.ts`.
+Integration nach M1 Welle A auf den Port der fdlibm um), `studio-laufzeit/src/bauplan/{ordnung,regler}.ts` (`ordnung.ts` samt
+`ankerBereiche`, der einen Stelle, die den Ankerpuffer rechnet; 4.3). **Was M0 schon angelegt hat** (Typen, Verträge, Tests, Register),
+ergänzt ein späteres Paket, statt es neu anzulegen; die Dateizeile seines Auftrags sagt es („ergänzt“).
 
 ### 2.3 Abhängigkeitsregeln und wie sie erzwungen werden
 
 1. **Ohne DOM:** rechnen, format, store, laufzeit, welt, autorig haben `"lib": ["ES2022"]`, die Ablage dazu nur Node. Ein `document`,
-   `window` oder `HTMLCanvasElement` dort ist ein Typfehler.
-2. **Simulationspfad wiederholbar:** In `packages/studio-{rechnen,format,laufzeit,welt,autorig}/src/` verbietet ESLint
+   `window` oder `HTMLCanvasElement` dort ist ein Typfehler. **Ohne Node:** Die Quellen der Pakete ohne Node (dieselben, dazu bild und
+   ton) prüft `typecheck` ein zweites Mal über `tsconfig.quellen.json`, ohne Tests und Testhilfen und damit ohne Node-Typen (2.1): Ein
+   `process`, `Buffer`, `require`, `__dirname` oder ein Import von `node:*` in `src/` außer `*.test.ts` und `*.testhilfe.ts` ist dort ein
+   Typfehler (ohne DOM auch `setTimeout`), obwohl die Tests daneben Node sehen. ESLint verbietet die Node-Globalen dort schon beim
+   Schreiben (Nr. 2).
+2. **Simulationspfad wiederholbar:** In `packages/studio-{rechnen,format,laufzeit,welt,autorig}/src/` (ohne `*.test.ts` und
+   `*.testhilfe.ts`: Tests vergleichen mit `Math`) verbietet ESLint
    (`no-restricted-properties`) `Math.sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`,
    `atanh`, `exp`, `expm1`, `log`, `log1p`, `log2`, `log10`, `pow`, `hypot`, `cbrt`, `random`; dazu (`no-restricted-syntax`) den
-   Operator `**` und `**=`, `Date`, `performance`. Erlaubt bleiben `Math.sqrt`, `abs`, `floor`, `ceil`, `round`, `trunc`, `sign`, `min`,
-   `max`, `imul`, `fround`: Sie sind nach IEEE 754 und ECMAScript auf jedem Gerät bitgleich. Der Anzeigepfad (`studio-bild`,
-   `studio-ton`, Apps) darf `Math` benutzen. Zeit misst nur, wer außerhalb dieser Pakete läuft (der Autorig im Worker der App, 4.10).
+   Operator `**` und `**=`, jeden Bezeichner `Date` und `performance` (auch als Typ oder Eigenschaftsname) und `Math` anders als direkt
+   mit festem Namen (`const M = Math`, `Math[name]` und `globalThis.Math` sind Fehler); dazu (`no-restricted-globals`) `crypto`,
+   `globalThis`, `global`, `self`, `window` und die Zeitgeber `setTimeout`, `setInterval`, `requestAnimationFrame`. Erlaubt bleiben
+   `Math.sqrt`, `abs`, `floor`, `ceil`, `round`, `trunc`, `sign`, `min`, `max`, `imul`, `fround` (und `Math.PI`): Sie sind nach IEEE 754
+   und ECMAScript auf jedem Gerät bitgleich. Ausgenommen sind bis nach M1 Welle A `studio-rechnen/src/winkel.ts` und `exp.ts`
+   (vorläufig über `Math`); danach streicht die Integration genau diese zwei Einträge unter `ignores`, Tests bleiben ausgenommen. In
+   `src/` aller Pakete ohne Node (rechnen, format, store, laufzeit, welt, bild, ton, autorig; ohne Tests und Testhilfen) verbietet ESLint
+   außerdem die Node-Globalen `process`, `Buffer`, `require`, `module`, `__dirname`, `__filename`, `global`, `setImmediate`,
+   `clearImmediate`. Der Anzeigepfad (`studio-bild`, `studio-ton`, Apps) darf `Math` benutzen. Zeit misst nur, wer außerhalb dieser
+   Pakete läuft (der Autorig im Worker der App, 4.10).
 3. **Keine Teilnamen:** Kein Studio-Paket und keine App enthält einen Namen eines Teils von Ozzy (`ohrA`, `kopfB`, `bartA`, `bohne`,
    `fensterRV` und die übrigen 20 aus `TeilName` in `vorlagen/import.ts`; der Test liest die Liste aus
    `studio-format/pruefdaten/ozzy-rollen.json`). Ausnahmen: `tools/studio-uebernahme`, `tools/studio-inhalt` und `pruefdaten/` (F6).
@@ -224,8 +273,17 @@ Integration nach M1 Welle A auf den Port der fdlibm um), `studio-laufzeit/src/ba
 5. **Kein Import aus Apps:** Kein Paket importiert aus `apps/`. Aus `apps/editor` wird kopiert, nie importiert; einzige Ausnahme ist
    `tools/studio-uebernahme`, das den Prototyp liest, um Daten zu schreiben. Umgekehrt importiert `apps/editor` nie etwas aus Studio.
 6. **Prüfung:** `apps/studio/test/grenzen.test.ts` liest alle Quelltexte und prüft die Regeln 3 bis 5 und die Import-Matrix aus 2.1
-   (die Matrix gilt für `src/`; Konfiguration, Tests, `e2e/` und `scripts/` dürfen zusätzlich die Werkzeuge ihres Pakets importieren:
-   `vite`, `vitest`, `fast-check`, `@playwright/test`, `webdriverio`, Node);
+   (die Matrix gilt für `src/`, dort samt „nur `import type`“; `src/` der beiden Werkzeuge darf dazu Node importieren, sie laufen mit
+   `tsx` in Node; Konfiguration, Tests, `e2e/`, `scripts/` und `server/` dürfen zusätzlich die Werkzeuge ihres Pakets importieren:
+   `vite`, `@vitejs/*`, `vitest`, `fast-check`, `@playwright/test`, `webdriverio`, `typescript`, Node und die devDependencies ihres
+   Pakets, und Pakete, die `src/` nur als Typ nehmen darf, auch als Wert, etwa die `WeltAttrappe` der Laufzeit in
+   `studio-welt/src/vertrag.test.ts`). Als Typ gilt nur `import type` für die ganze Zeile: `import { type X }` bleibt unter
+   `verbatimModuleSyntax` zur Laufzeit stehen. Code eines anderen Pakets kommt nur über seinen Paketnamen, nie über einen relativen Pfad;
+   Daten (JSON, SVG, Schriften) dürfen relativ gelesen werden, außer aus `apps/`. Geprüft werden auch `scripts/studio-*.mjs` der Wurzel
+   (nur Node), die Importe der HTML-Seiten und die Rückrichtung (`apps/editor` importiert nichts aus Studio). **Keine Worker-Threads:**
+   Kein Studio-Code importiert `node:worker_threads`, und keine `vitest.config.ts`, `vite.config.ts` und kein Skript einer
+   `package.json` (Studio-Pakete und Wurzel) setzt `pool: 'threads'` oder `'vmThreads'`, weil der Schreibhaken dort nicht wirkt (6.3);
+   Web Worker im Browser (der Autorig-Worker der App) sind davon nicht betroffen.
    `apps/studio/test/handgriffe.test.ts` prüft, dass jeder Handgriff ein Befehl mit Geste oder Taste ist (4.7). Regel 2 prüft
    `pnpm lint`. Alle laufen in `pnpm studio:pruefen`.
 
@@ -249,7 +307,12 @@ bekommt sie als `STUDIO_PORT` (gerade) und `SPIEL_PORT` (ungerade) und startet S
 `STUDIO_INHALT=test-results/<paket>/inhalt` (eine Kopie) und mit dem Schreibhaken
 (`NODE_OPTIONS=--import=<Arbeitsbaum>/apps/studio/scripts/proben/schutz.mjs`, mit absolutem Pfad, weil `pnpm --filter` im Ordner des
 Pakets läuft; 6.3).
-`playwright.config.ts` beider Apps liest die Ports aus diesen Variablen (Standard 5291 und 5292). Vor jedem Start
+`playwright.config.ts` beider Apps liest die Ports aus diesen Variablen (Standard 5291 und 5292) und den Inhaltsordner aus
+`STUDIO_INHALT`: Er muss unter `test-results/<ordner>/…` liegen (sonst bricht der Lauf ab, und `ausgaben` darf er nicht heißen), ohne
+die Variable gilt `test-results/playwright-<port>/inhalt`; die Ausgaben liegen daneben (`…/ausgaben`, Playwright leert sie zu Beginn
+jedes Laufs, darum nie den Ordner eines anderen Pakets nennen). Der Server des Laufs bekommt diese Werte, dazu `STUDIO_FLORIAN` leer und
+den Schreibhaken; einen schon laufenden Server nimmt Playwright nie (`reuseExistingServer: false`, ein belegter Port bricht ab),
+`workers: 1`, Chromium mit SwiftShader außer bei `EE_GPU=1`, WebKit im Spiel im Format des iPhone 16. Vor jedem Start
 `lsof -nP -iTCP:<port>`; ist ein zugeteilter Port belegt, weicht der Agent nicht aus, sondern schreibt es in seinen Abschlussbericht. Am
 Ende seines Laufs beendet er seine Server. Ein Prototyp-Vergleich auf 5294 läuft nur in Proben der Integration.
 
@@ -268,28 +331,43 @@ Beide zeigen einen festen Stand des Codes. Er ändert sich nur am Ende einer Eta
 Es baut beide Apps in einen neuen Ordner je Stand (`apps/<app>/dist/<etappe>-<zeit>/`, nicht im Git) und schreibt erst danach dessen
 Namen nach `apps/<app>/dist/aktuell`; `stand:zeigen` liest diesen Namen beim Start und liefert nur aus diesem Ordner. Ein laufender
 Server wechselt nie, und was seine offene Seite nachlädt (Worker, WebAssembly, Teile mit Prüfsumme im Namen), bleibt bis zum Neustart
-da; der Neustart nimmt den neuen Stand und löscht ältere außer dem vorigen. Tests und Proben bauen nie nach `dist/`. 5217 startet die
-Integration nur neu, wenn sein Journal nichts Ungespeichertes hält (`GET /__studio/sitzung/offen`, 4.9); die offene Seite bietet dann
+da; der Neustart nimmt den neuen Stand. `studio:stand` löscht ältere Stände außer dem neuen, dem vorigen und einem, aus dem 5217 oder
+5261 gerade noch liefert; gibt es einen Namen schon, hängt es `-2`, `-3` … an (ein Stand-Ordner wird nie überschrieben); scheitert ein
+Bau, bleiben `dist/aktuell` und alle Stände, wie sie waren. `dist/aktuell` enthält nur den Namen, ohne Zeilenumbruch; `stand:bauen`
+baut nur mit `STUDIO_STAND` (den Namen setzt `studio:stand`, sonst bricht der Bau ab). Tests und Proben bauen nie nach `dist/`. 5217
+startet die Integration nur neu, wenn sein Journal nichts Ungespeichertes hält (`GET /__studio/sitzung/offen`, 4.9); die offene Seite
+bietet dann
 „neu laden“ an. Den Inhalt liefert in beiden Apps der Server, nicht der Bau (Befund 2): Das Spiel lädt beim Start über seinen Server,
 mit demselben Haken `quellenEinsetzen` wie Studio, also immer Florians aktuellen Stand samt seiner neuesten Kopfschlüssel; nur die App
 (M11.2) bekommt einen eingebauten Inhalt. In `content/studio/` schreiben nur Florians Studio auf 5217, sein Spiel-Server auf 5261 (nur
 Merker, als neue Dateien nach `laeufe/`) und, über dieselbe Ablage und Schutzregel, die Übernahme und die Inhalt-Skripte in den Läufen
 der Integration (F5, 6.3); jeder andere Server und jeder andere Lauf arbeitet auf einer Kopie (Regel unten). Einträge in
-`.claude/launch.json` (sie rufen die Wurzel-Skripte samt deren Umgebung): `studio` (5217), `studio-bau` (5263), `gassirunde` (5261). Vor
-jedem Start `lsof -nP -iTCP:<port>`.
+`.claude/launch.json` (sie rufen die Wurzel-Skripte samt deren Umgebung, je mit `url`): `studio` (5217), `studio-bau` (5263),
+`gassirunde` (5261). Vor jedem Start `lsof -nP -iTCP:<port>`.
 
 **Wurzel-Skripte** (in `package.json`, angelegt in M0): `studio` (`STUDIO_FLORIAN=1 STUDIO_INHALT=content/studio SPIEL_PORT=5261
 pnpm --filter @ee/studio stand:zeigen`; nur hier ist `STUDIO_FLORIAN` gesetzt), `gassirunde` (`STUDIO_INHALT=content/studio
 pnpm --filter @ee/ozzy-spiel stand:zeigen`), `studio:bau` (`SPIEL_PORT=5265 pnpm --filter @ee/studio dev`, Inhalt als frische Kopie),
 `studio:stand` (`node scripts/studio-stand.mjs`: Name `<etappe>-<zeit>`, beide Apps mit `stand:bauen` dorthin, erst danach
 `dist/aktuell`), `studio:pruefen` (`node scripts/studio-pruefen.mjs`). Alle Wurzel-Skripte außer `studio` und `gassirunde` setzen den
-Schreibhaken (`NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs`; `$PWD` ist dort der Wurzelordner). Skripte von
-`apps/studio`: `dev` (`vite --port ${STUDIO_PORT:-5263} --strictPort --host`), `stand:bauen` (`vite build` nach `dist/<stand>/`),
-`stand:zeigen` (`vite preview` aus `dist/<aktuell>/`, `--port 5217 --strictPort --host`), `typecheck`, `test`, `e2e`. Skripte von
-`apps/ozzy-spiel`: `dev` (`vite --port ${SPIEL_PORT:-5265} --strictPort --host`), `stand:bauen`, `stand:zeigen` (aus `dist/<aktuell>/`,
-`--port 5261 --strictPort --host`). Skripte der Werkzeuge (M0.1): `@ee/studio-uebernahme`: `uebernehmen` (alles; `-- --kopf` nur der
-Kopf), `vergleich` (Vergleichsserver 5294), `typecheck`, `test`; `@ee/studio-inhalt`: `inhalt` (alle Inhalt-Skripte bis zur laufenden
-Etappe, einzeln mit `-- <name>`), `probeprojekt` (`-- <name>`), `typecheck`, `test`.
+Schreibhaken (`NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs`; `$PWD` ist dort der Wurzelordner) und
+`pnpm_config_verify_deps_before_run=error`: pnpm 12 installiert sonst vor `pnpm run` und `pnpm exec` von selbst, sobald eine
+`package.json` nicht mehr zur Lockdatei passt; so bricht es mit „Run pnpm install“ ab. Die Einstellung steht nur in der Umgebung dieser
+Skripte, in `umgebung()` von `scripts/studio-pruefen.mjs` und in den Befehlen der Bau-Agenten (7.4), nie in `pnpm-workspace.yaml` oder
+`.npmrc` (das träfe Florians Start auf 5213). Skripte von
+`apps/studio`: `dev` (`NODE_OPTIONS=--import=$PWD/scripts/proben/schutz.mjs vite --port ${STUDIO_PORT:-5263} --strictPort --host`),
+`stand:bauen` (`vite build` nach `dist/<stand>/`), `stand:zeigen` (`vite preview` aus `dist/<aktuell>/`, `--port 5217 --strictPort
+--host`), `typecheck` (`node ../../scripts/studio-typen.mjs`, wie in jedem Studio-Paket; 2.1), `test`, `e2e` (`playwright test`).
+Skripte von `apps/ozzy-spiel`: `dev` (`NODE_OPTIONS=--import=$PWD/../studio/scripts/proben/schutz.mjs vite --port ${SPIEL_PORT:-5265}
+--strictPort --host`), `stand:bauen`, `stand:zeigen` (aus `dist/<aktuell>/`, `--port 5261 --strictPort --host`), `typecheck`, `test`,
+`e2e`. Skripte der Werkzeuge (M0.1): `@ee/studio-uebernahme`: `uebernehmen` (`tsx src/uebernahme.ts`: alles; `-- --kopf` nur der
+Kopf), `vergleich` (`vite --config vergleich.vite.config.ts --port 5294 --strictPort`), `typecheck`, `test`; `@ee/studio-inhalt`:
+`inhalt` (`tsx src/inhalt.ts`: alle Inhalt-Skripte bis zur laufenden Etappe, einzeln mit `-- <name>`), `probeprojekt`
+(`tsx src/inhalt.ts probeprojekt`, aufgerufen mit `-- <name>`), `typecheck`, `test`. Die Paket-Skripte `dev` (beide Apps),
+`uebernehmen`, `vergleich`, `inhalt` und `probeprojekt` setzen den Schreibhaken selbst
+(`NODE_OPTIONS=--import=$PWD/<Weg zu apps/studio/scripts/proben>/schutz.mjs`; `$PWD` ist dort der Ordner des Pakets), damit er auch
+gilt, wenn sie direkt mit `pnpm --filter` laufen; nur `stand:zeigen` (Florians 5217 und 5261) bleibt ohne (6.3). Relative Importe in
+den Konfigurationsdateien tragen die Endung `.js` (`./server/plugins.js`; Vite 8 warnt sonst bei jedem Start).
 
 **Server-Erweiterungen** kommen aus `@ee/studio-ablage` (Vite-Plugin mit `configureServer` und `configurePreviewServer`, damit sie im
 festen Stand genauso laufen) und werden in `apps/studio/server/plugins.ts` zusammengesetzt. `studioPlugins()`: Ablage mit Revision und
@@ -301,7 +379,8 @@ Live und Merkern nach `laeufe/`; die `vite.config.ts` des Spiels importiert gena
 Integration). Ohne `STUDIO_INHALT` arbeitet jeder Server und jedes Werkzeug nur in `test-results/bau/inhalt` und legt dort eine
 frische Kopie an (ohne `.sicherung/`), aber nur, wenn der Ordner fehlt oder leer ist; so teilt sich ein Server-Paar (5263 und 5265) eine
 Kopie und sieht für die Live-Probe denselben Inhalt. Geleert wird der Ordner nur von der Integration vor einem neuen Lauf
-(`scripts/studio-pruefen.mjs`), nie von einem Server beim Start. Nennt `STUDIO_INHALT` einen Ordner unter `test-results/`, gilt dieselbe
+(`scripts/studio-pruefen.mjs`, als erster Schritt, wenn die Tests mitlaufen; hört gerade ein Server auf 5263 oder 5265, bleibt er mit
+einer Hinweiszeile stehen), nie von einem Server beim Start. Nennt `STUDIO_INHALT` einen Ordner unter `test-results/`, gilt dieselbe
 Regel dort. Relative Pfade gelten vom
 Wurzelordner des Arbeitsbaums (dem Ordner mit `pnpm-workspace.yaml`), nie vom Arbeitsordner des Prozesses (`pnpm --filter` läuft im
 Ordner des Pakets).
@@ -318,10 +397,11 @@ Ordner des Pakets).
 - **Pakete einer Welle** ändern disjunkte Dateien im selben Baum. Bau-Agenten committen nicht, rufen nie `pnpm install`, ändern keine
   `package.json` und keine Lockdatei; alle Abhängigkeiten einer Etappe installiert ihr Vertragsschritt. Sie prüfen nur ihre eigenen
   Dateien, weil mehrere Arbeitspakete einer Welle im selben npm-Paket liegen können (etwa M1.3, M1.7 und M2.2 in `studio-laufzeit`):
-  `vitest run <eigene Testdateien>`, `tsc --noEmit` mit einer kleinen tsconfig des Arbeitspakets (erweitert die des npm-Pakets und
-  schließt nur die eigenen Dateien und die Verträge ein; abgelegt in `test-results/<paket>/`) und ESLint auf den eigenen Dateien (7.4).
-  Nie die ganze Testreihe des Repos, nie `@ee/shape`; Testausgaben nach `test-results/<paket>/`. Das ganze npm-Paket prüft die
-  Integration nach der Welle.
+  `vitest run <eigene Testdateien>`, die Typprüfung ihres npm-Pakets (`pnpm --filter <npm-paket> typecheck`, beide tsconfig aus 2.1,
+  nie nur `exec tsc`; ein Fehler in einer Datei eines anderen Arbeitspakets steht im Abschlussbericht, der Agent ändert sie nicht),
+  ESLint auf den eigenen Dateien und `grenzen.test.ts` (7.4), jeder Befehl mit `pnpm_config_verify_deps_before_run=error` (2.4), damit
+  pnpm nie von selbst installiert. Nie die ganze Testreihe des Repos, nie `@ee/shape`; Testausgaben nach `test-results/<paket>/`. Das
+  ganze npm-Paket prüft die Integration nach der Welle.
 - **Meldeweg:** Braucht ein Paket eine Änderung außerhalb seiner Dateien (eine andere Datei, eine Abhängigkeit, eine Vertragsänderung),
   steht sie in seinem Abschlussbericht an den Workflow; die Integration entscheidet. Niemand schreibt andere Sitzungen an.
 - **Integration** (die Hauptsitzung): Vertragsschritt, Verdrahten nach jeder Welle, Abschluss der Etappe (5.1). Sie prüft nach jeder
@@ -410,7 +490,13 @@ Gerät im Browser (IndexedDB, 4.9).
 Die Typen liegen in `packages/studio-format/src/typen/`, je Bereich eine Datei (Name in der Kopfzeile jedes Blocks). Die zod-Schemas in
 `src/schema/` bilden sie Feld für Feld nach; ein Test prüft beide Richtungen auf Typebene. Einheiten: Längen in Figur-Einheiten (wie in
 Florians SVG, y nach unten), Winkel in Grad, Zeiten in Sekunden, Anteile von 0 bis 1. Die Vertragsänderungen des Entscheidungsblatts
-(dort Abschnitt 3) sind hier eingetragen; M0 legt alles an.
+(dort Abschnitt 3) sind hier eingetragen; M0 legt alles an. **Die Schemas sind strenger als die Typen** (der Typ bleibt gleich):
+Kennungen haben die Form aus 3.3 und je Feld die passende Vorsilbe; `ebene` und `ordnung` sind gültige Bruchindizes von
+`fractional-indexing`; Farben nur `#rrggbb`; Ankerzeilen mit Winkeln in (−180, 180] und Längen ≥ 0 (3.6 Nr. 1 schon im Schema); ganze
+Zahlen für Indizes, Takte und Prüfsummen; `Klang.stimmen` ≥ 1, `Regler.nachlauf` von 0 bis 0,5, `Wechsel.breite` ≥ 0; `Teil.anker` ohne
+Doppelte; `Figur.datei`, `Szene.datei`, `Projekt.figuren` und `Projekt.szenen` ohne Pfad; `Projekt.fassungen[].zeit` nach ISO; Hüllen
+nach 3.6 Nr. 12; in einer Datei ist der Schlüssel jedes Eintrags seine Kennung, im Diff tragen vorher und nachher dieselbe. Alle Objekte
+sind streng: Ein unbekanntes Feld ist ein Fehler (3.4 „nichts still weglassen“), auch alte Felder wie `Teil.grundform`.
 
 ```ts
 // ---------- typen/grund.ts ----------
@@ -521,7 +607,8 @@ export interface Regler {
   art: 'linie' | 'kreis';
   bereich: [number, number];             // Kreis: [0, 360]
   standard: number;                      // Ruhestelle
-  einheit: 'grad' | 'anteil' | 'L' | 'L/s' | 's' | 'eins';
+  einheit: 'grad' | 'anteil' | 'L' | 'L/s' | 's' | 'figur' | 'eins';   // 'figur': Länge in Figur-Einheiten wie in seinem SVG
+                                         // (Knochen.verschiebung, Biegeachse.abstand); 'eins': Zahl ohne Einheit
   raster: number;                        // Fangraster der Leiste (Kopf 0,5; sonst Bereich/200)
   ausgleich: Feder;                      // Ausgleich bei Sprüngen des Solls
   hoechsttempo?: number;                 // Einheiten je Sekunde (Kopf 160)
@@ -622,7 +709,8 @@ export interface Aufhaengung {
   knochen: Id<'kn'>[];                   // starr: genau einer; achse: [Achse, Eltern]; gewichte: bis vier je Anker
   gewichte?: [knochen: number, gewicht: number][][];   // je Anker bis vier Paare (Index in knochen), Summe 1; bei 'achse'
                                                        // [[0, w], [1, 1 − w]] (w Anteil der Achse); fehlt: alle w = 1
-  griffe?: (GriffSatz | null)[];         // je Anker; null = Griffe erben (auch bei 'achse')
+  griffe?: (GriffSatz | 'erben')[];      // je Anker; 'erben': die Griffe folgen der Abbildung ihres Ankers (auch bei 'achse');
+                                         // eine Marke statt null, damit 3.5 Nr. 4 („kein null“) ohne Ausnahme gilt
   mischung: 'drehzentren' | 'linear';    // bei 'achse' wie bei Gewichten
   gepinnt: Id<'an'>[];
   herkunft: Herkunft;
@@ -890,7 +978,13 @@ interface VierbeinerDaten {
 
 // ---------- typen/dokument.ts ----------
 export type Block = 'kern' | 'knochen' | 'posen' | 'physik' | 'bild' | 'logik' | 'welt' | 'ton';
-export interface Versionen { bloecke: Record<Block, number>; arten: Record<string, number> }
+/** Familien registrierter Arten (arten/register.ts) */
+export type ArtFamilie = 'baustein' | 'chip' | 'effekt' | 'zusatz';
+/** Schlüssel einer Art im Register, in `Versionen.arten` und im Block ihrer Migrationen ('art:<familie>:<art>', 3.4): '<familie>:<art>',
+ *  etwa 'effekt:dicke' oder 'baustein:vierbeiner'. Die Familie gehört dazu, weil derselbe Name in zwei Familien vorkommt (Chip und Effekt
+ *  'wasser', M10); ein Schlüssel nur mit dem Namen ist ein Typfehler und fällt durch das Schema */
+export type ArtSchluessel = `${ArtFamilie}:${string}`;
+export interface Versionen { bloecke: Record<Block, number>; arten: Record<ArtSchluessel, number> }
 export interface DatensatzTabelle {
   prj: Projekt; vl: Vorlage; kl: Klang; sf: Schrift;
   fig: Figur; teil: Teil; gr: Gruppe;
@@ -912,6 +1006,13 @@ export interface Datei {
 export interface Dokument { versionen: Versionen; datensaetze: ReadonlyMap<string, Datensatz> }
 /** liegt im Format, nicht im Store: Die Laufzeit (`bauen`) und das Spiel (Live-Diffs) nehmen ihn und dürfen den Store nicht importieren */
 export interface Diff { neu: Datensatz[]; weg: Datensatz[]; geaendert: [vorher: Datensatz, nachher: Datensatz][] }
+// Ergebnisse (4.1): die Typen hier, die Funktionen in pruefen.ts, laden.ts und svg/importieren.ts (M1.2); niemand legt sie neu an
+/** eine Meldung von `pruefen` (zod und Querregeln, 3.6): betroffener Datensatz und Feld, wo es sie gibt; der Store reicht ihn weiter */
+export interface Fehler { id?: string; feld?: string; text: string }
+/** Ergebnis von `laden`: eine neuere Datei oder eine unbekannte Art öffnet nur zum Lesen, mit Meldung; `migriert`: gelaufene Migrationen */
+export interface LadeErgebnis { dokument: Dokument; nurLesen: boolean; meldungen: string[]; migriert: string[] }
+/** Ergebnis von `svgImportieren`: Importbericht und fast glatte Anker, die ⇧C glatt machen kann (Glätte-Regel, 3.4) */
+export interface ImportErgebnis { dokument: Dokument; bericht: string[]; fastGlatt: { teil: Id<'teil'>; anker: number }[] }
 
 // ---------- typen/entwurf.ts (vom Store erfüllt, von Handgriffen benutzt) ----------
 export interface Entwurf {
@@ -942,10 +1043,23 @@ genau so viele Zeilen in derselben Reihenfolge. Ein neuer Anker ändert in einer
 
 - **Versionen je Block** (`kern`, `knochen`, `posen`, `physik`, `bild`, `logik`, `welt`, `ton`) und **je Art** (jede Bausteinart,
   Chipart, Effektart und Art der Zusatzbewegung). Fassung 1 schreibt überall Version 1. Jede Datei trägt die Versionen im Kopf.
-- **Migration** (`studio-format/src/migrationen/register.ts`):
+  **Arten heißen mit ihrer Familie:** In `Versionen.arten`, im Register und im Block ihrer Migrationen ist der Schlüssel einer Art
+  `<familie>:<art>` (`ArtSchluessel`, 3.2; Familien `baustein`, `chip`, `effekt`, `zusatz`; Name in kleinCamelCase), etwa `effekt:dicke`
+  oder `baustein:vierbeiner`, weil derselbe Name in zwei Familien vorkommt (Chip und Effekt `wasser`, M10). Typ und Schema lassen keinen
+  Schlüssel ohne Familie zu. Im Datensatz (`Effekt.art`, `PhysikChip.art`, `Baustein.art`, `Zusatzbewegung.art`) steht nur der Name.
+  **Der Kopf einer Datei nennt in `versionen.arten` nur die Arten, die die Datei nutzt**; sonst öffnete eine ältere Fassung eine Datei
+  ohne die neue Art unnötig nur zum Lesen.
+- **Migration:**
   `interface Migration { block: Block | ArtBlock; von: number; nach: number; schritt(roh: unknown): unknown; pruefdatei: string }`
-  mit `ArtBlock` gleich `'art:'` und dem Namen der Art (etwa `art:vierbeiner`).
-  Nur vorwärts, Version für Version, nie gelöscht, jede mit einer Prüfdatei aus Florians Ozzy.
+  mit ``type ArtBlock = `art:${ArtSchluessel}` `` (etwa `art:baustein:vierbeiner`). Beide Typen liegen in `studio-format/src/versionen.ts`,
+  weil schon das Register der Arten (M0) sie braucht; `migrationen/register.ts` (M1.2) reicht sie nur weiter
+  (`export type { Migration, ArtBlock } from '../versionen'`) und hält die Liste `MIGRATIONEN`. `versionen.ts` hat dazu
+  `BLOCK_VERSIONEN` (je Block die Version dieser Fassung), `BLOECKE` (Reihenfolge im Kopf), `ART_FAMILIEN`, `ART_NAME`,
+  `istArtSchluessel`, `artBlock(schluessel)`, die Schemas `blockSchema`, `versionSchema`, `artSchluesselSchema`, `versionenSchema`,
+  `aktuelleVersionen(arten)` (alle Blöcke, dazu die genannten Arten) und `versionenAbgleichen(datei, aktuell)` mit den Listen `neuer`,
+  `unbekannt` und `aelter` (Blöcke in der Reihenfolge von `BLOECKE`, Arten nach Schlüssel); `nurLesenNach(abgleich)` ist wahr, wenn
+  etwas neuer oder unbekannt ist. `artEintragen` (4.1) prüft Name, Familie, Version ab 1 und lückenlose Migrationen 1 → 2 → … im Block
+  der Art. Nur vorwärts, Version für Version, nie gelöscht, jede mit einer Prüfdatei aus Florians Ozzy.
 - **Grundgesetz 5** (Befund 21): Keine Automatik, keine Sitzung und keine Migration ändert die Gestalt seiner Schlüssel oder löscht sie.
   Migrationen dürfen nur ihre Schreibweise ändern; sie runden nicht und glätten nicht (3.5). Das wird geprüft: Für jeden Datensatz mit
   Herkunft `dein` liegen alle Kurvenpunkte (3.5) vorher und nachher höchstens 1e-6 auseinander (übrig bleibt nur die Umrechnung in
@@ -961,10 +1075,17 @@ genau so viele Zeilen in derselben Reihenfolge. Ein neuer Anker ändert in einer
   Winkeln** (`ankerZeile(…, { glaetten: false })`): Migrationen und Übernahme wenden die **Glätte-Regel** nicht an, weil PCHIP jede kleine
   Änderung zwischen dicht liegenden Schlüsseln verstärkt (3.5). Die Glätte-Regel (Befund 11: glatt nur, wenn beide Griffe höchstens 0,2°
   neben einer Geraden liegen und sich kein Kurvenpunkt um mehr als 0,0002 ändert) gilt beim Einlesen neuer SVGs; fast glatte Anker nennt
-  der Importbericht, ⇧C macht sie glatt (seine Entscheidung). Griffe der Länge 0 bleiben Länge 0 mit dem Winkel des Gegengriffs; beim
-  Mischen zählt ihr Winkel nicht (wie raster.ts:61–71). Prüfdatei: `studio-format/pruefdaten/prototyp-schluessel-2026-11-20.json` (Kopie
-  seiner Datei vom 20.11.; die Datei selbst wird nur gelesen). Tests: 16 Schlüssel (Stand der Prüfdatei), Rückweg Zeile → Kurvenpunkte
-  unter 1e-9, jeder Anker eine Ecke mit genau seinen Winkeln.
+  der Importbericht, ⇧C macht sie glatt (seine Entscheidung). Gemessen wird so (`glaetteMass` in `anker.ts`): der Winkel zwischen der
+  umgedrehten Richtung des Ein-Griffs und der des Aus-Griffs; die Änderung an Kurvenpunkten ist 225/512 mal die größere Verschiebung
+  eines Griffs, das Höchste an t = k/8, gleich wo die Nachbarn liegen (`KURVENPUNKT_GEWICHT`). Ein Griff der Länge 0 liegt auf jeder
+  Geraden; ein solcher Anker wird beim Einlesen glatt (die Richtung des anderen Griffs bleibt). Die Regel ist mit
+  `{ glaetten: false }` abschaltbar. **Griffe der Länge 0** bleiben Länge 0 und bekommen als Richtung vom Anker aus die gegenüber dem
+  Gegengriff (wEin = wAus + 180° oder wAus = wEin + 180°; sind beide 0: Ein 180°, Aus 0°). Das ist dieselbe Ecke, die `alsEcke` aus einer
+  glatten Zeile mit diesem Griff 0 macht, so dreht beim Mischen kein Griff um 180°; sein Winkel zählt beim Mischen ohnehin nicht (wie
+  raster.ts:61–71), und an Kurvenpunkten ändert er nichts. In der Prüfdatei betrifft das 32 Anker. Prüfdatei:
+  `studio-format/pruefdaten/prototyp-schluessel-2026-11-20.json` (Kopie seiner Datei vom 20.11.; die Datei selbst wird nur gelesen).
+  Tests: 16 Schlüssel (Stand der Prüfdatei), Rückweg Zeile → Kurvenpunkte unter 1e-9, jeder Anker eine Ecke mit genau seinen Winkeln
+  (Griffe mit Länge: ihr Winkel; Griffe der Länge 0: die Gegenrichtung, nicht wörtlich wEin = wAus).
 - **Fremde Quellen** (`quellen.ts`, Befund 5): `quellenEinsetzen` liest bei jedem Laden die Dateien aus `Projekt.quellen`, erkennt ihr
   Format, wendet `kern 0 → 1` an und setzt die Schlüssel als gewöhnliche Datensätze mit Herkunft `dein` ein, mit festen Kennungen aus
   ihrem Pfad (`kennungAusPfad('sl', '<projekt>/quelle/<teil>/<w>')`): Mit genau diesen Kennungen schreibt die Übernahme die Einträge
@@ -981,13 +1102,20 @@ genau so viele Zeilen in derselben Reihenfolge. Ein neuer Anker ändert in einer
 Datei, die der Schreiber geschrieben hat.
 
 1. Kopf `format`, `art`, `versionen`, dann `datensaetze`; Typen in der Reihenfolge von `DatensatzTabelle`, darin nach Kennung
-   (Codepunkte); Felder in der Reihenfolge aus `schema/reihenfolge.ts`; Daten der Arten nach Feldnamen sortiert.
-2. Zwei Leerzeichen Einzug. Eine `AnkerZeile`, `VersatzZeile`, ein `Punkt` und jedes Paar einer Kennlinie stehen auf einer Zeile;
-   eine Form hat eine Zeile je Anker.
+   (Codepunkte); Felder in der Reihenfolge aus `schema/reihenfolge.ts`; Daten der Arten nach Feldnamen sortiert. Genauer: Felder stehen
+   in der Reihenfolge des Typs aus 3.2 (bei Regeln zuerst die Felder von `RegelBasis`, dann `satz`); freie Tabellen nach Codepunkten
+   (Datensätze nach Kennung, `Baustein.regler`, `Baustein.posen`, `Versionen.arten`, Daten der Arten auch verschachtelt); Felder ohne
+   Wert fallen weg. `ordnen(schema, wert)`, `datensatzOrdnen(d)` und `dateiOrdnen(d)` in `schema/reihenfolge.ts` stellen jeden Wert so
+   um; der Schreiber setzt danach nur Einzug und Zahlen. `versionen.arten` nennt nur die Arten, die die Datei nutzt (3.4).
+2. Zwei Leerzeichen Einzug. Eine `AnkerZeile`, `VersatzZeile`, ein `Punkt` und jedes Paar einer Kennlinie stehen auf einer Zeile
+   (`[a, b, c]`, Komma und Leerzeichen; erkannt am Schema, das Kennlinien-Paar an `kennlinienPaarSchema`); eine Form hat eine Zeile je
+   Anker. Wie die übrigen Zahlenfelder umbrechen (`bereich`, `an`, Paare von `breite`, `grenzen`, `Effekt.profil`), legt der Schreiber
+   von M1.2 fest; `pruefdaten.test.ts` prüft nur diese Liste.
 3. Zahlen werden **nicht gerundet** (Toleranzen unten): Ausgabe mit `String(x)`, der kürzesten Darstellung, die beim Lesen dieselbe Zahl
    ergibt (Beträge unter 1e-6 mit Exponent), `−0` als `0` (`zahlText` in `zahl.ts`); der Schreiber bricht ab bei NaN, ±∞ und Beträgen
-   über 1e15. So ist der Rundweg bitgleich, und keine Mischung hängt an einer Rundung.
-4. Fehlende Werte fehlen; kein `null`, kein `undefined`. Pflichtfelder mit leerem Feld schreiben `[]`.
+   über 1e15 (`ZAHL_GRENZE`; `zahlText` wirft einen RangeError). So ist der Rundweg bitgleich, und keine Mischung hängt an einer Rundung.
+4. Fehlende Werte fehlen; kein `null`, ohne Ausnahme (Griffe, die erben, tragen in `Aufhaengung.griffe` die Marke `'erben'`), kein
+   `undefined`. Pflichtfelder mit leerem Feld schreiben `[]`.
 5. UTF-8 ohne BOM, Zeilenende LF, Zeilenumbruch am Schluss.
 6. Atomar: daneben schreiben (`<datei>.tmp-<zufall>`), dann umbenennen (wie `figurSchluessel` im Prototyp).
 7. Eine Spielfassung gibt es nicht (Befund 2): Das Spiel lädt dieselben Dateien mit denselben Schemas über seinen Server, nur ohne
@@ -1021,11 +1149,14 @@ Laufzeit, Rundweg Schreiben–Laden in Bytes.
    Achsen: Schlüssel liegen auf einem Gitter, bei Feldern höchstens drei Stellen je Achse; ein Kreuzschlüssel ist auf Ruhezeile und
    Ruhespalte null (Feldregel, 4.4).
 4. Gewichte: höchstens vier Paare je Anker, Summe 1 auf 1e-6, gültige Indizes; bei `achse` genau die Paare [0, w], [1, 1 − w].
-5. Drähte bilden keinen Kreis; ein Regler hat höchstens einen Draht.
+5. Drähte bilden keinen Kreis; ein Regler hat höchstens einen Draht. (Einen Kreis meldet auch `ReglerPlan.hinweise`, 4.3; der Bauplan
+   rechnet ihn trotzdem in fester Folge.)
 6. Eine Pose nennt nur Regler ihrer Schicht.
 7. Je Schicht, Paar und Variante höchstens ein Übergang; jede Schicht hat genau einen Übergang `jede → jede`.
 8. Verweise zeigen auf vorhandene Datensätze; sonst nur lesen und melden. Ausnahme: Ein Listeneintrag, der auf einen fehlenden
-   Schlüssel einer fremden Quelle zeigt, wird ausgelassen und im Prüfer gemeldet; das Projekt bleibt bearbeitbar (4.4).
+   Schlüssel einer fremden Quelle zeigt, wird ausgelassen und im Prüfer gemeldet (`fehlendeEintraege`, 4.4); das Projekt bleibt
+   bearbeitbar. Fehlt ein Schlüssel der Quelle, weil Florian ihn im Prototyp verschoben oder gelöscht hat, ist das kein Fehler der Datei:
+   Die neu gestartete Übernahme schreibt danach neue Listen.
 9. **Schutzregel:** Jeder Datensatztyp trägt `herkunft` (3.2), die Regel gilt für alle Typen gleich, `Projekt` feldweise (3.2).
    Datensätze mit Herkunft `dein`, gepinnte Werte und das Feld `wieGezeichnet` ändert und löscht nur die Quelle `florian`, und nur sie
    legt Datensätze mit Herkunft `dein` an (einzige Ausnahme: `probeprojektAnlegen` kopiert Dateien samt Herkunft in ein neues
@@ -1042,46 +1173,90 @@ Laufzeit, Rundweg Schreiben–Laden in Bytes.
     Teil-Datensatz nach P „dein“ ist, überschreibt keine Automatik seine Ankerliste.
 11. Zwei Schlüssel oder Listeneinträge an derselben Stelle einer Liste meldet `pruefen`, außer genau einer davon hat Herkunft `dein`
     (dann ruht der andere, 4.4); PCHIP teilte sonst durch null.
+12. **Hüllen** (`Huelle` im Körpermodell), so wie die Welt sie bauen kann (4.5): Vielecke haben 3 bis 8 Punkte, gezählt vor der
+    konvexen Hülle (`VIELECK_HOECHSTENS` in `schema/physik.ts`, gleich `VIELECK_PUNKTE` im Vertrag der Welt; `vertrag/welt.test.ts`
+    hält beide gleich), Ketten mindestens 2 Punkte, Schleifen mindestens 3. Das Schema der Hülle lehnt alles andere ab, `pruefen`
+    meldet es. Ketten sind einseitig (4.5): Eine geschlossene Kette (eine Schleife, auch der Weltpfad aus der Fläche des Hügels) trägt
+    nur von außen, wenn sie auf dem Bildschirm (y nach unten) im Uhrzeigersinn läuft; einen anderen Umlaufsinn meldet der Prüfer als
+    Hinweis (kein Fehler von `pruefen`), die Datei bleibt bearbeitbar. Das Inhalt-Skript (M5.6) und der Autorig (M9) halten sich an
+    diese Grenzen.
 
 ---
 
 ## 4 Schnittstellen
 
-Die Signaturen sind Verträge: M0 legt sie in den genannten Dateien an, spätere Etappen ändern sie nur im Vertragsschritt (5.1). Alle
-Funktionen der Laufzeit schreiben in vorab angelegte typisierte Felder und legen im Bildtakt keinen Speicher an.
+Die Signaturen sind Verträge: M0 legt sie in den genannten Dateien an, spätere Etappen ändern sie nur im Vertragsschritt (5.1). Was
+erst eine spätere Etappe baut, steht seit M0 als Typ: die Klasse `Store` als `StoreVertrag` und `StoreKonstruktor`, `diffVon` und
+`schutzVerletzt` als `DiffVon` und `SchutzVerletzt` (`studio-store/src/typen.ts`; M1.5), `zeichnerAnlegen` und `shaderUebersetzen` als
+`ZeichnerAnlegen` und `ShaderUebersetzen` (`studio-bild/src/zeichner.ts`; M1.4); die Funktionen aus `studio-format` legt M1.2 an, dazu
+`MIGRATIONEN` in `migrationen/register.ts`. Die Typen der Oberfläche (4.8) legt M3.0 an, die von Ton und Autorig (4.10) M7.0 und M9.0,
+die Haken der Proben (`pruefhaken.ts`) M1.Z und M3.Z. Alle Funktionen der Laufzeit schreiben in vorab angelegte typisierte Felder und
+legen im Bildtakt keinen Speicher an.
 
 ### 4.1 Rechnen, Format, Store
 
 ```ts
 // @ee/studio-rechnen
-export function sin(x: number): number;                 // ebenso cos, tan, atan, asin, acos, exp, log (winkel.ts, exp.ts)
-export function atan2(y: number, x: number): number;
-export function pow(x: number, y: number): number;
-export function hypot(x: number, y: number): number;
-export function gradZuRad(g: number): number;           // feste Konstante, bitgleich
+export function sin(x: number): number;                 // winkel.ts; ebenso cos, tan, asin, acos, atan; exp und log in exp.ts
+export function atan2(y: number, x: number): number;    // winkel.ts
+export function pow(x: number, y: number): number;      // exp.ts
+export function hypot(x: number, y: number): number;    // winkel.ts, aus exp.ts weitergereicht (beide Importe gehen)
+export function gradZuRad(g: number): number;           // winkel.ts: (g · π) / 180 mit π als fester Zahl, Rechenfolge des Prototyps
+export function radZuGrad(r: number): number;           // winkel.ts: (r · 180) / π; beide rufen kein Math und bleiben beim Port
 /** eine PCHIP-Regel überall, die des Prototyps (form.ts:309–338; Befund 1): innen gewichtetes harmonisches Mittel, an den Enden die
- *  einseitige Sekante, außerhalb festgehalten; periodisch über fortgesetzte Schlüssel (mindestens zwei je Seite). Beide Funktionen
- *  rechnen mit derselben Reihenfolge der Rechenschritte bitgleich zu `pchip` des Prototyps. */
+ *  einseitige Sekante, außerhalb festgehalten. Ohne `periode` rechnen beide Funktionen mit derselben Reihenfolge der Rechenschritte
+ *  bitgleich zu `pchip` des Prototyps, auch bei gleichen Stellen, NaN und ±∞ (ohne Stützstellen NaN; eine Stützstelle: Steigung 0;
+ *  `pchipWert` sucht das Stück binär, bei nicht fallenden xs dasselbe Stück wie der Prototyp). Mit `periode` P (Kreisregler) gelten
+ *  die Stützstellen als fortgesetzt (… xₙ₋₂ − P, xₙ₋₁ − P | x₀ … xₙ₋₁ | x₀ + P, x₁ + P …): Jede Stelle bekommt die Steigung einer
+ *  inneren Stelle, das Nahtstück von xₙ₋₁ bis x₀ + P zählt rechts von xₙ₋₁ und links von x₀ mit derselben Breite und Sekante; ohne
+ *  angehängte Schlüssel. Steigungen mit Periode gehören zu `pchipWert(…, periode)` mit derselben Periode: x wird nach [x₀, x₀ + P)
+ *  geholt, innen gilt der Wert ohne Periode, dahinter das Nahtstück mit mₙ₋₁ und m₀ (ohne Periode hielte der Wert hinter dem letzten
+ *  Schlüssel fest). `pchipSteigungen` wirft einen RangeError bei zu kurzen `ys` oder `aus` und, mit Periode, wenn P nicht positiv und
+ *  endlich ist oder xₙ₋₁ − x₀ ≥ P; `pchipWert` prüft im Bildtakt nichts. Stützstellen steigen streng (zwei an derselben Stelle meldet
+ *  3.6 Nr. 11). */
 export function pchipSteigungen(xs: ArrayLike<number>, ys: ArrayLike<number>, aus: Float64Array, periode?: number): void;
-export function pchipWert(xs: ArrayLike<number>, ys: ArrayLike<number>, m: ArrayLike<number>, x: number): number;
+export function pchipWert(xs: ArrayLike<number>, ys: ArrayLike<number>, m: ArrayLike<number>, x: number, periode?: number): number;
 export function casteljau(stueck: ArrayLike<number>, t: number, aus: Float64Array): void;          // 8 Zahlen → 2 × 8
+/** die reine Zahl nach Wang: ⌈√(0,75 · M / toleranz)⌉ mit M, dem größten Betrag der zweiten Differenzen der Kontrollpunkte, mindestens
+ *  1; Faktor 1,25, Maßstab, Zoomstufe und die Grenze von 64 je Stück rechnet der Bauplan (16 k). Ungültige Toleranz oder nicht endliches
+ *  Stück: RangeError */
 export function wangStueckzahl(stueck: ArrayLike<number>, toleranz: number): number;
-export function bernstein(stufen: number): Float64Array;  // je Stufe 4 Gewichte
-/** je Anker 6 Zahlen absolut (p, Ein-Griff, Aus-Griff); größter Abstand gleicher Stellen bei t = 0, 1/8, …, 1 je Kurvenstück (3.5) */
+/** Bernstein-Gewichte an t = j/stufen, j = 0 … stufen, beide Enden eingeschlossen: (stufen + 1) · 4 Zahlen, je Stelle (1 − t)³,
+ *  3(1 − t)²t, 3(1 − t)t², t³; an t = 0 und 1 genau (1, 0, 0, 0) und (0, 0, 0, 1). `stufen` ist die Stückzahl aus `wangStueckzahl`;
+ *  `bernstein(8)` sind die Messstellen von `kurvenAbstand` */
+export function bernstein(stufen: number): Float64Array;
+/** je Anker 6 Zahlen absolut (p, Ein-Griff, Aus-Griff); größter Abstand gleicher Stellen bei t = 0, 1/8, …, 1 je Kurvenstück (3.5);
+ *  geschlossen so viele Stücke wie Anker, offen eines weniger, eine offene Form mit einem Anker wird an ihm gemessen; NaN irgendwo gibt
+ *  NaN (eine Parität besteht nie still); ungleiche Ankerzahl oder eine Länge, die kein Vielfaches von 6 ist: RangeError */
 export function kurvenAbstand(a: ArrayLike<number>, b: ArrayLike<number>, geschlossen: boolean): number;
 export function sha256(daten: Uint8Array): Uint8Array;   // eigene Umsetzung (30 a): Kennungen aus Pfaden, Revisionen
+export function utf8(text: string): Uint8Array;          // sha256.ts: Bytes genau wie TextEncoder (eine einzelne Ersatzhälfte wird
+                                                         // U+FFFD); ohne DOM und ohne Node-Typen gibt es TextEncoder nicht
+/** zahl(): eine 32-Bit-Zahl des Stroms, Auflösung 2⁻³²; ganz(n): ganz in [0, n), n bis 2³², ohne Modulo-Schieflage; setzen lehnt einen
+ *  Zustand aus vier Nullen ab */
 export interface Strom { zahl(): number; ganz(n: number): number; stand(aus: Uint32Array, i: number): void; setzen(von: Uint32Array, i: number): void }
-export function strom(saat: number, kennung: string): Strom;    // xoshiro128**, Saat aus Saat und Kennung gemischt
-export function pruefsumme(felder: readonly ArrayBufferView[], start?: number): number;   // 32 Bit, mit Math.imul
-export function zahlText(x: number): string;            // Schreiber (3.5 Nr. 3): String(x), −0 als 0, ungerundet; NaN, ±∞, > 1e15 brechen ab
+/** xoshiro128**; Saat (eine sichere ganze Zahl, sonst RangeError) und Kennung gemischt nach dem Vorbild von MurmurHash3 (x86, 128 Bit),
+ *  nur mit Math.imul, Verschiebungen und `| 0`; die Folgen sind in zufall.test.ts eingefroren, weil Lauf-Dateien an ihnen hängen */
+export function strom(saat: number, kennung: string): Strom;
+/** 32 Bit nach dem Vorbild von MurmurHash3 (x86, 32 Bit) über die Bytes, wie sie im Speicher liegen; die Länge jedes Felds zählt mit;
+ *  `start` (Standard 0) etwa die Summe des vorigen Takts; pruefsumme([]) = 0; die Werte sind im Test eingefroren */
+export function pruefsumme(felder: readonly ArrayBufferView[], start?: number): number;
+export const ZAHL_GRENZE = 1e15;                         // zahl.ts: größter Betrag, den der Schreiber annimmt
+export function zahlText(x: number): string;            // Schreiber (3.5 Nr. 3): String(x), −0 als 0, ungerundet; NaN, ±∞ und
+                                                         // Beträge über ZAHL_GRENZE: RangeError
 
 // @ee/studio-format
-export function kennungAusZahlen<V extends Vorsilbe>(v: V, zahlen: Uint32Array): Id<V>;   // Basis 62, Verwerfen gegen Modulo-Schieflage
-export function kennungAusPfad<V extends Vorsilbe>(v: V, pfad: string): Id<V>;           // SHA-256 aus studio-rechnen
-export function vorsilbeVon(id: string): Vorsilbe;
-export interface Fehler { id?: string; feld?: string; text: string }
-export function pruefen(dok: Dokument): Fehler[];      // zod und Querregeln aus 3.6
-export interface LadeErgebnis { dokument: Dokument; nurLesen: boolean; meldungen: string[]; migriert: string[] }
+/** Basis 62, Verwerfen gegen Modulo-Schieflage (Zahlen ab 62 · 69 273 666 werden übersprungen). Der Store füllt je Kennung
+ *  `new Uint32Array(KENNUNG_ZAHLEN)` (16) aus seinem Zufall; reichen die Zahlen nicht für 10 Zeichen: RangeError */
+export function kennungAusZahlen<V extends Vorsilbe>(v: V, zahlen: Uint32Array): Id<V>;
+export function kennungAusPfad<V extends Vorsilbe>(v: V, pfad: string): Id<V>;           // SHA-256 aus studio-rechnen über die
+                                         // UTF-8-Bytes des Pfads; die Zahl mit dem ersten Byte vorn, Basis 62, die ersten 10 Zeichen
+export function vorsilbeVon(id: string): Vorsilbe;      // auch eines Messwerts '<Kennung>.<name>'; unbekannte Vorsilbe: RangeError
+// kennung.ts dazu: VORSILBEN, istVorsilbe, istKennung, istKennungVon, vorsilbenName, KENNUNG_ZEICHEN, KENNUNG_LAENGE (10),
+// KENNUNG_MUSTER, KENNUNG_ZAHLEN (16)
+export interface Fehler { id?: string; feld?: string; text: string }   // typen/dokument.ts (3.2); der Store reicht ihn weiter
+export function pruefen(dok: Dokument): Fehler[];      // pruefen.ts: zod und Querregeln aus 3.6
+export interface LadeErgebnis { dokument: Dokument; nurLesen: boolean; meldungen: string[]; migriert: string[] }   // typen/dokument.ts
 export function laden(dateien: ReadonlyMap<string, string>): LadeErgebnis;   // relativer Pfad → Text
 export function formatErkennen(text: string): 'studio' | 'kern 0' | 'lauf' | 'unbekannt';   // 30 c
 export function schreiben(dok: Dokument): Map<string, string>;   // lässt Schlüssel 'dein' an Bindungen einer Quelle aus (3.5 Nr. 8)
@@ -1090,24 +1265,44 @@ export function dateiVon(dok: Dokument, id: string): string;
  *  an und schreibt ihre Schlüssel als gewöhnliche Datensätze (Herkunft 'dein') in den Text der Figur-Datei; deterministisch */
 export function quellenEinsetzen(dateien: ReadonlyMap<string, string>, lesen: (datei: string) => string | null): { dateien: Map<string, string>; eingesetzt: string[]; meldungen: string[] };
 export function ankerZeile(p: Punkt, ein: Punkt, aus: Punkt, o?: { glaetten?: boolean }): AnkerZeile;   // Glätte-Regel aus 3.4;
-                                                    // glaetten: false (Übernahme, Migrationen): Ecke mit genau ihren Winkeln
-export function ankerPunkte(z: AnkerZeile, aus: Float64Array, i: number): void;   // p, Ein-Griff, Aus-Griff absolut (6 Zahlen)
-export interface ImportErgebnis { dokument: Dokument; bericht: string[]; fastGlatt: { teil: Id<'teil'>; anker: number }[] }
+                                                    // glaetten: false (Übernahme, Migrationen): Ecke mit genau ihren Winkeln (Griffe der
+                                                    // Länge 0: Gegenrichtung, 3.4); ungültige Zahl: RangeError
+/** schreibt p, Ein-Griff, Aus-Griff absolut (6 Zahlen) nach aus[i … i + 5]. `i` ist die Stelle der ersten Zahl in `aus`, nicht die
+ *  Nummer des Ankers: Anker k einer Form steht ab 6·k (so füllt `formPunkte` den Puffer für `kurvenAbstand`) */
+export function ankerPunkte(z: AnkerZeile, aus: Float64Array, i: number): void;
+// anker.ts dazu: ankerZeileAus(f, i, o?) (Gegenstück zu ankerPunkte), formPunkte(form) (6 Zahlen je Anker), glaetteMass(p, ein, aus)
+// ({ w, winkel, aenderung, glatt }; für „fast glatt“ im Importbericht), istGlatt, ueberallGlatt (TeilPlan.glatt: glatt in allen Zeilen),
+// alsEcke (glatte Zeile als Ecke mit wEin = w + 180°), glattMachen (⇧C, ohne Schwelle), winkelNormal (in (−180, 180], −0 wird 0),
+// richtung(dx, dy), GLAETTE_WINKEL (0,2), GLAETTE_KURVE (0,0002), KURVENPUNKT_GEWICHT (225/512)
+export interface ImportErgebnis { dokument: Dokument; bericht: string[]; fastGlatt: { teil: Id<'teil'>; anker: number }[] }   // typen/dokument.ts
 export function svgImportieren(dateien: readonly { name: string; text: string }[], ziel: { dok: Dokument; figur?: Id<'fig'>; stelle?: { regler: Id<'rg'>; an: number } }): ImportErgebnis;
-export const MIGRATIONEN: readonly Migration[];
+export const MIGRATIONEN: readonly Migration[];         // migrationen/register.ts (M1.2); Migration und ArtBlock aus versionen.ts (3.4)
+// schema/reihenfolge.ts: die Schemas der Dokument-Ebene (DATENSATZ_SCHEMAS, DATENSATZ_TYPEN, schemaVon, datensatzTypVon,
+// istDatensatzTyp, datensatzSchema, dateiArtSchema, dateiSchema, diffSchema), die feste Reihenfolge (ordnen, datensatzOrdnen,
+// dateiOrdnen, nachCodepunkten; 3.5 Nr. 1) und die Bruchindizes (ordnungZwischen, ordnungenZwischen); istOrdnung und ordnungSchema
+// stehen in schema/grund.ts, `kennlinienPaarSchema` in schema/logik.ts. Dokument (ReadonlyMap) und Entwurf haben kein Schema.
 export interface ArtSchema {
-  art: string; familie: 'baustein' | 'chip' | 'effekt' | 'zusatz'; version: number; schema: ZodType<ArtDaten>; migrationen: Migration[];
+  art: string; familie: ArtFamilie; version: number; schema: ZodType<ArtDaten>; migrationen: Migration[];
   /** an Teilen mit wieGezeichnet (30 d): 'zeichnung' wirkt immer (Dickenregel, Kantenglättung, Verdecken, Weiß-Nachgeben; Chips
    *  Schwingen, Kette, Stauchen, Ruhig halten); 'bewegung' nur in Bewegung, in Ruhe null (Beinschattierung); 'nurFlorian' nur, wenn
    *  der Datensatz Herkunft 'dein' hat (Gelee, Schmierbild, Aufprallbild, Zittern, Bewegungslinien, Verformung nach Tempo, Schein,
    *  Auflösen, Kontakt- und Bodenschatten). Standard 'nurFlorian'. */
   aufGezeichnet?: 'zeichnung' | 'bewegung' | 'nurFlorian';
 }
-export function artEintragen(a: ArtSchema): void;      // arten/register.ts
+/** arten/register.ts, unter dem Schlüssel artSchluessel(a.familie, a.art) ('<familie>:<art>', 3.4); prüft Name (kleinCamelCase),
+ *  Familie, Version ab 1 und lückenlose Migrationen im Block der Art; dieselbe Art zweimal ist ein Fehler, außer derselbe Eintrag */
+export function artEintragen(a: ArtSchema): void;
+// arten/register.ts dazu: artSchluessel(familie, art): ArtSchluessel, artVon(familie, art), artenVon(familie?) (nach Schlüssel
+// sortiert), aufGezeichnetVon(a) (Standard 'nurFlorian'), artVersionen() (Version je eingetragener Art, nach Schlüssel; der Schreiber
+// nimmt daraus nur die Arten, die die Datei nutzt, 3.4); die
+// Registerliste ARTEN (je Familie die Liste ihrer Datei, heute EFFEKTE aus arten/effekte.ts) gehört dem Zusammenbau
 // schrift.ts (M7.6): Konturen aus der TTF (opentype.js liest sie im Editor und im Skript) → Glyphentabelle (typen/text.ts)
 export function schriftAusKonturen(name: string, quelle: string, geviert: number, glyphen: readonly { zeichen: string; vorschub: number; befehle: readonly (readonly [string, ...number[]])[] }[], unterschneidung: readonly [string, string, number][]): Schrift;
 
-// @ee/studio-store
+// @ee/studio-store. studio-store/src/typen.ts (M0) hält alle Typen dieses Blocks, die öffentliche Seite der Klasse als
+// `StoreVertrag` (Methoden wie unten), dazu `type StoreKonstruktor = new (dok: Dokument, o: StoreOptionen) => StoreVertrag`,
+// `DiffVon` und `SchutzVerletzt` (die Signaturen von diffVon und schutzVerletzt) und reicht `Fehler` aus typen/dokument.ts weiter.
+// M1.5 baut `class Store implements StoreVertrag` (store.ts), `diffVon` (diff.ts), `schutzVerletzt` (schutz.ts).
 export type Quelle = 'florian' | 'automatik' | 'sitzung' | 'migration';   // 'florian' nur vom Server mit STUDIO_FLORIAN=1 (3.6 Nr. 9)
 export type { Diff } from '@ee/studio-format/typen/dokument';   // liegt im Format (3.2), weil Laufzeit und Spiel ihn ohne Store nehmen
 export interface Auswahl { figur?: Id<'fig'>; teile: Id<'teil'>[]; anker: [Id<'teil'>, number][] }
@@ -1115,7 +1310,8 @@ export interface Transaktion { nummer: number; quelle: Quelle; diff: Diff; geste
 export interface Abgelehnt { abgelehnt: true; grund: 'schutz' | 'quelle' | 'ungueltig'; kennungen: string[]; text: string }
 export interface JournalAblage { schreiben(t: Transaktion): Promise<void>; lesen(): Promise<Transaktion[]>; leeren(bis: number): Promise<void> }
 export interface StoreOptionen {
-  zufall: (aus: Uint32Array) => void;  // Editor und Server crypto.getRandomValues, Tests ein Strom mit Saat (30 a)
+  zufall: (aus: Uint32Array) => void;  // Editor und Server crypto.getRandomValues, Tests ein Strom mit Saat aus
+                                       // @ee/studio-rechnen/zufall (devDependency des Stores; 30 a); je Kennung KENNUNG_ZAHLEN Zahlen
   pruefen: (dok: Dokument) => Fehler[];  // übergeben, nicht importiert (Befund 15)
   verlaufGrenze?: number; journal?: JournalAblage;
 }
@@ -1162,16 +1358,22 @@ export interface BildStand {
 export interface LaufzeitOptionen { welt: WeltAdapter; editor: boolean }
 export class Laufzeit {
   constructor(o: LaufzeitOptionen);
-  bauen(dok: Dokument, diff?: Diff, o?: { zoomstufe?: number }): { plan: Bauplan; hinweise: string[] };   // Zoomstufe: 16 k, 4.3
+  /** Zoomstufe: 16 k, 4.3; `hinweise`: die Hinweise der Teilpläne (heute `ReglerPlan.hinweise`). Legt bei Bedarf einen Lauf an
+   *  (Werkbank ohne Szene) und passt ihn an einen neuen Plan an (Regler Kennung für Kennung; ändert sich die Länge von Schichten,
+   *  `Lauf.figur` oder `Lauf.bausteine`, beginnt das Feld neu in Ruhe) */
+  bauen(dok: Dokument, diff?: Diff, o?: { zoomstufe?: number }): { plan: Bauplan; hinweise: string[] };
   starten(szene: Id<'sz'> | null, saat: number): void;   // null: nur Figuren (Werkbank), kein Spiel
   vorlauf(sekunden: number, roh: RohEingabe): number;    // sammelt Zeit, rechnet 0 bis 5 Takte (Kappung 0,25 s), gibt alpha
   takt(roh: RohEingabe): void;                           // genau ein Takt (Schritte 1 bis 9)
   bild(alpha: number, aus: BildDaten): BildStand;        // = auswerten mit den gemischten Werten und Lagen
-  /** Schritte 10 bis 16 aus gegebenen Reglerwerten und Körperlagen, ohne den Lauf zu ändern; hängt je Aufruf einen Feldsatz an `aus`
-   *  an (16 j). Zwiebelhaut, Bahnen, Posenkarten, Filmstreifen der Tafel und Geister des Rückblicks rufen es; Editor und Spiel gleich. */
+  /** Schritte 10 bis 16 aus gegebenen Reglerwerten und Körperlagen, ohne den Lauf zu ändern; hängt je Aufruf eine Auswertung an `aus`
+   *  an: je Feldsatz des Zeichenmodells eine Feldsatz-Instanz samt ihren Teilen und Strecken (16 j). Die Laufzeit leert `aus` nie; das
+   *  tut, wer zeichnet, zu Beginn jedes Bilds (`bildDatenLeeren`, 4.6). Zwiebelhaut, Bahnen, Posenkarten, Filmstreifen der Tafel und
+   *  Geister des Rückblicks rufen es; Editor und Spiel gleich. */
   auswerten(werte: Float64Array, lagen: Float64Array | null, aus: BildDaten): BildStand;
-  /** Leiste, Anfasser, Prüfstand. Ohne laufenden Takt rechnet es einen Durchlauf ohne Zeit: Drähte (Schritt 5, ohne Glätten) und
-   *  Regler (Schritt 6, Ist = Soll); im Takt laufen dieselben Funktionen mit dt (Befund 1). Werkbank und Spiel sehen dieselben Werte. */
+  /** Leiste, Anfasser, Prüfstand: `handSetzen` aus regler/hand.ts (Linienregler geklemmt, Kreisregler gefaltet; 4.4), danach ohne
+   *  laufenden Takt ein Durchlauf ohne Zeit: Drähte (Schritt 5, ohne Glätten) und Regler (Schritt 6, Ist = Soll); im Takt laufen
+   *  dieselben Funktionen mit dt (Befund 1). Werkbank und Spiel sehen dieselben Werte. */
   hand(regler: Id<'rg'>, wert: number): void;
   anfordern(schicht: Id<'sch'>, pose: Id<'po'>, quelle: Band | 'hand', variante?: string): void;
   wert(regler: Id<'rg'>): number;
@@ -1194,18 +1396,20 @@ Die Rechenkette (Konzept 10.3) als Module. Jede Funktion bekommt ihren Teilplan 
 | 5 | `logik/draehte.ts` | `draehteRechnen(plan.logik, lauf)`: in der Folge ihres Graphen |
 | 6 | `regler/durchlauf.ts` | `reglerDurchlauf(plan.regler, lauf, dt)`: Soll aus Hand, Draht, Pose, Regel; Ausgleich bei Sprüngen; Höchsttempo |
 | 7 | `takt/weltschritt.ts` | `weltSchritt(plan.physik, lauf, welt, dt)`: Bausteine je Teilschritt, Box2D mit 4 Teilschritten, ein gesammeltes `lesen` |
-| 8 | `physik/xpbd.ts` | `figurSchritt(plan.physik, lauf, dt, 4)`: Federn auf Reglern und Knochen, Ketten, Stauchung |
+| 8 | `physik/xpbd.ts` | `figurSchritt(plan.physik, lauf, chips, dt, 4)`, Signatur `figurSchritt(p: PhysikPlan, lauf: Lauf, chips: readonly ChipLauf[], dt: number, teilschritte: number): void`: Federn auf Reglern und Knochen, Ketten, Stauchung. Die `ChipLauf` hält die Fassade (nach jedem `bauen` je Chip `chipart(c.art).anlegen(c, plan)`, in der Folge von `PhysikPlan.chips`); der Stand jedes Chips liegt in `Lauf.figur` ab `PhysikPlan.chipStand[i]` (4.5) |
 | 9 | `takt/archiv.ts` | `archivieren(lauf, welt)`: Prüfsumme je Takt; alle 16 Takte ein Schlüsselstand (Budget 32 MB) |
 | 10 | `regler/mischen.ts`, `form/ansicht.ts` | `reglerMischen(lauf, alpha, r)`; `ansichtAuswerten(plan.form, r, anker)` |
 | 11 | `knochen/anheftung.ts` | `gelenkeAnheften(plan.knochen, anker, gelenke)` |
 | 12 | `form/zusatz.ts` | `zusaetzeAnwenden(plan.form, r, anker)`: Formziele, Posen- und Korrekturformen, Kreuzschlüssel, an den bewegten Winkeln |
-| 13 | `knochen/aufhaengen.ts` | `knochenStellen(plan.knochen, r, gelenke, matrizen)`; `aufhaengen(plan.knochen, matrizen, anker)` |
+| 13 | `knochen/aufhaengen.ts` | `knochenStellen(plan.knochen, r, gelenke, matrizen)`: stellt die Lage jeder Figur (`Figur.lage`, 4.3) vor ihre Wurzelknochen und schreibt sie hinter die Knochen in `matrizen` (6 · (anzahl + Figuren) Zahlen); `aufhaengen(plan.knochen, matrizen, anker)`: bildet die Anker jedes Teils ab, auch der Teile ohne Aufhängung (sie folgen nur der Lage ihrer Figur). Danach stehen alle Anker in der Welt (L) |
 | 14 | `form/fluechtig.ts` | `fluechtig(plan.physik, lauf, anker)`: Gelee und Glätte-Schutz (`knochen/glaetteSchutz.ts`, ab M5.4); in Ruhe null, nie gespeichert. Die Abweichung der Box2D-Körper wirkt nur über Regler (Schritt 6, Kopplung 4.5), nie hier |
 | 15 | `editor/waechter.ts` | `waechter(plan, anker, marken)`: nur im Editor |
-| 16 | `form/abflachen.ts` | `abflachen(plan.abflach, anker, aus)`, dann `zeichner.zeichne(aus)` |
+| 16 | `form/abflachen.ts`, `form/wechsel.ts` | `abflachen(plan.abflach, anker, aus)`: hängt an `aus` (BildDaten) eine Auswertung an (Strecken, Teile, Rahmen je Feldsatz-Instanz); `malreihenfolge(plan, r, aus)` schreibt `ordnung` und `deckung` dieser Teile (4.4); `werte` schreibt die Fassade (4.6). Gezeichnet wird mit `zeichner.zeichne(aus)` nach allen Auswertungen des Bilds |
 
 Braucht Schritt 8 die Lage eines Gelenks (Wurzel der Schwanzkette), rechnet er 10 und 11 für dieses Teil im Takt mit. Die Fassade
-verdrahtet die Integration nach jeder Welle mit dem, was gebaut ist (5.1); fehlende Schritte überspringt sie. Tests (M6.2, Befund 2):
+verdrahtet die Integration nach jeder Welle mit dem, was gebaut ist (5.1); fehlende Schritte überspringt sie. Sie hält die `ChipLauf`
+und `BausteinLauf`, sobald Schritt 7 und 8 verdrahtet sind; `merken` sichert den ganzen Lauf samt Postfach, Ereignissen, Chip- und
+Bausteinständen und dazu die Welt, die Prüfsumme des Takts zählt sie mit. Tests (M6.2, Befund 2):
 `Laufzeit` mit `editor: true` und mit `editor: false` liefert für Ozzy von 0° bis 360° in 0,5° bitgleiche Anker; Spiel und Editor,
 jeder über seinen Server aus derselben Kopie des Inhalts geladen, liefern dieselben Anker (Ladeweg mit `quellenEinsetzen`).
 
@@ -1218,16 +1422,30 @@ export interface Bauplan {
   ordnung: OrdnungPlan; regler: ReglerPlan; form: FormPlan; knochen: KnochenPlan; abflach: AbflachPlan;
   posen: PosenPlan; physik: PhysikPlan; logik: LogikPlan; zeichen: ZeichenModell;
 }
-export interface OrdnungPlan { index: ReadonlyMap<string, number>; figuren: Id<'fig'>[]; teile: Id<'teil'>[]; regler: Id<'rg'>[]; knochen: Id<'kn'>[] }
+/** feste Nummern aller Datensätze (`bauplan/ordnung.ts`, Regel unten): je Datensatztyp 0, 1, 2 …; `index` gibt zu jeder Kennung ihre
+ *  Nummer in ihrem Typ; `listen` die Kennungen jedes Typs in Nummernfolge (figuren, teile, regler und knochen sind dieselben Felder) */
+export interface OrdnungPlan {
+  index: ReadonlyMap<string, number>; figuren: Id<'fig'>[]; teile: Id<'teil'>[]; regler: Id<'rg'>[]; knochen: Id<'kn'>[];
+  listen: { [T in DatensatzTyp]: Id<T>[] };
+}
+/** je Regler eine Zahl, Bereiche zwei (`bauplan/regler.ts`). Ausgleich: federF = 1/dauer (dauer ≤ 0: +∞, sofort), federZeta =
+ *  1 − federung; ohne Höchsttempo steht +∞, ohne Nachlauf 0 (Vorsicht: ∞ · 0 ist NaN; ohne Zeit gilt Ist = Soll) */
 export interface ReglerPlan {
   anzahl: number; bereich: Float64Array; standard: Float64Array; kreis: Uint8Array;
   federF: Float64Array; federZeta: Float64Array; hoechsttempo: Float64Array;
   nachlauf: Float64Array;           // s je Regler (16 b)
-  folge: Int32Array;                // Reihenfolge nach Drähten; ein Kreis ist ein Hinweis
+  folge: Int32Array;                // Rechenfolge nach Drähten und Spiegelkanten (Regel unten); ein Kreis ist ein Hinweis
+  raster: Float64Array;             // Fangraster der Leiste je Regler (`fangen`, 4.7)
+  spiegelAb: Float64Array; spiegelUm: Float64Array;   // gespiegelte Hälfte je Regler mit Spiegelregel (sonst NaN): Kreisregler
+                                                      // ab < w < um, Linienregler ab ≤ w < um
+  mitSpiegel: Int32Array; mitUm: Float64Array;        // `Spiegelregel.regler` (Befund 8): je Regler der Regler, dessen Spiegelregel ihn
+                                                      // mitspiegelt (−1: keiner), und sein um (Wert um − w; sonst NaN)
+  hinweise: readonly string[];      // Hinweise dieses Teilplans (Kreis in den Drähten, doppelt mitgespiegelt); bleiben, solange er bleibt
 }
-export interface FormPlan { teile: TeilPlan[]; ankerZahl: number }
+export interface FormPlan { teile: TeilPlan[]; ankerZahl: number }   // je Teil nach OrdnungPlan ein TeilPlan (teile[i].teil = i)
 export interface TeilPlan {
-  teil: number; figur: number; erster: number; anzahl: number;   // erster Anker im Puffer (je Anker 6 Zahlen)
+  teil: number; figur: number; erster: number; anzahl: number;   // erster Anker im Puffer (je Anker 6 Zahlen; Regel unten)
+  geschlossen: boolean;                                          // geschlossene Kurve, aus `ankerBereiche`
   glatt: Uint8Array; form: Float64Array | null;                  // glatt je Anker nach der Regel in 3.2 (typen/form.ts); Teil.form
   ansicht: AnsichtPlan | null; zusaetze: ZusatzPlan[];
 }
@@ -1246,9 +1464,65 @@ export interface ListenPlan {
 }
 /** zwei Achsen: volles Gitter nach der Feldregel (4.4), fehlende Gitterpunkte ergänzt hier, nie in der Datei */
 export interface ZusatzPlan { achsen: [number] | [number, number]; xs: Float64Array; ys: Float64Array | null; versatz: Float64Array; steigungen: Float64Array }
-/** baut nur Teilpläne neu, deren Quellen sich änderten; die Abflachung auch beim Wechsel der Zoomstufe (16 k) */
+/** bauplan/bauen.ts: baut nur Teilpläne neu, deren Quellen sich änderten (`diff`: vom Dokument von `alt` zu `dok`), die Abflachung auch
+ *  beim Wechsel der Zoomstufe (16 k); ändert sich nichts, kommt `alt` zurück; ohne `diff` alles neu */
 export function bauen(dok: Dokument, alt?: Bauplan, diff?: Diff, o?: { zoomstufe?: number }): Bauplan;
+// vertrag/bauplan.ts dazu: leererBauplan(zoomstufe = 0) (Stand 0, alle Teilpläne leer; für Teilpläne, die noch niemand baut, und für
+// Tests eines einzelnen Teilplans: { ...leererBauplan(), form: … }), leererOrdnungPlan(), leererReglerPlan(); zoomstufe ist der
+// Exponent zu 1,25 (0: Maßstab 1)
+
+// bauplan/ordnung.ts (gemeinsame Datei, seit M0 fertig)
+export function ordnungPlanBauen(dok: Dokument, alt?: OrdnungPlan, diff?: Diff): OrdnungPlan;   // `alt`, wenn der Diff die Ordnung
+                                                                                                  // nicht ändert (dasselbe Objekt)
+export function indexVon(o: OrdnungPlan, id: string): number;   // −1: keiner
+export function kennungen<T extends DatensatzTyp>(o: OrdnungPlan, typ: T): readonly Id<T>[];
+export interface AnkerBereiche {   // je Teil nach OrdnungPlan
+  erster: Int32Array; anzahl: Int32Array; geschlossen: Uint8Array;   // erster Anker, Teil.anker.length, 1: geschlossen
+  erstesStueck: Int32Array; stuecke: Int32Array;                    // Kurvenstücke: geschlossen so viele wie Anker, offen eines weniger
+  ankerZahl: number; stueckZahl: number;                            // alle Anker, alle Kurvenstücke
+}
+/** wo die Anker und Kurvenstücke jedes Teils im Puffer liegen (Regel unten); je Neubau aus dem Dokument, weil ein Anker mehr die Ordnung
+ *  nicht ändert, aber alle Teile dahinter verschiebt; ein Teil, das im Dokument fehlt, hat keine Anker */
+export function ankerBereiche(dok: Dokument, o: OrdnungPlan): AnkerBereiche;
+export function istGeschlossen(t: Pick<Teil, 'art' | 'linie'>): boolean;   // Fläche immer, Linie nur mit linie.offen === false
+// dazu typVon(id) (Datensatztyp nach der Vorsilbe), ordnungGeaendert(diff), ORDNUNG_FOLGE (Rechenfolge der Typen), BAND_RANG
+
+// bauplan/regler.ts (gemeinsame Datei, seit M0 fertig)
+export function reglerPlanBauen(dok: Dokument, ordnung: OrdnungPlan, alt?: Pick<Bauplan, 'ordnung' | 'regler'>, diff?: Diff): ReglerPlan;
+export function inSpiegelHaelfte(p: ReglerPlan, i: number, w: number): boolean;   // Kreisregler ab < w < um, Linienregler ab ≤ w < um
+export function federFrequenz(dauer: number): number;                              // 1/dauer; dauer ≤ 0 oder keine Zahl: +∞
+export function rechenfolge(n: number, nachfolger: readonly (readonly number[])[], kreis: (glieder: number[]) => void): Int32Array;
+                                         // Tarjan, dann Kahn nach kleinster Nummer; ein Kreis rechnet als Block in Nummernfolge
 ```
+
+**Ordnung** (`bauplan/ordnung.ts`): Je Datensatztyp stehen die Datensätze nach ihrem Besitzer gruppiert, die Gruppen in der Folge ihrer
+Besitzer (Rechenfolge der Typen `ORDNUNG_FOLGE`: jeder Besitzer vor seinen Datensätzen, Figuren vor Szenen, Szenen vor Dingen, Dinge vor
+Chips und Bausteinen), darin nach den Sortierschlüsseln des Typs und zuletzt nach Kennung (Codepunkte): Schichten nach `ordnung` (ihre
+Rechenfolge), Regeln nach Szene, Band und `ordnung` (wie `LogikPlan.regeln`), Aufgaben nach `ordnung`. Fehlt ein Besitzer, steht der
+Datensatz hinter allen anderen seines Typs, nach der Kennung des fehlenden Besitzers. Die Nummern hängen nur an Kennungen, Besitzern und
+diesen Schlüsseln: Ein Diff, der nichts davon ändert und nichts anlegt oder löscht, lässt die Ordnung, wie sie ist. So liegen die Teile
+einer Figur und damit ihre Anker im Puffer beieinander. Den Datensatztyp nimmt die Laufzeit aus einer eigenen Tabelle der Vorsilben,
+nicht aus den Schemas des Formats.
+
+**Ankerpuffer** (eine Regel für alle Teilpläne und Schritte; je Anker 6 Zahlen: p, Ein-Griff, Aus-Griff absolut): Die Anker stehen Teil
+für Teil in der Folge von `OrdnungPlan.teile`, je Teil in der Folge von `Teil.anker`; der erste Anker eines Teils ist die Summe der
+Ankerzahlen aller Teile davor. Kurvenstücke ebenso: Teil für Teil, Stück k von Anker k nach k + 1; ein geschlossenes Teil (eine Fläche,
+eine Linie mit `linie.offen === false`; eine Linie ohne `linie` ist offen) hat so viele Stücke wie Anker, das letzte zurück zu Anker 0,
+ein offenes eines weniger. Gerechnet wird das nur in `ankerBereiche`; jeder Teilplan, der Anker anfasst (Form, Knochen, Abflachung,
+Wächter), nimmt es von dort.
+
+**Lage einer Figur** (`Figur.lage`): Ihre Regler x, y (L) und Drehung (Grad) setzen sie in die Welt,
+p_Welt = (x, y) + D(Drehung) · p / einheitL (p in Figur-Einheiten; D dreht wie in `vertrag/welt.ts`); fehlt ein Regler (−1), gilt dort 0.
+`knochenStellen` (Schritt 13) stellt sie vor jeden Wurzelknochen der Figur und schreibt sie zusätzlich hinter die Knochen in `matrizen`;
+`aufhaengen` bildet die Anker jedes Teils damit ab, auch die der Teile ohne Aufhängung. So stehen alle Anker in `BildStand.anker` und
+alle Strecken in `BildDaten` in der Welt (L); `BildStand.ruhe` bleibt in Figur-Einheiten.
+
+**Regler** (`bauplan/regler.ts`): Ein Regler kommt in `folge` nach jedem Regler, von dem er abhängt: nach der Quelle seines Drahts (ein
+Messwert eines Bausteins stammt aus dem vorigen Takt und ordnet nichts) und nach dem Regler, dessen Spiegelregel ihn mitspiegelt
+(Spiegelkante); sonst gilt seine Nummer, ohne Abhängigkeiten ist die Folge 0, 1, 2 … Hängen Regler im Kreis voneinander ab, rechnen sie
+dort in der Folge ihrer Nummern, und ein Hinweis nennt sie (3.6 Nr. 5 meldet es ebenso). Neu gebaut wird der ReglerPlan nur, wenn sich
+die Ordnung, ein Regler oder ein Draht ändert. Die mitgespiegelten Regler stehen im ReglerPlan (`mitSpiegel`, `mitUm`), nicht im
+`SpiegelPlan`.
 
 Die übrigen Teilpläne und der Lauf, wie M0 sie in `vertrag/bauplan.ts` und `vertrag/lauf.ts` anlegt (Indizes beziehen sich auf
 `OrdnungPlan`, −1 heißt „keiner“):
@@ -1256,20 +1530,35 @@ Die übrigen Teilpläne und der Lauf, wie M0 sie in `vertrag/bauplan.ts` und `ve
 ```ts
 export interface SpiegelPlan { ab: number; um: number; achseX: number; partner: Int32Array; umnummern: (Int32Array | null)[]; reihenfolgeTauschen: boolean }
 export interface SpitzenPlan { von: number; bis: number; anker: Int32Array; rahmenVon: Float64Array; rahmenBis: Float64Array; gespiegelt: boolean; regelBindung: number }  // je Spitze u, h; regelBindung: deren Schlüssel die Spitzenregel prüft (gespiegelt: der Partner)
+/** Knochen (Schritte 11 und 13). `matrizen` (von `knochenStellen` geschrieben, von `aufhaengen` gelesen) hat 6 · (anzahl + Figuren)
+ *  Zahlen: je Knochen seine 2 × 3-Matrix in der Welt (die Lage der Figur eingerechnet), dahinter je Figur (Index nach OrdnungPlan) die
+ *  Matrix ihrer Lage. BildStand.knochen sind die ersten 6 · anzahl Zahlen. */
 export interface KnochenPlan {
   anzahl: number; folge: Int32Array;                  // Eltern vor Kindern
   eltern: Int32Array; gelenk: Float64Array;           // 2 Zahlen je Knochen
   winkel: Int32Array; verschiebung: Int32Array;       // Reglerindizes (verschiebung: 2 je Knochen)
   anheftungen: { knochen: number; teil: number; anker: Int32Array; gewichte: Float64Array; mls: Float64Array }[];
   achsen: AchsenPlan[];
-  teile: { teil: number; art: 'starr' | 'achse' | 'gewichte'; knochen: Int32Array; gewichte: GewichtePlan | null; griffe: GewichtePlan | null; mischung: 'drehzentren' | 'linear' }[];
+  /** je Teil nach OrdnungPlan einer (teile[i].teil = i), mit Figur und seinen Ankern im Puffer (figur, erster, anzahl aus
+   *  `ankerBereiche`). Ein Teil ohne Aufhängung steht hier mit art 'starr' und knochen = [−1]: Es folgt nur der Lage seiner Figur. */
+  teile: { teil: number; figur: number; erster: number; anzahl: number; art: 'starr' | 'achse' | 'gewichte'; knochen: Int32Array; gewichte: GewichtePlan | null; griffe: GewichtePlan | null; mischung: 'drehzentren' | 'linear' }[];
+  figurLage: Int32Array;            // je Figur nach OrdnungPlan die Reglerindizes ihrer Lage x, y, Drehung (3 Zahlen, −1: keiner)
+  figurEinheit: Float64Array;       // je Figur nach OrdnungPlan ihr einheitL (Figur-Einheiten je L)
 }   // 'achse': knochen = [Achse, Eltern], gewichte w je Anker (fehlt: 1); Befund 17
 export interface AchsenPlan { knochen: number; laenge: number; abstand: number; biegungWurzel: number; biegungEnde: number; beugung: 1 | -1; boden: boolean; rMin: number; ankerLage: Float64Array }   // ankerLage: u je Anker, Projektion auf die Ruheachse; rMin wie in rueckgratBauen
 export interface GewichtePlan { knochen: Int32Array; gewicht: Float64Array; zentren: Float64Array }   // 4 je Anker; Zentren je Ansichtsschlüssel
 /** Stückzahl je Kurvenstück (16 k): nach Wang aus dem größten Kontrollpolygon dieses Stücks über alle Schlüssel, mal 1,25 für Knochen
- *  und Zusätze, Toleranz 0,25 Bildpunkte bei der Zoomstufe; Zoomstufen sind Potenzen von 1,25; höchstens 64 je Stück; nie je Bild neu.
- *  Im Spiel gilt die Stufe des größten Kameramaßstabs der Szene, im Editor die aktuelle. */
-export interface AbflachPlan { stueckzahl: Int32Array; bernstein: Float64Array; streckenZahl: number; ersteStrecke: Int32Array; zoomstufe: number }
+ *  und Zusätze, Toleranz 0,25 Bildpunkte bei der Zoomstufe; Zoomstufen sind Potenzen von 1,25 (`zoomstufe` ist der Exponent, 0 heißt
+ *  Maßstab 1); höchstens 64 je Stück; nie je Bild neu. Im Spiel gilt die Stufe des größten Kameramaßstabs der Szene, im Editor die
+ *  aktuelle. `stueckzahl` und `ersteStrecke` je Kurvenstück in der Folge des Ankerpuffers; `streckenZahl`: Strecken aller gezeichneten
+ *  Teile eines Durchgangs (einer Auswertung); den Aufbau von `bernstein` und `ersteStrecke` legt `bauplan/abflachen.ts` fest. */
+export interface AbflachPlan {
+  stueckzahl: Int32Array; bernstein: Float64Array; streckenZahl: number; ersteStrecke: Int32Array; zoomstufe: number;
+  teile: AbflachTeil[];             // je Teil nach OrdnungPlan (teile[i] gehört zu Teil i)
+}
+/** was Schritt 16 je Teil braucht: seine Anker und Kurvenstücke (`ankerBereiche`) und seinen Platz im Zeichenmodell (feldsatz: Index in
+ *  ZeichenModell.feldsaetze, kanal: 0 bis KANAELE − 1 darin; −1: das Teil wird nicht als Feld gezeichnet, etwa ein gebackenes Ding) */
+export interface AbflachTeil { erster: number; anzahl: number; geschlossen: boolean; erstesStueck: number; stuecke: number; feldsatz: number; kanal: number }
 export interface PosenPlan {
   schichten: { regler: Int32Array; art: 'ersetzen' | 'addieren'; physik: boolean; posen: Int32Array; standard: number }[];   // standard: Übergang 'jede → jede'
   posen: { schicht: number; werte: Float64Array; kreuz: { achse: number; an: number; werte: Float64Array }[]; gewicht: number; verweilen: number }[];
@@ -1277,23 +1566,32 @@ export interface PosenPlan {
   zyklen: { phase: number; antrieb: 'zeit' | 'weg'; frequenz: number; schritt: number; zweite: number; zeilen: ZyklusZeile[] }[];
 }
 export interface PhysikPlan {
-  chips: { art: string; an: number; f: number; zeta: number; ausgang: number; daten: ArtDaten }[];
+  chips: { art: string; an: number; f: number; zeta: number; ausgang: number; daten: ArtDaten }[];   // je Chip nach OrdnungPlan
   huellen: Huelle[][];                                // je Figur aus ihrem Körpermodell (koerper, glieder; Befund 6)
   welt: { kette: Punkt[]; dinge: { ding: number; rolle: Ding['rolle']; huellen: Huelle[]; stoff: StoffWerte }[]; feld: Float32Array; feldMass: [x0: number, y0: number, zelle: number] } | null;
+  /** Stand von Chip i in Lauf.figur von chipStand[i] bis chipStand[i + 1] (Länge nach `Chipart.standLaenge`, 4.5); chips.length + 1
+   *  Zahlen, die letzte ist die Länge von Lauf.figur */
+  chipStand: Int32Array;
 }
 export interface LogikPlan {
   regeln: Regel[];                                    // nach Band, dann ordnung
   kanaele: string[]; bausteine: Baustein[];           // Kanal '<Ding>.<name>': Reglernamen der Bausteinart, 'pose.<Schicht>', 'zeitfaktor'
   draehte: { quelle: number | Messwert; ziel: number; kennlinie: Float64Array; steigungen: Float64Array; spiegel: Draht['spiegel'] | null; glaetten: number }[];
   folge: Int32Array;                                  // Drähte in der Folge ihres Graphen
+  /** `bausteine` stehen nach OrdnungPlan; Stand von Baustein i in Lauf.bausteine von bausteinStand[i] bis bausteinStand[i + 1] (Länge
+   *  nach `Bausteinart.standLaenge`, 4.5); die letzte Zahl ist die Länge von Lauf.bausteine */
+  bausteinStand: Int32Array;
 }
+// vertrag/lauf.ts
 export interface Lauf {
   takt: number; saat: number; zeitfaktor: number;
+  /** je Regler; `hand`: von Hand gesetzter Wert, NaN = keine Hand (nur regler/hand.ts schreibt ihn, 4.4); `vorher`: gezeigter Wert des
+   *  vorigen Takts (zum Mischen) */
   regler: { soll: Float64Array; ist: Float64Array; versatz: Float64Array; tempo: Float64Array; vorher: Float64Array; hand: Float64Array };
-  schichten: Float64Array;                            // je Schicht: Übergang, Zeit, Leitpunkt, Variante
-  figur: Float64Array;                                // XPBD-Zustand
+  schichten: Float64Array;                            // je Schicht: Übergang, Zeit, Leitpunkt, Variante (4 Zahlen)
+  figur: Float64Array;                                // Stände der Chips der Figurphysik, je Chip ab PhysikPlan.chipStand
   logik: Float64Array;                                // Gedächtnis je Regel und Ding, Ruhezeiten, Launen
-  bausteine: Float64Array;                            // Stände der BausteinLauf
+  bausteine: Float64Array;                            // Stände der Bausteine, je Baustein ab LogikPlan.bausteinStand
   stroeme: Uint32Array; protokoll: EingabeEintrag[]; postfach: Ereignis[]; ereignisse: Ereignis[]; pruefsummen: Uint32Array;
 }
 export interface Schluesselstand { takt: number; lauf: ArrayBuffer; welt: Uint8Array }   // nie als Datei
@@ -1301,9 +1599,11 @@ export interface Mitschnitt { takte: number; werte: Float32Array; ereignisse: Er
 ```
 
 Prüfung des Bauplans: Nach zufälligen Diffs ergeben voller und schrittweiser Neubau gleiche Felder. Jeder Teilplan bringt diesen
-Eigenschaftstest mit (`bauplan/<teilplan>.test.ts`); `bauplan/bauen.ts` setzt sie nur zusammen (Zusammenbau-Datei), den Gesamttest
-`bauplan/bauen.test.ts` führt die Integration nach jeder Welle fort. Beim Ziehen eines Ankers baut der Bauplan nur den Teilplan des
-Teils neu (Budget 1 ms).
+Eigenschaftstest mit (`bauplan/<teilplan>.test.ts`; `ordnung.test.ts` und `regler.test.ts` aus M0 zeigen, wie Zufallsdokumente und
+Diffs gebaut werden, und `ordnung.test.ts` prüft `ankerBereiche`: ein Anker mehr lässt die Ordnung als dasselbe Objekt und verschiebt nur
+die Teile dahinter); `bauplan/bauen.ts` setzt sie nur zusammen (Zusammenbau-Datei, Stand M0: Ordnung und Regler, die übrigen Teilpläne
+leer), den Gesamttest `bauplan/bauen.test.ts` beginnt die Integration mit Ordnung und Regler und führt ihn nach jeder Welle fort. Beim
+Ziehen eines Ankers baut der Bauplan nur den Teilplan des Teils neu (Budget 1 ms).
 
 ### 4.4 Morph, Knochen, Posen
 
@@ -1313,7 +1613,8 @@ export function koordinatenMischen(l: ListenPlan, w: number, aus: Float64Array, 
 // form/rahmenRest.ts: Konzept 2.2 und 06 §2.6 – Procrustes je Schlüssel, Rest im Rahmen, Griffe relativ zur Tangente
 export function rahmenRestVorbereiten(schluessel: readonly Float64Array[], glatt: Uint8Array, xs: Float64Array, periode: number | null): ListenPlan;
 export function rahmenRestMischen(l: ListenPlan, w: number, glatt: Uint8Array, aus: Float64Array, erster: number, anzahl: number): void;
-// form/zusatz.ts: Rahmenformel aus 3.2 (VersatzZeile, 16 a), ein Bezugsrahmen für alle Zusatzformen
+// form/zusatz.ts: Rahmenformel aus 3.2 (VersatzZeile, 16 a), ein Bezugsrahmen für alle Zusatzformen. Die Formel braucht an den Enden
+// offener Linien, ob das Teil geschlossen ist (TeilPlan.geschlossen); den Parameter ergänzt der Vertragsschritt M4.0
 export function zusatzAnwenden(z: ZusatzPlan, r: Float64Array, anker: Float64Array, erster: number, anzahl: number, glatt: Uint8Array): void;
 export function versatzAus(gezeigt: Float64Array, gezogen: Float64Array, erster: number, anzahl: number, glatt: Uint8Array): VersatzZeile[];
 // form/spiegel.ts, spitzen.ts, ruhen.ts, listen.ts, wechsel.ts
@@ -1327,19 +1628,33 @@ export function inListenEinfuegen(eigene: readonly BindungsAbschnitt[], partner:
 export function ausListenNehmen(abschnitte: readonly BindungsAbschnitt[], weg: Id<'sl'>): BindungsAbschnitt[];
 /** Einträge auf fehlende Schlüssel einer fremden Quelle: der Bauplan lässt sie aus, der Prüfer meldet sie (3.6 Nr. 8) */
 export function fehlendeEintraege(abschnitte: readonly BindungsAbschnitt[], vorhanden: ReadonlySet<Id<'sl'>>): ListenEintrag[];
-export function malreihenfolge(plan: Bauplan, r: Float64Array, aus: Uint16Array, deckung: Float32Array): void;
+/** form/wechsel.ts: Malreihenfolge nach Wechseln in BildDaten (4.6), für die Feldsatz-Instanzen, die Schritt 16 eben angehängt hat (die
+ *  letzten plan.zeichen.feldsaetze.length): `ordnung` (je Instanz eine Umordnung genau ihrer Einträge in `teile`, von unten nach oben)
+ *  und die weichen Paare in `deckung` samt `deckungZahl` */
+export function malreihenfolge(plan: Bauplan, r: Float64Array, aus: BildDaten): void;
+
+// regler/hand.ts (M1.3): Hand an einem Regler; sonst schreibt niemand lauf.regler.hand. regler/durchlauf.ts (M1.7) liest es nur (NaN:
+// keine Hand) und klemmt nicht noch einmal; `Laufzeit.hand` ruft handSetzen und danach den Durchlauf ohne Zeit (4.2)
+export function handSetzen(p: ReglerPlan, lauf: Lauf, i: number, wert: number): void;   // lauf.regler.hand[i]: ein Linienregler auf
+                                         // seinen Bereich geklemmt, ein Kreisregler in [bereich[0], bereich[1]) gefaltet; keine endliche
+                                         // Zahl: RangeError
+export function handLoesen(lauf: Lauf, i: number): void;                                  // lauf.regler.hand[i] = NaN
 
 // knochen/
 export function gelenkeAnheften(p: KnochenPlan, anker: Float64Array, gelenke: Float64Array): void;     // starre MLS
+/** knochen/aufhaengen.ts: stellt die Lage jeder Figur (KnochenPlan.figurLage, Regel in 4.3) vor ihre Wurzelknochen und schreibt sie
+ *  hinter die Knochen in `matrizen` (6 · (anzahl + Figuren) Zahlen) */
 export function knochenStellen(p: KnochenPlan, r: Float64Array, gelenke: Float64Array, matrizen: Float64Array): void;
 export function biegeachseBauen(a: AchsenPlan, r: Float64Array, boden: number, aus: Float64Array): void; // Port von rueckgratBauen
-// aufhaengen: starr (M1.7); 'achse' mit Gewichten je Anker und Griff, linear (M4.2); Drehzentren für beide Arten (M9.2)
+// aufhaengen: starr und Teile ohne Aufhängung (knochen = [−1]: nur die Lage ihrer Figur) in M1.7; 'achse' mit Gewichten je Anker und
+// Griff, linear (M4.2); Drehzentren für beide Arten (M9.2). Erster Anker und Zahl je Teil aus KnochenPlan.teile
 export function aufhaengen(p: KnochenPlan, matrizen: Float64Array, achsen: Float64Array, anker: Float64Array): void;
 export function drehzentren(ruhe: Float64Array, gewichte: GewichtePlan): Float64Array;   // Le und Hodgins, je Ansichtsschlüssel
 export function glaetteSchuetzen(anker: Float64Array, erster: number, anzahl: number, glatt: Uint8Array): void;
 // d = (|v|·v − |u|·u) / ‖|v|·v − |u|·u‖, i'' = p − |u|·d, o'' = p + |v|·d (06 §4.4); nie an Ecken
 
-// posen/
+// posen/. Anforderung liegt in vertrag/lauf.ts, TafelZelle in vertrag/editor.ts, Zusatzart in vertrag/zusatz.ts (alle seit M0);
+// posen/schichten.ts, posen/tafel.ts und posen/zusatzarten.ts nehmen sie von dort, M4 legt sie nicht neu an
 export interface Anforderung { schicht: number; pose: number; band: Band | 'hand'; variante?: string }
 export function schichtenFortschreiben(p: PosenPlan, lauf: Lauf, anf: readonly Anforderung[], dt: number): void;
 export function wegSuchen(p: PosenPlan, schicht: number, von: number, nach: number): Int32Array;   // „über X“
@@ -1413,29 +1728,63 @@ export type KoerperArt = 'fest' | 'beweglich' | 'gefuehrt';
 export interface Lage { x: number; y: number; w: number }
 export interface Masse { masse: number; traegheit: number; schwerpunkt: Punkt }
 export type { Huelle } from '@ee/studio-format/typen/physik';   // liegt im Format (3.2), weil das Körpermodell sie nennt
-export interface StoffWerte { haftung: number; abprall: number; rollwiderstand: number; dichte: number }
-export interface FederMass { f: number; zeta: number }
-export interface WeltPuffer { lagen: Float64Array; tempi: Float64Array; kontakte: Float64Array; kontaktZahl: number; zonen: Int32Array; zonenZahl: number }
+export interface StoffWerte { haftung: number; abprall: number; rollwiderstand: number; dichte: number }   // dichte: Masse je L²
+export interface FederMass { f: number; zeta: number }   // aus Feder: f = 1/dauer, ζ = 1 − federung
+/** Feldbreiten, Werte mit Literaltyp (nie `: number` davorschreiben); Aufbau je Eintrag im Text unten */
+export const LAGE_FELDER = 3;       // x, y des Ursprungs, w (Grad, in (−180, 180] wie bei Box2D)
+export const TEMPO_FELDER = 3;      // vx, vy (Tempo des Ursprungs, nicht des Schwerpunkts), ω (Grad/s)
+export const KONTAKT_FELDER = 11;
+export const ZONE_FELDER = 3;       // Zone, Körper, Art: 1 betreten, 0 drin, −1 verlassen; aufsteigend nach (Zone, Körper)
+export const BEIN_FELDER = 6;
+export const STRAHL_FELDER = 7;     // x, y (Treffer), nx, ny (Normale zum Strahlanfang hin), Anteil t in [0, 1], Körper, Hülle
+export const VIELECK_PUNKTE = 8;    // höchstens so viele Punkte je Vieleck, vor der Hülle gezählt (b2ComputeHull lehnt 9 ab)
+/** vom Aufrufer einmal angelegt; `lagen` und `tempi` brauchen je Körper LAGE_FELDER und TEMPO_FELDER Zahlen (sonst RangeError), entfernte
+ *  Körper stehen dort als NaN; `kontakte`, `zonen` und `beine` bekommen, was hineinpasst, die Zähler sagen, wie viele geschrieben sind */
+export interface WeltPuffer {
+  lagen: Float64Array; tempi: Float64Array; kontakte: Float64Array; kontaktZahl: number; zonen: Int32Array; zonenZahl: number;
+  beine?: Float64Array; beinZahl?: number;   // Federbeine des letzten Schritts (BEIN_FELDER je Bein); ohne das Feld schreibt lesen keine
+}
 export interface WeltAdapter {
-  laden(): Promise<void>;
-  neu(schwerkraft: Punkt): void;
-  koerper(art: KoerperArt, lage: Lage, masse?: Masse): number;
-  aktiv(k: number, an: boolean): void;
-  entfernen(k: number): void;
-  huelle(k: number, h: Huelle, s: StoffWerte, schnell?: boolean): number;   // schnell: kontinuierliche Kollision
+  laden(): Promise<void>;           // lädt Box2D als WebAssembly; die Attrappe ist sofort bereit
+  neu(schwerkraft: Punkt): void;    // leert die Welt (L/s², y nach unten); alle Nummern beginnen wieder bei 0
+  koerper(art: KoerperArt, lage: Lage, masse?: Masse): number;   // ohne masse aus den Hüllen; ohne Masse aus Hüllen: Masse 1, dreht nicht
+  aktiv(k: number, an: boolean): void;   // ausgeschaltet: bewegt sich nicht, stößt nicht, unsichtbar für Strahl und Zone; Tempo bleibt
+  entfernen(k: number): void;            // samt Hüllen, Gelenken und Federbeinen; ein Finger an ihm lässt los
+  /** Vielecke 3 bis VIELECK_PUNKTE Punkte, nicht alle auf einer Geraden, aus nicht konvexen Punkten die konvexe Hülle, `rundung` als
+   *  Radius; Ketten mindestens 2 Punkte, als Schleife mindestens 3, ohne Masse und Dicke, einseitig (Text unten); eine Kette stößt nicht
+   *  mit einer Kette; sonst RangeError. schnell: kontinuierliche Kollision gegen feste und geführte Körper (Box2D: Bullet) */
+  huelle(k: number, h: Huelle, s: StoffWerte, schnell?: boolean): number;
   scharnier(a: number, b: number, punkt: Punkt, motor?: { tempo: number; moment: number }, grenzen?: [number, number]): number;
-  ziel(a: number, b: number, feder: FederMass, hoechstkraft: number): number;   // Motor-Gelenk mit Ziel-Lage
-  zielSetzen(gelenk: number, lage: Lage): void;
+  /** Motor-Gelenk mit Ziel-Lage: eine Feder zieht den Ursprung von b auf das Ziel im Rahmen von a und w_b − w_a auf den Zielwinkel
+   *  (kürzester Weg); Kraft höchstens hoechstkraft, Moment höchstens hoechstkraft · ρ mit ρ = √(I_eff / m_eff); beim Anlegen ist das Ziel
+   *  die aktuelle Lage; Höchstkraft 0: das Gelenk ruht */
+  ziel(a: number, b: number, feder: FederMass, hoechstkraft: number): number;
+  /** neues Ziel; dazu optional neue Höchstkraft und Feder (die Spannung ändert sich je Takt, 16 h); ein Scharnier ist kein Motor-Gelenk
+   *  (RangeError) */
+  zielSetzen(gelenk: number, lage: Lage, hoechstkraft?: number, feder?: FederMass): void;
+  /** greift beim ersten `an` den beweglichen Körper, dessen Hülle `punkt` enthält (eine geschlossene Kette enthält ihr Inneres; bei
+   *  mehreren der mit der höchsten Nummer), genau an diesem Punkt; kein Körper: hält nichts bis zum neuen Ansetzen; `an: false` lässt los */
   finger(an: boolean, punkt: Punkt, feder: FederMass, hoechstkraft: number): void;
-  federbein(k: number, von: Punkt, richtung: Punkt, laenge: number, feder: FederMass): number;   // Strahl je Teilschritt; Vorspannung:
-                                                                   // beim Gewichtsanteil gilt genau laenge (Ruhelänge laenge + g/(2πf)², 4.5)
-  kraftpaar(a: number, b: number, punkt: Punkt, kraft: Punkt): void;   // Vortrieb mit Rückwirkung aufs Rad
+  /** Federbein nur für den nächsten Schritt (der Baustein gibt es je Takt neu an): Strahl je Teilschritt von `von` in `richtung` (beim
+   *  Aufruf in der Welt, danach mit k gedreht), lang wie die Ruhelänge laenge + g/(2πf)²; sieht weder k noch direkt per Gelenk mit k
+   *  verbundene Körper. Trifft er im Abstand d, drückt das Bein längs der Normale am Treffer mit
+   *  F = anteil · ((2πf)² · (Ruhelänge − d) − 2ζ · 2πf · u), nie negativ, auf k und gegengleich auf den getroffenen Körper; so gilt beim
+   *  Gewichtsanteil genau `laenge` (Vorspannung). `anteil`: Masse, die das Bein trägt, ohne Angabe die Masse von k geteilt durch die Zahl
+   *  seiner Federbeine im Schritt. Rückgabe: Nummer des Beins in diesem Schritt (0, 1, … in Aufrufreihenfolge) für WeltPuffer.beine */
+  federbein(k: number, von: Punkt, richtung: Punkt, laenge: number, feder: FederMass, anteil?: number): number;
+  kraftpaar(a: number, b: number, punkt: Punkt, kraft: Punkt): void;   // Vortrieb mit Rückwirkung aufs Rad; nur der nächste Schritt,
+                                                                       // mehrere Aufrufe addieren sich
+  /** erster Treffer auf eine Hülle eines eingeschalteten Körpers (STRAHL_FELDER nach `aus`); eine Hülle, in der `von` liegt, zählt nicht;
+   *  ein Kettenstück nur von vorn; Zonen nie */
   strahl(von: Punkt, nach: Punkt, aus: Float64Array): boolean;
-  zone(h: Huelle, lage: Lage): number;
-  schritt(dt: number, teilschritte: number): void;
+  zone(h: Huelle, lage: Lage): number;   // feste Zone (Sensor), Grenzen der Hüllen wie bei huelle; meldet bewegliche und geführte Körper
+  schritt(dt: number, teilschritte: number): void;   // dt > 0, teilschritte ganz ≥ 1
   lesen(aus: WeltPuffer): void;     // ein Aufruf über die WebAssembly-Grenze je Takt
-  pruefsumme(): number;             // Zustands-Hash von Box2D, sonst über alle gelesenen Lagen und Tempi
-  merken(): Uint8Array; zuruecksetzen(stand: Uint8Array): void;
+  pruefsumme(): number;             // Zustands-Hash von Box2D, sonst über alle gelesenen Lagen und Tempi; ganz in [0, 2³²)
+  merken(): Uint8Array; zuruecksetzen(stand: Uint8Array): void;   // nur zwischen zwei Schritten; danach bitgleich weiter; nie als Datei
+  /** Pflicht: führt einen Körper (vor allem `gefuehrt`, etwa das Rad „Boden“) so, dass er am Ende des nächsten Schritts in `lage` steht
+   *  (Box2D: b2Body_SetTargetTransform), auf dem kürzeren Weg gedreht; auf einen festen Körper wirkt es nicht */
+  fuehren(k: number, lage: Lage): void;
 }
 
 // laufzeit/vertrag/baustein.ts
@@ -1444,26 +1793,76 @@ export interface Bausteinart {
   messwerte: readonly string[]; zustaende: readonly string[]; ereignisse: readonly string[];
   befehle: readonly string[];
   kanaele: readonly string[];        // nur Reglernamen (16 e); Posen-Kanäle 'pose.<Schicht>' hat jedes Ding mit Figur von selbst
+  standLaenge(b: Baustein, plan: Bauplan): number;   // Zahlen in Lauf.bausteine; fest je Datensatz und Bauplan
   anlegen(b: Baustein, plan: Bauplan, welt: WeltAdapter, lauf: Lauf): BausteinLauf;
 }
 export interface BausteinLauf {
   teilschritt(dt: number, welt: WeltAdapter, lauf: Lauf): void;   // Schritt 7, viermal je Takt
   nachTakt(lauf: Lauf): void;                                      // Messwerte setzen, Ereignisse ins Postfach
-  messwert(name: string): number; zustand(): string;
+  messwert(name: string, lauf: Lauf): number; zustand(lauf: Lauf): string;   // aus seinem Bereich von lauf.bausteine
   befehl(name: string, wert: number | undefined, lauf: Lauf): void;
   kanal(name: string, wert: number | string | null): void;         // null: Kanal frei, Grundwert gilt
-  stand(aus: Float64Array): void; setzen(von: Float64Array): void; // Schlüsselstand
 }
 // laufzeit/vertrag/chip.ts
-export interface Chipart { art: string; ausgang: 'regler' | 'knochen' | 'anker' | 'welt'; anlegen(c: PhysikChip, plan: Bauplan): ChipLauf }
-export interface ChipLauf { schritt(dt: number, lauf: Lauf): void; ruht(): boolean; stand(aus: Float64Array): void; setzen(von: Float64Array): void }
+export interface Chipart {
+  art: string; ausgang: 'regler' | 'knochen' | 'anker' | 'welt';
+  standLaenge(c: PhysikChip, plan: Bauplan): number;   // Zahlen in Lauf.figur; fest je Datensatz und Bauplan (0: ohne Stand)
+  anlegen(c: PhysikChip, plan: Bauplan): ChipLauf;
+}
+/** `schritt` liest und schreibt nur seinen Bereich von `lauf.figur` und seinen Ausgang; `ruht` liest nur seinen Bereich */
+export interface ChipLauf { schritt(dt: number, lauf: Lauf): void; ruht(lauf: Lauf): boolean }
 // laufzeit/vertrag/warum.ts
 export type WarumFrage = { regler: Id<'rg'>; takt: number } | { regel: Id<'re'>; takt: number } | { ereignis: Ereignis };
 export interface WarumAntwort { saetze: string[]; beteiligte: string[] }
 ```
 
-Bausteinarten tragen sich in `bausteine/register.ts`, Chiparten in `physik/chips.ts`, Zusatzarten in `posen/zusatzarten.ts`, Effektarten in
-`studio-bild/src/effekte/register.ts` ein; ihre Schemas und Migrationen in `studio-format/src/arten/`. Eine neue Art ändert nur diese
+**Festlegungen der Welt** (für Adapter und Attrappe gleich; der Kopf von `vertrag/welt.ts` hält sie fest). Einheiten: Die Welt rechnet
+in L (Körperlänge, wie Box2D in Metern), y nach unten, Winkel in Grad, Winkeltempo in Grad/s (der Adapter rechnet innen in Bogenmaß);
+eine Lage dreht einen Punkt (lx, ly) des Körpers nach (x + cos w · lx − sin w · ly, y + sin w · lx + cos w · ly); Massen in
+Masseeinheiten, Kräfte in Masse · L/s², Momente in Masse · L²/s². Körper, Hüllen, Gelenke und Zonen bekommen je ihre eigene Nummer 0, 1,
+2 … in der Reihenfolge des Anlegens, in einer Welt nie wieder vergeben (erst `neu` fängt bei 0 an); eine ungültige Nummer wirft einen
+RangeError. Nur für den nächsten `schritt` gelten `kraftpaar`, `federbein` und `fuehren` (das Tempo bleibt danach wie in Box2D); es
+bleiben Körper, Hüllen, Gelenke, Zonen, Zielwerte aus `zielSetzen` und der Griff des Fingers bis zum Loslassen. Durch ein Gelenk
+verbundene Körper stoßen nicht miteinander. **Kontakte** (`KONTAKT_FELDER` = 11, ein Eintrag je Paar sich berührender Hüllen, Hülle A <
+Hülle B, aufsteigend nach (A, B)): 0 Körper von A, 1 Körper von B, 2 Hülle A, 3 Hülle B, 4 x, 5 y (Mitte der Berührung), 6 nx, 7 ny
+(Normale von A nach B), 8 Annäherungstempo längs der Normale beim Beginn (L/s, sonst 0), 9 Normalimpuls dieses Schritts (Summe der
+Teilschritte), 10 Art: 1 begonnen, 0 dauert an, −1 beendet (dann 4 bis 9 null); berührt heißt: Abstand unter 0,005 L. **Federbeine**
+(`BEIN_FELDER` = 6, Stand am Ende des letzten Schritts): 0 getroffen (1 oder 0), 1 Abstand von `von` bis zum Treffer längs der Richtung
+(ohne Treffer die Ruhelänge), 2 Normalkraft (≥ 0), 3 getroffener Körper (−1: keiner), 4 x, 5 y (Treffer, sonst das Ende des Strahls).
+
+**Ketten sind einseitig** wie in Box2D: Ein Kettenstück von a nach b hat seine Vorderseite dort, wo
+kreuz(p − a, b − a) = (p − a).x · (b − a).y − (p − a).y · (b − a).x > 0 ist, seine Normale ist ((b − a).y, −(b − a).x) / |b − a|. Auf dem
+Bildschirm (y nach unten) liegt sie links der Laufrichtung: Eine Kette von links nach rechts trägt von oben, eine geschlossene Kette, die
+auf dem Bildschirm im Uhrzeigersinn läuft, von außen; so muss der Hügel laufen (3.6 Nr. 12). Ein Strahl (auch der eines Federbeins)
+trifft ein Kettenstück nur, wenn er nicht dahinter beginnt (kreuz(von − a, b − a) ≥ 0); eine Hülle stößt mit ihm nur, wenn ihr
+Mittelpunkt nicht dahinter liegt (Kreis: Mitte, Kapsel: Mitte der Strecke, Vieleck: Schwerpunkt), ebenso die kontinuierliche Kollision
+(`schnell`). Nahe einer Ecke der Kette nimmt Box2D die Nachbarstücke dazu; dort ist nicht festgelegt, welches Stück stößt, und die
+gemeinsame Testreihe prüft nur Fälle fern von Ecken (nachgeprüft am 20.11. mit box2d3-wasm 6.0.0).
+
+**Feldbreiten in anderen Paketen:** `studio-welt` und `studio-bild` nehmen die Laufzeit in `src/` nur mit `import type` (2.1) und führen
+jede Breite als Kopie, die tsc prüft: `import type { KONTAKT_FELDER } from '@ee/studio-laufzeit/vertrag/welt';` und
+`const KONTAKT: typeof KONTAKT_FELDER = 11;` (ein anderer Wert ist ein Typfehler); `vertrag/feldbreiten.test.ts` hält diese Form für
+alle Breiten aus `welt.ts`, `bilddaten.ts` und `zeichenmodell.ts` fest.
+
+**Stand im Lauf** (Chips und Bausteine gleich): Der ganze veränderliche Stand eines Chips (Lagen und Tempi seiner Federn und
+Kettenglieder) liegt in `Lauf.figur`, für Chip i (Nummer nach OrdnungPlan, `indexVon(plan.ordnung, c.id)`) von
+`plan.physik.chipStand[i]` bis `chipStand[i + 1]`; der eines Bausteins (Zustand, Messwerte, Uhren, geplante Schritte) in `Lauf.bausteine`
+ab `plan.logik.bausteinStand[i]`. Die Länge sagt die Art (`standLaenge`), die Versätze legt der Bauplan an. Ein frischer Lauf hat dort
+lauter Nullen: die Ruhe und der Anfangszustand. So sichert ein Schlüsselstand alles mit dem Lauf, und die Prüfsumme des Takts zählt es.
+Ein `ChipLauf` hält nur, was er aus dem Bauplan vorausrechnet, ein `BausteinLauf` nur, was beim Anlegen entsteht und sich im Lauf nicht
+ändert (etwa die Nummern seiner Körper in der Welt); keiner hat einen eigenen Stand, `stand` und `setzen` gibt es nicht. Kanalwerte
+gehören nicht zum Stand: Die Regeln setzen sie in jedem Takt neu (Schritt 3), bevor die Teilschritte laufen. Die `ChipLauf` und
+`BausteinLauf` hält die Fassade (4.2).
+
+**Die Attrappe** (`vertrag/weltAttrappe.ts`, Klasse `WeltAttrappe`) erfüllt jede Funktion einfach und deterministisch nach dem Vorbild von
+Box2D 3.2 (Soft Step): ohne Reibung, Rollwiderstand und Warmstart (`haftung` und `rollwiderstand` werden nur gemerkt), Vielecke zählen für
+die Masse ohne ihre Rundung, Ketten einseitig wie oben. Ohne Reibung rutscht ein Körper irgendwann vom Hügel; ihre Tests prüfen nur, was
+der Vertrag sagt.
+
+Bausteinarten tragen sich in `bausteine/register.ts` ein (Liste `BAUSTEINARTEN`, Suche `bausteinart(art)`), Chiparten in `physik/chips.ts`
+(`CHIPARTEN`, `chipart(art)`), Zusatzarten in `posen/zusatzarten.ts` (`ZUSATZARTEN`, `zusatzart(art)`), Effektarten in
+`studio-bild/src/effekte/register.ts` (`EFFEKT_ZEICHNUNGEN`, 4.6); ihre Schemas und Migrationen in `studio-format/src/arten/` (Schlüssel
+`<familie>:<art>`, 3.4). Eine neue Art ändert nur diese
 Listen und ihre eigene Datei; Bedienung, Regeln und Prüfer lesen ihre Anschlüsse aus der Art. **Erweiterungstest** (Befund 28):
 `apps/studio/test/erweiterung.test.ts` trägt je Familie, sobald sie existiert (Zusatzbewegungen M4, Chips M5, Effekte M6, Bausteine
 M7), zur Laufzeit eine Test-Art ein (Schema, Version, Anschlüsse) und prüft ohne weiteren Code Format-Rundweg, Bauplan, Bedienung
@@ -1502,28 +1901,61 @@ seiner Achse steht, nimmt der Ausgleich den Sprung auf.
 ### 4.6 Renderer
 
 ```ts
-// laufzeit/vertrag/zeichenmodell.ts und bilddaten.ts
+// laufzeit/vertrag/zeichenmodell.ts
+export const KANAELE = 24;          // Flächen je Feldsatz: sechs Texturen mit je vier Kanälen (Textur kanal >> 2, Farbkanal kanal & 3)
 export interface ZeichenModell {
+  /** je Teil, das als Feld gezeichnet wird, in der Folge von OrdnungPlan.teile; farbe 0 bis 1; feldsatz: Index in `feldsaetze`;
+   *  kanal: 0 bis KANAELE − 1 darin */
   teile: { teil: number; figur: number; farbe: [number, number, number]; weiss: boolean; linie: boolean; feldsatz: number; kanal: number }[];
-  feldsaetze: { figur: number; teile: number[] }[];      // je bewegter Figur einer, je 24 Flächen ein weiterer
+  /** je bewegter Figur je angefangene KANAELE gezeichnete Teile einer (Regel unten; 30 Flächen: zwei); teile[k]: das Teil in Kanal k;
+   *  einheit: einheitL der Figur, damit der Zeichner Maße aus Figur-Einheiten (Uniforms von Verbindungen, Klemmen, Effekten) in die Welt
+   *  der Strecken umrechnet */
+  feldsaetze: { figur: number; einheit: number; teile: number[] }[];
   verbindungen: { a: number[]; b: number[]; art: 'verschmelzen' | 'fuge'; nachKante: boolean; uniform: number }[];
   effekte: { art: string; wo: number[]; uniformStaerke: number; uniformWeichheit: number; profil: Float32Array | null; daten: ArtDaten }[];
   klemmen: { weiss: number; traeger: number; uniformRand: number; weich: number }[];
   hinter: { weiss: number; schwarz: number; uniformTiefe: number }[];
   uniforms: { name: string; quelle: number | null; fest: number }[];   // quelle: Reglerindex
-  gebacken: { figur: number; groesse: number }[];         // Dinge ohne Formänderung: Feld einmal gebacken
+  gebacken: { ding: number; figur: number; groesse: number }[];   // je gebackenem Ding (ding: Index nach OrdnungPlan); Feld einmal
+                                                                  // gebacken, je Figur nur einmal
 }
+// laufzeit/vertrag/bilddaten.ts: Feldbreiten (Werte mit Literaltyp) und Inhalt je Eintrag; „Welt“ heißt wie BildStand.anker: L, y nach
+// unten, die Lage jeder Figur eingerechnet (4.3)
+export const STRECKE_FELDER = 6;    // 0 ax, 1 ay, 2 bx, 3 by (Welt), 4 Eintrag in `teile` (laufende Nummer im Bild), 5 Reichweite (Welt):
+                                    // je Teil gleich, das größte Maß seiner Verbindungen (Uniform durch die einheit seines Feldsatzes),
+                                    // ohne Verbindung 0; den Rand für Kantenglättung und Effekte legt der Zeichner in Bildpunkten dazu
+export const TEIL_FELDER = 5;       // 0 Teil (nach OrdnungPlan), 1 erste Strecke, 2 Zahl der Strecken, 3 Feldsatz-Instanz (laufende
+                                    // Nummer im Bild), 4 Kanal; die Einträge einer Instanz stehen beieinander, ein unsichtbares Teil
+                                    // (Wechsel) hat keinen Eintrag und keine Strecken
+export const RAHMEN_FELDER = 5;     // je Feldsatz-Instanz: 0 ihr Feldsatz im ZeichenModell, 1 x0, 2 y0, 3 x1, 4 y1 (Welt, alle Strecken
+                                    // ihrer Teile, ohne Reichweite; ohne Strecken x0 = y0 = +∞, x1 = y1 = −∞)
+export const DECKUNG_FELDER = 3;    // je weichem Paar: 0 unteres, 1 oberes Teil (Einträge in `teile`, dieselbe Instanz), 2 Anteil, zu dem
+                                    // das obere über dem unteren liegt; nur Paare in einem Wechsel mit Breite und Anteil echt zwischen 0
+                                    // und 1, jedes Paar höchstens einmal; alle übrigen Paare folgen hart aus `ordnung`
+export const GEBACKEN_FELDER = 3;   // je gebackenem Ding in der Folge von ZeichenModell.gebacken: 0 x, 1 y (Welt), 2 Drehung (Grad)
+export const KREIS_FELDER = 6;      // 0 x, 1 y, 2 Radius, 3 Deckkraft (0 bis 1), 4 Raum (0 Welt, 1 Bild in Bildpunkten, für „Kamera
+                                    // nass“), 5 Effekt (Index in ZeichenModell.effekte, der den Kreis zeichnet; −1: keiner)
+export const KAMERA_FELDER = 6;     // 0 Maßstab (Bildpunkte je L), 1 x, 2 y (Mitte des Bilds in der Welt), 3 Drehung (Grad), 4 Breite,
+                                    // 5 Höhe (Bildpunkte)
 export interface BildDaten {
-  strecken: Float32Array; streckenZahl: number;          // je Strecke ax, ay, bx, by, Teil, Reichweite
-  teile: Uint32Array;                                    // je Teil: erste Strecke, Anzahl, Feldsatz, Kanal
-  rahmen: Float32Array;                                  // je Feldsatz Rahmen in der Welt
-  ordnung: Uint16Array; deckung: Float32Array;           // Malreihenfolge nach Wechseln, weiche Deckung je Paar
-  werte: Float32Array;                                   // Uniforms aus Reglern
-  lagen: Float32Array;                                   // gebackene Dinge: x, y, Drehung
-  kreise: Float32Array; kreisZahl: number;               // analytische Kreise (Spritzer, Staub, Kamera nass; Befund 29)
-  kamera: Float32Array;                                  // Maßstab, Mitte, Drehung, Bildgröße
+  strecken: Float32Array; streckenZahl: number;          // STRECKE_FELDER je Strecke
+  teile: Uint32Array; teilZahl: number;                  // TEIL_FELDER je gezeichnetem Teil
+  rahmen: Float32Array; feldsatzZahl: number;            // RAHMEN_FELDER je Feldsatz-Instanz
+  /** Malreihenfolge nach Wechseln, Einträge von `teile` von unten nach oben: für eine Instanz mit den Einträgen e0 bis e0 + n − 1 ist
+   *  ordnung[e0 … e0 + n − 1] eine Umordnung genau dieser Einträge */
+  ordnung: Uint16Array;
+  deckung: Float32Array; deckungZahl: number;            // DECKUNG_FELDER je weichem Paar
+  werte: Float32Array;                                   // je Feldsatz-Instanz f und Uniform u: werte[f · U + u], U = Zahl der Uniforms
+  lagen: Float32Array;                                   // GEBACKEN_FELDER je gebackenem Ding
+  kreise: Float32Array; kreisZahl: number;               // KREIS_FELDER je Kreis (Spritzer, Staub, Kamera nass; Befund 29)
+  kamera: Float32Array;                                  // KAMERA_FELDER
 }
-// studio-bild/src/zeichner.ts
+/** Platz für die Bilder eines Bauplans: `auswertungen` je Bild (1 + Zwiebelhaut, Posenkarten oder Geister; Standard 1), `kreise` Kreise
+ *  (Standard 0); neu anlegen, wenn sich die Struktur des Bauplans oder die Zoomstufe ändert; zu wenig Platz ist ein RangeError */
+export function bildDatenAnlegen(plan: Bauplan, o?: { auswertungen?: number; kreise?: number }): BildDaten;
+export function bildDatenLeeren(aus: BildDaten): void;   // zu Beginn jedes Bilds: alle Zähler auf 0; lagen und kamera gelten weiter
+
+// studio-bild/src/zeichner.ts (die Typen seit M0; M1.4 ergänzt die Datei um zeichnerAnlegen)
 export interface ZeichenZeiten { aufrufe: number; feldBildpunkte: number; ms: number }
 export interface Zeichner {
   modell(m: ZeichenModell): void;                        // übersetzt Shader neu, nur bei Strukturänderung
@@ -1532,9 +1964,51 @@ export interface Zeichner {
   verloren(): boolean; wiederherstellen(): void;         // Kontextverlust: alles neu aus Modell und Daten
   zeiten(): ZeichenZeiten; freigeben(): void;
 }
-export function zeichnerAnlegen(canvas: HTMLCanvasElement, o: { halbeFelder: boolean; rahmen: boolean }): Zeichner;
-export function shaderUebersetzen(m: ZeichenModell): { strecken: string; felder: string; bild: string };
+/** Quellen der drei Shader: Strecken (Abstandsfelder je Teil), Felder (Vereinigungen, Fugen), Bild (Farbe in Malreihenfolge) */
+export interface ShaderQuellen { strecken: string; felder: string; bild: string }
+export type ZeichnerAnlegen = (canvas: HTMLCanvasElement, o: { halbeFelder: boolean; rahmen: boolean }) => Zeichner;
+export type ShaderUebersetzen = (m: ZeichenModell) => ShaderQuellen;   // gleiches Modell, gleiche Quellen; alle Shader beim Laden
+export function zeichnerAnlegen(canvas: HTMLCanvasElement, o: { halbeFelder: boolean; rahmen: boolean }): Zeichner;   // M1.4, Typ ZeichnerAnlegen
+export function shaderUebersetzen(m: ZeichenModell): ShaderQuellen;    // M1.4 in uebersetzen.ts, Typ ShaderUebersetzen
+
+// studio-bild/src/effekte/register.ts: die Typen und Hilfen sind Vertrag (M0), die Liste gehört dem Zusammenbau (2.2)
+export type ShaderStufe = keyof ShaderQuellen;                         // 'strecken' | 'felder' | 'bild'
+export type ModellEffekt = ZeichenModell['effekte'][number];
+export interface ShaderBeitrag {
+  readonly oben?: string;                                // oberste Ebene: Konstanten, Funktionen, eigene Uniforms; gleicher Text mehrerer
+                                                         // Effekte steht nur einmal im Shader
+  readonly stellen?: Readonly<Record<string, string>>;   // im Rumpf, je Einhängestelle (Namen aus der Übersetzung, M1.4); mehrere
+                                                         // Effekte in der Folge von ZeichenModell.effekte
+}
+export interface EffektZeichnung {
+  readonly art: string;                                  // Name der Art wie im Register der Arten (Schlüssel 'effekt:<art>', 3.4)
+  /** je Shader höchstens ein Beitrag; nur Text, ohne Zustand, deterministisch (gleicher Effekt und gleiche Nummer, derselbe Text); `nr`:
+   *  seine Stelle in ZeichenModell.effekte, macht eigene Namen eindeutig; Werte je Bild liest der Text über die Uniforms des Modells
+   *  (`e.uniformStaerke`, `e.uniformWeichheit`) */
+  shader(e: ModellEffekt, nr: number): Readonly<Partial<Record<ShaderStufe, ShaderBeitrag>>>;
+}
+export const EFFEKT_ZEICHNUNGEN: readonly EffektZeichnung[];           // Registerliste, in M0 leer
+export function effektZeichnungEintragen(z: EffektZeichnung): void;   // auch zur Laufzeit (Erweiterungstest); dieselbe Art zweimal ist
+                                                                       // ein Fehler, außer derselbe Eintrag
+export function effektZeichnungVon(art: string): EffektZeichnung | undefined;
 ```
+
+**Feldsätze, eine Regel an einer Stelle:** `bauplan/zeichen.ts` (M1.3) teilt auf und prüft es dort (auch „30 Flächen ergeben zwei
+Feldsätze“). Jede Figur, deren Form sich bewegt, bekommt einen Feldsatz; hat sie mehr als `KANAELE` gezeichnete Teile (Flächen und
+Linien), je angefangene `KANAELE` einen weiteren. Ihre Teile kommen in der Folge von `OrdnungPlan.teile` auf die Plätze 0, 1, … ihres
+Feldsatzes; der Kanal ist dieser Platz. Figuren ohne Formänderung werden gebacken (`gebacken`) und haben keinen Feldsatz.
+`studio-bild` (`feldsaetze.ts`, M1.4) nimmt die Aufteilung, wie sie im Modell steht, teilt nie selbst auf und legt je Feldsatz-Instanz
+eines Bilds die Texturen an.
+
+**Ein Bild wächst** (16 j): Wer zeichnet, leert die Daten zu Beginn jedes Bilds (`bildDatenLeeren`). Jeder Aufruf von `Laufzeit.bild` und
+`Laufzeit.auswerten` hängt eine Auswertung an: je Feldsatz des Zeichenmodells eine Feldsatz-Instanz (laufende Nummer in diesem Bild) samt
+ihren Teilen und Strecken. So zeichnet der Zeichner Zwiebelhaut, Posenkarten und Geister wie die Figur selbst. Den Platz legt die App
+(Bühne, Spiel, Messseite) mit `bildDatenAnlegen` einmal je Bauplan an; im Bildtakt entsteht kein Speicher. **Wer füllt was:** `strecken`,
+`teile` und `rahmen` Schritt 16 (`form/abflachen.ts`, M1.3); `ordnung` und `deckung` die Malreihenfolge (`form/wechsel.ts`, M1.3) für
+die Teile, die Schritt 16 eben angehängt hat; `werte` die Fassade je angehängter Instanz aus `ZeichenModell.uniforms` und den gezeigten
+Reglerwerten; `lagen` die Fassade aus den Körperlagen der gebackenen Dinge (ab M6); `kreise` die Laufzeit aus den Teilchen (ab M6), die
+Messseite (M2.4) für ihre Ersatzszenen selbst; `kamera` wer zeichnet (im Editor die Bühne aus Zoom und Verschiebung, im Spiel die App aus
+der Kamera der Szene). `studio-bild` liest BildDaten nur.
 
 `bauplan/zeichen.ts` legt `ZeichenModell.effekte[].wo` nach `aufGezeichnet` der Art fest (30 d): An Teilen mit `wieGezeichnet` stehen
 nur Arten mit „zeichnung“, Arten mit „bewegung“ (ihre Stärke ist in Ruhe null) und Datensätze mit „nurFlorian“ und Herkunft `dein`.
@@ -1578,7 +2052,7 @@ export type Zug =
 export function zielBestimmen(plan: Bauplan, stelle: Stelle, teil: Id<'teil'>, geltung: Geltung): Ziel;
 export function vorschau(plan: Bauplan, stelle: Stelle, teil: Id<'teil'>): { ziel: Ziel; ruhenWuerden: Id<'sl'>[]; status: string };
 export function rueckrechnen(plan: Bauplan, stand: BildStand, zug: Zug, ziel: Ziel): (e: Entwurf) => void;
-export function fangen(plan: Bauplan, regler: Id<'rg'>, wert: number): number;   // aufs Raster der Leiste
+export function fangen(plan: Bauplan, regler: Id<'rg'>, wert: number): number;   // aufs Raster der Leiste (ReglerPlan.raster)
 // editor/ankerSetzen.ts, ankerLoeschen.ts
 export function ankerSetzen(dok: Dokument, teil: Id<'teil'>, stueck: number, t: number): { tun: (e: Entwurf) => void; abweichung: { schluessel: Id<'sl'>; bildpunkte: number }[] };
 export function ankerLoeschen(dok: Dokument, teil: Id<'teil'>, anker: number): { tun: (e: Entwurf) => void; abweichung: { schluessel: Id<'sl'>; bildpunkte: number }[] };
@@ -1913,6 +2387,17 @@ als Typen, samt den Vertragsänderungen des Entscheidungsblatts (dort Abschnitt 
   **(b)** nichts für Florian.
 - **Abbruch:** nach dem Anderthalbfachen der Schätzung (rund acht Arbeitstage) nicht grün → anhalten und berichten (kein Rückfall im
   Plan).
+- **Stand 20.11.:** M0 ist gebaut, geprüft und nachgearbeitet. Was die Bau-Agenten dabei ergänzt und ausgelegt haben und was die
+  Integration danach entschieden hat, steht jetzt in 2.1 bis 4.6, 6.3 und 7 (Liste im Nachtrag am Ende). Über die Liste oben hinaus legte
+  M0 an: `apps/studio/e2e/seiten.spec.ts`, `apps/ozzy-spiel/playwright.config.ts` und `e2e/seite.spec.ts`,
+  `apps/studio/scripts/proben/m0-vertrag.mjs` (Probe a), `scripts/studio-typen.mjs`, je Paket ohne Node `tsconfig.quellen.json`,
+  `studio-laufzeit/src/vertrag/{bilddaten,feldbreiten,welt}.test.ts`, `studio-bild/src/zeichner.ts` (Typen) und
+  `effekte/register.test.ts`. `testfigur.json` hat über die Beschreibung oben hinaus eine Verbindung `fuge` zwischen den beiden Flächen
+  (M1.4 prüft die Fuge daran) und acht Regler (der Kreisregler, der mitgespiegelte Linienregler, die Lage der Figur x, y, Drehung, Nicken
+  und Kopfversatz x, y mit Einheit `'figur'`); ihr Vorlage-Schlüssel trägt kein Feld `vorlage`, damit die Datei ohne Projekt lädt; der
+  Kopf nennt keine Art. `pruefdaten.test.ts` hält diesen Steckbrief fest. `webdriverio` 10.2.0 lädt unter Node 25.8.1 und läuft bis
+  zur Verbindung mit dem Treiber; eine Sitzung im echten Safari braucht `safaridriver --enable` (Florian, B6), bis dahin misst Studio
+  in WebKit von Playwright; ein Eintrag in Teil C ist nicht nötig. Weitere Lizenz-Ausnahmen stehen in 7.1.
 
 ### 5.4 M1 Kern, Kopf, Vergleichsbild
 
@@ -1920,8 +2405,10 @@ als Typen, samt den Vertragsänderungen des Entscheidungsblatts (dort Abschnitt 
 deterministisch und bytegleich gespeichert; Store-Kern und Ablage stehen; das Vergleichsbild „Rahmen + Rest“ liegt vor (S3 vor S4).
 **Braucht:** M0. Welle A und Welle B laufen je in einem Workflow mit der gleichnamigen Welle von M2 (F2; Welle A: neun Agenten).
 
-- **M1.0 Vertrag:** entfällt, M0 hat alle Verträge dieser Etappe festgelegt. Wünscht ein Paket eine Änderung, macht die Integration sie
-  nach der Welle als kleinen Schritt mit neuer Vertragsversion.
+- **M1.0 Vertrag:** entfällt, M0 hat alle Verträge dieser Etappe festgelegt, und der Plantext gibt sie seit dem 20.11. wieder (Nachtrag
+  am Ende). Wünscht ein Paket eine Änderung, macht die Integration sie nach der Welle als kleinen Schritt mit neuer Vertragsversion. Was
+  M0 schon angelegt hat, ergänzt ein Paket, statt es neu anzulegen (2.2); jedes Paket importiert die Verträge aus ihren Dateien und legt
+  keinen Typ daraus ein zweites Mal an.
 - **Welle A** (je braucht M0):
   - **M1.1 Rechnen.** Legt an `studio-rechnen/src/fdlibm/*.ts` (Port der fdlibm: `e_rem_pio2`, `k_sin`, `k_cos`, `s_atan`, `e_atan2`,
     `e_asin`, `e_acos`, `e_exp`, `e_log`, `e_pow`, `e_hypot`; Hinweis der fdlibm im Kopf), `src/selbsttest.ts` (`rechnenSelbsttest(n)`:
@@ -1931,17 +2418,34 @@ deterministisch und bytegleich gespeichert; Store-Kern und Ablage stehen; das Ve
     Tests: je Funktion 10 000 Eingaben, höchstens 1 ulp neben `Math` (im Test erlaubt), Sonderwerte (±0, ±∞, NaN, Vielfache von π/2).
   - **M1.2 Format.** Legt an `pruefen.ts`, `schreiben.ts` (lässt Schlüssel aus fremden Quellen weg), `laden.ts` (`formatErkennen`),
     `dateien.ts`, `quellen.ts`, `migrationen/{register,kern-0-1}.ts`, `svg/{lesen,paaren,importieren}.ts`; keine Spielfassung (Befund 2).
+    Ergänzt `src/pruefdaten.test.ts` (aus M0) um den Rundweg `schreiben(laden(t)) === t`; seine übrigen Prüfungen bleiben grün.
+    Nimmt aus M0, statt es neu anzulegen: `Migration` und `ArtBlock` aus `versionen.ts` (`migrationen/register.ts` reicht sie mit
+    `export type { Migration, ArtBlock } from '../versionen'` nur weiter und hält `MIGRATIONEN`), `Fehler`, `LadeErgebnis` und
+    `ImportErgebnis` aus `typen/dokument.ts`, die Schemas der Dokument-Ebene und die feste Reihenfolge aus `schema/reihenfolge.ts`
+    (der Schreiber stellt mit `dateiOrdnen` um und setzt nur Einzug und Zahlen mit `zahlText`), Ankerzeilen aus `anker.ts`, die Arten
+    aus `arten/register.ts`, `versionenAbgleichen` und `nurLesenNach` aus `versionen.ts`. Arten heißen `<familie>:<art>` (3.4); der
+    Schreiber nennt in `versionen.arten` nur die Arten, die die Datei nutzt; `Aufhaengung.griffe` schreibt er mit der Marke `'erben'`,
+    nie `null` (3.5 Nr. 4).
     Schreibt `testfigur.json` mit seinem Schreiber neu (gleiche Daten; die Datei gehört ab hier M1.2). Tests: Rundweg byteweise
     (Testfigur und zufällige Figuren mit fast-check; Zahlen ungerundet, 3.5 Nr. 3), der Rundweg macht keinen Griff unter 1e-6 Länge zu
     einem darüber und umgekehrt, neuere Version nur lesen, Migration `kern 0 → 1` an der Prüfdatei (Kurvenpunkte unter 1e-9, jeder Anker
-    eine Ecke mit genau seinen Winkeln), Prüfung je Migration (Kurvenpunkte der Datensätze „dein“ höchstens 1e-6 auseinander, sonst nur
+    eine Ecke mit genau seinen Winkeln, Griffe der Länge 0 mit der Gegenrichtung nach 3.4), eine unbekannte Art (Schlüssel
+    `<familie>:<art>`) öffnet nur zum Lesen, Prüfung je Migration (Kurvenpunkte der Datensätze „dein“ höchstens 1e-6 auseinander, sonst nur
     lesen), Erkennung „kern 0“ trotz `"version": 1`, `quellenEinsetzen` an der Prüfdatei (eingesetzt mit Herkunft „dein“, beim
     Schreiben weggelassen, Rundweg bytegleich), alle neun SVGs aus `docs/look/ozzy-figur/vorlagen/` mit denselben Ankern wie `svg.ts`,
     Querregeln aus 3.6 (samt Nr. 11), eine Datei mit Effekten der Arten aus `arten/effekte.ts` lädt nicht nur zum Lesen.
   - **M1.3 Form-Laufzeit.** Legt an `bauplan/{form,abflachen,zeichen}.ts`,
     `form/{anker,koordinaten,rahmenRest,linear,ruhen,listen,ansicht,spiegel,spitzen,wechsel,abflachen}.ts`, `regler/hand.ts`. Aus der Werkbank
-    vorgezogen (Befund 19): `rahmenRest`, `linear`, die Weiche nach Mischart und die periodische Fortsetzung mit mindestens zwei
-    Schlüsseln je Seite. Tests:
+    vorgezogen (Befund 19): `rahmenRest`, `linear`, die Weiche nach Mischart und die periodische Mischung: Kreisregler rechnen mit
+    `pchipSteigungen(…, periode)` und `pchipWert(…, periode)` (4.1), ohne angehängte Schlüssel. Den Ankerpuffer nimmt jeder Teilplan aus
+    `ankerBereiche` (`bauplan/ordnung.ts`, 4.3): `TeilPlan.erster`, `anzahl`, `geschlossen` und `AbflachPlan.teile` (samt `feldsatz` und
+    `kanal` aus dem Zeichenmodell). `bauplan/zeichen.ts` teilt die Feldsätze nach der Regel in 4.6 auf (`KANAELE` = 24 je Feldsatz,
+    `feldsaetze[].einheit`, `gebacken[].ding`). Schritt 16 schreibt nach 4.6 in BildDaten: `form/abflachen.ts` hängt je Auswertung
+    Strecken, Teile und Rahmen an (die Zähler `streckenZahl`, `teilZahl`, `feldsatzZahl` wachsen), `form/wechsel.ts` (`malreihenfolge`,
+    4.4) schreibt `ordnung` und `deckung` dieser Teile. `regler/hand.ts` nach der Signatur in 4.4 (`handSetzen` klemmt Linienregler und
+    faltet Kreisregler in [bereich[0], bereich[1]), keine endliche Zahl ist ein RangeError; `handLoesen` setzt NaN). Die
+    mitgespiegelten Regler stehen im ReglerPlan (`mitSpiegel`, `mitUm`), nicht im SpiegelPlan; Teilpläne beziehen ihre Indizes auf
+    `OrdnungPlan.index`. Tests:
     `koordinaten` gleicht einer Kopie von `formAusSchluesseln` im Test auf 1e-9 (fast-check) und ist an Schlüsseln exakt; `rahmenRest`
     exakt an Schlüsseln (1e-9), glatt bleibt glatt, eine um 120° gedrehte Form behält in der Mitte mindestens 99 % ihrer Fläche, stetige
     Steigung an der Naht 0°/360°, jede gemischte Größe monoton zwischen ihren Nachbarn; `spitzen` gegen eine Kopie von `spitzenFuehren`
@@ -1950,17 +2454,32 @@ deterministisch und bytegleich gespeichert; Store-Kern und Ablage stehen; das Ve
     nicht, ein Faltschlüssel neben „dein“ ruht nicht, ein Vorlage-Schlüssel an der Stelle eines „dein“ ruht, ein gebauter an einer festen
     Stelle ruht nicht, ruhende zählen für die Spitzenregel nicht); ein Listeneintrag auf einen fehlenden Schlüssel einer fremden
     Quelle wird ausgelassen und gemeldet, das Projekt bleibt bearbeitbar (4.4); je Teilplan inkrementell =
-    voll; Stückzahl nach 16 k (Zoomstufen, höchstens 64, nie je Bild); kein Speicherzuwachs der eigenen Funktionen über 10 000 Bilder.
-  - **M1.4 Bild Grundstufe.** Legt an `zeichner.ts`, `kontext.ts`, `uebersetzen.ts`, `felder.ts`, `rahmen.ts`, `feldsaetze.ts`,
+    voll; Stückzahl nach 16 k (Zoomstufen, höchstens 64, nie je Bild); 30 Flächen einer Figur ergeben zwei Feldsätze (24 und 6, Kanäle
+    nach der Folge der Teile); zwei Auswertungen hängen zwei Sätze von Feldsatz-Instanzen an, die Malreihenfolge ordnet nur die
+    Einträge ihrer Instanz; `handSetzen` klemmt und faltet; kein Speicherzuwachs der eigenen Funktionen über 10 000 Bilder.
+  - **M1.4 Bild Grundstufe.** Ergänzt `zeichner.ts` (die Typen aus M0 bleiben, wie sie sind; dazu `zeichnerAnlegen` vom Typ
+    `ZeichnerAnlegen`); legt an `kontext.ts`, `uebersetzen.ts` (`shaderUebersetzen` vom Typ `ShaderUebersetzen`; legt die
+    Einhängestellen der drei Shader und ihre Namen fest), `felder.ts`, `rahmen.ts`, `feldsaetze.ts` (je Feldsatz-Instanz eines Bilds die
+    Texturen; die Aufteilung nimmt es aus `ZeichenModell.feldsaetze`, wie `bauplan/zeichen.ts` sie rechnet, und teilt nie selbst auf),
     `gebacken.ts`, `kreise.ts`, `shader/{strecken,felder,bild}.ts`, `effekte/{verschmelzen,dicke,kanten,verdecken,weissNachgeben}.ts`
-    (eingetragen von der Integration; ihre Schemas gibt es seit M0). Aus `renderer.ts`: Vorzeichen per Schablone, Außenkanten auf der
-    Grafikkarte, weiche Vereinigung (auch nach Kantenrichtung), Weiß in Malreihenfolge, Klemme, „hinter“, Verdecken, Dickenregel
-    (Durchbruch), Weiß nachgeben (4.6), weiche Deckung, Fuge (geprüft an `testfigur.json`; Ozzys Ohrspalt ist ein eigenes weißes Teil,
-    6.2 Nr. 7), Reichweite je Teil. Neu: Rahmen je Figur, Feldsätze je 24 Flächen, Uniforms aus Reglern, gebackene Felder für Dinge ohne
-    Formänderung und analytische Kreise (aus M6.1 vorgezogen, weil die Ersatzszenen von M2 sie messen), Neuaufbau nach Kontextverlust,
-    alle Shader beim Laden. Tests: Shaderquellen je Modell deterministisch; 30 Flächen ergeben zwei Feldsätze; Uniform-Tabelle
-    vollständig (Node); ein gebackenes Ding zeichnet bildgleich zum ungebackenen (Playwright auf der eigenen Prüfseite, 5.1 Nr. 2).
-  - **M1.5 Store-Kern.** Legt an `studio-store/src/{store,diff,verlauf,schutz,zusammenfuehren}.ts` (aus der Werkbank vorgezogen, F5). Tests:
+    (je eine `EffektZeichnung` nach 4.6; eingetragen von der Integration in `EFFEKT_ZEICHNUNGEN`; ihre Schemas gibt es seit M0). Es liest
+    BildDaten nur und führt deren Feldbreiten und `KANAELE` als `typeof`-Kopie (4.5). Aus `renderer.ts`: Vorzeichen per Schablone,
+    Außenkanten auf der Grafikkarte, weiche Vereinigung (auch nach Kantenrichtung), Weiß in Malreihenfolge, Klemme, „hinter“, Verdecken,
+    Dickenregel (Durchbruch), Weiß nachgeben (4.6), weiche Deckung, Fuge (geprüft an `testfigur.json`; Ozzys Ohrspalt ist ein eigenes
+    weißes Teil, 6.2 Nr. 7), Reichweite je Teil (Feld 5 der Strecke, Maße über `feldsaetze[].einheit` in die Welt). Neu: Rahmen je
+    Figur, Feldsätze nach dem Zeichenmodell (je angefangene 24 gezeichnete Teile einer, 4.6), Uniforms aus Reglern, gebackene Felder für
+    Dinge ohne Formänderung und analytische Kreise (aus M6.1 vorgezogen, weil die Ersatzszenen von M2 sie messen), Neuaufbau nach
+    Kontextverlust, alle Shader beim Laden. Tests: Shaderquellen je Modell deterministisch, Beiträge der Effektarten an ihren
+    Einhängestellen; Uniform-Tabelle vollständig (Node); mehrere Feldsatz-Instanzen in einem Bild (Zwiebelhaut) zeichnen jede mit
+    eigenen Texturen; ein gebackenes Ding zeichnet bildgleich zum ungebackenen (Playwright auf der eigenen Prüfseite, 5.1 Nr. 2). Der
+    Test „30 Flächen ergeben zwei Feldsätze“ gehört M1.3.
+  - **M1.5 Store-Kern.** Legt an `studio-store/src/{store,diff,verlauf,schutz,zusammenfuehren}.ts` (aus der Werkbank vorgezogen, F5)
+    und erfüllt damit `studio-store/src/typen.ts` aus M0 (4.1): `class Store implements StoreVertrag` mit dem Konstruktor nach
+    `StoreKonstruktor` (store.ts), `diffVon` vom Typ `DiffVon` (diff.ts), `schutzVerletzt` vom Typ `SchutzVerletzt` (schutz.ts); die
+    Typen dort ändert es nicht, `Fehler` kommt aus `@ee/studio-format/typen/dokument`. Neue Kennungen: je Kennung
+    `new Uint32Array(KENNUNG_ZAHLEN)` aus dem übergebenen Zufall an `kennungAusZahlen`, Kollisionen prüft der Store. Den Strom mit Saat
+    nehmen die Tests aus `@ee/studio-rechnen/zufall` (devDependency), `testfigur.json` eignet sich als Anfangsdokument (ein Schlüssel
+    „dein“, Datensätze „vorlage“ und „gebaut“, Teile mit `wieGezeichnet`). Tests:
     100 Züge, ein ⌘Z; Geste = ein Schritt; Tastenschub 500 ms; Auswahl reist mit; tun und zurück ergibt dieselben Datensätze
     (fast-check); Zufall und Prüfung übergeben (Strom mit Saat, Prüfung als Attrappe); Schutzregel für alle Quellen samt
     `wieGezeichnet`, „nurFlorian“ und Bindungen einer Quelle, für jeden Datensatztyp (kein Typ ohne `herkunft`, auf Typebene geprüft);
@@ -1977,23 +2496,43 @@ deterministisch und bytegleich gespeichert; Store-Kern und Ablage stehen; das Ve
     Änderungen und Änderungen an fremden Quellen, Live-Weitergabe an den Spiel-Port des Paars, ein Server ohne `STUDIO_FLORIAN=1` reicht
     nie an 5261 weiter, Merker nur als neue Datei nach `laeufe/`, ohne `STUDIO_INHALT` eine frische Kopie statt `content/studio`, relative
     Pfade vom Wurzelordner des Arbeitsbaums, `sitzung/offen`.
-  - **M1.7 Knochen starr, Drähte, Regler ohne Zeit.** Legt an `knochen/{baum,starr,aufhaengen}.ts` (`aufhaengen` vorerst nur für
-    `starr`), `bauplan/knochen.ts`, `logik/draehte.ts`, `bauplan/logik.ts` (vorerst nur Drähte), `regler/durchlauf.ts` (Schritt 6: Soll
+  - **M1.7 Knochen starr, Drähte, Regler ohne Zeit.** Legt an `knochen/{baum,starr,aufhaengen}.ts` (`knochenStellen` und
+    `aufhaengen`, vorerst für `starr` und für Teile ohne Aufhängung), `bauplan/knochen.ts`, `logik/draehte.ts`, `bauplan/logik.ts`
+    (vorerst nur Drähte; die übrigen Felder wie in `leererBauplan`, `bausteinStand` = [0]), `regler/durchlauf.ts` (Schritt 6: Soll
     aus Hand und Draht, Ist = Soll ohne Zeit) und `regler/mischen.ts` (Schritt 10, ohne Ausgleich; beide ergänzt M4.1), die `hand()` und
     `bild` in M1 brauchen (Befund 1), `editor/handgriffe/logik.ts` Teil 1
-    (`drahtLegen`, `kennlinieFormen`, `drahtAendern`, `drahtLoesen`, `bausteinAnhaengen`, `bausteinAendern`; Befund 1). Tests: starre
-    Knochen mit Verschiebung erhalten Formen exakt, Eltern vor Kindern; Drähte in der Folge ihres Graphen, Kennlinie mit PCHIP nach der
+    (`drahtLegen`, `kennlinieFormen`, `drahtAendern`, `drahtLoesen`, `bausteinAnhaengen`, `bausteinAendern`; Befund 1). Nach dem Vertrag
+    aus M0 (4.3, 4.4): `bauplan/knochen.ts` füllt `KnochenPlan.teile` für jedes Teil mit `figur`, `erster` und `anzahl` aus
+    `ankerBereiche` (ein Teil ohne Aufhängung als 'starr' mit knochen = [−1]), dazu `figurLage` (Regler der Lage jeder Figur) und
+    `figurEinheit`; `knochenStellen` stellt die Lage jeder Figur vor ihre Wurzelknochen und schreibt sie hinter die Knochen in
+    `matrizen` (6 · (anzahl + Figuren)); `aufhaengen` bildet damit auch die Teile ohne Aufhängung ab. `regler/durchlauf.ts` liest
+    `lauf.regler.hand` nur (NaN: keine Hand; geklemmt hat schon `handSetzen` aus M1.3) und rechnet in `ReglerPlan.folge` (sie enthält
+    Drähte und Spiegelkanten); mitgespiegelte Regler über `inSpiegelHaelfte` und `mitSpiegel`/`mitUm` aus `bauplan/regler.ts`; Vorsicht
+    bei +∞ in `federF` und `hoechsttempo` (∞ · 0 ist NaN; ohne Zeit gilt Ist = Soll). Tests: starre
+    Knochen mit Verschiebung erhalten Formen exakt, Eltern vor Kindern; ein Teil ohne Aufhängung folgt x, y und Drehung seiner Figur
+    exakt (p_Welt = (x, y) + D · p / einheitL); Drähte in der Folge ihres Graphen, Kennlinie mit PCHIP nach der
     Regel aus 4.1, außerhalb festgehalten, Spiegel für Kreis- und Linienregler (in [ab, um) die Eingabe um − w, Ausgabe negiert);
     Drähte ohne Zeit (dt = 0, Glätten aus); der Durchlauf ohne Zeit setzt Ist gleich Soll, das Mischen gibt die Werte des letzten
     Durchlaufs; die Handgriffe legen gültige Datensätze an.
-- **Verdrahtung nach Welle A** (Integration): `studio-rechnen/src/{winkel,exp}.ts` auf den Port aus M1.1 umstellen und die Ausnahme in
-  `eslint.config.js` entfernen; `bauplan/bauen.ts` (Form, Knochen, Logik, Abflachung, Zeichen), `fassade.ts` (`bauen`, `hand` mit dem
-  Durchlauf ohne Zeit aus M1.7, `bild` mit `regler/mischen.ts`), die Registerliste der Effekte, `server/plugins.ts` (`studioPlugins`
-  mit den Haken `quellenEinsetzen` und `schutzVerletzt`).
+- **Verdrahtung nach Welle A** (Integration): `studio-rechnen/src/{winkel,exp}.ts` auf den Port aus M1.1 umstellen (Namen und
+  Signaturen bleiben, ebenso `gradZuRad` und `radZuGrad`, die kein Math rufen, und das Weiterreichen von `hypot` aus `exp.ts`) und in
+  `eslint.config.js` genau die zwei Einträge `winkel.ts` und `exp.ts` unter `ignores` streichen (Tests bleiben ausgenommen);
+  `bauplan/bauen.ts` (Form, Knochen, Logik, Abflachung, Zeichen; die Hinweise weiterer Teilpläne an `hinweise`), `fassade.ts` (`bauen`,
+  `hand` mit `handSetzen` und dem Durchlauf ohne Zeit aus M1.7, `bild` mit `regler/mischen.ts`, `werte` in BildDaten), die
+  Registerliste der Effekte (`EFFEKT_ZEICHNUNGEN`), `server/plugins.ts` (`studioPlugins` mit den Haken `quellenEinsetzen` und
+  `schutzVerletzt`).
 - **Welle B** (braucht Welle A und ihre Verdrahtung):
-  - **M1.8 Übernahme des Kopfs.** Legt an `tools/studio-uebernahme/src/{uebernahme,kennungen,kopf,renderregeln,prototyp-werte}.ts`,
+  - **M1.8 Übernahme des Kopfs.** Legt an `tools/studio-uebernahme/src/{kennungen,kopf,renderregeln,prototyp-werte}.ts`,
     `paritaet.test.ts`, `prototyp-werte.test.ts`; Aufrufe `uebernehmen` (alles) und `uebernehmen -- --kopf` (Neustart, wenn er im
-    Prototyp speichert: prüft Werte und Parität und schreibt nur, wenn beides hält). Schreibt beim Lauf der Integration über Ablage und
+    Prototyp speichert: prüft Werte und Parität und schreibt nur, wenn beides hält). `uebernahme.ts` gibt es seit M0 als
+    Zusammenbau-Datei (2.2): Sie versteht beide Aufrufe und führt die Schritte ihrer leeren Liste `SCHRITTE` aus (je Schritt
+    `{ name: string; kopf: boolean; laufen(): Promise<void> }`). M1.8 exportiert seine Schritte in dieser Form aus `kopf.ts` und ändert
+    `uebernahme.ts` nicht; die Integration trägt sie ein (M1.Z). Die tsconfig des Werkzeugs
+    hat DOM in `lib`, damit es den `FigurRaster` aus `apps/editor/src/ozzy-figur/raster.ts` importieren kann (2.1). Effekte tragen in
+    `Effekt.art` den Namen (`dicke`), in `versionen.arten` steht die Art mit Familie (`effekt:dicke`, 3.4); Knochen- und
+    Biegeachsen-Längen in Reglern haben die Einheit `'figur'` (3.2). `ozzy-rollen.json` enthält über Rolle und Seite hinaus `partner`
+    (in beide Richtungen), `gebaut: true` für die vier Sohlen und `ansichten` als vollständige Kopie von `ANSICHTEN` (datei, koerper,
+    kopf, haltung, teile). Schreibt beim Lauf der Integration über Ablage und
     Store (Quelle `automatik`) `content/studio/ozzy/{projekt.json,figuren/ozzy.json,vorlagen/*.svg}` (6.2, Schritte 1 bis 7, nur für
     die Kopfteile, samt Hals- und Kopfknochen mit ihren Winkel-Reglern, vier Drähten und `Projekt.quellen`; seine Schlüssel, am 20.11.
     16, schreibt sie nicht). Tests: Parität (Probe 1) an den geschriebenen Dateien, neu geladen, nicht aus dem Speicher; Rundweg; ein
@@ -2006,8 +2545,11 @@ deterministisch und bytegleich gespeichert; Store-Kern und Ablage stehen; das Ve
     `e2e/{rechnen,kopfdrehung}.spec.ts`, `scripts/proben/{m1-kopfdrehung,m1-rahmen-rest,m1-front-periodisch}.mjs`; alles an
     `testfigur.json` getestet (Ozzys Daten entstehen erst im Abschluss); die Proben wählen Teile nur über Rollen (`Teil.rolle`, 2.3 Nr. 3)
     und leiten auf 5294 `**/__ozzy-figur/schluessel` um (6.3). Beide Mischarten sind Studio-Code und werden mit `studio-bild`
-    gezeichnet; kopierter Prototyp-Code ist nicht nötig. **Braucht** M1.3, M1.4.
-- **M1.Z:** `fassade.ts` bekommt `auswerten` (16 j); `main.ts` (Betrachter mit Ozzys Kopf, Leiste θ zum Fahren), `pruefhaken.ts`;
+    gezeichnet; kopierter Prototyp-Code ist nicht nötig. `e2e/seiten.spec.ts` (M0) bleibt; Seiten und Proben warten auf
+    `data-schrift="geladen"` (7.3); `pruefseite.ts` gibt es seit M0 leer als Einstieg von `pruefen.html` und wird hier gefüllt; die
+    eigenen Specs laufen mit eigenem `STUDIO_INHALT` (7.4). **Braucht** M1.3, M1.4.
+- **M1.Z:** `fassade.ts` bekommt `auswerten` (16 j); `uebernahme.ts` (die Schritte aus M1.8 in `SCHRITTE`); `main.ts` (Betrachter mit
+  Ozzys Kopf, Leiste θ zum Fahren), `pruefhaken.ts`;
   Übernahme laufen lassen (Commits nach 5.1); Speichertest der ganzen Kette über 10 000 Bilder (Node mit `--expose-gc`); Proben auf Ozzy;
   Stand.
 - **Probe (a) automatisch:** (1) Parität: 0° bis 360° in 0,5°, jedes Kopfteil gegen `FigurRaster.teile({ psi: 90, theta, nurKopf: true })`
@@ -2034,12 +2576,33 @@ deterministisch und bytegleich gespeichert; Store-Kern und Ablage stehen; das Ve
 
 - **Welle A** (je braucht M0; ein Workflow mit M1 Welle A):
   - **M2.1 Welt.** Legt an `studio-welt/src/{laden,adapter,koerper,huellen,gelenke,finger,federbein,kraftpaar,abfragen,lesen,ereignisse,
-    snapshot}.ts`, `vertrag.test.ts`. Zuerst klären, ob `box2d3-wasm/compat` mit Vite 8 und in Node lädt (09 §10). Tests: dieselbe Reihe
-    gegen Adapter und Attrappe (Körper fällt, Scharnier hält, Motor mit Tempo 0 bremst, Strahl trifft, Zone meldet, `merken` und
-    `zuruecksetzen` ergeben nach 600 Takten dieselbe Prüfsumme).
-  - **M2.2 Figurphysik-Grundlage.** Legt an `studio-laufzeit/src/physik/{xpbd,feder,schwingen,kette}.ts`. Tests: Ruhe = Zeichnung
+    snapshot}.ts`, `vertrag.test.ts`. Zuerst klären, ob `box2d3-wasm/compat` mit Vite 8 und in Node lädt (09 §10). Der Adapter erfüllt
+    `WeltAdapter` samt allem, was M0 ergänzt hat (4.5): die Pflichtmethode `fuehren` (b2Body_SetTargetTransform); `zielSetzen` mit
+    optional neuer Höchstkraft und Feder (setzt Höchstkraft, Höchstmoment hoechstkraft · ρ und die Frequenz des Motor-Gelenks neu);
+    `federbein` mit `anteil`, nur für den nächsten Schritt (je Teilschritt ein Strahl und die Kraft
+    F = anteil · ((2πf)² · (Ruhelänge − d) − 2ζ · 2πf · u) längs der Normale, gegengleich auf den getroffenen Körper; Box2D rechnet
+    massennormiert, die Steifigkeit wird umgerechnet); `WeltPuffer.beine` und `beinZahl` (`BEIN_FELDER` je Bein); Ketten einseitig
+    (Vorderseite nach 4.5, auch für Strahl, Federbein und `schnell`); Vielecke höchstens `VIELECK_PUNKTE` = 8 Punkte vor der Hülle,
+    Ketten mindestens 2, Schleifen 3, sonst RangeError in `huelle` und `zone`; `tempi` als Tempo des Ursprungs
+    (b2Body_GetWorldPointVelocity am Ursprung), `lagen.w` in (−180, 180]; Kontakte je Hüllenpaar aus den Begin-, End- und
+    Hit-Ereignissen, Zonen aus den Sensor-Ereignissen (Art 1, 0, −1). Der Finger prüft „eine geschlossene Kette enthält ihr Inneres“
+    selbst (Punkt im Vieleck), weil b2Shape_TestPoint Ketten nicht sieht. Die Laufzeit nimmt `studio-welt` in `src/` nur mit
+    `import type`; die Feldbreiten führt es als geprüfte Kopie (`import type { KONTAKT_FELDER } …;
+    const KONTAKT: typeof KONTAKT_FELDER = 11;`, 4.5). `vertrag.test.ts` importiert die `WeltAttrappe` als Wert (in Tests erlaubt,
+    2.3 Nr. 6); Toleranzen und Fälle kann die Reihe aus `weltAttrappe.test.ts` übernehmen; nahe den Ecken einer Kette prüft sie nichts.
+    Tests: dieselbe Reihe gegen Adapter und Attrappe (Körper fällt, Scharnier hält, Motor mit Tempo 0 bremst, Strahl trifft, eine Kette
+    nur von vorn, Zone meldet, Federbein mit Vorspannung steht beim Gewichtsanteil auf `laenge`, `fuehren` erreicht die Lage,
+    `merken` und `zuruecksetzen` ergeben nach 600 Takten dieselbe Prüfsumme).
+  - **M2.2 Figurphysik-Grundlage.** Legt an `studio-laufzeit/src/physik/{xpbd,feder,schwingen,kette}.ts`. Die Chiparten `schwingen`
+    und `kette` erfüllen `Chipart` aus M0 (4.5): `standLaenge(c, plan)` sagt, wie viele Zahlen ein Chip in `Lauf.figur` braucht; sein
+    ganzer Stand liegt dort ab `PhysikPlan.chipStand[i]` (frischer Lauf: Nullen = Ruhe), der `ChipLauf` hat nur `schritt(dt, lauf)`
+    (liest und schreibt nur seinen Bereich und seinen Ausgang) und `ruht(lauf)`, keinen eigenen Stand. `physik/xpbd.ts` baut
+    `figurSchritt(p: PhysikPlan, lauf: Lauf, chips: readonly ChipLauf[], dt: number, teilschritte: number)` (Schritt 8, 4.2); die Liste
+    der `ChipLauf` hält die Fassade. Eingetragen in `physik/chips.ts` werden sie von der Integration. Tests (mit
+    `{ ...leererBauplan(), physik: … }`): Ruhe = Zeichnung
     (nach dem Ausschwingen höchstens 1e-6), stabil bei 1 bis 5 Takten je Bild, Dauer und Federung ergeben f = 1/Dauer und
-    ζ = 1 − Federung.
+    ζ = 1 − Federung; eine Kopie von `Lauf.figur` zurückgeschrieben ergibt bitgleich denselben Verlauf (so sichert ein Schlüsselstand
+    die Chips).
 - **Welle B** (ein Workflow mit M1 Welle B; braucht M1 Welle A, deren Verdrahtung und M2 Welle A):
   - **M2.3 Seite P1 mit „Tapsen“.** Legt an `apps/studio/src/p1/{p1,ozzyKoerper,hinsetzen,tapsen,anzeige}.ts`,
     `scripts/proben/m2-p1.mjs`. Aufbau nach 14a §7.1: Rad dynamisch mit vier Gewichten, Finger, Ozzy aus seinen SVGs (`svgImportieren`:
@@ -2048,12 +2611,18 @@ deterministisch und bytegleich gespeichert; Store-Kern und Ablage stehen; das Ve
     Federbeine mit Vorspannung (4.5), Kräftepaar (Bremskraft 0,3 g), Hinsetzen V1 (Gelenkziele) und
     V2 (Hülle je Takt), Popo-Rutschen, Ragdoll aus 10 Körpern, Ohren und Schwanzkette aus M2.2, eigener fester Takt mit Schlüsselständen,
     Spulen, Röntgen und Kennzahlen. Neu der Modus **„Tapsen“** (Befund 10): Draht Hang → Wunschtempo mit der Kennlinie aus Konzept 6.3,
-    Kräftepaar mit Bremskraft 0,3 g, Ozzys Logo starr auf den Körpern (starre Knochen aus M1.7, gezeichnet über die Fassade), ein Wippen
-    im Schritttakt statt des Gangs, Finger am iPhone. **Braucht** M1.2, M1.3, M1.4, M1.7, M2.1, M2.2.
+    Kräftepaar mit Bremskraft 0,3 g, Ozzys Logo starr auf den Körpern (starre Knochen aus M1.7 und die Lage der Figur über ihre Regler
+    x, y, Drehung, 4.3; gezeichnet über die Fassade), ein Wippen im Schritttakt statt des Gangs, Finger am iPhone. `p1.ts` gibt es seit
+    M0 leer als Einstieg von `p1.html` und wird hier gefüllt; das Rad mit Gewicht „Boden“ ist ein geführter Körper (`fuehren`).
+    **Braucht** M1.2, M1.3, M1.4, M1.7, M2.1, M2.2.
   - **M2.4 Messseite mit Ersatzszenen.** Legt an `apps/studio/src/messen/{messen,ampel,statistik,ergebnis,szenen}.ts`,
     `messen/bloecke/b0.ts` bis `b9.ts`, `scripts/proben/m2-messen.mjs` (startet die Messseite am Mac im echten Safari über WebDriverIO
-    mit safaridriver, sonst in WebKit von Playwright); füllt `server/messung.ts` (Weg aus 4.9; COOP und COEP nur für `/messen.html`).
-    Blöcke nach 8.2. Statt „beschriftet ersetzt“ misst die Seite **Ersatzszenen** (Befund 10), alle aus seinen SVGs über
+    mit safaridriver, sonst in WebKit von Playwright); füllt `server/messung.ts` (Weg aus 4.9; die Signatur steht seit M0:
+    `messungWeg(o: { wurzel: string }): Plugin` mit `MESSUNG_WEG`, `MESSUNG_ORDNER`, `MESSUNG_DATEI`; `studioPlugins()` hängt es schon
+    ein, `plugins.ts` bleibt unberührt; COOP und COEP nur für `/messen.html`, das setzt `vite.config.ts` schon). `messen.ts` gibt es seit
+    M0 leer als Einstieg von `messen.html`. Die Kreise ihrer Ersatzszenen schreibt die Seite selbst nach `BildDaten.kreise`
+    (`KREIS_FELDER` je Kreis, 4.6). Blöcke nach 8.2. Statt „beschriftet ersetzt“ misst die Seite **Ersatzszenen** (Befund 10), alle
+    aus seinen SVGs über
     `svgImportieren`, ohne Übernahme: (a) ganzer Ozzy (Logo) einmal, (b) sechsmal (Maß für den Rückblick), (c) Ersatz-Spielwiese:
     gebackener Hügel, Ozzy, drei gebackene Dinge, 80 analytische Kreise, (d) zwei bewegte Figuren (Ozzy und ein gespiegelter, auf 70 %
     verkleinerter Ozzy als Platzhalter der Katze). Was später gebaut wird, ersetzt die Szenen. **Braucht** M1.2, M1.3, M1.4.
@@ -2120,7 +2689,9 @@ Kopfdrehung ist bis zum Umzug in Studio nur zum Ansehen (A1); formbar ist sie im
     `eigenschaften/{Eigenschaften,Wert,Pruefer}.tsx` (Schlüsselpunkt ○ ◌ ● über `wertSetzen`; Prüfer mit Hinweisen, „übergehen“ und
     „Wiederherstellen“), `befehle/{suche,hilfe,datei,leiste}.ts` (Menüs, Befehlssuche, Blatt und Dialoge mit Zag; Datei auf Bühne,
     Leiste und Bibliothek; „Kopfdrehung übernehmen“; Befehle der Leiste: Raute, Falte, Wechsel, Regler, Mischart, Spiegeln; dazu
-    `wertSetzen` und der Prüfer); ändert `look/liquid-drop.css`. Tests (grün im Zusammenbau, 5.1 Nr. 2; Z und ⇧Z brauchen die
+    `wertSetzen` und der Prüfer); ändert `look/liquid-drop.css` (seit M0 eine wörtliche Kopie von `ozzy-figur.css` ohne `@font-face`;
+    `#leiste` ist dort noch die rechte Spalte des Prototyps, in Studio heißt die Zeitleiste unten „Leiste“: beim Umbau umbenennen).
+    Tests (grün im Zusammenbau, 5.1 Nr. 2; Z und ⇧Z brauchen die
     Zeichnung aus M3.5): `e2e/leiste.spec.ts`: Klick springt, Ziehen fährt, J und K, Z, ⇧Z, Raute wählt ihr Teil, Farben nach Herkunft,
     Mischart als Wort, Schlüsselpunkt (Tippen holt die Achse und ändert nichts, Ziehen setzt den Schlüssel, Halten → „Schlüssel hier“).
     **Braucht** M3.1, M3.2.
@@ -2154,6 +2725,9 @@ Abläufe als Daten. **Braucht:** M1, M3.
 
 - **M4.0 Vertrag:** ergänzt `vertrag/{bauplan,lauf,zusatz,editor}.ts` (Posen- und Knochenpläne, Anforderungen, Ziele Posenkorrektur und
   Zwischenpose, Stelle `ausprobieren`), `studio-format/src/arten/zusatz.ts` (Schemas von `huepfer`, `plumps`, `seufzer`, `wedeln`).
+  `Anforderung` (`vertrag/lauf.ts`), `TafelZelle` (`vertrag/editor.ts`) und `Zusatzart` (`vertrag/zusatz.ts`) gibt es seit M0; M4 legt
+  sie nicht neu an. `zusatzAnwenden(z, r, anker, erster, anzahl, glatt)` (4.4) bekommt hier einen Parameter, ob das Teil geschlossen ist
+  (aus `TeilPlan.geschlossen`): Die Rahmenformel der VersatzZeile (3.2) braucht ihn an den Enden offener Linien.
 - **Welle A** (je braucht M1, M3):
   - **M4.1 Regler und Ausgleich.** Legt an `regler/ausgleich.ts`; ändert `regler/{durchlauf,mischen}.ts` aus M1.7 (Ausgleich,
     Nachlauf, Höchsttempo). Tests: zehn Sprünge des Solls ohne Sprung im Ist;
@@ -2219,14 +2793,15 @@ Prüfsumme und Spulen tragen (08 Etappen 1 bis 3, 14b L0). **Braucht:** M1, M2, 
 - **M5.0 Vertrag:** `WeltAdapter` nach den Erfahrungen aus P1 nachziehen; ergänzt `vertrag/{lauf,eingabe,ereignis,baustein,chip}.ts`,
   `studio-format/src/arten/{bausteine,chips}.ts` (Schemas von `vierbeiner` mit dem Kanal `wendenNach` und dem Schalter
   `springenAufTippen` (3.2), `rad`, `schwingen`, `kette`, `stauchen`, `ruhigHalten`, `fest`, `lose`, `gelee`, je mit `aufGezeichnet`;
-  30 d); die Kopplung der Körper und das Körpermodell der Figur (4.5, Befund 6) als Vertrag.
+  30 d); die Kopplung der Körper und das Körpermodell der Figur (4.5, Befund 6) als Vertrag. Den Stand der Chips und Bausteine im Lauf
+  (`standLaenge`, `PhysikPlan.chipStand`, `LogikPlan.bausteinStand`, ohne `stand` und `setzen`; 4.5) gibt es seit M0.
 - **Welle A** (je braucht M2, M4):
   - **M5.1 Takt.** Legt an `takt/{takt,eingabe,weltschritt,archiv,spulen,laufdatei,mitschnitt}.ts`. Tests (Node, mit der Attrappe der
     Welt): 1 200 Takte einer Lauf-Datei mit gleicher Prüfsumme bei 1 und 5 Takten je Bild; Spulen auf 7,3 s und Weiterspielen gleich einem
     neuen Lauf; Zeitlupe ändert nur das Takt-Tempo; Schlüsselstände unter 32 MB.
   - **M5.2 Welt und Physikplan.** Ändert `studio-welt/src/*` (Rad am Scharnier, Lagerreibung als Motor, Kette aus dem Weltpfad,
     gerundete Vielecke, Federbeine mit Vorspannung, Kräftepaar); legt an `studio-laufzeit/src/bauplan/physik.ts` (Hüllen aus dem
-    Körpermodell jeder Figur),
+    Körpermodell jeder Figur, die Kette des Weltpfads im Uhrzeigersinn, `PhysikPlan.chipStand` nach `Chipart.standLaenge`),
     `physik/fuehler.ts`, `editor/handgriffe/welt.ts` (4.7). Tests: Zeichnung und Kette höchstens 0,5 Bildpunkte auseinander (K9);
     Drehimpulsbilanz innerhalb von 2 % (K2); die Handgriffe legen gültige Szenen, Stoffe und Dinge an.
   - **M5.4 Chips.** Legt an `physik/{stauchen,ruhigHalten,gelee}.ts`, `form/fluechtig.ts`, `knochen/glaetteSchutz.ts` (aus M9.2
@@ -2255,7 +2830,9 @@ Prüfsumme und Spulen tragen (08 Etappen 1 bis 3, 14b L0). **Braucht:** M1, M2, 
     `logik.ts`, erreichbar über ⌘K und die Eigenschaften; 4.7). Tests (grün im Zusammenbau, 5.1 Nr. 2): `e2e/pruefstand.spec.ts`
     (Schubsen, Ohr schnippen, zehnmal gleich,
     Einzeltakt, Extreme formen holt die Achse auf die Leiste). **Braucht** M5.1, M5.2, M5.4, M1.7.
-  - **M5.6 Hügel, Spielwiese, Ozzys Körpermodell.** Legt an `tools/studio-inhalt/src/{inhalt,huegel,spielwiese}.ts` (über die
+  - **M5.6 Hügel, Spielwiese, Ozzys Körpermodell.** Legt an `tools/studio-inhalt/src/{huegel,spielwiese}.ts` (Skripte in der Form
+    `{ name, laufen() }`; `inhalt.ts` gibt es seit M0, die Integration trägt sie dort ein; die Hüllen nach 3.6 Nr. 12, der Hügel im
+    Uhrzeigersinn; über die
     Handgriffe, 6.4); schreibt beim Lauf `content/studio/ozzy/figuren/huegel.json`, `szenen/spielwiese.json` und legt an Ozzys Figur
     an: sein Körpermodell (Datensatz `Koerpermodell`, Befund 6: Rumpfhülle als Kapsel längs der Hauptachse der Bohne, Länge und halbe
     Dicke aus ihrer Grundform, in der Mitte geteilt in `rumpf.vorn` und `rumpf.hinten`; Kopf als Kreis um die Kopfmitte, Radius die halbe
@@ -2333,7 +2910,9 @@ L2, Demo D1). **Braucht:** M1, M4, M5, M6.
   `ding`, `zone`, `zaehler` (Messwerte `einer`, `zehner`), `uhr`, `kamera`, `aufgaben` in `arten/bausteine.ts`, `TonPlaner` und
   `TonAusgabe`; installiert `opentype.js` ^2.0.0 wie in `apps/game` (nur für `apps/studio` und `tools/studio-inhalt`). Weil 2.0.0 keine
   Typen mitbringt und `@types/opentype.js` für die 1er-Reihe geschrieben ist, legt M7.0 je Paket eine kleine Deklarationsdatei der
-  benutzten Teile an (`opentype.d.ts`). Den Typ `Schrift` (3.2) gibt es seit M0.
+  benutzten Teile an (`opentype.d.ts`). Den Typ `Schrift` (3.2) gibt es seit M0. Erzwingt für `studio-ton`, dass DOM nur in
+  `ausgabe.ts` und `freigabe.ts` vorkommt (2.1): eine eigene tsconfig ohne DOM über die übrigen Dateien, geprüft im Skript `typecheck`
+  des Pakets.
 - **Welle A** (je braucht M6):
   - **M7.1 Logik.** Legt an `logik/{postfach,regeln,baender,kanaele,launen,bedingungen,aktionen,gedaechtnis}.ts`; ändert
     `bauplan/logik.ts` (Regeln, Kanäle) und `editor/handgriffe/logik.ts` (der Rest, 4.7). Tests: alle Regeln lesen den Stand von n−1;
@@ -2577,7 +3156,8 @@ ist das ein Baufehler (die Listen sind schon die des Prototyps); für die Haltun
    „Halswinkel“, Linie −20° bis 20°, Standard 0) und Knochen „Kopf“ am Hals (Verschiebung über zwei Regler, Winkel-Regler „Nicken“,
    Linie −20° bis 20°, Standard 0; dorthin schreibt die Kopplung, 4.5), beide starr; ab M4.4 dazu „Kopf schief“ (Linie −15° bis 15°,
    Standard 0) als Formziel der Kopfteile mit gebauten Schlüsseln bei ±15° (um das Kopfgelenk gedreht; Florian formt nach). Alle mit
-   Herkunft „gebaut“; in Ruhe (0) ändern sie nichts, die Parität bleibt. Vier Drähte: θ → Kopfversatz x, y (Kennlinie aus den vier Stützstellen von
+   Herkunft „gebaut“; in Ruhe (0) ändern sie nichts, die Parität bleibt. Die Regler der Verschiebungen (Halslage x, y und Kopfversatz
+   x, y) haben die Einheit `'figur'` (3.2). Vier Drähte: θ → Kopfversatz x, y (Kennlinie aus den vier Stützstellen von
    `kopfVersatz`, PCHIP, Spiegel ab 180° um 360°, x negiert); ψ → Halslage x, y (Kennlinie aus `halsBei` in 0,5°-Schritten, PCHIP,
    Spiegel ab −90° um 0°, x negiert).
 7. **Zeichenmodell:** Gruppen und Verbindungen aus `gruppeVon` und `FLUESSIG` (Bohne–Bein nach Kante); der Ohrspalt bleibt ein eigenes
@@ -2628,18 +3208,35 @@ ist das ein Baufehler (die Listen sind schon die des Prototyps); für die Haltun
 - **Schutz über den Schreibweg** (`apps/studio/scripts/proben/schutz.mjs`), nicht über Prüfsummen: Seine Dateien sind lebendig (er
   speichert im Prototyp 300 ms nach jeder Änderung und formt auf 5217); eine Prüfsumme vor und nach einer Probe könnte seine Arbeit nicht
   von einem Fehler des Baus unterscheiden. Jeder eigene Prozess (Proben, Übernahme, Inhalt-Skripte, Bau-, Probe-, Playwright- und
-  Vergleichsserver, auch der Kindprozess der Übernahme, den sein Studio auf 5217 startet) läuft mit dem Schreibhaken
-  (`NODE_OPTIONS=--import=<absoluter Pfad>/schutz.mjs`, 2.4): Er umhüllt die Schreibfunktionen von `node:fs` und `node:fs/promises`
-  (danach `syncBuiltinESMExports()`, damit auch benannte ESM-Importe die Hülle sehen) und verweigert und meldet jeden Schreibversuch unter
-  `docs/look/ozzy-figur/` und `apps/editor/` (Pfad, Zeit, Prozess). Grenze: Was nicht über Node schreibt (rolldown und esbuild in Vite,
-  die Browser), sieht er nicht; deshalb hat der Vergleichsserver einen eigenen Zwischenspeicher, und kein Werkzeug bekommt einen Pfad
-  unter `apps/editor/` als Ausgabe. Für seine Datensätze `dein` zählt nur ein Schreiben der Ablage mit Quelle ≠ `florian`; die Ablage
+  Vergleichsserver, auch der Kindprozess der Übernahme, den sein Studio auf 5217 startet, mit absolutem Pfad und
+  `STUDIO_INHALT=content/studio`) läuft mit dem Schreibhaken (`NODE_OPTIONS=--import=<absoluter Pfad>/schutz.mjs`, 2.4). Wie er
+  hineinkommt: Die Wurzel-Skripte `studio:bau`, `studio:stand` und `studio:pruefen` und die Paket-Skripte `dev` (beide Apps),
+  `vergleich`, `uebernehmen`, `inhalt` und `probeprojekt` setzen `NODE_OPTIONS` selbst; `playwright.config.ts` beider Apps gibt ihn
+  ihrem Server mit; jede `vitest.config.ts` der Studio-Pakete setzt `pool: 'forks'` und
+  `execArgv: ['--import=<file-URL von schutz.mjs>']`, gleich wie vitest gestartet wird (Paket, Wurzel, `studio:pruefen`). Nur
+  `pnpm studio` und `pnpm gassirunde` (Florians Server) laufen ohne ihn (2.4). Er umhüllt die Schreibfunktionen von `node:fs` und
+  `node:fs/promises` (danach `syncBuiltinESMExports()`, damit auch benannte ESM-Importe die Hülle sehen) und verweigert jeden
+  Schreibversuch unter `docs/look/ozzy-figur/`, `apps/editor/` und `content/studio/` (letzteres, solange `STUDIO_INHALT` nicht
+  ausdrücklich `content/studio` nennt): Er wirft einen Fehler (`EPERM`), geschrieben wird nichts, die Meldung (Pfad, Zeit, Prozess) steht
+  auf stderr und in `test-results/schutz/meldungen.log`. Verglichen wird auf echten Pfaden (Verknüpfungen aufgelöst, am Mac ohne
+  Unterschied zwischen Groß- und Kleinschreibung); verweigert werden auch Löschen und Umbenennen eines Elternordners der geschützten
+  Ordner, `cp` in einen Elternordner, wenn die Quelle hineinschreiben würde, und harte Verknüpfungen auf seine Dateien.
+  `STUDIO_SCHUTZ_ZUSAETZLICH` (absolute Pfade, getrennt durch „:“) schützt weitere Ordner, etwa für Proben des Hakens, und nimmt nie
+  einen Schutz weg; `globalThis[Symbol.for('studio.schutz')]` zeigt, ob der Haken in einem Prozess aktiv ist. Grenzen: Was nicht über
+  Node schreibt (rolldown und esbuild in Vite, die Browser, git), sieht er nicht; deshalb hat der Vergleichsserver einen eigenen
+  Zwischenspeicher, und kein Werkzeug bekommt einen Pfad unter `apps/editor/` als Ausgabe. Er wirkt im Hauptthread und in Kindprozessen
+  (sie erben `NODE_OPTIONS`), nicht in Worker-Threads von Node: Ein Worker hat eigene Funktionen von `fs` und schreibt an der Hülle
+  vorbei, auch mit `execArgv: ['--import=…/schutz.mjs']` (am 20.11. geprüft). Deshalb nimmt Studio-Code keine Worker-Threads
+  (`node:worker_threads`), und vitest läuft in Kindprozessen (`forks`, nie `threads` oder `vmThreads`); beides prüft `grenzen.test.ts`
+  (2.3 Nr. 6). Für seine Datensätze `dein` zählt nur ein Schreiben der Ablage mit Quelle ≠ `florian`; die Ablage
   schreibt dafür die Quelle jedes Schreibens ins Protokoll. Änderungen aus anderen Prozessen (sein Prototyp, sein Studio, andere Stränge) sind seine Arbeit und lösen nichts aus. Nur
   in den Läufen der Integration (`STUDIO_INHALT=content/studio`) legt `schutz.mjs` vor Übernahme, Inhalt und Proben eine Kopie seiner
   `schluessel.json` nach `content/studio/.sicherung/fremd/`, und nur, wenn sie sich seit der letzten Kopie geändert hat (Vergleich über
-  SHA-256); ausgedünnt wie der Sicherungsring (die letzten 50, dazu eine Woche lang je Stunde eine). Bau-Agenten und alle anderen
+  SHA-256) und `content/studio/.gitignore` den Ordner `.sicherung/` ausnimmt (sonst ein Hinweis statt der Kopie, damit der Ring nicht
+  ins Git gerät); ausgedünnt wie der Sicherungsring (die letzten 50, dazu eine Woche lang je Stunde eine). Bau-Agenten und alle anderen
   Prozesse schreiben nie in Florians Inhaltsordner, auch keine Kopie.
-  Meldet der Haken etwas, hält der Lauf an (geschrieben wurde nichts); zurückgesetzt wird nie automatisch (9.2 Nr. 5).
+  Meldet der Haken etwas, hält der Lauf an (geschrieben wurde nichts); zurückgesetzt wird nie automatisch (9.2 Nr. 5). Proben lesen nach
+  jedem Lauf `test-results/schutz/meldungen.log`; leer heißt: nichts verweigert.
 
 ### 6.4 Was ich für die Demo selbst anlege
 
@@ -2681,7 +3278,7 @@ wenn er sie dort selbst anschaltet („nurFlorian“; Konzept 7, A7).
 | Erweiterung | `apps/studio/test/erweiterung.test.ts`; am Diff in M10.Z | eine Test-Art je Familie ohne weiteren Code (Befund 28) | ab M4 (Zusatzbewegungen), M5 (Chips), M6 (Effekte), M7 (Bausteine) |
 | Bild | Playwright, Ausschnitte; Bildtests der Bildpakete als Specs in `apps/studio/e2e/bild/` auf eigenen Prüfseiten (5.1 Nr. 2) | gegen freigegebene Bilder in `apps/studio/e2e/bilder/` (am Mac erzeugt, nur dort gültig); WebGL2 nur im Browser, nie in vitest | Etappenende; Bildtests eines Pakets im Zusammenbau seiner Welle |
 | Speicher | vitest in Node mit `--expose-gc` | kein Zuwachs über 10 000 Bilder | nach jeder Welle |
-| Grenzen, Lizenzen | `test/grenzen.test.ts`; `pnpm licenses list --json`, nur über die Studio-Pakete (`--filter`), mit Erlaubnisliste (MIT, ISC, BSD, Apache-2.0, 0BSD, CC0, BSL-1.0, Zlib); ein ODER-Ausdruck gilt, wenn eine Wahl erlaubt ist; begründete Ausnahmen stehen mit Grund in der Liste (`css-value`, nur Prüfwerkzeug am Mac) | 2.3; keine AGPL, keine GPL ohne erlaubte Wahl, keine Spine-Lizenz | jede Änderung; Lizenzen nach jeder Welle |
+| Grenzen, Lizenzen | `test/grenzen.test.ts`; `pnpm licenses list --json`, nur über die Studio-Pakete (`--filter`), mit Erlaubnisliste genau MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, 0BSD, CC0-1.0, BSL-1.0, Zlib (`ERLAUBT` in `scripts/studio-pruefen.mjs`); ein ODER-Ausdruck gilt, wenn eine Wahl erlaubt ist; Ausnahmen je Paket, gebunden an seine heutige Lizenz und mit Grund (`AUSNAHMEN`), alle nur Werkzeug und nie ausgeliefert: `css-value` (ohne Lizenzfeld) und `@promptbook/utils` (CC-BY-4.0, über `locate-app`), beide über `webdriverio`, nur Prüfwerkzeug am Mac; `glob`, `minimatch`, `minipass`, `path-scurry`, `lru-cache`, `@isaacs/nonrecursive-glob-match` (BlueOak-1.0.0), nur über `webdriverio`; `lightningcss` samt seinen Plattformpaketen (MPL-2.0), mit Vite 8, nur Bau und Entwicklungsserver | 2.3; keine AGPL, keine GPL ohne erlaubte Wahl, keine Spine-Lizenz | jede Änderung; Lizenzen nach jeder Welle |
 | Beweis-Läufe | `test/beweise.test.ts` | jede Aufgabe gilt noch | ab M10 bei jeder Änderung am Inhalt |
 
 Kein Test ersetzt Florians Auge. Tests messen nie die Wanduhr; sie zählen Takte und Bilder.
@@ -2710,17 +3307,19 @@ Kein Test ersetzt Florians Auge. Tests messen nie die Wanduhr; sie zählen Takte
 `apps/studio/src/kern/schleife.ts` nimmt die Zeit aus einer einsetzbaren Uhr. Playwright installiert `page.clock` und lässt Zeit gezielt
 laufen; `window.__studio.takte(n)` rechnet genau n Takte. Stifteingaben als `PointerEvent` mit `pointerType: 'pen'` und Druck. Proben
 arbeiten über die Haken (4.10), nie über Bildpunkte geklickter Knöpfe. Das erste Bild einer Seite zeichnet über das erste Prüfbild: zwei
-Bilder abwarten (Falle aus der Übergabe ozzy-figur).
+Bilder abwarten (Falle aus der Übergabe ozzy-figur). **Schrift:** Beide Apps laden Lobster über `FontFace` (Studio in
+`src/look/schrift.ts`, das Spiel in seinem `main.ts`) und setzen danach `data-schrift="geladen"` an `<html>` („fehlt“, wenn es nicht
+klappt); Specs und Proben warten darauf, nie auf `document.fonts.check()` (das ist auch ohne eingetragene Schrift wahr).
 
 ### 7.4 Prüfbefehle
 
 | wann | Befehl (aus dem Wurzelordner des Arbeitsbaums) |
 |---|---|
-| jedes Arbeitspaket (Bau-Agent) | nur eigene Dateien: `pnpm exec vitest run <eigene Testdateien>` im Ordner des npm-Pakets; `pnpm exec tsc --noEmit -p test-results/<paket>/tsconfig.json` (erweitert die tsconfig des npm-Pakets, schließt nur die eigenen Dateien und die Verträge ein); `pnpm exec eslint <eigene Dateien>`; Ausgaben nach `test-results/<paket>/`; Server nur auf den zugeteilten Probe-Ports, mit Schreibhaken (2.4) |
-| nach jeder Welle (Integration) | `pnpm studio:pruefen` (Typen je npm-Paket, Lint, alle Studio-Tests, kurze Ausgabe); `pnpm --filter @ee/studio e2e` (auch die e2e und Bildtests der Pakete dieser Welle) |
+| jedes Arbeitspaket (Bau-Agent) | Jeder Befehl beginnt mit `pnpm_config_verify_deps_before_run=error` (pnpm installiert dann nie von selbst; meldet es „Run pnpm install“, steht das im Abschlussbericht, 2.4). Tests nur eigener Dateien: `pnpm --filter <npm-paket> --fail-if-no-match exec vitest run <eigene Testdateien>` (Pfade relativ zum Ordner des npm-Pakets; seine `vitest.config.ts` setzt forks und den Schreibhaken); Typen: `pnpm --filter <npm-paket> --fail-if-no-match typecheck` (nie nur `exec tsc`; beide tsconfig, 2.1; ein Fehler in einer Datei eines anderen Arbeitspakets steht im Abschlussbericht, der Agent ändert sie nicht); `--fail-if-no-match`, weil `pnpm --filter` mit einem falschen Namen still mit Exit 0 endet; Lint `pnpm exec eslint <eigene Dateien>`; Grenzen `pnpm --filter @ee/studio exec vitest run test/grenzen.test.ts`; e2e und Bildtests nur eigener Specs: `STUDIO_PORT=<gerade> SPIEL_PORT=<ungerade> STUDIO_INHALT=test-results/<paket>/inhalt pnpm --filter @ee/studio e2e <eigene Specs>` (fürs Spiel `pnpm --filter @ee/ozzy-spiel e2e`; die Inhaltskopie liegt dann in `test-results/<paket>/inhalt`, die Ausgaben in `test-results/<paket>/ausgaben`, nie den Ordner eines anderen Pakets nennen; Argumente hinter dem Skriptnamen reicht pnpm 12 direkt an Playwright weiter, hinter `--` gelten sie als Dateifilter); übrige Ausgaben nach `test-results/<paket>/`; Server nur auf den zugeteilten Probe-Ports, mit Schreibhaken (2.4) |
+| nach jeder Welle (Integration) | `pnpm studio:pruefen` (Typen je npm-Paket mit beiden tsconfig, Lint, alle Studio-Tests, Lizenzen, kurze Ausgabe; Schritte und Pakete wählbar mit `-- <schritt …> <paket …>`, ganze Ausgaben in `test-results/studio-pruefen/`); `pnpm --filter @ee/studio e2e` und `pnpm --filter @ee/ozzy-spiel e2e` (auch die e2e und Bildtests der Pakete dieser Welle) |
 | M1, M4 und Änderungen an Form oder Knochen | `pnpm --filter @ee/studio-uebernahme test` (Parität) |
 | Determinismus | `pnpm --filter @ee/studio e2e -- e2e/rechnen.spec.ts e2e/determinismus.spec.ts` |
-| Probe einer Etappe | `NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs node apps/studio/scripts/proben/m<n>-<thema>.mjs` (Schreibhaken mit absolutem Pfad, damit auch Kindprozesse in anderen Ordnern ihn finden; 6.3); danach die Meldungen des Hakens und das Protokoll der Ablage lesen |
+| Probe einer Etappe | `NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs node apps/studio/scripts/proben/m<n>-<thema>.mjs` (Schreibhaken mit absolutem Pfad, damit auch Kindprozesse in anderen Ordnern ihn finden; 6.3; so läuft auch `m0-vertrag.mjs`, Ausgaben in `test-results/proben/<probe>/`); danach `test-results/schutz/meldungen.log` (leer: nichts verweigert) und das Protokoll der Ablage lesen |
 
 Nie die ganze Testreihe des Repos und nie die von `@ee/shape` (Arbeitsregel 10). Proben der Integration im Vordergrund, eine nach der
 anderen, nach der Welle; während einer Probe der Integration ändert kein Paket etwas unter `src`.
@@ -2729,7 +3328,11 @@ anderen, nach der Welle; während einer Probe der Integration ändert kein Paket
 
 - Server von Proben und Playwright laufen auf eigenen Ports (5263, 5265, 5291, 5292, 5294; Bau-Agenten 5270 bis 5289 nach 2.4) auf
   einer Kopie im Ordner `test-results/` (ohne `STUDIO_INHALT` von selbst, 2.4) und mit dem Schreibhaken; nie auf 5213, 5217, 5219 oder
-  5261. Der Vergleichsserver 5294 hat eine eigene Konfiguration ohne Schreibwege und mit eigenem Zwischenspeicher (6.3).
+  5261. `playwright.config.ts` beider Apps nimmt `STUDIO_INHALT` nur unter `test-results/<ordner>/…` an (sonst bricht der Lauf ab), ohne
+  die Variable `test-results/playwright-<port>/inhalt`, Ausgaben daneben; ein schon laufender Server wird nie genommen. Der
+  Vergleichsserver 5294 hat eine eigene Konfiguration ohne Schreibwege und mit eigenem Zwischenspeicher (6.3; dazu ein Plugin, das nur
+  liest: GET `/__ozzy-figur/schluessel` liefert seine Datei, jede andere Methode auf `/__ozzy-figur*` oder `/__wesen*` bekommt 405,
+  `build.outDir` liegt unter `test-results/vergleich/dist`).
 - Proben, die Speichern nur brauchen, um zu laufen, leiten `/__studio/**` mit `page.route` auf eine Attrappe im Browser um (wie
   `werkzeug-probe.mjs`); Proben auf 5294 leiten `**/__ozzy-figur/schluessel` um (GET liefert seine Datei, PUT wird verworfen). Unter
   Automation fragt die Editor-Seite nie nach einem Sitzungsschlüssel, und kein Proben-Server hat `STUDIO_FLORIAN=1`; die Quelle
@@ -2737,8 +3340,8 @@ anderen, nach der Welle; während einer Probe der Integration ändert kein Paket
 - Proben, die seine `schluessel.json` als Quelle brauchen, nehmen eine Kopie unter `test-results/` (in `Projekt.quellen` der Kopie).
 - Die Übernahme und die Inhalt-Skripte schreiben nur über die Ablage nach `content/studio/` (F5, 6.3), nie nach `docs/look/`; Proben mit
   Florian laufen in Probe-Projekten, sein Projekt bleibt unberührt.
-- Der Schreibhaken (`schutz.mjs`) verweigert jeden Schreibversuch eigener Prozesse unter `docs/look/ozzy-figur/` und `apps/editor/`;
-  was Florian dort selbst ändert, löst nichts aus (6.3).
+- Der Schreibhaken (`schutz.mjs`) verweigert jeden Schreibversuch eigener Prozesse unter `docs/look/ozzy-figur/` und `apps/editor/`,
+  unter `content/studio/` außer bei `STUDIO_INHALT=content/studio`; was Florian dort selbst ändert, löst nichts aus (6.3).
 
 ---
 
@@ -2852,7 +3455,8 @@ iPhone 16, iPad und Mac stehen als Probe B3 in der Liste, ohne Grenze für offen
 2. Zweimal dasselbe Kriterium verfehlt: den Ansatz prüfen, nicht nachbessern (Arbeitsregel 7).
 3. „Gefällt nicht“ (sobald er es sagt): umbauen, nicht belegen (Arbeitsregel 4).
 4. Rot auf der Messseite: Maßnahmen aus 8.3 als nächste Welle, nach der Tabelle oben.
-5. Verweigert der Schreibhaken einen Schreibversuch eines eigenen Prozesses unter `docs/look/ozzy-figur/` oder `apps/editor/`, oder
+5. Verweigert der Schreibhaken einen Schreibversuch eines eigenen Prozesses unter `docs/look/ozzy-figur/`, `apps/editor/` oder (ohne
+   `STUDIO_INHALT=content/studio`) `content/studio/`, oder
    meldet die Ablage ein Schreiben an einem Datensatz `dein` ohne Quelle `florian` (6.3): Der Lauf hält an, die Integration berichtet
    mit Pfad, Zeit und Prozess. Sie setzt nie automatisch zurück, weder aus Git noch aus dem Sicherungsring; wiederhergestellt wird nur
    auf sein Wort. Was Florian selbst ändert (im Prototyp auf 5213, in Studio auf 5217), löst nie ein Anhalten aus.
@@ -2892,3 +3496,51 @@ Schätzung (F7). „Bestanden“ sagt nur er.
 
 **Vor dem Start braucht der Bau nichts von Florian:** Parallel bauen ist mit Ultracode zugesagt (F2); ob die Messseite auf seinem
 iPhone 16, seinem iPad und seinem Mac läuft und welches iPad es ist, steht als Probe B3 in der Liste.
+
+---
+
+## Nachtrag nach M0 (20.11.)
+
+M0 ist gebaut, geprüft und nachgearbeitet. Weil M1.0 entfällt, bauen die Agenten von M1 und M2 nach dem Plantext; darum stehen die
+Ergänzungen, Auslegungen und Entscheidungen aus M0 jetzt in den Abschnitten oben, als Vertrag und so, wie der Code sie hat. Je Änderung
+eine Zeile:
+
+| Abschnitt | Kern |
+|---|---|
+| 2.1 Matrix | `src/` beider Werkzeuge darf Node (sie laufen mit `tsx`); die Übernahme hat DOM nur in `lib`, für die Typen des `FigurRaster`; DOM in `studio-ton` nur in `ausgabe.ts` und `freigabe.ts`, erzwungen ab M7.0 |
+| 2.1 Paketform | `typecheck` ist `node ../../scripts/studio-typen.mjs`; jedes Paket ohne Node hat `tsconfig.quellen.json` (Quellen ohne Tests, ohne Node); Testhilfen mit Node heißen `*.testhilfe.ts` |
+| 2.1 Paketform | jede `vitest.config.ts` setzt `pool: 'forks'` und den Schreibhaken über `execArgv` |
+| 2.1 Abhängigkeiten | `@types/node` ^24.0.0 in den devDependencies von Ablage, Apps und Werkzeugen; `@ee/studio-rechnen` als devDependency des Stores |
+| 2.2 Dateien | neu: `tsconfig.quellen.json` je Paket ohne Node, `scripts/studio-typen.mjs`, `apps/studio/e2e/seiten.spec.ts`, `apps/ozzy-spiel/playwright.config.ts` und `e2e/seite.spec.ts`, `scripts/proben/m0-vertrag.mjs`, `schema.test.ts`, `pruefdaten.test.ts`, `vertrag/{bilddaten,feldbreiten,welt}.test.ts`, `effekte/register.test.ts`; `bauplan/ordnung.ts` mit `ankerBereiche` |
+| 2.2 Zusammenbau | `uebernahme.ts` und `inhalt.ts` gibt es seit M0 mit leeren Registern, die Pakete exportieren Schritte und Skripte, die Integration trägt sie ein; die Typen der Registerlisten sind Vertrag; was M0 angelegt hat, wird ergänzt, nicht neu angelegt |
+| 2.3 Nr. 1 | zweite Typprüfung der Quellen ohne Node (`tsconfig.quellen.json`) |
+| 2.3 Nr. 2 | ESLint im Simulationspfad auch gegen Umwege über Math, `crypto`, `globalThis`, `global`, `self`, `window` und Zeitgeber; Node-Globale in `src/` aller Pakete ohne Node verboten; Tests und Testhilfen ausgenommen |
+| 2.3 Nr. 6 | Konfiguration, Tests, `e2e/`, `scripts/`, `server/` dürfen typescript, `@vitejs/*` und die devDependencies importieren und Typ-Pakete als Wert; nur `import type` zählt als Typ; keine relativen Code-Importe über Paketgrenzen; keine Worker-Threads, kein vitest mit `threads` oder `vmThreads` |
+| 2.4 | Playwright nimmt `STUDIO_INHALT` aus der Umgebung (nur unter `test-results/<ordner>/`), Ausgaben daneben, nie einen fremden Server; das Spiel auf `SPIEL_PORT` (5292) |
+| 2.4 | Wurzel-Skripte mit `pnpm_config_verify_deps_before_run=error` (nie in `pnpm-workspace.yaml` oder `.npmrc`); die Paket-Skripte `dev`, `uebernehmen`, `vergleich`, `inhalt`, `probeprojekt` setzen den Schreibhaken selbst; `typecheck` über `studio-typen.mjs` |
+| 2.4 | `studio:stand` behält einen Stand, aus dem 5217 oder 5261 noch liefert, und überschreibt nie einen; `studio:pruefen` leert `test-results/bau/inhalt` nicht unter einem laufenden Server; relative Importe der Konfigurationen mit `.js` |
+| 2.5 | Bau-Agenten prüfen Typen mit `typecheck` ihres npm-Pakets statt einer eigenen tsconfig, jeder Befehl mit `pnpm_config_verify_deps_before_run=error` |
+| 3.2 | Schemas strenger als die Typen (Liste); `ArtFamilie`, `ArtSchluessel`, `Versionen.arten` nach Art-Schlüssel; `Regler.einheit` mit `'figur'`; `Aufhaengung.griffe` mit der Marke `'erben'` statt `null`; `Fehler`, `LadeErgebnis`, `ImportErgebnis` in `typen/dokument.ts` |
+| 3.4 | Art-Schlüssel `<familie>:<art>`, Block ihrer Migrationen `art:<familie>:<art>`; `Migration` und `ArtBlock` in `versionen.ts` (samt ihren übrigen Hilfen), `migrationen/register.ts` reicht sie weiter und hält `MIGRATIONEN`; der Kopf nennt nur genutzte Arten; wie die Glätte-Regel misst; Griffe der Länge 0 mit der Gegenrichtung (32 Anker der Prüfdatei) |
+| 3.5 Nr. 1 bis 4 | Reihenfolge über `dateiOrdnen`; nur die vier Zeilenarten stehen auf einer Zeile, den Rest legt der Schreiber fest; `ZAHL_GRENZE`; kein `null` ohne Ausnahme |
+| 3.6 Nr. 5, 8, 12 | ein Kreis meldet auch `ReglerPlan.hinweise`; fehlende Schlüssel einer Quelle über `fehlendeEintraege`; neue Regel Hüllen: Vielecke 3 bis 8 Punkte, Ketten 2, Schleifen 3, Umlaufsinn als Hinweis |
+| 4 | was erst eine spätere Etappe baut, steht seit M0 als Typ; die Typen aus 4.8 und 4.10 legen M3.0, M7.0 und M9.0 an |
+| 4.1 Rechnen | Dateien von `hypot` und Co.; `radZuGrad`; `pchipWert(…, periode?)` passend zu `pchipSteigungen(…, periode)`; Randfälle und Prüfungen von PCHIP; `wangStueckzahl` als reine Zahl nach Wang; `bernstein` mit (stufen + 1) · 4 Gewichten; Randfälle von `kurvenAbstand`; `utf8`; Strom und Prüfsumme festgelegt; `ZAHL_GRENZE` |
+| 4.1 Format | Hilfen von `kennung.ts`, `anker.ts`, `arten/register.ts` und `schema/reihenfolge.ts`; `i` in `ankerPunkte` ist die Stelle der ersten Zahl (Anker k ab 6·k); Orte von `Fehler`, `LadeErgebnis`, `ImportErgebnis`, `MIGRATIONEN`; `ArtSchema.familie` vom Typ `ArtFamilie` |
+| 4.1 Store | `StoreVertrag`, `StoreKonstruktor`, `DiffVon`, `SchutzVerletzt` in `studio-store/src/typen.ts`; je Kennung `KENNUNG_ZAHLEN` Zufallszahlen; der Strom der Tests aus `@ee/studio-rechnen/zufall` |
+| 4.2 | `bauen` passt den Lauf an; `auswerten` hängt eine Auswertung an, leeren muss, wer zeichnet; `hand` über `handSetzen`; Schritt 8 `figurSchritt(p, lauf, chips, dt, teilschritte)` mit den `ChipLauf` der Fassade; Schritt 13 mit der Lage der Figur; Schritt 16 samt `malreihenfolge` in BildDaten |
+| 4.3 | `OrdnungPlan.listen`; ReglerPlan mit `raster`, `spiegelAb`, `spiegelUm`, `mitSpiegel`, `mitUm`, `hinweise`; `TeilPlan.geschlossen`; `KnochenPlan.teile` mit `figur`, `erster`, `anzahl`, dazu `figurLage`, `figurEinheit` und die Lage in `matrizen`; `AbflachPlan.teile` (`AbflachTeil`); `PhysikPlan.chipStand`; `LogikPlan.bausteinStand`; die Regeln der Ordnung, des Ankerpuffers, der Lage einer Figur und der Rechenfolge; `ankerBereiche` und die Hilfen aus `ordnung.ts` und `regler.ts`; `leererBauplan` |
+| 4.4 | `malreihenfolge(plan, r, aus: BildDaten)`; `handSetzen`, `handLoesen`; `knochenStellen` und `aufhaengen` mit der Lage der Figur und Teilen ohne Aufhängung; `Anforderung`, `TafelZelle`, `Zusatzart` liegen in `vertrag/`; `zusatzAnwenden` bekommt in M4.0 `geschlossen` |
+| 4.5 | `fuehren` (Pflicht), `zielSetzen(…, hoechstkraft?, feder?)`, `federbein(…, anteil?)` nur für einen Schritt, `WeltPuffer.beine` und `beinZahl`, Feldbreiten als Werte, `VIELECK_PUNKTE` = 8; Festlegungen der Welt; Ketten einseitig; Feldbreiten als `typeof`-Kopie; Chipart und Bausteinart mit `standLaenge`, ohne `stand` und `setzen`, Stand in `Lauf.figur` und `Lauf.bausteine`; Suchen der Register; die Attrappe |
+| 4.6 | `KANAELE` = 24, `feldsaetze[].einheit`, `gebacken[].ding`; Feldbreiten und Inhalt von BildDaten, Zähler `teilZahl`, `feldsatzZahl`, `deckungZahl`; `bildDatenAnlegen`, `bildDatenLeeren`; Feldsatz-Regel in `bauplan/zeichen.ts`; wer was füllt; `ShaderQuellen`, `ZeichnerAnlegen`, `ShaderUebersetzen`; `EffektZeichnung` mit `ShaderBeitrag` und `ShaderStufe` |
+| 4.7 | `fangen` nimmt `ReglerPlan.raster` |
+| 5.3 | Stand nach M0: zusätzliche Dateien, Steckbrief von `testfigur.json`, `webdriverio` unter Node 25.8.1 |
+| 5.4 | M1.0: ergänzen statt neu anlegen; M1.2 bis M1.9, M1.Z und die Verdrahtung nach Welle A nach den Verträgen aus M0 (der Test „30 Flächen ergeben zwei Feldsätze“ jetzt in M1.3) |
+| 5.5 | M2.1 mit allen Ergänzungen der Welt; M2.2 mit `standLaenge` und dem Stand in `Lauf.figur`; M2.3 und M2.4 mit den Dateien aus M0 |
+| 5.6 bis 5.10 | M3.6: `#leiste` in `liquid-drop.css`; M4.0: Typen aus M0 und Parameter `geschlossen`; M5.0, M5.2, M5.6: Stand im Lauf, `chipStand`, Weltpfad im Uhrzeigersinn, Skripte in eigenen Dateien; M7.0: tsconfig ohne DOM für `studio-ton` |
+| 6.2 Nr. 6 | Regler der Verschiebungen mit Einheit `'figur'` |
+| 6.3 | wie der Schreibhaken in jeden Prozess kommt; Schutz von `content/studio/`; Meldungen in `test-results/schutz/meldungen.log`; Grenze Worker-Threads; Kopie seiner `schluessel.json` nur, wenn `.gitignore` den Ring ausnimmt |
+| 7.1 | Erlaubnisliste genau wie dort; Ausnahmen `css-value`, `@promptbook/utils`, die glob-Familie (BlueOak-1.0.0), `lightningcss` (MPL-2.0), alle nur Werkzeug |
+| 7.3 | Specs und Proben warten auf `data-schrift="geladen"` |
+| 7.4 | Befehle der Bau-Agenten mit `pnpm_config_verify_deps_before_run=error`, `typecheck` statt `tsc` mit eigener tsconfig, `STUDIO_INHALT` je Agent, e2e-Befehle; die Integration lässt auch die e2e des Spiels laufen |
+| 7.5, 9.2 Nr. 5 | Playwright nur auf einer Kopie unter `test-results/`; der Vergleichsserver liest nur; Schutz von `content/studio/` |

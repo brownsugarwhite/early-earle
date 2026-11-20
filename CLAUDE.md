@@ -19,6 +19,10 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Blase). **Nächstes (zur Freigabe):** [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md). **Florian
   (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied zwischen seinen Kurven
   und dem Modell wie in Sitzung 4.**
+- **Studio** (seit 20.11., Zweig `claude/ozzy-animation-physics-294508`): eigener 2D-Vektor-Figureneditor mit Laufzeit und Spiel
+  „Gassirunde“, selbstständig in Etappen M0 bis M11 gebaut (Agenten nur Opus max). Plan `docs/plans/2026-11-20-studio-plan.md`, Stand
+  [`docs/look/studio/UEBERGABE.md`](docs/look/studio/UEBERGABE.md), Liste `docs/plans/2026-11-20-studio-was-bleibt.md`. M0 fertig; Pause seit 20.11. abends.
+  Ports 5217/5261 fest, 5263/5265 Bau; sein Prototyp (5213) und `docs/look/ozzy-figur/` bleiben unberührt.
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

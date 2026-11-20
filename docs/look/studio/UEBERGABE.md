@@ -1,4 +1,4 @@
-# Übergabe: Studio (Stand 20.11.2026 abends: M0 Verträge gebaut, Nacharbeit nach der Prüfung)
+# Übergabe: Studio (Stand 20.11.2026 spät: M0 Verträge fertig, Commit e032014c; als Nächstes M1 und M2 Welle A)
 
 **Studio** ist ein Editor für 2D-Vektorfiguren, der zugleich die Laufzeit ist, die sie im Spiel abspielt. Florian bringt seine Formen als
 SVG mit oder zeichnet sie, legt ihre Zustände auf Leisten, formt Posen und Übergänge selbst und verknüpft Physik, Effekte, Klang und
@@ -51,8 +51,8 @@ pnpm studio        # Editor, Messseite und P1: http://localhost:5217/
 pnpm gassirunde    # Spiel fürs iPhone im selben Netz: http://<Adresse des Macs>:5261/
 ```
 
-Beide zeigen einen festen Stand, den nur die Integration am Ende einer Etappe neu baut. **Noch gibt es keinen Stand;** beide starten
-erst nach dem ersten `pnpm studio:stand` (Abschluss von M0).
+Beide zeigen einen festen Stand, den nur die Integration am Ende einer Etappe neu baut. Heute ist das `m0-20261120-2207`: Papier,
+Titel „Studio“ in Lobster, leere Bühne. Zu sehen gibt es erst mit M1 etwas (seine Kopfdrehung in Studio).
 
 ## Prüfen
 
@@ -61,6 +61,8 @@ Aus dem Wurzelordner, nacheinander, nie während einer Welle (Plan 7.4):
 | Befehl | was |
 |---|---|
 | `pnpm studio:pruefen [-- <schritt …> <paket …>]` | Typen, Lint, Tests und Lizenzen der Studio-Pakete nacheinander, je Schritt eine Zeile (Schritte `typen`, `lint`, `tests`, `lizenzen`; Pakete als Ordner oder Name; ohne Angabe alles); leert vor den Tests `test-results/bau/inhalt`; ganze Ausgaben in `test-results/studio-pruefen/` |
+| `pnpm --filter <paket> typecheck` | Typen eines Pakets in zwei Schritten (`scripts/studio-typen.mjs`): `tsconfig.json` mit Tests, dann bei den Paketen ohne Node `tsconfig.quellen.json` nur über die Quellen, ohne Node-Typen (Plan 2.3 Nr. 1) |
+| `pnpm --filter <paket> test` | vitest des Pakets in Kindprozessen (`forks`) mit Schreibhaken, den die `vitest.config.ts` selbst einhängt |
 | `pnpm --filter @ee/studio e2e [<spec …>]` | Playwright für Studio in Chromium und WebKit, eigener Server auf `STUDIO_PORT` (Standard 5291) mit Schreibhaken; heute `e2e/seiten.spec.ts` (die vier Seiten, Lobster, COOP und COEP nur auf der Messseite) |
 | `pnpm --filter @ee/ozzy-spiel e2e` | dasselbe für das Spiel auf `SPIEL_PORT` (Standard 5292), WebKit im Format des iPhone 16; heute `e2e/seite.spec.ts` |
 | `NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs node apps/studio/scripts/proben/m0-vertrag.mjs` | Probe M0 (a): Bild auf 5263 und die drei roten Proben (unter „Stand“); Ausgaben in `test-results/proben/m0-vertrag/` |
@@ -79,12 +81,20 @@ Aus dem Wurzelordner, nacheinander, nie während einer Welle (Plan 7.4):
   `test-results/<paket>/ausgaben`; ohne `STUDIO_INHALT` nimmt Playwright `test-results/playwright-<port>/`. Playwright leert den Ordner
   `ausgaben` zu Beginn jedes Laufs: nie den Ordner eines anderen Pakets nennen. Ein `STUDIO_INHALT` außerhalb von `test-results/`
   bricht ab (Plan 7.5). Dasselbe gilt für `apps/ozzy-spiel` (Port aus `SPIEL_PORT`).
+- **Befehle** immer mit `pnpm_config_verify_deps_before_run=error` davor (pnpm 12 installiert sonst still nach, sobald eine
+  `package.json` nicht zur Lockdatei passt): Typen `pnpm --filter <paket> typecheck` (nie nur `exec tsc`), Tests
+  `pnpm --filter <paket> test` oder `pnpm --filter <paket> exec vitest run <datei>`, Lint `pnpm exec eslint <eigene Pfade>`, Grenzen
+  `pnpm --filter @ee/studio exec vitest run test/grenzen.test.ts`. Ausgaben nach `test-results/<paket>/`.
 - **Schreibhaken** für jeden eigenen Node-Prozess: `NODE_OPTIONS=--import=<Arbeitsbaum>/apps/studio/scripts/proben/schutz.mjs`
-  (absoluter Pfad). Er wirkt im Hauptthread und in Kindprozessen, nicht in Worker-Threads von Node; Studio-Code nimmt deshalb keine
-  (`node:worker_threads` meldet `apps/studio/test/grenzen.test.ts`), und vitest läuft in Kindprozessen (`forks`).
+  (absoluter Pfad). vitest hängt ihn selbst ein (`execArgv` in jeder `vitest.config.ts`), die Skripte `dev`, `uebernehmen`, `inhalt`,
+  `probeprojekt` und `vergleich` ebenso. Er wirkt im Hauptthread und in Kindprozessen, nicht in Worker-Threads von Node; Studio-Code
+  nimmt deshalb keine (`node:worker_threads` meldet `apps/studio/test/grenzen.test.ts`), und vitest läuft in Kindprozessen (`forks`).
+- **Kein Node** in `src/` von rechnen, format, store, laufzeit, welt, bild, ton und autorig (ohne Tests): keine Node-Typen
+  (`tsconfig.quellen.json`) und keine Node-Globalen wie `process`, `Buffer`, `require`, `__dirname`, `setImmediate` (ESLint). Hilfen nur
+  für Tests, die Node brauchen, heißen `*.testhilfe.ts`.
 - **Simulationspfad** (rechnen, format, laufzeit, welt, autorig; ohne Tests): ESLint verbietet `Math.sin` und Verwandte, `Math.random`,
-  `**`, `Date` und `performance`. Math gilt nur direkt als `Math.<Name>` (kein `const M = Math`, kein `Math[name]`); `globalThis`,
-  `global`, `self`, `window` und `crypto` gibt es dort nicht.
+  `**`, `Date`, `performance` und Zeitgeber (`setTimeout`, `setInterval`, `requestAnimationFrame`). Math gilt nur direkt als
+  `Math.<Name>` (kein `const M = Math`, kein `Math[name]`); `globalThis`, `global`, `self`, `window` und `crypto` gibt es dort nicht.
 - **Grenzen** (`grenzen.test.ts`): Die Matrix aus Plan 2.1 gilt für `src/`. Konfiguration, Tests, `e2e/`, `scripts/` und `server/`
   dürfen die Werkzeuge ihres Pakets importieren (vite, @vitejs/*, vitest, fast-check, @playwright/test, webdriverio, typescript, Node,
   die devDependencies) und Pakete, die `src/` nur als Typ nimmt, auch als Wert; `src/` der beiden Werkzeuge darf Node.
@@ -97,7 +107,7 @@ der Integration · 5270 bis 5289 Probe-Ports der Bau-Agenten (je zwei, `STUDIO_P
 
 ## Stand
 
-**M0 Verträge gebaut; nach der Prüfung läuft die Nacharbeit.** Angelegt sind alle Pakete, beide Apps und beide Werkzeuge mit
+**M0 Verträge fertig** (Commit e032014c, gepusht). Angelegt sind alle Pakete, beide Apps und beide Werkzeuge mit
 Konfiguration und Abhängigkeiten; `studio-rechnen` im Umfang von M0 (PCHIP bitgleich zum Prototyp, `kurvenAbstand`, SHA-256 als eigene
 Umsetzung, `zahlText`; `winkel.ts` und `exp.ts` vorläufig über `Math` bis nach M1 Welle A, Selbsttest und Port der fdlibm in M1.1); `studio-format` mit Typen und Schemas des Formats v1, Arten (die fünf Effekte
 von M1), `kennung.ts`, `versionen.ts`, `anker.ts` und den Prüfdaten (`ozzy-rollen.json`, `testfigur.json`, seine Schlüssel als
@@ -106,7 +116,18 @@ Prüfdatei); `studio-store/src/typen.ts`; in `studio-laufzeit` alle Verträge sa
 festen Ständen, Playwright, die leer zusammengesetzten Server-Erweiterungen, `main.ts` (Papier, Titel „Studio“ in Lobster, leere
 Bühne), Schreibhaken, Grenzen-Test und Probe M0; das Spiel Seite, Vite, Playwright, `main.ts` und `keinSpielcode.test.ts`.
 
-**Probe M0 (a)** (20.11., 21:39, `m0-vertrag.mjs`; alle vier Teile wie erwartet):
+**Nacharbeit der Integration** (nach dem Workflow mit 12 Agenten, 40 Befunden, keiner hoch offen): Typprüfung zweigeteilt
+(`tsconfig.quellen.json`, `scripts/studio-typen.mjs`); ESLint verbietet Node-Globale in den Paketen ohne Node und Zeitgeber im
+Simulationspfad; jede `vitest.config.ts` läuft mit `forks` und Schreibhaken (geprüft: ein Test ohne `NODE_OPTIONS` sieht den Haken und
+bekommt `EPERM` unter `apps/editor/`, im Paket und aus der Wurzel); Paket-Skripte `dev`, `uebernehmen`, `inhalt`, `probeprojekt`,
+`vergleich` mit Haken; `pnpm_config_verify_deps_before_run=error` in den Studio-Skripten; `@types/node` in den devDependencies der
+Pakete mit Node, `@ee/studio-rechnen` als devDependency des Stores; DOM-Typen für die Übernahme (sie liest den Raster des Prototyps);
+Hüllen im Format: Vielecke 3 bis 8 Punkte (`VIELECK_HOECHSTENS`, gleich `VIELECK_PUNKTE` der Welt), Ketten ab 2, Schleifen ab 3;
+`content/studio/.gitignore` (`.sicherung/`) liegt an. Die Vertragsergänzungen der Agenten trägt ein eigener Workflow in den Plan nach
+(Abschnitt „Nachtrag nach M0“ am Ende des Plans).
+
+**Probe M0 (a)** (20.11., 22:06, `m0-vertrag.mjs`, nach der Nacharbeit; alle vier Teile wie erwartet). Dazu rot, wie gewollt: ein
+`process.env` in `studio-laufzeit/src` in der Typprüfung der Quellen (TS2591) und in ESLint (`no-restricted-globals`):
 
 - **Bild** [`docs/progress/studio/m0-leer.png`](../../progress/studio/m0-leer.png): die Seite auf 5263 nach `data-schrift="geladen"`,
   Papier, „Studio“ in Lobster, leere Bühne, keine Fehler der Seite.
@@ -123,20 +144,33 @@ Bühne), Schreibhaken, Grenzen-Test und Probe M0; das Spiel Seite, Vite, Playwri
   ESM-Import) in Kindprozessen: beide verweigert (`EPERM`), je eine Meldung `verweigert: … unter apps/editor/ · <Pfad> · <Zeit> ·
   Prozess …` auf stderr und in `test-results/schutz/meldungen.log`; geschrieben wurde nichts (`git status apps/editor` leer).
 
-**Prüfungen** (20.11. abends): Lint über alle 15 Studio-Pfade (118 Dateien) und Lizenzen (208 Pakete, 10 Ausnahmen mit Grund) grün;
-Typen und Tests von `apps/studio` (9 Tests), `apps/ozzy-spiel` (4) und beider Werkzeuge grün; e2e Studio 10 von 10 und Spiel 2 von 2 in
-Chromium und WebKit. Die übrigen Pakete prüft die Integration nach der Nacharbeit mit `pnpm studio:pruefen`.
+**Prüfungen** (20.11., 22:05): `pnpm studio:pruefen` grün, 29 Schritte in 27 s: Typen aller 13, Lint (121 Dateien, 0 Fehler),
+Tests (rechnen 60, format 140, laufzeit 62, bild 4, studio 9, Spiel 4; die übrigen noch ohne Tests), Lizenzen (208 Pakete, 10 Ausnahmen
+mit Grund). e2e Studio 10 von 10 und Spiel 2 von 2 in Chromium und WebKit. Stand `m0-20261120-2207` gebaut. Der Schreibhaken hat
+außer den Proben nichts verweigert (die Meldungen der Proben liegen in `test-results/m0/integration/`).
 
 **webdriverio unter Node 25.8.1** (Plan 5.3 „Ehrlich“): Es lädt (10.2.0 nennt Node 22, 24 oder ab 26.12.1) und läuft bis zur
 Verbindung mit dem Treiber (`remote()` gegen einen Port ohne Treiber endet mit „Unable to connect …“). Eine Sitzung im echten Safari
 braucht `safaridriver --enable` (Florian, B6); bis dahin bleibt es bei WebKit von Playwright. Kein Eintrag in Teil C nötig.
 
-**Offen für die Integration:** Commit „M0 Vertrag“; `studio-laufzeit/src/bauplan/bauen.test.ts` (4.3) mit Ordnung und Regler beginnen;
-`aufwand.json` (die Zeile für M0 ist aus Zeitstempeln nachgetragen; durch die Werte des Workflows ersetzen, Prüfung und Nacharbeit
-dazu); im Plan nachtragen: 2.1 und 2.3 Nr. 6 (Erweiterungen der Grenzen oben), 6.3 (Grenze Worker-Threads), 7.1 (drei weitere
-Lizenz-Ausnahmen: `@promptbook/utils` CC-BY-4.0 und die glob-Familie BlueOak-1.0.0 über webdriverio, `lightningcss` MPL-2.0 über
-Vite), 2.2 (`e2e/seiten.spec.ts`, `scripts/proben/m0-vertrag.mjs`, `apps/ozzy-spiel/playwright.config.ts` und `e2e/seite.spec.ts`);
-`pool: 'forks'` ausdrücklich in die `vitest.config.ts` der Pakete; Hinweis bei B6 zu webdriverio.
+**Pause seit 20.11., 22:40 (Florians Wunsch).** Der Plan-Nachtrag nach M0 ist geschrieben (26 Abschnitte, Abschnitt „Nachtrag nach
+M0 (20.11.)“ am Ende des Plans; der Plan wuchs von 282 auf 364 KB) und committet, aber noch **nicht gegengeprüft**: Der Workflow
+wf_285c5b1d-7d5 wurde nach dem Schreiber angehalten, bevor die drei Prüfer (Verträge, Aufträge M1/M2, Regeln und Abläufe) und die
+Nacharbeit liefen. **Wiederaufnahme:** in derselben Sitzung den Workflow mit `resumeFromRunId: "wf_285c5b1d-7d5"` fortsetzen (Skript
+`studio-m0-plan-nachziehen-wf_285c5b1d-7d5.js` im Ordner `workflows/scripts/` der Sitzung 28a29b68); der Schreiber kommt aus dem
+Zwischenspeicher, nur Prüfung und Nacharbeit laufen neu. In einer neuen Sitzung geht das nicht: dann nur die drei Prüfer und die
+Nacharbeit neu starten, der Nachtrag selbst steht im Plan. Danach Welle A. Offen aus dem Nachtrag, vor Welle A zu entscheiden: (1) 4.2 Schritt 13 nennt `aufhaengen(plan.knochen, matrizen, anker)`, 4.4
+`aufhaengen(p, matrizen, achsen, anker)` (älter als M0); (2) der Prüfer-Hinweis zum Umlaufsinn (3.6 Nr. 12) hat noch kein Paket (M1.2
+nehmen); (3) die Typen `Schritt` und `Skript` in `uebernahme.ts` und `inhalt.ts` exportieren, damit M1.8 und M5.6 sie nicht nachbilden;
+(4) in den Aufträgen sagen, dass beim `typecheck` des ganzen Pakets nur Fehler in eigenen Dateien zählen (studio-laufzeit teilen sich
+M1.3, M1.7, M2.2); (5) die Attrappe entscheidet die Seite eines Vielecks an einer Kette am Mittel der Ecken, der Vertrag am Schwerpunkt
+(an `welt.ts` angleichen); (6) `kennung.ts` und `anker.ts` auf `utf8` und `radZuGrad` aus studio-rechnen umstellen.
+
+**Danach:** M1 und M2 Welle A in einem Workflow mit neun Bau-Agenten (M1.1 Rechnen, M1.2 Format, M1.3 Form-Laufzeit, M1.4 Bild,
+M1.5 Store-Kern, M1.6 Ablage, M1.7 Knochen und Drähte, M2.1 Welt, M2.2 Figurphysik), je mit Prüfung und Nacharbeit; danach verdrahtet
+die Integration (`winkel.ts` und `exp.ts` auf den Port der fdlibm, `bauplan/bauen.ts`, `fassade.ts`, Register der Effekte,
+`server/plugins.ts`) und beginnt `studio-laufzeit/src/bauplan/bauen.test.ts` (4.3) mit Ordnung und Regler. Dann Welle B (M1.8
+Übernahme des Kopfs, M1.9 Betrachter und Vergleichsproben, M2.3 P1 mit „Tapsen“, M2.4 Messseite).
 
 **An seiner Figur hat sich nichts geändert;** für Florian gibt es in M0 nichts zu prüfen.
 
@@ -145,8 +179,11 @@ Vite), 2.2 (`e2e/seiten.spec.ts`, `scripts/proben/m0-vertrag.mjs`, `apps/ozzy-sp
 - `pnpm --filter <name>` mit einem Namen, den es nicht gibt, läuft still mit Exitcode 0. Die Skripte rufen Pakete deshalb mit
   `pnpm -C <ordner>` oder mit `--fail-if-no-match` auf.
 - pnpm 12 installiert vor `pnpm run` und `pnpm exec` von selbst, sobald eine `package.json` eine neue Abhängigkeit oder ein neues
-  Paket nennt (Lockdatei und `node_modules` ändern sich; am 20.11. an einer Kopie nachgeprüft). Das verhindert erst
-  `verifyDepsBeforeRun: error` in `pnpm-workspace.yaml`; bis dahin ändert nur der Vertragsschritt Abhängigkeiten und installiert gleich.
+  Paket nennt (Lockdatei und `node_modules` ändern sich; am 20.11. an einer Kopie nachgeprüft). Die Studio-Skripte der Wurzel und
+  `studio:pruefen` setzen deshalb `pnpm_config_verify_deps_before_run=error`, Bau-Agenten ebenso. Nicht in `pnpm-workspace.yaml` oder
+  `.npmrc`: Das träfe Florians Start auf 5213.
+- Die Typen von vitest bringen Node mit: Wer `vitest.config.ts` in eine tsconfig aufnimmt, sieht `process` und `Buffer` überall. Darum
+  prüft `tsconfig.quellen.json` die Quellen der Pakete ohne Node getrennt (Pakete ohne Quellen überspringen den Schritt, sonst TS18003).
 - pnpm 12 reicht Argumente hinter dem Skriptnamen direkt weiter: `pnpm --filter @ee/studio e2e --list`. Hinter `--` gelten sie für
   Playwright als Dateifilter, nicht als Optionen.
 - Playwright legt `webServer.env` über `process.env` (was die Konfiguration setzt, gilt; deshalb liest sie `STUDIO_INHALT` selbst), leert
