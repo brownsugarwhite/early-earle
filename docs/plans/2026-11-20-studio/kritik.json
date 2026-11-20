@@ -1,0 +1,214 @@
+{
+  "befunde": [
+    {
+      "art": "Reihenfolge: gebraucht, bevor gebaut",
+      "wo": "Plan §5.4 (M1-Probe, Abbruch nach drei Tagen), §6.2 Schritte 6 und 7, §5.8 (M5.Z „Schritte 1 bis 9“), §5.10 (M7.1, M7.Z „Schritte 2, 3, 5“), §6.4, §4.7 (Handgriffe); Konzept §12 (E3 „Kennlinie zuerst“, Drähte erst in E4)",
+      "was": "Drähte entstehen erst in M7.1 (`logik/draehte.ts`), Knochen erst in M4.2. Die Übernahme in M1 legt aber Kopfversatz je θ und Halslage als Drähte auf die Verschiebung des Kopfknochens an, dazu Verdecken und Durchbruch als Drähte über θ. Die M1-Probe vergleicht mit `FigurRaster.teile({ psi: 90, theta, nurKopf: true })`, und diese Funktion verschiebt jeden Kopfteil um `hals + versatzBei(θ)`. Parität unter 0,001 und der Bildvergleich sind in M1 so nicht erreichbar; nach drei Tagen greift der Abbruch. Die Spielwiese in M5 und M6 braucht die Drähte Hang → Wunschtempo, Weg → Phase, Tempo → Zeile und Kipp-Reserve → Balance; M5.Z verdrahtet Schritt 5, den es noch nicht gibt, M7.Z verdrahtet ihn noch einmal. Die Inhalt-Skripte in M5.6 und M6.4 sollen nur über Handgriffe arbeiten, aber `dingSetzen`, `weltpfadFormen` und `drahtLegen` entstehen erst in M7.4, und für Zyklen gibt es keinen Handgriff.",
+      "vorschlag": "Drähte (Auswertung, `LogikPlan.draehte`, Handgriff `drahtLegen`) und die Verschiebung eines Knochens nach M1 vorziehen; `handgriffe/welt.ts` und einen Handgriff für Zyklen vor M5.6 bauen. Oder die M1-Parität ausdrücklich in Kopfkoordinaten ohne Versatz messen und den Versatz als eigenen Test führen. Danach für jede Etappe eine Zeile „braucht“ ergänzen und gegen die Etappen davor prüfen.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Widerspruch im Plan (verletzt Grundgesetz 7 „eine Laufzeit“ und „Ozzy exakt“)",
+      "wo": "Plan §3.5 Nr. 7 (Spielfassung) gegen §4.4 `ruhendeSchluessel`, §4.3 `ListenPlan.xs`, §6.2 Schritt 2; Konzept §10.2",
+      "was": "Die Spielfassung lässt die Herkünfte weg. Welche gebauten Schlüssel neben seinen ruhen, berechnet `form/ruhen.ts` aber aus der Herkunft („gebaut näher als 8 Raster an dein“), und die ruhenden Schlüssel bleiben laut Übernahme als Datensätze in der Datei. Im Spiel würden sie deshalb wieder mitmischen: Seine Kopfdrehung sähe auf dem iPhone anders aus als im Editor. Außerdem ist `herkunft` ein Pflichtfeld; mit denselben Schemas bestünde die Spieldatei die eigene Prüfung beim Laden nicht. Das Konzept sagt nur „ohne Editor-Datensätze“, der Plan geht weiter.",
+      "vorschlag": "Herkunft in der Spielfassung behalten (sie ist klein) oder ruhende Schlüssel beim Schreiben der Spielfassung mit derselben Funktion weglassen. Test: Editor und Spiel liefern für Ozzy von 0° bis 360° in 0,5° dieselben Anker.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Widerspruch zu Florians Regel (seine Formen ändern sich nie still)",
+      "wo": "Plan §3.6 Nr. 9 mit Konzept §2.4 (P in allen Zuständen, Ruhen) und Plan §4.4 `ruhendeSchluessel`",
+      "was": "„Jede Änderung durch die Quelle florian an einem Schlüssel setzt dessen Herkunft auf dein.“ P setzt oder löscht einen Anker aber in jedem Schlüssel des Teils, beim Kopf in rund 170. Danach sind alle diese Schlüssel „dein“. Gebaute Schlüssel, die neben seinen ruhen, ruhen dann nicht mehr und mischen wieder mit: Seine Kopfdrehung ändert sich an Winkeln, die er nicht angefasst hat. Die Farben der Leiste (Vorlage, gebaut, dein) gehen verloren, und alle gebauten Schlüssel sind ab dann für jede Automatik gesperrt.",
+      "vorschlag": "Herkunft nur dann auf „dein“ setzen, wenn sich die Gestalt genau dieses Schlüssels ändert (Zug an der Stelle). Strukturänderungen ohne Formänderung (Anker per de Casteljau einfügen, Anker löschen in fremden Schlüsseln, Kennungen) behalten die Herkunft. Eigenschaftstest: P ändert keine Herkunft, nicht die Menge der ruhenden Schlüssel und an keinem Winkel die Form.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Lücke im Ablauf (Florians Daten, Arbeitsregeln 3 und 9)",
+      "wo": "Plan §2.4 (Florian startet im Arbeitsbaum studio), §2.5, §4.9 (409, Journal), §6.2 Schritt 1, §6.3, §7.5; Konzept §2.3, §10.2",
+      "was": "(1) Florian formt im Integrations-Arbeitsbaum `.claude/worktrees/studio`. Dort führt die Integration Zweige mit `git merge` zusammen, und Inhalt-Skripte schreiben in dieselben Dateien unter `content/studio/ozzy/`. Wer seine Änderungen committet, ist offen (Regel 9: nur eigene Dateien stagen); ein Merge scheitert an seinen offenen Änderungen oder überschreibt sie. (2) Übernahme, Vergleichs-Prototyp auf 5294 und `schutz.mjs` lesen den Prototyp und `docs/look/ozzy-figur/schluessel.json` relativ, also die Kopie vom Abzweigen. Florian arbeitet aber weiter auf 5213 im Arbeitsbaum `ozzy-animation-physics-294508`: Studio zeigt alte Schlüssel, das Vergleichsvideo nicht seinen Stand, und die Schutz-Probe bewacht die falsche Datei. (3) Formt er am Mac und am iPad (beide Quelle „florian“), regelt nichts den Konflikt; 409 und das Nachspielen des Journals können die Arbeit eines Geräts verlieren. (4) Außer dem Journal gibt es keine Sicherung seiner Arbeit in Studio.",
+      "vorschlag": "Seinen Inhalt aus den gemergten Pfaden nehmen (eigener Ordner oder eigener Zweig, den nur sein Studio schreibt, mit Sicherung je Speichern). Übernahme und Schutz-Probe lesen seine Datei mit absolutem Pfad aus seinem Arbeitsbaum, oder der Plan legt fest, wann sein Prototyp-Zweig nachgezogen wird. Regel für zwei Geräte: datensatzweise zusammenführen, beide Fassungen behalten und zeigen. Festschreiben, wer seine Änderungen wann committet.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Widerspruch im Plan",
+      "wo": "Plan §6.3 (Abbruch der Übernahme) gegen §5.6 (M3-Frage „Formst du ab jetzt in Studio?“), §5.7 (M4.4), §6.1; Konzept §12 (Umzug nach E1)",
+      "was": "Die Übernahme bricht ab, sobald `figuren/ozzy.json` einen dein-Schlüssel enthält, der nicht aus `schluessel.json` stammt. M3 fragt Florian aber, ob er ab jetzt in Studio formt. Sagt er ja und formt einen Schlüssel, kann M4.4 Körper, Haltungen und Abläufe nicht mehr übernehmen, und jeder spätere Lauf der Übernahme bricht ebenso ab.",
+      "vorschlag": "Die Übernahme datensatzweise zusammenführen: Sie schreibt nur Datensätze mit Herkunft gebaut oder vorlage unter ihren Pfad-Kennungen, prüft jeden Schritt mit der Schutzregel und legt Neues (Körper, Haltungen) dazu. Abbrechen nur, wenn sie einen dein-Datensatz ändern müsste. Oder den Umzug erst nach M4.4 anbieten.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Unklar für Bau-Agent; Risiko für Grundgesetz 2 („in Ruhe exakt die Zeichnung“)",
+      "wo": "Plan §3.2 (`DatensatzTabelle`), §4.3 `PhysikPlan.huellen`, §5.8 (M5.2, M5.3), §5.11 (M8.1), §6.2; Konzept §3.1, §4 (Nebenprodukte), §6.1, §6.3",
+      "was": "Für Ozzys Physikkörper (Brust, Becken, Kopf, Motor-Gelenke, vier Federbeine, Ragdoll aus rund 10 Körpern) gibt es keinen Datensatz und keine Regel, woraus sie entstehen. Die Bohne ist ein einziges Teil; wie sie in Brust und Becken zerfällt, steht nirgends. Der Autorig liefert Hüllen erst in M9, die Übernahme hat keinen Schritt dafür, P1 baut sie nur für die Probe. Offen ist auch, wie die gezeichneten Knochen den Box2D-Körpern folgen: Motor-Gelenke mit endlicher Kraft hängen unter Schwerkraft durch; liest die Zeichnung das als Abweichung, ist Ozzy im Stand nicht mehr exakt seine Zeichnung. Am Kopf wirken Box2D (Kopf-Körper) und die Feder „Ruhig halten“ ohne Vorrangregel.",
+      "vorschlag": "In M5.0 einen Datensatz (oder ein Schema der Vierbeiner-Daten) für Körper, Hülle, Gelenk, Federbein und Ragdoll-Glieder samt Zuordnung zu Knochen festlegen; die Übernahme legt Ozzys Werte an. Kopplungsregel festschreiben: Zeichnung = Regler der Pose plus Physik-Abweichung, die im Stand über eine Feder auf null geht. Test: Ozzy steht 10 s auf dem Hügel, jeder Anker auf 1e-6 wie gezeichnet.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Lücke: Teile der Demo sind im Spiel nicht vorhanden",
+      "wo": "Plan §2.2 (`apps/studio/src/spiel/{rueckblick,aufgaben,tagebuch}.ts`), §2.3 Regeln 4 und 5, §5.11 (M8.3), §5.13 (M10.3), §5.14 (M11-Probe), §4.6 (Renderer); Konzept §11.6",
+      "was": "Rückblick, Aufgaben und Tagebuch liegen nur im Editor. Die Spiel-App darf nichts aus Apps importieren und hat höchstens 300 Zeilen; der Spieler sähe weder Rückblick noch Tagebuch noch Aufgabenzettel. Außerdem kann `studio-bild` keinen Text zeichnen, der Aufgabenzettel und das Tagebuch sollen aber in Lobster erscheinen. Die M11-Probe „Florian spielt den ganzen Tag in der App“ ist so nicht erfüllbar.",
+      "vorschlag": "Rückblick, Aufgaben und Tagebuch in die Laufzeit legen (Bausteine oder Posen des Rahmens) und über `studio-bild` zeichnen. Für Text eine Entscheidung in M0: Lobster-Glyphen als Formen importieren (Text als Figur) oder ein kleiner Textweg im Renderer.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Lücke und Faktenfehler",
+      "wo": "Konzept §5.4, §11.6, §13, §14; Plan §1 („Bewusst nicht“), §6.2 Schritte 4, 8 und 9, §5.8 (M5.3 `kehrtwende.ts`)",
+      "was": "Die Kehrtwende, laut Spiel-Richter der häufigste Übergang, dreht den Körper über die Front. Haltungen, Gang und Biegeachsen gibt es im Prototyp aber nur bei ψ = 90 (`Lage.haltung` „nur mit ψ = 90“), die Physik ist ein Seitenmodell, und am Hang stehen die Pfoten in der Front verschieden hoch. Wie Stehen, Gehen und Hüllen zwischen ψ 0° und 90° aussehen und wie die ψ-Spiegelung mit θ zusammenspielt, ist nicht festgelegt. Dazu ein Faktenfehler: „die Rückansicht ist nicht gezeichnet“ stimmt nicht. `ozzy_back.svg` ist Florians Rückansicht (`ANSICHTEN.back`: Körper 180°, Kopf 180°). Konzept §13 wartet also auf eine Zeichnung, die es schon gibt, und begründet damit das Einkringeln.",
+      "vorschlag": "Festlegen: Während der Kehrtwende ruht der Gang, Ozzy geht über die gezeichnete Front-Stehpose, Posen hängen über Kreuzschlüssel an ψ 0°, 45°, 90°, Hüllen gleiten zusammen. Den Satz zur Rückansicht berichtigen und Florian fragen, ob die Kehrtwende über die Front oder über den Rücken laufen soll.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Regelverstoß (Logo-Regel, nur Beinschattierung aus dem Shader)",
+      "wo": "Konzept §7 „Regel für Ozzy“, §11.7 Effekte; Plan §5.9 (M6.1 `kontaktschatten`)",
+      "was": "Laut Konzept erscheint auf Ozzys Körper auch der Kontaktschatten, und §11.7 schaltet ihn an. Florian erlaubt aus dem Shader nur die Beinschattierung in Bewegung. Ein Kontaktschatten liegt auch im Stand an und widerspricht damit Grundgesetz 2 (in Ruhe exakt die Zeichnung, Effekte in Ruhe null).",
+      "vorschlag": "Kontakt- und Bodenschatten nur auf Boden und Welt; auf Ozzys Körper aus, bis Florian ihn an einem Vorher-Nachher-Bild will. Im Text klar trennen: Schatten auf dem Boden ja, auf der Figur nein.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Widerspruch Konzept ↔ Plan; Risiko spät geprüft",
+      "wo": "Konzept §0 („zwei Wetten, die früh geprüft werden“), §9.7 („früh und billig“); Plan §5.5 (M2), §5.7 (M4), §5.9 (M6), §5.10 (M7), §8.2; Gesamtbericht 4.7 (S1 zuerst)",
+      "was": "Beide Wetten und das Spielgefühl kommen spät auf den Prüfstand. In M2 kennt Studio nur den Kopf; was die Messseite für Spielwiese, Morgenrunde und sechs Ozzys einsetzt, ist offen („beschriftet ersetzt“). Die erste echte Messung einer Szene im Budget von 8 ms kommt in M6, nach rund 65 bis 105 Arbeitstagen, obwohl die Recherche den oberen Rand „knapp“ nennt. Die aktive Stelle prüft erst die Werkbank-Probe in M4, nach rund 35 bis 65 Tagen. Ob das Balancieren lernbar ist und Spaß macht, sieht Nicole erst in M6 und M7.",
+      "vorschlag": "In M2 feste Ersatzszenen messen: ganzer Ozzy aus seinen SVGs einmal und sechsmal, gebackener Hügel, 80 analytische Tropfen, eine zweite Figur. P1 um eine grobe Probe „Tapsen nach der Kennlinie“ mit Nicole erweitern. Die Stelle früh mit einem kleinen Klick-Versuch im bestehenden Werkzeug prüfen. Kriterien vorher festlegen.",
+      "gewicht": "hoch"
+    },
+    {
+      "art": "Widerspruch (Toleranzen); Probe scheitert vorhersehbar",
+      "wo": "Konzept §2.1 (Glätte-Regel), §2.3 (Tor); Plan §3.4 (Migration kern 0 → 1), §3.5 Nr. 3, §5.4 Probe (1), §6.1",
+      "was": "Der Schreiber rundet Lagen und Längen auf 1/1000 (Fehler bis 0,0005). Die Glätte-Regel macht einen Anker glatt, wenn sich die Kurve dabei um bis zu 0,001 ändert; der Griff selbst wandert dann bis rund 0,002. Parität und Migrationstest verlangen aber jeden Anker und jeden Griff unter 0,001. Die Tests können an gerundeten oder geglätteten Ankern scheitern, ohne dass etwas falsch ist, und lösen den Drei-Tage-Abbruch aus.",
+      "vorschlag": "Toleranzen aufeinander abstimmen: Parität an Ankern 0,001, an Griffen 0,003, oder an Punkten der Kurve messen; oder auf 1/10 000 runden und nur glätten, wenn sich die Kurve um höchstens 0,0002 ändert. Die Rechnung in §3.5 festhalten.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Widerspruch Konzept ↔ Datenmodell; falsche Reihenfolge (Zusammenspiel von Morph und Knochen)",
+      "wo": "Konzept §3.1 („Standard ist die Speicherung je Knochen-Einfluss wie bei Spine“), §2.1; Plan §3.2 `VersatzZeile`, §5.9 (M6.3), §5.12 (M9.2); Gesamtbericht 4.6 Nr. 9",
+      "was": "Das Konzept nennt die Speicherung je Knochen-Einfluss als Standard für gewichtete Teile. Das Format kennt nur Versätze im mitlaufenden Rahmen der Kontur; für den erklärten Standard gibt es kein Feld. M6.3 soll „beide Bezugsrahmen nebeneinander“ testen, gewichtete Teile (Gewichte, Drehzentren) entstehen aber erst in M9.2. Florian nennt genau dieses Zusammenspiel „muss optimal sein“; es bleibt an dieser Stelle ungeklärt.",
+      "vorschlag": "Entweder den mitlaufenden Rahmen als einzigen Weg festlegen (Konzept §3.1 anpassen, Vergleich mit Florians Wort an einem gewichteten Teil) oder in M0 ein zweites Versatzformat je Einfluss anlegen. Den Vergleich der Bezugsrahmen nach M9.2 verlegen.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Unklar für Bau-Agent (Rückrechnung, „exakt an Schlüsseln“)",
+      "wo": "Konzept §2.2 (Spitzenführung), §3.1 (Rückrechnen); Plan §3.2 `Spitzenfuehrung`, §4.4 `spitzenFuehren`, §4.7 (Eigenschaft der Rückrechnung), §5.6 (M3.3); Prototyp `raster.ts` `spitzenFinden`",
+      "was": "Die Spitzenführung verschiebt Anker nach dem Mischen. Formt Florian einen Schlüssel zwischen 45° und 90° (Ohren, Masken, Bart), wird er dort nicht exakt gezeigt, und der Eigenschaftstest „gezogener Punkt auf 1e-6 am Ziel“ scheitert. Der Prototyp schaltet die Führung für ein Teil ab, sobald ein gezeichneter Schlüssel dazwischen liegt; deshalb ist sie heute an Bart und Masken schon aus (seine Schlüssel bei 75,5° und 79,5°). Für Studio ist diese Regel nicht festgelegt.",
+      "vorschlag": "Regel festschreiben: Ein dein- oder Vorlage-Schlüssel innerhalb von [von, bis] schaltet die Spitzenführung des Teils ab, im selben Rückgängig-Schritt. Die Rückrechnung zählt alle Schritte nach dem Mischen auf und invertiert sie oder schaltet sie beim Formen ab.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Lücke zum Auftrag („komplett mit den Mitteln des Editors“)",
+      "wo": "Plan §4.7 (Handgriffe), §6.4; Konzept §0, §11.7 „Teil der Demo → Studio-Mittel“",
+      "was": "Die Inhalt-Skripte sollen nur Handgriffe benutzen, „also so, wie Florian es von Hand könnte“. Die Liste der Handgriffe hat aber keine Einträge für Regler und Bindung („an Achse hängen“), Wechsel, Verbindung (Verschmelzen, Fuge), Zyklus, Schicht, Aufgabe, Marke, Szene, Welt und Stoff. Kein Test sichert, dass jeder Handgriff, den ein Skript ruft, auch eine Geste oder einen Befehl in der Oberfläche hat. So kann die Demo Dinge enthalten, die Florian im Editor nicht anlegen kann.",
+      "vorschlag": "Handgriff-Liste vervollständigen und je Handgriff die Zeile aus „Ding × Geste“ nennen. Test: Jeder Handgriff, den `tools/studio-inhalt` aufruft, ist ein registrierter Befehl mit Geste. In M11 eine Probe: Florian baut ein neues kleines Ding samt Regel nur im Editor.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Unklar für Bau-Agent (Wellen, Besitz von Dateien)",
+      "wo": "Plan §5.1, §5.4 (M1.3 `fassade.ts`, M1.6 `main.ts`), §5.6 (M3.1/M3.2), §5.7 (M4.1/M4.3), §5.8 (M5.1 bis M5.6), §2.4, §2.5",
+      "was": "Pakete einer Welle hängen voneinander ab: M3.2 braucht für 403 `schutzVerletzt` aus M3.1; M4.3 testet „kein Sprung“ mit dem Ausgleich aus M4.1; M5.3 testet Stehzone und Kennlinie gegen Rad und Takt aus M5.1 und M5.2, die Attrappe hat keine Reibung; M5.6 braucht `chipAnhaengen` aus M5.5. `bauplan/bauen.ts` und `tools/studio-uebernahme/src/uebernahme.ts` müssen bei neuen Teilplänen geändert werden, gehören aber keinem Paket. M1.3 legt `fassade.ts` an und M1.6 ändert `main.ts`, obwohl beide laut §5.1 nur dem Zusammenbau gehören. Parallele Bahnen teilen Port 5219 (strictPort) und die Playwright-Ports 5291/5292. „Meldet das der Integration“ hat keinen Weg, der ohne Anschreiben anderer Sitzungen auskommt (Regel 9).",
+      "vorschlag": "Je Paket eine Spalte „braucht“; abhängige Pakete in die nächste Welle oder Attrappe mit Reibung. `bauen.ts` und `uebernahme.ts` zu Dateien des Zusammenbaus erklären. Ports je Bahn vergeben. Meldeweg festlegen, etwa eine Datei im eigenen Zweig, die der Zusammenbau liest.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Unklar für Bau-Agent (Typen und Formeln)",
+      "wo": "Plan §3.2, §4.2 bis §4.8; Konzept §2.1, §5.1, §5.2, §7, §8, §11.7; Gesamtbericht 4.4 Schritt 7",
+      "was": "Ohne Rückfrage nicht baubar: (a) „örtliche Größe“ und die Tangente an Ecken im mitlaufenden Rahmen sind nicht definiert; Versätze der Grifflängen sind absolut, die der Lagen skaliert. (b) Nachlauf je Teil (§5.1) hat kein Feld. (c) Ob `Regler.ausgleich` oder `Uebergang.feder` gilt, ist offen. (d) Rahmen, Kamera und Musik sollen „Dinge mit Posen“ sein, Posen hängen aber an Schichten einer Figur, und `Ding.figur` fehlt laut Kommentar gerade bei Rahmen und Uhr. (e) Der Draht Hang → Wunschtempo zielt auf einen Regler, Regeln zielen auf Kanäle; wie ein Kanal seinen Grundwert bekommt und ob „Pose“ ein Kanal je Schicht ist, fehlt. (f) Das Feld Balance hat 5 Schlüssel in 3 × 3; eine Mischregel für Felder und Kreuzschlüssel fehlt. (g) Die Posenkarte „Ausprobieren“ fehlt im Typ `Stelle`. (h) Die Recherche nennt Spannung je Teil, die Typen kennen einen Wert je Pose und Taktleiste. (i) „tollpatschig“ steht in `Figur.charakter` und im Vierbeiner. (j) Der Rückblick braucht sechs Auswertungen derselben Figur aus gespeicherten Werten; `Laufzeit.bild` kennt nur den laufenden Stand. (k) „Feste Stückzahl beim Abflachen“ nennt keinen Maßstab; der Prototyp rechnet sie je Bild in Bildpunkten, beim Zoomen im Editor würden Kanten eckig. (l) Wechsel „Teile tauschen“ fehlt im Typ.",
+      "vorschlag": "Alle Punkte im Vertrag M0 entscheiden und in §3.2 und §4 eintragen: Formel der örtlichen Größe und der Tangente an Ecken, Feld `nachlauf`, Vorrang zwischen Ausgleich und Übergangsfeder, Rahmen, Kamera und Musik als Figuren ohne Teile, Grundwert eines Kanals aus `Baustein.regler`, Mischregel für Felder, Stelle „ausprobieren“, Spannung je Rolle, eine Quelle für „tollpatschig“, eine Funktion `auswerten(werte, aus)` in der Fassade, Stückzahl je Zoomstufe neu.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Lücke zum Auftrag (Gewichte je Anker und je Griff)",
+      "wo": "Konzept §3.1 (Aufhängungen; „Biegeachsen brauchen keine“ Gewichte); Plan §3.2 `Aufhaengung`, §4.3 `AchsenPlan.ankerLage`, §5.12 (M9.2)",
+      "was": "Florian verlangt, dass Knochen auf einzelne Anker und, wo sinnvoll, auf einzelne Griffe verschieden stark wirken. Bei Ozzy sind Beine, Schwanz und Ohren Biegeachsen; dort gibt es keine Einstellung je Anker, und die Lage der Anker auf der Achse ist abgeleitet und wird nicht gespeichert. Gewichte je Anker gibt es nur für Bohne und Hals, und erst ab M9.",
+      "vorschlag": "Für Biegeachsen je Anker einen Wert „folgt der Achse“ (0 bis 1, Standard 1) und eine optional gespeicherte Lage auf der Achse; Griffpaare erben nach derselben Regel. Dieselbe Bedienung wie bei Gewichten (Füllring, senkrecht ziehen), schon mit den Knochen in M4.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Widerspruch Konzept ↔ Plan",
+      "wo": "Konzept §3.1 Tabelle (Schwanz und Rumpf Biegeachse, Bohne Gewichte); Plan §6.2 Schritt 9 („starr für Bohne, Schwanz und Kopf“), §6.4 (Schwanzkette, sechs Glieder), §5.9 (M6.3)",
+      "was": "Der Plan macht Schwanz und Bohne starr, das Konzept den Schwanz zur Biegeachse mit Federkette. Der Chip „Kette am Schwanz“ und die Probe „eine Feder am Schwanz löst seine Korrektur aus“ haben bei einem starren Schwanz keine Grundlage, und keine Etappe baut ihn um.",
+      "vorschlag": "In §6.2 Schritt 9 festlegen: Schwanz als Biegeachse mit Federkette ab M4, Bohne starr bis M9, danach Gewichte nur nach dem Vergleichsvideo und Florians Wort.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Regelverstoß (Arbeitsregel 1); Abweichung von Gesamtbericht 4.7 ohne Begründung",
+      "wo": "Plan Kopf („Reihenfolge und Aufwand dem Abschnitt 4.7“), §5.2, §5.6 (M3.4); Gesamtbericht 4.7 (S3 vor S4)",
+      "was": "Die Recherche stellt die billige Probe „Rahmen + Rest“ (S3, 2 bis 4 Tage) vor das Gerüst. Der Plan baut zuerst zehn Pakete, Format, Renderer und Übernahme und zeigt das Vergleichsbild erst in M3. Florian sieht bis dahin nur ein Paritätsvideo, das nichts Neues zeigt. Trotzdem behauptet der Plan, der Reihenfolge aus 4.7 zu folgen.",
+      "vorschlag": "Das Vergleichsbild Ohr 120° und Stirnfranse 52° bis 82° (heute gegen Rahmen + Rest, gleiche Ansicht) als erste Lieferung vor oder in M1 bauen, aus kopiertem Code des Prototyps. Oder die Abweichung ehrlich begründen.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Unklar für Bau-Agent (Übernahme)",
+      "wo": "Plan §6.2 Schritte 3, 4, 8, 9; §2.6",
+      "was": "Die Übernahme braucht `NAMEN` (`werkzeug.ts`), `ELTER` (`haltung.ts`), `NASE_SPIEGEL`, `kopfGespiegelt`, `SCHWANZ_WEISS`, `WICKEL` und `GESICHT_WEG` (`raster.ts`). Diese sind modul-privat und nicht exportiert; `Reflect.get` erreicht nur Felder der Klasse. Der Prototyp darf nicht geändert werden, und jede Änderung unter `src/ozzy-figur` lädt Florians Fenster neu.",
+      "vorschlag": "Festlegen, dass `tools/studio-uebernahme` diese Werte als Kopie führt (Teilnamen sind dort erlaubt) und ein Test die Kopie gegen das Verhalten des Prototyps prüft, etwa gespiegelte Formen gegen `teile()` bei 210°.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Widerspruch und Lücke (Schutzregel)",
+      "wo": "Konzept §0 Grundgesetz 5, §10.2; Plan §3.4, §3.6 Nr. 9, §4.1 `schutzVerletzt`, §4.9 (`X-Studio-Quelle`), §2.4 (`--host`)",
+      "was": "Grundgesetz 5 verbietet Migrationen, seine Schlüssel zu ändern; jede spätere Formatänderung an Schlüsseln muss sie aber umschreiben. Der Server glaubt die Quelle aus dem frei setzbaren Kopf `X-Studio-Quelle`; jede Sitzung und jedes Gerät im Netz (Server mit `--host`) kann „florian“ senden. Der Schutz ist damit nur eine Absprache.",
+      "vorschlag": "Regel genauer fassen: Migrationen dürfen die Darstellung seiner Datensätze ändern, nie die Gestalt (Prüfung: alle Anker vorher und nachher gleich, alte Datei gesichert). Die Quelle „florian“ nur mit einem Schlüssel, den die Editor-Seite beim Start vom Server bekommt; Proben und Skripte erhalten ihn nie.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Lücke zum Auftrag (Zeitpunkt), nicht als Entscheidung vorgelegt",
+      "wo": "Konzept §4, §7, §12, §14; Plan §5.2 (M9, M10.4)",
+      "was": "Florian nennt den Autorig „auf jeden Fall nötig“ und will Effekte und 2D-Shader „gleich eingebaut“. Autorig und Gewichte kommen in M9, nach rund 95 bis 150 Arbeitstagen, die Effekte für Momente in M10. Das ist vertretbar (die Recherche nennt es als Hebel), steht aber nicht in der Tabelle der vorläufigen Entscheidungen in Konzept §14.",
+      "vorschlag": "In §14 aufnehmen: „Autorig erst mit der Katze“, „Effekte für Momente in M10“, jeweils mit „So änderst du sie“. Die billigen Effekte früh an einer Testfigur zeigen (M6.1), damit Florian früh auswählt.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Unrealistisch (Aufwand gegen Wochenlimit)",
+      "wo": "Konzept §0, §12, §14 Frage 1; Plan §5.2, §9.1",
+      "was": "152 bis 233 Arbeitstage stehen ohne Bezug zu Florians Wochenlimit. Parallele Bahnen verbrauchen es schneller; Frage 1 in §14 sagt das nicht. Den ersten Ozzy auf dem Hügel spielt Florian erst in M5 (Mac) und M6 (iPhone), nach rund 50 bis 105 Arbeitstagen.",
+      "vorschlag": "Je Etappe den Verbrauch in Sitzungen oder Anteilen des Wochenlimits schätzen und nach M2 und M3 an echten Zahlen prüfen. Frage 1 ergänzen: „Parallel geht schneller, verbraucht aber dein Limit schneller.“ Einen frühen spielbaren Stand (P1 plus grobes Tapsen) einplanen.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Widerspruch (Bedienung nicht einheitlich)",
+      "wo": "Konzept §9.1, §9.5, §5.1, §9.6 (c); Übergabe ozzy-figur, Abschnitt Werkzeug",
+      "was": "Doppeltippen soll „hineingehen“, heißt in §9.5 aber auch „Anker setzen“ (Kurvenstück), „rundet“ (Griff) und „Gewichte malen“ (Gelenkring). Halten soll „mehr zeigen“, §5.1 sagt „Halten verdoppelt“. Tippen auf eine Posenkarte „wird die Stelle“ (§9.5) und „zeigt den Übergang“ (§5.1); was die Bühne dabei zeigt, ist offen. Die Leertaste spielt in Studio; in Illustrator und in Florians Werkzeug verschiebt Leertaste + Ziehen die Ansicht.",
+      "vorschlag": "Tabelle §9.5 auf die vier Bedeutungen bringen: Anker setzen nur mit P, Runden über Halten, Gewichte malen über W. Festlegen, was Tippen auf eine Posenkarte tut (Stelle wechseln, Figur fließt über den Übergang hinüber). Leertaste kurz = spielen, Leertaste halten + Ziehen = Ansicht verschieben.",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Lücke zum Auftrag („beste Technologie“)",
+      "wo": "Konzept §10 (Gegenüberstellung nur von Unterfragen), §6.5, §7; CLAUDE.md „Offene Grundsatzentscheidungen“ (Stack-Gate ADR-0001)",
+      "was": "Florian bittet zu prüfen, was die beste Technologie ist. Verglichen werden Renderer, Physik, Rückgängig, Format und Oberfläche, aber nicht der Grundweg: Web mit WebGL2 gegen eine native App (Swift und Metal, Stift-Schnittstellen, 120 Hz) oder eine Spiel-Engine mit fertiger Laufzeit. Auch der Bezug zum Hauptspiel (`apps/game`, three.js mit WebGPU) und zum offenen Stack-Gate fehlt.",
+      "vorschlag": "Eine ehrliche Tabelle „Grundweg“ ergänzen: wo native gewinnt (Tempo, Stift, 120 Hz), wo Web gewinnt (eine Laufzeit, vorhandener Prototyp, schnelle Runden, Florians Ablauf). Dazu ein Satz, wie Studio-Figuren später ins Hauptspiel kommen (eigener Zeichner neben three.js oder Bildfolgen).",
+      "gewicht": "mittel"
+    },
+    {
+      "art": "Probe nicht durchführbar wie beschrieben",
+      "wo": "Plan §5.7 (M4-Probe 4), §5.10 (M7-Probe 2 und M7.5); Konzept §9.7",
+      "was": "Die Werkbank-Probe in M4 verlangt „eine Pfote mit dem Anfasser auf einen Stein setzen“; Steine und Welt gibt es erst ab M5. Die Bedienprobe in M7 lässt Florian die Pose „Nasen-Pflug“, den Übergang aus „Schnüffeln“ und eine zweite Duftstelle anlegen; genau das legt M7.5 vorher per Skript an.",
+      "vorschlag": "Die M4-Aufgabe ändern (Pfote auf eine Stufe des Bodens) oder in M6 verschieben. Die Bedienprobe auf einer Kopie ohne diese Datensätze laufen lassen und das im Plan sagen.",
+      "gewicht": "niedrig"
+    },
+    {
+      "art": "Unklar für Bau-Agent (Live-Verbindung und Merker)",
+      "wo": "Plan §2.4 (Ports 5217, 5221), §4.9 („nur von der eigenen Seite (Origin)“), §5.9 (M6.2), §5.14 (M11.2)",
+      "was": "Das Spiel läuft auf 5221 und später in der App (`capacitor://localhost`). Es soll Änderungen per Server-Sent Events von 5217 empfangen und Merker per PUT nach 5217 senden. Die Origin-Regel lehnt genau das ab; in der App sperrt iOS zudem unverschlüsseltes HTTP ohne Ausnahme.",
+      "vorschlag": "Die Server-Erweiterung auch im Vorschau-Server des Spiels einhängen oder eine feste Erlaubnisliste (5221, `capacitor://localhost`) mit CORS führen; in der App `NSAllowsLocalNetworking` setzen.",
+      "gewicht": "niedrig"
+    },
+    {
+      "art": "Lücke zum Auftrag („unendlich erweiterbar“ ungeprüft)",
+      "wo": "Konzept §9.3, §11.1, §13; Plan §1",
+      "was": "„Unendlich erweiterbar“ soll laut §11.1 durch Park und Winter als reiner Inhalt bewiesen werden; beide liegen außerhalb von Fassung 1. Ob eine neue Bausteinart, Chipart oder Effektart wirklich nur ihre eigene Datei und eine Zeile im Register braucht, prüft keine Probe.",
+      "vorschlag": "Eine kleine Erweiterungsprobe in M9 oder M10: eine neue Effektart und eine neue Bausteinart mit Änderungen nur in ihrer Datei und ihrem Register, dazu ein neues Ding, das Florian nur im Editor baut.",
+      "gewicht": "niedrig"
+    },
+    {
+      "art": "Widerspruch in Begriffen (Arbeitsregel 6)",
+      "wo": "Konzept §2.1 und §15 (Übergangsform) gegen §5.2 und §16; Konzept §9.2 und §15 (Tropfen) gegen Plan §4.6 `tropfen`; Plan §3.2 (`Teil.grundform`, `Pose.grundform`); Konzept §12 (E0 bis E8) gegen Plan §5.2 (M0 bis M11); Plan §10 (Fragen)",
+      "was": "„Übergangsform“ steht in §2.1 und §15 als Zusatzform, laut §5.2 und §16 gibt es sie nicht. „Tropfen“ ist die Marke der Stelle und im Renderer zugleich Teilchen und Wassertropfen. „Grundform“ heißt die Form eines Teils ohne Bindung und die erste Posenkarte. Konzept und Plan zählen Etappen verschieden; Florian liest beide. Einige Fragen an Florian benutzen Fachwörter („Darf die Welt mit Box2D rechnen?“, „linear oder mit Drehzentren?“).",
+      "vorschlag": "Übergangsform aus §2.1 und §15 streichen. Im Code „Tropfen“ nur für die Marke, Teilchen heißen „Kreise“ oder „Spritzer“; für die Form eines Teils ohne Bindung ein eigenes Wort (etwa „Ruheform“). Eine Zählung der Etappen für Florian. Fragen in seinen Wörtern wie in Konzept §14.",
+      "gewicht": "niedrig"
+    },
+    {
+      "art": "Kleine Fallen für Bau-Agenten und offene Kriterien",
+      "wo": "Plan §2.1 und §2.3 Nr. 1 und 2, §3.3, §3.4, §4.10, §5.8 (M5.4), §5.12 (M9-Probe 1), §5.13 (M10-Probe); Gesamtbericht 4.3 Nr. 11 und 12",
+      "was": "`crypto.getRandomValues` in `kennung.ts` ist mit `lib: [ES2022]` und `types: []` nicht getypt. `AutorigErgebnis.ms` braucht `performance`, die Lint-Regel verbietet es in `studio-autorig`. Florians Schlüsseldatei trägt `version: 1`, heißt in Studio aber „kern 0“; der Lader muss sie am fehlenden `format: 'studio'` erkennen. „Gelee nie an einem Teil mit Rolle kopf“ ist eine Sonderregel, die einen Körperteil nennt (Arbeitsregel 7). Zag und echtes Safari über WebDriverIO aus der Recherche fehlen ohne Begründung. Die M9-Probe „Tabelle der Treffer“ und „Nicole spielt die Abendrunde“ (M10) haben kein festes Kriterium.",
+      "vorschlag": "Kennungen mit dem eigenen Zufall aus `studio-rechnen` erzeugen oder den Typ deklarieren; die Zeit des Autorigs im Worker außerhalb des Pakets messen. Erkennungsregel für das Format des Prototyps in §3.4 eintragen. Statt der Rolle ein Datenfeld am Teil („nie flüchtig verformen“), das die Übernahme setzt. Abweichungen von der Recherche begründen. Kriterien festlegen: „alle Einträge von ELTER und PARTNER getroffen“, „in höchstens drei Versuchen“.",
+      "gewicht": "niedrig"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+[
+  {
+    "datei": "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508/docs/plans/2026-11-20-studio/entwurf-a-werkbank.md",
+    "kernideen": [
+      "Leitsatz: Wer die Kopfdrehung formen kann, kann alles formen. Studio übernimmt fünf Handgriffe aus Florians heutigem Werkzeug: hingehen, formen, vergleichen, spielen, zurück. Jeder hat eine Taste, eine Geste und einen sichtbaren Zwilling auf Mac, iPad und iPhone (9.1).",
+      "Die Leiste ist der Ort. Unter der Bühne liegt immer genau eine Leiste mit einer Achse, ein Tropfen markiert die Stelle. Regel: Die Bühne wählt Dinge, die Leiste wählt die Stelle. Ein Teil antippen wechselt die Stelle nie. Vor dem Zug zeigt eine Vorschau, wo er landet und welche gebauten Schlüssel er ersetzt; das verallgemeinert die heutige rote Zeile. Der Geltungs-Chip danach erweitert nur (9.2).",
+      "Leisten statt Zeitleiste: eine Leiste für neun Achsen (Ansicht, Gelenk, frei, Physik, Spiel, Phase, Übergang, Mitschnitt, Strecke). Zeit erscheint nur in gestalteten Übergängen, Zyklen und im Mitschnitt. Ein Schlüssel ist immer die ganze Form eines Teils an einer Stelle; Spuren je Regler gibt es nur als zweite Ebene. Ehrlich festgehalten ist, wo die klassische Zeitleiste gewinnt: Versatz vieler Teile, Szenen, Lippensynchronität, Vertrautheit (1).",
+      "Posen und Übergänge: Posenkarten wie Folien. Zwischen allen Paaren gilt ein Standardübergang als Trägheits-Ausgleich im Reglerraum mit Dauer und Federung. Der erste Zug an einer Stelle macht daraus einen gestalteten Übergang mit Zwischenposen, Abschnitten, Zusätzen, Balken „steht“ und Marken. Ein Regie-Übergang ist die einzige kleine Zeitleiste. Die Tafel zeigt nur Paare, die das Spiel erreichen kann; die Diagonale ist das Verweilen (5).",
+      "V posiert, A formt: Mit V folgen die Knochen dem gezogenen Teil (Drehung, Ziel der Biegeachse, Anfasser an Nase und Pfote). Mit A formt er im Ruheraum der Stelle. Knochen sieht Florian nur zum Riggen: ein Knopf, Probewackeln, Ringe, Stecknadeln. Korrekturformen am Gelenk bedient er wie die Kopfdrehung (3, 4).",
+      "Ein Mechanismus für vieles: Alle Formänderungen sind Deltas auf derselben Ankerliste. Dazu kommen eine Federsprache für Übergänge, Physik, Kamera und Drähte, ein Chip mit zwei Reglern für Verhalten, Effekt und Klang, Z für alle Nachbarn (Schlüssel, Zwischenposen, Zukunft, Ereignisse) und ein Satz mit Lücken für Regeln und Aufgaben. Bewusst zwei Mechanismen bleiben an sieben Stellen, darunter Achse und Zeit, V und A, Draht und Regel, Box2D und die eigene Figurphysik, „heute“ und „Rahmen + Rest“ (9.6).",
+      "In Ruhe ist Ozzy seine Zeichnung. Physik, Effekte und Übergänge schreiben nur Abweichungen, die in Ruhe null sind. Ein Ruhe-Wächter vergleicht jede Vorlage und jede Pose bildgenau. Seine Schlüssel (Herkunft „dein“) schreibt keine Automatik; das sichert eine Schutz-Probe als Test.",
+      "Spielen und Anhalten auf derselben Bühne: Im Spiel gehört jede Berührung dem Spiel. Beim Anhalten zeigt eine Stellen-Wahl alle Stellen, die das Bild bestimmen, die wahrscheinlichste vorgewählt. Die flüchtige Physik bleibt dabei als blasser Umriss stehen. Der Mitschnitt ist wieder eine Leiste zum Spulen. Merker vom iPhone spielt der Prüfer am Mac genau nach.",
+      "Erweiterbar, ohne dass die Oberfläche wächst: Es gibt feste Orte (Bühne, Posen-Reihe, Leiste, Eigenschaften, Bibliothek, Prüfer, Befehlssuche). Neues kommt nur als Achse, Baustein, Chip, Vorlage oder Herkunft. Jede Fähigkeit muss sich in die Tabelle Ding × Geste eintragen lassen. Das Format hat Versionen je Baustein.",
+      "Umsetzung aus Sicht der Werkbank: E1 holt seine Kopfdrehung bildgleich nach Studio, seine Datei wird nur gelesen. Die Werkbank-Probe (E4) kommt direkt nach Posen und Übergängen, weil der Entwurf auf der Wette „Leiste als Ort“ ruht. Ab E6 folgen Spielwiese und Demo „Gassirunde“. Sechs parallele Spuren mit festen Verträgen sind möglich, aber nur mit seiner Freigabe. Aufwand rund 128 bis 208 Arbeitstage (eigene Schätzung)."
+    ],
+    "abweichungen_von_der_recherche": [
+      "Wohin ein Zug geht: Die Recherche setzt die aktive Stelle mit Geltungs-Chip danach (12 §6.4). Ich sage: Die Bühne wählt Dinge, die Leiste wählt die Stelle, eine Vorschau warnt vor dem Zug, und der Chip erweitert nur. Gegenrede: ein Tippen mehr; ohne Schweben (Finger) kommt die Vorschau erst beim Aufsetzen.",
+      "Anhalten im Spiel: Die Recherche lässt den Chip die Stelle hinterher erraten (Gesamtbericht 4.6 Nr. 26). Ich sage: Stellen-Wahl vor dem Formen, vorgewählt. Gegenrede: wirkt langsamer.",
+      "Posieren: Bei mir posiert V in der Linse Form über die Knochen; die Linse Knochen dient nur dem Riggen. Die Recherche lässt Knochen in der Linse Knochen drehen und Teile in der Linse Form verschieben (12 §6.3). Gegenrede: Ein Teil frei aus dem Rig schieben geht nur noch über A.",
+      "Werkzeuge: P setzt in jeder Linse, was sie zeigt (Anker, Gelenke, Zonen), und B bleibt Florians Taste, ohne Modus, für das reine Bild. Die Recherche will B als Knochenwerkzeug (12 §6.6). Gegenrede: P wird mehrdeutig.",
+      "Der Autorig rechnet nie von selbst nach, nur auf Knopfdruck; der Prüfer meldet unpassende Gelenke. Die Recherche will ihn lebendig (07 §5). Begründung: Nichts darf springen.",
+      "Die Werkbank-Probe (Bedienprobe) ist vorgezogen auf E4 direkt nach Posen und Übergängen, an seiner eigenen Kopfdrehung; die volle Probe folgt nach E7. In der Recherche kommt sie als S7 nach der Spielwiese.",
+      "Die Tafel zeigt nur erreichbare Paare, abgeleitet aus dem Vierbeiner und den Regeln; eine frei angeordnete Posenkarte gibt es nicht (anders als 05 §4.2), weil bei rund 35 Posen sonst über 1 000 Zellen entstünden.",
+      "Der Mitschnitt ist die eine Leiste im Spiel (spulen, J/K, Z). Messwertkurven erscheinen erst auf Halten. Die Spur der Zukunft ist Z in der Linse Physik, statt eigener Anzeigen (14b §7.13, 12 §6.13).",
+      "Zwischenpose und Übergangsform sind vereint: Jeder Zug im Übergang wird eine Zwischenpose mit Formdeltas; eine eigene Glocke wie in 06 §6.5 gibt es nicht."
+    ],
+    "groesste_unsicherheiten": [
+      "Ob „die Leiste wählt die Stelle“ trägt, wenn mehrere Achsen zugleich wirken, also ob Änderungen unbemerkt an falscher Stelle landen. Das ist eine Wette gegen Rives zwei Modi; sie klärt die Werkbank-Probe E4, bei Misserfolg folgt eine Gegenprobe mit zwei Modi.",
+      "Ob die Vorschau vor dem Zug ohne Schweben (Finger am iPad, iPhone) früh genug kommt und ob Florian bei V „verschieben“ statt „posieren“ erwartet; beides klärt E4 am iPad.",
+      "Ob die Stellen-Wahl beim Anhalten im Spiel zu umständlich ist; das klärt die volle Bedienprobe nach E7.",
+      "Ob das iPhone 16 die Abstandsfelder und die Szene in 8 ms Grafikzeit schafft (Messseite E0a). Ob Weg B Halten, Rückwirkung, Hinsetzen, Sturz und Spulen trägt (P1).",
+      "Ob „Rahmen + Rest“ an seinen Formen schöner oder nur anders ist (Vergleichsbild E2). Ob „Dauer und Federung“ und die Umrechnung f = 1/Dauer, ζ = 1 − Federung sein Gefühl treffen.",
+      "Wie groß die Tafel der erreichbaren Paare wirklich wird; das zeigt erst eine Zählung im Garten.",
+      "Wann seine Kopfdrehung vom Prototyp nach Studio umzieht. Zwei Orte für dieselben Schlüssel wären gefährlich; die Entscheidung liegt bei ihm nach E1.",
+      "Ob der Umfang (rund 128 bis 208 Arbeitstage, eigene Schätzung) in sein Wochenlimit passt. Dagegen helfen Abbruchregeln je Etappe; parallele Spuren brauchen seine Freigabe."
+    ]
+  },
+  {
+    "datei": "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508/docs/plans/2026-11-20-studio/entwurf-b-laufzeit.md",
+    "kernideen": [
+      "Eine Laufzeit: Editor und Spiel laden dieselbe Datei und rufen dieselben Funktionen auf (Fassade bauen, starten, takt, bild); was Florian im Editor sieht, ist das Spiel, angehalten. Ozzy ist in Ruhe exakt seine Zeichnung, weil jede Stufe an den Schlüsseln exakt ist und alles Gerechnete (Zusätze, Federn, flüchtige Stufe) in Ruhe null ist; beides wird als Eigenschaftstest geprüft.",
+      "Ein Baustein für Bewegung, der Regler (Kopf- und Knochenwinkel, Posengewicht, Fortschritt, Gangphase, Neigung, Federausgang, Effektstärke, Lage der Figur), und genau zwei Arten, an ihm zu hängen: die Bindung (Form eines Teils, Schlüssel mit Gestalt oder Versatz) und der Draht (Wert, Kennlinie). Ansichtsschlüssel, Formziele, Korrekturen, Kreuzschlüssel, Posenkorrekturen, Übergangsformen, Zyklen, gestaltete Übergänge und Spiel-Drähte sind derselbe Mechanismus; der Bauplan übersetzt Posen und Übergänge in Regler, Bindungen und Drähte.",
+      "Datenmodell als TypeScript-Typen mit Kennungen und Herkunft (vorlage, dein, gebaut, falte, automatik); Anker als eine Zeile mit polaren Griffen (glatt: ein Winkel, zwei Längen), damit die Glätte im Format steckt; Zusätze als Versatz im mitlaufenden Rahmen vor dem Skinning; Gewichte je Anker und als ein Satz je glattem Griffpaar oder je Griff an Ecken, Glätte-Schutz nur, wo eine Stufe sie nicht selbst hält.",
+      "Vier Stufen: Datei → Bauplan (gepackte Felder, inkrementell je Datensatz, voller und inkrementeller Neubau als Test) → Takt (fest 60 Hz, vier Teilschritte, Regler mit Soll, Ist und Trägheits-Ausgleich) → Bild (Formen einmal je Bild aus gemischten Reglern, Abstandsfeld-Renderer Stufe 1). Die Rechenkette aus Gesamtbericht 4.4 ist als 15 Module mit Signaturen ohne Speicherwürfe beschrieben.",
+      "Rückrechnung statt eigener Editor-Geometrie: rueckrechnen() führt jeden Zug durch die Haut zurück und wählt über eine Zielregel den Datensatz an der aktiven Stelle; prüfbar als „was du ziehst, landet genau dort“.",
+      "Store mit Datensatz-Diffs für Rückgängig, Speichern, Journal, Live-Verbindung und Bauplan, dazu eine Schutzregel: Automatik, KI-Sitzungen und Migrationen können Florians Schlüssel und gepinnte Werte weder ändern noch löschen.",
+      "Deterministisch über Geräte: eigener Port der Winkelfunktionen im ganzen Simulationspfad, per Lint-Regel und tsconfig ohne DOM erzwungen; dreiteilige Prüfsumme; Lauf-Datei aus Ausgangslage und Protokoll ist zugleich Beweis, Fehlerbericht, Pannen-Rückblick und Regressionstest.",
+      "Florians Kopfdrehung wird mit einem Node-Werkzeug als Daten übernommen (alle Schlüssel samt Herkunft, Abschnitte und Stützschlüssel, Spiegelregel, Wechsel), behält ihre Mischart koordinaten, ein Paritätstest verlangt in 0,5°-Schritten unter 0,001 Abweichung; Studio enthält keinen Code, der ein Teil von Ozzy nennt.",
+      "Pakete mit geprüften Abhängigkeiten (rechnen, format, store, laufzeit, welt, bild, ton, autorig; apps/studio auf Port 5217, apps/ozzy-spiel); Welt hinter WeltAdapter mit Attrappe, Box2D-Typen verlassen den Adapter nie; alles Gezeichnete ist eine Figur, ein Ding stellt sie in eine Welt.",
+      "Umsetzung mit Etappe E0 „Verträge und Übernahme“ (Typen, Schnittstellen, Prüfdaten, Testgerüste, alle Konfigurationsdateien eingefroren), dann neun Bahnen in exklusiven Ordnern mit Attrappen, täglicher Integration hinter Test-Toren, höchstens zwei Proben gleichzeitig für Florian, Abbruchregeln je Etappe; ob parallel gebaut wird, entscheidet Florian."
+    ],
+    "abweichungen_von_der_recherche": [
+      "Eigene Winkelfunktionen ab dem ersten Tag im ganzen Simulationspfad (Recherche: erst, wenn Aufnahmen über Geräte gleich sein müssen, 14a Empf. 10).",
+      "Bauplan als eigene, gepackte und inkrementelle Stufe statt nur reiner Funktionen mit Caches je Verweis (11 §4.2).",
+      "Paketschnitt um studio-rechnen, studio-store und studio-autorig erweitert; die Figurphysik liegt in der Laufzeit, studio-welt kapselt nur Box2D (11 §12.1 hatte die Figurphysik in studio-welt).",
+      "Draht der Logik und Treiber der Figur sind ein Datensatz; auch gestaltete Übergänge und Zyklen werden zu Drähten (Recherche trennt 14b §7.3 und Slider/Treiber aus 01, 04).",
+      "Übergangsform als Zusatz-Bindung am Fortschritt-Regler mit Nullschlüsseln bei 0 und 1 statt fester Glocke 4s(1−s) (06 §6.5).",
+      "Korrekturformen im mitlaufenden Rahmen vor der Drehzentren-Haut statt je Einfluss im Knochenraum wie Spine (Gesamtbericht 4.6 Punkt 9); eigene Herleitung, dass das am Gelenk nicht schrumpft.",
+      "Längen in Zusätzen linear relativ zur örtlichen Größe, bei 0 geklemmt, statt über den Logarithmus (06 §6.2), wegen eingezogener Griffe.",
+      "Trägheits-Ausgleich je Regler bei jedem Sprung des Solls statt nur beim Posenwechsel (05 §5.5).",
+      "Von Anfang an je Figur und je Szene eine Datei statt zunächst einer projekt.json (11 §5.2).",
+      "Ozzys Handrig aus haltung.ts wird einmal als Daten übernommen, statt bis zum Autorig als Code weiterzulaufen (Gesamtbericht 4.7).",
+      "Drähte laufen im Regler-Durchlauf nach Regeln und Posen statt davor wie in der Kette 4.4."
+    ],
+    "groesste_unsicherheiten": [
+      "Ob der eigene Port der Winkelfunktionen im Bildtakt so schnell ist wie Math (ungemessen; Messseite S1 bzw. E0).",
+      "Ob der Reglerraum Ozzys Haltungen und Abläufe zwischen den gezeichneten Posen so schön mischt wie haltung.ts; nur an den Posen ist Gleichheit garantiert, dazwischen entscheidet Florian am Video (S5).",
+      "Ob der mitlaufende Rahmen Korrekturen am Gelenk wirklich formtreuer hält als die Speicherung je Einfluss (eigene Herleitung, an seinen Formen ungeprüft; Probe „Feder treibt Korrektur“).",
+      "Ob Box2D mit unserer Einbindung über Safari, Chrome und die App bitgleich läuft und 32 MB für Schlüsselstände reichen (P1, K7 und K8).",
+      "Ob die Szene auf dem iPhone 16 in 8 ms Grafikzeit passt und halbe Feldauflösung Spitzen nicht weicher macht (Messseite, Florians Auge).",
+      "Wie schnell der inkrementelle Bauplan beim Ziehen neu baut (eigene Schätzung unter 1 ms je Schlüssel, ungemessen; S4).",
+      "Ob an der Ankerreihenfolge ausgerichtete Zeilen mit gleichzeitig arbeitenden KI-Sitzungen konfliktarm bleiben (Rückfall: Format 2 mit Zuordnung über Kennungen).",
+      "Ob die aktive Stelle ohne globalen Modus trägt (Bedienprobe S7) und ob parallele Bahnen netto schneller sind als seriell, da Florians Prüfzeit der Engpass bleibt.",
+      "Aufwand: rund 130 bis 210 Arbeitstage bis zur Demo ist eine grobe eigene Schätzung; E0 (8 bis 12 Tage) kostet vorne mehr als in der Recherche geplant."
+    ]
+  },
+  {
+    "datei": "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508/docs/plans/2026-11-20-studio/entwurf-c-demo.md",
+    "kernideen": [
+      "Blickwinkel C wörtlich umgesetzt: Die Demo „Gassirunde: ein Tag auf Ozzys Hügel“ legt den Umfang fest. Jede Funktion des Editors entsteht mit dem Moment der Demo, der sie braucht (Tabelle 11.13); was kein Moment braucht, wartet (Mehrspur-Zeitleiste, Gelee, ARAP, BBW, WebGPU, Export usw.).",
+      "Ein Hügel, ein Tag, drei Runden statt drei Welten: Morgen (Lage ist Tempo, Halten), Mittag (Erhöhungen, schlafende Katze, Ketten, Launen), Abend nach dem Regen (Matsch, Pfützen, Müdigkeit). Tageszeit und Nässe sind Regler, die über Drähte Himmel, Wasserstand und Haftung treiben; jede Runde ist zugleich die Abnahme einer Editor-Stufe.",
+      "Zeitmodell: keine klassische Zeitleiste als Ordnung, sondern eine Leiste mit vier Gesichtern (Regler, Taktleiste eines Übergangs, Strecke der Runde, Werteverlauf) mit denselben Gesten wie Florians heutige Zeitleiste; Regie-Abläufe (Abgang, Ankunft) sind gestaltete Übergänge des Dings „Rahmen“.",
+      "Gestaltete Übergänge bekommen Abschnitte „bis Ereignis“ (Flug bis Landung, Purzeln bis Ruhe, Bauchrutscher bis Stillstand) und Spannung als Regler mit Schlüsseln; so ist die Übergabe an die Ragdoll eine Spannungskurve und kein zweites System.",
+      "Ein Mechanismus für alles, was Zustände wechselt: Ozzy, Katze, Kamera, Musik, Himmel und Rahmen haben Posen und Übergänge. Alles, was an einem Ding hängt, ist ein Chip (Physik, Effekt, Klang, Baustein), angehängt über einen einzigen Weg (＋ Bibliothek, auf das Ding ziehen). Bewusst zwei: Rechenarten Rahmen+Rest gegen additiv, zwei Löser, Marke gegen Kontakt beim Klang, Draht gegen Karte.",
+      "Physik nach Weg B (nach P1): Box2D für Hügel, Brust/Becken/Kopf, Ragdoll und lose Dinge, XPBD für Ohren, Bart, Schwanzkette, Stauchung; Vortrieb als Kräftepaar, Stehzone aus min(Bremskraft, Haftung) ohne Sonderregel für Matsch; Wunschtempo aus dem Hang als Draht, den Florian zeichnet; Sprungfenster aus Sprunghöhe 0,5 L und Schrittlänge statt Regel je Ding; neuer Befehl „Wurf“ für den Rückwurf. Vollständige Chip-Tabelle mit Startwerten (6.6).",
+      "Spiellogik: Bausteine, Drähte, drei Kartenarten (Sobald, Solange, Laune), fünf Bänder, Takt mit Schnappschuss; vollständige Liste aller rund 35 Karten des Tages, aller Bausteine und Drähte, neun Aufgaben mit Beweis-Lauf, dazu vier Schritt-für-Schritt-Beispiele, wie Florian sie mit Gesten anlegt (Duftstelle, Abgang über den Rand, Katze weckt Angst, Draht Hang zu Wunschtempo).",
+      "Komik als Ablauf mit Zeiten: Nasen-Pflug, Popo-Rutschen, Schlafwalze, Katzenflucht, Abgang mit Scheppern und Rückwurf auf echter Bahn samt Andenken-Bonk, Übermut-Plumps, Wippen-Katapult. Ozzy wird blamiert, nie verletzt; Andenken liegen nie auf ihm, Gähnen ohne Maul, bis Florian eins zeichnet: In Ruhe bleibt er exakt sein Logo.",
+      "Vollständige Listen für die Demo: rund 32 Körperposen (5 vorhanden) plus 9 Regler, rund 25 neue gestaltete Übergänge mit Abschnitten und Startzeiten, 11 Zyklen mit Frequenzen, Launen-Tabelle mit Ankündigung, Wirkung, Dauer und Ruhezeit, Dinge-Tabelle mit verlangtem Tempo, Karte des Hügels mit Lagen je Runde.",
+      "Autorig nach 07 (Teile-Graph, Vorlage als Daten, Achse je Teil), gebaut erst mit der Katze als zweiter Figur (E5); bis dahin läuft Ozzy auf seinem übernommenen Handrig, das zugleich die Prüfaufgabe ist. Der Autorig liefert auch Physik-Hüllen, Masse, Federketten und Adressen für Karten.",
+      "Prüfbare Regel „kein Spielcode“: Die Spiel-App apps/gassirunde hat höchstens 300 Zeilen und bindet nur die fünf Studio-Pakete ein; alles, was die Demo braucht, muss als Baustein in die Laufzeit.",
+      "Umsetzung in acht Etappen E0 bis E7, jede mit einem Demo-Moment als vorher festgelegter Probe; Schnittstellen in E1 zuerst, danach bis zu sechs getrennte Spuren, aber höchstens zwei bis drei Agenten zugleich und nur nach Florians Ja; Morgenrunde nach grob 3 bis 4,5 Monaten, ganzer Tag nach 6 bis 9 Monaten (eigene Schätzung).",
+      "Hinweis zum Umfang: Die Datei hat rund 63 KB und liegt damit über der Vorgabe von 50 KB, weil die verlangten vollständigen Listen (Posen, Übergänge, Zyklen, Chips, Effekte, Karten, Aufgaben, Etappen) ausgeschrieben sind."
+    ],
+    "abweichungen_von_der_recherche": [
+      "Aufbau der Demo: ein Hügel, ein Tag, drei Runden statt drei Welten Garten, Park, Winter (Gesamtbericht 5.3); Gegenrede: drei Welten zeigen mehr Look, ein Ort ist anfälliger für Gleichförmigkeit.",
+      "Winter mit Eis, wachsendem Schneeball und Schneemann entfällt; dieselbe Lehre (Haftung sinkt) kommt als Matsch und Pfützen nach dem Regen; Eis und Schneeball werden später reiner Inhalt.",
+      "Rückkehr vom Bildrand als Rückwurf auf echter Flugbahn mit hinterherfallendem Andenken („Bonk“) statt unbestimmtem „kommt mit Andenken zurück“; der Spieler fängt die Landung. Gegenrede: Ein geworfener Hund kann grob wirken.",
+      "Katze wird Pflicht der Mittagsrunde (Prüfstein des Autorigs), aber als Schläfer ohne eigenes Gleichgewicht statt als Vierbeiner im „Soll“.",
+      "Abschnitte gestalteter Übergänge können an einem Ereignis enden („bis Landung“, „bis Ruhe“) statt nur nach Sekunden (05 §5.5).",
+      "Kamera, Musik und Himmel sind Dinge mit Posen und Übergängen statt Kamera-Wünschen mit eigener Überblendliste (14b §7.12).",
+      "Regie-Abläufe (Abgang, Ankunft) als gestaltete Übergänge des Rahmens mit Marken; keine Mehrspur-Zeitleiste.",
+      "Weltwahl-Rad entfällt; die Runden folgen aufeinander, der Start ist Ozzys Aufwachen im Körbchen.",
+      "Aufgabenzettel 1,5 s zu Beginn jeder Runde, obwohl die Recherche Text nur auf der Endkarte will.",
+      "Keine neuen Maulformen (hechelnd, gähnend, bellend aus 13 §10.1) ohne Florians Zeichnung, wegen der Logo-Regel; Gähnen über Kopf, Ohren, Brauen und Ton.",
+      "Rückblick spielt gespeicherte gezeigte Werte ab (höchstens sechs Geister) statt aus Schnappschüssen nachzurechnen; unabhängig vom experimentellen Box2D-Snapshot.",
+      "„Kein Spielcode“ wird ein Test (Spiel-App höchstens 300 Zeilen, nur die fünf Pakete) statt nur ein Grundsatz.",
+      "Stimmung (vorsichtig nach Stürzen) als sichtbare Solange-Karte über einem gleitenden Zähler statt stiller Anpassung.",
+      "Paketnamen mit Vorsilbe studio- unter @ee, damit das alte @ee/physics unberührt bleibt; Spiel-App heißt apps/gassirunde statt apps/ozzy-spiel."
+    ],
+    "groesste_unsicherheiten": [
+      "Ob sich das Balancieren gut anfühlt (Kippzeit 0,84 s bei Radius 14 L, Stehzone ±17°, Radgewicht mittel, Griff 1 × Ozzys Gewichtskraft); klärt P1 und die Spielwiese auf dem iPhone, dann Nicole.",
+      "Ob ein einziger Hügel drei Runden trägt oder eintönig wird; klärt Nicole nach der Mittagsrunde, Rückfall ist ein zweiter Hügel als Inhalt.",
+      "Ob der Rückwurf mit Andenken-Bonk komisch oder grob wirkt; nur Florians Auge an einer Aufnahme kann das entscheiden.",
+      "Ob die Kette auf dem drehenden Hügel in Box2D trägt (Kriterien K5, K6 von P1); sonst Weg B′ oder Rapier.",
+      "Ob sechs Geister im Rückblick plus Szene ins Grafikbudget von 8 ms auf dem kalten iPhone 16 passen; klärt ein eigener Block der Messseite in E0.",
+      "Ob die aktive Stelle ohne Modi trägt und ob Abschnitte „bis Ereignis“ lesbar sind; klären die Bedienproben in E3 und E5.",
+      "Ob der Autorig die Katze und Ozzys Handdaten (ELTER, PARTNER, Kopfteile) ohne Namen trifft; klärt E5.",
+      "Ob die Umrechnung Dauer/Federung in Frequenz/Dämpfung (f = 1/Dauer, ζ = 1 − Federung) mit den Startwerten aus 08 gut aussieht; klärt E2 an den Ohren.",
+      "Alle Startwerte (Bremskraft 0,3 g, Haftungen, Sprunghöhe 0,5 L, Schritthöhe 0,18 L, Nachlauf, Weckschwelle, Rundenuhr 120 s) sind eigene oder übernommene Schätzungen, nicht gemessen.",
+      "Aufwand von 124 bis 190 Arbeitstagen ist eine grobe eigene Schätzung; der Engpass sind Florians Prüfrunden. Nach E0 und E1 neu schätzen.",
+      "Entscheidungen, die nur Florian treffen kann: Gähnen ohne Maul, Aufgabenzettel als Text, Streicheln als zweite Geste, Effekte auf Ozzys Körper (Aufprallbild, Zittern, Bewegungslinien)."
+    ]
+  }
+]

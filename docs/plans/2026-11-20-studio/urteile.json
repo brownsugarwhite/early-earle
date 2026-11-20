@@ -1,0 +1,567 @@
+[
+  {
+    "linse": "Florian (Art Director): Bedienung am Mac und iPad mit Stift, superglatte Morphs und Übergänge, die er selbst formt, Ozzy exakt wie sein Logo, seine Schlüssel unantastbar, klare Begriffe",
+    "bereiche": [
+      {
+        "bereich": 1,
+        "punkte_A": 8,
+        "punkte_B": 6,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "A stellt die Zeitleiste am ehrlichsten gegenüber (§1.1, §1.2: wo sie gewinnt, „für einen Kurzfilm das schlechtere Werkzeug“). Seine heutige Leiste der Kopfdrehung wird der eine Ort für alle Achsen, und ein Schlüssel bleibt wie heute die ganze Form eines Teils. Der Regie-Übergang mit Spuren ist für ihn sichtbarer als Cs Kette aus Marken. B bleibt technisch (Taktnummer) und sagt wenig dazu, was er sieht.",
+        "uebernehmen": [
+          "Aus C §1: die Zählung, was die Demo an Zeit braucht (rund 25 gestaltete Übergänge, 11 Zyklen, 2 Regie-Abläufe), als feste Grenze, ab der erst eine Mehrspur-Zeitleiste nötig würde.",
+          "Aus C §1 und §8.8: das Gesicht „Werteverlauf“ der Leiste (letzte 20 s mit Schwellen und Ereignismarken), statt Messkurven nur auf Halten (A §13).",
+          "Aus B §1 und §10.8: Zeit im Lauf ist die Taktnummer; Scrubben mit Physik springt zum letzten Schlüsselstand und rechnet höchstens 15 Takte nach; Zeitlupe nur über das Takt-Tempo."
+        ]
+      },
+      {
+        "bereich": 2,
+        "punkte_A": 8,
+        "punkte_B": 9,
+        "punkte_C": 6,
+        "bester": "B",
+        "warum": "Nur B übernimmt seine Kopfdrehung nachweisbar unverändert (Paritätstest im 0,5°-Raster) und hält die Glätte im Format fest. B rechnet Zusätze im mitlaufenden Rahmen („ändert Florian später einen Ansichtsschlüssel, folgt der Zusatz“) und lässt gebaute Schlüssel ruhen, statt sie zu löschen. A hat die besseren Abläufe für ihn, aber eine fehlerhafte Fang-Regel. C mischt Formziele ohne mitlaufenden Rahmen.",
+        "uebernehmen": [
+          "Aus A §2: P setzt und löscht Anker in allen Zuständen; vorher zeigt die Leiste die Abweichung je Schlüssel rot. Dazu Cs Schwelle (C §2: nachfragen erst über 0,5 Bildpunkte) und Bs Regel (B §2.5: in seinen Schlüsseln löscht nur er).",
+          "Aus A §2 und §9.5 a: eine fremde SVG auf eine Stelle der Leiste fallen lassen, Paarmarken zum Umsetzen, „Vorlage darüber“.",
+          "Aus A §2: der Ruhe-Wächter, der beim Speichern jede Vorlage und jede Pose in Ruhe bildgenau mit dem freigegebenen Bild vergleicht.",
+          "Aus C §2: die Mischart als kleines Wort an der Leiste; „was verschwindet, läuft auf einen Punkt, nie auf eine Linie“ (Falle aus der Übergabe der Ozzy-Figur).",
+          "In B §2.3 und §10.11 ergänzen: die Spitzenführung aus raster.ts (spitzenFuehren, 45° bis 90°) als allgemeine Option der Mischart „koordinaten“. Das Glätte-Schnappen beim Import (bis 0,05 Einheiten) nur mit einer Liste der betroffenen Anker."
+        ]
+      },
+      {
+        "bereich": 3,
+        "punkte_A": 8,
+        "punkte_B": 7,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "A übersetzt Knochen in Florians Handgriffe: V posiert, A formt. Eine Korrekturform geht wie die Kopfdrehung (Gelenkwinkel auf die Leiste holen, biegen, formen), dazu Anfasser an Nase und Pfote; Knochen sieht er nur zum Riggen. B hat die genaueste Rechnung, weicht aber beim Bezugsrahmen der Korrekturen ungeprüft von der Recherche ab. C beweist an vier Demo-Momenten, beschreibt die Bedienung aber kaum.",
+        "uebernehmen": [
+          "Aus B §3.2: Jeder Knochenwinkel ist ein Regler; Pose, IK, Physik und Anfasser stellen denselben Wert.",
+          "Aus B §3.5: `rueckrechnen` mit Zielregel und dem Eigenschaftstest „der gezogene Punkt liegt am Ziel, kein Schlüssel an einer anderen Stelle ändert sich“, als Unterbau von A §9.2.",
+          "Aus C §3: die vier Demo-Momente als Proben (Ohrgelenke wandern bei der Kopfdrehung mit, Katzenbuckel, Bohne in Rückenlage, Schwanzkette löst ihre Korrektur aus) und zwei Videos nebeneinander für Hals und Bohne.",
+          "Bs Abweichung beim Bezugsrahmen der Korrekturen (B §3.4, §13) erst nach der Probe „Feder treibt Korrektur“ übernehmen. Das Skinning nicht „Haut“ nennen (B §3.2): „Haut“ ist im Projekt die Fläche aus den Linien."
+        ]
+      },
+      {
+        "bereich": 4,
+        "punkte_A": 8,
+        "punkte_B": 7,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "A hat den klarsten Ablauf: Knopf, Probewackeln, Fragezeichen, Ringe, Stecknadeln, ein ⌘Z. Dazu kommt die für Florian wichtigste Regel: Der Autorig rechnet nie von selbst nach, also springt nichts, und der Prüfer meldet Gelenke, die nicht mehr passen. C hat die konkreteren Kriterien, lässt das Ergebnis aber das Handrig ersetzen, ohne dass Florian Ozzys Bewegung vorher vergleicht.",
+        "uebernehmen": [
+          "Aus C §4: die Nebenprodukte für Physik und Spiel ausdrücklich nennen (Hüllen für Brust, Becken und Kopf, Masse aus den Flächen, Füße mit Sohlenrichtung, Rollen als Adressen für Regeln).",
+          "Aus C §4 und §12.1: das Kriterium „die Katze braucht höchstens drei Ringzüge“; zwei fremde SVGs laufen nur zur Probe mit.",
+          "Aus B §4: Das Spiel enthält keinen Autorig. Sein Ergebnis ist eine Änderung mit Herkunft „automatik“, die Florians Pins und Datensätze nicht anrühren darf.",
+          "Gegen C §4: Ozzys Handrig wird erst nach einem Vergleichsvideo und Florians Wort ersetzt."
+        ]
+      },
+      {
+        "bereich": 5,
+        "punkte_A": 9,
+        "punkte_B": 7,
+        "punkte_C": 8,
+        "bester": "A",
+        "warum": "A trifft „ich forme meine Übergänge selbst“ am direktesten. Der erste Zug in einem Standardübergang macht ihn zum gestalteten, einen Schritt „anlegen“ gibt es nicht. Die Taktleiste ist an seinem Ablauf „huepfer“ belegt (72 % Stehen, 0,20 s und 0,34 s stimmen mit ablauf.ts), und die 16/s-Feder des Prototyps fällt weg. C bringt die wichtigsten Ergänzungen für ein Physikspiel, B die gleichmäßigste Rechnung.",
+        "uebernehmen": [
+          "Aus C §5: Abschnitte „bis Ereignis“ mit Höchstdauer (Flug bis Landung, Rutschen bis Stillstand, Liegen bis Ruhe), auf der Leiste gestrichelt.",
+          "Aus C §5 und §6.5: die Spannung als Regler mit Schlüsseln, damit der Sturz eine Kurve im Übergang ist und kein zweites System.",
+          "Aus C §5 und §8.1: Kamera, Musik, Himmel und Rahmen sind Dinge mit Posen und Übergängen. Aus C §11.12: die Liste der gestalteten Übergänge der Demo.",
+          "Aus B §5.2: Ausgleich je Regler bei jedem Sprung des Solls, auch durch Regeln und Klicks. Aus B §5.1: Übergänge mit von/nach „jede“; „über X“ ersetzt `weg()`.",
+          "In A §5.4 klarstellen: Die gerasterten Zellen der Tafel bleiben formbar (jede Pose in jede andere). Der erste Zug legt den gestalteten Übergang zeitgleich zur Standardfeder an, damit sich nur die geformte Stelle ändert."
+        ]
+      },
+      {
+        "bereich": 6,
+        "punkte_A": 7,
+        "punkte_B": 6,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "Nur C hat eine vollständige Spielphysik. Dazu gehören Hügel und Finger mit Startwerten und Ozzys Körper: drei feste Teile, Federbeine mit Antriebsgesetz, Stehzone tan α ≤ min(Bremskraft/g, Haftung). Der Sprung kommt aus seiner Fähigkeit statt aus einer Regel je Ding, der Sturz ist eine Spannungskurve, und die Chips haben Werte. Die Zahlen stimmen nachgerechnet: ±17°, ±6°, 4,5 L/s, 0,45 s Flug, 0,84 s Kippzeit. A hat den besseren Prüfstand, B den Vertrag.",
+        "uebernehmen": [
+          "Aus A §6 und §9.5 e: Prüfstand-Gesten (Anstoßen unter dem Finger, Ohr schnippen). Z zeigt in der Linse Physik die Spur der Zukunft. Dazu der Knopf „Extreme formen“, und „Aufnehmen“ wird ein gestalteter Übergang mit Herkunft „Aufnahme“.",
+          "Aus A §6: Beim Formen ruht die flüchtige Schicht und bleibt als blasser Umriss stehen; sie wird nie gespeichert.",
+          "Aus B §6: die Schnittstelle `WeltAdapter` mit Attrappe; „Ruhe = Zeichnung“ als Eigenschaftstest (nach dem Ausschwingen höchstens 10⁻⁶); Federn schreiben nur in Regler."
+        ]
+      },
+      {
+        "bereich": 7,
+        "punkte_A": 7,
+        "punkte_B": 8,
+        "punkte_C": 8,
+        "bester": "B",
+        "warum": "B überträgt den heutigen Look des Prototyps vollständig als Daten: FLUESSIG wird Verbindungen, der Ohrspalt eine Fuge, durchbruch die Dickenregel, deckung ein Wechsel mit Breite, Verdecker ein Effekt. Den Shader baut B aus diesem Modell. Nur so bleibt Ozzy nach dem Umzug exakt sein Logo. C hat die beste Liste für die Demo, das Modell fehlt dort aber; A ist richtig, aber allgemein.",
+        "uebernehmen": [
+          "Aus C §7: die Tabelle der Demo-Effekte mit Standard an/aus; Sterne als Formen auf einem Zyklus statt Shader; die sechs Ozzys des Rückblicks vor dem Bau auf der Messseite messen.",
+          "Aus A §7: zuerst Stärke und Weichheit zeigen, das Profil unter „Mehr“; Kostenampel „iPhone“; Export zuerst als Bildfolgen.",
+          "In B §7: „Wackeln für Momente“ auf Ozzy standardmäßig aus, wie Schmier- und Aufprallbild. Die Gewichte |sin 4θ| und |sin 2θ| von Durchbruch und Verdecken als Draht über θ übernehmen."
+        ]
+      },
+      {
+        "bereich": 8,
+        "punkte_A": 8,
+        "punkte_B": 7,
+        "punkte_C": 8,
+        "bester": "C",
+        "warum": "C ist am vollständigsten und an der Demo bewiesen: Bausteine mit Messwerten, Ereignissen und Befehlen, alle Drähte und rund 35 Regeln für den ganzen Tag. Dazu Abläufe mit vorbelegten Vorlagen („Laune anbieten“) und eine ehrliche Grenze (neues Verhalten braucht Code). Das Wort „Karte“ für Regeln muss weg (siehe schwere Fehler). A hat die saubere Sprache und den direktesten Bau-Ablauf, B die echte Erweiterbarkeit.",
+        "uebernehmen": [
+          "Das Wort „Regel“ statt „Karte“ (A §8, B §8; Gesamtbericht 4.5).",
+          "Aus A §8 und §9.5 f: Posenkarten in die Lücken eines Satzes ziehen. Die Leiste eines Reglers sagt „getrieben von Neigung“. Verdoppelt er eine Zone, kommt die Regel mit eigenem Gedächtnis mit.",
+          "Aus B §8: Bausteinarten als registrierte Arten mit Version, Schema und Migrationen; ihre Anschlüsse erscheinen ohne weiteren Code in Bedienung, Regeln und Prüfer. „Warum?“ auch für Regler („Ohr links: Pendel + Pose Erschrecken + Draht von Neigung“)."
+        ]
+      },
+      {
+        "bereich": 9,
+        "punkte_A": 9,
+        "punkte_B": 4,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "Nur an A kann Florian jeden Handgriff vorab durchgehen. A hat eine Grammatik je Gerät, Bildschirme für Mac, iPad und iPhone, die Tabelle Ding × Geste und sieben Abläufe aus seiner Sicht. Die Vorschau vor dem Zug und die Stellen-Wahl beim Anhalten beantworten genau „wo landet meine Änderung“. Zwei Stolpersteine bleiben: die Fang-Regel, und V posiert statt zu verschieben. B verweist fast nur auf die Recherche; C ist solide, aber knapp.",
+        "uebernehmen": [
+          "Aus C §9: die Strecke als abgewickelter Hügel unter der Bühne, gefärbt nach dem Tempo aus dem Sprungfenster; die Bedienprobe mit fünf Aufgaben aus der Demo.",
+          "Aus B §3.5 und §9: Werkzeuge schreiben nur über `rueckrechnen` und den Store; die Stelle ist die Eingabe der Zielregel (A §10: „die Stelle ist ein Datum“).",
+          "In A ändern: Fang wie heute (siehe schwere Fehler). V muss ein starres Teil weiter verschieben können, denn heute bewegt V im Werkzeug das ganze Teil (werkzeug.ts, „auswahl“). Posieren etwa über die Gelenk-Anfasser oder ⌥; das in E4 prüfen."
+        ]
+      },
+      {
+        "bereich": 10,
+        "punkte_A": 6,
+        "punkte_B": 9,
+        "punkte_C": 7,
+        "bester": "B",
+        "warum": "B ist bis in die Signaturen baubar. Dazu gehören Pakete mit Importregeln, ein Store mit der Schutzregel im Code und ein deterministischer Schreiber. Der Bauplan arbeitet inkrementell, die Rechenkette sind Module ohne Speicherwürfe. Der Takt läuft mit eigenen Winkelfunktionen, und es gibt eine Tempo- und eine Testmatrix sowie die Übernahme des Prototyps als Daten. A lässt offen, wie raster.ts zu Daten wird, C ebenso.",
+        "uebernehmen": [
+          "Aus C §10: der Test „Spiel-App ohne Spielcode“ (höchstens 300 Zeilen, nur die Pakete); die Beweis-Läufe der Aufgaben als Tests; Rückblick aus gespeicherten Werten als Rückfall.",
+          "Aus A §10: Ort-Probe und Schutz-Probe als Werkbank-Tests; Ablage unter `content/studio/ozzy/`, seine `schluessel.json` nur lesend.",
+          "Bs eigene Winkelfunktionen ab Tag eins (B §13) tragen auch As Merker (A §9.3), der einen Lauf vom iPhone am Mac genau nachspielen soll."
+        ]
+      },
+      {
+        "bereich": 11,
+        "punkte_A": 7,
+        "punkte_B": 4,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "C entwickelt aus Florians groben Ideen das witzigste und vollständigste Spiel. Ein Tag auf dem Hügel hat drei Runden, jedes Ding ein Tempo-Fenster, jede Laune eine Ankündigung. Dazu kommen sieben Komik-Momente mit Timing, und alle Posen, Übergänge und Regeln sind aufgezählt. Das Maul ist gestrichen, solange er keins zeichnet, und die drei Welten der Recherche sind ehrlich abgewogen. A bleibt bei der Recherche, B fasst nur zusammen.",
+        "uebernehmen": [
+          "Aus A §11: die Tabelle „Teil der Demo → Studio-Mittel“; der Blick in die Kamera ist die Front, also sein Logo.",
+          "Aus B §11: der Geist des besten Laufs aus Lauf-Dateien, sobald der Takt über Geräte gleich ist.",
+          "Auf Florians Wort: ein Hügel mit drei Runden (C) oder drei Welten (Gesamtbericht 5.3); Rückwurf, Aufgabenzettel und Antippen zum Trösten (C §11.3, §13)."
+        ]
+      },
+      {
+        "bereich": 12,
+        "punkte_A": 8,
+        "punkte_B": 9,
+        "punkte_C": 8,
+        "bester": "B",
+        "warum": "B macht paralleles Bauen wirklich möglich: Die Verträge sind eingefroren, jede Bahn hat einen eigenen Ordner und Attrappen, integriert wird täglich. Florians Zeit schützt B ausdrücklich: höchstens zwei Proben gleichzeitig, „gefällt nicht“ heißt umbauen, und wenn etwas seine Dateien berührt, hält alles an. A hat die bessere Regel für den Umzug seiner Kopfdrehung, C die anschaulichsten Proben.",
+        "uebernehmen": [
+          "Aus A §12.1: Seine Kopfdrehung zieht erst nach seinem Wort nach E1 in Studio um; die Werkbank-Probe kommt früh, direkt nach den Übergängen.",
+          "Aus C §12.1: Jede Etappe endet mit einem Moment der Demo als Probe; nach E1 wird mit der gemessenen Bauzeit neu geschätzt. Aus C §12.3: Abbruchregeln an Nicoles Tests.",
+          "Bs E0 um die Spitzenführung ergänzen, sonst fällt das erste Tor (siehe schwere Fehler)."
+        ]
+      }
+    ],
+    "schwere_fehler": [
+      {
+        "entwurf": "A",
+        "bereich": 2,
+        "fehler": "Fang (§2): Ein Zug im Fang eines Schlüssels soll diesen ändern; seine Schlüssel fallen nie weg, und der Fang soll bei θ 4° „wie heute“ sein. Damit ändert ein Zug bei 2° seinen Logo-Schlüssel bei 0°, ein Zug bei 176,5° seinen Schlüssel bei 176°. Die Form am Tropfen liegt danach nicht dort, wo er gezogen hat, und Ozzy in Ruhe kann sich ändern. Heute entsteht an der 0,5°-Stelle ein eigener Schlüssel, und nur gebaute Schlüssel im Umkreis fallen weg (raster.ts, korrekturEinsetzen). Seine Datei hat Schlüssel 0,5° bis 2° auseinander (kopfA 176°, 176,5°, 178°). Widerspricht Gesamtbericht 4.2 Nr. 3 (jede Änderung landet an der aktiven Stelle)."
+      },
+      {
+        "entwurf": "A",
+        "bereich": 10,
+        "fehler": "Ausgangscode sind Kopien von raster.ts und haltung.ts (§10). A sagt nicht, wie die gebauten Schlüssel (das Raster hat 168, 16 davon seine) und die Regeln, die Ozzys Teile nennen, zu Studio-Daten werden (PARTNER_KOPF, NASE_SPIEGEL, WICKEL, GESICHT_WEG, spitzenFuehren). Entweder rechnen Studio und Spiel mit Ozzy-Code (Arbeitsregel 7, „unendlich erweiterbar“), oder E1 „bildgleich“ ist nicht erreichbar. Die E1-Probe prüft nur sechs Winkel, obwohl seine Rückmeldungen (Verklumpen bei 156° bis 180°, Rutschen) zwischen den Schlüsseln lagen."
+      },
+      {
+        "entwurf": "B",
+        "bereich": 2,
+        "fehler": "Die Übernahme der Kopfdrehung „als Daten, raster.ts nicht portiert“ (§2.3, §10.11, E0) nennt Schlüssel, Spiegelregel, Abschnitte, Klemmen, Kopfversatz und Wechsel. Es fehlt die Spitzenführung je Bild (spitzenFuehren): Die Fransenspitzen von Bart, Masken und Ohren werden ohne Zwischenschlüssel zwischen 45° und 90° im Rahmen ihrer Nachbarn geführt. Mit „koordinaten = formAusSchluesseln“ allein fällt das E0-Tor (0,5°-Raster, unter 0,001) sicher durch. Die Abbruchregel greift dann zwar, die Ursache steht aber nicht im Plan."
+      },
+      {
+        "entwurf": "C",
+        "bereich": 2,
+        "fehler": "Formziele (Brauen, Ohrstellung, Stauchung) mischen „gerade additiv“ im Ruheraum, ohne mitlaufenden Rahmen (§2 Tabelle, §3). Die Recherche verlangt diesen Rahmen für Zusätze über einer Ansichtsachse (Gesamtbericht 3.2 b, 4.6 Nr. 9). Sonst zeigt eine Braue oder ein angelegtes Ohr, das in der Front gezeichnet ist, bei 90° und in der gespiegelten Hälfte in die falsche Richtung. Außerdem nennt dieselbe Tabelle für die Kopfdrehung „Rahmen + Rest“, obwohl sie nach §2 bei „je Koordinate“ bleibt."
+      },
+      {
+        "entwurf": "C",
+        "bereich": 8,
+        "fehler": "„Karte“ heißt bei C zugleich Posenkarte (§5, §9: „unten die Posenkarten“) und Logik-Satz (§0, §8: „drei Kartenarten“, „Alle Karten der Demo“). Diesen Wortkonflikt hat der Gesamtbericht aufgelöst (4.5; 4.6 Nr. 28: „Regel“ statt „Karte“ als Logikwort). Auf einem Bildschirm mit beidem weiß Florian nicht, was gemeint ist (Arbeitsregel 6, klare Begriffe)."
+      },
+      {
+        "entwurf": "C",
+        "bereich": 10,
+        "fehler": "E1 soll die Kopfdrehung „bildgleich zum Prototyp“ aus „Import seiner SVGs und Schlüssel“ machen (§12.1, §11.13, §10). Die gebauten Schlüssel und die Regeln je Bild stehen aber nur im Code von raster.ts (Spiegelung der zweiten Hälfte, Spitzenführung, Malreihenfolge bei 140° und 180°, Kopfversatz). Wie sie nach Studio kommen, sagt C nicht. So ist die erste Probe nicht baubar."
+      }
+    ],
+    "gesamt_A": 8,
+    "gesamt_B": 7,
+    "gesamt_C": 7,
+    "empfehlung": "Nach Rollen zusammensetzen. A ist die Oberfläche (Bereiche 1, 3, 4, 5, 9): Leiste als Ort, Stelle mit Vorschau vor dem Zug, V und A, Übergang durch den ersten Zug, Abläufe aus seiner Sicht. B ist der Unterbau (2, 7, 10, 12): Datenmodell, Übernahme der Kopfdrehung als Daten mit Parität im 0,5°-Raster, Schutzregel im Store, Rückrechnung als Kern der Stelle, Bauplan, Verträge und Bahnen. C ist die Abnahme (6, 8, 11): Spielphysik mit Werten, Bausteine, Drähte und Regeln der Demo, „Ein Tag auf dem Hügel“. Vorher sind vier Korrekturen nötig. Erstens: Fang wie heute, jeder Zug landet am Tropfen, gebaute Schlüssel im Umkreis ruhen (B §2.5). Zweitens: die Spitzenführung in die Übernahme. Drittens: alle Zusätze über der Kopfdrehung im mitlaufenden Rahmen, auch Cs Brauen und Ohren. Viertens: „Regel“ statt „Karte“. Reihenfolge: Bs E0, daneben Messseite und P1; dann As Werkbank auf seiner Kopfdrehung; dann Cs Demo-Momente als Etappenproben. Vorab muss Florian nur zwei Dinge sagen: wann seine Kopfdrehung nach Studio umzieht (nach E1) und ob parallel gebaut wird. Ob die Demo ein Hügel mit drei Runden oder drei Welten wird, kann nach der Spielwiese entschieden werden."
+  },
+  {
+    "linse": "Technik",
+    "bereiche": [
+      {
+        "bereich": 1,
+        "punkte_A": 7,
+        "punkte_B": 8,
+        "punkte_C": 7,
+        "bester": "B",
+        "warum": "B legt die Zeit als Einziger technisch fest. Zeit ist die Taktnummer, Dauern stehen in Sekunden in der Datei und werden als n/60 gelesen, Zeitlupe ändert nur das Takt-Tempo. Spulen mit Physik springt zum letzten Schlüsselstand und rechnet höchstens 15 Takte nach (B §1). Das ist wiederholbar und hat eine feste Kostengrenze. A (§1.3, eine Leiste für neun Achsen) und C (§1, vier Gesichter, aus der Demo gezählt) haben die bessere Oberfläche, sagen aber nicht, wie Spulen mit Physik rechnet. In A §1.1 ist die Spalte „Werkbank“ eine Selbstbewertung, obwohl die Tabelle 05 und den Gesamtbericht als Quelle nennt.",
+        "uebernehmen": [
+          "A §1.3: die Tabelle der neun Achsen als eine einzige Leisten-Komponente mit derselben Bedienung (Klick, Ziehen, J/K, Z, ⇧Z)",
+          "A §1.2: die ehrliche Liste, wo die klassische Zeitleiste gewinnt, als Abgrenzung im Konzept",
+          "C §1: die Gesichter „Strecke“ und „Werteverlauf“ und die Zählung aus der Demo (rund 25 gestaltete Übergänge, 11 Zyklen, 2 Regie-Abläufe bis 6 s) als Beleg für den Umfang"
+        ]
+      },
+      {
+        "bereich": 2,
+        "punkte_A": 6,
+        "punkte_B": 9,
+        "punkte_C": 5,
+        "bester": "B",
+        "warum": "B ist baubar und prüfbar: Typen je Anker, ein Griffformat mit Begründung (Winkel relativ zur Tangente würde die Datei an eine Mischart binden), `koordinaten` genau wie `formAusSchluesseln`, Abschnitte und Spiegelregel der Kopfdrehung als Daten, Auswertung in vorab angelegten Feldern, Rundweg- und Paritätstest in 0,5°-Schritten (B §2.1 bis §2.5, §10.11). Nachzubessern: Die Glätte-Schwelle beim Import (0,05 Einheiten) ändert seine Zeichnung minimal und widerspricht dem eigenen Tor (0,001); `spitzenFuehren` (raster.ts, Spitzen zwischen 45° und 90°) fehlt in der Übernahmeliste. A beschreibt den Fang falsch als „4° wie heute“: Heute entsteht der Schlüssel im 0,5°-Raster, und nur gebaute Schlüssel näher als KORREKTUR_NAH = 4° fallen weg, seine bleiben (raster.ts, korrekturEinsetzen). A's Regel lenkt einen Zug auf seinen Nachbarschlüssel um. A's Mischart „heute“ ist kopierter Code mit Ozzy-Sonderregeln. C hat kein Datenmodell für die stückweisen Regeln der Kopfdrehung und hängt die Mischart an den Regler statt an die Bindung.",
+        "uebernehmen": [
+          "A §2: Vor dem Löschen eines Ankers zeigt die Leiste die Abweichung je Schlüssel rot; ein ⌘Z",
+          "A §2: Ruhe-Wächter als Bildvergleich gegen Probe A des Prototyps (pruefen.ts), aber im Hintergrund oder auf Knopf statt bei jedem Speichern",
+          "C §2: „Was verschwindet, läuft auf einen Punkt, nie auf eine Linie“ als Regel mit Wächter",
+          "C §2: die Mischart als kleines Wort an der Leiste sichtbar machen"
+        ]
+      },
+      {
+        "bereich": 3,
+        "punkte_A": 7,
+        "punkte_B": 9,
+        "punkte_C": 7,
+        "bester": "B",
+        "warum": "B gibt Knochen, Anheftung an die gemorphte Elternform, Biegeachse und Haut als Typen. B leitet die Griffvererbung her (h' = R̄·S̄·h hält glatte Anker glatt) und macht die Rückrechnung eines Zugs zum Eigenschaftstest: Der Punkt liegt auf 10⁻⁶ am Ziel, kein Schlüssel an einer anderen Stelle ändert sich (B §3.2 bis §3.5). Die Abweichung „Korrektur im mitlaufenden Rahmen vor der Haut“ ist als ungeprüft markiert und hat eine Probe. A und C folgen der Recherche sauber, aber ohne Datenmodell. C macht vier Demo-Momente zu Proben. A trennt Posieren (V) und Formen (A) am klarsten, stützt sich aber bis E8 auf kopierten haltung.ts-Code mit Teilnamen (ELTER).",
+        "uebernehmen": [
+          "A §3 und §9.4: V posiert über die Knochen, A formt Anker und Griffe; Anfasser an Nase und Pfote",
+          "A §3: Korrekturform über die Leiste anlegen (Gelenkwinkel auf die Leiste holen, mit V biegen, mit A formen)",
+          "C §3: die vier Demo-Momente als Proben (Ohrgelenke reiten bei der Kopfdrehung mit, Katzenbuckel, Bohne in Rückenlage über Drehzentren, Schwanzkette löst ihre Korrektur aus)"
+        ]
+      },
+      {
+        "bereich": 4,
+        "punkte_A": 7,
+        "punkte_B": 8,
+        "punkte_C": 8,
+        "bester": "B",
+        "warum": "B macht den Autorig zu einer reinen Funktion `autorig(figur, vorlage, gepinnt)` im eigenen Paket, deterministisch im Worker. Das Ergebnis ist eine gewöhnliche Änderung mit Herkunft `automatik`, die die Schutzregel an seinen Datensätzen hindert. Das Spiel enthält keinen Autorig, Ozzy ändert sich also nie durch neuen Code (B §4). C liefert die meisten Nebenprodukte für Physik und Spiel und das messbarste Kriterium (C §4). A ist korrekt, aber ohne Schnittstelle; „rechnet nie von selbst nach“ ist eine gute, ehrlich markierte Abweichung.",
+        "uebernehmen": [
+          "C §4: Der Autorig liefert auch Hüllen für Box2D, Masse, Federketten, Füße mit Sohlenrichtung und Rollen als Adressen für Regeln",
+          "C §4: Prüfkriterium „Katze mit höchstens drei Ringzügen“ plus zwei fremde SVGs nur zum Prüfen",
+          "A §4: Er rechnet nie von selbst nach; der Prüfer meldet Gelenke, die nach einer Formänderung nicht mehr passen"
+        ]
+      },
+      {
+        "bereich": 5,
+        "punkte_A": 7,
+        "punkte_B": 8,
+        "punkte_C": 8,
+        "bester": "B",
+        "warum": "B übersetzt Posen, Übergänge und Zyklen im Bauplan in Regler, Bindungen und Drähte: ein Mechanismus, deterministisch, mit Typen für Schicht, Pose, Übergang (auch „jede“, gesperrt, Varianten, „bleibt stehen“) und Zyklus, dazu Ausgleich je Regler (B §5.1, §5.2). C bringt die nützlichsten Ergänzungen (Abschnitte „bis Ereignis“ mit Höchstdauer, Spannung als Regler im Übergang, Tafel nach Ausnahmen gefiltert) und die vollständige Liste der Übergänge. „Bis Ereignis“ macht einen Übergang physikabhängig und braucht im Editor B's Regel fürs Spulen. A hat die beste Bedienidee (der erste Zug macht den Übergang zum gestalteten). A's Tafel „nur erreichbarer Paare“ setzt aber eine Analyse über Regeln, Zustände des Vierbeiners und Physik-Ereignisse voraus, die A nicht beschreibt.",
+        "uebernehmen": [
+          "C §5: Abschnitte „bis Ereignis“ mit Höchstdauer und Spannung als Regler mit Schlüsseln (Sturz ohne zweites System); Vorschau im Editor nach B §1",
+          "C §5: Tafel gefiltert auf Posen mit Ausnahmen statt A's Erreichbarkeitsanalyse",
+          "A §5.3: Der gestaltete Übergang entsteht durch den ersten Zug; Marken feuern erst ab halbem Gewicht; Regie-Übergang mit Spuren",
+          "A §5.2: Nachlauf je Teil und Höchsttempo je Achse; dazu C §11.12: die Liste der rund 25 gestalteten Übergänge mit Startwerten als Abnahmeinventar"
+        ]
+      },
+      {
+        "bereich": 6,
+        "punkte_A": 6,
+        "punkte_B": 8,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "C rechnet die Spielphysik am weitesten und prüfbar durch: Vortrieb als Kräftepaar mit Grenze, Stehzone tan α ≤ min(Bremskraft/g, Haftung) ohne Sonderregel für Matsch, Sprungfenster aus der Fähigkeit statt je Ding (0,5 L bei g = 20 ergibt 4,5 L/s und 0,45 s Flug; nachgerechnet), Sturzfolge mit Spannungskurve, Startwerte je Chip, Spur der Zukunft nur bei Luft auf der Messseite (C §6.3 bis §6.7). B liefert den Vertrag dazu (WeltAdapter getippt, Chip mit Version, „Ruhe = Zeichnung“ als Test, 32 MB für Schlüsselstände), aber kaum Physik-Inhalt. A verspricht die Spur der Zukunft auf Z und genaues Nachspielen eines iPhone-Merkers am Mac, ohne die Bedingungen der Recherche zu planen.",
+        "uebernehmen": [
+          "B §6: WeltAdapter als getippter Vertrag mit Attrappe; `lesen` als ein gesammelter Aufruf über die WebAssembly-Grenze",
+          "B §6 und §10.8: „Ruhe = Zeichnung“ als Eigenschaftstest (höchstens 10⁻⁶), eigene Winkelfunktionen im Simulationspfad, Prüfsumme in Node, Chromium und WebKit",
+          "A §6 und §9.5 e: Prüfstand-Gesten (Ziehen stößt an, Ohr schnippen) und „Aufnehmen“ als gestalteter Übergang mit Herkunft „Aufnahme“"
+        ]
+      },
+      {
+        "bereich": 7,
+        "punkte_A": 7,
+        "punkte_B": 8,
+        "punkte_C": 7,
+        "bester": "B",
+        "warum": "B überführt den Prototyp-Renderer nachprüfbar in Daten: FLUESSIG wird Verbindungen, der Ohrspalt eine Fuge, durchbruch die Dickenregel, deckung ein Wechsel mit Breite, Verdecker ein Effekt (in renderer.ts nachgesehen). Dazu Shader aus dem Zeichenmodell, gepackte Bilddaten und Neuaufbau nach Kontextverlust (B §7). Offen in B: Wenn alles Gezeichnete eine Figur ist (§10.3), muss feststehen, welche Dinge in die Welttextur gebacken werden; sonst wachsen Feldsätze und Aufrufe. Wackeln, Schein und Auflösen sind nicht ausdrücklich von Ozzys Körper ausgenommen. C's Rückblick mit sechs Feldsätzen ist ein Budgetrisiko, aber markiert, in E0 gemessen und durch die aufgezogene Kamera entschärft. A ist korrekt und knapp.",
+        "uebernehmen": [
+          "C §7: Effekttabelle der Demo mit Standard an oder aus; Sterne als Formen auf einer Kreisbahn statt Shader; Kameratropfen ohne Brechung",
+          "A §7: Kostenampel „iPhone“ im Editor und die ausdrückliche Liste dessen, was auf Ozzy darf (Verschmelzen, Dickenregel, Kantenglättung, Kontaktschatten, Beinschattierung)",
+          "C §6.2: Staub, Spritzer und Tropfen nur gegen das Abstandsfeld, ohne Rückwirkung auf die Welt"
+        ]
+      },
+      {
+        "bereich": 8,
+        "punkte_A": 7,
+        "punkte_B": 9,
+        "punkte_C": 8,
+        "bester": "B",
+        "warum": "B macht „unendlich erweiterbar“ technisch greifbar: `Bausteinart<D>` mit Version, zod-Schema, Migrationen und Anschlüssen, die ohne weiteren Code in Bedienung, Regeln und Prüfer erscheinen. Regeln sind eine getippte Vereinigung je Art, Drähte ein Graph ohne Kreis, „Warum?“ liest einen Ringpuffer, auch für Regler (B §8). Die Abweichung „Drähte nach Regeln“ ist markiert. C liefert das ganze Inventar der Demo (acht Bausteine, sieben Drähte, rund 35 Karten, neun Aufgaben) und benennt ehrlich die Grenze: Neues Verhalten braucht einen Baustein in Code. A folgt 14b ohne Datenmodell.",
+        "uebernehmen": [
+          "C §8.2 bis §8.7: Bausteine, Drähte, Karten und Aufgaben der Demo als Abnahmeliste und Testdaten der Logik",
+          "C §8.1: Karten nennen immer ein bestimmtes Ding (getrenntes Gedächtnis je Duftstelle)",
+          "A §8: Regeln leuchten nach Lage, „hier anhalten“ an jeder Regel; der Prüfer meldet Sobald mit Dauerwirkung und Launen ohne Ankündigung"
+        ]
+      },
+      {
+        "bereich": 9,
+        "punkte_A": 8,
+        "punkte_B": 6,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "A ist die einzige vollständige, baubare Bedienspezifikation: Grammatik je Gerät, die Stelle mit vier Signalen und Vorschau vor dem Zug, die Tabelle Ding × Geste als Vertrag der Oberfläche, Bildschirme für Mac, iPad und iPhone, sieben Abläufe aus Florians Sicht (A §9.1 bis §9.5). Mit der Stelle als Datum und der Ort-Probe (A §10) ist die riskanteste Wette testbar, und A prüft sie früh (E4). Die Abweichung „die Leiste wählt die Stelle“ ist ehrlich gegenübergestellt. B verweist fast nur auf die Recherche, trägt aber das wichtigste technische Prinzip bei: Das Werkzeug hat keine eigene Geometrie, jeder Zug geht über `rueckrechnen` und den Store (B §3.5, §9). C ist knapp, mit einer guten Bedienprobe aus Aufgaben der Demo.",
+        "uebernehmen": [
+          "B §3.5 und §9: Werkzeuge schreiben nur über `rueckrechnen` und den Store; Bühne, Zwiebelhaut und Bahnen kommen aus denselben Ankerfeldern der Laufzeit",
+          "C §9: die fünf Aufgaben der Bedienprobe aus der Demo",
+          "C §9: die Strecke als abgewickelter Hügel unter der Bühne in der Linse Spiel"
+        ]
+      },
+      {
+        "bereich": 10,
+        "punkte_A": 5,
+        "punkte_B": 9,
+        "punkte_C": 6,
+        "bester": "B",
+        "warum": "B ist ein Bauplan: Paketgraph mit Grenzen, die das Werkzeug erzwingt (kein DOM, Lint-Verbot für Math-Winkelfunktionen, Zufall und Uhren im Simulationspfad, das Spiel importiert weder Store noch Editor noch React). Dazu Store mit Quelle und Schutzregel, deterministischer Schreiber, inkrementeller Bauplan mit Test „inkrementell = voll“, Module mit Signaturen und vorab angelegten Feldern, Tempo-Tabelle je Posten und Testmatrix mit Toren (B §10). A ist eine Verweistabelle mit dünner Typskizze und kopiert Ozzy-spezifischen Prototyp-Code in die Laufzeit. C hat den guten Test „Spiel-App ohne Spielcode“ und den Rückblick ohne Snapshot, aber ein dünnes Datenmodell mit Fehler: Ein einziger `treiber` je Regler passt nicht zu C's eigenem Modell, in dem etwa die Ohren zugleich von Pose, Karte („Solange auf Matsch → Ohren zurück“) und dem Chip „Schwingen“ bewegt werden.",
+        "uebernehmen": [
+          "C §10: Test „die Spiel-App hat keinen Spielcode“ (nur Laden, Eingabe, Ton-Freigabe, Hülle; nur die Studio-Pakete)",
+          "C §10: Rückblick aus gespeicherten gezeigten Werten statt aus experimentellen Snapshots",
+          "A §10: Typ `Stelle` als Datum der Sitzung, dazu Ort-Probe und Schutz-Probe als Tests"
+        ]
+      },
+      {
+        "bereich": 11,
+        "punkte_A": 7,
+        "punkte_B": 6,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "C ist als Umfang schätzbar und prüfbar: ein Hügel mit drei Runden (ehrlich gegen drei Welten und Zirkus gestellt), Lage der Dinge in Grad, Tempofenster je Ding aus Sprunghöhe und Schrittlänge, Launen mit Ankündigung, sieben Komik-Abläufe mit Zeiten, vollständige Listen der Posen, Übergänge, Zyklen, Karten und Aufgaben samt Zuordnung zu den Etappen (C §11.1 bis §11.13). Die Zusätze (Katze als Muss, Wippe, Ball, Schmetterling, Regen, Rückwurf) erhöhen den Umfang und sind als Abweichung markiert; Florian entscheidet. A fasst die Recherche zusammen und bildet jedes Demo-Teil auf ein Studio-Mittel ab. B ist kurz.",
+        "uebernehmen": [
+          "A §11: Tabelle „Teil → Studio-Mittel“ als Gegenprobe zu C §11.13",
+          "B §11: Klarstellung, dass Code nur Bausteinarten sowie Effekt- und Chiparten sind; Geist des besten Laufs über Lauf-Dateien (setzt eigene Winkelfunktionen voraus)"
+        ]
+      },
+      {
+        "bereich": 12,
+        "punkte_A": 7,
+        "punkte_B": 9,
+        "punkte_C": 8,
+        "bester": "B",
+        "warum": "B ist der einzige Plan, den mehrere Agenten ohne Kollision bauen können. E0 friert Typen, Schnittstellen, Prüfdaten, package.json, tsconfig, Lint-Regeln und die Lockdatei mit Version ein. Je Bahn gibt es einen Ordner, einen Arbeitsbaum und einen Zweig; nur die Integration ändert Verträge, und brauchen zwei Bahnen dieselbe Änderung, halten beide an. Integriert wird hinter Typ-, Eigenschafts-, Paritäts-, Determinismus- und Vertragstests; Florian bekommt höchstens zwei Proben zugleich (B §12.2, §12.3). E0 mit 8 bis 12 Tagen ist knapp (Übernahme mit Parität, Port der Winkelfunktionen, Bauplan, Renderer, Prüfsumme in drei Umgebungen); die Drei-Tage-Abbruchregel fängt das. C hat die besten Proben (je Etappe ein Moment der Demo), die Neuschätzung nach E1 und Abbruchregeln mit konkreten Schwellen; E2 mit 25 bis 35 Tagen ist gegen 30 bis 50 in der Recherche optimistisch. A ist solide, aber ohne Ordnergrenzen und ohne Regel für Vertragsänderungen.",
+        "uebernehmen": [
+          "C §12.1: Jede Etappe endet mit einem Moment der Demo als Probe; nach E1 mit gemessener Bauzeit neu schätzen",
+          "C §12.3: Abbruchregeln mit konkreten Schwellen (etwa: Schafft Nicole die Morgenrunde nicht in drei Versuchen, dann Bremskraft 0,35 g und Radius 16 L)",
+          "A §12.1 und §14: Umzug der Kopfdrehung erst nach Florians Blick auf E1; Werkbank-Probe (A E4) früh, vor den Knochen"
+        ]
+      }
+    ],
+    "schwere_fehler": [
+      {
+        "entwurf": "A",
+        "bereich": 10,
+        "fehler": "A übernimmt raster.ts und haltung.ts als Ausgangscode (A §10) und behält damit die Mischart „heute“ der Kopfdrehung (§2) und den Handrig bis E8 (§4, E5). Deren Auswertung enthält Sonderregeln mit Ozzys Teilnamen und Winkeln: Malreihenfolge bei ψ 22,5° und 67,5°, NASE_WEG = 140°, Tausch über PARTNER_KOPF ab 180°, ohneRuecken, spitzenFuehren für Bart, Masken und Ohren zwischen 45° und 90°, die Tabelle ELTER und effekteAnwenden (Hüpfer um die vordere Pfote, Stauchung als gerechnete Skalierung aller Formen). In der gemeinsamen Laufzeit von Editor und Spiel verletzt das Arbeitsregel 7 und widerspricht A's eigenem Grundsatz „ein Delta auf derselben Ankerliste“. Die gerechnete Stauchung wäre eine Formänderung an Ozzy, die er nicht gezeichnet hat (Gesamtbericht 4.6 Punkt 19). Einen Weg, diese Regeln in Daten zu überführen, nennt A nicht."
+      },
+      {
+        "entwurf": "A",
+        "bereich": 6,
+        "fehler": "A verspricht die Spur der Zukunft als Z in der Linse Physik (§6, §9.1) und genaues Nachspielen eines auf dem iPhone gesetzten Merkers am Mac (§9.3), ohne Plan, Probe oder Rückfall. Nach 14c §5.5 kostet die Spur ohne geschlossene Federlösung und Worker 18 bis 84 ms je Ziehbild. Nach 14a §3e geht Nachspielen über Geräte und Browser nur mit eigenen Winkelfunktionen im Simulationspfad, die A nicht vorsieht. Beides würde still versagen: ruckelndes Ziehen am iPad, ein Merker, der am Mac anders abläuft."
+      },
+      {
+        "entwurf": "C",
+        "bereich": 2,
+        "fehler": "E1 verlangt „seine Kopfdrehung in Studio bildgleich zum Prototyp“ (C §12.1), aber C importiert nur seine SVGs und seine Schlüssel, und das Datenmodell (§10: Mischart am Regler, eine Schlüsselliste je Regler) kann die stückweisen Regeln der Kopfdrehung nicht tragen: eigene Schlüsselliste mit Anschluss für 0° bis 90° und 270° bis 360° (kopfVorn, anschlussBauen), ohneRuecken, spitzenFuehren, Kopfversatz, Malreihenfolge bei NASE_WEG und die gebauten Zwischen- und Faltschlüssel. C nennt weder eine Übernahme als Daten (wie B §2.3, §10.11) noch eine Code-Kopie. Damit scheitert das Tor der grundlegenden Etappe, oder Ozzy-Code kommt ohne Entscheidung in die Laufzeit."
+      }
+    ],
+    "gesamt_A": 6,
+    "gesamt_B": 8,
+    "gesamt_C": 7,
+    "empfehlung": "Das technische Gerüst kommt aus B: Paketgrenzen mit Lint-Regeln (§10.2), Datenmodell (§2.1, §3.2, §5.1, §6, §7, §8, §10.3), Store mit Schutzregel (§10.4), deterministisches Format (§10.5), Bauplan ohne Würfe (§10.6, §10.7), Takt mit eigenen Winkelfunktionen (§10.8) und Testmatrix (§10.10). Dazu E0 mit eingefrorenen Verträgen, Übernahme der Kopfdrehung als Daten mit Paritätstor und Bahnen je Ordner (§12). Vorher in B beheben: die Glätte-Schwelle beim Import auf die Rundung (0,001) senken, damit seine Zeichnung exakt bleibt; spitzenFuehren, ohneRuecken, Klemmen und Kopfversatz in die Übernahme aufnehmen; festlegen, welche Dinge in die Welttextur gebacken werden und welche einen Feldsatz bekommen; Wackeln, Schein und Auflösen auf Ozzys Körper standardmäßig aus. E0 eher mit 12 bis 18 Tagen ansetzen (eigene Schätzung) und die Drei-Tage-Regel behalten. Darauf kommt die Bedienung aus A §9 (Grammatik je Gerät, Tabelle Ding × Geste als Vertrag der Oberfläche, Bildschirme, Abläufe), dazu die Stelle als Datum mit Ort-Probe (A §10) und die frühe Werkbank-Probe (A E4). Von A nicht übernehmen: die Code-Kopie von raster.ts und haltung.ts, die Tafel „nur erreichbarer Paare“ (statt dessen nach Ausnahmen gefiltert wie C §5) und die Spur der Zukunft ohne Plan (nach 14c §5.5 oder erst bei Luft wie C §6.7). Physik-Modell und Startwerte, das Demo-Inventar und die Etappenproben kommen aus C (§6.3 bis §6.6, §8.2 bis §8.7, §11.12, §11.13, §12.1, §12.3), mit Neuschätzung nach E1. Ob ein Hügel statt drei Welten gilt und ob die Katze Muss wird, entscheidet Florian. Reihenfolge: Messseite und P1 neben B-E0, dann die Werkbank-Probe, dann die Demo-Etappen. Der Aufwand bleibt grob 6 bis 9 Monate. Der Engpass ist Florians Prüfzeit, darum höchstens zwei Proben zugleich (B §12.3)."
+  },
+  {
+    "linse": "Spiel",
+    "bereiche": [
+      {
+        "bereich": 1,
+        "punkte_A": 8,
+        "punkte_B": 6,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "A legt alle Achsen auf eine Leiste mit Florians heutiger Bedienung, auch Strecke und Mitschnitt. A stellt ehrlich dagegen, wo die klassische Zeitleiste gewinnt (A 1.2). Für Gags mit mehreren Dingen trägt der Regie-Übergang Spuren für Kamera, Himmel und Katze (A 5.3): Ahnung, Pause und Folge liegen auf einem Streifen. C leitet den Zeitbedarf aus der Demo ab, verkettet die Regie aber über Marken; das nennt C selbst für längere Szenen zu eng. B ist richtig, aber knapp.",
+        "uebernehmen": [
+          "C §1: den Zeitbedarf aus der Demo zählen (rund 25 gestaltete Übergänge, elf Zyklen, zwei Regie-Abläufe) und damit begründen, wie klein die Zeitleiste bleiben darf.",
+          "C §1 und §8.8: den Werteverlauf als eigenes Gesicht der Leiste, mit Schwellen und Rückwegen (Kipp-Reserve vor dem Sturz), statt Kurven erst auf Halten (A §13).",
+          "B §1: Scrubben mit Physik springt zum letzten Schlüsselstand und rechnet höchstens 15 Takte nach."
+        ]
+      },
+      {
+        "bereich": 2,
+        "punkte_A": 8,
+        "punkte_B": 8,
+        "punkte_C": 7,
+        "bester": "B",
+        "warum": "B macht „in Ruhe ist Ozzy seine Zeichnung“ zu einer Eigenschaft der Daten. Alle Schlüssel haben dieselben Anker, die Glätte steht im Format, und jeder Zusatz hat an der Ruhestelle einen festen Nullschlüssel. Gebaute Schlüssel neben seinen ruhen, statt zu verschwinden. B beschreibt auch das heutige Setzen richtig: Raster 0,5°, nur gebaute Schlüssel unter 4° weichen (werkzeug.ts). A nennt seinen Fang „wie heute“, beschreibt ihn aber anders. Ein kleiner Widerspruch in B: Der Import macht fast glatte Anker glatt (bis 0,05 Einheiten), die Paritätsprobe verlangt aber 0,001. Fast glatte Anker bleiben besser Ecken.",
+        "uebernehmen": [
+          "A §2: vor dem Zug rot zeigen, welche gebauten Schlüssel er ersetzt; der Ruhe-Wächter prüft beim Speichern jede Vorlage und jede Pose in Ruhe bildgenau; eine fremde SVG auf eine Stelle der Leiste fallen lassen.",
+          "C §2: Was verschwindet, läuft auf einen Punkt zusammen, nie auf eine Linie. Der Hügel ist ein geschlossener Pfad; Buckel, Mulde und Graben sind Bearbeitungen davon. Die Ruhe der Pfütze zeichnet Florian, die Physik bewegt nur ihre oberen Anker.",
+          "C §2: die Mischart als kleines Wort an der Leiste zeigen."
+        ]
+      },
+      {
+        "bereich": 3,
+        "punkte_A": 8,
+        "punkte_B": 8,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "A bringt das Zusammenspiel in zwei Handgriffe, die Florian aus Illustrator kennt. V posiert über die Knochen, A formt Anker und Griffe und speichert in der Ruhe. Korrekturformen entstehen wie die Kopfdrehung über die Leiste. Gewichte ändert man durch Ziehen am Anker, ein Schloss gibt dem Griffpaar einen eigenen Satz. Anfasser an Nase und Pfote stellen Winkel und Ziel. B hat den stärkeren Rechenkern, C die besten Proben aus dem Spiel.",
+        "uebernehmen": [
+          "B §3.5: `rueckrechnen` mit Zielregel als einziger Schreibweg der Werkzeuge. Dazu der Eigenschaftstest: Der gezogene Punkt liegt auf 10⁻⁶ am Ziel, und kein Schlüssel an einer anderen Stelle ändert sich.",
+          "B §3.2: die Datentypen Knochen, Haut und Griffsatz (glatter Anker ein Satz, Ecke zwei Sätze).",
+          "C §3: die vier Demo-Momente als Proben: Ohrgelenke wandern beim Kopfdrehen mit, Katzenbuckel, Bohne in Rückenlage, eine schwingende Schwanzkette löst ihre Korrekturform aus."
+        ]
+      },
+      {
+        "bereich": 4,
+        "punkte_A": 7,
+        "punkte_B": 7,
+        "punkte_C": 8,
+        "bester": "C",
+        "warum": "C denkt den Autorig bis ins Spiel. Er liefert Hüllen für Box2D, Masse, Federketten, Füße mit Sohlenrichtung und Rollen als Adressen für Regeln, also den Körper für die Physik ohne Handarbeit. Die Probe ist messbar: die Katze mit höchstens drei Ringzügen, Ozzys Handdaten ohne Teilnamen. Zwei fremde SVGs prüfen gegen Überanpassung.",
+        "uebernehmen": [
+          "A §4: Der Autorig rechnet nie von selbst nach; der Prüfer meldet Gelenke, die nach einer Formänderung nicht mehr passen.",
+          "B §4: das Ergebnis als gewöhnliche Änderung mit Herkunft „automatik“ in einem Rückgängig-Schritt; Gepinntes und Florians Datensätze bleiben; das Spiel enthält keinen Autorig."
+        ]
+      },
+      {
+        "bereich": 5,
+        "punkte_A": 8,
+        "punkte_B": 7,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "Nur C verbindet gestaltete Übergänge mit der Physik. Abschnitte laufen „bis Ereignis“ (Flug bis Landung, Rutschen bis Stillstand, Liegen bis Ruhe), mit Höchstdauer. Die Spannung ist ein Regler mit Schlüsseln, also ist der Sturz eine Kurve im Übergang und kein zweites System. In A und B kennen gestaltete Übergänge nur feste Dauern, und A baut den Sprung als solchen Übergang (A §11). Die Flugdauer hängt aber an Tempo und Höhe der Landestelle, also laufen Landepose und Landung auseinander. Dazu hat C Varianten mit Gewicht und Unterbrechen „nie“ beim Stolpern. Kamera, Musik, Himmel und Rahmen haben Posen wie Ozzy.",
+        "uebernehmen": [
+          "A §5.3: Ein gestalteter Übergang entsteht durch den ersten Zug, ohne einen Schritt „anlegen“; der Regie-Übergang trägt Spuren beliebiger Regler.",
+          "A §5.1, §5.2 und §5.4: Nachlauf je Teil (Überlappung ohne Schlüssel), die Posen-Reihe nach Zuständen des Vierbeiners gruppiert, die Tafel nur mit Paaren, die vorkommen.",
+          "B §5.2: Ausgleich je Regler bei jedem Sprung des Solls (Pose, Regel, Klick), nicht nur beim Posenwechsel.",
+          "Eigene Ergänzung: Die Kehrtwende am Scheitel (13 §2.2) ist beim Balancieren der häufigste Übergang. Sie muss kurz und jederzeit unterbrechbar sein, kleine Korrekturen gehen als Schritte rückwärts. In der Spielwiese zuerst prüfen; A und B kennen die Kehrtwende gar nicht."
+        ]
+      },
+      {
+        "bereich": 6,
+        "punkte_A": 6,
+        "punkte_B": 5,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "C macht das Spielgefühl physikalisch greifbar. Der Antrieb wirkt als Kräftepaar mit Rückwirkung aufs Rad. Die Stehzone folgt aus tan α ≤ min(Bremskraft/g, Haftung), Matsch braucht keine Sonderregel. Dazu kommen das Wunschtempo als Draht mit Kennlinie, der Schrittplaner und der Sprung aus Sprunghöhe und Schrittlänge (nachgerechnet: 4,5 L/s, 0,45 s Flug). Es gibt Stolper-Auslöser, den Sturz mit Spannungskurve und den Finger als drei Zustände eines Motor-Gelenks („er zieht ganz schön“). A nennt die richtigen Bausteine nur in Sätzen, B beschreibt nur die Schnittstelle.",
+        "uebernehmen": [
+          "A §6: Aufnehmen macht aus einem Physiklauf einen gestalteten Übergang mit Schlüsseln der Herkunft „Aufnahme“. Beim Formen ruht die flüchtige Schicht und bleibt als blasser Umriss stehen. Z zeigt im Prüfstand die Spur der Zukunft.",
+          "B §6: `WeltAdapter` als Vertrag (Kräftepaar, Federbein, Finger, Strahl, Merken und Zurücksetzen) und „Ruhe = Zeichnung“ als Eigenschaftstest auf 10⁻⁶.",
+          "Eigene Rechnung: In der Gehzone (3° bis 17°) bestimmt die Kennlinie Hang → Wunschtempo das Kippen, nicht √(R/g). Mit den Startwerten aus C 6.4 läuft Ozzy bei festgehaltenem Rad in rund 1,2 s von 3° bis 17° (Zeitkonstante rund 0,7 s). Ihre Steigung ist die erste Schwierigkeitsschraube und gehört sichtbar in den Prüfstand. A §11 nennt die Kippzeit ohne diese Grenze."
+        ]
+      },
+      {
+        "bereich": 7,
+        "punkte_A": 7,
+        "punkte_B": 7,
+        "punkte_C": 8,
+        "bester": "C",
+        "warum": "C führt jeden Effekt der Demo mit Standard „an“ oder „aus“ und begründet ihn aus dem Spiel: Der Kontaktschatten macht die Sprunghöhe lesbar. Ozzy bleibt sauber. Aufprallbild, Schmierbild, Zittern und Bewegungslinien bleiben aus, bis er sie will. Sterne sind Formen auf einer Kreisbahn statt Shader, Andenken liegen nie auf ihm. Was sechs Ozzys im Rückblick kosten, misst die Messseite vor dem Bau.",
+        "uebernehmen": [
+          "B §7: das Datenmodell Gruppe, Verbindung (verschmelzen oder Fuge, Maß als Regler) und Effekt (Profil, Stärke als Regler). Dazu die Übersetzung aus dem Prototyp: FLUESSIG, Ohrspalt als Fuge, durchbruch als Dickenregel, deckung als Wechsel mit Breite.",
+          "A §7: die Kostenampel „iPhone“ in der Kopfleiste und der Effekt-Chip mit Antrieb fest, Schlüssel, Pose oder Spielwert."
+        ]
+      },
+      {
+        "bereich": 8,
+        "punkte_A": 8,
+        "punkte_B": 6,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "C zeigt an der ganzen Demo, dass Logik ohne Code trägt. Es gibt Bausteine mit allen Anschlüssen (dazu Schläfer und Flieger), eine Tabelle der Drähte und rund 35 Sätze für den ganzen Tag. Vier Abläufe aus Florians Sicht gehören dazu, auch das Feilen an einem Gag: „Hepp“ auf 1,5 s schieben und die Pause wachsen hören. Aufgaben haben einen Beweis-Lauf, und die Grenze ist ehrlich: Neue Verhaltensarten brauchen Code. Ein Mangel: „Karte“ heißt zugleich Regel und Posenkarte (siehe schwere Fehler). A ist sauber in den Wörtern, aber nur an einem Beispiel gezeigt. B beschreibt die Maschine, nicht die Bedienung.",
+        "uebernehmen": [
+          "A §8 und §9.5 f: das Wort „Regel“ mit den Satzarten Sobald, Solange, Laune (Gesamtbericht 4.5). Einen Draht legt man, indem man vom Ausgang auf den Regler zieht; dessen Leiste sagt dann „getrieben von Neigung“. Lücken füllt man durch Hineinziehen von Posenkarten.",
+          "B §8: „Warum?“ auch für Regler („Ohr links: Pendel + Pose Erschrecken + Draht von Neigung“). Bausteinarten sind registrierte Arten mit Version und Schema; ihre Anschlüsse erscheinen ohne weiteren Code in Bedienung, Regeln und Prüfer.",
+          "Statt C §8.1 Punkt 3: eine Regel je Ding-Art, mit eigenem Gedächtnis je Ding (14b §7.8). So ändert Florian das Schnüffeln einmal, und beide Duftstellen folgen."
+        ]
+      },
+      {
+        "bereich": 9,
+        "punkte_A": 9,
+        "punkte_B": 5,
+        "punkte_C": 7,
+        "bester": "A",
+        "warum": "A denkt die Bedienung für Florian zu Ende. Es gibt fünf Verben auf drei Geräten und eine Tabelle Ding × Geste, die auch alle Spieldinge enthält (Draht, Regel, Zone, Weltpfad, Mitschnitt, Prüfer-Hinweis). Vor dem Zug zeigt eine Vorschau, wo er landet. Beim Anhalten im Spiel, dem heikelsten Moment, wählt Florian die Stelle; dazu kommen sieben Abläufe aus seiner Sicht. Fürs Spielen wichtig: Der Merker am iPhone hält Saat, Eingaben und Takt fest, und der Mac spielt ihn genau nach.",
+        "uebernehmen": [
+          "C §9: die Strecke unter der Bühne, gefärbt nach dem Tempo, das jede Stelle verlangt (aus dem Sprungfenster), und die Bedienprobe mit fünf Aufgaben aus der Demo.",
+          "B §9 und §3.5: Alle Werkzeuge schreiben nur über `rueckrechnen` und den Store. Bühne, Zwiebelhaut und Bahnen kommen aus denselben Ankerfeldern der Laufzeit."
+        ]
+      },
+      {
+        "bereich": 10,
+        "punkte_A": 7,
+        "punkte_B": 9,
+        "punkte_C": 7,
+        "bester": "B",
+        "warum": "B macht die Zusagen, die das Spiel braucht, zu Eigenschaften des Codes. Lint-Regeln verbieten `Math.sin` und Uhren im Simulationspfad; das Spiel importiert weder Store noch Editor. Die Schutzregel im Store lässt Automatik, Sitzungen und Migrationen seine Schlüssel nicht anrühren. Die Lauf-Datei ist Beweis, Fehlerbericht, Pannen-Rückblick und Regressionstest zugleich; so wird Nicoles Runde vom iPhone ein Test am Mac. Dazu kommen die Rechenkette als Module, die im Bildtakt keinen Speicher anlegen, sowie Tabellen für Budget und Tests.",
+        "uebernehmen": [
+          "C §10: der Test „Die Demo hat keinen Spielcode“ (Spiel-App höchstens 300 Zeilen, nur die fünf Pakete). Der Rückblick kommt aus gespeicherten gezeigten Werten statt aus Nachrechnen. Die Beweis-Läufe der Aufgaben laufen als Tests.",
+          "A §10: die Stelle als Datum der Sitzung, dazu Ort-Probe und Schutz-Probe als Tests."
+        ]
+      },
+      {
+        "bereich": 11,
+        "punkte_A": 6,
+        "punkte_B": 4,
+        "punkte_C": 9,
+        "bester": "C",
+        "warum": "Nur C entwickelt ein Spiel. Ein Hügel, drei Runden, jede mit einer neuen physikalischen Idee. Jedes Ding hat „zu langsam“, „zu schnell“ und einen Witz. Launen haben Ankündigung, Dauer, Ruhezeit und eine Panne. Sieben Komik-Momente folgen „Ahnung, Pause, Folge“ mit Zeiten (Nasen-Pflug, Popo-Rutschen, Schlafwalze, Übermut-Plumps). Die Regeln sind fair: nie zwei Launen zugleich, 1,5 s Vorlauf, nach drei Fehlversuchen eine Hilfe als Ding, Stimmung als stille Anpassung. Die ersten Sekunden kommen ohne Text aus. Aus vollständigen Listen folgt der Umfang des Editors. Die Abweichung von drei Welten ist ehrlich gegenübergestellt. A fasst die Recherche gut zusammen, B hat einen Absatz.",
+        "uebernehmen": [
+          "A §11: die Tabelle „Teil → Studio-Mittel“ als knappe Abnahmeliste; der Blick in die Kamera ist die Front, also genau das Logo.",
+          "B §11: Pannen-Rückblick und Geist des besten Laufs, aber aus gespeicherten gezeigten Werten (C §10); eine Lauf-Datei läuft nach jeder Änderung am Inhalt anders nach.",
+          "In C ändern: Einkringeln ohne Körperdrehung um 360° (zweimal über die Front wenden); Ozzy durch Antippen wecken; Rückwurf und Andenken-Bonk erst nach Florians Blick, bis dahin kommt Ozzy zu Fuß über den Rand zurück.",
+          "Eigene Ergänzung: Nach einer Verweigerung braucht Ozzy einen Weg zurück in den Anlauf. „Anlauf nehmen“ (zwei Schritte zurück, Hinterteil wackelt, los) als gestalteter Übergang ist zugleich ein Gag."
+        ]
+      },
+      {
+        "bereich": 12,
+        "punkte_A": 7,
+        "punkte_B": 8,
+        "punkte_C": 8,
+        "bester": "C",
+        "warum": "C prüft das Spielgefühl früh: Ozzy steht in E2 auf dem Hügel. Danach ist jede Etappe eine Runde der Demo mit einer Probe aus dem Spiel. Nicole schafft die Morgenrunde ohne Erklärung, Florian findet ein falsch sortiertes Paar mit „Warum?“ in unter zwei Minuten, die Stumm-Probe verliert keine Pointe. Die Abbruchregeln sind spielnah: Schafft Nicole die Morgenrunde in drei Versuchen nicht, kommen Bremskraft 0,35 g und Radius 16 L. Nach E1 wird neu geschätzt. B hat die sauberste Aufteilung für parallele Agenten, A die frühe Bedienprobe.",
+        "uebernehmen": [
+          "B §12.2 bis §12.4: Verträge mit Versionsnummer einfrieren, ein Ordner je Bahn, tägliche Integration nur bei grünen Tests, höchstens zwei Proben gleichzeitig für Florian. Wer dasselbe Kriterium zweimal verfehlt, prüft den Ansatz.",
+          "A §12.1: die Werkbank-Probe (E4) an seiner Kopfdrehung, bevor Posen und Übergänge ausgebaut werden. Die Kopfdrehung zieht erst auf sein Wort nach Studio um, nach dem bildgleichen Import."
+        ]
+      }
+    ],
+    "schwere_fehler": [
+      {
+        "entwurf": "C",
+        "bereich": 8,
+        "fehler": "„Karte“ steht in C zugleich für Regeln (Sobald, Solange, Laune; §8), Posenkarten (§9), Zwischenposen (§5) und die Karte „Probe“ (§9). Genau diesen Wortkonflikt löst der Gesamtbericht (4.5 und Widerspruch 28: „Karte“ nicht als Logikwort). Das verletzt Arbeitsregel 6, und zwar in dem Bereich, den Florian ohne Programmierkenntnisse lesen muss. Abhilfe: „Regel“ wie in A und B."
+      },
+      {
+        "entwurf": "C",
+        "bereich": 11,
+        "fehler": "„Einkringeln (Körperansicht ψ einmal herum)“ am Ziel jeder Runde verlangt, dass sich der Körper um 360° dreht, samt Rückseite. Der Prototyp dreht den Körper nur von 0° bis 90° (raster.ts klemmt ψ auf 0 bis 90). Die Rückseite von 90° bis 180° ist offen (Übergabe ozzy-figur), und die Kopfdrehung von 90° bis 180° brauchte fünf Fassungen. Dieser Aufwand steht weder in 11.13 noch bei den Risiken."
+      },
+      {
+        "entwurf": "C",
+        "bereich": 11,
+        "fehler": "Der Start „Berühren weckt ihn“ und die Regel „Sobald Finger fasst den Hügel zum ersten Mal an → Aufwachen; Musik“ übergehen 14d §4.1 und Gesamtbericht 4.3 Punkt 13. Safari gibt den Ton erst beim Loslassen frei, Klänge davor werden verworfen. Wer im Browser zuerst zieht, hört weder das Gähnen noch den Einsatz der Musik. Die Weltwahl, die sonst das erste Tippen liefert, hat C gestrichen. Abhilfe: Antippen weckt Ozzy."
+      }
+    ],
+    "gesamt_A": 7,
+    "gesamt_B": 6,
+    "gesamt_C": 8,
+    "empfehlung": "Nach Rollen zusammensetzen: C bestimmt Spiel und Umfang, A die Bedienung, B das Gerüst.\n\nAus C kommen:\n- Bereich 11 ganz, mit den Listen in 11.12 und der Tabelle 11.13 als Abnahme\n- Bereich 6 als Physik des Spielgefühls\n- Bereich 8, mit „Regel“ statt „Karte“ und einer Regel je Ding-Art\n- aus Bereich 5 die Abschnitte „bis Ereignis“ und die Spannung als Regler\n- die Etappen aus 12.1, mit der Spielwiese früh\n\nAus A kommen:\n- Bereich 9: Stelle mit Vorschau, Ding × Geste, Stellen-Wahl beim Anhalten, Merker am iPhone\n- A 5.3: Der erste Zug macht einen Übergang zum gestalteten.\n- der Ruhe-Wächter (A 2)\n- die Werkbank-Probe E4\n\nAus B kommen:\n- Bereich 10 als technischer Vertrag\n- `rueckrechnen` (B 3.5)\n- die Formdaten (B 2)\n- das parallele Bauen (B 12.2 bis 12.4)\n\nAlle drei schweren Fehler liegen in C, weil nur C genug Spiel-Einzelheiten festlegt, um sie zu prüfen. Sie sind vor dem Bau leicht zu beheben. Rückwurf und Andenken-Bonk nur nach Florians Blick bauen.\n\nIn der Spielwiese zuerst zwei Dinge prüfen, die alle Entwürfe unterschätzen. Erstens die Steigung der Kennlinie Hang → Wunschtempo als erste Schwierigkeitsschraube; in der Gehzone bestimmt sie das Kippen, nicht √(R/g). Zweitens die Kehrtwende am Scheitel als häufigsten Übergang.\n\nFlorian beantwortet dafür nur eine Spielfrage: ein Hügel mit drei Tageszeiten oder drei Welten."
+  }
+]
