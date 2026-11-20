@@ -139,6 +139,7 @@ import {
   pruefen,
 } from './ablage';
 import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMit } from './naht';
+import { MAUL_HAAR, maulSchneidenMit } from './maulEcht';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -861,6 +862,100 @@ export async function objektVerbinden(teil: ObjektStand, k: number, d: V3, art: 
   return true;
 }
 
+/** Die Lippe eines Mauls, das als echte Form geschnitten wurde (`maulSchneiden`): ein Maul aus einer Linie mit dem Haarspalt */
+export const istMaulEcht = (l: Loop): boolean => istMaulLinie(l) && l.maulLinie === MAUL_HAAR;
+
+/**
+ * Das Maul als echte Form (Plan „Maul, Zähne, Zunge“, Etappe 1, 20.11.2026): Aus einer Linie, von der Seite gezeichnet, vom
+ * Leeren vor der Form bis zum Mundwinkel in ihr, wird ein Maul, das Haut und Linien der Form ist (`maulSchneidenMit`): Die Tasche
+ * ist Haut, die Lippe eine Linie mit Kante, deren Punkte für beide Lippen gelten (Zwillinge), im Maul liegen die Mitte von Gaumen
+ * und Boden und die Rachenlinie. Gerechnet wird es zu. Ein Schritt für ⌘Z.
+ *
+ * `anker`: der Strich im Blatt der Ansicht; `innenAmEnde`: Sein letzter Punkt ist der Mundwinkel (sonst der erste).
+ * Zurück: ob das Maul entstand (sonst steht der Grund in der Meldung, nichts ist geändert).
+ */
+export async function maulSchneiden(a: Ansicht, anker: readonly StiftAnker[], innenAmEnde: boolean): Promise<boolean> {
+  const sagen = (text: string): false => {
+    G.meldung = text;
+    anzeige.statusZeigen();
+    return false;
+  };
+  const bereit = (): string =>
+    a !== 'seite'
+      ? 'Ein Maul zeichnest du von der Seite: vom Leeren vor der Form bis zum Mundwinkel'
+      : !objektRuht()
+        ? 'Maul: erst den laufenden Handgriff beenden (und zurück in die Grundform)'
+        : G.maul || pose.delta || loops.some(istMaulLinie)
+          ? 'Diese Form hat schon ein Maul'
+          : istFrei()
+            ? 'Ein Maul braucht die gespiegelte Form (Spiegel an)'
+            : '';
+  if (bereit()) return sagen(bereit());
+  const strich = stiftStrich(a, anker);
+  if (strich.length < 2) return sagen('Maul: Die Linie ist zu kurz');
+  // vom Mundwinkel nach vorn
+  const linie = (innenAmEnde ? [...strich].reverse() : strich).map(([x, y]) => ({ x, y }));
+  const hautDavor = haut;
+  let wasm: Awaited<ReturnType<typeof manifoldLaden>>;
+  try {
+    wasm = await manifoldLaden();
+  } catch (e) {
+    return sagen(`Maul: Die Bibliothek für den Schnitt der Netze ließ sich nicht laden (${e instanceof Error ? e.message : String(e)})`);
+  }
+  // (beim ersten Mal lädt die Bibliothek einen Augenblick: Inzwischen kann ein Handgriff begonnen oder das Objekt gewechselt haben)
+  if (haut !== hautDavor) return false;
+  if (bereit()) return sagen(bereit());
+  const t0 = performance.now();
+  const r = maulSchneidenMit(wasm, { haut, loops }, linie, { naechsteId, naechsteKreuzung, mk: MK });
+  if ('fehler' in r) return sagen(`Maul geht hier nicht: ${r.fehler}`);
+  zurueck.push(schnappschuss());
+  // was für die Form von eben bereitlag oder noch rechnete, gilt nicht mehr (ein anderes Netz)
+  hintergrundVerwerfen();
+  ruheOffen = null;
+  haut = r.haut;
+  loops = r.loops;
+  naechsteId = r.naechsteId;
+  naechsteKreuzung = r.naechsteKreuzung;
+  // (die Lippe ist der letzte Loop: an ihr sieht `nadelnWeg` nach kurzen Kanten)
+  nadelnWeg();
+  // gewählt ist die Lippe als Ganzes mit ihren sichtbaren Punkten (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
+  const l = loops[loopNr(r.lippe)];
+  G.auswahl = l ? [{ l: r.lippe, i: -1 }, ...l.punkte.flatMap((q, i) => (istSichtbar(q) ? [{ l: r.lippe, i }] : []))] : [];
+  G.meldung = `Maul (${((performance.now() - t0) / 1000).toFixed(1)} s): Die Lippe ist eine Linie mit Kante, ihre Punkte gelten für beide Lippen · im Maul liegen zwei Linien · ⌘Z nimmt es zurück`;
+  // das Netz am Maul ist neu: Die Haut setzt sich und räumt auf wie nach einer Kante
+  hautNeuRechnen();
+  anzeige.geometrieNeu();
+  anzeige.allesZeigen();
+  return true;
+}
+
+/**
+ * Das Maul als echte Form (20.11.): Zwei Linien, die an derselben Stelle enden, die eine an der Oberlippe, die andere an der
+ * Unterlippe (die zwei Stücke einer Linie, die das Maul kreuzte), kreuzen sich dort nicht. Zu liegen ihre Enden am selben Ort, aber
+ * zwischen ihnen liegt das Maul. Ohne das hielt die Suche sie nach jedem Schritt für eine neue Kreuzung, die Linien bekamen immer
+ * mehr Punkte, und an der Lippe schlugen Dreiecke um.
+ */
+function ueberDasMaul(A: Loop, B: Loop, ort: V3): boolean {
+  for (const L of loops) {
+    if (L === A || L === B || !istMaulEcht(L)) continue;
+    const w = L.punkte.find((p) => p.mundwinkel);
+    if (!w) continue;
+    /** die Stelle auf der Lippe, an der die Linie hier hängt (über eine gemeinsame Kreuzung); null: nicht an dieser Lippe */
+    const an = (X: Loop): number | null => {
+      for (const p of X.punkte) {
+        if (p.kreuzung === undefined || abstand(p.ref, ort) > 8 * TOL) continue;
+        const q = L.punkte.find((x) => x.kreuzung === p.kreuzung);
+        if (q) return q.s;
+      }
+      return null;
+    };
+    const sa = an(A);
+    const sb = an(B);
+    if (sa !== null && sb !== null && (sa - w.s) * (sb - w.s) < 0) return true;
+  }
+  return false;
+}
+
 /**
  * Kreuzungen suchen (nur mit `nur`, sonst alle Paare); neue werden Punkte auf beiden Loops. In der Grundform ist eine Kreuzung genau
  * ein Ort: Hat ein Loop schon einen Pfad, liegt der Punkt dort, wo er geteilt wird, und der andere bekommt denselben Ort (haben beide
@@ -875,7 +970,7 @@ export function kreuzungenSuchen(nur?: Loop): number {
       if (nur && A !== nur && B !== nur) continue;
       for (const f of kreuzungenZwischen(A, A.ruhe, B, B.ruhe, TOL)) {
         const schon = A.punkte.some((p) => p.kreuzung !== undefined && abstand(p.ref, f.p) < 8 * TOL && B.punkte.some((q) => q.kreuzung === p.kreuzung));
-        if (schon) continue;
+        if (schon || ueberDasMaul(A, B, f.p)) continue;
         const k = naechsteKreuzung++;
         const ea = exakt(A);
         const eb = exakt(B);
@@ -3852,8 +3947,43 @@ export function loopsZahl(): number {
 /** Der Stand, an dem Nachlauf und Auftrag hängen: Netz, Lagen, Loops */
 export const standZahl = (): string => `${haut.n}:${lagenZahl(haut.pos)}:${loopsZahl()}`;
 
+/**
+ * Das Maul als echte Form (20.11.): Linien, die mit Absicht auf sich selbst liegen. Die Lippe ist ein zusammengeklappter Loop (ihre
+ * zwei Lippen liegen zu aufeinander, sie kehrt am Mundwinkel um), ebenso die Mitte von Gaumen und Boden; und eine Linie, die vorn an
+ * Ober- und Unterlippe endet (die Mitte der Form), berührt sich dort mit ihren zwei Enden. Zurück: die Probe, an der eine solche
+ * Linie in zwei Hälften zerfällt, die jede für sich frei liegen müssen (der Mundwinkel, sonst ihre Mitte); −1: eine Linie wie jede.
+ */
+function maulFalte(l: Loop): number {
+  if (l.art !== 'ring' || l.proben.length < 4) return -1;
+  const bei = (s: number): number => {
+    let j = 0;
+    for (let k = 1; k < l.s.length; k++) if (Math.abs(l.s[k]! - s) < Math.abs(l.s[j]! - s)) j = k;
+    return j;
+  };
+  if (istMaulEcht(l)) {
+    const w = l.punkte.find((p) => p.mundwinkel);
+    return w ? bei(w.s) : -1;
+  }
+  if (!l.haengt?.[0] || !l.haengt[1]) return -1;
+  const k0 = l.punkte[0]?.kreuzung;
+  const k1 = l.punkte[l.punkte.length - 1]?.kreuzung;
+  if (k0 === undefined || k1 === undefined) return -1;
+  for (const L of loops) {
+    if (L === l || !istMaulEcht(L) || L.punkte.length < 2) continue;
+    const e0 = L.punkte[0]!.kreuzung;
+    const e1 = L.punkte[L.punkte.length - 1]!.kreuzung;
+    if ((k0 === e0 && k1 === e1) || (k0 === e1 && k1 === e0)) return bei(0.5 * l.laenge);
+  }
+  return -1;
+}
+/** kreuzt oder berührt die Linie sich selbst (`linieKreuztSich`); am Maul als echter Form zählt jede ihrer zwei Hälften für sich */
+function kreuztSich(l: Loop): boolean {
+  const j = maulFalte(l);
+  if (j <= 0 || j >= l.proben.length - 1) return linieKreuztSich(l);
+  return linieKreuztSich(l, l.ruhe.slice(0, 3 * (j + 1))) || linieKreuztSich(l, l.ruhe.slice(3 * j));
+}
 /** Loops, deren Linie sich selbst kreuzt oder berührt (`linieKreuztSich`): ein Griff ist verdreht, ein Punkt über seinen Nachbarn hinaus gezogen */
-export const linienGekreuzt = (): number[] => loops.filter((l) => linieKreuztSich(l)).map((l) => l.id);
+export const linienGekreuzt = (): number[] => loops.filter((l) => kreuztSich(l)).map((l) => l.id);
 export const GEKREUZT_TEXT = (ids: readonly number[]): string =>
   `Loop ${ids.join(', ')} kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bis die Linie wieder frei liegt.`;
 

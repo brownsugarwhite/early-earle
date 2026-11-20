@@ -7408,6 +7408,12 @@ window.addEventListener('keydown', (e) => {
       if (!blatt.eingabe('enter') && blatt.geschlossen) aufblasen();
     } else if (bearbeitenAn) bearbeiten.eingabe('enter');
   } else if (k === 'Escape') {
+    // (ein Strich, der auf den Tropfen „Maul“ wartet: verwerfen)
+    if (zustand !== 'blatt' && werkBlatt.maulStrich && !maulStrichLaeuft) {
+      werkBlatt.maulStrichWeg();
+      anstossen();
+      return;
+    }
     if (zustand === 'blatt') {
       // (das Plus abbrechen: auf dem leeren Blatt eines neuen Objekts zurück in den Raum, zum Objekt von eben)
       if (objektPlusAbbrechen()) return;
@@ -8760,9 +8766,24 @@ function maulUiZeigen(): void {
   // der Tropfen hängt unter dem tiefsten sichtbaren Punkt der gewählten Linie
   // (nicht, wenn ein Feld gewählt ist: Dann sind die Punkte auf seinem Rand gewählt, kein Ring)
   // (ein Maul braucht noch die gespiegelte Form: an einer freien gibt es den Tropfen nicht)
-  const l = an && !werk.grund && !werk.maulLauf && !werk.zug && !bearbeiten.stift && werkFelder.anzahl === 0 && !werk.istFrei() ? maulRing() : null;
+  const ring = an && !werk.grund && !werk.maulLauf && !werk.zug && !bearbeiten.stift && werkFelder.anzahl === 0 && !werk.istFrei() ? maulRing() : null;
+  // (die Lippe eines Mauls, das als echte Form geschnitten wurde, ist schon das Maul: Öffnen kommt mit Etappe 2)
+  const l = ring && !werk.istMaulEcht(ring) ? ring : null;
   let ort: { x: number; y: number } | null = null;
-  if (l && werk.G.maul?.id !== l.id) {
+  // Das Maul als echte Form (Etappe 1): Wartet ein Strich von der Seite auf seine Bestätigung, hängt der Tropfen an seinem Ende in
+  // der Form. Der Strich gilt, solange nichts anderes geschieht (ein Zug, ein Schritt, ein anderes Werkzeug verwerfen ihn).
+  const strich = werkBlatt.maulStrich;
+  if (strich) {
+    const stand = `${werk.loops.length}|${werk.zurueck.length}`;
+    maulStrichStand ??= stand;
+    if (!an || werk.grund || werk.zug || werk.maulLauf || !bearbeiten.stift || stand !== maulStrichStand || maulStrichLaeuft) {
+      if (!maulStrichLaeuft) werkBlatt.maulStrichWeg();
+    } else {
+      const o = werkBlatt.maulStrichOrt();
+      if (o) ort = { x: o.x, y: o.y - 6 };
+    }
+  } else maulStrichStand = null;
+  if (!ort && l && werk.G.maul?.id !== l.id) {
     werkBlatt.anker.forEach((A, pi) => {
       const p = werkBlatt.netz.punkte[pi];
       if (!p?.sichtbar || !A.werk.some((w) => w.id === l.id)) return;
@@ -8772,8 +8793,8 @@ function maulUiZeigen(): void {
   const o = ort as { x: number; y: number } | null;
   maulTropfen.hidden = !o;
   if (o) maulLetzterOrt = { x: o.x, y: o.y + 26 };
-  if (o && l) {
-    const text = maulHart(l) ? 'Maul' : 'Maul formen';
+  if (o && (l || werkBlatt.maulStrich)) {
+    const text = werkBlatt.maulStrich || (l && maulHart(l)) ? 'Maul' : 'Maul formen';
     if (maulTropfen.textContent !== text) maulTropfen.textContent = text;
     maulTropfen.style.left = `${o.x.toFixed(1)}px`;
     maulTropfen.style.top = `${(o.y + 14).toFixed(1)}px`;
@@ -8793,6 +8814,9 @@ function maulUiZeigen(): void {
 
 /** wo der Tropfen „Maul“ zuletzt hing (Mitte, CSS-Pixel): Dort quillt „Fressen“ heraus */
 let maulLetzterOrt: { x: number; y: number } | null = null;
+/** der Stand des Werks, als der Strich des Mauls fertig wurde (ändert er sich, ist der Strich verworfen); läuft das Schneiden gerade */
+let maulStrichStand: string | null = null;
+let maulStrichLaeuft = false;
 /** „Fressen“ fliegt aus dem Tropfen „Maul“ an seinen Platz oben rechts und wird dabei vom Tropfen zur Tafel */
 function fressenQuellen(): void {
   const r = fressen.getBoundingClientRect();
@@ -8812,8 +8836,37 @@ function fressenQuellen(): void {
 }
 
 maulTropfen.addEventListener('click', () => {
+  // Das Maul als echte Form (Etappe 1): Der Tropfen am wartenden Strich bestätigt ihn
+  const strich = werkBlatt.maulStrich;
+  if (strich) {
+    if (maulStrichLaeuft || werk.zug || werk.maulLauf || werk.grund) return;
+    maulStrichLaeuft = true;
+    void werk
+      .maulSchneiden(strich.a, strich.anker, strich.innenAmEnde)
+      .then((gut) => {
+        // (geht es hier nicht, bleibt der Strich stehen: Die Meldung sagt, warum; Esc verwirft ihn)
+        if (!gut) return;
+        werkBlatt.maulStrichWeg();
+        // wie nach einem Abziehen: Die Lippe ist gewählt (mit dem weißen Zeiger sieht man ihre Punkte), die Haut hat ein neues
+        // Netz und wird ganz neu angelegt
+        if (objektModus() || bearbeiten.stift || strichWerkzeug()) werkzeugImRaum('auswahl');
+        objektGewaehlt = false;
+        werkFelder.leeren();
+        werkHaut.ganzNeu();
+        ruheZeigen();
+        raumRechnen(bw.band);
+      })
+      .finally(() => {
+        maulStrichLaeuft = false;
+        maulStrichStand = null;
+        werk.anzeige.allesZeigen();
+        werkNeu = true;
+        anstossen();
+      });
+    return;
+  }
   const l = maulRing();
-  if (!l || werk.zug || werk.maulLauf || werk.grund) return;
+  if (!l || werk.istMaulEcht(l) || werk.zug || werk.maulLauf || werk.grund) return;
   // eine weiche Linie: das Maul formen (das Werk zeigt die Schritte und nimmt so lange nichts an); eine harte: sie ist das Maul
   if (maulHart(l)) werk.maulAnlegen();
   else werk.maulFormenGewaehlt();
@@ -9110,6 +9163,25 @@ const haken = {
   },
   /** S17: die Felder der Vier Ansichten (CSS-Pixel) und Zoom und Verschiebung je Feld */
   felderJetzt: () => (raum ? felder() : null),
+  /** das gezeigte Netz des weißen Körpers (zum Prüfen): Punkte, Dreiecke, Kasten, nicht endliche Werte, Umlaufsinn */
+  koerperNetz: () => {
+    const N = zeigeNetzAlle();
+    if (!N) return null;
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    let nichtEndlich = 0;
+    for (let i = 0; i < N.pos.length; i++) {
+      const x = N.pos[i]!;
+      if (!Number.isFinite(x)) nichtEndlich++;
+      else {
+        min[i % 3] = Math.min(min[i % 3]!, x);
+        max[i % 3] = Math.max(max[i % 3]!, x);
+      }
+    }
+    let normalNichtEndlich = 0;
+    for (let i = 0; i < N.normal.length; i++) if (!Number.isFinite(N.normal[i]!)) normalNichtEndlich++;
+    return { punkte: N.pos.length / 3, dreiecke: N.index.length / 3, min, max, nichtEndlich, normalNichtEndlich, wicklung: wicklungVon(N) };
+  },
   /** S20: der weiße Körper: an, wie deckend, in wie vielen Ansichten; Zeit des letzten Bilds (Rechnen, ms) */
   koerper: () => {
     const k = linienKoerper();
@@ -9300,7 +9372,14 @@ const haken = {
       geformt: l.maulGeformt ?? false,
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
+      maulLinie: l.maulLinie ?? null,
+      maulEcht: werk.istMaulEcht(l),
     })),
+  /** Etappe 1 Maul: der Strich, der auf den Tropfen „Maul“ wartet (Zahl seiner Anker, wo der Tropfen hängt); null: keiner */
+  maulStrich: (): { anker: number; innenAmEnde: boolean; ort: { x: number; y: number } | null } | null => {
+    const m = werkBlatt.maulStrich;
+    return m ? { anker: m.anker.length, innenAmEnde: m.innenAmEnde, ort: werkBlatt.maulStrichOrt() } : null;
+  },
   /** C2: die Richtung des letzten Punkts eines Entwurfs mit P, im Bild (CSS-Pixel vom Punkt aus); null ohne Entwurf */
   entwurfGriff: (): [number, number] | null => werkBlatt.entwurf()?.aus ?? null,
   /** C2: die Linie eines Loops, wie sie auf der Haut liegt (Werk, 3 je Probe; die gespeicherte Hälfte) */

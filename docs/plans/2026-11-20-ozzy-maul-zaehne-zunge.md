@@ -767,3 +767,24 @@ Eine Frage hält den nächsten Schritt auf: **Soll ich mit Etappe 1 in Ozzy begi
 
 Die anderen Wege: zuerst P3 („Lippen trennen“ an deinem Blatt 06), oder hier anhalten.
 
+Deine Antwort (20.11.): „Du musst mir nicht immer Vergleiche und Tests zeigen. Starte Etappe 1. Wir behalten es im Kopf und machen
+dann einen großen Feinschlifflauf am Ende.“ Das Vergleichsbild entfällt; Offenes steht ab jetzt in
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md).
+
+### 12.11 Etappe 1, erste Scheibe: gebaut (20.11.)
+
+In Ozzy: in der Seite mit P eine Linie vom Leeren vor der Form bis zum Mundwinkel in ihr, ↩. Sie bleibt stehen und bekommt den
+Tropfen „Maul“; der Tropfen macht daraus das Maul wie in P2 (zu gerechnet, die Lippe ein zusammengeklappter Loop mit Zwillingen,
+zwei Linien im Maul). ⌘Z nimmt es zurück, Esc verwirft die wartende Linie. Zieht man einen Punkt der Lippe, geht sein Zwilling
+mit (das konnte das Werk schon, vom Maul aus einer Linie des 14.11.).
+
+Wo: der Baustein `apps/editor/src/form/maulEcht.ts` (ohne Fenster, Tests `maulEcht.test.ts`), der Handgriff `werk.maulSchneiden`,
+der wartende Strich in `werkBlatt.ts` (`maulStrich`), der Tropfen in `main.ts` (`maulUiZeigen`). Probe im Fenster:
+`scripts/pruefen/ozzy-maul-fenster.mjs` (an „teat firefish“ und mit `FRISCH=1` an einem frischen Oval).
+
+Anders als in P2: (1) Nach dem Schließen wird eine Seite um einen Hauch (0,03°) um den Mundwinkel gedreht, damit keine zwei Punkte
+am selben Ort liegen (der Kern läse sonst die Spiegelpaare falsch). (2) Der Keil ist am Mundwinkel eine Schneide (in P2 fielen
+dort drei Punktreihen auf einen Ort). (3) Die Splitter des Schnitts werden vor dem Zwillingsschritt zusammengelegt. (4) Die zwei
+Enden einer geschnittenen Linie kommen an der Lippe auf einen Ort. Am Rechenkern ist nichts an der Rechnung geändert; er gibt eine
+vorhandene Funktion nach außen (`kantenTeilenMit`).
+

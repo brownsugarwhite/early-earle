@@ -730,6 +730,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (`verdichten` führt sie mit, `kantenTeilen` nicht). (7) Das „gefaltete Dreieck am Mundwinkel“ aus (4) war keine Falte (die Wand
   an der Rachenlinie liegt gewollt auf der anderen); Falten mit `gefaltetWo` messen. (8) Der Rest außen am Unterkiefer (1,6)
   kommt von der harten Kante, nicht vom Maul (Kontrolle 3: eine harte Linie ohne Schnitt gibt 1,65 an derselben Stelle).
+  **Etappe 1 in Ozzy, erste Scheibe (20.11.):** in der Seite mit P vom Leeren in die Form, ↩, Tropfen „Maul“ → `werk.maulSchneiden`
+  (Baustein `src/form/maulEcht.ts`, Tests `maulEcht.test.ts`; Probe `ozzy-maul-fenster.mjs`, `FRISCH=1`). Die Lippe ist ein
+  `maulLinie`-Ring mit dem Winkel `MAUL_HAAR` (`werk.istMaulEcht`); der Haarspalt hält Punkte auseinander, die sonst am selben Ort
+  lägen. Merke: (9) Nach dem Schnitt `werkHaut.ganzNeu()` und `raumRechnen` (wie nach einem Abziehen). (10) Eine harte Linie ohne
+  Länge im Bild (die Rachenlinie in der Seite) ließ die Anzeige aller Linien ausfallen (`werkBlatt.abtasten`, 0/0). (11)
+  `kreuzungenSuchen` ist geometrisch: Enden an Ober- und Unterlippe am selben Ort galten als neue Kreuzung (`ueberDasMaul`). (12)
+  `linienGekreuzt` prüft zusammengeklappte Linien je Hälfte (`maulFalte`). (13) P fängt dicht am Umriss die Mitte: die Maullinie
+  ein Stück vor der Form beginnen. Offenes: `docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

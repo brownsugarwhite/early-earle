@@ -4,7 +4,10 @@
 Objekte und den Paint-Modus). Arbeitsbaum `.claude/worktrees/ozzy`, Fenster 5205 (Eintrag `ozzy`). `claude/ozzy` selbst steht
 weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 
-**Was es gibt:** ein Konzept, eine Studie und zwei Proben. **In Ozzy, am Werk und am Rechenkern ist nichts geändert.**
+**Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. die erste Scheibe von Etappe 1 in Ozzy**
+(siehe unten „Etappe 1 in Ozzy“). Offenes steht nummeriert in
+[`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
+großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
 
 - Konzept (zur Freigabe): [`docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md`](../../../plans/2026-11-20-ozzy-maul-zaehne-zunge.md).
   Oben Florians Auftrag wörtlich; Abschnitt 3 die Definition („das Maul ist ein Schnitt, kein Umbau“), 4 die Bedienung, 8 was die
@@ -31,8 +34,44 @@ ohne Spalt hält an „teat firefish“: Ruhe nach 2 Runden, die Lippe ein zusam
 genau null), am Mundwinkel nichts gefaltet, geöffnet spannt sich nichts, die geschlossene Linie lässt sich als Ganzes ziehen.
 Wörtlich nicht erfüllt: am Netz bleibt zwischen den Lippen ein Rest bis 0,14; außen am Unterkiefer 1,63 statt unter 1. Der Rest
 außen kommt von der harten Kante, nicht vom Maul (Gegenprobe ohne Schnitt: 1,65 an derselben Stelle). **Gefragt ist er jetzt nach
-einem: ob ich mit Etappe 1 in Ozzy beginne** (zuerst ein Vergleichsbild im Look von Ozzy, dann die erste Scheibe; Plan, 12.10).
-Das braucht sein Wort für einen neuen Handgriff im Werk. Nichts aus den Etappen ohne sein Wort bauen.
+einem: ob ich mit Etappe 1 in Ozzy beginne** (Plan, 12.10). Sein Wort (20.11.): „Starte Etappe 1.“
+
+## Etappe 1 in Ozzy (erste Scheibe, 20.11.)
+
+**Was geht:** in der Seite (Taste 1) mit P eine Linie vom Leeren vor der Form bis zum Mundwinkel in ihr, ↩. Sie bleibt stehen und
+bekommt den Tropfen „Maul“. Der Tropfen macht daraus das Maul (zu gerechnet; die Lippe ein Ring mit Kante und Zwillingen, gewählt;
+im Maul die Mitte von Gaumen und Boden und die Rachenlinie). ⌘Z nimmt es zurück, Esc verwirft die wartende Linie. Ein gezogener
+Punkt der Lippe nimmt seinen Zwilling mit. **Was fehlt:** Öffnen, „Lippen trennen“, Ebene „Maul“, Zähne, Zunge (die Liste oben).
+
+**Wo:**
+
+- `src/form/maulEcht.ts`: der Baustein ohne Fenster (`maulSchneidenMit`, `kieferSeiten`, `MAUL_HAAR`), Tests `maulEcht.test.ts`.
+- `src/form/werk.ts`: `maulSchneiden` (ein Schritt für ⌘Z, gebaut wie `objektVerbinden`), `istMaulEcht`, `ueberDasMaul` (in
+  `kreuzungenSuchen`), `maulFalte` und `kreuztSich` (für `linienGekreuzt`).
+- `src/ozzy/werkBlatt.ts`: der wartende Strich (`maulStrich`, `maulStrichOrt`, `maulStrichWeg`; in `fertig()` der Fall „ein Ende
+  im Leeren, eines in der Form“).
+- `src/ozzy/main.ts`: der Tropfen am Strich (`maulUiZeigen`, der Klick auf `#maul-tropfen`), Esc; Haken `maulStrich`,
+  `koerperNetz`, in `werkLinienDaten` die Felder `maulLinie` und `maulEcht`.
+- Probe: `GPU=1 [FRISCH=1] node scripts/pruefen/ozzy-maul-fenster.mjs [ordner]` (aus `apps/editor`).
+
+**Was man wissen muss** (jede Zeile hat einmal Stunden gekostet):
+
+- **Die Lippe ist ein Maul aus einer Linie im Sinn des Kerns** (`Loop.maulLinie`), mit dem Winkel `MAUL_HAAR` (0,03°). Daran
+  erkennt das Werk das neue Maul (`istMaulEcht`), und darum zieht ein Punkt seinen Zwilling mit (der Code vom 14.11.).
+- **Der Haarspalt** hält Punkte auseinander, die sonst am selben Ort lägen. Ohne ihn läse der Kern die Spiegelpaare falsch, sobald
+  er sie aus den Lagen neu liest (`kantenTeilen`, das Laden). Der Test `maulEcht.test.ts` zählt Punkte am selben Ort.
+- **Nach dem Schnitt muss Ozzy die Haut ganz neu anlegen** (`werkHaut.ganzNeu()`, `raumRechnen`, wie nach einem Abziehen).
+- **Eine harte Linie, die man genau von ihrem Ende her sieht** (die Rachenlinie in der Seite), hat im Bild die Länge null. Ihre
+  Breite wurde 0/0, und damit fiel die Anzeige **aller** Linien aus (`werkBlatt.abtasten`, behoben).
+- **Die Kreuzungssuche des Werks ist rein geometrisch.** Die zwei Stücke einer geschnittenen Linie enden am selben Ort (eines an
+  jeder Lippe); sie hielt das nach jedem Schritt für eine neue Kreuzung, die Linien bekamen immer mehr Punkte, an der Lippe
+  schlugen bis 60 Dreiecke um. Jetzt gilt: Linien, die an derselben Stelle an Ober- und Unterlippe hängen, kreuzen sich dort nicht.
+- **„Linie kreuzt sich selbst“:** Die zusammengeklappte Lippe, die Mitte von Gaumen und Boden und die Mitte der Form (ihre Enden
+  berühren sich vorn) galten als verdreht, und das Werk räumte nach einem Zug nicht mehr auf. Geprüft wird jetzt je Hälfte.
+- **P beginnt eine Abzweigung, wenn der erste Klick dicht am Umriss liegt** (es fängt die Linie der Mitte). Die Maullinie muss
+  ein Stück vor der Form beginnen (die Probe: rund 100 Einheiten).
+- **Das Aufräumen des Fensters nachstellen:** den Stand gleich nach dem Schnitt über `__ozzy.standGepackt()` holen, dann
+  `form-aufraeumen.ts <datei>`. Im Kern war das Aufräumen sauber, im Fenster nicht: So fiel die Kreuzungssuche auf.
 
 ## Die Studie in einem Absatz
 
@@ -135,3 +174,7 @@ node scripts/ozzy/maul-studie-bogen.mjs <ordner>      # setzt die zwei Bildblät
 Typen (`pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`) und Lint (`eslint src/maulstudie`) sauber. Tests gibt es für
 die Studie keine. An Ozzy ist nichts geändert, seine Proben habe ich nicht laufen lassen. Die Proben P1 und P2: Lint sauber
 (`eslint scripts/pruefen/form-maul-echt.ts`); sie läuft mit `vite-node` und gehört zu keinem Typenlauf.
+
+Etappe 1 (20.11.): Typen von Editor und Kern, Lint der geänderten Dateien, `npx vitest run src/form/ src/ozzy/` (38 und 63
+Tests), im Fenster `ozzy-maul-fenster.mjs` (an „teat firefish“ und mit `FRISCH=1`) und `ozzy-p-schnitt-fenster.mjs` (P quer über
+die Form geht wie zuvor). Nicht gelaufen: die übrigen Fensterproben von Ozzy (`ozzy-alle.mjs`).

@@ -144,7 +144,7 @@ export {
   zieleAus,
 } from './loops';
 export { type DirektLoeser } from './direktZug';
-export { type AbzweigPunkt, type Anker, abzweigen, einsetzenGrund, loopEinsetzen } from './einsetzen';
+export { type AbzweigPunkt, type Anker, abzweigen, einsetzenGrund, kantenTeilenMit, loopEinsetzen } from './einsetzen';
 export { type MitteSchnitt, hinterDerMitte, mitteFestmachen, mitteKreuzungen } from './mitteSchnitt';
 export { type Frei, spiegelAnwenden } from './frei';
 export { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';

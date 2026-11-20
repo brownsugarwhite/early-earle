@@ -199,6 +199,31 @@ export class WerkBlatt implements Raum {
   private ent: Entwurf | null = null;
   /** Nummern des Entwurfs im zuletzt gebauten Netz: seine Linie (−1: noch keine Verbindung), erster und letzter Anker */
   private entNetz = { li: -1, erster: -1, letzter: -1 };
+  /**
+   * Das Maul als echte Form (Etappe 1, 20.11.): ein mit ↩ beendeter Strich in der Seite, von dem ein Ende im Leeren liegt und das
+   * andere in der Form. Er bleibt als Linie stehen, bis der Tropfen „Maul“ an seinem Ende in der Form ihn bestätigt
+   * (`werk.maulSchneiden`) oder er verworfen wird (Esc, ein neuer Strich, ein anderes Werkzeug). `innenAmEnde`: Der letzte Anker
+   * liegt in der Form (dort ist der Mundwinkel).
+   */
+  private maulEnt: { fl: number; a: Ansicht; anker: werk.StiftAnker[]; innenAmEnde: boolean } | null = null;
+  get maulStrich(): { a: Ansicht; anker: readonly werk.StiftAnker[]; innenAmEnde: boolean } | null {
+    return this.maulEnt;
+  }
+  maulStrichWeg(): void {
+    if (!this.maulEnt) return;
+    this.maulEnt = null;
+    this.bauen(this.flaechen);
+    this.geaendert();
+  }
+  /** wo der Tropfen „Maul“ hängt: das Ende des wartenden Strichs in der Form (Bildschirm) */
+  maulStrichOrt(): { x: number; y: number } | null {
+    const M = this.maulEnt;
+    const F = M ? this.flaechen[M.fl] : undefined;
+    const k = M ? (M.innenAmEnde ? M.anker[M.anker.length - 1] : M.anker[0]) : undefined;
+    if (!F || !k) return null;
+    const [x, y] = F.hin(k.X, k.Y);
+    return { x, y };
+  }
 
   constructor(
     private readonly breiten: () => Breiten,
@@ -236,6 +261,8 @@ export class WerkBlatt implements Raum {
       const st = E.abzweig ? werk.G.abzweig?.start : null;
       teile.push(E.fl, E.a, E.abzweig ? 1 : 0, JSON.stringify(E.anker), JSON.stringify(E.nach ?? 0), st ? `${st.id}.${st.m ? 1 : 0}.${st.p.ref.x},${st.p.ref.y},${st.p.ref.z}` : '');
     }
+    const M = this.maulEnt;
+    if (M) teile.push('maul', M.fl, M.a, JSON.stringify(M.anker));
     return teile.join('|');
   }
   /** die Zeile des letzten Aufbaus (null: der nächste baut in jedem Fall) */
@@ -368,7 +395,7 @@ export class WerkBlatt implements Raum {
       });
     });
     this.entNetz = { li: -1, erster: -1, letzter: -1 };
-    const E = this.ent;
+    const E: Entwurf | null = this.ent ?? (this.maulEnt ? { fl: this.maulEnt.fl, a: this.maulEnt.a, anker: this.maulEnt.anker, abzweig: false, nach: null } : null);
     const FE = E ? flaechen[E.fl] : undefined;
     if (E && FE) {
       // der Anfang einer Abzweigung ist ein Punkt des Werks (sein Anker auf dieser Fläche); dann die gesetzten Anker
@@ -416,6 +443,8 @@ export class WerkBlatt implements Raum {
         proben.push(this.abtasten(FE, kontroll, stuecke, br));
       }
     }
+    // (der wartende Strich des Mauls ist kein Entwurf von P: Seine Nummern gelten nicht als „der Entwurf“)
+    if (!this.ent) this.entNetz = { li: -1, erster: -1, letzter: -1 };
     this.fliessen(punkte, linien, proben, pSchl, lSchl);
     this.tuscheFliessen(proben, lSchl);
     this.kreuzungenNeu();
@@ -932,7 +961,9 @@ export class WerkBlatt implements Raum {
       else if (st.art === 'kante') {
         const s0 = lauf[sis[i]! * 2]!;
         const s1 = lauf[sis[i]! * 2 + 1]!;
-        const T = Math.min((s1 - s0) * 0.5, 48);
+        // (ein Lauf ohne Länge im Bild: eine harte Linie, die man genau von ihrem Ende her sieht, wie die Rachenlinie eines Mauls in
+        // der Seite. Ohne die untere Grenze wurde die Breite hier 0/0, und mit ihr fiel die Anzeige aller Linien aus.)
+        const T = Math.max(1e-6, Math.min((s1 - s0) * 0.5, 48));
         const f = glatt(0, T, ss[i]! - s0) * glatt(0, T, s1 - ss[i]!);
         h = (br.kanteMin + (br.kanteMax - br.kanteMin) * f) / 2;
       }
@@ -1578,6 +1609,7 @@ export class WerkBlatt implements Raum {
 
   beginnen(o: StiftOrt): number | null {
     if (werk.zug || werk.G.abzweig) return null;
+    this.maulEnt = null;
     // (im Paint-Modus hängt P nie an den Linien der Form: Auch auf einem Punkt oder einer Linie beginnt eine freie Zeichnung)
     if (this.stiftZiel && o.art !== 'frei') {
       const [zx, zy] = this.zeiger();
@@ -1701,6 +1733,21 @@ export class WerkBlatt implements Raum {
       // Ansicht genau auf dem Strich (gerade oder gebogen, beliebig viele Punkte; die Punkte auf der Form werden Punkte des Loops)
       const A0 = E.anker[0];
       const A1 = E.anker[E.anker.length - 1];
+      // Das Maul (Etappe 1, 20.11.): in der Seite, ein Ende im Leeren, das andere in der Form, mit ↩ beendet. Der Strich bleibt
+      // stehen und bekommt an seinem Ende in der Form den Tropfen „Maul“ (die Bestätigung). Nur an der gespiegelten Form in der
+      // Grundform, die noch kein Maul hat; sonst gilt der Strich wie bisher.
+      if (!E.zu && E.a === 'seite' && E.anker.length >= 2 && A0 && A1 && !werk.grund && !werk.istFrei() && !werk.G.maul && !werk.loops.some(werk.istMaulEcht)) {
+        const aussen0 = this.aussen(E.a, A0.X, A0.Y);
+        const aussen1 = this.aussen(E.a, A1.X, A1.Y);
+        if (aussen0 !== aussen1) {
+          this.maulEnt = { fl: E.fl, a: E.a, anker: E.anker, innenAmEnde: aussen0 };
+          werk.G.meldung = 'Eine Linie von vorn in die Form: Der Tropfen „Maul“ an ihrem Ende macht daraus das Maul · Esc verwirft sie';
+          werk.anzeige.statusZeigen();
+          this.bauen(this.flaechen);
+          this.geaendert();
+          return -1;
+        }
+      }
       if (!E.zu && E.anker.length >= 2 && A0 && A1 && this.aussen(E.a, A0.X, A0.Y) && this.aussen(E.a, A1.X, A1.Y)) {
         werk.vorhangSchneiden(E.a, E.anker);
         werk.anzeige.allesZeigen();
