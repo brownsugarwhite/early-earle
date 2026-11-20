@@ -30,6 +30,26 @@ vec4 zelle3(vec3 x, out float id) {
       }
   return best;
 }
+/**
+ * Phasor-Rauschen (Tricard u. a. 2019): eine Summe von Gabor-Kernen auf einem Raster; aus der Phase der Summe werden Streifen, die
+ * gleich breit bleiben, sich gabeln und enden (dort, wo der Betrag klein ist). x in Rasterzellen, f Wellen je Zelle, streu: wie weit
+ * die Richtung der Kerne um die Achse streut. Ergebnis: Summe als komplexe Zahl.
+ */
+vec2 phasor3(vec3 x, vec3 achse, float f, float streu) {
+  vec3 p = floor(x), fr = fract(x);
+  vec2 s = vec2(0.0);
+  for (int k = -1; k <= 1; k++)
+    for (int j = -1; j <= 1; j++)
+      for (int i = -1; i <= 1; i++) {
+        vec3 b = vec3(float(i), float(j), float(k));
+        vec3 r = b + hash33(p + b) - fr;
+        float g = exp(-2.4 * dot(r, r));
+        vec3 d = normalize(achse + (hash33(p + b + 17.0) * 2.0 - 1.0) * streu);
+        float w = 6.2831853 * (-f * dot(d, r) + hash13(p + b + 5.3));
+        s += g * vec2(cos(w), sin(w));
+      }
+  return s;
+}
 /** Richtung der Haare im Bild: die Weltrichtung nach unten, auf die Fläche gelegt */
 vec2 haarRichtung(vec3 n) {
   vec3 t = vec3(0.0, -1.0, 0.0) - n * dot(vec3(0.0, -1.0, 0.0), n);
@@ -82,13 +102,13 @@ void main() {
       vec2 gr = vec2(texture(tWeich, vUv + vec2(px.x, 0.0)).r - texture(tWeich, vUv - vec2(px.x, 0.0)).r, texture(tWeich, vUv + vec2(0.0, px.y)).r - texture(tWeich, vUv - vec2(0.0, px.y)).r);
       vec2 innen = length(gr) > 1e-5 ? normalize(gr) : vec2(0.0);
       float haar = haarStrich(css * 1.4, vec2(-innen.y, innen.x));
-      float saum = step(1.0 - w0 * 2.4, haar) * smoothstep(0.0, 0.2, w0);
+      float saum = smoothstep(1.0 - w0 * 2.4 - 0.06, 1.0 - w0 * 2.4 + 0.06, haar) * smoothstep(0.0, 0.2, w0) * 0.9;
       if (saum > 0.0) {
         GPunkt gi = gLesen(vUv + innen * 5.0 * uDpr / uAufl);
         if (gi.a > 0.5) {
           vec3 alb, nn; float gl, rh;
           muster(gi.p, gi.n, css, alb, nn, gl, rh);
-          vec3 c = tierLicht(gi.n, zumAuge(gi.p), alb, 0.0, 0.8) * 0.85;
+          vec3 c = tierLicht(gi.n, zumAuge(gi.p), alb, 0.0, 0.8) * 0.7 + alb * 0.4;
           bild = mix(bild, c, saum);
           a = max(a, saum);
         }
@@ -155,16 +175,25 @@ export const TIGER = tier(
   'Tiger',
   'Schmale schwarze Streifen, die sich gabeln und spitz enden, kräftiges Orange, weißer Bauch, Fell mit Haarsaum',
   /* glsl */ `
-  vec3 w = q * vec3(0.9, 3.2, 0.9) * uR_groesse;
-  w += 0.35 * vec3(snoise(q * 2.0), snoise(q * 2.0 + 5.0), snoise(q * 2.0 + 9.0));
-  float feld = fbm3n(w * 1.2, 3);
-  float band = abs(fract(feld * 7.0) - 0.5);
-  float breite = 0.21 * smoothstep(-0.45, 0.5, snoise(q * 3.0 + 2.0));
-  float streifen = 1.0 - smoothstep(breite - 0.02, breite + 0.02, band);
-  float bauch = smoothstep(-0.05, -0.5, n0.y);
-  vec3 orange = mix(vec3(0.85, 0.42, 0.08), vec3(0.96, 0.72, 0.42), smoothstep(0.2, -0.3, n0.y));
-  albedo = srgbZuLin(mix(orange, vec3(0.95, 0.93, 0.88), bauch));
-  albedo = mix(albedo, srgbZuLin(vec3(0.05, 0.035, 0.03)), streifen * (1.0 - bauch * 0.7));
+  // Die Wellen laufen längs der längsten Achse der Form, die Streifen stehen quer dazu (liegt sie, senkrecht; steht sie, rundherum)
+  vec3 ach = pow(uHalb / max(uHalb.x, uHalb.y), vec3(4.0));
+  vec3 achse = normalize(vec3(ach.x, ach.y, 0.0) + vec3(1e-3, 0.0, 0.0));
+  vec2 ph = phasor3(q * 3.7 * uR_groesse, achse, 1.75, 0.4);
+  float amp = length(ph);
+  float welle = ph.y / max(amp, 1e-4);
+  // Schwelle: wo sie steigt, werden die Streifen schmal und enden spitz; oben breiter, zum Bauch und an den Enden der Achse dünn
+  float schwelle = 0.25 + 0.45 * smoothstep(-0.3, 0.6, snoise(q * 1.7 + 3.0)) - 0.2 * smoothstep(0.2, 0.8, n0.y);
+  schwelle = mix(schwelle, 1.1, smoothstep(-0.2, -0.75, n0.y));
+  schwelle = mix(schwelle, 1.1, smoothstep(0.65, 0.92, abs(dot(n0, achse))));
+  // an den Gabelungen (kleiner Betrag) brechen die Streifen ab
+  schwelle = mix(1.1, schwelle, smoothstep(0.08, 0.3, amp));
+  float aa = fwidth(welle) * 0.9 + 0.01;
+  float streifen = smoothstep(schwelle - aa, schwelle + aa, welle);
+  float bauch = smoothstep(-0.05, -0.55, n0.y);
+  vec3 orange = mix(vec3(0.8, 0.38, 0.09), vec3(0.93, 0.63, 0.32), smoothstep(0.3, -0.3, n0.y));
+  orange *= 0.92 + 0.16 * snoise(q * 3.0 + 1.0);
+  albedo = srgbZuLin(mix(orange, vec3(0.95, 0.92, 0.86), bauch));
+  albedo = mix(albedo, srgbZuLin(vec3(0.05, 0.034, 0.028)), streifen);
   glanz = 0.2;
   rauh = 0.7;`,
   true,

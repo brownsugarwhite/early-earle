@@ -90,6 +90,7 @@ uniform vec3 uLichtWelt;
 uniform vec3 uLichtSicht;
 uniform vec3 uMitte;
 uniform float uRadius;
+uniform vec3 uHalb;
 uniform float uBuehne;
 uniform float uOrtho;
 uniform float uMass;

@@ -113,6 +113,8 @@ export type Gemeinsam = {
   uFlach: IUniform<number>;
   uMitte: IUniform<Vector3>;
   uRadius: IUniform<number>;
+  /** halbe Ausdehnung der Form längs x, y, z (Welt) */
+  uHalb: IUniform<Vector3>;
   /** Licht aus der Sicht (oben links vorn), in Welt und in Sicht */
   uLichtWelt: IUniform<Vector3>;
   uLichtSicht: IUniform<Vector3>;
@@ -172,6 +174,7 @@ export class ShaderKern {
       uFlach: { value: 0 },
       uMitte: { value: new Vector3() },
       uRadius: { value: 100 },
+      uHalb: { value: new Vector3(100, 100, 100) },
       uLichtWelt: { value: new Vector3(0, 1, 0) },
       uLichtSicht: { value: new Vector3(-0.45, 0.62, 0.64).normalize() },
       uProj: { value: new Matrix4() },
@@ -256,6 +259,7 @@ export class ShaderKern {
     if (Number.isFinite(x0)) {
       this.u.uMitte.value.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
       this.u.uRadius.value = Math.max(1e-3, 0.5 * Math.hypot(x1 - x0, y1 - y0, z1 - z0));
+      this.u.uHalb.value.set(Math.max(1e-3, (x1 - x0) / 2), Math.max(1e-3, (y1 - y0) / 2), Math.max(1e-3, (z1 - z0) / 2));
     }
   }
 
