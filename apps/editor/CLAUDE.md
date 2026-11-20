@@ -709,6 +709,9 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Ein Strahl von three trifft ein einseitiges Material nur beim Eintreten (`dickeBei` schießt von beiden Seiten). (6) Bilder:
   `scripts/ozzy/maul-studie-bilder.mjs`, `maul-studie-bogen.mjs`; Haken `window.__maul`. Einstieg:
   `docs/look/ozzy/maul/UEBERGABE.md`.
+  **Nachtrag (Plan, Abschnitt 12): Das Maul soll nach dem Bestätigen echte Form werden.** Probe in Ozzy selbst:
+  `scripts/ozzy/maul-echt-probe.mjs` (zwei Objekte, Abziehen mit ⌥ + Klick anwenden, `#maul-tropfen`, `#fressen-knopf`). Merke:
+  Der Tropfen „Maul“ hängt an der Naht im Bild; erst antippen, dann den Blick wechseln (sonst liegt er außerhalb des Fensters).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

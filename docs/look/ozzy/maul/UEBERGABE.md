@@ -13,8 +13,14 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 - Bildblätter: `docs/progress/ozzy/2026-11-20-maul-aus-einer-linie-bogen.jpg`, `…-zaehne-linse-zunge-bogen.jpg`.
 - Studie: `http://localhost:5205/maul.html` (`apps/editor/maul.html`, `apps/editor/src/maulstudie/`).
 
-**Sein Urteil steht aus.** Gefragt ist er nach zwei Dingen: ob der Weg trägt, und ob Etappe 1 in Ozzy beginnen soll. Nichts aus den
-Etappen ohne sein Wort bauen.
+**Seine Antwort (20.11.):** Maul und Zähne „gefallen mir sehr gut“, aber das Innere des Mauls (Zahnfleischlinie, Tasche, Bemalung,
+Kieferpunkte) muss nach dem Erstellen bearbeitbar sein wie der Rest des Meshs; dazu eine Ebene „Maul“, riesiger Über- und
+Unterbiss und große Hauer auf einer Seite, auch geschlossen. **Daraus der Nachtrag (Plan, Abschnitt 12): Der Schnitt ist nur die
+Geburt; mit dem Bestätigen wird das Maul echte Form** (wie ein angewendetes Abziehen). Probe dazu in Ozzy selbst, ohne Code zu
+ändern: `scripts/ozzy/maul-echt-probe.mjs`, Bildblatt `docs/progress/ozzy/2026-11-20-maul-echte-form-probe.jpg` (Abziehen
+angewendet → Tasche ist Haut, Lippe ist ein Ring mit Kante → Tropfen „Maul“ → „Fressen“ öffnet). **Gefragt ist er jetzt nach einem:
+ob ich die Probe P1 rechne** (das Maul aus einer Linie als echte Form an „teat firefish“, im Kern; Kriterien im Plan, 12.3).
+Nichts aus den Etappen ohne sein Wort bauen.
 
 ## Die Studie in einem Absatz
 

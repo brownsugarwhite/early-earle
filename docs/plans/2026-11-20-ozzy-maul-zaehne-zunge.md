@@ -3,8 +3,12 @@
 **Stand:** Konzept und Studie, zur Freigabe. **In Ozzy ist nichts gebaut**, am Werk und am Rechenkern nichts geändert. Die Studie
 steht als eigene Seite neben Ozzy: `http://localhost:5205/maul.html` (Zweig `claude/ozzy-maul`, er baut auf dem Paint-Zweig auf).
 
+**Nachtrag vom selben Tag (Abschnitt 12) ändert den Kern:** Nach deiner Rückfrage ist der Schnitt nur noch die Geburt des Mauls.
+Mit dem Bestätigen wird es echte Form, bearbeitbar wie der Rest. Wo die Abschnitte 3, 9 und 10 dem widersprechen, gilt Abschnitt 12.
+
 - Bildblatt 1: [`2026-11-20-maul-aus-einer-linie-bogen.jpg`](../progress/ozzy/2026-11-20-maul-aus-einer-linie-bogen.jpg)
 - Bildblatt 2: [`2026-11-20-zaehne-linse-zunge-bogen.jpg`](../progress/ozzy/2026-11-20-zaehne-linse-zunge-bogen.jpg)
+- Bildblatt 3 (Nachtrag): [`2026-11-20-maul-echte-form-probe.jpg`](../progress/ozzy/2026-11-20-maul-echte-form-probe.jpg)
 - Recherche: [`docs/research/2026-11-20-maul-zaehne-zunge-recherche.md`](../research/2026-11-20-maul-zaehne-zunge-recherche.md)
 - Übergabe des Strangs: [`docs/look/ozzy/maul/UEBERGABE.md`](../look/ozzy/maul/UEBERGABE.md)
 
@@ -454,3 +458,108 @@ Tasten; ob die Zunge in der Grundform zurückschnellt oder liegen bleibt.
 - Bedienung der Studie: Ziehen im Leeren dreht, Rad zoomt; Tropfen an den Kieferspitzen öffnen; Leiste unten: „P · Linie“
   (eine eigene Maullinie von der Seite zeichnen, dann der Tropfen „Maul“), „Maul“ (an und aus), „Zähne“, „Zunge“, „Linien“,
   vier Blicke. Tasten: 1 bis 4 Blick, P zeichnen, Esc.
+
+## 12. Nachtrag (20.11., nach deiner Rückfrage): Mit dem Bestätigen wird das Maul echte Form
+
+Deine Rückfrage, wörtlich:
+
+> das mit dem Maul und Zähne gefallen mir sehr gut. Aber bedeutet das dass ich das innere des mauls nicht bearbeiten kann?
+> zahnfleischlinie, maultasche, bemalung/textur und die kieferpunkte sollten nach dem erstellen genauso bearbeitbar sein wie der rest
+> des meshs.
+>
+> Es soll dann eine ebene maul mit der zahnfleischlinie und den farben des mauls angelegt sein. Ich muss auch ganz abgefahrene
+> maulformen erstellen können mit riesen über und unterbiss und großen hauern auf einer seite auch im geschlossenen zustand. Wird das
+> dann gehen?
+
+### 12.1 Die Antwort
+
+**Mit dem Schnitt allein, wie er in Abschnitt 3 steht: nein.** Dort sind Tasche und Kiefer abgeleitet. Die Tasche hätte nur drei
+eigene Linien, die Punkte der Lippe glitten auf der Haut, statt den Kiefer zu formen, und zwei Kiefer, die geschlossen
+übereinanderstehen, kann ein Schnitt in einem geschlossenen Körper nicht darstellen. Das war der Preis aus 3.2, und er ist dir zu
+hoch. Darum:
+
+**Der Schnitt ist die Geburt des Mauls. Mit dem Bestätigen wird es echte Form.** Es entsteht genau so, wie die Studie es zeigt
+(eine Linie, zu unsichtbar, saubere Tasche, harte Kante). Aber was dabei entsteht, wird der Form übergeben, wie beim Anwenden eines
+Abziehens (Sitzung „Objekte“, ⌥ + Klick):
+
+- **Die Tasche ist Haut der Form.** Du ziehst darin Linien mit P, setzt Kanten, wählst Felder, malst: wie überall.
+- **Die Lippe ist eine Linie der Form,** mit Kante, Punkten und Griffen. Ziehst du einen ihrer Punkte, geht die Haut des Kiefers
+  mit. Das sind deine Kieferpunkte.
+- **Linien der Form, die über das Maul liefen, sind an der Lippe geschnitten;** dort stehen die neuen Kreuzungen. Was in der
+  Öffnung lag, ist weg. Das ist dein Satz von heute früh, und es ist genau das, was das Anwenden eines Abziehens seit dem 18.11. tut.
+- **Im Maul liegen von Anfang an zwei Linien:** die Mitte von Gaumen und Boden (von der Seite mit der Form der Maullinie, dein Wort
+  vom 13.11.) und die Rachenlinie von Mundwinkel zu Mundwinkel (dein Wort vom 14.11.). Mehr nur, wenn du sie ziehst.
+- **Gerechnet wird das Maul leicht geöffnet,** als Bucht zwischen zwei Kiefern, so wie du „maul handgemacht test“ gebaut hast.
+  „Zu“ und jede andere Stellung stellen die Knochen. Du siehst und bearbeitest es in jeder Stellung, auch zu.
+- **Lippen zusammen:** Jeder Punkt gilt für beide Lippen. **Lippen trennen:** zwei Linien, jeder Kiefer für sich formbar.
+  Geschlossen dürfen die Kiefer dann übereinanderstehen; was innen liegt, sieht man nicht. Das ist der Weg zu riesigem Über- und
+  Unterbiss.
+- **Die Studie bleibt, wofür sie gut ist:** als Vorschau im Augenblick des Bestätigens, für die genaue Zuordnung jeder Linie und
+  Kreuzung zu ihrem Kiefer (daran scheiterte es am 14.11.) und fürs Backen.
+
+| Du willst | Geht das? | Stand |
+| --- | --- | --- |
+| Zahnfleischlinie bearbeiten | ja: eine Farblinie längs der Lippe, mit Punkten, Breite, hart oder weich | Farblinien gibt es (Paint-Modus); im Maul nicht geprüft |
+| Maultasche bearbeiten wie den Rest | ja, sobald sie Haut der Form ist | Probe 12.2: Die Tasche wird Haut; darin formen: nicht geprüft |
+| Bemalung, Textur im Maul | ja: Die Tasche ist Haut, also bemalbar. Zum Hineinmalen muss das Maul offen oder aufgeklappt stehen | nicht geprüft (in der Pose steht die Bemalung heute nicht im Bild) |
+| Kieferpunkte bearbeiten | ja: Die Lippe ist eine Linie der Form | 18.11. im Kern gemessen: Ein Punkt der Naht lässt sich ziehen, die Rechnung kommt zur Ruhe |
+| Eine Ebene „Maul“ mit Zahnfleischlinie und Farben, von selbst angelegt | ja | nicht gebaut (Etappe 4 neu) |
+| Riesiger Über- und Unterbiss, auch geschlossen | ja, über „Lippen trennen“ und zwei Kiefer, die jeder für sich geformt werden | nicht geprüft; das ist der größte offene Punkt (12.3, P3) |
+| Große Hauer auf einer Seite, auch geschlossen | ja: Ein Zahn lässt sich von seinem Spiegelbild lösen; Zähne vor der Lippe behalten geschlossen ihre Länge | Länge geschlossen: Bildblatt 2, Bild 12; das Lösen vom Spiegelbild: nicht gebaut, klein |
+
+### 12.2 Die Probe dazu (heute, in Ozzy selbst, kein Code geändert)
+
+Bildblatt 3: [`2026-11-20-maul-echte-form-probe.jpg`](../progress/ozzy/2026-11-20-maul-echte-form-probe.jpg). Skript
+`apps/editor/scripts/ozzy/maul-echt-probe.mjs`.
+
+Was ich getan habe, mit dem, was Ozzy heute kann: einen Körper gezeichnet, davor ein zweites, flaches Objekt als Raum des Mauls,
+„Abziehen“ angewendet (⌥ + Klick), dann den Tropfen „Maul“ an der Naht angetippt und „Fressen“ auf 25° und 50° gestellt.
+
+| Geprüft | Ergebnis |
+| --- | --- |
+| Die Tasche ist Haut der Form | eine Form, geschlossen, spiegelgleich (1 430 Punkte, keine offene Kante) |
+| Die Lippe ist eine Linie | ein Ring mit Kante und drei Punkten, gewählt; der Tropfen „Maul“ erscheint an ihr |
+| Die Knochen greifen | „Fressen“ 25° und 50°: Der Unterkiefer öffnet |
+| Nichts schlägt um | 6 Dreiecke als umgeschlagen gezählt, vor und nach dem Öffnen dieselben |
+
+**Was die Probe nicht zeigt:** Der Körper hatte keine eigenen Linien (dein Randfall). Das Maul war ein aufgeblasenes Objekt, kein
+durchgestanzter Keil aus einer Linie, also mit Wangen und ohne spitzen Mundwinkel. „Zu“, Zwillinge, getrennte Lippen und die
+Bemalung kamen nicht vor.
+
+### 12.3 Was offen ist: vier Proben, in dieser Reihenfolge
+
+Zwei Erfahrungen stehen gegeneinander: Am 13.11. lief eine Tasche, die auf einmal ins Netz gebaut war, in acht Fassungen davon.
+Am 18.11. hielt ein angewendetes Abziehen mit Kante. Welche hier gilt, zeigt nur die Probe an deiner Form.
+
+| Nr. | Probe | Kriterium |
+| --- | --- | --- |
+| P1 | **Das Maul aus einer Linie als echte Form, an „teat firefish“** (im Kern, ohne Fenster): Kiefer mit der Regel der Studie leicht öffnen, den Keil abziehen und anwenden, die Rechnung laufen lassen | Sie kommt zur Ruhe; nichts schlägt neu um; fern vom Maul bewegt sich die Haut weniger als 0,5 Einheiten; zurückgedreht auf „zu“ liegt die Haut an der Lippe weniger als 1 Einheit neben der Form von vorher, der Spalt der Lippen unter 0,5 |
+| P2 | **Der Mundwinkel:** Am Scharnier ist die Tasche dünner als die Maschen (14.11.: bis 6 umgeschlagene Dreiecke). Der Keil bekommt dort eine kleine Rundung | auf dem Rechennetz des Fensters nichts umgeschlagen, nichts tritt durch die Haut |
+| P3 | **Lippen trennen:** dein Blatt 06 (Rex) nachstellen, oben lang, unten zurück, geschlossen und offen | die zwei Lippen einzeln gezogen, geschlossen kein Loch und keine Falte außen |
+| P4 | **Die Ebene „Maul“:** Füllung innen und Zahnfleischlinie in der Tasche, bei offenem Maul gemalt | Farbe und Linie sitzen nach Schließen und Öffnen, wo sie waren |
+
+Hält P1 nicht, sage ich es und zeige, woran es liegt; dann bleibt als zweiter Weg, die Tasche in Schritten zu formen wie am 13.11.
+(das hielt), mit der Zuordnung aus dem Schnitt.
+
+**Schon bekannt aus dem 18.11. (Plan „Objekte“, Beweis im Kern, zwei Kugeln mit je drei Linien):** Nach dem Abziehen steht die
+Rechnung nach 2 bis 3 Runden, nichts schlägt um, die Kante ist sauber (86°), die Wand der Höhle trägt die Linien des abgezogenen
+Objekts, und ein Punkt der Naht, um 20 gezogen, nimmt beide Formen mit. **Und eine Warnung von dort:** Wird die Naht mit K weich,
+fällt die Höhle zu einer flachen Mulde zusammen, solange wenige Linien sie halten. „K rundet nur die Lippe“ braucht darum an einer
+echten Tasche die schmale Rundung des Verbunds, nicht die weiche Linie.
+
+### 12.4 Die Etappen, neu geordnet
+
+| Etappe | Was | Vorher |
+| --- | --- | --- |
+| 1 | **Das Maul als echte Form in Ozzy:** Linie → Tropfen „Maul“ → Vorschau als Schnitt → angewendet; Linien im Maul; ⌘Z, Sichern | P1, P2 |
+| 2 | **Kiefer:** zwei Knochen als Tropfen; „zu“ als Stellung; der Mundwinkel ohne Falte | |
+| 3 | **Lippen:** zusammen (ein Punkt gilt für beide), trennen, Über- und Unterbiss, geschlossen bearbeiten | P3 |
+| 4 | **Die Ebene „Maul“:** Farben, Zahnfleischlinie, im Maul malen | P4 |
+| 5 | **Zähne:** wie Abschnitt 4.6 und 4.7, dazu ein Zahn ohne Spiegelbild | |
+| 6 | **Zunge** | |
+| 7 bis 9 | ein Zahn als kleine Form; Posen; Backen | |
+
+### 12.5 Was bei dir liegt
+
+Eine Frage hält den nächsten Schritt auf: **Soll ich die Probe P1 rechnen?** Sie entscheidet, ob Etappe 1 so gebaut werden kann.
+
