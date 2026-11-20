@@ -1041,7 +1041,8 @@ export function zaehneSetzen(z: MaulZaehne | null, schritt = true): boolean {
   const { zaehne: _alt, ...rest } = m;
   void _alt;
   G.maul = z ? { ...rest, zaehne: { ...z, oben: { ...z.oben }, unten: { ...z.unten } } } : rest;
-  anzeige.allesZeigen();
+  // (nur ein Bild, wie bei der Zunge: Linien und Haut der Form ändern sich mit den Zähnen nicht; siehe `zungeSetzen`)
+  anzeige.rendern();
   return true;
 }
 

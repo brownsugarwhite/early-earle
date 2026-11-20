@@ -2570,7 +2570,6 @@ function werkBild(dt: number, m: Moment | null): boolean {
     // eine freie Form mit „Spiegel an“ zeigt ihr Spiegelbild (nur Anzeige: `zeigeNetz` ist dann doppelt)
     werkHaut.spiegelbild = werk.istFrei() && werk.G.spiegelbild;
     werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6, w));
-    zaehneRechnen();
     mess.teile[1] = performance.now() - th;
     const zn = werkHaut.zeigeNetz;
     if (werkHaut.nurDehnung && zn === hautZeigt) haut.dehnungErneuern();
@@ -2594,7 +2593,10 @@ function werkBild(dt: number, m: Moment | null): boolean {
     }
     aktiv = aktiv || schnalz || klingt();
   }
-  // Maul, Etappe 6: Die Zunge lebt. Sie läuft je Bild mit, solange sie sich bewegt oder gezogen wird (auch wenn die Haut steht)
+  // Maul: Das Netz der Zähne läuft je Bild für sich mit (es ruht, solange sich weder ihre Werte noch die gezeigte Haut ändern): Ein
+  // gestellter Wert braucht so kein Neurechnen der Haut. Dann die Zunge: Sie lebt und läuft mit, solange sie sich bewegt oder
+  // gezogen wird (auch wenn die Haut steht).
+  zaehneRechnen();
   if (zungeSchritt(dt)) aktiv = true;
   // Formen beginnen mit Edgeloops: einmal je Form, sobald sie aufgeblasen ist und ihre Haut steht (die Linie der Mitte bleibt)
   if (startLoops && werkGezeigt && werkForm && !werkForm.startLoops && werkForm.geladen === undefined && zustand === 'ruhe' && !werk.zug && !werkBeschaeftigt() && werk.ruheOffen === null) {
@@ -9165,7 +9167,6 @@ function kieferUiZeigen(): boolean {
   // ---- die Zähne sprießen; der Tropfen „Zähne“ unter der Leiste, solange es ein Maul gibt (er öffnet und schließt die Linse) ----
   if (zahnWuchs) {
     if (jetzt - zahnWuchs.t0 > ZAHN_WUCHS_MS + 80) zahnWuchs = null;
-    werkNeu = true;
     braucht = true;
   }
   {
@@ -9217,6 +9218,38 @@ function kieferUiZeigen(): boolean {
     else el.tropfen.classList.remove('greift');
   }
   return braucht;
+}
+
+// ---------- Werte am Maul setzen (Feinschlifflauf, Block B) ----------
+//
+// Zähne und Zunge sind Zusätze an der Haut: Ihre Werte ändern weder Linien noch Haut der Form. Wer einen Wert setzt, verlangt
+// deshalb nur ein Bild (kein `werkNeu`: Damit rechnete Ozzy nach jedem Wert 2,5 s lang die Haut neu), und was aus der Form gelesen
+// ist (die Tasche mit dem Zahnfleisch, der Boden für die Zunge, die Plätze des jeweils anderen Teils), gilt nach dem Schritt für
+// ⌘Z weiter. Die Netze von Zähnen und Zunge laufen je Bild für sich mit (`zaehneRechnen`, `zungeSchritt` in `werkBild`).
+
+/** Nach einem Schritt, der nur einen Wert am Maul geändert hat: Was aus der Form gelesen ist, gilt weiter (es hing am Zähler der Schritte) */
+function maulGelesenMitnehmen(vorher: number, wessen: 'zaehne' | 'zunge'): void {
+  const jetzt = werk.zurueck.length;
+  if (jetzt === vorher) return;
+  if (zaehneFeld && zaehneFeld.haut === werk.haut && zaehneFeld.tiefe === vorher) zaehneFeld.tiefe = jetzt;
+  if (zungeBodenJetzt && zungeBodenJetzt.haut === werk.haut && zungeBodenJetzt.tiefe === vorher) zungeBodenJetzt.tiefe = jetzt;
+  // (die Plätze des anderen Teils: Seine Werte sind dieselben geblieben)
+  const anders = wessen === 'zaehne' ? zungePlan : zaehnePlan;
+  if (anders && anders.haut === werk.haut && anders.schl.startsWith(`${vorher}|`)) anders.schl = `${jetzt}|${anders.schl.slice(`${vorher}|`.length)}`;
+}
+/** die Zähne des Mauls setzen oder nehmen (wie `werk.zaehneSetzen`); zurück: ob es geschehen ist */
+function zaehneWert(z: werk.MaulZaehne | null, schritt = true): boolean {
+  const vorher = werk.zurueck.length;
+  if (!werk.zaehneSetzen(z, schritt)) return false;
+  maulGelesenMitnehmen(vorher, 'zaehne');
+  return true;
+}
+/** die Zunge des Mauls setzen oder nehmen (wie `werk.zungeSetzen`); zurück: ob es geschehen ist */
+function zungeWert(z: werk.MaulZunge | null, schritt = true): boolean {
+  const vorher = werk.zurueck.length;
+  if (!werk.zungeSetzen(z, schritt)) return false;
+  maulGelesenMitnehmen(vorher, 'zunge');
+  return true;
 }
 
 // ---------- Die Zähne (Maul, Etappe 5, erste Scheibe) ----------
@@ -9314,13 +9347,12 @@ function zaehneRechnen(): void {
 zaehneTropfen.addEventListener('click', () => {
   if (werk.zug || werk.maulLauf || !werk.maulLippe()) return;
   if (!werk.G.maul?.zaehne) {
-    if (!werk.zaehneSetzen(ZAEHNE_ANFANG)) return;
+    if (!zaehneWert(ZAEHNE_ANFANG)) return;
     // sie sprießen bei offenem Maul (zu stecken sie im Maul und wären nicht zu sehen); die Linse hält es offen
     zahnWuchs = { t0: performance.now() + 260 };
     linseOeffnen();
   } else if (linseOffen()) linseSchliessen();
   else linseOeffnen();
-  werkNeu = true;
   anstossen();
 });
 
@@ -9386,9 +9418,8 @@ function zaehneStellen(was: string, neu: (z: werk.MaulZaehne) => werk.MaulZaehne
   const griff = zahnLinse?.griffNr ?? -1;
   // (ein neuer Schritt, wenn es ein neuer Griff ist, eine andere Sache, oder wenn dazwischen etwas anderes geschah, etwa ⌘Z)
   const schritt = !g || g.was !== was || g.griff !== griff || g.tiefe !== werk.zurueck.length;
-  if (!werk.zaehneSetzen(neu(z), schritt)) return;
+  if (!zaehneWert(neu(z), schritt)) return;
   linseGriff = { was, griff, tiefe: werk.zurueck.length };
-  werkNeu = true;
   anstossen();
 }
 
@@ -9615,7 +9646,6 @@ function linseSchritt(darf: boolean): boolean {
     zahnMorph = null;
     zahnLinse.zahnSetzen(ZAHN_FORMEN[nach]!.form);
   } else if (von !== null) zahnLinse.zahnSetzen(formGemischt(von, nach, t * t * (3 - 2 * t)));
-  werkNeu = true;
   return true;
 }
 
@@ -9768,9 +9798,9 @@ function zahnRuecken(zg: NonNullable<typeof zahnZug>, x: number, y: number): voi
   const dz = rund(q.dz - zurLippe / q.breit);
   if (Math.abs(ds - q.ds) < 5e-5 && Math.abs(dz - q.dz) < 5e-5) return;
   const zaehne = zahnWahl?.allein ? [zg.i] : [zg.i, partner(z[zg.kiefer], zg.i)];
-  if (!werk.zaehneSetzen({ ...z, [zg.kiefer]: eigenSetzen(z[zg.kiefer], zaehne, (e0) => ({ ...e0, ds, dz })) }, !zg.schritt)) return;
+  if (!zaehneWert({ ...z, [zg.kiefer]: eigenSetzen(z[zg.kiefer], zaehne, (e0) => ({ ...e0, ds, dz })) }, !zg.schritt)) return;
   zg.schritt = true;
-  werkNeu = true;
+  anstossen();
 }
 
 /** ⌫: die gewählten Zähne ziehen (dort bleibt eine Lücke; ⌘Z bringt sie zurück) */
@@ -9778,10 +9808,9 @@ function zahnZiehen(): void {
   const z = werk.G.maul?.zaehne;
   const w = zahnWahl;
   if (!z || !w || werk.zug || werk.maulLauf) return;
-  if (!werk.zaehneSetzen({ ...z, [w.kiefer]: eigenSetzen(z[w.kiefer], wahlZaehne(z), () => ({ weg: true })) })) return;
+  if (!zaehneWert({ ...z, [w.kiefer]: eigenSetzen(z[w.kiefer], wahlZaehne(z), () => ({ weg: true })) })) return;
   zahnWahl = null;
   linseGriff = null;
-  werkNeu = true;
   anstossen();
 }
 
@@ -9928,7 +9957,6 @@ function zahnZugEnde(e: PointerEvent, tipp: boolean): void {
     }
     if (tipp && !zg.bewegt) zahnTippen(zg.kiefer, zg.i);
     linseGriff = null;
-    werkNeu = true;
     anstossen();
     return;
   }
@@ -10147,7 +10175,7 @@ function zungeLoslassen(bewegt: boolean, x: number, y: number): void {
   zungeTipp = null;
   if (werk.grund) {
     const lage = kette.lageJetzt();
-    if (!werk.zungeSetzen({ ...z, lage })) return;
+    if (!zungeWert({ ...z, lage })) return;
     kette.lage = lage;
     werk.G.meldung = 'Die Zunge bleibt so liegen (ihre Lage in „Fressen“) · Doppeltipp auf sie: zurück an ihren Platz';
     return;
@@ -10156,10 +10184,10 @@ function zungeLoslassen(bewegt: boolean, x: number, y: number): void {
   const fund = k >= 0 ? zungeAblageUnter(x, y) : null;
   const { klebt: war, ...ohne } = z;
   if (fund) {
-    if (!werk.zungeSetzen({ ...ohne, klebt: klebenAn(k, fund) })) return;
+    if (!zungeWert({ ...ohne, klebt: klebenAn(k, fund) })) return;
     werk.G.meldung = `Zunge abgelegt: Sie klebt ${fund.h.art === 'zahn' ? 'an einem Zahn' : `an der ${fund.h.unten ? 'Unterlippe' : 'Oberlippe'}`} · Doppeltipp auf sie löst sie`;
   } else if (war) {
-    if (!werk.zungeSetzen(ohne)) return;
+    if (!zungeWert(ohne)) return;
     werk.G.meldung = 'Zunge gelöst';
   }
 }
@@ -10171,11 +10199,11 @@ function zungeLoesen(): void {
   if (werk.grund && z.lage) {
     const { lage: _lage, ...ohne } = z;
     void _lage;
-    if (werk.zungeSetzen(ohne)) werk.G.meldung = 'Die Zunge liegt wieder an ihrem Platz';
+    if (zungeWert(ohne)) werk.G.meldung = 'Die Zunge liegt wieder an ihrem Platz';
   } else if (z.klebt) {
     const { klebt: _klebt, ...ohne } = z;
     void _klebt;
-    if (werk.zungeSetzen(ohne)) werk.G.meldung = 'Zunge gelöst';
+    if (zungeWert(ohne)) werk.G.meldung = 'Zunge gelöst';
   }
   anstossen();
 }
@@ -10198,7 +10226,7 @@ function zungeStellen(was: string, neu: (z: werk.MaulZunge) => werk.MaulZunge): 
   const griff = zahnLinse?.griffNr ?? -1;
   // (ein neuer Schritt, wenn es ein neuer Griff ist, eine andere Sache, oder wenn dazwischen etwas anderes geschah, etwa ⌘Z)
   const schritt = !g || g.was !== was || g.griff !== griff || g.tiefe !== werk.zurueck.length;
-  if (!werk.zungeSetzen(neu(z), schritt)) return;
+  if (!zungeWert(neu(z), schritt)) return;
   linseGriff = { was, griff, tiefe: werk.zurueck.length };
   // (die Haut der Form ändert sich nicht: Sie wird nicht neu gerechnet. Die Zunge läuft je Bild für sich mit, `zungeSchritt`.
   // Gemessen in „Fressen“ von Nahem: Mit `werkNeu` rechnete Ozzy nach jedem Wert 2,5 s lang den Umriss an den Wänden neu,
@@ -10307,7 +10335,7 @@ function zungeLinseOeffnen(): void {
 /** die Zunge nehmen (⌫ bei offener Linse): ein Schritt für ⌘Z */
 function zungeNehmen(): void {
   if (!werk.G.maul?.zunge || werk.zug || werk.maulLauf) return;
-  if (!werk.zungeSetzen(null)) return;
+  if (!zungeWert(null)) return;
   linseSchliessen();
   werk.G.meldung = 'Zunge genommen · ⌘Z holt sie zurück';
   werkNeu = true;
@@ -10324,7 +10352,7 @@ zungeTropfen.addEventListener('click', () => {
       anstossen();
       return;
     }
-    if (!werk.zungeSetzen(ZUNGE_ANFANG)) return;
+    if (!zungeWert(ZUNGE_ANFANG)) return;
     // sie wächst bei offenem Maul aus dem Boden; ihre Linse hält das Maul danach offen
     zungeWuchs = { t0: performance.now() + 260 };
     zungeLinseOeffnen();
@@ -11139,8 +11167,7 @@ const haken = {
    */
   zaehne: (werte?: werk.MaulZaehne | 'anfang' | null) => {
     if (werte !== undefined) {
-      werk.zaehneSetzen(werte === 'anfang' ? ZAEHNE_ANFANG : werte);
-      werkNeu = true;
+      zaehneWert(werte === 'anfang' ? ZAEHNE_ANFANG : werte);
       anstossen();
     }
     const plaetze = zaehnePlaetzeJetzt();
@@ -11201,8 +11228,7 @@ const haken = {
    */
   zunge: (werte?: werk.MaulZunge | 'anfang' | null) => {
     if (werte !== undefined) {
-      werk.zungeSetzen(werte === 'anfang' ? ZUNGE_ANFANG : werte);
-      werkNeu = true;
+      zungeWert(werte === 'anfang' ? ZUNGE_ANFANG : werte);
       anstossen();
     }
     const n = zungeNetzJetzt;

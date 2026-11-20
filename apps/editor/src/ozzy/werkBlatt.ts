@@ -247,11 +247,14 @@ export class WerkBlatt implements Raum {
   /**
    * B2 (17.11.): woran Netz und Proben hängen, als eine Zeile: der Stand des Werks (Haut, Linien, Griffe, Kanten), jede Fläche (ihre
    * Abbildung an vier Orten, Tiefe, Stärke, Breite, Seite), die Breiten und was mit P gerade entsteht. null: jetzt gilt keine Zeile
-   * (ein Zug läuft, die Pose dreht mit, etwas fließt): dann wird in jedem Bild gebaut.
+   * (ein Zug läuft, etwas fließt): dann wird in jedem Bild gebaut. Drehen die Knochen die Anzeige (das Maul steht offen, die
+   * Pose), gehört zur Zeile, wie sie drehen (Feinschlifflauf, 20.11.): Steht das Maul still offen, gilt das Netz weiter. Vorher
+   * wurde dann in jedem Bild gebaut (gemessen: 5 ms je Bild, während nur die Zunge schwang).
    */
   private signatur(flaechen: Flaeche[]): string | null {
-    if (werk.zug || werk.anzeigeDreht() || werk.maulLauf !== null || this.fliesst) return null;
+    if (werk.zug || werk.maulLauf !== null || this.fliesst) return null;
     const teile: (string | number)[] = [werk.standZahl(), werk.spiegelStand(), Object.values(this.breiten()).join(',')];
+    if (werk.anzeigeDreht()) teile.push(`dreht:${werk.grund ? 1 : 0}:${werk.maulBlick}:${werk.pose.kiefer}:${werk.pose.schaedel}`);
     for (const F of flaechen) {
       teile.push(F.a, F.staerke, F.breite, F.vorn ?? 0, F.bereich ?? 0, F.raeumlich ? 1 : 0, ...F.hin(0, 0), ...F.hin(100, 0), ...F.hin(0, 100), ...F.hin(70, -40, 60));
       if (F.tiefe) teile.push(F.tiefe({ x: 0, y: 0, z: 0 }), F.tiefe({ x: 50, y: 30, z: 20 }));
