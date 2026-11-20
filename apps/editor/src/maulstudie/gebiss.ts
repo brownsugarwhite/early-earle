@@ -49,7 +49,7 @@ export const fleischBreite = (m: MaulSchnitt): number => 0.11 * m.lang;
 
 /** Abstand eines Orts der Wand von der Lippe (positiv innen), wie die Farbe der Wand ihn rechnet */
 export function randAbstand(m: MaulSchnitt, s: number, z: number): number {
-  const ds = m.sVorn / m.breite.length;
+  const ds = (3 * m.sVorn) / m.breite.length;
   const steig = (breiteBei(m, s + ds) - breiteBei(m, s - ds)) / (2 * ds);
   return Math.min((breiteBei(m, s) - Math.abs(z)) / Math.sqrt(1 + steig * steig), m.sVorn - s);
 }

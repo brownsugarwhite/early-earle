@@ -382,6 +382,15 @@ export function maulSchneiden(w: Wasm, k: KoerperNetz, linie: readonly V2[], opt
       else for (let q = letzter + 1; q < j; q++) breite[q] = breite[letzter]! + ((breite[j]! - breite[letzter]!) * (q - letzter)) / (j - letzter);
       letzter = j;
     }
+    // glätten: Die Punkte der Lippe liegen ungleich dicht, der Rand des Zahnfleischs soll trotzdem ruhig laufen
+    for (let r = 0; r < 6; r++) {
+      let vor = breite[0]!;
+      for (let j = 1; j < BREITE_N - 1; j++) {
+        const hier = breite[j]!;
+        breite[j] = 0.25 * vor + 0.5 * hier + 0.25 * breite[j + 1]!;
+        vor = hier;
+      }
+    }
   }
 
   const kopf = { profil, C, t0, lang };

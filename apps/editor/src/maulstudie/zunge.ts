@@ -39,7 +39,8 @@ export class Zunge {
       return m.breite[i]! + (m.breite[Math.min(m.breite.length - 1, i + 1)]! - m.breite[i]!) * (x - i);
     };
     for (let k = 0; k < K; k++) {
-      const u = k / (K - 1);
+      // (zur Spitze hin stehen die Knoten dichter: So wird sie rund statt abgeschnitten)
+      const u = 1 - Math.pow(1 - k / (K - 1), 1.7);
       const s = m.sVorn * (0.1 + 0.68 * u);
       const o = m.profil.ort(s);
       const t = m.profil.tangente(s);

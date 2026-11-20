@@ -170,7 +170,7 @@ const wandMaterial = new ShaderMaterial({
     }
     void main() {
       float s = vSz.x;
-      float ds = uSVorn / N;
+      float ds = 3.0 * uSVorn / N;
       float b = breite(s);
       float steig = (breite(s + ds) - breite(s - ds)) / (2.0 * ds);
       // Abstand zur Lippe, in der Wand gemessen; vorn schließt sich die Lippe über die Mitte
@@ -1109,10 +1109,16 @@ function zaehneSetzen(an: boolean): void {
   leisteZeigen();
 }
 window.addEventListener('keydown', (e) => {
-  if (e.key === '1') schnitt ? blickAufsMaul(0, 0) : blickSetzen(0, 0);
-  else if (e.key === '2') schnitt ? blickAufsMaul() : blickSetzen(-0.75, 0.22);
-  else if (e.key === '3') schnitt ? blickAufsMaul(-Math.PI / 2, 0.05) : blickSetzen(-Math.PI / 2, 0);
-  else if (e.key === '4') blickSetzen(-0.75, 0.22);
+  if (e.key === '1') {
+    if (schnitt) blickAufsMaul(0, 0);
+    else blickSetzen(0, 0);
+  } else if (e.key === '2') {
+    if (schnitt) blickAufsMaul();
+    else blickSetzen(-0.75, 0.22);
+  } else if (e.key === '3') {
+    if (schnitt) blickAufsMaul(-Math.PI / 2, 0.05);
+    else blickSetzen(-Math.PI / 2, 0);
+  } else if (e.key === '4') blickSetzen(-0.75, 0.22);
   else if (e.key === 'p' || e.key === 'P') stiftSetzen(!stift);
   else if (e.key === 'Escape') {
     if (stift) stiftSetzen(false);
