@@ -4,7 +4,7 @@
 // dazu mit SEITE=1 die ganze Seite mit der Tafel.
 // Aufruf aus apps/editor:
 //   node scripts/ozzy/shader-bilder.mjs <ordner> [id …]
-//   NAME=<Form> BUEHNE=0 WARTEN=<ms> GIER=<Grad> NEIGUNG=<Grad> ZOOM=<z> SEITE=1 B=1200 H=800
+//   NAME=<Form> BUEHNE=0 WARTEN=<ms> GIER=<Grad> NEIGUNG=<Grad> ZOOM=<z> SEITE=1 B=1200 H=800 REGLER='{"stil":1}'
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -46,7 +46,7 @@ try {
   if (Object.keys(blick).length) await O('blickSetzen', blick);
   const liste = nur.length ? nur : (await O('shader')).liste;
   for (const id of liste) {
-    await O('shader', id, { buehne: process.env.BUEHNE !== '0', neu: true });
+    await O('shader', id, { buehne: process.env.BUEHNE !== '0', neu: true, ...(process.env.REGLER ? { regler: JSON.parse(process.env.REGLER) } : {}) });
     await s.waitForTimeout(WARTEN);
     const m = await O('shader');
     const bild = await s.evaluate(() => {

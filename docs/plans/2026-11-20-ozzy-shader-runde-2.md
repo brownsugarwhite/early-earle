@@ -97,3 +97,39 @@ schuppen noch nicht. Den Ukiyo-e shader finde ich von der idee her sehr schön, 
   Juwelierlicht, das sich dreht, Sternfilter.
 - **Diskokugel (neu):** Spiegelkacheln in Breitenreihen, jede eben (Normale an der Kachelmitte), die Kugel dreht sich; jede Kachel wirft
   ihren Lichtfleck an Wand und Boden (Halbvektor), weiß und farbig, Sternfilter, Dunst.
+
+## Runde 4 (20.11.2026 abends)
+
+Florian: „Diskokugel und diamant gefallen mir noch nicht so gut. Gouche verstehe ich ehrlich gesagt nich so richtig. Lego flackert
+sehr beim drehen und können die steine noch besser aussehen. Tiere vor allem leopard, giraffe und schuppen von schlange und krokodil
+bekommst du noch besser hin. Mach gerne 2-3 verschiedene schlangen und schuppenarten. Bitte auch noch ein richtiges
+salamandermuster. Mache gerne nochmal eine recherche wie das am besten umzusetzen ist. Gerne tiere auch in verschiedenen stilen wie
+spider-verse und earle. Gib alles!“ Recherche: `docs/research/2026-11-20-tiermuster-recherche.md`. Bilder:
+`docs/progress/ozzy/shader/2026-11-20-runde-4-tiere.png`, `-stile.png`, `-materialien.png`, `-nah.png`.
+
+- **Tiere in drei Stilen:** jedes Tier mit dem Regler Stil: echt, Spider-Verse (Comicdruck: zwei flache Töne, Rasterpunkte im
+  Schatten, Schraffur, Tuschekontur, versetzte Farbplatte, farbiges Randlicht, Bühne mit Rasterpunkten), Earle (vier harte Stufen im
+  Streiflicht, Schatten in Petrol, Lichtpunkte; Bühne mit Himmel in Bändern, Hügeln und hohen Stämmen).
+- **Leopard:** Rosetten dicht an dicht, ein unterbrochener Ring aus dicken Bruchstücken mit spitzen Enden folgt dem Rand seines
+  Flecks (genauer Abstand zum Rand der Zelle, mit dem Abstand zur Mitte gerundet), innen dunkleres Gold; zum Bauch hin werden
+  daraus Vollflecken (Zwei-Stufen-Turing).
+- **Giraffe:** Flecken mit abgerundeten Ecken, gleich breite helle Adern, fein gezackte Ränder, jeder Fleck in eigenem Ton.
+- **Drei Schlangen:** Python (glatt, überlappende Schuppen, Sättel mit schwarzem Rand, Schimmer), Klapperschlange (neu: gekielte
+  Schuppen, Rauten Spitze an Spitze mit hellerer Mitte und cremefarbenem Saum, Flecken an den Flanken, Ringe am Schwanz),
+  Korallennatter (neu: stark glänzend, Ringe Rot, Gelb, Schwarz, rote Schuppen mit schwarzer Spitze).
+- **Krokodil:** oben Knochenplatten in Längsreihen mit Grat, Hang und Grübchen, an den Flanken runde Schuppen in versetzten Reihen mit
+  dunklen Flecken, am Bauch glatte Schilde, nass in Flecken.
+- **Feuersalamander (neu):** glänzendes Schwarz mit gelben, teils zu Streifen verbundenen Flecken, nasse Haut mit Poren und Wärzchen.
+- **LEGO neu:** Die Steine hängen fest an der Form (Raster aus dem Netz, als 3D-Textur), kein Flackern mehr. Echte Maße, Steine im
+  Verband (2 × 4 bis 1 × 1, jede zweite Schicht quer), Noppen als Zylinder, Fasen, Fugen nur zwischen Steinen, Verdeckung in Ecken,
+  Schatten, glänzender Kunststoff mit matten Stellen, grüne Grundplatte auf einem Studioboden; Regler Steine, Farben (eine, Zonen,
+  gemischt), Farbsatz (sieben).
+- **Diamant neu:** Licht läuft durch die echte Form (Rückseite, Vorderseite, nochmals Rückseite), Feuer in sechs Wellenlängen, Licht
+  wie im Schmuckstudio (Lichtzelt mit schwarzen Karten, der Betrachter dunkel, kleine Lampen).
+- **Diamantbesatz (neu):** die Form dicht mit kleinen Brillanten besetzt, jeder mit Tafel, Stern-, Kite- und Rundistfacetten, das Licht
+  über zwei Pavillonfacetten, schmale Fassung (Platin, Gold, Rosé, Schwarz), jeder Stein funkelt für sich.
+- **Diskokugel neu:** Punktstrahler auf die Kugel, Strahlen im Dunst von jeder Kachel, quadratische Lichtflecken, kleinere Kacheln flach
+  auf der Form (kein Strudel in Mulden), dunkler Raum mit vielen kleinen Lichtern, Spiegel mit eigener Neigung je Kachel.
+- **Gouache neu:** Das ganze Bild ist aus Pinselstrichen gemalt (Deckfarbe wie in den Ghibli-Hintergründen): jeder Strich eine Farbe,
+  der Wölbung nach, spitz auslaufend und ausgefranst, in drei Lagen (grob, mittel, fein an Kanten und Lichtern); Name jetzt
+  „Gouache (Ghibli)“.

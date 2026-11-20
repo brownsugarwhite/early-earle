@@ -15,7 +15,7 @@ import { EINE_LINIE } from './eineLinie';
 import { ERDE42 } from './erde42';
 import { FEUER } from './feuer';
 import { FLAMMENWESEN } from './flammenwesen';
-import { DIAMANT } from './diamant';
+import { DIAMANT, PAVE } from './diamant';
 import { DISKOKUGEL } from './diskokugel';
 import { GLAS } from './glas';
 import { GLITCH } from './glitch';
@@ -37,7 +37,7 @@ import { RAUCH } from './rauch';
 import { SHINKAI } from './shinkai';
 import { SIENKIEWICZ } from './sienkiewicz';
 import { STAUB } from './staub';
-import { ELEFANT, GIRAFFE, KROKODIL, LEOPARD, SCHLANGE, TIGER } from './tiere';
+import { ELEFANT, GIRAFFE, KLAPPERSCHLANGE, KORALLENNATTER, KROKODIL, LEOPARD, SALAMANDER, SCHLANGE, TIGER } from './tiere';
 import { TINTE } from './tinte';
 import { TINTENFLECK } from './tintenfleck';
 import { TROPFEN } from './tropfen';
@@ -81,14 +81,18 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   GLAS,
   OPAL,
   DIAMANT,
+  PAVE,
   DISKOKUGEL,
   // Tiermuster
   LEOPARD,
   TIGER,
-  SCHLANGE,
-  ELEFANT,
   GIRAFFE,
+  ELEFANT,
+  SCHLANGE,
+  KLAPPERSCHLANGE,
+  KORALLENNATTER,
   KROKODIL,
+  SALAMANDER,
   TURING,
   // Effekte
   EINE_LINIE,

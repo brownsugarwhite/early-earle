@@ -22,22 +22,24 @@ uniform float uKacheln;
 uniform float uTempo;
 uniform float uFarbig;
 uniform float uFlecken;
-vec3 lichtRichtung(int i) {
-  if (i == 0) return normalize(vec3(-0.6, 0.55, 0.6));
-  if (i == 1) return normalize(vec3(0.75, 0.3, 0.35));
-  if (i == 2) return normalize(vec3(0.15, 0.85, -0.55));
-  return normalize(vec3(-0.8, 0.05, -0.4));
+uniform float uDunst;
+/** die Lichter, an der Sicht (x rechts, y oben, z zum Betrachter): 0 Punktstrahler auf die Kugel (weiß), 1 Magenta, 2 Cyan */
+vec3 lichtSicht(int i) {
+  if (i == 0) return normalize(vec3(-0.42, 0.62, 0.66));
+  if (i == 1) return normalize(vec3(0.95, 0.12, 0.1));
+  return normalize(vec3(-0.85, 0.25, -0.45));
 }
+vec3 lichtRichtung(int i) { return ausSicht(lichtSicht(i)); }
 vec3 lichtFarbe(int i) {
   if (i == 0) return vec3(1.0, 0.97, 0.92);
-  if (i == 1) return mix(vec3(1.0), vec3(1.0, 0.22, 0.75), uFarbig);
-  if (i == 2) return mix(vec3(1.0), vec3(0.15, 0.8, 1.0), uFarbig);
-  return mix(vec3(1.0), vec3(1.0, 0.62, 0.15), uFarbig);
+  if (i == 1) return vec3(1.0, 0.2, 0.7);
+  return vec3(0.15, 0.75, 1.0);
 }
+float lichtStaerke(int i) { return i == 0 ? 1.0 : 0.55 * uFarbig; }
 float drehWinkel() { return uZeit * 0.3 * uTempo; }
 /** Kachel zur Richtung n (vom Mittelpunkt): Kennung (Kachel, Reihe), Lage in der Kachel, Mitte als Richtung, stetige Lage (uu, rv) */
 void kachel(vec3 n, out vec2 zell, out vec2 f, out vec3 mitte, out vec2 stetig) {
-  float rows = floor(22.0 * uKacheln);
+  float rows = floor(30.0 * uKacheln);
   float dth = 3.14159265 / rows;
   float th = asin(clamp(n.y, -1.0, 1.0));
   float phi = atan(n.z, n.x) + drehWinkel();
@@ -55,44 +57,62 @@ void kachel(vec3 n, out vec2 zell, out vec2 f, out vec3 mitte, out vec2 stetig) 
   mitte = vec3(cos(thc) * cos(phc), sin(thc), cos(thc) * sin(phc));
   stetig = vec2(uu, rv);
 }
-/** was eine Kachel spiegelt: dunkler Club, Strahler als helle Scheiben mit Hof, ein Hauch Raum */
-vec3 club(vec3 R) {
-  vec3 c = mix(vec3(0.03, 0.026, 0.036), vec3(0.11, 0.1, 0.13), smoothstep(-0.4, 0.6, R.y));
-  c += vec3(0.07, 0.06, 0.09) * (0.5 + 0.5 * snoise(R * 3.0));
-  for (int i = 0; i < 4; i++) {
-    float w = dot(R, lichtRichtung(i));
-    c += lichtFarbe(i) * (smoothstep(0.9975, 0.9988, w) * 30.0 + exp(-(1.0 - w) * 60.0) * 0.6) * (i == 0 ? 1.3 : 0.9);
+/** der Spiegel einer Kachel: ihre Mitte, ein wenig verkippt (je Kachel) */
+vec3 kachelNormale(vec2 zell, vec3 mitte) { return normalize(mitte + 0.028 * (hash33(vec3(zell, 5.0)) - 0.5)); }
+/** was eine Kachel spiegelt: dunkler Club, die Wände im Licht der farbigen Strahler, die Strahler selbst, Lichtleisten */
+vec3 club(vec3 Rw) {
+  // die Kugel dreht sich vor festen Lichtern: gleichwertig dreht sich hier der Raum um die Hochachse
+  float wd = -drehWinkel();
+  vec3 R = vec3(cos(wd) * Rw.x - sin(wd) * Rw.z, Rw.y, sin(wd) * Rw.x + cos(wd) * Rw.z);
+  vec3 d = normalize((uView * vec4(R, 0.0)).xyz);
+  vec3 c = vec3(0.012, 0.011, 0.016) + vec3(0.035, 0.034, 0.042) * smoothstep(-0.3, 0.6, d.y);
+  c += uFarbig * (vec3(0.12, 0.015, 0.08) * smoothstep(0.3, 0.95, d.x) + vec3(0.015, 0.05, 0.13) * smoothstep(0.3, 0.95, -d.x)) * (0.5 + 0.5 * smoothstep(-0.6, 0.3, d.y));
+  // viele kleine Lichter im Raum (Lampen, Anzeigen, Gläser an der Bar)
+  for (int i = 0; i < 28; i++) {
+    vec3 ld = normalize(hash33(vec3(float(i), 4.0, 9.0)) * 2.0 - 1.0);
+    vec3 lc = mix(vec3(1.0, 0.85, 0.6), mix(vec3(1.0, 0.3, 0.75), vec3(0.3, 0.8, 1.0), hash11(float(i) * 3.3)), uFarbig * step(0.4, hash11(float(i) * 7.1)));
+    c += lc * 9.0 * smoothstep(0.996, 0.9978, dot(d, ld));
+  }
+  // Lichtleisten an der Bar (warm), auf Augenhöhe hinter dem Betrachter
+  c += vec3(1.4, 0.75, 0.3) * smoothstep(0.02, 0.0, abs(d.y + 0.08)) * smoothstep(0.1, 0.4, d.z) * (0.6 + 0.4 * step(0.5, fract(d.x * 6.0)));
+  for (int i = 0; i < 3; i++) {
+    float w = dot(d, lichtSicht(i));
+    c += lichtFarbe(i) * lichtStaerke(i) * (smoothstep(0.9982, 0.9992, w) * 70.0 + exp(-(1.0 - w) * 45.0) * 0.8);
   }
   return c;
 }
-/** Lichtflecken an einem Punkt von Wand oder Boden (dWand: Richtung von der Kugel zum Punkt) */
-vec3 flecken(vec3 dWand) {
-  vec3 summe = vec3(0.0);
-  for (int i = 0; i < 4; i++) {
-    vec3 s = lichtRichtung(i);
-    vec3 n = normalize(dWand + s);
-    vec2 zell, f, st;
-    vec3 mitte;
-    kachel(n, zell, f, mitte, st);
-    if (abs(mitte.y) > 0.96) continue;
-    vec3 nt = normalize(mitte + 0.022 * (hash33(vec3(zell, 5.0)) - 0.5));
-    vec3 r = reflect(-s, nt);
-    float w = dot(r, dWand);
-    float fleck = smoothstep(0.99986, 0.99994, w);
-    summe += lichtFarbe(i) * fleck * (0.5 + 0.5 * hash12(zell + float(i) * 7.0)) * (i == 0 ? 1.5 : 0.6) * step(0.35, hash12(zell + float(i) * 3.0 + 1.0));
-  }
-  return summe;
+/** ein Lichtfleck an der Richtung dW (von der Kugel aus) vom Licht i: die Kachel, die dorthin spiegeln kann (Halbvektor), als
+ * kleines helles Quadrat; zurück: Stärke */
+float fleck(vec3 dW, int i, float breite) {
+  vec3 s = lichtRichtung(i);
+  vec3 n = normalize(dW + s);
+  vec2 zell, f, st;
+  vec3 mitte;
+  kachel(n, zell, f, mitte, st);
+  if (abs(mitte.y) > 0.97 || dot(mitte, s) < 0.05) return 0.0;
+  vec3 r = reflect(-s, kachelNormale(zell, mitte));
+  if (dot(r, dW) < 0.99) return 0.0;
+  vec3 e1 = normalize(cross(r, vec3(0.0, 1.0, 0.0)));
+  vec3 e2 = cross(e1, r);
+  vec3 o = dW - r * dot(dW, r);
+  vec2 q = abs(vec2(dot(o, e1), dot(o, e2))) - breite;
+  float dq = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - breite * 0.25;
+  return (1.0 - smoothstep(-breite * 0.15, breite * 0.15, dq)) * (0.55 + 0.45 * hash12(zell + float(i) * 7.0)) * step(0.25, hash12(zell + float(i) * 3.0 + 1.0));
 }
 out vec4 hdr;
 void main() {
   GPunkt g = gLesen(vUv);
   float maske = deckungBei(vUv);
   vec3 blick = blickDurch(vUv);
-  // Kachellage an der Form (für alle Bildpunkte, damit die Ableitungen gelten)
-  vec3 qn = normalize(g.p - uMitte + 1e-4);
-  vec2 zell, f, st;
-  vec3 mitte;
-  kachel(qn, zell, f, mitte, st);
+  // Kachellage an der Form (für alle Bildpunkte, damit die Ableitungen gelten): in der Ebene, die der Fläche am nächsten liegt,
+  // Reihen je um einen eigenen Versatz verschoben; gleich groß überall
+  vec3 qk = (g.p - uMitte) / (uRadius * 0.06 / uKacheln);
+  vec3 an = abs(g.n);
+  float eb = an.y >= an.x && an.y >= an.z ? 1.0 : (an.x >= an.z ? 0.0 : 2.0);
+  vec2 st = eb > 0.5 && eb < 1.5 ? qk.xz : (eb < 0.5 ? qk.zy : qk.xy);
+  st.x += hash11(floor(st.y) * 1.37 + eb * 9.0);
+  vec2 f = fract(st);
+  vec2 zell = floor(st) + vec2(eb * 1013.0, eb * 331.0);
   vec2 gx = vec2(dFdx(st.x), dFdx(st.y)), gy = vec2(dFdy(st.x), dFdy(st.y));
   // Raum: Wand hinter der Kugel und Boden darunter
   vec3 vorn = normalize((uViewInv * vec4(0.0, 0.0, -1.0, 0.0)).xyz);
@@ -102,21 +122,49 @@ void main() {
   float bodenY = uMitte.y - uRadius * 1.6;
   float tb = blick.y < -1e-4 ? (bodenY - o.y) / blick.y : 1e9;
   bool boden = tb > 0.0 && tb < tw;
-  vec3 P = o + blick * (boden ? tb : tw);
+  float tEnde = boden ? tb : tw;
+  vec3 P = o + blick * tEnde;
   vec3 dW = P - uMitte;
   float abst = length(dW) / uRadius;
   vec3 nFlaeche = boden ? vec3(0.0, 1.0, 0.0) : -vorn;
   vec3 c = vec3(0.0);
   if (uBuehne > 0.5) {
-    vec3 raum = boden ? vec3(0.02, 0.018, 0.024) : vec3(0.014, 0.013, 0.02);
+    vec3 raum = boden ? vec3(0.016, 0.014, 0.02) : vec3(0.012, 0.011, 0.018);
+    // die farbigen Strahler tauchen Wand und Boden in ihr Licht
+    raum += uFarbig * (vec3(0.05, 0.004, 0.03) * smoothstep(-0.2, 0.8, dot(normalize(dW), lichtRichtung(1))) + vec3(0.004, 0.02, 0.05) * smoothstep(-0.2, 0.8, dot(normalize(dW), lichtRichtung(2))));
     float cosW = max(dot(nFlaeche, -normalize(dW)), 0.0);
-    vec3 fl = flecken(normalize(dW)) * cosW * 9.0 / (abst * abst) * uFlecken;
-    c = raum + fl;
-    // Dunst um die Kugel
+    vec3 fl = vec3(0.0);
+    for (int i = 0; i < 3; i++) fl += lichtFarbe(i) * lichtStaerke(i) * fleck(normalize(dW), i, 0.0075);
+    c = raum + fl * cosW * 6.0 / (abst * abst) * uFlecken;
+  }
+  // Strahlen im Dunst: längs des Blicks, wo der Strahl einer Kachel (vom Punktstrahler) durch den Raum läuft
+  float tForm = g.a > 0.5 ? g.z / max(dot(blick, vorn), 1e-3) : tEnde;
+  vec3 oc = o - uMitte;
+  float bq = dot(oc, blick);
+  float cq = dot(oc, oc) - pow(uRadius * 5.0, 2.0);
+  float dq = bq * bq - cq;
+  vec3 dunst = vec3(0.0);
+  if (uBuehne > 0.5 && uDunst > 0.0 && dq > 0.0) {
+    float t0 = max(-bq - sqrt(dq), 0.0), t1 = min(-bq + sqrt(dq), min(tForm, tEnde));
+    float schritte = 56.0;
+    float dt = (t1 - t0) / schritte;
+    float j = hash12(gl_FragCoord.xy + fract(uZeit) * 17.0);
+    for (int k = 0; k < 56; k++) {
+      float t = t0 + (float(k) + j) * dt;
+      if (t > t1) break;
+      vec3 pp = o + blick * t - uMitte;
+      float l = length(pp) / uRadius;
+      if (l < 1.05) continue;
+      float st0 = fleck(pp / (l * uRadius), 0, 0.006);
+      dunst += vec3(1.0, 0.97, 0.92) * st0 / (0.6 + l * l);
+    }
+    dunst *= dt / uRadius * 0.55 * uDunst;
+    // ein Hauch Dunst überall um die Kugel
     vec2 c0 = insBild(uMitte);
     float rr = length((vUv - c0) * vec2(uAufl.x / uAufl.y, 1.0));
-    c += vec3(0.07, 0.06, 0.08) * exp(-rr * rr / 0.05);
+    dunst += vec3(0.06, 0.05, 0.075) * exp(-rr * rr / 0.06) * uDunst;
   }
+  c += dunst;
   float a = uBuehne > 0.5 ? 1.0 : 0.0;
   if (g.a > 0.5) {
     // Normale an der Mitte der Kachel (über die Ableitungen zurückgerechnet), dazu eine kleine Verkippung je Kachel
@@ -125,16 +173,20 @@ void main() {
     if (length(dpix) > 60.0) dpix = vec2(0.0);
     vec4 nM = texture(tNormal, (gl_FragCoord.xy + dpix) / uAufl);
     vec3 nT = nM.a > 0.5 ? normalize(nM.xyz) : g.n;
-    vec3 nK = normalize(nT + 0.035 * (hash33(vec3(zell, 2.0)) - 0.5));
+    vec3 nK = normalize(nT + 0.075 * (hash33(vec3(zell, 2.0)) - 0.5));
     vec3 V = -blick;
     vec3 sp = club(reflect(-V, nK));
     float rand = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
-    float fuge = 1.0 - smoothstep(0.035, 0.075, rand);
-    vec3 kc = sp * vec3(0.82, 0.84, 0.88) * (0.82 + 0.3 * hash12(zell + 9.0));
-    // feine Patina: am Rand der Kachel etwas matter
-    kc *= 1.0 - 0.25 * smoothstep(0.15, 0.06, rand);
-    kc = mix(kc, vec3(0.012), fuge);
-    c = mix(c, kc, maske);
+    float aaF = (length(gx) + length(gy)) * 0.7 + 1e-4;
+    float fuge = 1.0 - smoothstep(0.022 - aaF, 0.04 + aaF, rand);
+    // Spiegelglas: leicht getönt, je Kachel ein wenig anders hell, am Rand eine feine Kante aus Glas
+    vec3 kc = sp * vec3(0.84, 0.86, 0.9) * (0.8 + 0.35 * hash12(zell + 9.0));
+    kc += vec3(0.03, 0.03, 0.035);
+    float glasKante = smoothstep(0.1, 0.05, rand) * (1.0 - fuge);
+    kc += glasKante * 0.12 * max(dot(nK, lichtRichtung(0)), 0.0);
+    kc = mix(kc, vec3(0.05, 0.05, 0.055), fuge);
+    // Dunst vor der Kugel
+    c = mix(c, kc + dunst * 0.5, maske);
     a = max(a, maske);
   }
   hdr = vec4(c, a);
@@ -147,7 +199,7 @@ out vec4 farbe;
 void main() {
   vec3 c = texture(tBild, vUv).rgb;
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-  farbe = vec4(c * smoothstep(1.2, 5.0, l), 1.0);
+  farbe = vec4(c * smoothstep(2.5, 8.0, l), 1.0);
 }`;
 
 const STERN = /* glsl */ `
@@ -197,7 +249,7 @@ class Diskokugel implements ShaderLauf {
   private readonly ende: RawShaderMaterial;
   constructor(k: ShaderKern) {
     this.daten = new GDaten(k);
-    this.haupt = k.flaecheProgramm(HAUPT.replace('out vec4 farbe;', ''), { tNormal: { value: null }, tLage: { value: null }, tWeich: { value: null }, tHinten: { value: null }, uKacheln: { value: 1 }, uTempo: { value: 1 }, uFarbig: { value: 1 }, uFlecken: { value: 1 } });
+    this.haupt = k.flaecheProgramm(HAUPT.replace('out vec4 farbe;', ''), { tNormal: { value: null }, tLage: { value: null }, tWeich: { value: null }, tHinten: { value: null }, uKacheln: { value: 1 }, uTempo: { value: 1 }, uFarbig: { value: 1 }, uFlecken: { value: 1 }, uDunst: { value: 1 } });
     this.hell = k.flaecheProgramm(HELL, { tBild: { value: null } });
     this.stern = k.flaecheProgramm(STERN, { tHell: { value: null }, uStern: { value: 1 } });
     this.ende = k.flaecheProgramm(ENDE, { tBild: { value: null }, tStern: { value: null } });
@@ -211,6 +263,7 @@ class Diskokugel implements ShaderLauf {
     u.uTempo!.value = w.regler.tempo ?? 1;
     u.uFarbig!.value = w.regler.farbig ?? 1;
     u.uFlecken!.value = w.regler.flecken ?? 1;
+    u.uDunst!.value = w.regler.dunst ?? 1;
     const hdr = k.ziel('disko:hdr', { art: 'half' });
     k.flaeche(this.haupt, hdr, [0, 0, 0, 0]);
     const hell = k.ziel('disko:hell', { skala: 0.5, art: 'half' });
@@ -245,6 +298,7 @@ export const DISKOKUGEL: Voreinstellung = {
     { k: 'tempo', name: 'Drehen', min: 0, max: 3, schritt: 0.05, grund: 1 },
     { k: 'farbig', name: 'Farbig', min: 0, max: 1, schritt: 0.05, grund: 1 },
     { k: 'flecken', name: 'Lichtflecken', min: 0, max: 3, schritt: 0.05, grund: 1 },
+    { k: 'dunst', name: 'Dunst (Strahlen)', min: 0, max: 3, schritt: 0.05, grund: 1 },
     { k: 'funkeln', name: 'Funkeln', min: 0, max: 3, schritt: 0.05, grund: 1 },
   ],
   bauen: (k) => new Diskokugel(k),

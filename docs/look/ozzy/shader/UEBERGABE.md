@@ -1,9 +1,10 @@
-# Übergabe: 47 Shader für Ozzy (20.11.2026, Runde 3)
+# Übergabe: 51 Shader für Ozzy (20.11.2026, Runde 4)
 
-Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 und 3). Recherche:
-`docs/research/2026-11-20-shader-recherche.md`. Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder:
-`docs/progress/ozzy/shader/` (ein Blatt je Gruppe, `2026-11-20-runde-2-*.png`; Runde 3: `2026-11-20-runde-3-neu.png`; Runde 1:
-`2026-11-20-alle-20.png` und einzelne).
+Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 4). Recherche:
+`docs/research/2026-11-20-shader-recherche.md`, für die Tiere `docs/research/2026-11-20-tiermuster-recherche.md`. Offenes:
+`docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 4: `2026-11-20-runde-4-tiere.png`,
+`-stile.png`, `-materialien.png`, `-nah.png`; Runde 3: `2026-11-20-runde-3-neu.png`; je Gruppe nach Runde 2:
+`2026-11-20-runde-2-*.png`; Runde 1: `2026-11-20-alle-20.png` und einzelne).
 
 ## Wo und wie ansehen
 
@@ -13,17 +14,19 @@ Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20
   Knopf, darunter seine Zeile und seine Regler (Doppelklick setzt einen Regler zurück), oben **Bühne** (der Shader zeichnet seinen
   eigenen Grund). **⇧M** nächster Shader, **⌥⇧M** voriger. Adresse: `?shader=<name>` (z. B. `eineLinie`, `tropfen`).
 - Bilder ohne Fenster: `node scripts/ozzy/shader-bilder.mjs <ordner> [name …]` aus `apps/editor` (startet für die Dauer des Laufs
-  einen eigenen Vite auf 5219, falls dort keiner läuft; `NAME`, `ZOOM`, `GIER`, `NEIGUNG`, `WARTEN`, `BUEHNE=0`, `SEITE=1`, `EXTRA`).
+  einen eigenen Vite auf 5219, falls dort keiner läuft; `NAME`, `ZOOM`, `GIER`, `NEIGUNG`, `WARTEN`, `BUEHNE=0`, `SEITE=1`, `EXTRA`,
+  `REGLER='{"stil":1}'` setzt Regler; ein leeres `NAME=` lässt das Laden scheitern).
   Blatt aus Bildern: `node scripts/ozzy/bildblatt.mjs <ziel.png> <spalten> <breite je Bild> <bilder…>` (die Breite gilt **je Bild**).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
-## Die 47, in fünf Gruppen
+## Die 51, in fünf Gruppen
 
 - **Spider-Verse (17):** Comicdruck, Aquarell, Indrajal, Punk-Collage, Marker 2099, Tintenfleck, Da Vinci, Glitch, Earth-42,
   Multiplane, Noir, Cartoon, Neunziger, Sienkiewicz, Venom-Blitz, Pixel, LEGO.
-- **Anime & Manga (7):** Anime, Manga, Flammenwesen, Dampfwesen, Shinkai, Ukiyo-e, Gouache.
-- **Materialien (9):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Opal, Diamant, Diskokugel.
-- **Tiermuster (7):** Leopard, Tiger, Schlange, Elefant, Giraffe, Krokodil, Turing-Haut.
+- **Anime & Manga (7):** Anime, Manga, Flammenwesen, Dampfwesen, Shinkai, Ukiyo-e, Gouache (Ghibli).
+- **Materialien (10):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Opal, Diamant, Diamantbesatz, Diskokugel.
+- **Tiermuster (10):** Leopard, Tiger, Giraffe, Elefant, Python (`schlange`), Klapperschlange, Korallennatter, Krokodil,
+  Feuersalamander, Turing-Haut. Alle außer Turing-Haut mit dem Regler **Stil: echt · Spider-Verse · Earle**.
 - **Effekte (7):** Eine Linie, Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
 
 Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
@@ -63,9 +66,28 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
     alles total reflektiert (schwarz). Der Austritt ist darum eine Linse (Spiegelbild der vorderen Normale längs des Blicks), und die
     Umgebung ist rundum hell (Hohlkehle), damit jeder gebrochene Strahl Licht trifft.
 10. Die App hält nur drei Vorschau-Server; das Bildskript startet darum seinen eigenen Vite nur für den Lauf.
-11. **Schuppen** (Schlange, Krokodil): regelmäßige Reihen in einer Ebene, je nach Ausrichtung der Fläche eine von drei
-    (`schuppenEbene`, `schuppe2`, `platte2` in `tiere.ts`). Zylinder um eine Achse liefen an den Polen sternförmig zusammen, Zellen im
-    Raum gaben ungleich große Schnitte. Das Muster wird an der Mitte jeder Schuppe gelesen (eine Farbe je Schuppe).
+11. **Schuppen** (Schlangen, Krokodil): regelmäßige Reihen in einer Ebene, je nach Ausrichtung der Fläche eine von drei
+    (`schuppenEbene`, `schuppe2`, `platteRund` in `tiere.ts`; gemeinsamer Anfang `SCHUPPEN_KOPF`). Zylinder um eine Achse liefen an den
+    Polen sternförmig zusammen, Zellen im Raum gaben ungleich große Schnitte. Das Muster wird an der Mitte jeder Schuppe gelesen (eine
+    Farbe je Schuppe); Muster, die über viele Schuppen reichen (Rauten, Ringe), brauchen kleine Schuppen (Klapperschlange `k` 30).
 12. **Diamant:** Facetten entstehen durch Einrasten der Normale auf eine Kugel aus Richtungen (bis 200 Vergleiche je Facette, vier
-    Facetten je Bildpunkt); das ist ein Schliff des Aussehens, keine ebenen Flächen im Raum. **Diskokugel:** Die Normale einer Kachel
-    wird an ihrer Mitte gelesen (Ableitungen der Kachellage im Bild umgekehrt); die Ableitungen stehen darum vor jeder Verzweigung.
+    Facetten je Bildpunkt); das ist ein Schliff des Aussehens, keine ebenen Flächen im Raum. Der Weg im Stein liest die Rückseite dort,
+    wo der gebrochene Strahl ankommt (`insBild`), nicht am selben Bildpunkt. Den Diamanten macht das Licht: hell mit harten schwarzen
+    Karten (`juwelLicht`); nur dunkel mit kleinen Lampen sah er aus wie Chrom. **Diskokugel:** Die sichtbaren Kacheln liegen flach in
+    drei Ebenen (in der Mulde der Form lief die Kugelabbildung zum Strudel zusammen); die Drehung trägt der Raum (`club` dreht sich),
+    Flecken und Strahlen rechnen wie an einer Kugel (Halbvektor). Die Normale einer Kachel wird an ihrer Mitte gelesen (Ableitungen
+    der Kachellage umgekehrt); die Ableitungen stehen darum vor jeder Verzweigung.
+13. **LEGO:** Die Steine hängen an der Form, nicht am Blick (vorher entschieden Vorder- und Rückseite je Bildpunkt: Flackern). Der
+    Prozessor legt das Netz in ein Raster (`gitterBauen` in `lego.ts`: je Säule die Schnitte mit der Haut, vier Säulen je Zelle; die
+    Steine je Schicht im Verband) und reicht es als 3D-Textur (`tSteine`: Farbe + 1 und Nummer des Steins). Neu gelegt wird, wenn sich
+    `netzStand` oder ein Regler ändert, im Zug höchstens alle 90 ms (an „strange bird“ 2 bis 10 ms). Kanten glätten fünf Strahlen, wo
+    sich die Kennung des Getroffenen im Bildpunktquadrat ändert (`fwidth` vor jeder Verzweigung; in den Strahlen keine Ableitungen).
+14. **Tiere in drei Stilen:** `stil` ist ein Regler aller Tiere (`tier()` in `tiere.ts`); im Comic sitzt die Farbplatte versetzt, das
+    Licht kommt aus der glatten Normale (die Schuppen zeichnet die Farbe), dazu farbiges Randlicht; Earle mit vier Stufen und eigener
+    Bühne (Bänder, Hügel, Stämme). Ein Tier, das im Comic glatter sein soll, fragt `uR_stil` selbst (Korallennatter: Ringe ohne
+    Schuppenstufen).
+15. **Gouache:** jedes Stück ein Pinselstrich (je Zelle im Bild einer, drei Lagen, der oberste deckende gewinnt; seine Farbe ist die
+    Vorlage an seiner Mitte). 75 Striche je Bildpunkt werden geprüft, die Farbe nur für die drei Sieger gerechnet.
+16. **Diamantbesatz:** Steine in Zellen im Raum; `rho` ist der Ort im Stein von der Mitte (0) zum Rand (1), aus dem Abstand zur Mitte
+    und zum Rand der Zelle (Kissenform). Wird ein Stein im Bild kleiner als rund zehn Bildpunkte, wird er ruhig zusammengefasst (sonst
+    flimmert der Schliff).
