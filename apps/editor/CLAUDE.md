@@ -722,6 +722,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (`kieferSeiten` in der Probe: Lippe am Mundwinkel geteilt, Tasche bis zur Rachenlinie gefüllt). (3) `falten().umgeklappt` zählt
   Splitter des Schnitts (Fläche unter 0,1) wie echte Falten; `umgeschlageneWo` nennt Ort und Fläche. (4) Das Aufräumen faltet am
   Mundwinkel je Seite ein Dreieck (offen: P2). Alles Weitere: `docs/look/ozzy/maul/UEBERGABE.md`.
+  **Probe P2 (20.11.; Plan, 12.9):** dieselbe Probe mit `REISS=1 OBEN=0 UNTEN=0 [KONTROLLE3=1]`: der Spalt geschlossen (Lippe und
+  Tasche auf die Maullinie), die Lippe ein zusammengeklappter Loop mit Zwillingen (`maulLinie.ts`, Winkel 0). Hält: Ruhe nach 2
+  Runden, Spalt an der Linie 0, nichts gefaltet, geöffnet nichts gespannt. Merke: (5) Die Zwillingsregel des Kerns setzt an einem
+  Ende, das an einer anderen Linie hängt, einen Griff nach außen: Damit kippt die Rechnung (Unterkiefer 6 daneben); dort den
+  äußeren Griff auf null setzen. (6) Punkte am selben Ort (Gaumen und Boden): Spiegelpaare nie aus den Lagen neu lesen
+  (`verdichten` führt sie mit, `kantenTeilen` nicht). (7) Das „gefaltete Dreieck am Mundwinkel“ aus (4) war keine Falte (die Wand
+  an der Rachenlinie liegt gewollt auf der anderen); Falten mit `gefaltetWo` messen. (8) Der Rest außen am Unterkiefer (1,6)
+  kommt von der harten Kante, nicht vom Maul (Kontrolle 3: eine harte Linie ohne Schnitt gibt 1,65 an derselben Stelle).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

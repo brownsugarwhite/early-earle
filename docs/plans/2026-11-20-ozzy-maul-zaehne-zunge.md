@@ -629,6 +629,8 @@ geöffnet“ aus 12.1 ist damit falsch und oben gestrichen.
    175° gegen den Nachbarn). Dort ist die Tasche dünner als das Netz; das ist die Probe P2. Ohne Aufräumen (C) sind es stattdessen
    je Seite 4 Splitter des Schnitts an Lippe und Mundwinkel (Fläche höchstens 0,05; ein gewöhnliches Dreieck dieses Netzes hat
    rund 77), die bei der kleinsten Bewegung umklappen.
+   **Korrektur aus P2 (12.9):** Das Dreieck je Seite in B war keine Falte. Es ist ein Dreieck der Wand an der Rachenlinie; dort
+   liegen Gaumen und Boden aufeinander, so soll es sein. Die alte Zählung hält es für umgeschlagen.
 2. **Der Spalt (K5).** Die Bibliothek braucht einen Keil mit Breite; die Rechnung weitet ihn von 0,40 auf 0,59 bis 0,76. Im Bau
    muss die Lippe ohne Spalt entstehen (die Dreiecke an der Linie direkt teilen, Ober- und Unterlippe als Zwillinge am selben
    Ort). Das ist nicht gezeigt.
@@ -684,4 +686,84 @@ Loop, dessen Punkte paarweise Zwillinge sind (dein Bild aus dem Auftrag). Das Mo
 | Z5 | Die geschlossene Linie lässt sich als Ganzes ziehen | ein Punkt der Lippe 15 gezogen, sein Zwilling geht mit: Die Rechnung steht, Z1 und Z2 gelten weiter |
 
 Dazu wie in P1: Die Rechnung kommt zur Ruhe, fern vom Maul bewegt sich die Haut weniger als 0,5.
+
+### 12.9 Ergebnis der Probe P2 (20.11.)
+
+Bildblatt 5: [`2026-11-20-maul-p2-probe.jpg`](../progress/ozzy/2026-11-20-maul-p2-probe.jpg). Dieselbe Probe wie P1, mit dem
+neuen Schritt (`REISS=1 OBEN=0 UNTEN=0`, Aufruf im Kopf von `apps/editor/scripts/pruefen/form-maul-echt.ts`). In Ozzy, am Werk und
+am Rechenkern ist nichts geändert.
+
+**Kurz:** Das Maul ohne Spalt hält an „teat firefish“. Die Rechnung steht nach 2 Runden. Die Lippe ist ein zusammengeklappter
+Loop mit Zwillingen, der Spalt an der Linie genau null. Am Mundwinkel ist nichts gefaltet, geöffnet spannt sich nichts, und die
+geschlossene Linie lässt sich als Ganzes ziehen. Zwei Kriterien sind wörtlich nicht erfüllt, und bei beiden ist jetzt belegt,
+woran es liegt: Am Netz bleibt zwischen den Lippen ein Rest von 0,14, und außen am Unterkiefer liegt die Haut 1,63 statt unter 1
+neben deiner Form. Der zweite Rest kommt nicht vom Maul: Jede harte Linie an dieser Stelle bewegt die Haut genauso.
+
+| Nr. | Kriterium | Ergebnis |
+| --- | --- | --- |
+| | Die Rechnung kommt zur Ruhe; fern unter 0,5 | **ja:** 2 Runden; fern 0,48 (davon 0,30 vom Aufräumen selbst) |
+| Z1a | Zu ist der Spalt null, an der Linie | **ja, genau 0:** 13 Punkte (der Mundwinkel und sechs Paare), jede Lippe das Abbild der anderen; drei Punkte anderer Linien, die an der Lippe enden, gehen mit |
+| Z1b | Zu ist der Spalt null, am Netz | **nein: bis 0,14** (gleich nach dem Schließen 0,32). Die zwei Lippen sind im Netz verschieden unterteilt (21 und 22 Punkte), liegen aber auf derselben Kurve |
+| Z2 | Am Mundwinkel ist nach dem Aufräumen nichts gefaltet | **ja:** am ganzen Maul kein gefaltetes Dreieck |
+| Z3 | Geöffnet spannt sich nichts über das Maul | **ja:** 0 gespannt, 0 gefaltet (8° und 22°) |
+| Z4 | Außen liegt die Haut unter 1 neben der Form von vorher | **nein:** Unterkiefer bis 1,63 (32 Punkte über 1), Oberkiefer bis 0,33. Woher: siehe unten |
+| Z5 | Die geschlossene Linie lässt sich als Ganzes ziehen | **ja, nach dem Aufräumen:** Beide Lippen gehen 14,84 von 15 mit, der Spalt an der Linie bleibt 0. Gleich nach dem Zug sind am gezogenen Punkt 6 Dreiecke gefaltet; nach dem Aufräumen, das im Werk auf jeden Zug folgt (hier nachgestellt), keines. Danach geöffnet: 0 gespannt, 0 gefaltet |
+
+Die Tasche bleibt (Wände höchstens 0,75 neben gerade). Bildblatt 5, obere Reihe von links: deine Form vorher; mit Maul, zu;
+mit den Knochen geöffnet; die geschlossene Linie 15 gezogen; dasselbe geöffnet (die Oberlippe trägt den Zacken, die Unterlippe
+die passende Kerbe).
+
+**Woher der Rest außen kommt (Z4).** Gegenprobe (Kontrolle 3, `KONTROLLE3=1`): dieselbe Form **ohne Schnitt**, ohne Tasche, ohne
+geschnittene Linien. Nur eine Linie quer über die Form längs der Maullinie, vom Mundwinkel nach vorn hart (Kante an), dahinter
+weich. Ergebnis: Unterkiefer bis 1,65 an derselben Stelle (34 Punkte über 1), Oberkiefer bis 0,48. Der Rest ist also das, was
+„Kante an“ in der Rechnung von heute bedeutet: Neben einer harten Linie rundet jede Seite für sich. Ausgeschlossen sind damit das
+Maul selbst, die Tasche und die geschnittenen Linien; dazu die Genauigkeit der Lippenlinie (genauer angelegt: 1,32), das Aufräumen
+(ohne Maul 0,30) und ein langsames Weiterkriechen (300 weitere Runden: am Maul nichts).
+
+Was daraus folgt: Solange die Lippe eine harte Kante ist, ist „zu“ nicht auf den Punkt die Form von vorher, sondern die Form mit
+einer Kante an dieser Stelle. Ob man 1,6 Einheiten sieht, kann nur dein Auge im Look von Ozzy sagen. Soll „zu“ genau die Form von
+vorher sein, müsste die Rechnung lernen, dass die Haut über eine geschlossene Lippe glatt weiterläuft. Das wäre eine Änderung am
+Rechenkern und bleibt deinem Wort vorbehalten.
+
+**Der Rest am Netz (Z1b).** Die Linie ist genau: Beide Lippen haben dieselben Punkte und Griffe. Im Netz sind es zwei Ketten auf
+derselben Kurve, die das Aufräumen verschieden unterteilt; dazwischen bleiben linsenförmige Reste bis 0,14 (gleich nach dem Zug
+kurz 0,35). Genau null im Netz ginge nur, wenn das Aufräumen des Kerns die zwei Lippen gleich unterteilt hielte; das kann es
+heute nicht. Die Anzeige legt harte Linien auf ihre Kurve; was von dem Rest zu sehen ist, zeigt erst Ozzy.
+
+**Was ich unterwegs gefunden habe (wichtig für den Bau):**
+
+1. **Die Zwillingsregel des Kerns (14.11.) kennt nur Lippen, deren Enden auf der Spiegelebene liegen.** An einem Ende, das an
+   einer anderen Linie hängt (die Mitte von Gaumen und Boden hängt vorn an der Lippe), setzt sie einen Griff nach außen, den es
+   dort nicht gibt. Damit kippte die Rechnung in eine andere Ruhelage: Unterkiefer 6 statt 1,6 daneben, 42 bis 71 Runden. Mit dem
+   Griff null: 2 Runden. Die Probe setzt ihn von außen zurück; für die erste Scheibe von Etappe 1 reicht das.
+2. **Ohne Aufräumen kommt das Maul ohne Spalt nicht zur Ruhe** (602 Runden; die Punkte der Wände dicht an der Rachenlinie
+   wandern). Das Aufräumen nach dem Schnitt gehört fest dazu; das Fenster tut es ohnehin.
+3. **Welcher Kiefer ein Punkt außen ist:** die Lippe, die von ihm aus über die Kanten des Netzes zuerst erreicht wird (vor dem
+   Mundwinkel trennt die Lippe die Haut der zwei Kiefer ganz). Das gilt auch an der verzogenen Lippe: nach dem Zug an 0 Punkten
+   anders. Die Lage gegen die gezeichnete Maullinie sagt dort nichts mehr.
+4. **Die alte Zählung „umgeschlagen“ taugt am Maul nicht.** Sie zählt das Dreieck der Wand an der Rachenlinie mit, das gewollt
+   so liegt. Die neue Messung zählt Dreiecke, die steiler als 120° auf einem Nachbarn liegen, ohne dass eine harte Linie
+   dazwischen ist.
+5. **Ein weit herausgezogener Punkt zwischen dichten Nachbarn wird eine Klinge.** Mit 19 statt 13 Punkten auf der Lippe bleiben
+   am gezogenen Punkt 6 Dreiecke gefaltet, auch nach dem Aufräumen. Das ist keine Sache des Mauls (jede Linie tut das; Feinschliff).
+6. **Punkte am selben Ort.** Gaumen und Boden und die Zwillinge an Kreuzungen liegen jetzt genau aufeinander. Wer die Spiegelpaare
+   einer solchen Haut aus den Lagen neu liest, ordnet sie falsch zu; sie müssen mitgeführt werden. Das Verdichten tut das seit
+   dem 18.11.; das Teilen von Kanten liest sie neu, und das Laden einer gesicherten Form vermutlich auch (nicht geprüft).
+
+**Was die Probe nicht zeigt:** wie bei P1 nichts in Ozzy, keinen Look, nur diese Form und diese Maullinie. Dazu nicht: „Lippen
+trennen“ (P3), die Bemalung (P4), das Sichern und Laden einer Form mit Maul (Punkt 6).
+
+### 12.10 Was jetzt bei dir liegt
+
+Eine Frage hält den nächsten Schritt auf: **Soll ich mit Etappe 1 in Ozzy beginnen?** In zwei kleinen Schritten:
+
+1. **Zuerst ein Vergleichsbild im Look von Ozzy** (Wachs, gleiche Ansicht, vorher und nachher): die Form aus P2 in Ozzy geladen,
+   wenn es geht, ohne Ozzy zu ändern (ob das Laden mit Punkten am selben Ort zurechtkommt, weiß ich noch nicht: Punkt 6). Daran
+   siehst du, ob das geschlossene Maul für dein Auge unsichtbar genug ist. Die zwei Reste oben (1,6 außen, 0,14 am Netz) sind
+   Fragen an dein Auge, keine an eine Zählung.
+2. **Dann die erste Scheibe:** eine Linie von der Seite, der Tropfen „Maul“, und das Maul entsteht wie in P2 (zu, Lippen als
+   Zwillinge), mit ⌘Z. Noch kein Öffnen, keine Zähne. Dafür brauche ich dein Wort für einen neuen Handgriff im Werk (neben dem
+   Abziehen). Am Rechenkern ändere ich dafür nichts.
+
+Die anderen Wege: zuerst P3 („Lippen trennen“ an deinem Blatt 06), oder hier anhalten.
 

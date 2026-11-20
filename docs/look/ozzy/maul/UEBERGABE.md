@@ -24,8 +24,15 @@ angewendet → Tasche ist Haut, Lippe ist ein Ring mit Kante → Tropfen „Maul
 `docs/progress/ozzy/2026-11-20-maul-p1-probe.jpg`).** Geöffnet gerechnet (wie in 12.3 festgelegt) hält das Maul nicht. Zu gerechnet,
 mit zwei Linien im Maul, hält es an „teat firefish“ fast; die Knochen öffnen nur die Anzeige, und die Kiefer beeinflussen sich
 nicht. Knapp verfehlt: ein gefaltetes Dreieck je Seite am Mundwinkel, der Spalt der Lippen, 1,5 statt 1 außen am Unterkiefer.
-**Gefragt ist er jetzt nach einem: ob ich die Probe P2 rechne** (der Schnitt ohne Spalt und der Mundwinkel, im Kern; Kriterien im
-Plan, 12.7). Nichts aus den Etappen ohne sein Wort bauen.
+Gefragt war er, ob ich P2 rechne; sein Wort: „Ja, P2 rechnen“.
+
+**Probe P2 ist gerechnet (20.11.; Ergebnis im Plan, 12.9; Bildblatt `docs/progress/ozzy/2026-11-20-maul-p2-probe.jpg`).** Das Maul
+ohne Spalt hält an „teat firefish“: Ruhe nach 2 Runden, die Lippe ein zusammengeklappter Loop mit Zwillingen (Spalt an der Linie
+genau null), am Mundwinkel nichts gefaltet, geöffnet spannt sich nichts, die geschlossene Linie lässt sich als Ganzes ziehen.
+Wörtlich nicht erfüllt: am Netz bleibt zwischen den Lippen ein Rest bis 0,14; außen am Unterkiefer 1,63 statt unter 1. Der Rest
+außen kommt von der harten Kante, nicht vom Maul (Gegenprobe ohne Schnitt: 1,65 an derselben Stelle). **Gefragt ist er jetzt nach
+einem: ob ich mit Etappe 1 in Ozzy beginne** (zuerst ein Vergleichsbild im Look von Ozzy, dann die erste Scheibe; Plan, 12.10).
+Das braucht sein Wort für einen neuen Handgriff im Werk. Nichts aus den Etappen ohne sein Wort bauen.
 
 ## Die Studie in einem Absatz
 
@@ -57,10 +64,11 @@ Formenring und Drehregler steht in `linse.ts`. `main.ts` hält alles zusammen (B
 - **Fenster 5205:** Der alte Server war mit dem Wechsel des Zweigs weg; neu gestartet über den Eintrag `ozzy`. Er gehört der
   Sitzung, die ihn gestartet hat; endet sie, muss ihn die nächste neu starten.
 
-## Die Probe P1 im Kern (`scripts/pruefen/form-maul-echt.ts`)
+## Die Proben P1 und P2 im Kern (`scripts/pruefen/form-maul-echt.ts`)
 
 ```bash
 # aus packages/shape; rund 12 s je Lauf, kein Fenster nötig
+REISS=1 OBEN=0 UNTEN=0 KONTROLLE3=1 BLATT=<pfad> npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts  # P2
 OBEN=0 UNTEN=0 BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts   # B: zu gerechnet
 AUFRAEUMEN=0 OBEN=0 UNTEN=0 npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts               # C: ohne Aufräumen
 MAULLINIEN=0 npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts                              # A: geöffnet gerechnet
@@ -92,6 +100,28 @@ Merke:
   Blatt zu Strichen zum Ursprung (`vorherBild`).
 - Das Aufräumen der Probe ist das des Fensters (`nadelnZusammenlegen`, `nachVerdichten` mit `verdichtenWieImFenster`).
 
+Aus P2 (`REISS=1`: der Spalt geschlossen, Lippen als Zwillinge):
+
+- **Das Modell für die Zwillinge gibt es im Kern:** `maulLinie.ts` (14.11.), `Loop.maulLinie` mit dem Winkel 0, `zwillinge`,
+  `zwillingeAngleichen`, `zwillingeFestlegen`, `zwillingsFehler`. Die Rechnung liest `maulLinie` nicht.
+- **Die Zwillingsregel kennt nur Enden auf der Spiegelebene.** An einem Ende, das an einer anderen Linie hängt, setzt sie einen
+  Griff nach außen; damit kippte die Rechnung (Unterkiefer 6 statt 1,6 daneben, 42 bis 71 Runden statt 2). Nach
+  `zwillingeFestlegen` an hängenden Enden den äußeren Griff auf null setzen (`ENDGRIFF=0` stellt den Fehler nach).
+- **Nach dem Zwillingsschritt** bekommt jede Probe ihre Stelle auf dem neuen Pfad (`pfadParameter`), und Punkte anderer Linien
+  an denselben Kreuzungen gehen mit (`mitnehmen`).
+- **Punkte am selben Ort** (Gaumen und Boden, Zwillinge an Kreuzungen): Die Spiegelpaare nie aus den Lagen neu lesen.
+  `verdichten` führt sie mit; `kantenTeilen` und `hautAus(pos, tri)` lesen sie neu (falsche Partner).
+- **Ohne Aufräumen** kommt das Maul ohne Spalt nicht zur Ruhe (602 Runden). Nie ohne `nadelnZusammenlegen` und `nachVerdichten`.
+- **Falten messen:** `gefaltetWo` (steiler als 120° gegen einen Nachbarn ohne harte Linie dazwischen), nicht `falten().umgeklappt`
+  (zählt das Dreieck der Wand an der Rachenlinie, das gewollt auf der anderen Wand liegt). Die Form selbst hat fern vom Maul 24
+  solche Dreiecke (ein scharfer Kiel an der Mitte): immer gegen die Form von vorher lesen.
+- **Welcher Kiefer außen:** die Lippe, die über die Kanten des Netzes zuerst erreicht wird (`kieferSeiten`), nicht die Lage gegen
+  die gezeichnete Linie (an einer verzogenen Lippe sagt die nichts).
+- **Kontrolle 3** (`KONTROLLE3=1`): `loopAusVorhang` und `loopEinsetzen` legen eine Linie längs der Maullinie quer über die Form,
+  hart nur vom Mundwinkel nach vorn (Kante je Punkt). So lässt sich trennen, was vom Maul kommt und was von der harten Kante.
+- `heute()` in der Probe rechnet über die ganze Haut (nicht auf der Hälfte) und gilt als ruhig unter 0,02 je Runde; die Form
+  selbst zittert an einer Stelle fern vom Maul mit 0,02 bis 0,06 je Runde (`GEDULD=300`).
+
 ## Bilder neu machen
 
 ```bash
@@ -103,5 +133,5 @@ node scripts/ozzy/maul-studie-bogen.mjs <ordner>      # setzt die zwei Bildblät
 ## Geprüft
 
 Typen (`pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`) und Lint (`eslint src/maulstudie`) sauber. Tests gibt es für
-die Studie keine. An Ozzy ist nichts geändert, seine Proben habe ich nicht laufen lassen. Die Probe P1: Lint sauber
+die Studie keine. An Ozzy ist nichts geändert, seine Proben habe ich nicht laufen lassen. Die Proben P1 und P2: Lint sauber
 (`eslint scripts/pruefen/form-maul-echt.ts`); sie läuft mit `vite-node` und gehört zu keinem Typenlauf.
