@@ -786,6 +786,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   in ihrer Farbe; alle anderen nehmen `zeigeNetzAlle()` mit Zähnen. (42) Ein Sitz unter null versetzt nur den Fuß
   (`ZahnPlatz.vor`): den Fuß eines Zahns aus `zahnRahmen` nehmen. (43) `MaulZaehne` nie aus `{ oben, unten }` neu bauen (die
   Farbe ginge verloren). (44) Puffer von three wiederverwenden statt Attribute zu ersetzen (`ZahnBild.setzen`).
+  **Etappe 6, erste Scheibe: die Zunge (20.11.; Plan 12.19):** `src/ozzy/zunge.ts`, `G.maul.zunge`, in `main.ts` „Die Zunge“.
+  Merke: (45) Was sich von selbst bewegt (Federn, Gummi), rechnet in festen Zeitschritten, nie mit der Dauer des Bilds (sonst
+  zittert es für immer). (46) Die Kette der Zunge überlebt einen neu gelesenen Platz (`uebernehmen`): Plätze werden nach jedem
+  Schritt für ⌘Z neu gelesen. (47) `zungeSchritt` läuft je Bild in `werkBild` und ruht von selbst. (48) Wer `ruheZeigen` ändert:
+  `ohneZaehne` nicht je Bild neu zusammensetzen. Probe: `ozzy-maul-zunge-fenster.mjs` (U1 bis U8).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

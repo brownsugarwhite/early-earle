@@ -43,6 +43,7 @@ import { istMaulEbene, taschenFeld } from './farbe/maulEbene';
 import { FAKTOR_MAX, FAKTOR_MIN, type FormNetz, ZAEHNE_ANFANG, type ZahnPlatz, eigenSetzen, formGemischt, formNetzGemischt, mitAnzahl, partner, sitzGrenzen, vorlageNr, zaehneNetz, zaehnePaar, zahnPlaetze, zahnRahmen } from './zaehne';
 import { strahlAufNetz } from './farbe/treffer';
 import { ZAHN_FARBE, ZahnBild } from './zahnBild';
+import { ZUNGE_ANFANG, ZUNGE_FARBE, ZUNGE_KNOTEN, ZungenKette, type ZungenPlatz, zungeNetz, zungePlatz } from './zunge';
 import { Linse, type Perle, grauesKugelbild } from '../maulstudie/linse';
 import { ZAHN_FORMEN } from '../maulstudie/zahn';
 import { EbenenStapel } from './farbe/ebenenStapel';
@@ -188,6 +189,8 @@ const haut = new Haut(renderer);
 const feste = new FesteHaut(renderer);
 /** Maul, Etappe 5: die Zähne in ihrer Farbe auf den festen Materialien (`zahnBild.ts`); angelegt, sobald ein Maul Zähne hat */
 let zahnBild: ZahnBild | null = null;
+/** Etappe 6: die Zunge in ihrer Farbe, auf demselben Weg */
+let zungenBild: ZahnBild | null = null;
 /** das Kugelbild des Wachses ohne seine Farbe (Hell, Dunkel, Glanz): für die Zähne im Bild und den Zahn in der Linse */
 let zahnKugelbild: DataTexture | null = null;
 const zahnKugel = (): DataTexture => (zahnKugelbild ??= grauesKugelbild(wachsKugel(256), 256));
@@ -856,10 +859,13 @@ let ruheSicht = 1;
 const RUHE_AUF_DEM_BLATT = 0.38;
 /** das Netz aller ruhenden Objekte, wie die Seifenhaut es zeigt (neu, wenn sich ihre Reihe ändert) */
 /** `ohneZaehne`: dasselbe ohne das Netz der Zähne (für die Materialien, die die Zähne für sich in ihrer Farbe zeichnen) */
-let ruheNetzGemerkt: { schl: string; netz: HautNetz | null; ohneZaehne: HautNetz | null } = { schl: '', netz: null, ohneZaehne: null };
+let ruheNetzGemerkt: { schl: string; netz: HautNetz | null; ohneZaehne: HautNetz | null; schlRuhe: string } = { schl: '', netz: null, ohneZaehne: null, schlRuhe: '' };
 /** Maul, Etappe 5: die Zähne des aktiven Objekts als Netz an der gezeigten Haut (null: keine), und ein Zähler seiner Stände */
 let zaehneNetzJetzt: HautNetz | null = null;
 let zaehneVersion = 0;
+/** Maul, Etappe 6: das Netz der Zunge, wie sie eben gezeigt wird (je Bild, in dem sie sich bewegt, ein neues) */
+let zungeNetzJetzt: HautNetz | null = null;
+let zungeVersion = 0;
 const objektName = (): string => (ruhende.length ? `Form ${aktivId}` : werk.G.ablageName || (aktivId > 1 ? `Form ${aktivId}` : 'Form'));
 
 /** mehrere Netze der Seifenhaut zu einem (die Lagen liegen alle im Raum); `sicht`: je Netz, wie deutlich es zu sehen ist (fehlt: ganz) */
@@ -985,14 +991,24 @@ function facettenNetz(): HautNetz | null {
 function ruheZeigen(): void {
   const teile = ruhende.filter((r) => r.haut.zeigeNetz && !verbundVerdeckt(r.id));
   const blass = (r: Ruhend): boolean => verbundVon.get(r.id)?.art === 'abziehen';
-  // (Maul, Etappe 5: Die Zähne des aktiven Objekts stehen als eigenes Netz dabei; so zeigt sie jedes Material wie ein ruhendes Objekt)
-  const zn = zaehneNetzJetzt && !verbundVerdeckt(aktivId) ? zaehneNetzJetzt : null;
-  const schl = teile.map((r) => `${r.id}:${r.haut.kennung}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}${blass(r) ? 'b' : ''}`).join('|') + (zn ? `|z${zaehneVersion}` : '');
+  // (Maul, Etappe 5 und 6: Zähne und Zunge des aktiven Objekts stehen als eigene Netze dabei; so zeigt sie jedes Material wie ein
+  // ruhendes Objekt)
+  const maulTeile = verbundVerdeckt(aktivId) ? [] : [zaehneNetzJetzt, zungeNetzJetzt].filter((n): n is HautNetz => n !== null);
+  const schlRuhe = teile.map((r) => `${r.id}:${r.haut.kennung}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}${blass(r) ? 'b' : ''}`).join('|');
+  const schl = schlRuhe + (maulTeile.length ? `|z${zaehneNetzJetzt ? zaehneVersion : '-'}|u${zungeNetzJetzt ? zungeVersion : '-'}` : '');
   if (schl === ruheNetzGemerkt.schl) return;
-  const netze = [...teile.map((r) => r.haut.zeigeNetz!), ...(zn ? [zn] : [])];
-  const netz = netze.length ? netzeVereinen(netze, [...teile.map((r) => (blass(r) ? GEIST_SICHT : 1)), ...(zn ? [1] : [])]) : null;
-  const ohneZaehne = !zn ? netz : teile.length ? netzeVereinen(teile.map((r) => r.haut.zeigeNetz!), teile.map((r) => (blass(r) ? GEIST_SICHT : 1))) : null;
-  ruheNetzGemerkt = { schl, netz, ohneZaehne };
+  const netze = [...teile.map((r) => r.haut.zeigeNetz!), ...maulTeile];
+  const netz = netze.length ? netzeVereinen(netze, [...teile.map((r) => (blass(r) ? GEIST_SICHT : 1)), ...maulTeile.map(() => 1)]) : null;
+  // (die ruhenden Objekte ohne Zähne und Zunge: nur neu, wenn sie selbst sich ändern. Die Zunge bewegt sich je Bild; wer dieses
+  // Netz nimmt, soll dann nicht jedes Mal alle ruhenden Objekte neu bekommen)
+  const ohneZaehne = !maulTeile.length
+    ? netz
+    : !teile.length
+      ? null
+      : schlRuhe === ruheNetzGemerkt.schlRuhe && ruheNetzGemerkt.ohneZaehne && ruheNetzGemerkt.ohneZaehne !== ruheNetzGemerkt.netz
+        ? ruheNetzGemerkt.ohneZaehne
+        : netzeVereinen(teile.map((r) => r.haut.zeigeNetz!), teile.map((r) => (blass(r) ? GEIST_SICHT : 1)));
+  ruheNetzGemerkt = { schl, netz, ohneZaehne, schlRuhe };
   haut.ruheSetzen(netz, 0);
 }
 
@@ -1482,7 +1498,7 @@ function verbundPflegen(dt: number): boolean {
     verbundGezeigt = b;
     haut.ruheSetzen(b?.netz ?? null, 1);
   }
-  if (ruhende.length || ruheNetzGemerkt.netz || zaehneNetzJetzt) ruheZeigen();
+  if (ruhende.length || ruheNetzGemerkt.netz || zaehneNetzJetzt || zungeNetzJetzt) ruheZeigen();
   if (verbund.fehler !== verbundFehler) {
     verbundFehler = verbund.fehler;
     if (verbundFehler) werk.G.meldung = `Verschmelzen und Abziehen: ${verbundFehler} · die Objekte stehen für sich`;
@@ -2556,6 +2572,8 @@ function werkBild(dt: number, m: Moment | null): boolean {
     }
     aktiv = aktiv || schnalz || klingt();
   }
+  // Maul, Etappe 6: Die Zunge lebt. Sie läuft je Bild mit, solange sie sich bewegt oder gezogen wird (auch wenn die Haut steht)
+  if (zungeSchritt(dt)) aktiv = true;
   // Formen beginnen mit Edgeloops: einmal je Form, sobald sie aufgeblasen ist und ihre Haut steht (die Linie der Mitte bleibt)
   if (startLoops && werkGezeigt && werkForm && !werkForm.startLoops && werkForm.geladen === undefined && zustand === 'ruhe' && !werk.zug && !werkBeschaeftigt() && werk.ruheOffen === null) {
     startLoopsAnlegen();
@@ -4199,10 +4217,14 @@ function bild(dt: number): boolean {
       // Maul, Etappe 5: Die Zähne tragen ihre eigene Farbe. Sie stehen dann nicht im Netz des Körpers, sondern werden danach für
       // sich ins selbe Ziel gezeichnet (`zahnBild`). Nicht in der Ebenen-Ansicht (dort steht je Ebene eine Kopie des Körpers, die
       // Zähne bleiben Teil von ihm) und nicht, wenn das aktive Objekt im Verbund aufgeht.
-      const zaehneFuerSich = !facetten && !kopien && !!zaehneNetzJetzt && !verbundVerdeckt(aktivId);
+      const zaehneFuerSich = !facetten && !kopien && (!!zaehneNetzJetzt || !!zungeNetzJetzt) && !verbundVerdeckt(aktivId);
       const festN = facetten ?? (zaehneFuerSich ? (zeigeNetzAlle(true) ?? zeigN) : zeigN);
-      const zb = zaehneFuerSich ? (zahnBild ??= new ZahnBild(zahnKugel())) : zahnBild;
+      const zb = zaehneFuerSich && zaehneNetzJetzt ? (zahnBild ??= new ZahnBild(zahnKugel())) : zahnBild;
       zb?.setzen(zaehneFuerSich ? zaehneNetzJetzt : null);
+      // (Etappe 6: die Zunge genauso, in ihrer Farbe)
+      const ub = zaehneFuerSich && zungeNetzJetzt ? (zungenBild ??= new ZahnBild(zahnKugel())) : zungenBild;
+      ub?.setzen(zaehneFuerSich ? zungeNetzJetzt : null);
+      const zungenFarbe = werk.G.maul?.zunge?.farbe ?? ZUNGE_FARBE;
       const zahnFarbe = werk.G.maul?.zaehne?.farbe ?? ZAHN_FARBE;
       if (!festeStand || festeStand.netz !== festN || festeStand.version !== werkHaut.version) {
         feste.netzSetzen(festN, wicklungVon(festN));
@@ -4220,6 +4242,7 @@ function bild(dt: number): boolean {
           zaehneFuerSich || (farbeDa && material === 'Wachs')
             ? (r, k) => {
                 if (zaehneFuerSich) zb?.zeichnen(r, k, zahnFarbe, schnittJetzt);
+                if (zaehneFuerSich) ub?.zeichnen(r, k, zungenFarbe, schnittJetzt);
                 if (!(farbeDa && material === 'Wachs')) return;
                 const t0 = performance.now();
                 farbWerk.anzeige.zeichnen(r, k, { modus: 'wachs', linie: malModus && !farbAn ? FARBLINIE_BREITE * D : 0, spiegelSchnitt: spiegelSchnittJetzt(), schnitt: schnittJetzt, verdeckt: zeigN, kopien });
@@ -4374,6 +4397,8 @@ function bild(dt: number): boolean {
       ? zahnWahl
         ? `Zahn gewählt${zahnWahl.allein ? ' (allein)' : ''} · ziehen rückt ihn auf dem Zahnfleisch · Formenring und G stellen nur ihn · noch ein Tipp: ${zahnWahl.allein ? 'zurück zur Reihe' : 'ohne sein Spiegelbild'} · ⌫ zieht ihn · Esc`
         : 'Zähne · Formenring: Vorlage · Drehregler: was die Perle sagt (# G N V S) · Zahn antippen: seine Reihe, noch einmal: der Zahn mit seinem Spiegelbild · Esc schließt die Linse'
+      : zustand === 'ruhe' && werkGezeigt && zungeOffen && raumWerkzeug === 'auswahl' && !bearbeiten.stift && bearbeiten.auswahl.size === 0
+      ? 'Zunge · greifen und ziehen dehnt sie wie Gummi, losgelassen schnellt sie zurück · sie geht mit dem Unterkiefer mit und schwingt aus · Esc'
       : zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
       ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · A oder Q: zurück'
       : zustand === 'ruhe' && werkGezeigt && objektModus()
@@ -7476,6 +7501,10 @@ window.addEventListener('keydown', (e) => {
         zahnWahl = null;
         anstossen();
       } else linseSchliessen();
+    } else if (zungeOffen) {
+      // Etappe 6: Esc lässt das Maul wieder zugehen, das der Tropfen „Zunge“ offen hält
+      zungeOffen = false;
+      anstossen();
     } else if (faecher.ziel > 0.5) {
       // Etappe 6: Ist nichts angefangen und nichts gewählt, schiebt Esc die Kopien wieder zu einer Form zusammen
       faecherSetzen(false);
@@ -9093,7 +9122,7 @@ function kieferUiZeigen(): boolean {
   } else {
     // (offen, solange ein Tropfen gehalten wird, im Paint-Modus, solange die Ebene „Maul“ gewählt ist, und solange die Linse der
     // Zähne offen ist: Sonst sähe man nicht, was man stellt. Wird an der Form gezogen, ist es so lange zu.)
-    let ziel = kieferZug || (maulEbeneAktiv() && farbeMoeglich()) || (linseOffen() && !werk.zug) ? 1 : 0;
+    let ziel = kieferZug || (maulEbeneAktiv() && farbeMoeglich()) || ((linseOffen() || zungeOffen) && !werk.zug) ? 1 : 0;
     if (kieferSchau && !kieferZug) {
       const t = (jetzt - kieferSchau.t0) / (kieferSchau.ms ?? KIEFER_SCHAU_MS);
       if (t >= 1 || werk.zug) kieferSchau = null;
@@ -9117,12 +9146,18 @@ function kieferUiZeigen(): boolean {
   {
     const darf = !!k && bearbeitenAn && !malModus && vier < 0.02 && !werk.maulLauf && !reihe;
     const zeigen = darf && !werk.zug && !werkBlatt.maulStrich;
-    zaehneTropfen.hidden = !zeigen;
+    zaehneTropfen.hidden = zungeTropfen.hidden = !zeigen;
     if (zeigen) {
+      // (zwei Tropfen nebeneinander unter der Mitte der Leiste)
       const r = leisteEl.getBoundingClientRect();
-      zaehneTropfen.style.left = `${(r.left + r.width / 2).toFixed(1)}px`;
-      zaehneTropfen.style.top = `${(r.bottom + 10).toFixed(1)}px`;
+      const mitteX = r.left + r.width / 2;
+      zaehneTropfen.style.left = `${(mitteX - 34).toFixed(1)}px`;
+      zungeTropfen.style.left = `${(mitteX + 34).toFixed(1)}px`;
+      zaehneTropfen.style.top = zungeTropfen.style.top = `${(r.bottom + 10).toFixed(1)}px`;
     }
+    // die Zunge hält das Maul nur offen, solange es sie gibt und Ozzy in einem Zustand ist, in dem man an ihr zieht
+    if (zungeOffen && !(zustand === 'ruhe' && !!werk.G.maul?.zunge && !malModus && vierZiel < 0.5 && !objektModus() && !reihe)) zungeOffen = false;
+    zungeTropfen.setAttribute('aria-pressed', zungeOffen ? 'true' : 'false');
     // (die Linse bleibt, wenn das Bearbeiten nur kurz ruht, etwa beim Wechsel der Ansicht; sie schließt, wenn es nichts mehr zu stellen
     // gibt: kein Maul, zurück auf dem Blatt, Paint-Modus, Vier Ansichten, Objekte)
     if (linseSchritt(zustand === 'ruhe' && !!werk.maulLippe() && !malModus && vierZiel < 0.5 && !objektModus() && !reihe)) braucht = true;
@@ -9542,7 +9577,7 @@ const ZAHN_NAH: readonly (readonly [number, number])[] = [
   [0, -4],
 ];
 
-/** Zähne sind zu greifen: Es wird an der Form bearbeitet, mit dem Auswahlwerkzeug (A), und nichts anderes läuft */
+/** Zähne und Zunge sind zu greifen: Es wird an der Form bearbeitet, mit dem Auswahlwerkzeug (A), und nichts anderes läuft */
 const zaehneGreifbar = (): boolean =>
   zustand === 'ruhe' &&
   werkGezeigt &&
@@ -9559,7 +9594,7 @@ const zaehneGreifbar = (): boolean =>
   !tastenZug &&
   !leertaste &&
   !kieferZug &&
-  zaehneNetzVon.length > 0;
+  (zaehneNetzVon.length > 0 || zungeNetzJetzt !== null);
 
 /**
  * Der Zahn unter dem Zeiger (sein Platz in `zaehneNetzVon`), wenn er dort zu sehen ist: Der Strahl trifft das Netz der Zähne, und
@@ -9727,12 +9762,14 @@ function zahnMarkenZeigen(): void {
 buehne.addEventListener(
   'pointerdown',
   (e) => {
-    if (e.button !== 0 || zahnZug) return;
+    if (e.button !== 0 || zahnZug || zungeZug) return;
     buehnenTipp = null;
     if (!zaehneGreifbar() || e.altKey || e.metaKey || e.ctrlKey) return;
     const [x, y] = lageIm(e);
     const q = zahnUnterZeiger(x, y);
     if (!q) {
+      // (kein Zahn: vielleicht die Zunge, dann gehört der Griff ihr)
+      if (zungeGreifen(e, x, y)) return;
       if (zahnWahl) buehnenTipp = { id: e.pointerId, x, y };
       return;
     }
@@ -9771,6 +9808,14 @@ buehne.addEventListener(
 buehne.addEventListener(
   'pointermove',
   (e) => {
+    if (zungeZug && e.pointerId === zungeZug.id) {
+      e.stopPropagation();
+      const [x, y] = lageIm(e);
+      zeiger.x = x;
+      zeiger.y = y;
+      zungeZiehen(x, y);
+      return;
+    }
     const zg = zahnZug;
     if (!zg || e.pointerId !== zg.id) return;
     e.stopPropagation();
@@ -9786,6 +9831,19 @@ buehne.addEventListener(
   true,
 );
 function zahnZugEnde(e: PointerEvent, tipp: boolean): void {
+  // die Zunge loslassen: Sie schnellt zurück
+  if (zungeZug && e.pointerId === zungeZug.id) {
+    e.stopPropagation();
+    zungeZug = null;
+    zungenKette?.lassen();
+    try {
+      buehne.releasePointerCapture(e.pointerId);
+    } catch {
+      // schon frei
+    }
+    anstossen();
+    return;
+  }
   const zg = zahnZug;
   if (zg && e.pointerId === zg.id) {
     e.stopPropagation();
@@ -9815,8 +9873,165 @@ buehne.addEventListener('pointerup', (e) => zahnZugEnde(e, true), true);
 buehne.addEventListener('pointercancel', (e) => zahnZugEnde(e, false), true);
 // (geht der gefangene Zeiger verloren, ohne dass er losgelassen wurde, endet der Griff auch: Sonst bliebe er für immer stehen)
 buehne.addEventListener('lostpointercapture', (e) => {
-  if (zahnZug && e.pointerId === zahnZug.id) zahnZugEnde(e, false);
+  if ((zahnZug && e.pointerId === zahnZug.id) || (zungeZug && e.pointerId === zungeZug.id)) zahnZugEnde(e, false);
 });
+
+// ---------- Die Zunge (Maul, Etappe 6, erste Scheibe) ----------
+//
+// Die Zunge ist ein Wert am Maul (`werk.G.maul.zunge`). Wo sie liegt, wird aus der Tasche gelesen (`zunge.ts`: ihre Knoten hängen an
+// der Mittellinie des Bodens); ihre Kette läuft je Bild mit (`zungeSchritt` in `werkBild`): Bewegt sich der Kiefer, kommt sie nach und
+// schwingt aus. Gezeigt wird sie als eigenes Netz wie die Zähne. Der Tropfen „Zunge“ unter der Leiste gibt sie dem Maul und hält es
+// danach offen, solange er gedrückt ist; greifen und ziehen dehnt sie (die Weiche vor der Bühne), losgelassen schnellt sie zurück.
+const zungeTropfen = $<HTMLButtonElement>('zunge-tropfen');
+let zungePlan: { haut: object; schl: string; platz: ZungenPlatz | null } | null = null;
+let zungenKette: ZungenKette | null = null;
+/** woran ihr Bild hängt (Platz, Haut, Stellung der Kiefer): Ändert es sich, läuft sie */
+let zungeStand = '';
+/** sie wächst gerade aus dem Boden */
+let zungeWuchs: { t0: number } | null = null;
+const ZUNGE_WUCHS_MS = 700;
+/** der Tropfen „Zunge“ ist gedrückt: Das Maul steht offen, damit man an ihr ziehen kann */
+let zungeOffen = false;
+/** der laufende Griff an der Zunge: die Ebene quer zum Blick durch den gegriffenen Knoten (Welt) */
+let zungeZug: { id: number; ort: Vector3; quer: Vector3 } | null = null;
+
+/** der Platz der Zunge für den Stand des Werks (neu gelesen nach jedem Schritt, jedem Netzwechsel und wenn sich ihre Werte ändern) */
+function zungePlatzJetzt(): ZungenPlatz | null {
+  const z = werk.G.maul?.zunge;
+  if (!z) {
+    zungePlan = null;
+    return null;
+  }
+  const schl = `${werk.zurueck.length}|${JSON.stringify(z)}`;
+  if (zungePlan && zungePlan.haut === werk.haut && (zungePlan.schl === schl || werk.zug)) return zungePlan.platz;
+  const tasche = werk.maulTasche();
+  const platz = tasche ? zungePlatz(farbWerk.karteFuer(hautJetzt()), tasche, z) : null;
+  zungePlan = { haut: werk.haut, schl, platz };
+  return platz;
+}
+
+/**
+ * Die Zunge ein Bild weiter: ihre Kette an der Haut, wie sie eben gezeigt wird, und daraus ihr Netz. Sie ruht (und kostet nichts),
+ * solange sich weder die Haut noch die Kiefer noch sie selbst bewegen. Zurück: ob es weitere Bilder braucht.
+ */
+function zungeSchritt(dt: number): boolean {
+  const platz = zustand === 'ruhe' && werkGezeigt && !verbundVerdeckt(aktivId) ? zungePlatzJetzt() : null;
+  if (!platz) {
+    if (zungeNetzJetzt) {
+      zungeNetzJetzt = null;
+      zungeVersion++;
+    }
+    zungenKette = null;
+    zungeStand = '';
+    zungeWuchs = null;
+    return false;
+  }
+  const jetzt = performance.now();
+  const wuchs = zungeWuchs ? Math.max(0, Math.min(1, (jetzt - zungeWuchs.t0) / ZUNGE_WUCHS_MS)) : 1;
+  if (zungeWuchs && wuchs >= 1) zungeWuchs = null;
+  const stand = `${zungePlan?.schl}|${werkHaut.version}|${werk.anzeigeDreht() ? `${werk.grund ? 1 : werk.maulBlick.toFixed(4)}|${werk.pose.kiefer}|${werk.pose.schaedel}` : 'zu'}`;
+  const neu = !zungenKette || zungenKette.platz !== platz;
+  if (!neu && stand === zungeStand && zungeNetzJetzt && !zungenKette!.bewegt && !zungenKette!.greift && wuchs >= 1) return false;
+  zungeStand = stand;
+  const P = werk.alsAnzeige(() => werk.haut.pos);
+  let kette = zungenKette;
+  if (!kette) {
+    // (eine neue Zunge liegt gleich an ihrem Platz)
+    kette = new ZungenKette(platz);
+    kette.setzen(P);
+    zungenKette = kette;
+  } else {
+    if (neu) {
+      // ihr Platz ist neu gelesen (nach einem Schritt, einem Netzwechsel): Sie behält Lage, Tempo und Griff und schwingt weiter
+      const alt = kette;
+      kette = new ZungenKette(platz);
+      kette.uebernehmen(alt);
+      zungenKette = kette;
+    }
+    kette.schritt(dt, P);
+  }
+  zungeNetzJetzt = zungeNetz(kette, werkHaut.f, werkHaut.mitte, wuchs * wuchs * (3 - 2 * wuchs));
+  zungeVersion++;
+  return kette.bewegt || zungeWuchs !== null;
+}
+
+zungeTropfen.addEventListener('click', () => {
+  if (werk.zug || werk.maulLauf || !werk.maulLippe()) return;
+  if (!werk.G.maul?.zunge) {
+    // (sie braucht in der Mitte des Mauls eine Reihe von Punkten über Boden und Gaumen: Die bringt das Maul aus einer Linie mit)
+    const tasche = werk.maulTasche();
+    if (!tasche || !zungePlatz(farbWerk.karteFuer(hautJetzt()), tasche, ZUNGE_ANFANG)) {
+      werk.G.meldung = 'In diesem Maul findet die Zunge keinen Boden';
+      anstossen();
+      return;
+    }
+    if (!werk.zungeSetzen(ZUNGE_ANFANG)) return;
+    // sie wächst bei offenem Maul aus dem Boden; der Tropfen hält das Maul danach offen
+    zungeWuchs = { t0: performance.now() + 260 };
+    zungeOffen = true;
+    kieferSchau = null;
+  } else zungeOffen = !zungeOffen;
+  werkNeu = true;
+  anstossen();
+});
+
+/**
+ * Trifft der Zeiger die Zunge (und liegt die Form nicht davor), gehört der Griff ihr: Der nächste Knoten wird gegriffen und folgt
+ * dem Zeiger in der Ebene quer zum Blick. Zurück: ob gegriffen wurde.
+ */
+function zungeGreifen(e: PointerEvent, x: number, y: number): boolean {
+  const n = zungeNetzJetzt;
+  const kette = zungenKette;
+  if (!n || !kette) return false;
+  const { o, d } = kam.strahl(x, y, W, H);
+  const von: [number, number, number] = [o.x, o.y, o.z];
+  const nach: [number, number, number] = [d.x, d.y, d.z];
+  const tr = strahlAufNetz(n.pos, n.index, von, nach);
+  if (!tr) return false;
+  const haut = verbundVerdeckt(aktivId) ? null : werkHaut.zeigeNetz;
+  const davor = haut ? strahlAufNetz(haut.pos, haut.index, von, nach) : null;
+  if (davor && davor.s < tr.s - (0.02 * kette.platz.lang) / werkHaut.f) return false;
+  // Ist weder der Tropfen „Zunge“ gedrückt noch die Linse offen, gehen Punkte und Linien der Form vor (wie bei den Zähnen)
+  if (!zungeOffen && !linseOffen()) {
+    bearbeiten.alt = false;
+    bearbeiten.umschalt = e.shiftKey;
+    bearbeiten.kippen = e.shiftKey;
+    bearbeiten.zeigerSetzen(x, y, x, y, 0);
+    bearbeiten.zielJetzt();
+    if (bearbeiten.haengt) return false;
+  }
+  const f = werkHaut.f;
+  const k = kette.naechster([(o.x + d.x * tr.s - werkHaut.mitte.x) * f, (o.y + d.y * tr.s - werkHaut.mitte.y) * f, (o.z + d.z * tr.s) * f]);
+  kette.greifen(k);
+  e.stopPropagation();
+  e.preventDefault();
+  try {
+    buehne.setPointerCapture(e.pointerId);
+  } catch {
+    // nachgestellte Ereignisse haben keinen echten Zeiger
+  }
+  const kn = kette.ort(k);
+  zungeZug = { id: e.pointerId, ort: werkInWelt({ x: kn[0], y: kn[1], z: kn[2] }), quer: d.clone() };
+  zeiger.x = x;
+  zeiger.y = y;
+  zeiger.da = true;
+  anstossen();
+  return true;
+}
+
+/** die gegriffene Stelle der Zunge folgt dem Zeiger (in der Ebene quer zum Blick durch den Ort, an dem sie gegriffen wurde) */
+function zungeZiehen(x: number, y: number): void {
+  const zg = zungeZug;
+  const kette = zungenKette;
+  if (!zg || !kette?.greift) return;
+  const { o, d } = kam.strahl(x, y, W, H);
+  const nenner = d.dot(zg.quer);
+  if (Math.abs(nenner) < 1e-9) return;
+  const t = zg.ort.clone().sub(o).dot(zg.quer) / nenner;
+  const f = werkHaut.f;
+  kette.ziehen([(o.x + d.x * t - werkHaut.mitte.x) * f, (o.y + d.y * t - werkHaut.mitte.y) * f, (o.z + d.z * t) * f]);
+  anstossen();
+}
 
 /** der Winkel des Zeigers um den Mundwinkel in der Spiegelebene (Bogenmaß), null: von hier aus nicht zu lesen */
 function kieferZeigerWinkel(x: number, y: number): number | null {
@@ -10613,6 +10828,35 @@ const haken = {
           wechselt: zahnMorph !== null,
         };
       })(),
+    };
+  },
+  /**
+   * Maul, Etappe 6: die Zunge. `werte`: setzen (`'anfang'`: die Werte, mit denen sie beginnt; null: nehmen). Zurück: ihre Werte, ob
+   * ihr Tropfen da und gedrückt ist, ihr Netz, ihre Kette (Länge jetzt und in Ruhe, wie weit die Spitze von ihrem Platz ist, wie
+   * dick sie in der Mitte sein darf, ob sie sich bewegt oder gegriffen ist) und zwei ihrer Knoten im Bild (CSS-Pixel).
+   */
+  zunge: (werte?: werk.MaulZunge | 'anfang' | null) => {
+    if (werte !== undefined) {
+      werk.zungeSetzen(werte === 'anfang' ? ZUNGE_ANFANG : werte);
+      werkNeu = true;
+      anstossen();
+    }
+    const n = zungeNetzJetzt;
+    const kette = zungenKette;
+    const vp = vpJetzt();
+    const imBild = (k: number): [number, number] | null => (kette ? werkOrtImBild(kette.ort(k), vp) : null);
+    return {
+      werte: werk.G.maul?.zunge ?? null,
+      tropfen: !zungeTropfen.hidden,
+      offen: zungeOffen,
+      netz: n ? { punkte: n.pos.length / 3, dreiecke: n.index.length / 3, endlich: n.pos.every((x) => Number.isFinite(x)) && n.normal.every((x) => Number.isFinite(x)) } : null,
+      kette: kette
+        ? { laenge: kette.laenge, ruheLaenge: kette.ruheLaenge, spitzeAb: kette.spitzeAb, dick: kette.dickeMass(Math.floor(ZUNGE_KNOTEN / 2)), bewegt: kette.bewegt, greift: kette.greift, lang: kette.platz.lang, tempo: kette.tempo, schnellster: kette.schnellster }
+        : null,
+      spitze: imBild(ZUNGE_KNOTEN - 1),
+      vorn: imBild(ZUNGE_KNOTEN - 3),
+      mitte: imBild(Math.floor(ZUNGE_KNOTEN / 2)),
+      waechst: zungeWuchs !== null,
     };
   },
   /**

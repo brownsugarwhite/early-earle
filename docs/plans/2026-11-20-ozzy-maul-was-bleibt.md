@@ -46,6 +46,10 @@ Spiegelbild, ein dritter ihn allein. Formenring und `G` stellen dann nur ihn, Zi
 bei geschlossenem Maul über dem anderen Kiefer. Ein gewählter Zahn lässt sich über die Lippe hinaus rücken. Auf Wachs, Solid und
 Zebra tragen die Zähne ihre eigene Farbe (am Anfang Elfenbein; die Perle unten an der Linse stellt sie).
 
+**Etappe 6, erste Scheibe (20.11.):** Neben „Zähne“ hängt der Tropfen „Zunge“. Ein Tipp gibt dem Maul eine Zunge: Sie liegt auf
+dem Unterkiefer, kommt ihm mit Verzögerung nach und schwingt aus. An ihr ziehen dehnt sie wie Gummi, losgelassen schnellt sie
+zurück. Der Tropfen hält das Maul dafür offen.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -216,6 +220,24 @@ Zebra tragen die Zähne ihre eigene Farbe (am Anfang Elfenbein; die Perle unten 
     sind sie damit weiß), die Seifenhaut als Blasen. Auf Solid haben die Zähne keinen Umriss.
 78. **Einen Zahn über die Lippe rücken** habe ich nur im Modell geprüft (sein Versatz), nicht mit dem Zeiger im Fenster.
 79. **Der Farbwähler** ist der des Systems; am iPad nicht geprüft.
+
+### An der Zunge (Etappe 6, erste Scheibe)
+
+80. **Die Linse für die Zunge fehlt:** Länge, Breite, Dicke, Rille und Farbe lassen sich in Ozzy nicht stellen (die Werte stehen
+    am Maul), und die Vorlagen (rund, spitz, gespalten, lang) gibt es nicht.
+81. **Sie schnellt immer zurück,** auch in „Fressen“. Im Konzept bleibt sie in einer Pose liegen, wo du sie loslässt.
+82. **Sie stößt nur an Boden und Gaumen,** gemessen an ihrem eigenen Platz: nicht an Zähne, Wangen oder die Lippe. Weit zur
+    Seite oder nach hinten gezogen kann sie durch die Form gehen.
+83. **Ablegen** (die Spitze bleibt auf einem Zahn oder der Lippe kleben): nicht gebaut.
+84. **Zu ist sie flach und nicht zu sehen.** An getrennten Lippen mit einer Lücke nicht geprüft.
+85. **Der Tropfen „Zunge“ hält das Maul offen.** Ohne ihn kommst du nur in „Fressen“ oder bei offener Linse der Zähne an sie.
+86. **Ihr Gewicht zieht nach unten in der Form** (längs ihrer Hochachse). Liegt eine Form auf der Seite, hängt die Zunge falsch.
+87. **Rosa auf Wachs, Solid und Zebra,** sonst wie der Körper. Ihr Rosa liegt nah an dem des Zahnfleischs.
+88. **Geschätzt:** Federn, Dämpfung, Gewicht und Gummi (die Werte der Studie); wie lange sie wächst (0,7 s).
+89. **Nicht geprüft:** iPad und Stift; andere Formen als „teat firefish“; Sichern und Laden mit Zunge; mehrere Objekte.
+90. **Sie braucht in der Mitte des Mauls eine Reihe von Punkten** über Boden und Gaumen (das Maul aus einer Linie bringt sie
+    mit). Fehlt sie, sagt Ozzy „In diesem Maul findet die Zunge keinen Boden“; den Fall habe ich nicht ausprobiert.
+91. **Fürs Spiel:** 308 Dreiecke und elf Knoten; das Konzept nennt fürs Backen drei bis vier Knochen.
 
 ### Kleines
 

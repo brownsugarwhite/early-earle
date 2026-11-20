@@ -29,7 +29,14 @@ export type WesenStand = {
   /** nächste Kennung für Loops und für Kreuzungen */
   ids: [number, number];
   /** `echt`: ein Maul als echte Form (seit dem 20.11.), auch mit getrennten Lippen; `ersteUnten`: welche Hälfte der Lippe die untere ist; `zaehne`: die zwei Zahnreihen (`werk.ZahnReihe`) und ihre Farbe */
-  maul: { id: number; echt?: true; ersteUnten?: boolean; zaehne?: { oben: ZahnReiheDatei; unten: ZahnReiheDatei; farbe?: string } } | null;
+  maul: {
+    id: number;
+    echt?: true;
+    ersteUnten?: boolean;
+    zaehne?: { oben: ZahnReiheDatei; unten: ZahnReiheDatei; farbe?: string };
+    /** die Zunge (`werk.MaulZunge`) */
+    zunge?: { laenge: number; breite: number; dicke: number; rille: number; farbe?: string };
+  } | null;
   /**
    * `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose; dazu die Stelle
    * `s` jedes Punkts und die Länge der Linie, als der Versatz gemerkt wurde (daran findet die Pose ihre Punkte wieder, wenn die

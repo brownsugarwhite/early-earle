@@ -360,7 +360,14 @@ export let naechsteKreuzung = 1;
  * `ersteUnten`: Die erste Hälfte der Kette der Lippe ist die Unterlippe (beim Schneiden gelesen und gemerkt: Getrennt gezogen
  * sagt es die Lage nicht mehr sicher).
  */
-export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean; zaehne?: MaulZaehne } | null;
+export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean; zaehne?: MaulZaehne; zunge?: MaulZunge } | null;
+/**
+ * Die Zunge des Mauls (Etappe 6): wie weit sie auf dem Boden nach vorn reicht (Anteil der Mittellinie des Bodens von der
+ * Rachenlinie zur Lippe), wie breit (Anteil der Breite des Mauls), wie dick (Anteil der Länge der Mittellinie), wie tief die
+ * Rille oben (Anteil der Dicke) und, wenn sie eine eigene trägt, ihre Farbe (`#rrggbb`; fehlt: Rosa). Wo sie liegt und wie sie
+ * sich bewegt, liest die Anzeige daraus und aus der Tasche.
+ */
+export type MaulZunge = { laenge: number; breite: number; dicke: number; rille: number; farbe?: string };
 /**
  * Eine Zahnreihe (Plan „Maul, Zähne, Zunge“, Etappe 5): wie viele Zähne, ihre Größe (1 = ein Zahn füllt seinen Platz), ihre
  * Neigung nach außen (Bogenmaß), wie viel kleiner sie nach hinten werden (0 … 0,9), wie weit die Reihe nach hinten reicht (Anteil
@@ -1024,6 +1031,18 @@ export function zaehneSetzen(z: MaulZaehne | null, schritt = true): boolean {
   const { zaehne: _alt, ...rest } = m;
   void _alt;
   G.maul = z ? { ...rest, zaehne: { ...z, oben: { ...z.oben }, unten: { ...z.unten } } } : rest;
+  anzeige.allesZeigen();
+  return true;
+}
+
+/** Die Zunge des Mauls setzen oder nehmen (Etappe 6), wie `zaehneSetzen`. Zurück: ob es geschehen ist. */
+export function zungeSetzen(z: MaulZunge | null, schritt = true): boolean {
+  const m = G.maul;
+  if (!m?.echt || zug) return false;
+  if (schritt) zurueck.push(schnappschuss());
+  const { zunge: _alt, ...rest } = m;
+  void _alt;
+  G.maul = z ? { ...rest, zunge: { ...z } } : rest;
   anzeige.allesZeigen();
   return true;
 }
@@ -6074,6 +6093,7 @@ export function standAnwenden(st: WesenStand): string {
           ...(st.maul.echt === true ? { echt: true as const } : {}),
           ...(typeof st.maul.ersteUnten === 'boolean' ? { ersteUnten: st.maul.ersteUnten } : {}),
           ...(st.maul.zaehne ? { zaehne: { ...st.maul.zaehne, oben: { ...st.maul.zaehne.oben }, unten: { ...st.maul.zaehne.unten } } } : {}),
+          ...(st.maul.zunge ? { zunge: { ...st.maul.zunge } } : {}),
         }
       : null,
     pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null, linien: st.pose.linien ?? null },

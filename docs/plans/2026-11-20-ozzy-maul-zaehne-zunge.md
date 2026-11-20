@@ -1010,3 +1010,38 @@ helles Solid, Jelly, Seifenhaut): keine Fehler; das helle Solid zeigt die Zähne
 **Was an den Zähnen noch fehlt:** die Perlen Biegung und Wurzel, eine Farbe je Reihe oder je Zahn, die Farbe auf den übrigen
 Materialien. Bilder: `docs/progress/ozzy/2026-11-20-maul-etappe5-zaehne-aussen.jpg`, `…-zahnfarbe.jpg`. Offenes:
 [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 79.
+
+### 12.19 Etappe 6, erste Scheibe: die Zunge (20.11.)
+
+Deine Antwort (20.11.): „Ja, Etappe 6“.
+
+**In Ozzy:** Neben „Zähne“ hängt unter der Leiste der Tropfen „Zunge“. Ein Tipp: Das Maul öffnet sich, und aus dem Boden wächst
+die Zunge. Sie liegt auf dem Unterkiefer, von hinten bis kurz hinter die Stelle der unteren Zähne, so breit, wie das Maul dort
+ist, oben mit einer flachen Rille. Der Tropfen bleibt gedrückt und hält das Maul offen; noch ein Tipp oder Esc lässt es zugehen.
+
+- **Sie lebt:** Bewegt sich der Unterkiefer, kommt sie mit Verzögerung nach und schwingt aus (hinten straff, vorn lose).
+- **Gummi:** An ihr greifen und ziehen dehnt sie, gedehnt wird sie dünner. Vor der Lippe hat sie keinen Boden mehr und hängt.
+  Losgelassen schnellt sie zurück.
+- Zu steckt sie flach im Maul. Auf Wachs, Solid und Zebra ist sie rosa. ⌘Z nimmt sie zurück.
+
+**Wie:** Die Zunge ist ein Wert am Maul (`G.maul.zunge`: Länge, Breite, Dicke, Rille). Ihre Kette aus elf Knoten hängt an der
+Reihe von Punkten, die in der Mittelebene über den Boden des Mauls läuft, von der Rachenlinie zur Lippe; dieselbe Stelle am
+Gaumen sagt, wie viel Raum ist. Jeder Knoten will an seinen Platz zurück (Feder), die Kette hält ihre Länge weich, Boden und
+Gaumen halten sie im Maul (wie in der Studie). Gerechnet wird in festen Zeitschritten von 1/240 s.
+
+**Geprüft** im Fenster (`ozzy-maul-zunge-fenster.mjs`, U1 bis U8, an „teat firefish“ auf Wachs, mit echten Zeigergesten): Sie
+wächst bei offenem Maul und ruht dann; ein Bildpunkt auf ihr ist rosa (rot 168, grün 69, blau 89), mit Grün gesetzt grün; nach
+einem Ruck am Unterkiefer (34° auf 62°) war ihre Spitze bis 36 Einheiten von ihrem Platz (ihre Mittellinie ist 112 lang) und
+ruhte nach rund 2 s; gegriffen und aus dem Maul gezogen war sie um 157 % gedehnt und ruhte 2,8 s nach dem Loslassen wieder in
+ihrer Länge; ⌘Z; mit Zähnen zusammen. Im Modell (Test „die Zunge“, an einer Kugel): Platz, flach im geschlossenen Maul,
+Nachschwingen, Dehnen und Zurückschnellen.
+
+**Zwei Fehler, die erst das Fenster zeigte:** (1) Mit Zeitschritten, die an der Dauer eines Bilds hängen, zitterte die Spitze
+für immer (6 bis 19 Einheiten je Sekunde): Die Kette hat dann je Bild eine etwas andere Ruhelage. Feste Schritte beheben es.
+(2) Nach jedem Schritt für ⌘Z wurde die Kette neu angelegt; nach dem Loslassen eines Kiefers schwang die Zunge deshalb nicht
+aus. Jetzt behält sie Lage und Tempo, wenn ihr Platz neu gelesen wird.
+
+**Was von Etappe 6 fehlt:** die Linse für die Zunge (Vorlagen rund, spitz, gespalten, lang; Länge, Breite, Dicke, Rille und
+Farbe stellen), liegen bleiben in einer Pose, Ablegen auf Zahn oder Lippe, an Zähne stoßen. Bilder:
+`docs/progress/ozzy/2026-11-20-maul-etappe6-zunge.jpg`, `…-zunge-gezogen.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 80 bis 91.

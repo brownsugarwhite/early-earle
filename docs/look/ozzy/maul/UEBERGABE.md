@@ -8,8 +8,8 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
 in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
 Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält) und Etappe 5 in vier Scheiben (Zähne sprießen und gehen mit den
-Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe). Als Nächstes, auf Florians
-Wort: Etappe 6 (Zunge).** Offenes steht
+Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe), dazu die erste Scheibe von
+Etappe 6 (die Zunge liegt, lebt und dehnt sich). Als Nächstes, auf Florians Wort: die Linse für die Zunge.** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -293,6 +293,36 @@ Plan, 12.18. **Was fehlt:** die Perlen Biegung und Wurzel, eine Farbe je Reihe o
    ersetzten Attributs nicht frei.
 6. **Die Perle der Farbe öffnet den Farbwähler beim `click`** (nur der gilt auf jedem Gerät als Eingabe von Hand); das Farbfeld
    liegt unsichtbar in der Linse (`.linse-farbfeld`, Deckung null, nicht `hidden`). Proben setzen die Farbe darüber (`input`).
+
+## Etappe 6 in Ozzy, erste Scheibe: die Zunge (20.11.)
+
+**Was es gibt:** der Tropfen „Zunge“ neben „Zähne“; die Zunge liegt auf dem Unterkiefer, kommt ihm nach und schwingt aus, lässt
+sich greifen und dehnen und schnellt zurück; rosa auf Wachs, Solid und Zebra. Plan, 12.19. **Was fehlt:** die Linse für die
+Zunge (Vorlagen und Werte), liegen bleiben in einer Pose, Ablegen, an Zähne stoßen.
+
+**Wo:** `src/ozzy/zunge.ts` (`zungePlatz`: ihr Platz aus der Tasche; `ZungenKette`: Federn, Gummi, Boden und Gaumen;
+`zungeNetz`; `ZUNGE_ANFANG`, `ZUNGE_FARBE`), `src/form/werk.ts` (`MaulZustand.zunge`, `MaulZunge`, `zungeSetzen`),
+`src/ozzy/main.ts` („Die Zunge“: `zungePlatzJetzt`, `zungeSchritt` in `werkBild`, der Tropfen, `zungeGreifen` und `zungeZiehen`
+in der Weiche vor der Bühne; `zungenBild`), `ozzy.html` (`#zunge-tropfen`). Probe:
+`GPU=1 node scripts/pruefen/ozzy-maul-zunge-fenster.mjs [ordner]` (U1 bis U8); Test „die Zunge“; Haken `__ozzy.zunge()`.
+
+**Was man wissen muss:**
+
+1. **Die Kette rechnet in festen Zeitschritten** (`ZUNGE_SCHRITT`, 1/240 s; was vom Bild übrig bleibt, wartet). Mit Schritten nach
+   der Dauer des Bilds hat sie je Bild eine andere Ruhelage und zittert für immer.
+2. **Ihr Platz wird nach jedem Schritt für ⌘Z neu gelesen** (wie die Plätze der Zähne). Die Kette überlebt das: Die neue
+   übernimmt Lage, Tempo und Griff der alten (`uebernehmen`). Nur eine neue Zunge wird an ihren Platz gesetzt (`setzen`).
+3. **`zungeSchritt` läuft in jedem Bild** (`werkBild`) und ruht, solange sich weder ihr Platz noch die Haut (`werkHaut.version`)
+   noch die Stellung der Kiefer ändert und sie selbst still liegt. Dann kostet sie nichts.
+4. **Die Mittellinie des Bodens:** Punkte der Tasche in der Mittelebene mit `kiefer` +1 (am Gaumen −1), von der Spitze der Lippe
+   über Kanten nach hinten gelaufen bis zur Rachenlinie (`kiefer` 0). Jeder Knoten hängt an zwei dieser Punkte.
+5. **„Oben“ je Knoten** ist die Normale der Wand des Bodens, in die Mittelebene gelegt; steht das Maul weit offen, die Richtung
+   zum Gaumen. Im Netz dreht mit „oben“ auch „quer“: Sonst stünde es innen herum.
+6. **`ruheNetzGemerkt.ohneZaehne`** wird nur neu zusammengesetzt, wenn sich die ruhenden Objekte selbst ändern: Die Zunge
+   bewegt sich je Bild, und die festen Materialien sollen dann nicht jedes Mal alle Objekte neu bekommen.
+7. **Die Weiche vor der Bühne** fragt erst die Zähne, dann die Zunge. Ist weder ihr Tropfen gedrückt noch die Linse offen,
+   gehen Punkte und Linien der Form vor.
+8. **Die Farbe** steht am Maul (`zunge.farbe`), gestellt wird sie bisher nur über den Haken (`zunge({ …werte, farbe })`).
 
 ## Die Studie in einem Absatz
 

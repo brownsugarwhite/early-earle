@@ -280,7 +280,8 @@ body.wende-an #hinweis {
 }
 /* Maul, Etappe 5: Der Tropfen „Zähne“ ist gedrückt, solange die Linse offen ist. Die Linse (`maulstudie/linse.css`) steht oben
    rechts unter der Tafel „Fressen“ (`linseLegen`); sie ist rund ausgeschnitten, ihre Ecken gehören der Bühne. */
-#zaehne-tropfen[aria-pressed='true'] {
+#zaehne-tropfen[aria-pressed='true'],
+#zunge-tropfen[aria-pressed='true'] {
   background: var(--tinte);
   color: var(--papier);
 }
