@@ -32,7 +32,7 @@ import { kettenAller } from '../ozzy/farbe/ketten';
 import { MAUL_EBENE, maulEbeneBauen } from '../ozzy/farbe/maulEbene';
 import { karteVon, ortGespiegelt } from '../ozzy/farbe/ort';
 import { ZAEHNE_ANFANG, eigenSetzen, formNetzGemischt, mitAnzahl, partner, sitzGrenzen, zaehneNetz, zaehnePaar, zahnPlaetze, zahnRahmen } from '../ozzy/zaehne';
-import { ZUNGE_ANFANG, ZUNGE_KNOTEN, ZungenKette, zungeNetz, zungePlatz } from '../ozzy/zunge';
+import { ZUNGEN_FORMEN, ZUNGE_ANFANG, ZUNGE_KNOTEN, ZUNGE_RING, ZungenKette, zungeGerade, zungeNetz, zungePlatz, zungePlatzAuf, zungenBoden, zungenProfil, zungenUmriss } from '../ozzy/zunge';
 import { manifoldLaden } from './naht';
 
 const R = 150;
@@ -731,7 +731,8 @@ describe('das Maul als echte Form', () => {
     expect(Math.abs(A.max[0]! - B.max[0]!)).toBeLessThan(1e-4);
   });
 
-  it('die Zunge: liegt auf dem Boden und ist zu flach; kommt dem Kiefer mit Verzögerung nach; dehnt sich wie Gummi und schnellt zurück', async () => {
+  /** eine Kugel mit einem Maul aus einer Linie, und seine Tasche, wie die Zunge sie braucht */
+  const maulFuerZunge = async () => {
     const wasm = await manifoldLaden();
     const d = kugel();
     const mk = mittlereKante(d.h);
@@ -761,6 +762,120 @@ describe('das Maul als echte Form', () => {
     }
     const k = karteVon(h);
     const tasche = { innen, lippe: lippe.proben.map((q) => q.ecken[0]), lang: L.unten.lang, kiefer };
+    return { h, k, tasche, innen, kiefer };
+  };
+  /** der Rauminhalt eines geschlossenen Netzes (positiv: Es steht außen herum) */
+  const inhaltVon = (n: { pos: ArrayLike<number>; index: ArrayLike<number> }): number => {
+    let v = 0;
+    for (let t = 0; t < n.index.length; t += 3) {
+      const [a, b, c] = [3 * n.index[t]!, 3 * n.index[t + 1]!, 3 * n.index[t + 2]!];
+      v += n.pos[a]! * (n.pos[b + 1]! * n.pos[c + 2]! - n.pos[b + 2]! * n.pos[c + 1]!) + n.pos[a + 1]! * (n.pos[b + 2]! * n.pos[c]! - n.pos[b]! * n.pos[c + 2]!) + n.pos[a + 2]! * (n.pos[b]! * n.pos[c + 1]! - n.pos[b + 1]! * n.pos[c]!);
+    }
+    return v / 6;
+  };
+
+  it('die Vorlagen der Zunge: rund, spitz, gespalten, lang (jede ein Satz ihrer Werte); die lange reicht über die Lippe und hängt dort durch', async () => {
+    const { h, k, tasche, innen, kiefer } = await maulFuerZunge();
+    const K = ZUNGE_KNOTEN;
+    const M = ZUNGE_RING;
+    expect(ZUNGEN_FORMEN.map((v) => v.name)).toEqual(['Rund', 'Spitz', 'Gespalten', 'Lang']);
+    // die Zunge, mit der ein Maul beginnt, ist die erste Vorlage (ihr Platz ist derselbe wie ohne die neuen Werte)
+    expect(ZUNGE_ANFANG).toEqual({ ...ZUNGEN_FORMEN[0]!.werte, form: 0 });
+    const alt = zungePlatz(k, tasche, { laenge: 0.78, breite: 0.74, dicke: 0.075, rille: 0.3 })!;
+    const rund = zungePlatz(k, tasche, ZUNGE_ANFANG)!;
+    expect(Array.from(rund.breite)).toEqual(Array.from(alt.breite));
+    expect(Array.from(rund.dicke)).toEqual(Array.from(alt.dicke));
+    expect(Array.from(rund.stueck)).toEqual(Array.from(alt.stueck));
+    expect(rund.gabel).toBe(0);
+    expect(Array.from(rund.draussen).some((x) => x === 1)).toBe(false);
+    const plaetze = ZUNGEN_FORMEN.map((v) => zungePlatz(k, tasche, v.werte)!);
+    // der Boden des Mauls, einmal gelesen, gibt für jede Vorlage denselben Platz (so stellt die Linse: ohne das Maul neu zu lesen)
+    const B = zungenBoden(k, tasche)!;
+    for (const [i, v] of ZUNGEN_FORMEN.entries()) expect(zungePlatzAuf(B, v.werte)).toEqual(plaetze[i]);
+    const laenge = (pl: { stueck: ArrayLike<number> }): number => Array.from(pl.stueck).reduce((a, b) => a + b, 0);
+    for (const [i, pl] of plaetze.entries()) {
+      expect(pl, ZUNGEN_FORMEN[i]!.name).not.toBeNull();
+      // gerade gelegt (wie in der Linse): ein geschlossenes Netz, außen herum, spiegelgleich, die Wurzel bei null
+      const n = zungeGerade(pl);
+      expect(n.pos.length / 3).toBe(K * M + 2);
+      expect(n.pos.every((x) => Number.isFinite(x)) && n.normal.every((x) => Number.isFinite(x))).toBe(true);
+      expect(inhaltVon(n)).toBeGreaterThan(50);
+      let [zMin, zMax, xMin, xMax] = [Infinity, -Infinity, Infinity, -Infinity];
+      for (let v = 0; v < n.pos.length / 3; v++) {
+        zMin = Math.min(zMin, n.pos[3 * v + 2]!);
+        zMax = Math.max(zMax, n.pos[3 * v + 2]!);
+        xMin = Math.min(xMin, n.pos[3 * v]!);
+        xMax = Math.max(xMax, n.pos[3 * v]!);
+      }
+      expect(Math.abs(zMax + zMin)).toBeLessThan(1e-3);
+      expect(zMax).toBeGreaterThan(3);
+      expect(xMax - xMin).toBeGreaterThan(0.95 * laenge(pl));
+      // ihr Zeichen am Formenring ist ein geschlossener Pfad aus endlichen Zahlen
+      const zeichen = zungenUmriss(ZUNGEN_FORMEN[i]!.werte, 16);
+      expect(zeichen.startsWith('M') && zeichen.endsWith('Z') && !zeichen.includes('NaN')).toBe(true);
+    }
+    const [, spitz, gespalten, lang] = plaetze as [typeof rund, typeof rund, typeof rund, typeof rund];
+    // spitz: Kurz vor der Spitze ist sie viel schmaler als die runde, in der Mitte nicht
+    expect(spitz.breite[K - 3]! / spitz.breite[5]!).toBeLessThan(0.5 * (rund.breite[K - 3]! / rund.breite[5]!));
+    expect(zungenProfil({ spitz: 1 }, 0.4).breit).toBeGreaterThan(0.75 * zungenProfil({}, 0.4).breit);
+    // gespalten: Vorn ist sie breit geblieben und teilt sich: Zwei Zinken reichen weiter vor als die Kerbe in ihrer Mitte
+    expect(gespalten.gabel).toBeGreaterThan(0.08 * laenge(gespalten));
+    expect(gespalten.breite[K - 1]!).toBeGreaterThan(0.3 * gespalten.breite[5]!);
+    {
+      const n = zungeGerade(gespalten);
+      const kerbe = n.pos[3 * (K * M)]!;
+      let [links, rechts] = [-Infinity, -Infinity];
+      for (let j = 0; j < M; j++) {
+        const v = 3 * ((K - 1) * M + j);
+        if (n.pos[v + 2]! > 1e-6) rechts = Math.max(rechts, n.pos[v]!);
+        if (n.pos[v + 2]! < -1e-6) links = Math.max(links, n.pos[v]!);
+      }
+      expect(rechts - kerbe).toBeGreaterThan(gespalten.gabel);
+      expect(Math.abs(rechts - links)).toBeLessThan(1e-4);
+      // die runde hat keine Kerbe: Ihr vorderster Punkt ist die Spitze selbst
+      const nr = zungeGerade(rund);
+      let vorn = -Infinity;
+      for (let v = 0; v < K * M; v++) vorn = Math.max(vorn, nr.pos[3 * v]!);
+      expect(nr.pos[3 * (K * M)]!).toBeGreaterThanOrEqual(vorn);
+    }
+    // lang: Sie reicht über die Lippe hinaus; ihre letzten Knoten haben dort weder Boden noch Gaumen
+    expect(laenge(lang)).toBeGreaterThan(1.02 * lang.lang);
+    expect(laenge(lang)).toBeLessThan(1.2 * lang.lang);
+    expect(lang.draussen[K - 1]).toBe(1);
+    expect(lang.draussen[4]).toBe(0);
+    const erster = Array.from(lang.draussen).indexOf(1);
+    expect(erster).toBeGreaterThan(5);
+    // ... und vorn bleibt sie breit (das Maul läuft an der Lippe auf null zu, sie nicht)
+    expect(lang.breite[erster]!).toBeGreaterThan(0.25 * lang.breite[4]!);
+    const kette = new ZungenKette(lang);
+    kette.setzen(h.pos);
+    // im geschlossenen Maul: innen flach, vor der Lippe mit ihrer ganzen Dicke
+    expect(kette.dickeMass(4)).toBeLessThan(0.1);
+    expect(kette.dickeMass(K - 2)).toBe(1);
+    // vor der Lippe hängt sie durch: Nach dem Ausschwingen liegt die Spitze unter ihrem Platz, die Knoten im Maul nicht
+    const offenP = Float64Array.from(h.pos);
+    const auf = [kette.auf[15]!, kette.auf[16]!];
+    for (let v = 0; v < h.n; v++) {
+      if (innen[v] && kiefer[v] === -1) {
+        offenP[3 * v]! += 40 * auf[0]!;
+        offenP[3 * v + 1]! += 40 * auf[1]!;
+      }
+    }
+    kette.setzen(offenP);
+    for (let i = 0; i < 360; i++) kette.schritt(1 / 60, offenP);
+    expect(kette.bewegt).toBe(false);
+    const e = 3 * (K - 1);
+    expect(kette.ziel[e + 1]! - kette.pos[e + 1]!).toBeGreaterThan(0.04 * lang.lang);
+    expect(Math.abs(kette.ziel[3 * 4 + 1]! - kette.pos[3 * 4 + 1]!)).toBeLessThan(0.03 * lang.lang);
+    // Gummi hält auch hier: Sie ist nicht länger geworden
+    expect(kette.laenge).toBeLessThan(1.08 * kette.ruheLaenge);
+    const netz = zungeNetz(kette, 1, { x: 0, y: 0 });
+    expect(netz.pos.every((x) => Number.isFinite(x))).toBe(true);
+    expect(inhaltVon(netz)).toBeGreaterThan(100);
+  });
+
+  it('die Zunge: liegt auf dem Boden und ist zu flach; kommt dem Kiefer mit Verzögerung nach; dehnt sich wie Gummi und schnellt zurück', async () => {
+    const { h, k, tasche, innen, kiefer } = await maulFuerZunge();
     const platz = zungePlatz(k, tasche, ZUNGE_ANFANG)!;
     expect(platz).not.toBeNull();
     const K = ZUNGE_KNOTEN;
@@ -792,7 +907,7 @@ describe('das Maul als echte Form', () => {
     const zu = zungeNetz(kette, 1, { x: 0, y: 0 });
     expect(zu.pos.every((x) => Number.isFinite(x))).toBe(true);
     expect(zu.normal.every((x) => Number.isFinite(x))).toBe(true);
-    expect(zu.pos.length / 3).toBe(K * 14 + 2);
+    expect(zu.pos.length / 3).toBe(K * ZUNGE_RING + 2);
     // offen: der Gaumen 40 angehoben (in der Richtung, in der der Boden ins Maul zeigt): Die Zunge wird dick, liegt auf dem Boden
     const auf = [kette.auf[15]!, kette.auf[16]!];
     expect(Math.hypot(auf[0]!, auf[1]!)).toBeCloseTo(1, 6);
@@ -856,7 +971,7 @@ describe('das Maul als echte Form', () => {
     // Gummi: am zweitletzten Knoten gegriffen und 0,7 Mundlängen aus dem Maul gezogen: Sie dehnt sich und wird dünner
     const breitBei = (n: { pos: Float32Array }, knoten: number): number => {
       let b = 0;
-      for (let j = 0; j < 14; j++) b = Math.max(b, Math.abs(n.pos[3 * (knoten * 14 + j) + 2]!));
+      for (let j = 0; j < ZUNGE_RING; j++) b = Math.max(b, Math.abs(n.pos[3 * (knoten * ZUNGE_RING + j) + 2]!));
       return b;
     };
     const breitRuhe = breitBei(zungeNetz(kette, 1, { x: 0, y: 0 }), 5);

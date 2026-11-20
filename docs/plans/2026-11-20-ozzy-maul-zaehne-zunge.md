@@ -1045,3 +1045,60 @@ aus. Jetzt behält sie Lage und Tempo, wenn ihr Platz neu gelesen wird.
 Farbe stellen), liegen bleiben in einer Pose, Ablegen auf Zahn oder Lippe, an Zähne stoßen. Bilder:
 `docs/progress/ozzy/2026-11-20-maul-etappe6-zunge.jpg`, `…-zunge-gezogen.jpg`. Offenes:
 [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 80 bis 91.
+
+### 12.20 Etappe 6, zweite Scheibe: die Linse der Zunge (20.11.)
+
+Deine Antwort (20.11.): „Ja, die Linse“.
+
+**In Ozzy:** Der Tropfen „Zunge“ öffnet jetzt oben rechts die Linse, dieselbe wie bei den Zähnen, gestellt auf die Zunge. In ihr
+liegt die Zunge dieses Mauls, gerade gelegt, die Spitze nach oben; sie lässt sich drehen wie der Zahn.
+
+- **Formenring:** vier Vorlagen: rund, spitz, gespalten, lang. Ein Tipp (oder den Ring drehen) setzt die Zunge darauf. Sie
+  wächst hin, statt zu springen.
+- **Drehregler:** sechs Perlen: L Länge, B Breite, D Dicke, R Rille, S Spitze, G Gabel. Über 100 % Länge reicht sie über die
+  Lippe hinaus und hängt dort durch.
+- **Farbe:** Die Perle unten am Rad öffnet den Farbwähler. Die Zunge trägt die Farbe im Maul und in der Linse.
+- Solange die Linse offen ist, steht das Maul offen, und die Zunge lässt sich weiter greifen und ziehen. Der Tropfen „Zähne“
+  stellt die Linse auf die Zähne um, der Tropfen „Zunge“ zurück. Je Griff ein Schritt für ⌘Z. ⌫ nimmt die Zunge, Esc schließt
+  die Linse.
+
+**Wie:** Eine Vorlage ist ein Satz der Werte der Zunge (`ZUNGEN_FORMEN`), keine eigene Form. Dazu kamen zwei Werte: `spitz` (sie
+läuft spitz zu) und `gabel` (die letzten drei Ringe ihres Netzes laufen in zwei Zinken aus, ihre Mitte bleibt als Kerbe zurück).
+Ihr Netz hat jetzt 20 statt 14 Punkte je Ring. Eine Länge über 1 legt Knoten vor die Lippe, auf die Verlängerung des vorderen
+Fünftels des Bodens: Dort hat sie weder Boden noch Gaumen, ihr Platz hält sie nur lose, ihr Gewicht zieht sie nach unten. Die
+Linse (`maulstudie/linse.ts`) gilt nicht mehr nur Zähnen: Vorlagen, Perlen und Farbe bekommt sie gesagt (`zieleSetzen`), und
+`teilSetzen` stellt ein beliebiges Netz hinein. In Ozzy gibt es eine Linse für beide Teile. Die gezeigten Werte laufen den
+gesetzten nach (rund 0,07 s): Deshalb wächst eine Vorlage hin, auch nach ⌘Z.
+
+**Geprüft** im Fenster (`ozzy-maul-zunge-fenster.mjs`, jetzt U1 bis U8 und N1 bis N10, an „teat firefish“ auf Wachs, mit echten
+Zeigergesten): Die Linse öffnet für die Zunge (vier Zeichen, die Perlen L B D R S G, keine Reihen, eine Perle für die Farbe; in
+ihr liegt die Zunge, rosa). „Spitz“: ein Schritt, die gezeigten Werte liefen nach und kamen an. „Gespalten“: Gabel 18,7 tief
+bei 71,8 Länge. „Lang“: vier Knoten vor der Lippe, Länge 125,6 bei einer Mittellinie von 112,2, die Spitze hing 6,3 unter ihrem
+Platz. Breite am Rad der Maus 0,68 auf 0,49; Gabel an der langen Zunge 0,45. Farbe Blau: im Maul und in der Linse blau (26, 54,
+195). ⌘Z nahm sechs Griffe einzeln zurück, die Marke folgte. Wechsel zu den Zähnen und zurück; ⌫; Esc. Dazu wie bisher die
+Proben der Zähne, des Mauls und der Farbe, die Probe des Werks (`ozzy-werk-fenster.mjs`) und die Studie. Im Modell (Test „die
+Vorlagen der Zunge“, an einer Kugel): jede Vorlage ein geschlossenes, spiegelgleiches Netz; spitz vorn schmal; die Zinken reichen
+weiter vor als die Kerbe; lang reicht über die Lippe, ist dort breit und hängt durch.
+
+**Vier Dinge zum Tempo, die erst das Messen im Fenster zeigte:**
+
+1. **Jeder Wert las das Maul neu** (über alle Dreiecke, 7 bis 11 ms). Jetzt wird der Boden des Mauls einmal je Schritt gelesen
+   (`zungenBoden`); der Platz für andere Werte darauf kostet fast nichts (`zungePlatzAuf`).
+2. **Jeder Wert der Zunge ließ die Haut der Form neu rechnen** und den Löser vorbereiten (`werk.zungeSetzen` rief
+   `allesZeigen`), 2,5 s lang in jedem Bild. Jetzt verlangt die Zunge nur ein Bild. Bei den Zähnen ist es noch so (Liste, 102).
+3. **Von Nahem pendelte die Anzeige zwischen zwei Feinheitsstufen,** ohne jede Eingabe, an jeder Form, deren Dreieckszahl in
+   der Ruhe eine Stufe mehr erlaubt als im Zug (bei „teat firefish“ mit Maul ab dreifacher Vergrößerung): voll gerechnet, im
+   nächsten Bild wieder gröber, und so fort. Gemessen bei sechsfacher Vergrößerung: 13-mal in 4 s voll neu, jedes Mal ein Bild
+   von rund 100 ms. Das hat mit der Zunge nichts zu tun, traf aber genau die Lage, in der man an Zähnen und Zunge arbeitet.
+   Behoben an einer Stelle der Anzeige (`ozzy/werkHaut.ts`, `rechnen`): Liegt die Haut wie beim letzten Mal und wird sie schon
+   feiner gezeigt als verlangt, bleibt sie fein. Danach: kein Mal in 4 s. An der Rechnung des Kerns ist nichts geändert.
+4. **Das erste Rasten der Linse stockte** (150 bis 600 ms): Der Ton für das Ticken wurde erst dann angelegt. Jetzt geschieht das
+   kurz nach dem Öffnen, wenn nichts zu tun ist.
+
+Danach, von Nahem in „Fressen“ gemessen: Beim Wechsel der Vorlage kein Bild über 34 ms (das längste 22 bis 33 ms); vorher 7 bis
+16 Bilder über 34 ms, das längste 120 bis 230 ms. Der erste Wert eines neuen Griffs kostet dort noch ein bis drei längere
+Bilder (Liste, 101).
+
+**Was von Etappe 6 fehlt:** liegen bleiben in einer Pose, Ablegen auf Zahn oder Lippe, an Zähne stoßen. Bild:
+`docs/progress/ozzy/2026-11-20-maul-etappe6-zunge-linse.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 92 bis 105.

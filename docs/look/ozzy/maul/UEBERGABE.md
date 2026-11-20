@@ -8,8 +8,9 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
 in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
 Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält) und Etappe 5 in vier Scheiben (Zähne sprießen und gehen mit den
-Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe), dazu die erste Scheibe von
-Etappe 6 (die Zunge liegt, lebt und dehnt sich). Als Nächstes, auf Florians Wort: die Linse für die Zunge.** Offenes steht
+Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe), dazu zwei Scheiben von
+Etappe 6 (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und Farbe). Als Nächstes, auf Florians Wort: der Rest
+von Etappe 6 (liegen bleiben in einer Pose, Ablegen, an Zähne stoßen) oder Etappe 7.** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -322,7 +323,42 @@ in der Weiche vor der Bühne; `zungenBild`), `ozzy.html` (`#zunge-tropfen`). Pro
    bewegt sich je Bild, und die festen Materialien sollen dann nicht jedes Mal alle Objekte neu bekommen.
 7. **Die Weiche vor der Bühne** fragt erst die Zähne, dann die Zunge. Ist weder ihr Tropfen gedrückt noch die Linse offen,
    gehen Punkte und Linien der Form vor.
-8. **Die Farbe** steht am Maul (`zunge.farbe`), gestellt wird sie bisher nur über den Haken (`zunge({ …werte, farbe })`).
+8. **Die Farbe** steht am Maul (`zunge.farbe`); seit der zweiten Scheibe stellt sie die Linse.
+
+## Etappe 6 in Ozzy, zweite Scheibe: die Linse der Zunge (20.11.)
+
+**Was es gibt:** Der Tropfen „Zunge“ öffnet die Linse, gestellt auf die Zunge: vier Vorlagen am Formenring (rund, spitz,
+gespalten, lang), sechs Perlen (L Länge, B Breite, D Dicke, R Rille, S Spitze, G Gabel), eine Perle für die Farbe; in der Linse
+liegt die Zunge dieses Mauls gerade gelegt. Eine Länge über 1 reicht über die Lippe. ⌫ nimmt die Zunge. Plan, 12.20. **Was
+fehlt:** liegen bleiben in einer Pose, Ablegen, an Zähne stoßen.
+
+**Wo:** `src/ozzy/zunge.ts` (`ZUNGEN_FORMEN`, `zungenProfil`, `zungenBoden` und `zungePlatzAuf`, `zungeGerade`, `zungenUmriss`,
+`ZUNGE_RING`), `src/maulstudie/linse.ts` (`LinsenZiele.vorlagen`, `zieleSetzen`, `teilSetzen`, `zeichnen`),
+`src/form/werk.ts` (`MaulZunge` mit `spitz`, `gabel`, `form`), `src/ozzy/main.ts` („Die Linse der Zunge“: `zungeStellen`,
+`zungenPerlen`, `zungenZiele`, `zungeLinseZeigen`, `zungeLinseOeffnen`, `zungeNehmen`; `linseHolen`, `linseFuer`),
+`src/ozzy/werkHaut.ts` (`rechnen`: bleibt fein, wenn die Lage gleich ist). Probe:
+`GPU=1 node scripts/pruefen/ozzy-maul-zunge-fenster.mjs [ordner]` (U1 bis U8, N1 bis N10); Test „die Vorlagen der Zunge“; Haken
+`__ozzy.zunge().linse`, `.platz`, `.gezeigt`, `.bodenMs`; `__ozzy.linseZeichnen()`.
+
+**Was man wissen muss:**
+
+1. **Es gibt eine Linse** (`zahnLinse`), gestellt auf Zähne oder Zunge (`linseFuer`). `linseOffen()` heißt weiter: die der Zähne
+   ist offen; `zungeOffen()`: die der Zunge; `linseDa()`: irgendeine. Umgestellt wird in `linseHolen` (`Linse.zieleSetzen`).
+2. **Der Boden des Mauls wird einmal je Schritt gelesen** (`zungenBoden`, geht über alle Dreiecke), der Platz für Werte darauf
+   kostet fast nichts (`zungePlatzAuf`). Wer den Platz je Bild braucht (der Nachlauf der Werte), darf nur den zweiten rufen.
+3. **Die gezeigten Werte laufen den gesetzten nach** (`zungeGezeigt`, in `zungeSchritt`). Angekommen ist es dasselbe Objekt wie
+   am Maul; der Platz der Zunge gehört immer zu den gezeigten Werten.
+4. **Die Zunge ändert weder Linien noch Haut der Form:** `werk.zungeSetzen` ruft nur `anzeige.rendern()`, `zungeStellen` setzt
+   kein `werkNeu`. Mit `allesZeigen` rechnete Ozzy nach jedem Wert 2,5 s lang die Haut neu.
+5. **Vor der Lippe** (`ZungenPlatz.draussen`) liegt der Platz eines Knotens auf der Sehne über das vordere Fünftel des Bodens
+   (`u` über 1), ohne Gaumen (`raum` unendlich) und mit loser Feder (`FEDER_DRAUSSEN`).
+6. **Die Gabel** steht nur im Netz (`zungeNetz`: die letzten drei Ringe laufen aus), nicht in der Kette. Die Zinken stoßen
+   deshalb nirgends an.
+7. **In der Linse** steht das Netz von `zungeGerade`, gedreht (längs nach oben, oben zum Betrachter), die Wurzel knapp unter dem
+   Rand. Neu gestellt wird es, wenn der Platz ein anderes Objekt ist (`zungeLinseVon`).
+8. **Die Anzeige bleibt fein, wenn sich die Lage nicht ändert** (`werkHaut.rechnen`, `vollJetzt`). Vorher pendelte sie von Nahem
+   zwischen zwei Stufen, ohne Eingabe (13-mal in 4 s voll neu). Wer dort wieder `v.voll === voll` verlangt, holt das zurück.
+9. **Der Ton der Linse** wird kurz nach dem Öffnen angelegt (`requestIdleCallback`); das erste Rasten stockte sonst.
 
 ## Die Studie in einem Absatz
 

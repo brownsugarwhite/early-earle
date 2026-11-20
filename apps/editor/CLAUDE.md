@@ -791,6 +791,15 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   zittert es für immer). (46) Die Kette der Zunge überlebt einen neu gelesenen Platz (`uebernehmen`): Plätze werden nach jedem
   Schritt für ⌘Z neu gelesen. (47) `zungeSchritt` läuft je Bild in `werkBild` und ruht von selbst. (48) Wer `ruheZeigen` ändert:
   `ohneZaehne` nicht je Bild neu zusammensetzen. Probe: `ozzy-maul-zunge-fenster.mjs` (U1 bis U8).
+  **Etappe 6, zweite Scheibe: die Linse der Zunge (20.11.; Plan 12.20):** `ZUNGEN_FORMEN`, `MaulZunge.spitz/gabel/form`, in
+  `main.ts` „Die Linse der Zunge“; die Linse (`maulstudie/linse.ts`) gilt jetzt beliebigen Teilen (`zieleSetzen`, `teilSetzen`).
+  Merke: (49) Es gibt eine Linse für Zähne und Zunge (`linseFuer`); `linseOffen()` meint weiter die der Zähne, `linseDa()` beide.
+  (50) Was am Maul für alle Werte gleich ist, einmal je Schritt lesen (`zungenBoden`), nicht je Wert. (51) Ein Wert, der weder
+  Linien noch Haut ändert, ruft `anzeige.rendern()`, nie `allesZeigen` (das rechnet 2,5 s lang die Haut neu und bereitet den
+  Löser vor). (52) Tempo messen: vorher zehn Sekunden Ruhe (die Dehnung klingt bis zu 9 s aus und rechnet je Bild), und von Nahem
+  messen, nicht nur in der gewohnten Ansicht. Der Haken `messen` nennt die Teile eines Bilds. (53) `werkHaut.rechnen` bleibt
+  fein, wenn die Lage gleich ist (`vollJetzt`): Sonst pendelt die Anzeige in Ruhe zwischen zwei Stufen. (54) Proben ohne Ordner
+  für Bilder legen `apps/editor/undefined/` an: den Ordner immer mitgeben. Probe: `ozzy-maul-zunge-fenster.mjs` (N1 bis N10).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

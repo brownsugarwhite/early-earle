@@ -746,8 +746,14 @@ export class WerkHaut {
     // Liegt die Haut genau wie beim letzten Mal, klingt nur die Dehnung nach (S3: vorher jedes Bild die ganze glatte Anzeige neu, rund
     // 5 ms, 2,5 s lang nach jedem Handgriff): kein neues Glätten, kein neuer Umriss, nur die Dehnung
     const v = this.letzte;
+    // Zeigt sie dieselbe Lage schon feiner, als jetzt verlangt ist (zuletzt für die Ruhe gerechnet, verlangt ist die Stufe für den
+    // Zug), bleibt sie fein. Sonst pendelt die Anzeige in der Ruhe zwischen zwei Stufen, wo die Ruhe eine Stufe mehr erlaubt als der
+    // Zug: `glattInRuhe` lässt voll rechnen, das nächste Bild (die Dehnung klingt noch aus) rechnet wieder gröber, und so fort, ohne
+    // jede Eingabe. Gemessen am 20.11. an „teat firefish“ mit Maul (23 380 Dreiecke) ab dreifacher Vergrößerung: 13-mal in 4 s voll
+    // neu, jedes Mal ein Bild von rund 100 ms.
+    const vollJetzt = voll || (!!v && v.voll);
     // (nicht, solange die Haut nach ⌘Z zurückfließt: Dann ändert sich die gezeigte Lage in jedem Bild)
-    if (!vorgabe && !this.fluss && this.netz && v && v.plan === g && v.voll === voll && v.lagen.length === L.length && this.stufenFuer(g, voll) === this.stufen) {
+    if (!vorgabe && !this.fluss && this.netz && v && v.plan === g && v.voll === vollJetzt && v.lagen.length === L.length && this.stufenFuer(g, vollJetzt) === this.stufen) {
       let gleich = true;
       for (let i = 0; i < L.length; i++)
         if (L[i] !== v.lagen[i]) {

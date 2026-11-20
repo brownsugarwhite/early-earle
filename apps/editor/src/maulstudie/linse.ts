@@ -15,8 +15,12 @@
  * Seit der zweiten Scheibe von Etappe 5 steht die Linse auch in Ozzy (`ozzy/main.ts`, „Die Linse der Zähne“). Dafür kam dazu: die
  * Perlen der Reihen (`LinsenZiele.reihen`: wem die Linse gilt), die Größe am Anfang, `vorlageZeigen` und `auffrischen` (wenn sich
  * die Werte von außen ändern, etwa mit ⌘Z). Das Aussehen steht in `linse.css`.
+ *
+ * Seit der zweiten Scheibe von Etappe 6 gilt die Linse nicht mehr nur Zähnen: `LinsenZiele.vorlagen` sind die Zeichen am Formenring
+ * (ohne sie: die Formen der Zähne), `zieleSetzen` stellt sie auf ein anderes Teil um (andere Vorlagen, Perlen, Reihen, Farbe), und
+ * `teilSetzen` stellt ein beliebiges Netz in die Linse (in Ozzy: die Zunge, gerade gelegt).
  */
-import { AmbientLight, Color, DataTexture, DirectionalLight, Group, Mesh, MeshMatcapMaterial, PerspectiveCamera, RGBAFormat, SRGBColorSpace, Scene, WebGLRenderer, DoubleSide } from 'three';
+import { AmbientLight, type BufferGeometry, Color, DataTexture, DirectionalLight, Group, Mesh, MeshMatcapMaterial, PerspectiveCamera, RGBAFormat, SRGBColorSpace, Scene, WebGLRenderer, DoubleSide } from 'three';
 import { ZAHN_FORMEN, zahnNetz, zahnUmriss, type ZahnForm } from './zahn';
 
 export type Perle = {
@@ -35,9 +39,17 @@ export type Perle = {
 /** wem die Linse gilt: je Reihe eine Perle in ihrer Farbe (`an`: sie gilt ihr gerade; `tippen`: die Perle wurde angetippt) */
 export type LinsenReihe = { name: string; farbe: string; an: () => boolean; tippen: () => void };
 
+/**
+ * Eine Vorlage am Formenring: ihr Name und ihr Zeichen (ein Pfad, etwa 17 hoch; `ab`: um so viel steht er unter der Mitte des
+ * Zeichens, sonst 8; `farbe`: seine Füllung, sonst die der Zähne).
+ */
+export type LinsenVorlage = { name: string; zeichen: string; ab?: number; farbe?: string };
+
 export type LinsenZiele = {
-  /** eine Vorlage ist gewählt (Index in `ZAHN_FORMEN`) */
+  /** eine Vorlage ist gewählt (Index in `vorlagen`; ohne sie in `ZAHN_FORMEN`) */
   form: (i: number) => void;
+  /** die Vorlagen am Formenring (fehlen sie: die Formen der Zähne) */
+  vorlagen?: LinsenVorlage[];
   perlen: Perle[];
   reihen?: LinsenReihe[];
   /** die Farbe des Teils (`#rrggbb`): Eine Perle am Rad zeigt sie und öffnet den Farbwähler des Systems; der Zahn in der Linse trägt sie */
@@ -64,6 +76,8 @@ export function grauesKugelbild(daten: Uint8Array, groesse: number): DataTexture
   bild.needsUpdate = true;
   return bild;
 }
+
+const ZAHN_VORLAGEN: LinsenVorlage[] = ZAHN_FORMEN.map((z) => ({ name: z.name, zeichen: zahnUmriss(z.form, 17) }));
 
 const NS = 'http://www.w3.org/2000/svg';
 const el = <K extends keyof SVGElementTagNameMap>(name: K, attr: Record<string, string | number> = {}): SVGElementTagNameMap[K] => {
@@ -95,10 +109,13 @@ export class Linse {
   private zahl: SVGTextElement | null = null;
   private zahlUhr = 0;
   private ton: AudioContext | null = null;
+  private tonGeplant = false;
   private letztesBild = 0;
   private offen = false;
   private gierZahn = -0.5;
   private neigZahn = 0.15;
+  /** was in der Linse steht: ein Zahn (mit Zahnfleisch) oder ein anderes Teil; wechselt es, steht es wieder in seinem ersten Blick */
+  private teilArt: 'zahn' | 'teil' | null = null;
   /** der Tropfen an der Marke: wie weit er vom letzten Rasten noch ausgelenkt ist */
   private tropfenAus = 0;
   /** der wievielte Griff am Drehregler es ist (einmal Greifen und Drehen samt Nachlauf, oder ein Zug am Rad der Maus) */
@@ -107,13 +124,16 @@ export class Linse {
   /** das Farbfeld des Systems (unsichtbar, aber in der Seite: Nur so öffnet es den Farbwähler) */
   private farbfeld: HTMLInputElement | null = null;
 
+  private ziele: LinsenZiele;
+
   constructor(
     feld: HTMLElement,
     grau: DataTexture,
-    private readonly ziele: LinsenZiele,
+    ziele: LinsenZiele,
     /** Durchmesser des runden Felds am Anfang (CSS-Pixel) */
     groesse = 240,
   ) {
+    this.ziele = ziele;
     this.groesse = groesse;
     this.feld = feld;
     feld.innerHTML = '';
@@ -122,14 +142,15 @@ export class Linse {
     feld.appendChild(this.leinwand);
     this.svg = el('svg', { class: 'linse-ringe' });
     feld.appendChild(this.svg);
-    if (ziele.farbe) {
+    {
+      // (das Feld der Farbe steht immer in der Seite: Ob es eine Perle dafür gibt, sagen die Ziele, und die können wechseln)
       const f = document.createElement('input');
       f.type = 'color';
       f.className = 'linse-farbfeld';
       f.tabIndex = -1;
-      f.setAttribute('aria-label', ziele.farbe.name);
+      f.setAttribute('aria-label', ziele.farbe?.name ?? 'Farbe');
       f.addEventListener('input', () => {
-        ziele.farbe?.setzen(f.value);
+        this.ziele.farbe?.setzen(f.value);
         this.zeigen();
         this.lauf();
       });
@@ -185,12 +206,19 @@ export class Linse {
     this.zeigen();
     this.lauf();
   }
+  /** jetzt zeichnen, ohne auf das nächste Bild zu warten (für Proben: Danach lässt sich ihr Bild im selben Zug lesen) */
+  zeichnen(): void {
+    this.zeigen();
+    this.dreh.rotation.set(this.neigZahn, this.gierZahn, 0);
+    this.renderer.render(this.szene, this.kamera);
+  }
   /** ein kurzes Wort dort, wo sonst die Zahl des Drehreglers steht (in Ozzy: wem die Linse jetzt gilt) */
   melden(text: string): void {
     this.zahlZeigen(text);
   }
 
-  oeffnen(form: ZahnForm, vorlage: number): void {
+  /** die Linse öffnen, mit einem Zahn darin (`null`: Das Teil stellt danach `teilSetzen`) */
+  oeffnen(form: ZahnForm | null, vorlage: number): void {
     this.offen = true;
     this.feld.hidden = false;
     this.feld.classList.remove('quillt');
@@ -198,7 +226,67 @@ export class Linse {
     this.feld.classList.add('quillt');
     this.gewaehlt = vorlage;
     this.formZiel = this.winkelVon(vorlage);
-    this.zahnSetzen(form);
+    // Den Ton für das Ticken anlegen, bevor zum ersten Mal gedreht wird: Das dauert (gemessen: 150 ms und mehr), und beim ersten
+    // Rasten würde die Linse sonst stocken. Hier geschieht es, wenn gerade nichts zu tun ist.
+    if (!this.ton && !this.tonGeplant) {
+      this.tonGeplant = true;
+      const bereiten = (): void => {
+        try {
+          this.ton ??= new AudioContext();
+        } catch {
+          // (kein Ton: dann nur das Bild)
+        }
+      };
+      if ('requestIdleCallback' in window) window.requestIdleCallback(bereiten, { timeout: 2000 });
+      else setTimeout(bereiten, 600);
+    }
+    if (form) this.zahnSetzen(form);
+    else if (this.zahn) {
+      // (was vorher darin stand, gehört nicht zu dem, was jetzt kommt)
+      this.zahn.removeFromParent();
+      this.zahn.geometry.dispose();
+      this.zahn = null;
+      this.fleisch.visible = false;
+    }
+    this.lauf();
+  }
+  /**
+   * Die Linse gilt jetzt etwas anderem: andere Vorlagen, Perlen, Reihen, Farbe. Die Ringe werden neu gebaut, die erste Perle gilt,
+   * `vorlage` steht an der Marke.
+   */
+  zieleSetzen(ziele: LinsenZiele, vorlage: number): void {
+    this.ziele = ziele;
+    this.perle = 0;
+    this.gewaehlt = vorlage;
+    this.formWinkel = this.winkelVon(vorlage);
+    this.formZiel = this.formWinkel;
+    this.radRest = 0;
+    this.radSchwung = 0;
+    this.tropfenAus = 0;
+    this.farbfeld?.setAttribute('aria-label', ziele.farbe?.name ?? 'Farbe');
+    this.bauen();
+    this.lauf();
+  }
+  /**
+   * Ein beliebiges Teil in der Linse statt eines Zahns: sein Netz um den Nullpunkt (der steht in der Mitte der Linse), `mass` ist
+   * die Strecke, die die Höhe der Linse füllt. Ohne Zahnfleisch. `blick`: so gedreht steht es beim ersten Mal (danach bleibt, wie
+   * man es gedreht hat).
+   */
+  teilSetzen(netz: BufferGeometry, mass: number, blick?: { gier: number; neig: number }): void {
+    if (this.zahn) {
+      this.zahn.removeFromParent();
+      this.zahn.geometry.dispose();
+    }
+    if (blick && this.teilArt !== 'teil') {
+      this.gierZahn = blick.gier;
+      this.neigZahn = blick.neig;
+    }
+    this.teilArt = 'teil';
+    this.zahn = new Mesh(netz, this.material);
+    this.zahn.scale.setScalar(4.38 / Math.max(mass, 1e-9));
+    this.fleisch.visible = false;
+    this.dreh.position.y = 0.5;
+    this.dreh.add(this.zahn);
     this.lauf();
   }
   schliessen(): void {
@@ -212,6 +300,12 @@ export class Linse {
       this.zahn.removeFromParent();
       this.zahn.geometry.dispose();
     }
+    if (this.teilArt !== 'zahn') {
+      this.gierZahn = -0.5;
+      this.neigZahn = 0.15;
+    }
+    this.teilArt = 'zahn';
+    this.fleisch.visible = true;
     this.zahn = new Mesh(zahnNetz(form, true), this.material);
     // so groß, dass er die Linse füllt
     const hoch = form.laenge + (form.wurzel === 'keine' ? 0 : form.wurzelLaenge);
@@ -223,8 +317,11 @@ export class Linse {
     this.lauf();
   }
 
+  private vorlagen(): LinsenVorlage[] {
+    return this.ziele.vorlagen ?? ZAHN_VORLAGEN;
+  }
   private winkelVon(i: number): number {
-    return (-2 * Math.PI * i) / ZAHN_FORMEN.length;
+    return (-2 * Math.PI * i) / this.vorlagen().length;
   }
 
   private bauen(): void {
@@ -250,11 +347,12 @@ export class Linse {
     const r1 = R + 20;
     const formen = el('g', { class: 'ring-formen' });
     formen.appendChild(el('circle', { r: r1, class: 'ring-bahn' }));
-    ZAHN_FORMEN.forEach((z, i) => {
-      const a = (2 * Math.PI * i) / ZAHN_FORMEN.length - Math.PI / 2;
+    const vorlagen = this.vorlagen();
+    vorlagen.forEach((z, i) => {
+      const a = (2 * Math.PI * i) / vorlagen.length - Math.PI / 2;
       const g = el('g', { transform: `translate(${(Math.cos(a) * r1).toFixed(2)},${(Math.sin(a) * r1).toFixed(2)}) rotate(${((a * 180) / Math.PI + 90).toFixed(2)})`, class: 'ring-zeichen', 'data-i': i });
       g.appendChild(el('circle', { r: 13, class: 'zeichen-grund' }));
-      g.appendChild(el('path', { d: zahnUmriss(z.form, 17), transform: 'translate(0,8)' }));
+      g.appendChild(el('path', { d: z.zeichen, transform: `translate(0,${z.ab ?? 8})`, ...(z.farbe ? { style: `fill:${z.farbe}` } : {}) }));
       const t = el('title');
       t.textContent = z.name;
       g.appendChild(t);
@@ -345,6 +443,8 @@ export class Linse {
     try {
       this.ton ??= new AudioContext();
       const c = this.ton;
+      // (vorab angelegt, ohne dass eine Hand im Spiel war, ruht er noch: Jetzt ist eine im Spiel)
+      if (c.state === 'suspended') void c.resume();
       const o = c.createOscillator();
       const g = c.createGain();
       o.type = 'triangle';
@@ -481,7 +581,7 @@ export class Linse {
       zug = null;
       this.feld.classList.remove('zieht-formen', 'zieht-rad', 'zieht-zahn', 'zieht-groesse');
       if (z.art === 'formen') {
-        const n = ZAHN_FORMEN.length;
+        const n = this.vorlagen().length;
         let i: number;
         if (z.weg < 0.03 && z.zeichen !== null) i = z.zeichen;
         else i = (((Math.round((-this.formWinkel / (2 * Math.PI)) * n) % n) + n) % n);

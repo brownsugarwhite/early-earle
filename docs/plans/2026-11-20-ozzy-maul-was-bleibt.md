@@ -50,6 +50,11 @@ Zebra tragen die Zähne ihre eigene Farbe (am Anfang Elfenbein; die Perle unten 
 dem Unterkiefer, kommt ihm mit Verzögerung nach und schwingt aus. An ihr ziehen dehnt sie wie Gummi, losgelassen schnellt sie
 zurück. Der Tropfen hält das Maul dafür offen.
 
+**Etappe 6, zweite Scheibe (20.11.):** Der Tropfen „Zunge“ öffnet die Linse für die Zunge: Der Formenring hat vier Vorlagen
+(rund, spitz, gespalten, lang), der Drehregler stellt Länge, Breite, Dicke, Rille, Spitze und Gabel, eine Perle die Farbe. Eine
+lange Zunge reicht über die Lippe und hängt dort durch. ⌫ nimmt die Zunge. Von Nahem rechnet die Anzeige in Ruhe nicht mehr
+dauernd neu.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -80,7 +85,8 @@ zurück. Der Tropfen hält das Maul dafür offen.
 9. ~~Öffnen (Etappe 2)~~ gebaut; was daran offen ist, steht unter „An den Kiefern“.
 10. ~~„Lippen trennen“ (Etappe 3)~~ gebaut; was daran offen ist, steht unter „An den Lippen“.
 11. ~~Die Ebene „Maul“ (Etappe 4)~~ gebaut; was daran offen ist, steht unter „An der Ebene Maul“. Die Zähne (5) gibt es in
-    einer ersten Scheibe (siehe „An den Zähnen“). Es fehlen die Zunge (6), Posen und Backen.
+    einer ersten Scheibe (siehe „An den Zähnen“). Die Zunge (6) gibt es in zwei Scheiben (siehe „An der Zunge“). Es fehlen
+    Posen und Backen.
 
 ### Nicht geprüft
 
@@ -221,23 +227,57 @@ zurück. Der Tropfen hält das Maul dafür offen.
 78. **Einen Zahn über die Lippe rücken** habe ich nur im Modell geprüft (sein Versatz), nicht mit dem Zeiger im Fenster.
 79. **Der Farbwähler** ist der des Systems; am iPad nicht geprüft.
 
-### An der Zunge (Etappe 6, erste Scheibe)
+### An der Zunge (Etappe 6, zwei Scheiben)
 
-80. **Die Linse für die Zunge fehlt:** Länge, Breite, Dicke, Rille und Farbe lassen sich in Ozzy nicht stellen (die Werte stehen
-    am Maul), und die Vorlagen (rund, spitz, gespalten, lang) gibt es nicht.
+80. ~~Die Linse für die Zunge fehlt~~ gebaut (zweite Scheibe); was daran offen ist: Punkte 92 bis 105.
 81. **Sie schnellt immer zurück,** auch in „Fressen“. Im Konzept bleibt sie in einer Pose liegen, wo du sie loslässt.
 82. **Sie stößt nur an Boden und Gaumen,** gemessen an ihrem eigenen Platz: nicht an Zähne, Wangen oder die Lippe. Weit zur
     Seite oder nach hinten gezogen kann sie durch die Form gehen.
 83. **Ablegen** (die Spitze bleibt auf einem Zahn oder der Lippe kleben): nicht gebaut.
 84. **Zu ist sie flach und nicht zu sehen.** An getrennten Lippen mit einer Lücke nicht geprüft.
-85. **Der Tropfen „Zunge“ hält das Maul offen.** Ohne ihn kommst du nur in „Fressen“ oder bei offener Linse der Zähne an sie.
+85. **Die Linse der Zunge hält das Maul offen** (ihr Tropfen öffnet sie). Ohne sie kommst du nur in „Fressen“ oder bei offener
+    Linse der Zähne an die Zunge.
 86. **Ihr Gewicht zieht nach unten in der Form** (längs ihrer Hochachse). Liegt eine Form auf der Seite, hängt die Zunge falsch.
 87. **Rosa auf Wachs, Solid und Zebra,** sonst wie der Körper. Ihr Rosa liegt nah an dem des Zahnfleischs.
 88. **Geschätzt:** Federn, Dämpfung, Gewicht und Gummi (die Werte der Studie); wie lange sie wächst (0,7 s).
 89. **Nicht geprüft:** iPad und Stift; andere Formen als „teat firefish“; Sichern und Laden mit Zunge; mehrere Objekte.
 90. **Sie braucht in der Mitte des Mauls eine Reihe von Punkten** über Boden und Gaumen (das Maul aus einer Linie bringt sie
     mit). Fehlt sie, sagt Ozzy „In diesem Maul findet die Zunge keinen Boden“; den Fall habe ich nicht ausprobiert.
-91. **Fürs Spiel:** 308 Dreiecke und elf Knoten; das Konzept nennt fürs Backen drei bis vier Knochen.
+91. **Fürs Spiel:** 440 Dreiecke (seit der zweiten Scheibe 20 Punkte je Ring) und elf Knoten; das Konzept nennt fürs Backen drei
+    bis vier Knochen.
+92. **In der Linse liegt die Zunge dieses Mauls,** gerade gelegt: Ihre Breite folgt dem Maul. In einem Maul, das nach vorn spitz
+    zuläuft (wie bei „teat firefish“), ist auch die runde Zunge fast ein Dreieck. Die Zeichen am Formenring zeigen dagegen die
+    Vorlage an sich.
+93. **Vorlagen sind Sätze von Werten,** keine eigenen Formen. Alle Werte der vier Vorlagen sind geschätzt. Eine Vorlage
+    überschreibt, was du vorher gedreht hast (die Farbe bleibt).
+94. **Die Gabel ist grob:** zwei Zinken aus den letzten drei Ringen des Netzes. Die Zinken stoßen nirgends an (sie hängen am
+    letzten Knoten): An einer langen gespaltenen Zunge können sie durch die Lippe ragen. Deshalb ist die Vorlage „Gespalten“
+    kürzer als die runde.
+95. **Lang:** Vor der Lippe liegt sie in der Verlängerung des vorderen Fünftels des Bodens und hängt durch (ihr Platz hält sie
+    dort mit einem Viertel der Feder: geschätzt). Zu steht sie zwischen den geschlossenen Lippen heraus, innen flach, außen mit
+    ganzer Dicke: Am Übergang kann sie in die Lippe schneiden. An Zähne stößt sie nicht.
+96. **Die Breite vorn:** Bis 78 % der Mundlänge folgt sie dem Maul, weiter vorn bleibt sie so breit wie dort. In einem spitzen
+    Maul kann sie zwischen dort und der Lippe etwas breiter sein als das Maul.
+97. **Die Werte laufen nach** (rund 0,07 s): Eine Vorlage wächst hin, statt zu springen; auch der Drehregler ist dadurch einen
+    Hauch träge. Ob das angenehm ist oder stört, entscheidet dein Auge.
+98. **⌫ nimmt bei offener Linse die Zunge** (ein Schritt). Sind an der Form Punkte gewählt (nach dem Schneiden sind es die der
+    Lippe), gilt ⌫ ihnen, und Esc leert erst die Auswahl: dieselbe Reihenfolge wie bei den Zähnen.
+99. **Eine Linse für zwei Teile:** Der Tropfen des anderen Teils stellt sie um; Zähne und Zunge zugleich stellen geht nicht.
+    Welche Perle galt, merkt sie sich beim Umstellen nicht.
+100. **Die Zeichen am Formenring** sind klein; „rund“ und „lang“ unterscheiden sich fast nur in der Länge.
+101. **Der erste Wert eines neuen Griffs** kostete in der Probe von Nahem in „Fressen“ ein bis drei Bilder über 34 ms (das
+     längste 120 bis 230 ms); in der gewohnten Ansicht keines (längstes 26 ms). Woran es liegt, habe ich nicht untersucht
+     (vermutlich der Schritt für ⌘Z und was nach ihm neu gelesen wird).
+102. **Bei den Zähnen rechnet jeder gestellte Wert noch die Haut der Form neu** (2,5 s lang in jedem Bild, dazu wird der Löser
+     vorbereitet). Bei der Zunge ist das weg. Bei den Zähnen ginge es genauso, wenn ihr Netz nicht mehr am Neurechnen der Haut
+     hinge (`zaehneRechnen`).
+103. **Die Korrektur an der Anzeige** (von Nahem pendelte sie zwischen zwei Feinheitsstufen; Plan 12.20, Punkt 3) gilt für alle
+     Formen. Gegengeprüft habe ich an „teat firefish“ und mit der Probe des Werks; die übrigen Fensterproben von Ozzy sind
+     nicht gelaufen.
+104. **Der Ton der Linse** wird kurz nach dem Öffnen angelegt (vorher stockte das erste Rasten). Am iPad nicht geprüft: Dort
+     ruht ein Ton, bis eine Hand im Spiel ist; die Linse weckt ihn beim ersten Ticken.
+105. **Nicht geprüft (zweite Scheibe):** iPad und Stift; der Farbwähler des Systems von Hand; andere Formen; Sichern und Laden
+     mit den neuen Werten (Spitze, Gabel, Vorlage); andere Materialien als Wachs.
 
 ### Kleines
 

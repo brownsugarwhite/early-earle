@@ -11,25 +11,69 @@
 //   - Jeder Knoten will an seinen Platz zurück (Feder: hinten straff, vorn lose), die Kette hält ihre Länge weich (Gummi), Boden
 //     und Gaumen halten sie im Maul; vor der Lippe hat sie keinen Boden mehr und hängt.
 // Die Zunge ist ein Wert am Maul (`werk.MaulZunge`); Platz, Kette und Netz sind abgeleitet. Ohne DOM, ohne three.
+//
+// Zweite Scheibe (die Linse der Zunge): Vorlagen sind Sätze ihrer Werte (`ZUNGEN_FORMEN`: rund, spitz, gespalten, lang). Dazu zwei
+// Werte für ihre Form vorn: `spitz` (sie läuft spitz zu) und `gabel` (sie teilt sich in zwei Zinken: Die letzten Ringe des Netzes
+// stehen dort nicht mehr eben, ihre Mitte bleibt zurück). Eine Länge über 1 reicht über die Lippe hinaus: Die Knoten davor
+// hängen an der verlängerten Mittellinie des Bodens und haben dort keinen Boden. `zungeGerade` ist die Zunge gerade gelegt
+// (für die Linse), `zungenUmriss` ihr Zeichen am Formenring.
 import type { MaulZunge } from '../form/werk';
 import type { HautNetz } from '../anfang/haut';
 import type { MaulTasche } from './farbe/maulEbene';
 import type { Karte } from './farbe/ort';
 
-/** die Zunge, mit der ein Maul beginnt: bis kurz hinter die unteren Zähne, so breit, wie das Maul es zulässt, mit flacher Rille */
-export const ZUNGE_ANFANG: MaulZunge = { laenge: 0.78, breite: 0.74, dicke: 0.075, rille: 0.3 };
+/** die Vorlagen der Zunge: Jede ist ein Satz ihrer Werte (der Formenring der Linse setzt ihn; danach stellt der Drehregler jeden Wert für sich) */
+export const ZUNGEN_FORMEN: { name: string; werte: { laenge: number; breite: number; dicke: number; rille: number; spitz: number; gabel: number } }[] = [
+  { name: 'Rund', werte: { laenge: 0.78, breite: 0.74, dicke: 0.075, rille: 0.3, spitz: 0, gabel: 0 } },
+  { name: 'Spitz', werte: { laenge: 0.84, breite: 0.66, dicke: 0.07, rille: 0.22, spitz: 1, gabel: 0 } },
+  // (kürzer als die runde: Die Zinken reichen über ihren letzten Knoten hinaus und sollen im Maul bleiben)
+  { name: 'Gespalten', werte: { laenge: 0.74, breite: 0.5, dicke: 0.055, rille: 0.12, spitz: 0.35, gabel: 1 } },
+  { name: 'Lang', werte: { laenge: 1.22, breite: 0.68, dicke: 0.07, rille: 0.3, spitz: 0.15, gabel: 0 } },
+];
+/** die Zunge, mit der ein Maul beginnt (die Vorlage „Rund“): bis kurz hinter die unteren Zähne, so breit, wie das Maul es zulässt, mit flacher Rille */
+export const ZUNGE_ANFANG: MaulZunge = { ...ZUNGEN_FORMEN[0]!.werte, form: 0 };
+/** so lang darf sie höchstens sein (Anteil der Mittellinie des Bodens; über 1 reicht sie über die Lippe hinaus) */
+export const ZUNGE_LAENGE_BIS = 1.35;
+/** bis zu diesem Anteil der Mittellinie richtet sich ihre Breite nach dem Maul an ihrer Stelle; weiter vorn bleibt sie so breit wie dort */
+const BREIT_NACH_MAUL_BIS = 0.78;
+/** vor der Lippe hält sie ihr Platz nur lose: Sie hängt unter ihrem Gewicht durch (Anteil der Feder im Maul) */
+const FEDER_DRAUSSEN = 0.25;
+/** wie tief die Gabel einer ganz gespaltenen Zunge ist (Anteil ihrer Länge) */
+const GABEL_TIEF = 0.26;
+
+const null1 = (x: number | undefined): number => Math.max(0, Math.min(1, x ?? 0));
+/**
+ * Wie breit und wie dick die Zunge längs ihrer Länge ist (u von 0 an der Wurzel bis 1 an der Spitze), als Anteile ihrer Breite
+ * und Dicke: rund, spitz zulaufend (`spitz`) oder vorn breit für zwei Zinken (`gabel`).
+ */
+export function zungenProfil(werte: { spitz?: number; gabel?: number }, u: number): { breit: number; dick: number } {
+  const p = null1(werte.spitz);
+  const g = null1(werte.gabel);
+  const rund = Math.sqrt(Math.max(0, 1 - Math.pow(u, 5)));
+  const spitz = Math.pow(Math.max(0, 1 - Math.pow(u, 1.7)), 0.9);
+  const vorn = (rund + (spitz - rund) * p) * (1 - g) + g * (1 - 0.42 * Math.pow(u, 3));
+  return {
+    breit: (0.86 + 0.14 * Math.sin(Math.PI * u)) * vorn,
+    dick: (0.75 + 0.4 * Math.sin(Math.PI * Math.pow(u, 0.7))) * Math.sqrt(Math.max(0, 1 - Math.pow(u, 6))) * (1 - 0.25 * p * u),
+  };
+}
 /** die Farbe der Zunge, solange sie keine eigene trägt (wie in der Studie) */
 export const ZUNGE_FARBE = '#e2607a';
 
 /** Knoten der Kette und Punkte je Ring des Netzes */
 export const ZUNGE_KNOTEN = 11;
-const M = 14;
+/** so viele Punkte hat jeder Ring ihres Netzes (seit der zweiten Scheibe 20 statt 14: Die Zinken der Gabel brauchen sie) */
+export const ZUNGE_RING = 20;
+const M = ZUNGE_RING;
 /** die Wurzel beginnt bei diesem Anteil der Mittellinie des Bodens (von der Rachenlinie aus) */
 const WURZEL_BEI = 0.1;
 /** die ersten Knoten sind die Wurzel: Sie sitzen fest am Kiefer */
 const WURZEL_KNOTEN = 2;
 /** der feste Zeitschritt der Kette (Sekunden) */
 const ZUNGE_SCHRITT = 1 / 240;
+/** die Gabel: wie weit die letzten drei Ringe ausgezogen sind (Anteil ihrer Tiefe) und wie weit ihre Mitte zurückbleibt */
+const GABEL_RINGE = [0.25, 0.6, 1];
+const GABEL_KERBE = 0.6;
 
 type Platz = { a: number; b: number; u: number };
 
@@ -49,6 +93,10 @@ export type ZungenPlatz = {
   lang: number;
   /** Tiefe der Rille oben (Anteil der Dicke) */
   rille: number;
+  /** wie tief sie vorn gespalten ist (Einheiten des Werks; 0: nicht) */
+  gabel: number;
+  /** je Knoten: Sein Platz liegt vor der Lippe (auf der verlängerten Mittellinie): Dort hat sie weder Boden noch Gaumen */
+  draussen: Uint8Array;
 };
 
 const K = ZUNGE_KNOTEN;
@@ -108,7 +156,25 @@ function mittellinie(k: Karte, tasche: MaulTasche & { kiefer: ArrayLike<number> 
  * Der Platz der Zunge, aus der Tasche gelesen (in der Ruhe der Form). null, wenn das Maul in der Mittelebene keine Reihe von
  * Punkten über Boden und Gaumen hat.
  */
-export function zungePlatz(k: Karte, tasche: MaulTasche & { kiefer: ArrayLike<number> }, werte: MaulZunge): ZungenPlatz | null {
+/**
+ * Was am Maul für jede Zunge gleich ist (gelesen aus der Tasche, in der Ruhelage der Haut): die Mittellinien von Boden und Gaumen
+ * mit ihren Längen, wie breit das Maul längs des Bodens ist, und je Stück des Bodens ein Dreieck der Wand daran. Das zu lesen
+ * kostet (es geht über alle Dreiecke); der Platz für bestimmte Werte daraus kostet fast nichts (`zungePlatzAuf`).
+ */
+export type ZungenBoden = {
+  P: ArrayLike<number>;
+  boden: number[];
+  gaumen: number[];
+  LB: number[];
+  LG: number[];
+  lang: number;
+  /** je Punkt der Lippe (Hälfte z > 0): seine Stelle längs des Bodens und sein Abstand von der Mittelebene, nach der Stelle sortiert */
+  weit: [number, number][];
+  /** je Stück des Bodens (`wand[j]`: zwischen `boden[j - 1]` und `boden[j]`) ein Dreieck der Wand daran, sonst null */
+  wand: ([number, number, number] | null)[];
+};
+
+export function zungenBoden(k: Karte, tasche: MaulTasche & { kiefer: ArrayLike<number> }): ZungenBoden | null {
   const P = k.netz.pos;
   const boden = mittellinie(k, tasche, 1);
   const gaumen = mittellinie(k, tasche, -1);
@@ -125,13 +191,6 @@ export function zungePlatz(k: Karte, tasche: MaulTasche & { kiefer: ArrayLike<nu
   const LG = laengen(gaumen);
   const lang = LB[LB.length - 1]!;
   if (!(lang > 1e-6)) return null;
-  const bei = (reihe: number[], L: number[], s: number): Platz => {
-    const ziel = Math.max(0, Math.min(L[L.length - 1]!, s));
-    let j = 1;
-    while (j < L.length - 1 && L[j]! < ziel) j++;
-    return { a: reihe[j - 1]!, b: reihe[j]!, u: Math.max(0, Math.min(1, (ziel - L[j - 1]!) / (L[j]! - L[j - 1]! || 1))) };
-  };
-  const ort = (p: Platz): [number, number] => [P[3 * p.a]! + p.u * (P[3 * p.b]! - P[3 * p.a]!), P[3 * p.a + 1]! + p.u * (P[3 * p.b + 1]! - P[3 * p.a + 1]!)];
   // wie breit das Maul längs der Mittellinie ist: je Punkt der Lippe (Hälfte z > 0) die Stelle, die ihm in der Seite am nächsten
   // liegt, und sein Abstand von der Mittelebene
   const weit: [number, number][] = [];
@@ -153,6 +212,48 @@ export function zungePlatz(k: Karte, tasche: MaulTasche & { kiefer: ArrayLike<nu
     weit.push([stelle, z]);
   }
   weit.sort((p, q) => p[0] - q[0]);
+  // je Stück der Mittellinie des Bodens ein Dreieck der Wand daran (für die Richtung vom Boden ins Maul): das erste Dreieck in
+  // der Reihenfolge des Netzes, das beide Punkte des Stücks hat und dessen dritter in der Hälfte z > 0 an Boden oder Rachen liegt
+  const nr = new Map<number, number>();
+  boden.forEach((v, i) => nr.set(v, i));
+  const wand: ([number, number, number] | null)[] = boden.map(() => null);
+  const tri = k.netz.tri;
+  for (let t = 0; t < k.T; t++) {
+    const e: [number, number, number] = [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!];
+    for (let x = 0; x < 3; x++) {
+      const i = nr.get(e[x]!);
+      const j = nr.get(e[(x + 1) % 3]!);
+      if (i === undefined || j === undefined || Math.abs(i - j) !== 1) continue;
+      const stueck = Math.max(i, j);
+      if (wand[stueck]) continue;
+      const dritter = e[(x + 2) % 3]!;
+      if (tasche.innen[dritter] && tasche.kiefer[dritter] !== -1 && P[3 * dritter + 2]! > 0) wand[stueck] = e;
+    }
+  }
+  return { P, boden, gaumen, LB, LG, lang, weit, wand };
+}
+
+/** der Platz einer Zunge mit diesen Werten auf dem Boden eines Mauls (`zungenBoden`) */
+export function zungePlatzAuf(B: ZungenBoden, werte: MaulZunge): ZungenPlatz {
+  const { P, boden, gaumen, LB, LG, lang, weit } = B;
+  // Eine Stelle vor dem Ende der Reihe (vor der Lippe) liegt auf der Verlängerung der Reihe: `u` über 1, gemessen an der Sehne
+  // über ihr vorderes Fünftel (ein einzelnes kurzes Stück am Ende gäbe die Richtung zu zufällig vor). `stueck`: in welchem Stück
+  // der Reihe sie liegt.
+  const bei = (reihe: number[], L: number[], s: number): { platz: Platz; stueck: number } => {
+    const ziel = Math.max(0, s);
+    const ende = L[L.length - 1]!;
+    if (ziel > ende) {
+      let j = L.length - 2;
+      while (j > 0 && L[j]! > 0.8 * ende) j--;
+      const [a, b] = [reihe[j]!, reihe[reihe.length - 1]!];
+      const sehne = Math.hypot(P[3 * b]! - P[3 * a]!, P[3 * b + 1]! - P[3 * a + 1]!) || 1;
+      return { platz: { a, b, u: 1 + (ziel - ende) / sehne }, stueck: reihe.length - 1 };
+    }
+    let j = 1;
+    while (j < L.length - 1 && L[j]! < ziel) j++;
+    return { platz: { a: reihe[j - 1]!, b: reihe[j]!, u: Math.max(0, (ziel - L[j - 1]!) / (L[j]! - L[j - 1]! || 1)) }, stueck: j };
+  };
+  const ort = (p: Platz): [number, number] => [P[3 * p.a]! + p.u * (P[3 * p.b]! - P[3 * p.a]!), P[3 * p.a + 1]! + p.u * (P[3 * p.b + 1]! - P[3 * p.a + 1]!)];
   const breiteBei = (s: number): number => {
     if (!weit.length) return 0;
     if (s <= weit[0]![0]) return weit[0]![1];
@@ -164,39 +265,57 @@ export function zungePlatz(k: Karte, tasche: MaulTasche & { kiefer: ArrayLike<nu
     }
     return weit[weit.length - 1]![1];
   };
-  // je Punkt der Mittellinie des Bodens ein Dreieck der Wand daran (für die Richtung vom Boden ins Maul)
-  const tri = k.netz.tri;
-  const wandBei = (p: Platz): [number, number, number] => {
-    for (let t = 0; t < k.T; t++) {
-      const e: [number, number, number] = [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!];
-      if (!e.includes(p.a) || !e.includes(p.b)) continue;
-      const dritter = e.find((v) => v !== p.a && v !== p.b)!;
-      if (tasche.innen[dritter] && tasche.kiefer[dritter] !== -1 && P[3 * dritter + 2]! > 0) return e;
-    }
-    return [p.a, p.b, p.a];
-  };
-  const bis = Math.max(WURZEL_BEI + 0.1, Math.min(1, werte.laenge));
+  const bis = Math.max(WURZEL_BEI + 0.1, Math.min(ZUNGE_LAENGE_BIS, werte.laenge));
   const plaetzeBoden: Platz[] = [];
   const plaetzeGaumen: Platz[] = [];
   const wand: [number, number, number][] = [];
   const breite = new Float64Array(K);
   const dicke = new Float64Array(K);
+  const draussen = new Uint8Array(K);
   const orte: [number, number][] = [];
   for (let i = 0; i < K; i++) {
     // (zur Spitze hin stehen die Knoten dichter: So wird sie rund statt abgeschnitten)
     const u = 1 - Math.pow(1 - i / (K - 1), 1.7);
     const s = lang * (WURZEL_BEI + (bis - WURZEL_BEI) * u);
-    const p = bei(boden, LB, s);
+    const { platz: p, stueck } = bei(boden, LB, s);
     plaetzeBoden.push(p);
-    plaetzeGaumen.push(bei(gaumen, LG, (s / lang) * LG[LG.length - 1]!));
-    wand.push(wandBei(p));
+    plaetzeGaumen.push(bei(gaumen, LG, (s / lang) * LG[LG.length - 1]!).platz);
+    draussen[i] = s > lang ? 1 : 0;
+    // (vor der Lippe gilt die Wand am letzten Stück des Bodens; ohne Wand sagt die Kette selbst, wo oben ist)
+    wand.push(B.wand[stueck] ?? [boden[stueck - 1]!, boden[stueck]!, boden[stueck - 1]!]);
     orte.push(ort(p));
-    dicke[i] = Math.max(0, werte.dicke) * lang * (0.75 + 0.4 * Math.sin(Math.PI * Math.pow(u, 0.7))) * Math.sqrt(Math.max(0, 1 - Math.pow(u, 6)));
-    breite[i] = Math.min(Math.max(0, werte.breite) * breiteBei(s), 0.42 * lang) * (0.86 + 0.14 * Math.sin(Math.PI * u)) * Math.sqrt(Math.max(0, 1 - Math.pow(u, 5)));
+    const profil = zungenProfil(werte, u);
+    dicke[i] = Math.max(0, werte.dicke) * lang * profil.dick;
+    // so breit, wie das Maul an ihrer Stelle ist. Ganz vorn läuft das Maul auf null zu: Was weiter reicht als bis kurz hinter die
+    // Zähne (und über die Lippe hinaus), bleibt so breit, wie das Maul dort ist
+    const sBreit = Math.min(s, BREIT_NACH_MAUL_BIS * lang);
+    breite[i] = Math.min(Math.max(0, werte.breite) * breiteBei(sBreit), 0.42 * lang) * profil.breit;
   }
   const stueck = new Float64Array(K - 1);
-  for (let i = 0; i + 1 < K; i++) stueck[i] = Math.hypot(orte[i + 1]![0] - orte[i]![0], orte[i + 1]![1] - orte[i]![1]);
-  return { boden: plaetzeBoden, gaumen: plaetzeGaumen, wand, spitze: [boden[boden.length - 2]!, boden[boden.length - 1]!], breite, dicke, stueck, lang, rille: Math.max(0, Math.min(0.8, werte.rille)) };
+  let kette = 0;
+  for (let i = 0; i + 1 < K; i++) {
+    stueck[i] = Math.hypot(orte[i + 1]![0] - orte[i]![0], orte[i + 1]![1] - orte[i]![1]);
+    kette += stueck[i]!;
+  }
+  return {
+    boden: plaetzeBoden,
+    gaumen: plaetzeGaumen,
+    wand,
+    spitze: [boden[boden.length - 2]!, boden[boden.length - 1]!],
+    breite,
+    dicke,
+    stueck,
+    lang,
+    rille: Math.max(0, Math.min(0.8, werte.rille)),
+    gabel: null1(werte.gabel) * GABEL_TIEF * kette,
+    draussen,
+  };
+}
+
+/** der Platz einer Zunge in einem Maul (null: Dieses Maul hat in der Mitte keinen Boden für sie) */
+export function zungePlatz(k: Karte, tasche: MaulTasche & { kiefer: ArrayLike<number> }, werte: MaulZunge): ZungenPlatz | null {
+  const B = zungenBoden(k, tasche);
+  return B ? zungePlatzAuf(B, werte) : null;
 }
 
 type V3 = [number, number, number];
@@ -269,7 +388,8 @@ export class ZungenKette {
       }
       nx /= l;
       ny /= l;
-      this.raum[k] = spalt;
+      // (vor der Lippe ist kein Gaumen: Dort hat sie ihre ganze Dicke)
+      this.raum[k] = pl.draussen[k] ? 1e9 : spalt;
       this.boden[3 * k] = F[0];
       this.boden[3 * k + 1] = F[1];
       this.boden[3 * k + 2] = F[2];
@@ -383,7 +503,7 @@ export class ZungenKette {
       for (let k = 0; k < K; k++) {
         const u = k / (K - 1);
         // die Feder zum Platz auf dem Unterkiefer: hinten straff, vorn lose (die Spitze schwingt nach)
-        const fed = OMEGA * OMEGA * (1.7 - 1.1 * u);
+        const fed = OMEGA * OMEGA * (1.7 - 1.1 * u) * (pl.draussen[k] ? FEDER_DRAUSSEN : 1);
         const i = 3 * k;
         // hängt die Zunge über die Lippe hinaus, zieht sie ihr Gewicht nach unten
         const schwer = -pl.lang * 6 * u;
@@ -458,11 +578,54 @@ export class ZungenKette {
   }
 }
 
+/** was das Netz von einer Zunge braucht: die Lagen ihrer Knoten, wo je Knoten oben ist, ihre Maße und wie dick sie sein darf */
+export type ZungenLage = { pos: ArrayLike<number>; auf: ArrayLike<number>; platz: Pick<ZungenPlatz, 'breite' | 'dicke' | 'stueck' | 'rille' | 'gabel'>; dickeMass(k: number): number };
+
+/**
+ * Die Zunge gerade gelegt, ohne Maul (für die Linse): ihre Knoten längs +x von der Wurzel bei null, oben ist +y. Dasselbe Netz
+ * wie im Maul, in den Einheiten ihres Platzes.
+ */
+export function zungeGerade(platz: Pick<ZungenPlatz, 'breite' | 'dicke' | 'stueck' | 'rille' | 'gabel'>): HautNetz {
+  const pos = new Float64Array(3 * K);
+  const auf = new Float64Array(3 * K);
+  let x = 0;
+  for (let k = 0; k < K; k++) {
+    pos[3 * k] = x;
+    auf[3 * k + 1] = 1;
+    x += platz.stueck[k] ?? 0;
+  }
+  return zungeNetz({ pos, auf, platz, dickeMass: () => 1 }, 1, { x: 0, y: 0 });
+}
+
+/**
+ * Das Zeichen einer Vorlage für den Formenring der Linse: die Zunge von oben als Pfad, die Wurzel bei (0, 0), die Spitze nach
+ * oben (−y); `mass`: so hoch ist eine Zunge der Länge 1.
+ */
+export function zungenUmriss(werte: { laenge: number; breite: number; spitz?: number; gabel?: number }, mass: number): string {
+  const n = 18;
+  const hoch = mass * werte.laenge;
+  const breit = 0.4 * mass * werte.breite;
+  const g = null1(werte.gabel);
+  const links: string[] = [];
+  const rechts: string[] = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n;
+    const w = breit * zungenProfil(werte, u).breit;
+    const y = -hoch * u;
+    links.push(`${(-w).toFixed(2)},${y.toFixed(2)}`);
+    rechts.unshift(`${w.toFixed(2)},${y.toFixed(2)}`);
+  }
+  // gespalten: zwei Zinken vor dem Ende, dazwischen die Kerbe
+  const w1 = breit * zungenProfil(werte, 1).breit;
+  const zinken = g > 0.02 ? `L${(-1.1 * w1).toFixed(2)},${(-hoch - g * 0.24 * hoch).toFixed(2)}L0,${(-hoch + g * 0.2 * hoch).toFixed(2)}L${(1.1 * w1).toFixed(2)},${(-hoch - g * 0.24 * hoch).toFixed(2)}` : '';
+  return `M${links.join('L')}${zinken}L${rechts.join('L')}Z`;
+}
+
 /**
  * Die Zunge als Netz für die Anzeige. `f`, `mitte`: Welt = Werk / f + mitte. `wuchs`: Anteil, zu dem sie schon herausgewachsen
  * ist (0 … 1). Das Netz hat immer dieselben Punkte und Dreiecke.
  */
-export function zungeNetz(kette: ZungenKette, f: number, mitte: { x: number; y: number }, wuchs = 1): HautNetz {
+export function zungeNetz(kette: ZungenLage, f: number, mitte: { x: number; y: number }, wuchs = 1): HautNetz {
   const pl = kette.platz;
   const N = K * M + 2;
   const I = 3 * (2 * (K - 1) * M + 2 * M);
@@ -512,13 +675,19 @@ export function zungeNetz(kette: ZungenKette, f: number, mitte: { x: number; y: 
     const q = (1 / Math.sqrt(Math.max(0.35, dehn))) * (0.2 + 0.8 * w0);
     const w = pl.breite[k]! * q;
     const d = pl.dicke[k]! * q * kette.dickeMass(k);
+    // gespalten: Die letzten drei Ringe stehen nicht mehr eben. Zwischen Mitte und Rand läuft jeder nach vorn aus (die Zinken), in
+    // der Mitte bleibt er zurück (die Kerbe)
+    const gabel = k >= K - 3 ? pl.gabel * GABEL_RINGE[k - (K - 3)]! * w0 : 0;
     for (let j = 0; j < M; j++) {
       const phi = (2 * Math.PI * j) / M;
       const c = Math.cos(phi);
       const s = Math.sin(phi);
       // oben in der Mitte eine flache Rille
       const rille = s > 0 ? 1 - pl.rille * Math.exp(-(c * c) / 0.07) : 1;
-      setzen(k * M + j, p[3 * k]! + bx * c * w + nx * s * d * rille, p[3 * k + 1]! + by * c * w + ny * s * d * rille, p[3 * k + 2]! + bz * c * w + nz * s * d * rille);
+      // (ein Zinken: am höchsten bei gut der halben Breite, zum Rand und zur Mitte hin fällt er ab; die Kerbe: schmal um die Mitte)
+      const zinke = Math.max(0, 1 - Math.pow((Math.abs(c) - 0.56) / 0.42, 2));
+      const vor = gabel > 0 ? gabel * (zinke * Math.sqrt(zinke) - GABEL_KERBE * Math.exp(-(c * c) / 0.05)) : 0;
+      setzen(k * M + j, p[3 * k]! + bx * c * w + nx * s * d * rille + tx * vor, p[3 * k + 1]! + by * c * w + ny * s * d * rille + ty * vor, p[3 * k + 2]! + bz * c * w + nz * s * d * rille + tz * vor);
     }
   }
   // die Spitze: ein Punkt ein Stück vor dem letzten Ring; die Wurzel: die Mitte des ersten
@@ -528,7 +697,8 @@ export function zungeNetz(kette: ZungenKette, f: number, mitte: { x: number; y: 
   tx /= tl;
   ty /= tl;
   tz /= tl;
-  const vorn = 0.5 * pl.dicke[K - 2]! * w0;
+  // (an einer gespaltenen Zunge sitzt dieser Punkt in der Kerbe)
+  const vorn = (pl.gabel > 0 ? -GABEL_KERBE * pl.gabel : 0.5 * pl.dicke[K - 2]!) * w0;
   const spitze = K * M;
   const wurzel = K * M + 1;
   setzen(spitze, p[e]! + tx * vorn, p[e + 1]! + ty * vorn, p[e + 2]! + tz * vorn);

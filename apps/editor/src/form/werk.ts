@@ -365,9 +365,11 @@ export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean; zaehn
  * Die Zunge des Mauls (Etappe 6): wie weit sie auf dem Boden nach vorn reicht (Anteil der Mittellinie des Bodens von der
  * Rachenlinie zur Lippe), wie breit (Anteil der Breite des Mauls), wie dick (Anteil der Länge der Mittellinie), wie tief die
  * Rille oben (Anteil der Dicke) und, wenn sie eine eigene trägt, ihre Farbe (`#rrggbb`; fehlt: Rosa). Wo sie liegt und wie sie
- * sich bewegt, liest die Anzeige daraus und aus der Tasche.
+ * sich bewegt, liest die Anzeige daraus und aus der Tasche. Seit der zweiten Scheibe: `spitz` (0 rund … 1 spitz zulaufend),
+ * `gabel` (0 … 1: wie tief sie vorn gespalten ist) und `form` (die Vorlage, die zuletzt gewählt wurde; sie setzt alle Werte).
+ * Eine Länge über 1 reicht über die Lippe hinaus.
  */
-export type MaulZunge = { laenge: number; breite: number; dicke: number; rille: number; farbe?: string };
+export type MaulZunge = { laenge: number; breite: number; dicke: number; rille: number; spitz?: number; gabel?: number; form?: number; farbe?: string };
 /**
  * Eine Zahnreihe (Plan „Maul, Zähne, Zunge“, Etappe 5): wie viele Zähne, ihre Größe (1 = ein Zahn füllt seinen Platz), ihre
  * Neigung nach außen (Bogenmaß), wie viel kleiner sie nach hinten werden (0 … 0,9), wie weit die Reihe nach hinten reicht (Anteil
@@ -1043,7 +1045,9 @@ export function zungeSetzen(z: MaulZunge | null, schritt = true): boolean {
   const { zunge: _alt, ...rest } = m;
   void _alt;
   G.maul = z ? { ...rest, zunge: { ...z } } : rest;
-  anzeige.allesZeigen();
+  // (nur ein Bild: Linien und Haut der Form ändern sich mit der Zunge nicht. `allesZeigen` ließe die Haut neu rechnen und den
+  // Löser für den nächsten Griff vorbereiten, bei jedem Wert, den der Drehregler der Linse stellt)
+  anzeige.rendern();
   return true;
 }
 

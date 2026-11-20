@@ -35,7 +35,7 @@ export type WesenStand = {
     ersteUnten?: boolean;
     zaehne?: { oben: ZahnReiheDatei; unten: ZahnReiheDatei; farbe?: string };
     /** die Zunge (`werk.MaulZunge`) */
-    zunge?: { laenge: number; breite: number; dicke: number; rille: number; farbe?: string };
+    zunge?: { laenge: number; breite: number; dicke: number; rille: number; spitz?: number; gabel?: number; form?: number; farbe?: string };
   } | null;
   /**
    * `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose; dazu die Stelle
