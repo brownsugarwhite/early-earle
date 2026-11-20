@@ -4,8 +4,10 @@
 Objekte und den Paint-Modus). Arbeitsbaum `.claude/worktrees/ozzy`, Fenster 5205 (Eintrag `ozzy`). `claude/ozzy` selbst steht
 weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 
-**Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. die erste Scheibe von Etappe 1 in Ozzy**
-(siehe unten „Etappe 1 in Ozzy“). Offenes steht nummeriert in
+**Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. in Ozzy die erste Scheibe von Etappe 1 (das
+Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
+in Ozzy“ und „Etappe 2 in Ozzy“. **Als Nächstes, auf Florians Wort: Etappe 3 („Lippen trennen“, Über- und Unterbiss; davor die
+Probe P3).** Offenes steht nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
 
@@ -72,6 +74,44 @@ Punkt der Lippe nimmt seinen Zwilling mit. **Was fehlt:** Öffnen, „Lippen tre
   ein Stück vor der Form beginnen (die Probe: rund 100 Einheiten).
 - **Das Aufräumen des Fensters nachstellen:** den Stand gleich nach dem Schnitt über `__ozzy.standGepackt()` holen, dann
   `form-aufraeumen.ts <datei>`. Im Kern war das Aufräumen sauber, im Fenster nicht: So fiel die Kreuzungssuche auf.
+
+## Etappe 2 in Ozzy: die Kiefer (20.11.)
+
+**Was es gibt:** Mit dem Maul die Pose „Fressen“ (oben 8°, unten 34°), an jeder Kieferspitze ein Tropfen an einer Haarlinie zum
+Mundwinkel (rosa oben, blau unten). Ziehen dreht den Kiefer; unter 2° rastet er zu; Anschlag 70° unten, 45° oben. In der Grundform
+öffnet Halten das Maul für einen Blick. Nach dem Schneiden zeigt es sich einmal. Plan, Abschnitt 12.12.
+
+**Wo:**
+
+- `src/form/maulEcht.ts`, Abschnitt „Etappe 2“: `maulLage` (Scharnier, Lippe, Spitze aus der Lippe gelesen), `maulEchtAmLoop`
+  (das Maul in der Gestalt des Maulschnitts im Kern, dazu je Punkt Winkel um das Scharnier, Abstand und Kiefer), `kieferWinkel`
+  (Drehwinkel je Punkt für einen Stand der Knochen), `kieferTropfenRuhe`, `KIEFER_MAX`, `FRESSEN_ANFANG`. Test in
+  `maulEcht.test.ts` („die Kiefer“).
+- `src/form/werk.ts`: `maulSchneiden` setzt `G.maul` und die Pose; `maulIstGeformt` und `maulSchnitt` kennen `istMaulEcht`;
+  `knochenJetzt` nimmt `kieferWinkel`; neu `maulBlick`, `maulBlickSetzen`, `anzeigeDreht`, `kieferStellen`, `kieferKnochen`,
+  `stueckeGezeigtBei`. `alsAnzeige` dreht jetzt auch in der Grundform, solange `maulBlick` > 0.
+- `src/ozzy/main.ts`: Abschnitt „Die Kiefer als Tropfen“ (`kieferUiZeigen` je Bild, der Zug an einem Tropfen, `kieferSchau`),
+  Haken `__ozzy.kiefer()`. `ozzy.html` und `ozzy.css`: `.kiefer-tropfen`, `.kiefer-knochen`.
+- `src/ozzy/werkBlatt.ts`: `abtasten` und `verdeckteProben` nehmen im Übergang den genauen Ort (`werk.stueckeGezeigtBei`).
+- Probe: `GPU=1 [FRISCH=1] [DIAG=1] node scripts/pruefen/ozzy-maul-fenster.mjs [ordner]`, Kriterien 8 bis 12.
+
+**Was man wissen muss:**
+
+1. **Das Feld der Kiefer hängt am Winkel.** Die Gewichte im Maulschnitt (`gewicht`, `gewichtOben`) gelten für kleine Winkel; den
+   Winkel je Punkt rechnet `kieferWinkel` (die Ausläufe werden mit dem Winkel breiter: quer bleiben mindestens 30 % der Haut,
+   Scherung höchstens 1,25). Wer backt oder sonst Gewichte braucht, nimmt nicht einfach `gewicht` mal Winkel.
+2. **Falten zählen:** Ein Dreieck ist gefaltet, wenn seine Normale nach dem Drehen von der mitgedrehten Normale der Ruhe wegzeigt
+   (Haken `kiefer().gefaltet`). Der Umlaufsinn in der Seite allein (`gekippt`) schlägt auch an, wo die Haut am Umriss auf der Kante
+   steht (Bauch- und Rückenlinie); das sind keine Falten.
+3. **Der Zug zählt den Winkel des Zeigers um das Scharnier,** vom Drücken an, nicht seinen Ort: In der Grundform öffnet das Maul
+   erst beim Halten, der Tropfen wandert unter dem Zeiger weg. Der Winkel wird auf der Spiegelebene gelesen (`zeigerAufMitte`);
+   läuft der Blick fast längs der Ebene, zählt der Weg nach oben und unten.
+4. **Der Blick ins Maul ist nur Anzeige:** `werk.maulBlick` (0 … 1) mal die Winkel der Pose. Gerechnet, gegriffen und bearbeitet
+   wird weiter in der geschlossenen Grundform. `werkBlatt.signatur` gilt nicht, solange `werk.anzeigeDreht()`.
+5. **Die Rachenlinie** wird über die Linien gefunden (sie hängt am Mundwinkel, ihre übrigen Punkte liegen in der Tasche), nicht
+   mehr nur über ihre Lage: So gilt sie auch, wenn ihre Mitte nach hinten gezogen ist (nicht ausprobiert).
+6. **Mit `G.maul` sperrt das Werk** Spiegel aus, den Schnitt an der Mitte und Verschmelzen/Abziehen (für jedes Maul).
+7. Eine Probe, die den Blick wechselt (Raum, Zoom), liest die Orte der Tropfen danach neu (`kiefer()`).
 
 ## Die Studie in einem Absatz
 

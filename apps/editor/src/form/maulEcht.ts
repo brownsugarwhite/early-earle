@@ -20,6 +20,7 @@ import {
   type Haut,
   type Loop,
   type LoopPunkt,
+  type MaulAmLoop,
   festlegen,
   griffeAnlegen,
   hautAus,
@@ -92,25 +93,21 @@ export function kieferSeiten(
   const lippe = new Set<number>();
   const teile: number[][] = [];
   const L = loops.find((l) => l.id === lippeId);
+  /** der Punkt des Netzes am Mundwinkel (−1: keine Lippe) */
+  let winkelV = -1;
   if (L) {
     const kette = L.proben.map((p) => p.ecken[0]);
     let jM = 0;
     kette.forEach((v, j) => {
       if (beiC(v) < beiC(kette[jM]!)) jM = j;
     });
+    winkelV = kette[jM]!;
     teile.push(kette.slice(0, jM), kette.slice(jM + 1));
     for (const v of kette)
       for (const w of paarVon(h, v)) {
         fest[w] = 1;
         lippe.add(w);
       }
-  }
-  // die Rachenlinie: eine harte Linie, die ganz am Mundwinkel liegt (in der Seite ein Punkt)
-  for (const l of loops) {
-    if (l.id === lippeId || !l.kante) continue;
-    const kette = l.proben.map((p) => p.ecken[0]);
-    if (!kette.every((v) => beiC(v) < RACHEN_NAH)) continue;
-    for (const v of kette) for (const w of paarVon(h, v)) if (!fest[w]) fest[w] = 2;
   }
   let start = 0;
   for (let v = 1; v < h.n; v++) if (beiC(v) > beiC(start)) start = v;
@@ -125,6 +122,17 @@ export function kieferSeiten(
       aussen[u] = 1;
       stapel.push(u);
     }
+  }
+  // Die Rachenlinie: die Linie im Maul, die am Mundwinkel hängt (alle ihre übrigen Punkte liegen in der Tasche; so gilt sie auch,
+  // wenn ihre Mitte nach hinten gezogen ist). Dazu, wie in den Proben, eine harte Linie, die in der Seite ganz am Mundwinkel liegt.
+  const amWinkel = winkelV >= 0 ? new Set(paarVon(h, winkelV)) : new Set<number>();
+  for (const l of loops) {
+    if (l.id === lippeId) continue;
+    const kette = l.proben.map((p) => p.ecken[0]);
+    const haengtAmWinkel = kette.some((v) => amWinkel.has(v)) && kette.every((v) => amWinkel.has(v) || !aussen[v]);
+    const liegtAmWinkel = !!l.kante && kette.every((v) => beiC(v) < RACHEN_NAH);
+    if (!haengtAmWinkel && !liegtAmWinkel) continue;
+    for (const v of kette) for (const w of paarVon(h, v)) if (!fest[w]) fest[w] = 2;
   }
   // welche Lippe: Die Haut außen neben ihr liegt eindeutig auf einer Seite der Linie
   const quellen: [number[], number[]] = [[], []];
@@ -568,4 +576,226 @@ export function maulSchneidenMit(
   // die Lippe zuletzt (das Werk sieht am letzten Loop nach kurzen Kanten)
   const sortiert = [...loops.filter((l) => l !== lippe), lippe];
   return { haut, loops: sortiert, lippe: lippeId, naechsteId: E.naechsteId, naechsteKreuzung: E.naechsteKreuzung, geschnitten: E.geschnitten };
+}
+
+// ---------- Etappe 2: die Kiefer ----------
+//
+// Die Ruhe der Form ist das geschlossene Maul; zwei Knochen (Oberkiefer und Unterkiefer) drehen nur, was gezeigt wird, um den
+// Mundwinkel. Hier steht, was dafür aus den Linien des Mauls gelesen wird: wo das Scharnier liegt, welcher Kiefer ein Punkt ist und
+// wie weit er mit ihm dreht. Das Ergebnis hat die Gestalt des Maulschnitts im Kern (`MaulAmLoop`): Die Pose des Werks rechnet damit
+// wie am geformten Maul (nichts ist weggeschnitten, nichts eingesetzt). Den Winkel je Punkt gibt `kieferWinkel`.
+//
+// Das Feld eines Kiefers, um das Scharnier gesehen (Winkel φ gegen die Lippe, Abstand r):
+//   - vor dem Mundwinkel dreht er starr, so weit er reicht (`KIEFER_REICHWEITE` Längen der Lippe);
+//   - hinter dem Mundwinkel läuft die Drehung über φ aus und ist genau hinter ihm null: Dort wird die Haut quer gestaucht;
+//   - nach außen läuft sie über r aus: Dort wird die Haut verschert.
+// Stauchung und Scherung wachsen mit dem Winkel des Kiefers. Damit weit geöffnet nichts faltet und nichts reißt, werden beide
+// Ausläufe mit dem Winkel breiter: Quer bleibt von der Haut mindestens `STAUCH_MIN`, die Scherung bleibt unter `SCHER_MAX`.
+
+/** So weit reicht ein Kiefer um das Scharnier, in Längen der Lippe (in der Seite): bis dahin dreht er starr */
+export const KIEFER_REICHWEITE = 1.15;
+/** Der Auslauf nach außen endet mindestens beim so Vielfachen der Reichweite (bei kleinen Winkeln; weit geöffnet reicht er weiter) */
+const AUSLAUF_AUSSEN_MIN = 1.8;
+/** Der Auslauf hinter dem Mundwinkel beginnt spätestens quer zur Lippe (Bogenmaß gegen ihre Richtung am Mundwinkel) */
+const AUSLAUF_HINTEN_AB = Math.PI / 2;
+/** quer bleibt von der Haut hinter dem Mundwinkel überall mindestens dieser Anteil */
+const STAUCH_MIN = 0.3;
+/** so stark darf sich die Haut am Rand der Reichweite höchstens verziehen (Scherung: Weg quer je Weg nach außen) */
+const SCHER_MAX = 1.25;
+/** größte Steigung der Rampe, auf ihre Breite bezogen */
+const RAMPE_STEIL = 1.25;
+/** der größte Winkel eines Kiefers (Grad, von „zu“) */
+export const KIEFER_MAX = { oben: 45, unten: 70 } as const;
+/** die Pose „Fressen“, wie sie mit dem Maul entsteht (Grad; Plan, Abschnitt 6: oben wenig, unten weit) */
+export const FRESSEN_ANFANG = { oben: 8, unten: 34 } as const;
+
+/**
+ * Von 0 auf 1 über [a, b]: in der Mitte gerade, an beiden Enden auf einem Fünftel der Breite gerundet. Die größte Steigung ist
+ * `RAMPE_STEIL` / (b − a); eine Glattstufe hätte 1,5.
+ */
+function rampe(a: number, b: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  const e = 0.2;
+  const m = 1 / (1 - e);
+  if (t < e) return (m * t * t) / (2 * e);
+  if (t > 1 - e) return 1 - (m * (1 - t) * (1 - t)) / (2 * e);
+  return m * (t - e / 2);
+}
+/** die zwei Ausläufe für einen Kieferwinkel (Bogenmaß): ab welchem φ die Drehung hinten ausläuft, und bis zu welchem ln(r / Reichweite) außen */
+function auslauf(winkel: number): { hintenAb: number; aussenBis: number } {
+  const a = Math.abs(winkel);
+  return {
+    hintenAb: Math.min(AUSLAUF_HINTEN_AB, Math.PI - (RAMPE_STEIL * a) / (1 - STAUCH_MIN)),
+    aussenBis: Math.max(Math.log(AUSLAUF_AUSSEN_MIN), (RAMPE_STEIL * a) / SCHER_MAX),
+  };
+}
+/** wie weit ein Ort mit seinem Kiefer dreht (0 … 1): φ gegen die Lippe (Bogenmaß), `lnR` = ln(r / Reichweite) */
+const anteil = (phi: number, lnR: number, f: { hintenAb: number; aussenBis: number }): number =>
+  (phi <= f.hintenAb ? 1 : 1 - rampe(f.hintenAb, Math.PI, phi)) * (lnR <= 0 ? 1 : 1 - rampe(0, f.aussenBis, lnR));
+
+/** Wo das Maul liegt, aus seiner Lippe gelesen (alles in der Seitenebene, x und y des Werks) */
+export type MaulLage = {
+  /** der Mundwinkel: das Scharnier der Kiefer */
+  C: V2;
+  /** die Lippe, vom Mundwinkel nach vorn */
+  profil: Profil;
+  /** ihre Länge */
+  lang: number;
+  /** Richtung der Lippe am Mundwinkel (nach vorn; über ihr erstes Fünftel gemittelt) */
+  t0: V2;
+  /** die Kieferspitze (das vordere Ende der Lippe) und die Richtung der Lippe dort */
+  spitze: V2;
+  tSpitze: V2;
+  /** der Unterkiefer liegt links der Laufrichtung (vom Mundwinkel nach vorn gesehen); er öffnet dann gegen den Uhrzeigersinn */
+  untenLinks: boolean;
+};
+
+/**
+ * Die Lage des Mauls aus seiner Lippe: `ecke` ist die Probe am Mundwinkel. Gelesen wird die erste Hälfte der Kette (die zweite
+ * liegt um den Haarspalt daneben). Null: Die Lippe hat in der Seite keine Länge.
+ */
+export function maulLage(h: Haut, lippe: Loop, ecke: number): MaulLage | null {
+  if (ecke <= 0 || ecke >= lippe.proben.length) return null;
+  const ort = (j: number): V2 => {
+    const v = lippe.proben[j]!.ecken[0];
+    return { x: h.pos[3 * v]!, y: h.pos[3 * v + 1]! };
+  };
+  const C = ort(ecke);
+  // vom Mundwinkel nach vorn; vorn läuft die Lippe um die Schnauze zur Mitte: Dort liegen ihre Punkte in der Seite fast aufeinander
+  const P: V2[] = [C];
+  let lang = 0;
+  for (let j = ecke - 1; j >= 0; j--) {
+    const q = ort(j);
+    const d = Math.hypot(q.x - P[P.length - 1]!.x, q.y - P[P.length - 1]!.y);
+    if (d < 1e-6) continue;
+    lang += d;
+    P.push(q);
+  }
+  if (P.length < 2 || !(lang > 1e-6)) return null;
+  const profil = new Profil(P);
+  const richtung = (a: V2, b: V2): V2 => {
+    const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return { x: (b.x - a.x) / l, y: (b.y - a.y) / l };
+  };
+  const spitze = P[P.length - 1]!;
+  const t0 = richtung(C, profil.ort(0.2 * lang));
+  const tSpitze = richtung(profil.ort(0.8 * lang), spitze);
+  // unten ist die Seite, deren Normale nach unten zeigt: links der Laufrichtung liegt (−t.y, t.x)
+  const sehne = richtung(C, spitze);
+  return { C, profil, lang, t0, spitze, tSpitze, untenLinks: sehne.x < 0 };
+}
+
+/** Wo der Tropfen eines Knochens in Ruhe sitzt: ein Stück vor der Kieferspitze, auf der Seite seines Kiefers (wie in der Studie) */
+export function kieferTropfenRuhe(L: MaulLage, oben: boolean): V2 {
+  const t = L.tSpitze;
+  // (links der Laufrichtung liegt der Oberkiefer, wenn der Unterkiefer rechts liegt, und umgekehrt)
+  const s = (oben !== L.untenLinks ? 1 : -1) * 0.12 * L.lang;
+  return { x: L.spitze.x + t.x * 0.14 * L.lang - t.y * s, y: L.spitze.y + t.y * 0.14 * L.lang + t.x * s };
+}
+
+/** je Punkt der Haut: sein Winkel um das Scharnier gegen die Lippe (Bogenmaß, 0 … π), ln(Abstand / Reichweite) und ob er zum Unterkiefer gehört */
+type KieferFeld = { phi: Float32Array; lnR: Float32Array; unten: Uint8Array };
+const kieferFelder = new WeakMap<MaulAmLoop, KieferFeld>();
+
+/**
+ * Die Kiefer am Maul als echte Form: je Punkt der Haut, zu welchem Kiefer er gehört und wo er um das Scharnier liegt. `ecke`: die
+ * Probe der Lippe am Mundwinkel.
+ *
+ * Welcher Kiefer: Lippe und Tasche aus den Linien (`kieferSeiten`: Zu liegen Gaumen und Boden aufeinander, die Lage sagt dort
+ * nichts). Außen vor dem Mundwinkel die Lippe, die über das Netz näher liegt (die Lippe trennt die Haut der zwei Kiefer dort ganz);
+ * hinter dem Mundwinkel, wo die Haut nicht geschnitten ist, die Seite der Geraden durch den Mundwinkel.
+ *
+ * Die Gewichte im Ergebnis (`gewicht`, `gewichtOben`) gelten für kleine Winkel; den Winkel je Punkt für einen Stand der Knochen
+ * rechnet `kieferWinkel` (weit geöffnet laufen die Drehungen breiter aus). `wieVorher`: Gilt es für dieselbe Haut, gilt es weiter
+ * (im Zug).
+ */
+export function maulEchtAmLoop(h: Haut, loops: readonly Loop[], lippe: Loop, ecke: number, opt: { wieVorher?: MaulAmLoop | null } = {}): MaulAmLoop | null {
+  const T = h.tri.length / 3;
+  const alt = opt.wieVorher;
+  if (alt && alt.gewicht.length === h.n && alt.offen.length === T && kieferFelder.has(alt)) return alt;
+  const L = maulLage(h, lippe, ecke);
+  if (!L) return null;
+  const sk = kieferSeiten(h, loops, lippe.id, { profil: L.profil, C: L.C });
+  const unten: 1 | -1 = L.untenLinks ? 1 : -1;
+  const reich = KIEFER_REICHWEITE * L.lang;
+  /** ein Ort der Seite um das Scharnier: Winkel gegen die Lippe, ln(r / Reichweite), hinter dem Mundwinkel, links der Geraden durch ihn */
+  const umC = (x: number, y: number): { phi: number; lnR: number; hinten: boolean; links: boolean } => {
+    const dx = x - L.C.x;
+    const dy = y - L.C.y;
+    const r = Math.hypot(dx, dy);
+    const vor = dx * L.t0.x + dy * L.t0.y;
+    return { phi: r > 1e-9 ? Math.acos(Math.max(-1, Math.min(1, vor / r))) : 0, lnR: r > 1e-9 ? Math.log(r / reich) : -Infinity, hinten: vor < 0, links: L.t0.x * dy - L.t0.y * dx >= 0 };
+  };
+  const feld: KieferFeld = { phi: new Float32Array(h.n), lnR: new Float32Array(h.n), unten: new Uint8Array(h.n) };
+  for (let v = 0; v < h.n; v++) {
+    const o = umC(h.pos[3 * v]!, h.pos[3 * v + 1]!);
+    const innen = !sk.aussen[v] || sk.lippe.has(v);
+    const seite = !innen && o.hinten ? (o.links ? 1 : -1) : sk.seite[v]!;
+    feld.phi[v] = o.phi;
+    feld.lnR[v] = Math.max(-1e6, o.lnR);
+    feld.unten[v] = seite === unten ? 1 : 0;
+  }
+  // genau spiegelgleich (die Seiten werden der Reihe nach über das Netz verteilt: Ein Paar bekommt die Seite seines ersten Punkts)
+  for (let v = 0; v < h.n; v++) {
+    const sp = h.spiegel[v]!;
+    if (sp > v) feld.unten[sp] = feld.unten[v]!;
+  }
+  const klein = auslauf(0);
+  const gewicht = new Float32Array(h.n);
+  const gewichtOben = new Float32Array(h.n);
+  for (let v = 0; v < h.n; v++) (feld.unten[v] ? gewicht : gewichtOben)[v] = anteil(feld.phi[v]!, feld.lnR[v]!, klein);
+  // die Lippen als Punktnummern, je vom einen Mundwinkel um die Schnauze zum anderen
+  const kette = lippe.proben.map((p) => p.ecken[0]);
+  const rund = (teil: number[]): Uint32Array => Uint32Array.from([...teil, ...teil.map((v) => h.spiegel[v]!).filter((v) => v >= 0).reverse()]);
+  const erste = rund(kette.slice(0, ecke + 1).reverse());
+  const zweite = rund(kette.slice(ecke));
+  const ersteUnten = sk.ersteSeite === unten;
+  /** das Feld an einem Ort der Seite, für den Kiefer auf dieser Seite der Lippe (bei kleinen Winkeln) */
+  const bei = (x: number, y: number, fuerUnten: boolean): number => {
+    const o = umC(x, y);
+    const links = o.hinten ? o.links : L.profil.naechster(x, y).d >= 0;
+    return (links === L.untenLinks) === fuerUnten ? anteil(o.phi, o.lnR, klein) : 0;
+  };
+  const m: MaulAmLoop = {
+    positionen: Float32Array.from(h.pos),
+    normalen: new Float32Array(3 * h.n),
+    indizes: Uint32Array.from(h.tri),
+    innen: { positionen: new Float32Array(0), normalen: new Float32Array(0), indizes: new Uint32Array(0) },
+    lippeOben: ersteUnten ? zweite : erste,
+    lippeUnten: ersteUnten ? erste : zweite,
+    gelenk: { x: L.C.x, y: L.C.y },
+    linie: [...L.profil.p].reverse().map((q) => ({ x: q.x, y: q.y })),
+    drehsinn: unten,
+    gewichtBei: (x, y) => bei(x, y, true),
+    schaedelBei: (x, y) => bei(x, y, false),
+    gewicht,
+    gradient: new Float32Array(2 * h.n),
+    gewichtOben,
+    gradientOben: new Float32Array(2 * h.n),
+    innenUnten: new Uint8Array(0),
+    unten: null,
+    tiefe: () => 0,
+    offen: new Uint8Array(T),
+    kantenOffen: new Set<number>(),
+  };
+  kieferFelder.set(m, feld);
+  return m;
+}
+
+/**
+ * Der Drehwinkel je Punkt der Haut (Bogenmaß) für einen Stand der zwei Knochen (Grad: `kiefer` der Unterkiefer, `schaedel` der
+ * Oberkiefer), am Maul als echte Form. Wie `knochenWinkel` im Kern, nur laufen die Drehungen hier mit dem Winkel breiter aus.
+ * `zuBis` (Grad): so weit darf der Unterkiefer unter die gerechnete Lage schließen (der Haarspalt). Null: `m` ist kein solches Maul.
+ */
+export function kieferWinkel(m: MaulAmLoop, k: { kiefer: number; schaedel: number }, zuBis = 0): Float64Array | null {
+  const feld = kieferFelder.get(m);
+  if (!feld) return null;
+  const a = (Math.max(-Math.max(0, zuBis), k.kiefer) * Math.PI) / 180;
+  const s = (Math.max(0, k.schaedel) * Math.PI) / 180;
+  const fa = auslauf(a);
+  const fs = auslauf(s);
+  const n = feld.phi.length;
+  const theta = new Float64Array(n);
+  for (let v = 0; v < n; v++) theta[v] = m.drehsinn * (feld.unten[v] ? a * anteil(feld.phi[v]!, feld.lnR[v]!, fa) : -s * anteil(feld.phi[v]!, feld.lnR[v]!, fs));
+  return theta;
 }

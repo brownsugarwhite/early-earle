@@ -788,3 +788,32 @@ dort drei Punktreihen auf einen Ort). (3) Die Splitter des Schnitts werden vor d
 Enden einer geschnittenen Linie kommen an der Lippe auf einen Ort. Am Rechenkern ist nichts an der Rechnung geändert; er gibt eine
 vorhandene Funktion nach außen (`kantenTeilenMit`).
 
+
+### 12.12 Etappe 2: gebaut (20.11.)
+
+Deine Antwort (20.11.): „Ja, Etappe 2“.
+
+In Ozzy: Mit dem Maul gibt es die Pose „Fressen“ (oben 8°, unten 34°) und an jeder Kieferspitze einen Tropfen an einer Haarlinie
+zum Mundwinkel, rosa oben, blau unten. Ziehen dreht den Kiefer um den Mundwinkel, jeder für sich; knapp vor „zu“ (unter 2°) rastet
+er zu; weiter als 70° unten und 45° oben geht es nicht. In der Grundform bleibt das Maul zu: Hältst du einen Tropfen, öffnet es
+sich für einen Blick und schließt beim Loslassen. „Fressen“ (die Tafel oben rechts) lässt es offen. Gleich nach dem Schneiden
+zeigt sich das Maul einmal (auf und wieder zu). Ein Zug an einem Tropfen ist ein Schritt für ⌘Z.
+
+Wie: Die Ruhe der Form bleibt das geschlossene Maul, die zwei Knochen drehen nur, was gezeigt wird (das Werk kannte das von der
+Pose seit dem 14.11.; das neue Maul hängt jetzt daran, `G.maul` ist seine Lippe). Welcher Kiefer ein Punkt ist, steht in den Linien
+(Lippe am Mundwinkel geteilt, Tasche bis zur Rachenlinie; außen vor dem Mundwinkel die nähere Lippe, dahinter die Seite der Geraden
+durch den Mundwinkel). Wie weit er mitdreht: vor dem Mundwinkel ganz, so weit der Kiefer reicht (1,15 Längen der Lippe); hinter
+dem Mundwinkel läuft die Drehung über den Winkel um das Scharnier aus, nach außen über den Abstand. **Beide Ausläufe werden mit dem
+Winkel des Kiefers breiter**, damit weit geöffnet nichts faltet: Quer bleibt von der Haut hinter dem Mundwinkel mindestens 30 %,
+die Scherung am Rand der Reichweite bleibt unter 1,25. Mit festen Ausläufen (wie in der Studie) schlug bei 70° der Bauch von „teat
+firefish“ einen Haken.
+
+Geprüft im Fenster (`ozzy-maul-fenster.mjs`, Kriterien 8 bis 12, an „teat firefish“ und an einem frischen Oval): bei 34°/8° und
+am Anschlag (70° unten) kein gefaltetes Dreieck, größte Dehnung einer Kante 1,5; die Tasche dreht starr (Test); das Drehen der
+Anzeige dauert 0,5 ms an „teat firefish“; „Fressen“ aus gibt die Grundform genau zurück. Die Linien liegen in der geöffneten Lage
+auf der Haut (Ozzy zeichnete Linien im Übergang bisher aus gedrehten Punkten und Griffen; weit geöffnet lagen sie im Bild sichtbar
+neben dem Umriss, nicht gemessen: jetzt je Ort vom Pfad der Ruhe, `stueckeGezeigtBei`).
+
+Nicht gebaut aus der Zeile des Plans: der Tropfen für die Reichweite und das verschiebbare Scharnier. Bilder:
+`docs/progress/ozzy/2026-11-20-maul-etappe2-fressen.jpg`, `…-weit.jpg`, `…-blick.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md).

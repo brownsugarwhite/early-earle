@@ -20,6 +20,11 @@
 //      Dazu (18.11., D1 Teil 2): `verfeinernPause` und `VERFEINERN_PAUSE_MS` nach `nichtsZuVerfeinern` (überall mit ihm
 //      zurückgesetzt), in der Antwort des Workers `d.wenig` (dann die Pause statt `nichtsZuVerfeinern`), in `zugRechnen` die
 //      Bedingung `performance.now() >= verfeinernPause` vor `gestreckt()`.
+//      Dazu (20.11., das Maul als echte Form, Etappe 1 und 2): der Import aus `./maulEcht`; `istMaulEcht`, `maulSchneiden`,
+//      `ueberDasMaul` (in `kreuzungenSuchen`), `maulFalte` und `kreuztSich` (in `linienGekreuzt`); `maulBlick`, `maulBlickSetzen`,
+//      `anzeigeDreht`, `KIEFER_RAST`, `kieferStellen`, `kieferKnochen`, `stueckeGezeigtBei`; und je eine Stelle für `istMaulEcht` in
+//      `maulIstGeformt`, `maulSchnitt` (mit `alle`), `maulAktuell`, `knochenJetzt` (`kieferWinkel`), `alsAnzeige` (`anzeigeDreht`)
+//      und `standAnwenden`. (Was die Sitzungen „Objekte“ und „Paint-Modus“ ins Werk gesetzt haben, steht hier nicht.)
 // Geprüft am 16.11.: Aus `kurven.ts` von 179dfa4a (mit Schritt 1) entstehen genau `werk.ts` und `kurven.ts` von 5039cead.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';

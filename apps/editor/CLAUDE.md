@@ -738,6 +738,18 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `kreuzungenSuchen` ist geometrisch: Enden an Ober- und Unterlippe am selben Ort galten als neue Kreuzung (`ueberDasMaul`). (12)
   `linienGekreuzt` prüft zusammengeklappte Linien je Hälfte (`maulFalte`). (13) P fängt dicht am Umriss die Mitte: die Maullinie
   ein Stück vor der Form beginnen. Offenes: `docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`.
+  **Etappe 2 in Ozzy: die Kiefer (20.11.; Plan 12.12):** Mit dem Maul gibt es die Pose „Fressen“ und zwei Tropfen an den
+  Kieferspitzen (`#kiefer-oben`, `#kiefer-unten`; `main.ts` „Die Kiefer als Tropfen“). Die Lippe ist `G.maul`; `maulIstGeformt` und
+  `maulSchnitt` kennen `istMaulEcht` (`maulEchtAmLoop`, `kieferWinkel` in `maulEcht.ts`). In der Grundform öffnet nur der Blick
+  (`werk.maulBlick`, `anzeigeDreht`): `alsAnzeige` dreht dann auch ohne `grund`. Merke: (14) Wer fragt „dreht die Anzeige?“, fragt
+  `werk.anzeigeDreht()`, nicht `werk.grund` (so `werkBlatt.signatur`); wer rechnet oder greift, fragt weiter `grund`. (15) Das Feld
+  der Kiefer hängt am Winkel (`kieferWinkel`): `gewicht` mal Winkel gilt nur für kleine Winkel. (16) Falten an der gezeigten Haut
+  über die Normalen zählen (`__ozzy.kiefer().gefaltet`); der Umlaufsinn in der Seite kippt auch am Umriss (`gekippt`). (17) Ozzy
+  zeichnet Linien in der gedrehten Anzeige im Übergang je Ort vom Pfad der Ruhe (`werk.stueckeGezeigtBei` in `werkBlatt.abtasten`):
+  Wer dort einen neuen Ort baut, an dem Linien stehen, nimmt das auch. (18) Der Zug an einem Tropfen zählt den Winkel des Zeigers um
+  das Scharnier vom Drücken an (beim Blick wandert der Tropfen unter dem Zeiger weg); eine Probe liest die Orte der Tropfen nach
+  jedem Blickwechsel neu (`kiefer()`). (19) Mit `G.maul` sperrt das Werk Spiegel aus, die Naht an der Mitte und Verschmelzen. Probe:
+  `ozzy-maul-fenster.mjs`, Kriterien 8 bis 12.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

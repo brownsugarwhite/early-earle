@@ -16,6 +16,11 @@ die Lippe eine Linie mit Kante, ihre Punkte gelten für beide Lippen (zieht man 
 Mitte von Gaumen und Boden und die Rachenlinie, Linien der Form sind an der Lippe geschnitten. Gerechnet wird das Maul zu. ⌘Z
 nimmt es zurück, Esc verwirft die wartende Linie.
 
+**Etappe 2 (20.11.):** Mit dem Maul gibt es die Pose „Fressen“ (oben 8°, unten 34°) und an jeder Kieferspitze einen Tropfen an
+einer Haarlinie zum Mundwinkel, rosa oben, blau unten. Ziehen dreht den Kiefer; knapp vor „zu“ rastet er zu. In der Grundform
+öffnet Halten das Maul für einen Blick, Loslassen schließt es; „Fressen“ lässt es offen. Nach dem Schneiden zeigt sich das Maul
+einmal. Die Knochen drehen nur die Anzeige; die Linien liegen auch geöffnet auf der Haut.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -43,8 +48,7 @@ nimmt es zurück, Esc verwirft die wartende Linie.
 
 ### Was noch nicht da ist (die Etappen)
 
-9. **Öffnen** (Etappe 2): Knochen, die nur die Anzeige drehen; welcher Kiefer ein Punkt ist, liest `kieferSeiten` aus den Linien.
-   Der alte Tropfen „Maul“ und „Fressen“ sind an der neuen Lippe aus.
+9. ~~Öffnen (Etappe 2)~~ gebaut; was daran offen ist, steht unter „An den Kiefern“.
 10. **„Lippen trennen“** (Etappe 3), Über- und Unterbiss. Zu zieht ein Punkt beide Lippen; das geht.
 11. **Die Ebene „Maul“** im Paint-Modus (Etappe 4), Zähne (5), Zunge (6), Posen und Backen.
 
@@ -52,9 +56,31 @@ nimmt es zurück, Esc verwirft die wartende Linie.
 
 12. **Im Maul arbeiten:** neue Linien über das Maul oder in der Tasche, Punkte der Lippe löschen, K an der Lippe (weich fiele die
     Tasche zusammen), die zwei Linien im Maul ziehen.
-13. **Sichern und Laden** einer Form mit Maul in Ozzy (im Kern lädt der Stand; das Fenster ist nicht geprüft).
-14. **Die Pose** an einer Form mit dem neuen Maul, und **Verschmelzen oder Abziehen** mit ihr (nicht gesperrt, nicht geprüft).
+13. **Sichern und Laden** einer Form mit Maul in Ozzy (im Kern lädt der Stand; das Fenster ist nicht geprüft). Ein Stand von
+    Etappe 1 bekommt beim Laden sein Maul und die Pose nachgetragen.
+14. **In der Pose arbeiten** an einer Form mit dem neuen Maul: Die Lippe wird in der Pose nicht gezogen (wie am Maul aus einer
+    Linie vom 14.11.); alles andere läuft wie am geformten Maul und ist hier nicht geprüft.
 15. **Andere Formen:** geprüft sind „teat firefish“ und ein frisches Oval mit Start-Loops.
+
+### An den Kiefern (Etappe 2)
+
+20. **Reichweite und Scharnier:** Der Tropfen auf der Haarlinie für die Reichweite fehlt, ebenso das verschiebbare Scharnier. Ein
+    Kiefer reicht 1,15 Längen der Lippe um den Mundwinkel; was dahinter liegt (ein Horn, eine Flosse), biegt sich im Auslauf mit.
+21. **Weit geöffnet geht viel von der Form mit.** Damit nichts faltet, werden die Ausläufe mit dem Winkel breiter (bei 70° reicht
+    der Auslauf bis zum 3,4-Fachen der Reichweite, hinter dem Mundwinkel beginnt er schon 55° vor der Geraden nach hinten). Ob das
+    so aussehen soll oder der Kiefer lieber enger bleibt und die Pose den Rest formt, zeigt sich an deinen Formen.
+22. **Hinter dem Mundwinkel wird die Haut nur gestaucht** (bis auf 30 %); eine Backe, die sich wölbt, gibt es nicht.
+23. **Die Tafel „Fressen“ mit ihren zwei Reglern** steht noch neben den Tropfen (dieselben zwei Winkel). Die Posen als Tropfen in
+    einer Reihe (Grundform, Fressen, Plus) fehlen.
+24. **Von oben liegen die zwei Tropfen übereinander** (dann zählt der Weg des Zeigers nach oben und unten); in den Vier Ansichten
+    gibt es sie nicht; mit P, Freihand und im Paint-Modus sind sie aus.
+25. **Innen ist das Maul Wachs wie außen;** die Haarlinien der Knochen liegen über der Form (sie laufen in der Mitte des Kopfs).
+26. **Mit einem Maul sind jetzt gesperrt:** Spiegel aus, der Schnitt an der Mitte (die Naht beim Ziehen über die Mitte), Verschmelzen
+    und Abziehen. Das Werk sperrt das für jedes Maul; für das neue ist keins davon geprüft.
+27. **Der Umriss in der Seite zackt** bei weitem Öffnen an einem groben Netz (frische Form) leicht.
+28. **Im Übergang ist ein Griff nicht genau die Tangente der gezeigten Linie,** und ein Klick auf die Linie trifft dort die Kurve
+    aus gedrehten Punkten und Griffen (gezeichnet wird sie jetzt genau).
+29. **Das Vorstellen nach dem Schneiden** (einmal auf und zu, anderthalb Sekunden) ist geschätzt, ebenso das Tempo beim Blick.
 
 ### Kleines
 

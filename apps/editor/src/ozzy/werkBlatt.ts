@@ -250,7 +250,7 @@ export class WerkBlatt implements Raum {
    * (ein Zug läuft, die Pose dreht mit, etwas fließt): dann wird in jedem Bild gebaut.
    */
   private signatur(flaechen: Flaeche[]): string | null {
-    if (werk.zug || werk.grund !== null || werk.maulLauf !== null || this.fliesst) return null;
+    if (werk.zug || werk.anzeigeDreht() || werk.maulLauf !== null || this.fliesst) return null;
     const teile: (string | number)[] = [werk.standZahl(), werk.spiegelStand(), Object.values(this.breiten()).join(',')];
     for (const F of flaechen) {
       teile.push(F.a, F.staerke, F.breite, F.vorn ?? 0, F.bereich ?? 0, F.raeumlich ? 1 : 0, ...F.hin(0, 0), ...F.hin(100, 0), ...F.hin(0, 100), ...F.hin(70, -40, 60));
@@ -387,8 +387,26 @@ export class WerkBlatt implements Raum {
             lSchl.push(`${fl}|${l.id}|${m ? 1 : 0}`);
             infos.push({ fl, id: l.id, m });
             tiefenJeLinie.push(tiefen);
-            const PR = this.abtasten(F, kontroll, stuecke, br, tiefen);
-            this.verdeckteProben(PR, k3, stuecke, karte, br, F.tiefe);
+            // Dreht die Anzeige mit den Knochen (Pose, Blick ins Maul), ist ein Stück im Übergang zwischen Kiefer und Körper keine
+            // Kurve aus gedrehten Punkten und Griffen mehr: Dort kommt jeder Ort vom Pfad der Ruhe, mit dem Winkel seiner Stelle
+            // gedreht (`stueckeGezeigtBei`). Punkte und Griffe bleiben, wo sie sind.
+            const genau = werk.stueckeGezeigtBei(li)?.map((g) => (g ? (t: number): V3 => zeigen(g(t)) : null));
+            const PR = this.abtasten(
+              F,
+              kontroll,
+              stuecke,
+              br,
+              tiefen,
+              genau?.map((g) =>
+                g
+                  ? (t: number): [number, number, number] => {
+                      const v = g(t);
+                      return [...werk.imBlatt(a, v), tief(v)];
+                    }
+                  : null,
+              ),
+            );
+            this.verdeckteProben(PR, k3, stuecke, karte, br, F.tiefe, genau);
             proben.push(PR);
           }
         });
@@ -848,7 +866,7 @@ export class WerkBlatt implements Raum {
     return fl === undefined ? 0 : (this.flaechen[fl]?.bereich ?? 0);
   }
 
-  private verdeckteProben(P: LinienProben, k3: V3[][], stuecke: Stueck[], K: Karte | null, br: Breiten, tiefe?: (p: V3) => number): void {
+  private verdeckteProben(P: LinienProben, k3: V3[][], stuecke: Stueck[], K: Karte | null, br: Breiten, tiefe?: (p: V3) => number, genau?: (((t: number) => V3) | null)[]): void {
     if (!K) return;
     const z = P.z ?? new Float32Array(P.n);
     for (let k = 0; k < P.n; k++) {
@@ -859,16 +877,20 @@ export class WerkBlatt implements Raum {
       let ort: V3 | null = null;
       if (C && st && st.art !== 'umriss') {
         const t = P.t[k]!;
-        const s = 1 - t;
-        const b0 = s * s * s;
-        const b1 = 3 * s * s * t;
-        const b2 = 3 * s * t * t;
-        const b3 = t * t * t;
-        ort = {
-          x: b0 * C[0]!.x + b1 * C[1]!.x + b2 * C[2]!.x + b3 * C[3]!.x,
-          y: b0 * C[0]!.y + b1 * C[1]!.y + b2 * C[2]!.y + b3 * C[3]!.y,
-          z: b0 * C[0]!.z + b1 * C[1]!.z + b2 * C[2]!.z + b3 * C[3]!.z,
-        };
+        const g = genau?.[si];
+        if (g) ort = g(t);
+        else {
+          const s = 1 - t;
+          const b0 = s * s * s;
+          const b1 = 3 * s * s * t;
+          const b2 = 3 * s * t * t;
+          const b3 = t * t * t;
+          ort = {
+            x: b0 * C[0]!.x + b1 * C[1]!.x + b2 * C[2]!.x + b3 * C[3]!.x,
+            y: b0 * C[0]!.y + b1 * C[1]!.y + b2 * C[2]!.y + b3 * C[3]!.y,
+            z: b0 * C[0]!.z + b1 * C[1]!.z + b2 * C[2]!.z + b3 * C[3]!.z,
+          };
+        }
         hin = this.hinten(K, ort);
       }
       // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt (die Tiefe des Orts) und weich: Sie bekommt die volle Breite und die
@@ -897,8 +919,10 @@ export class WerkBlatt implements Raum {
   /**
    * Proben einer Linie wie `linieAbtasten` der Studie, aber auf der Fläche: im Blatt abgetastet, dann abgebildet. `tiefen` (B2, nur auf
    * einer räumlichen Fläche): je Stück die Tiefe seiner vier Kontrollpunkte; die Tiefe längs des Stücks ist dieselbe Kurve.
+   * `genau`: je Stück, das keine Kurve aus seinen Kontrollpunkten ist (in der gedrehten Anzeige einer Pose), sein Ort im Blatt und
+   * seine Tiefe bei t.
    */
-  private abtasten(F: Flaeche, kontroll: number[][], stuecke: Stueck[], br: Breiten, tiefen?: number[][]): LinienProben {
+  private abtasten(F: Flaeche, kontroll: number[][], stuecke: Stueck[], br: Breiten, tiefen?: number[][], genau?: (((t: number) => [number, number, number]) | null)[]): LinienProben {
     const m = stuecke.length;
     const xs: number[] = [];
     const ys: number[] = [];
@@ -925,7 +949,13 @@ export class WerkBlatt implements Raum {
       for (let j = si === 0 ? 0 : 1; j <= anzahl; j++) {
         const t = j / anzahl;
         const u = 1 - t;
-        const [x, y] = F.hin(...bez(k, t), kt ? u * u * u * kt[0]! + 3 * u * u * t * kt[1]! + 3 * u * t * t * kt[2]! + t * t * t * kt[3]! : undefined);
+        const g = genau?.[si];
+        let x: number;
+        let y: number;
+        if (g) {
+          const [X, Y, Tz] = g(t);
+          [x, y] = F.hin(X, Y, kt ? Tz : undefined);
+        } else [x, y] = F.hin(...bez(k, t), kt ? u * u * u * kt[0]! + 3 * u * u * t * kt[1]! + 3 * u * t * t * kt[2]! + t * t * t * kt[3]! : undefined);
         if (xs.length) s += Math.hypot(x - px, y - py);
         px = x;
         py = y;

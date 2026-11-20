@@ -20,6 +20,7 @@
 // muss zuerst geladen werden: die Schalter des Werks in der Adresse
 import './adresse';
 import { MAUL_WINKEL_MAX, eckenAuto, istEcke } from '@ee/shape/dicht';
+import { KIEFER_MAX } from '../form/maulEcht';
 import { type Camera, Color, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
@@ -4302,6 +4303,7 @@ function bild(dt: number): boolean {
   farbTropfenZeigen();
   hintenZeigen();
   maulUiZeigen();
+  if (kieferUiZeigen()) aktiv = true;
   objektUiZeigen();
   if (zustand === 'ruhe' && !werk.zug) rueckwegAbgleichen();
   leiste.spiegelZeigen(spiegelZustand(), spiegelErlaubt());
@@ -8804,6 +8806,13 @@ function maulUiZeigen(): void {
   fressen.hidden = !(an && werk.G.maul);
   if (fressenWar && !fressen.hidden) fressenQuellen();
   fressenKnopf.setAttribute('aria-pressed', String(werk.grund !== null));
+  // (am Maul als echte Form gehen die Kiefer weiter auf als am Maul des Kerns: Die Regler reichen so weit wie die Tropfen)
+  const lippe = werk.G.maul ? werk.loops[werk.loopNr(werk.G.maul.id)] : undefined;
+  const echt = !!lippe && werk.istMaulEcht(lippe);
+  const maxMaul = String(echt ? KIEFER_MAX.unten : MAUL_WINKEL_MAX);
+  const maxKopf = String(echt ? KIEFER_MAX.oben : 40);
+  if (fressenMaul.max !== maxMaul) fressenMaul.max = maxMaul;
+  if (fressenKopf.max !== maxKopf) fressenKopf.max = maxKopf;
   if (!vorRegler) {
     fressenMaul.value = String(werk.pose.kiefer);
     fressenKopf.value = String(werk.pose.schaedel);
@@ -8855,6 +8864,8 @@ maulTropfen.addEventListener('click', () => {
         werkHaut.ganzNeu();
         ruheZeigen();
         raumRechnen(bw.band);
+        // das Maul zeigt sich: Es geht einmal auf und wieder zu (zu ist es fast nicht zu sehen)
+        kieferSchau = { t0: performance.now() };
       })
       .finally(() => {
         maulStrichLaeuft = false;
@@ -8905,6 +8916,177 @@ for (const r of [fressenMaul, fressenKopf]) {
     werk.anzeige.allesZeigen();
     anstossen();
   });
+}
+
+// ---------- Die Kiefer als Tropfen (Maul, Etappe 2, 20.11.) ----------
+//
+// Das Maul als echte Form ist in seiner Ruhe zu. Zwei Knochen öffnen nur, was gezeigt wird: An jeder Kieferspitze sitzt ein Tropfen
+// (oben rosa, unten blau) an einer Haarlinie zum Mundwinkel. Ziehen dreht den Kiefer um den Mundwinkel; knapp vor „zu“ rastet er zu.
+// In der Pose „Fressen“ bleibt das Maul offen; in der Grundform öffnet es sich nur, solange ein Tropfen gehalten wird.
+
+const kieferEl = {
+  oben: { tropfen: $<HTMLButtonElement>('kiefer-oben'), linie: $<HTMLDivElement>('kiefer-knochen-oben') },
+  unten: { tropfen: $<HTMLButtonElement>('kiefer-unten'), linie: $<HTMLDivElement>('kiefer-knochen-unten') },
+};
+/**
+ * Der laufende Zug an einem Kiefer. Gezählt wird der Winkel des Zeigers um den Mundwinkel gegen den beim Drücken (`w`: der zuletzt
+ * gelesene, `roh`: der Winkel des Kiefers ohne Rasten), nicht sein Ort: In der Grundform öffnet das Maul erst beim Halten, der
+ * Tropfen wandert dabei unter dem Zeiger weg.
+ */
+let kieferZug: { oben: boolean; x0: number; y0: number; yLetzt: number; w: number | null; roh: number; bewegt: boolean; vorher: werk.Schnappschuss } | null = null;
+/** nach dem Schneiden zeigt sich das Maul einmal (auf und wieder zu) */
+let kieferSchau: { t0: number } | null = null;
+const KIEFER_SCHAU_MS = 1500;
+let kieferZeit = 0;
+
+/** der Ort des Zeigers auf der Spiegelebene des Werks (z = 0), in Einheiten des Werks; null: Der Blick läuft fast längs der Ebene */
+function zeigerAufMitte(x: number, y: number): { x: number; y: number } | null {
+  const inv = vpJetzt().invert();
+  const nx = (x / W) * 2 - 1;
+  const ny = 1 - (y / H) * 2;
+  const a = new Vector3(nx, ny, -1).applyMatrix4(inv);
+  const b = new Vector3(nx, ny, 1).applyMatrix4(inv);
+  const d = b.sub(a);
+  const l = d.length();
+  if (!(l > 0) || Math.abs(d.z) / l < 0.3) return null;
+  a.addScaledVector(d, -a.z / d.z);
+  return { x: (a.x - werkHaut.mitte.x) * werkHaut.f, y: (a.y - werkHaut.mitte.y) * werkHaut.f };
+}
+
+/**
+ * Die Tropfen der Kiefer nach dem Stand des Werks (jedes Bild) und der Blick ins Maul: In der Grundform läuft die Öffnung der Anzeige
+ * ihrem Ziel nach (offen, solange ein Tropfen gehalten wird). Zurück: ob es weitere Bilder braucht.
+ */
+function kieferUiZeigen(): boolean {
+  const jetzt = performance.now();
+  const dt = Math.min(0.05, Math.max(0, (jetzt - kieferZeit) / 1000));
+  kieferZeit = jetzt;
+  const k = zustand === 'ruhe' && werkGezeigt ? werk.kieferKnochen() : null;
+  // ---- der Blick ins Maul ----
+  let braucht = false;
+  if (!k || werk.grund) {
+    kieferSchau = null;
+    if (werk.maulBlick > 0) {
+      werk.maulBlickSetzen(0);
+      werkNeu = true;
+      braucht = true;
+    }
+  } else {
+    let ziel = kieferZug ? 1 : 0;
+    if (kieferSchau && !kieferZug) {
+      const t = (jetzt - kieferSchau.t0) / KIEFER_SCHAU_MS;
+      if (t >= 1 || werk.zug) kieferSchau = null;
+      else ziel = t < 0.55 ? 1 : 0;
+    }
+    const b = werk.maulBlick;
+    if (b !== ziel) {
+      // auf in rund einer Fünftelsekunde, zu etwas ruhiger
+      const neu = b + (ziel - b) * (1 - Math.exp(-dt / (ziel > b ? 0.07 : 0.11)));
+      werk.maulBlickSetzen(Math.abs(ziel - neu) < 0.004 ? ziel : neu);
+      werkNeu = true;
+      braucht = true;
+    } else if (kieferSchau) braucht = true;
+  }
+  // ---- die Tropfen ----
+  const an =
+    !!k && bearbeitenAn && !malModus && vier < 0.02 && !bearbeiten.stift && !strichWerkzeug() && !farbWerkzeug() && !werk.maulLauf && !reihe && (!werk.zug || !!kieferZug) && !werkBlatt.maulStrich;
+  for (const [name, oben] of [
+    ['oben', true],
+    ['unten', false],
+  ] as const) {
+    const el = kieferEl[name];
+    el.tropfen.hidden = el.linie.hidden = !an;
+    if (!an || !k) continue;
+    const kn = k[name];
+    const w = (kn.sinn * kn.grad * k.gezeigt * Math.PI) / 180;
+    const c = Math.cos(w);
+    const si = Math.sin(w);
+    const dx = kn.ruhe.x - k.C.x;
+    const dy = kn.ruhe.y - k.C.y;
+    const vp = vpJetzt();
+    const [tx, ty] = projizieren(werkInWelt({ x: k.C.x + c * dx - si * dy, y: k.C.y + si * dx + c * dy, z: 0 }), vp);
+    const [gx, gy] = projizieren(werkInWelt({ x: k.C.x, y: k.C.y, z: 0 }), vp);
+    el.tropfen.style.left = `${(tx / D).toFixed(1)}px`;
+    el.tropfen.style.top = `${(ty / D).toFixed(1)}px`;
+    // die Haarlinie: vom Scharnier zum Tropfen
+    el.linie.style.left = `${(gx / D).toFixed(1)}px`;
+    el.linie.style.top = `${(gy / D).toFixed(1)}px`;
+    el.linie.style.width = `${(Math.hypot(tx - gx, ty - gy) / D).toFixed(1)}px`;
+    el.linie.style.transform = `rotate(${Math.atan2(ty - gy, tx - gx).toFixed(4)}rad)`;
+    if (oben === kieferZug?.oben) el.tropfen.classList.add('greift');
+    else el.tropfen.classList.remove('greift');
+  }
+  return braucht;
+}
+
+/** der Winkel des Zeigers um den Mundwinkel in der Spiegelebene (Bogenmaß), null: von hier aus nicht zu lesen */
+function kieferZeigerWinkel(x: number, y: number): number | null {
+  const k = werk.kieferKnochen();
+  const q = k ? zeigerAufMitte(x, y) : null;
+  if (!k || !q) return null;
+  const dx = q.x - k.C.x;
+  const dy = q.y - k.C.y;
+  return Math.hypot(dx, dy) > 0.05 * k.lang ? Math.atan2(dy, dx) : null;
+}
+function kieferZugEnde(): void {
+  const z = kieferZug;
+  if (!z) return;
+  kieferZug = null;
+  // ein Schritt für ⌘Z je Zug, wenn sich die Pose geändert hat (Halten allein ändert nichts)
+  if (z.vorher.pose.kiefer !== werk.pose.kiefer || z.vorher.pose.schaedel !== werk.pose.schaedel) werk.zurueck.push(z.vorher);
+  werkNeu = true;
+  anstossen();
+}
+for (const [name, oben] of [
+  ['oben', true],
+  ['unten', false],
+] as const) {
+  const el = kieferEl[name].tropfen;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || kieferZug || werk.zug || werk.maulLauf) return;
+    const k = werk.kieferKnochen();
+    if (!k) return;
+    const [x, y] = lageIm(e);
+    kieferZug = { oben, x0: x, y0: y, yLetzt: y, w: kieferZeigerWinkel(x, y), roh: k[name].grad, bewegt: false, vorher: werk.schnappschuss() };
+    // (der Zeiger gehört bis zum Loslassen dem Tropfen: Beim Blick ins Maul wandert der Tropfen unter ihm weg)
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // ohne Fang endet der Zug, sobald der Zeiger den Tropfen verlässt und losgelassen wird; das Maul schließt dann beim nächsten Griff
+    }
+    kieferSchau = null;
+    e.preventDefault();
+    anstossen();
+  });
+  el.addEventListener('pointermove', (e) => {
+    const z = kieferZug;
+    if (!z || z.oben !== oben) return;
+    const k = werk.kieferKnochen();
+    if (!k) return;
+    const [x, y] = lageIm(e);
+    // erst nach ein paar Bildpunkten Weg dreht der Kiefer (Halten allein öffnet nur den Blick)
+    if (!z.bewegt && Math.hypot(x - z.x0, y - z.y0) < 4) return;
+    const w = kieferZeigerWinkel(x, y);
+    let dGrad: number;
+    if (w !== null && z.w !== null) {
+      // der Zeiger ist um den Mundwinkel gewandert: um so viel dreht der Kiefer (auf dem kürzeren Weg gezählt, vom Drücken an)
+      let d = w - z.w;
+      d -= 2 * Math.PI * Math.round(d / (2 * Math.PI));
+      dGrad = (k[name].sinn * d * 180) / Math.PI;
+    } else dGrad = ((oben ? -1 : 1) * (y - z.yLetzt)) / 2.8;
+    // (von der Seite gelesen, wenn es geht; sonst zählt der Weg des Zeigers nach oben und unten)
+    z.bewegt = true;
+    z.w = w;
+    z.yLetzt = y;
+    const max = oben ? KIEFER_MAX.oben : KIEFER_MAX.unten;
+    z.roh = Math.max(0, Math.min(max, z.roh + dGrad));
+    werk.kieferStellen(oben, z.roh);
+    werkNeu = true;
+    anstossen();
+  });
+  el.addEventListener('pointerup', kieferZugEnde);
+  el.addEventListener('pointercancel', kieferZugEnde);
+  el.addEventListener('lostpointercapture', kieferZugEnde);
 }
 
 new ResizeObserver(groesse).observe(buehne);
@@ -9492,6 +9674,86 @@ const haken = {
     fressen: !fressen.hidden,
     haut: mitHaut ? Array.from(werk.alsAnzeige(() => werk.haut.pos)) : null,
   }),
+  /**
+   * Maul, Etappe 2: die Tropfen der Kiefer (Mitte im Bild, CSS-Pixel; null: nicht zu sehen), das Scharnier im Bild, der Blick ins Maul
+   * und die gezeigte Haut gegen ihre Ruhe: wie weit die Lippen vorn auseinanderstehen (Einheiten des Werks), wie viele Dreiecke
+   * umschlagen (`gefaltet`: Die Normale zeigt nach dem Drehen von der Normale der Ruhe weg, diese um den mittleren Winkel der drei
+   * Ecken mitgedreht; `gekippt`: nur der Umlaufsinn in der Seite wechselt, das trifft auch Dreiecke am Umriss, die dort auf der Kante
+   * stehen), die größte Dehnung einer Kante und wie lange das Drehen der Anzeige dauert (ms, Mittel aus zehn).
+   */
+  kiefer: () => {
+    const k = werk.kieferKnochen();
+    const ort = (el: HTMLElement): { x: number; y: number } | null => (el.hidden ? null : { x: parseFloat(el.style.left), y: parseFloat(el.style.top) });
+    const l = werk.G.maul ? werk.loops[werk.loopNr(werk.G.maul.id)] : undefined;
+    const R = werk.haut.pos;
+    const t0 = performance.now();
+    let Z = R;
+    for (let i = 0; i < 10; i++) Z = Float64Array.from(werk.alsAnzeige(() => werk.haut.pos));
+    const ms = (performance.now() - t0) / 10;
+    let spalt = 0;
+    if (l && l.proben.length > 1) {
+      const a = l.proben[0]!.ecken[0];
+      const b = l.proben[l.proben.length - 1]!.ecken[0];
+      spalt = Math.hypot(Z[3 * a]! - Z[3 * b]!, Z[3 * a + 1]! - Z[3 * b + 1]!, Z[3 * a + 2]! - Z[3 * b + 2]!);
+    }
+    const T = werk.haut.tri;
+    const flaeche = (P: ArrayLike<number>, t: number): number => {
+      const [a, b, c] = [3 * T[t]!, 3 * T[t + 1]!, 3 * T[t + 2]!];
+      return (P[b]! - P[a]!) * (P[c + 1]! - P[a + 1]!) - (P[b + 1]! - P[a + 1]!) * (P[c]! - P[a]!);
+    };
+    let gefaltet = 0;
+    let gekippt = 0;
+    let gedehnt = 1;
+    const wo: number[][] = [];
+    const normale = (P: ArrayLike<number>, t: number): [number, number, number] => {
+      const [a, b, c] = [3 * T[t]!, 3 * T[t + 1]!, 3 * T[t + 2]!];
+      const [ux, uy, uz] = [P[b]! - P[a]!, P[b + 1]! - P[a + 1]!, P[b + 2]! - P[a + 2]!];
+      const [vx, vy, vz] = [P[c]! - P[a]!, P[c + 1]! - P[a + 1]!, P[c + 2]! - P[a + 2]!];
+      return [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    };
+    /** um wie viel die Ecke v um das Scharnier gedreht gezeigt wird (Bogenmaß) */
+    const winkel = (v: number): number => {
+      if (!k) return 0;
+      const [ax, ay] = [R[3 * v]! - k.C.x, R[3 * v + 1]! - k.C.y];
+      const [bx, by] = [Z[3 * v]! - k.C.x, Z[3 * v + 1]! - k.C.y];
+      return Math.atan2(ax * by - ay * bx, ax * bx + ay * by);
+    };
+    for (let t = 0; t < T.length; t += 3) {
+      const f0 = flaeche(R, t);
+      if (Math.abs(f0) > 1e-3 && f0 * flaeche(Z, t) < 0) gekippt++;
+      const n0 = normale(R, t);
+      if (Math.hypot(n0[0], n0[1], n0[2]) > 1e-3) {
+        const w = (winkel(T[t]!) + winkel(T[t + 1]!) + winkel(T[t + 2]!)) / 3;
+        const n1 = normale(Z, t);
+        if ((Math.cos(w) * n0[0] - Math.sin(w) * n0[1]) * n1[0] + (Math.sin(w) * n0[0] + Math.cos(w) * n0[1]) * n1[1] + n0[2] * n1[2] < 0) {
+          gefaltet++;
+          if (wo.length < 40) wo.push([f0, flaeche(Z, t), ...[0, 1, 2].flatMap((e) => [T[t + e]!, R[3 * T[t + e]!]!, R[3 * T[t + e]! + 1]!, R[3 * T[t + e]! + 2]!])]);
+        }
+      }
+      for (let e = 0; e < 3; e++) {
+        const a = 3 * T[t + e]!;
+        const b = 3 * T[t + ((e + 1) % 3)]!;
+        const l0 = Math.hypot(R[a]! - R[b]!, R[a + 1]! - R[b + 1]!, R[a + 2]! - R[b + 2]!);
+        if (l0 > 1e-3) gedehnt = Math.max(gedehnt, Math.hypot(Z[a]! - Z[b]!, Z[a + 1]! - Z[b + 1]!, Z[a + 2]! - Z[b + 2]!) / l0);
+      }
+    }
+    const g = k ? projizieren(werkInWelt({ x: k.C.x, y: k.C.y, z: 0 }), vpJetzt()) : null;
+    return {
+      da: !!k,
+      blick: werk.maulBlick,
+      lang: k?.lang ?? 0,
+      oben: ort(kieferEl.oben.tropfen),
+      unten: ort(kieferEl.unten.tropfen),
+      scharnier: g ? { x: g[0] / D, y: g[1] / D } : null,
+      spalt,
+      gefaltet,
+      gekippt,
+      wo,
+      gedehnt,
+      ms,
+      schritte: werk.zurueck.length,
+    };
+  },
   /** eine geschlossene Silhouette setzen (CSS-Pixel des Blatts), wie mit P gezeichnet; `dazu`: auf dem Blatt eines neuen Objekts (nach dem Plus), die anderen Objekte bleiben */
   form(anker: { x: number; y: number; ein?: [number, number]; aus?: [number, number] }[], dazu = false): void {
     if (!dazu) neu();

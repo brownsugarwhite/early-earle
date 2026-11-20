@@ -139,7 +139,7 @@ import {
   pruefen,
 } from './ablage';
 import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMit } from './naht';
-import { MAUL_HAAR, maulSchneidenMit } from './maulEcht';
+import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -918,6 +918,10 @@ export async function maulSchneiden(a: Ansicht, anker: readonly StiftAnker[], in
   naechsteKreuzung = r.naechsteKreuzung;
   // (die Lippe ist der letzte Loop: an ihr sieht `nadelnWeg` nach kurzen Kanten)
   nadelnWeg();
+  // Mit dem Maul gibt es die Pose „Fressen“ schon fertig (oben wenig, unten weit): Die Lippe ist das Maul der Form
+  G.maul = { id: r.lippe };
+  pose = { kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null };
+  maulBlick = 0;
   // gewählt ist die Lippe als Ganzes mit ihren sichtbaren Punkten (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
   const l = loops[loopNr(r.lippe)];
   G.auswahl = l ? [{ l: r.lippe, i: -1 }, ...l.punkte.flatMap((q, i) => (istSichtbar(q) ? [{ l: r.lippe, i }] : []))] : [];
@@ -1126,7 +1130,8 @@ export function maulAktuell(): MaulAmLoop | null {
   if (!G.maul) return null;
   const id = G.maul.id;
   const h = grund ? grund.haut : haut;
-  const l = (grund ? grund.loops : loops).find((x) => x.id === id);
+  const alle = grund ? grund.loops : loops;
+  const l = alle.find((x) => x.id === id);
   if (!l || l.art !== 'ring') return null;
   const ecke = mundwinkelVon(l);
   const fp = fingerabdruck(h.pos);
@@ -1134,20 +1139,29 @@ export function maulAktuell(): MaulAmLoop | null {
   const gleich = st !== null && st.haut === h && st.proben === l.proben && st.ecke === ecke;
   if (gleich && st.fp === fp) return st.m;
   const imZug = gleich && zug !== null && !grund;
-  const m = maulSchnitt(h, l, ecke, imZug ? st.m : null);
+  const m = maulSchnitt(h, l, ecke, imZug ? st.m : null, alle);
   maulStand = m ? { haut: h, proben: l.proben, ecke, fp: imZug ? st.fp : fp, m } : null;
   return m;
 }
 
-/** Das Maul der Pose ist ein geformtes (nichts wird weggeschnitten, es gibt kein eingesetztes Inneres zu zeigen) */
-export const maulIstGeformt = (): boolean => !!G.maul && !!loops[loopNr(G.maul.id)]?.maulGeformt;
+/**
+ * Das Maul der Pose ist ein geformtes (nichts wird weggeschnitten, es gibt kein eingesetztes Inneres zu zeigen). Dazu zählt das Maul
+ * als echte Form (`istMaulEcht`): Seine Tasche ist Haut der Form.
+ */
+export const maulIstGeformt = (): boolean => {
+  const l = G.maul ? loops[loopNr(G.maul.id)] : undefined;
+  return !!l && (!!l.maulGeformt || istMaulEcht(l));
+};
 
 /**
  * Der Maulschnitt an einem Ring, nach seiner Art: Am geformten Maul (`maulGeformt`: Was der Ring umschließt, ist echte Haut) wird
  * nichts weggeschnitten und nichts eingesetzt, die Knochen bekommen innen weiche Gewichte vom Boden zum Gaumen
  * (`maulGeformtAmLoop`); an der schmalen Form bisher ist die umschlossene Fläche die Öffnung (`maulAmLoop`).
  */
-export function maulSchnitt(h: Haut, l: Loop, ecke: number, wieVorher: MaulAmLoop | null): MaulAmLoop | null {
+export function maulSchnitt(h: Haut, l: Loop, ecke: number, wieVorher: MaulAmLoop | null, alle: readonly Loop[] = loops): MaulAmLoop | null {
+  // Das Maul als echte Form (Etappe 2, 20.11.): Welcher Kiefer ein Punkt ist, steht in seinen Linien (`maulEchtAmLoop`); zu liegen
+  // Gaumen und Boden aufeinander, die Lage sagt dort nichts
+  if (istMaulEcht(l)) return maulEchtAmLoop(h, alle, l, ecke, { wieVorher });
   return l.maulGeformt ? maulGeformtAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher }) : maulAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher });
 }
 
@@ -1200,10 +1214,60 @@ export function maulZu(): number {
   const id = G.maul.id;
   return (grund ? grund.loops : loops).find((x) => x.id === id)?.maulLinie ?? 0;
 }
+/**
+ * Der Blick ins Maul (Plan „Maul, Zähne, Zunge“, Etappe 2, 20.11.): In der Grundform öffnet die Anzeige das Maul um diesen Anteil
+ * der Pose (0 = zu, 1 = wie in „Fressen“), solange ein Tropfen an einem Kiefer gehalten wird und kurz nach dem Schneiden. Gerechnet
+ * und bearbeitet wird dabei nichts: Die Form bleibt zu.
+ */
+export let maulBlick = 0;
+export function maulBlickSetzen(x: number): void {
+  maulBlick = Math.max(0, Math.min(1, x));
+}
+/** Die Anzeige dreht mit den Knochen: in der Pose immer, in der Grundform beim Blick ins Maul */
+export const anzeigeDreht = (): boolean => grund !== null || (maulBlick > 0 && G.maul !== null && zug === null);
 /** Drehwinkel je Punkt für den Stand der Regler (beim Maul aus einer Linie gegen die gerechnete Lage: Regler minus ihre Öffnung) */
 export function knochenJetzt(m: MaulAmLoop): Float64Array {
   const zu = maulZu();
-  return knochenWinkel(m, { kiefer: pose.kiefer - zu, schaedel: pose.schaedel }, zu);
+  // (in der Grundform dreht nur der Blick ins Maul, um seinen Anteil)
+  const f = grund ? 1 : maulBlick;
+  const k = { kiefer: pose.kiefer * f - zu, schaedel: pose.schaedel * f };
+  // (am Maul als echte Form laufen die Drehungen mit dem Winkel breiter aus: `kieferWinkel`)
+  return kieferWinkel(m, k, zu) ?? knochenWinkel(m, k, zu);
+}
+
+/** knapp vor „zu“ rastet ein Kiefer zu (Grad) */
+export const KIEFER_RAST = 2;
+/**
+ * Einen Kiefer stellen (Grad, von „zu“ aus): oben der Schädel, unten der Unterkiefer. Gerechnet wird nichts, nur die Anzeige dreht
+ * anders (in der Pose immer, in der Grundform beim Blick ins Maul). Zurück: der gesetzte Winkel.
+ */
+export function kieferStellen(oben: boolean, grad: number): number {
+  const a = !(grad >= KIEFER_RAST) ? 0 : Math.min(oben ? KIEFER_MAX.oben : KIEFER_MAX.unten, grad);
+  if (oben) pose.schaedel = a;
+  else pose.kiefer = a;
+  return a;
+}
+
+/**
+ * Die zwei Knochen des Mauls als echte Form, wie sie zu zeigen sind (in der Seitenebene des Werks): das Scharnier (der Mundwinkel),
+ * die Länge der Lippe und je Kiefer der Ort seines Tropfens in Ruhe (ein Stück vor der Kieferspitze), sein Winkel (Grad, von „zu“)
+ * und sein Drehsinn beim Öffnen (+1 gegen den Uhrzeigersinn). `gezeigt`: der Anteil, um den die Anzeige gerade öffnet. Null: Die
+ * Form hat kein solches Maul.
+ */
+export function kieferKnochen(): { C: V2; lang: number; gezeigt: number; oben: { ruhe: V2; grad: number; sinn: 1 | -1 }; unten: { ruhe: V2; grad: number; sinn: 1 | -1 } } | null {
+  if (!G.maul) return null;
+  const l = loops[loopNr(G.maul.id)];
+  if (!l || !istMaulEcht(l)) return null;
+  const L = maulLage(haut, l, mundwinkelVon(l));
+  if (!L) return null;
+  const sinnUnten: 1 | -1 = L.untenLinks ? 1 : -1;
+  return {
+    C: L.C,
+    lang: L.lang,
+    gezeigt: grund ? 1 : maulBlick,
+    oben: { ruhe: kieferTropfenRuhe(L, true), grad: pose.schaedel, sinn: sinnUnten === 1 ? -1 : 1 },
+    unten: { ruhe: kieferTropfenRuhe(L, false), grad: pose.kiefer, sinn: sinnUnten },
+  };
 }
 
 /**
@@ -1451,10 +1515,10 @@ export function loopGedreht(l: Loop, theta: Float64Array, G: V2): Loop {
 /**
  * In der Pose `f` so ausführen, dass `haut` und `loops` die gezeigte (gedrehte) Pose sind; danach stehen wieder die der Ruhe da.
  * Auch was ein laufender Zug zum Zeichnen bereithält (Lagen und Griffe der Linien an ihrem Ziel), ist währenddessen gedreht. In der
- * Grundform und geschachtelt: einfach `f`.
+ * Grundform und geschachtelt: einfach `f`. Beim Blick ins Maul (`maulBlick`) dreht die Anzeige auch in der Grundform.
  */
 export function alsAnzeige<T>(f: () => T): T {
-  const k = grund && !inAnzeige ? poseKnochen() : null;
+  const k = anzeigeDreht() && !inAnzeige ? poseKnochen() : null;
   if (!k) return f();
   if (!anzeigeHaut || anzeigeHaut.von !== haut) anzeigeHaut = { von: haut, haut: { ...haut, pos: new Float64Array(haut.pos.length) } };
   anzeigeHaut.haut.pos.set(knochenDrehen(haut.pos, k.theta, k.G));
@@ -2038,6 +2102,71 @@ export function stueckeGezeigt(li: number): (V3[] | null)[] | null {
     }
   }
   R.gebogen.set(li, out);
+  return out;
+}
+/**
+ * Wie `stueckeGezeigt`, aber je gebogenem Stück der Ort der gezeigten Linie bei jedem t des Stücks (0 … 1): für eine Anzeige, die
+ * selbst abtastet (Ozzy; 20.11., Maul, Etappe 2: Weit geöffnet liegt viel von der Form im Übergang zwischen Kiefer und Körper).
+ * Null außerhalb einer gedrehten Anzeige; je Stück null, wo sich der Winkel längs nicht ändert (dort ist die Kurve aus den gedrehten
+ * Punkten und Griffen genau).
+ */
+export function stueckeGezeigtBei(li: number): (((t: number) => V3) | null)[] | null {
+  const R = inAnzeige ? anzeigeVon : null;
+  if (!R) return null;
+  const l = R.loops[li];
+  if (!l || !hatPfad(l)) return null;
+  const P = l.punkte;
+  const m = P.length;
+  const n = l.proben.length;
+  const zu = l.art !== 'ring';
+  const tj = winkelJeProbe(R.theta, l);
+  const neu = zug ? R.griffeNeu?.[li] : null;
+  const ort = (p: LoopPunkt): V3 => (zug && !zug.griff ? p.cur : p.ref);
+  const G0 = R.G;
+  const out: (((t: number) => V3) | null)[] = [];
+  for (let i = 0; i < (zu ? m : m - 1); i++) {
+    const k = (i + 1) % m;
+    const s0 = P[i]!.s;
+    const s1 = k > i ? P[k]!.s : P[k]!.s + l.laenge;
+    const h = s1 - s0;
+    // Knoten wie in `stueckeGezeigt`: die Enden des Stücks und jede Probe darin, mit ihrem Winkel
+    const kn: { t: number; w: number }[] = [{ t: 0, w: winkelBei(l, tj, s0) }];
+    if (h > 1e-9)
+      for (let j = 0; j < n; j++) {
+        const x = zu && l.s[j]! < s0 ? l.s[j]! + l.laenge : l.s[j]!;
+        if (x > s0 + 1e-9 && x < s1 - 1e-9) kn.push({ t: (x - s0) / h, w: tj[j]! });
+      }
+    kn.push({ t: 1, w: winkelBei(l, tj, P[k]!.s) });
+    kn.sort((p, q) => p.t - q.t);
+    let min = Infinity;
+    let max = -Infinity;
+    for (const q of kn) {
+      min = Math.min(min, q.w);
+      max = Math.max(max, q.w);
+    }
+    if (max - min < 1e-9) {
+      out.push(null);
+      continue;
+    }
+    const A = ort(P[i]!);
+    const E = ort(P[k]!);
+    const a = plus3(A, neu?.[i]?.aus ?? P[i]!.aus!);
+    const b = plus3(E, neu?.[k]?.ein ?? P[k]!.ein!);
+    out.push((t: number): V3 => {
+      // der Abschnitt zwischen zwei Knoten, in dem t liegt
+      let lo = 0;
+      let hi = kn.length - 1;
+      while (hi - lo > 1) {
+        const mi = (lo + hi) >> 1;
+        if (kn[mi]!.t <= t) lo = mi;
+        else hi = mi;
+      }
+      const c = kn[lo]!;
+      const e = kn[hi]!;
+      const f = e.t - c.t > 1e-12 ? Math.min(1, Math.max(0, (t - c.t) / (e.t - c.t))) : 0;
+      return gedreht(kubisch(A, a, b, E, t), c.w + f * (e.w - c.w), G0);
+    });
+  }
   return out;
 }
 /** Wie weit die Linie `li`, wie das Blatt sie zeichnet, höchstens neben ihren gezeigten Lagen liegt (für die Probe der Pose) */
@@ -5763,6 +5892,15 @@ export function standAnwenden(st: WesenStand): string {
   G.spur = null;
   G.stift = null;
   wiederherstellen(s);
+  maulBlick = 0;
+  // Ein Maul als echte Form ist das Maul der Form (ein Stand von Etappe 1 vermerkt es noch nicht und kennt seine Pose nicht)
+  if (!G.maul && !grund) {
+    const lippe = loops.find(istMaulEcht);
+    if (lippe) {
+      G.maul = { id: lippe.id };
+      if (!pose.delta) pose = { kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null };
+    }
+  }
   // Ein Stand, der vor dem 14.11. in der Pose gesichert wurde, enthält ihre gedrehte Lage: einmal in ihre Ruhe zurückgedreht, die
   // Linien dort neu abgelesen
   if (grund && st.pose.inRuhe !== true) {
