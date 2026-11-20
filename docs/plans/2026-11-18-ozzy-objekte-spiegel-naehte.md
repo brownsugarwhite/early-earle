@@ -4,7 +4,9 @@ Sitzung „Objekte und Spiegel“, Zweig `claude/ozzy-donut-mirror-system-7a31b7
 Arbeitsbaum, eigenes Fenster: `http://localhost:5211/ozzy.html` (Eintrag `ozzy-objekte`). Dein Fenster 5205 bleibt, wie es ist.
 Dein Auftrag steht wörtlich im Anhang A.
 
-**Stand 19.11., früh: Etappe 5 (die Naht lebt) ist in Ozzy gebaut: der Verbund (Abschnitt 13).** Verschmelzen und Abziehen sind
+**Stand 19.11., vormittags: Etappe 5 (die Naht lebt) ist in Ozzy gebaut: der Verbund (Abschnitt 13). Dein Urteil: „Das hast du
+sehr gut gemacht. Es ist noch nicht optimal aber wir können es gerne erstmal so lassen.“** Der Verbund bleibt also, wie er ist.
+Statt des Mauls kommt zuerst der Paint-Modus, in einer eigenen Sitzung, die auf diesem Zweig aufbaut. Verschmelzen und Abziehen sind
 jetzt Schalter am Objekt; die Objekte bleiben Objekte, Naht und Loch fahren beim Ziehen mit, auch gerundet. Nicht gebaut: den
 Hilfsloop selbst greifen (Abschnitt 13, „Was offen bleibt“). **Formen beginnen mit drei Loops** (Abschnitt 11, dein Wort).
 **Etappe 0, 1, 2 (2a und 2b) und 3 sind gebaut** (die Fahrt zum Blatt beim Plus gehört nach deinem Wort zum Feinschliff),
@@ -640,6 +642,12 @@ gezogen; Loch mit Kante; Loch rund; drei Objekte).
 - Die Probe von Etappe 4 läuft weiter (`ozzy-naht-fenster.mjs`, mit ⌥ + Klick). Gelaufen sind 13 Fenster-Proben (Verbund, Naht,
   Objekte, Reihe, Sichern, Material, Spiegel, Start-Loops, Ansichten, Ansichts-Tropfen, Pinsel, Werk, Zurück) und 42 Tests des
   Fensters: alle halten. Die ganze Reihe von 40 Proben habe ich nach deinem Wort („nur die nötigsten tests“) nicht laufen lassen.
+
+**Dein Urteil (19.11., vormittags):** „Das hast du sehr gut gemacht. Es ist noch nicht optimal aber wir können es gerne erstmal so
+lassen.“ Was noch nicht optimal ist, hast du nicht gesagt; ich rate nicht und baue am Verbund nichts um, bis du es sagst. Zu dem,
+was ich für dich entschieden habe, hast du dich nicht einzeln geäußert; es gilt vorerst. Statt des Mauls kommt zuerst der
+Paint-Modus: eine eigene Sitzung mit eigenem Zweig und Fenster, die auf diesem Zweig aufbaut. Dein Bild dazu (ZBrush, „MatCap Red
+Wax“) liegt unter `docs/look/ozzy/paint/2026-11-19-zbrush-matcap-red-wax.png`.
 
 ## Anhang A: Dein Auftrag (18.11.2026, wörtlich)
 
