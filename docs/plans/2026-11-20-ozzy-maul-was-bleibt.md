@@ -26,6 +26,11 @@ eigenen Punkte; wo sie noch aufeinanderliegen, greifst du über der Linie die Ob
 Überbiss, Unterbiss und Lücken, auch geschlossen. Jeder Kiefer hat seinen Tropfen an seiner eigenen Spitze. „Lippen verbinden“
 legt die Unterlippe wieder auf die Oberlippe.
 
+**Etappe 4 (20.11.):** Mit dem Maul gibt es im Paint-Modus die Ebene „Maul“: innen dunkelrot, längs der Lippe ein hellerer Ring
+für das Zahnfleisch, dazwischen eine Farblinie zum Bearbeiten. Zu sieht man davon nichts; offen steht die Farbe im Maul. Ist im
+Paint-Modus die Ebene „Maul“ gewählt, öffnet sich das Maul zum Hineinmalen. Die Farbe bleibt im Maul, auch wenn du an den Lippen
+ziehst.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -55,7 +60,8 @@ legt die Unterlippe wieder auf die Oberlippe.
 
 9. ~~Öffnen (Etappe 2)~~ gebaut; was daran offen ist, steht unter „An den Kiefern“.
 10. ~~„Lippen trennen“ (Etappe 3)~~ gebaut; was daran offen ist, steht unter „An den Lippen“.
-11. **Die Ebene „Maul“** im Paint-Modus (Etappe 4), Zähne (5), Zunge (6), Posen und Backen.
+11. ~~Die Ebene „Maul“ (Etappe 4)~~ gebaut; was daran offen ist, steht unter „An der Ebene Maul“. Es fehlen Zähne (5),
+    Zunge (6), Posen und Backen.
 
 ### Nicht geprüft
 
@@ -111,6 +117,26 @@ legt die Unterlippe wieder auf die Oberlippe.
     der Lippe je umdreht, dreht das mit.
 39. **K an einer getrennten Lippe, Punkte auf nur einer Lippe setzen oder löschen, Kreuzungen neuer Linien mit einer Lippe:** nicht
     geprüft.
+
+### An der Ebene „Maul“ (Etappe 4)
+
+40. **Die Farben sieht man nur auf Wachs und hellem Solid** (wie alle Bemalung), nicht auf der Seifenhaut.
+41. **Die zwei Farben sind geschätzt** (innen `#6b1425`, Zahnfleisch `#cf5a72`); auf Wachs wirkt das Dunkelrot bräunlich (es liegt
+    unter dem Licht des Materials). Nach hinten wird das Innere nicht dunkler.
+42. **Die Zahnfleischlinie entsteht einmal,** beim Anlegen. Danach geht sie mit der Haut wie jede Farblinie, aber nicht mehr mit
+    der Lippe: Wer die Lippe stark umformt, bekommt ein ungleich breites Zahnfleisch. Löschst du die Ebene, legt Ozzy sie frisch an.
+43. **Bei einem Überbiss liegt die Unterseite des Oberkiefers frei** und zeigt die Farben des Mauls nach außen.
+44. **Zum Malen öffnet das Maul mit den Winkeln von „Fressen“;** die Tropfen der Kiefer sind im Paint-Modus aus. In der
+    Ebenen-Ansicht (X) klappt das Maul nicht auf wie ein Buch.
+45. **Ein Klick außen bei gewählter Ebene „Maul“** füllt die Form außen (auf dieser Ebene): Die Tasche ist für diese Ebene eine
+    Grenze in beide Richtungen.
+46. **Die Ebene wird an ihrem Namen erkannt** („Maul“). In der Pose wird sie nicht neu angelegt.
+47. **Malen in der Pose:** Am Maul als echte Form steht die Bemalung jetzt auch in der Pose im Bild und lässt sich dort
+    bearbeiten; geprüft ist nur das Zeigen.
+48. **Die Zahnfleischlinie kann beim Netzwechsel die Wand wechseln** (Gaumen und Boden liegen zu aufeinander): Dann liefen Inneres
+    und Zahnfleisch ineinander, beides bliebe im Maul. In den Proben kam es nicht vor (bis 17 Netzwechsel).
+49. **Rillen am Gaumen, Farben für Zähne und Zunge:** Rillen lassen sich als Farblinien ziehen (nicht ausprobiert); Zähne und Zunge
+    gibt es noch nicht.
 
 ### Kleines
 

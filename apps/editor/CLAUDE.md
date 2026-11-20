@@ -759,6 +759,13 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   über der Zeichenfläche fängt den Griff ab: Tropfen an der Form halten Abstand zu dem, was man dort greift (`kieferJetzt`, der
   Tropfen „Lippen trennen“ hängt hinter dem Mundwinkel). (24) Der Zeiger des Verhaltens klebt an seinem Ziel: Proben führen ihn
   zwischen zwei nahen Griffen weit weg. Probe: Kriterien 13 bis 16.
+  **Etappe 4 in Ozzy: die Ebene „Maul“ (20.11.; Plan 12.14):** `farbe/maulEbene.ts` baut sie aus der Tasche (`werk.maulTasche`):
+  die Zahnfleischlinie (Höhenlinie des Abstands von der Lippe) und zwei Füllungen. Merke: (25) Die Ebene kommt und geht mit dem
+  Maul (`maulEbenePflegen` je Bild, ohne Schritt für ⌘Z), erkannt am Namen „Maul“. (26) Ihre Füllungen bleiben in der Tasche
+  (`flaechenRechnen` mit `gebiet`, `FarbWerk.maulGebiet`): Eine Farblinie als Grenze an der Lippe hält den Netzwechseln nicht
+  stand (nach den Zügen von Etappe 3 lief die Füllung über die Form; vermutlich landet ein neu gesuchter Ort außen). (27) Am Maul als echte Form gilt `farbeMoeglich`
+  auch in der Pose. (28) Im Paint-Modus mit gewählter Ebene „Maul“ steht das Maul offen (`maulEbeneAktiv`). Proben:
+  `ozzy-maul-farbe-fenster.mjs` (F1 bis F7), 8b und 17 in `ozzy-maul-fenster.mjs`.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

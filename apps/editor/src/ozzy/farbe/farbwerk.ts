@@ -41,6 +41,7 @@ import { kettenAller, stueckeVon } from './ketten';
 import { type Karte, type Naechster, type Netz, type Ort, type V3, dreieckNormale, karteVon, ortGespiegelt, ortLage } from './ort';
 import { ParallelTreffer, ortAusFein, strahlAufNetz } from './treffer';
 import { weichFeld } from './weich';
+import { type MaulTasche, istMaulEbene, maulEbeneBauen } from './maulEbene';
 
 /** die Haut des Werks, wie das Farbwerk sie je Bild sieht */
 export type HautJetzt = {
@@ -409,7 +410,9 @@ export class FarbWerk {
         if (g) saaten.push({ ort: g, farbe: nr });
       }
     }
-    const flaechen = flaechenRechnen(k, ketten, saaten);
+    // (Maul, Etappe 4: Was auf der Ebene „Maul“ gefüllt ist, bleibt in der Tasche; ihre Grenze ist die Lippe)
+    const gebiet = istMaulEbene(ebene) ? this.maulGebiet(h) : null;
+    const flaechen = flaechenRechnen(k, ketten, saaten, gebiet);
     // Etappe 4: die weichen Kanten zu diesen Flächen
     const tWeich = performance.now();
     const feld = weichFeld(k, flaechen);
@@ -421,7 +424,7 @@ export class FarbWerk {
       const t0 = performance.now();
       const eigene = saaten.filter((s) => s.farbe === nr).map((s) => s.ort);
       // (was vorher in dieser Fläche lag: die Flächen ohne diese Füllung)
-      const vorher = fuellungBei(flaechenRechnen(k, ketten, saaten.filter((s) => s.farbe !== nr)), ebene.fuellungen[nr]!.saat);
+      const vorher = fuellungBei(flaechenRechnen(k, ketten, saaten.filter((s) => s.farbe !== nr), gebiet), ebene.fuellungen[nr]!.saat);
       const w = flussWeiten(k, flaechen, nr, eigene);
       const W = this.fliessWerte;
       if (w.groesst > 0) {
@@ -685,6 +688,63 @@ export class FarbWerk {
       aus.push({ id: e.id, name: e.name, aktiv: e.id === aktiv, aus: !!e.aus, leer: !e.linien.length && !e.fuellungen.length, farben });
     }
     return aus;
+  }
+
+  /** von Ozzy gesetzt: die Tasche des Mauls auf dem Netz des Werks, wie es jetzt ist (null: kein Maul) */
+  maulTascheVon: (() => MaulTasche | null) | null = null;
+  private maulGebietGemerkt: { haut: object; gebiet: Uint8Array | null } | null = null;
+  /** je Dreieck: 1 in der Tasche des Mauls (alle drei Ecken gehören zu Tasche oder Lippe), sonst 0; null ohne Maul */
+  private maulGebiet(h: HautJetzt): Uint8Array | null {
+    const g = this.maulGebietGemerkt;
+    if (g && g.haut === h.haut) return g.gebiet;
+    const tasche = this.maulTascheVon?.() ?? null;
+    let gebiet: Uint8Array | null = null;
+    if (tasche && tasche.innen.length === h.haut.n) {
+      const tri = h.haut.tri;
+      gebiet = new Uint8Array(tri.length / 3);
+      for (let t = 0; t < gebiet.length; t++) if (tasche.innen[tri[3 * t]!] && tasche.innen[tri[3 * t + 1]!] && tasche.innen[tri[3 * t + 2]!]) gebiet[t] = 1;
+    }
+    this.maulGebietGemerkt = { haut: h.haut, gebiet };
+    return gebiet;
+  }
+  /** Netze, auf denen sich die Ebene „Maul“ nicht anlegen ließ (dort nicht in jedem Bild neu versuchen) */
+  private maulEbeneFehl = new WeakSet<object>();
+  /**
+   * Die Ebene „Maul“ pflegen (Maul, Etappe 4, 20.11.): Hat die Form ein Maul als echte Form (`tasche`), gehört eine Ebene „Maul“
+   * dazu; fehlt sie, wird sie angelegt (zwei Farblinien längs der Lippe in der Tasche, Zahnfleisch und Inneres gefüllt:
+   * `maulEbene.ts`). Hat die Form kein Maul mehr (⌘Z nahm es zurück), geht die Ebene mit. Kein Schritt für ⌘Z: Die Ebene kommt und
+   * geht mit dem Maul; was auf ihr geändert wird, sind Schritte wie überall. Zurück: ob sich etwas geändert hat, oder warum sie
+   * sich nicht anlegen ließ.
+   */
+  maulEbenePflegen(h: HautJetzt, tasche: MaulTasche | null): boolean | string {
+    const da = this.bemalung.ebenen.findIndex(istMaulEbene);
+    if (!tasche) {
+      if (da < 0) return false;
+      const e = this.bemalung.ebenen[da]!;
+      if (this.bemalung.ebenen.length < 2) {
+        // (die letzte Ebene bleibt: Sie wird wieder die leere erste)
+        e.name = 'Ebene 1';
+        e.linien = [];
+        e.fuellungen = [];
+      } else {
+        this.bemalung.ebenen.splice(da, 1);
+        if (this.bemalung.aktiv === e.id) this.bemalung.aktiv = this.bemalung.ebenen[Math.max(0, da - 1)]!.id;
+      }
+      this.alt = true;
+      this.streckenGemerkt = null;
+      return true;
+    }
+    if (da >= 0 || this.maulEbeneFehl.has(h.haut)) return false;
+    // (erst muss das Netz des Werks das des Farbwerks sein: Auf ihm entstehen die Orte)
+    this.schritt(h);
+    const r = maulEbeneBauen(this.bemalung, this.karteJetzt(h), tasche);
+    if ('fehler' in r) {
+      this.maulEbeneFehl.add(h.haut);
+      return r.fehler;
+    }
+    this.alt = true;
+    this.streckenGemerkt = null;
+    return true;
   }
 
   /** eine neue, leere Ebene über der aktiven; sie wird die aktive (ein Schritt für ⌘Z). Zurück: ihre Kennung, oder null (schon zu viele) */

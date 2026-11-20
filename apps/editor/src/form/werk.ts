@@ -139,7 +139,7 @@ import {
   pruefen,
 } from './ablage';
 import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMit } from './naht';
-import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
+import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -964,6 +964,28 @@ export function maulLippe(): Loop | null {
 export function lippenGetrennt(): boolean | null {
   const l = maulLippe();
   return l ? !istMaulLinie(l) : null;
+}
+
+/**
+ * Die Tasche des Mauls als echte Form, für die Ebene „Maul“ im Paint-Modus (Etappe 4): je Punkt des Netzes, ob er zur Tasche oder
+ * zur Lippe gehört; die Kette der Lippe (Punktnummern); die Länge der Lippe in der Seite. Null: kein solches Maul, oder die Tasche
+ * ist nicht in Gaumen und Boden getrennt. In der Pose an der Grundform gelesen (das Netz ist dasselbe).
+ */
+export function maulTasche(): { innen: Uint8Array; lippe: number[]; lang: number } | null {
+  const m = G.maul;
+  if (!m?.echt) return null;
+  const h = grund ? grund.haut : haut;
+  const alle = grund ? grund.loops : loops;
+  const l = alle.find((x) => x.id === m.id);
+  if (!l) return null;
+  const L = maulLage(h, l, mundwinkelVon(l), m.ersteUnten);
+  if (!L) return null;
+  const erste = L.ersteUnten ? L.unten : L.oben;
+  const sk = kieferSeiten(h, alle, l.id, { profil: erste.profil, C: L.C }, erste.links ? 1 : -1);
+  if (!sk.getrennt) return null;
+  const innen = new Uint8Array(h.n);
+  for (let v = 0; v < h.n; v++) if (!sk.aussen[v] || sk.lippe.has(v)) innen[v] = 1;
+  return { innen, lippe: l.proben.map((q) => q.ecken[0]), lang: Math.max(L.oben.lang, L.unten.lang) };
 }
 
 /** Ist ein Punkt der Lippe des Mauls gewählt (sie selbst, einer ihrer Punkte, oder ein Punkt einer Linie, die dort an ihr hängt)? */

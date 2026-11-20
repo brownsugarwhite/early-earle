@@ -6,8 +6,8 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 
 **Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. in Ozzy die erste Scheibe von Etappe 1 (das
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
-in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält).
-Als Nächstes, auf Florians Wort: Etappe 4 (die Ebene „Maul“: Farben, Zahnfleischlinie; davor die Probe P4).** Offenes steht
+in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
+Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält). Als Nächstes, auf Florians Wort: Etappe 5 (Zähne).** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -142,6 +142,33 @@ Haken `__ozzy.lippen()`. Probe: `ozzy-maul-fenster.mjs`, Kriterien 13 bis 16; Te
    beieinanderliegende Punkte nacheinander greift, führt den Zeiger dazwischen weit weg.
 6. **Die Zählung des Werks (`umgeschlagen`) schlägt an getrennten Lippen an** (4 bis 6 an der Lippe und in der Tasche): gegen
    den Ort prüfen (Kriterium 15), nicht gegen null.
+
+## Etappe 4 in Ozzy: die Ebene „Maul“ (20.11.)
+
+**Was es gibt:** eine Ebene „Maul“ im Paint-Modus, die mit dem Maul kommt und geht: die Zahnfleischlinie (eine Farblinie) und zwei
+Füllungen (Zahnfleisch, Inneres). Plan, 12.14.
+
+**Wo:** `src/ozzy/farbe/maulEbene.ts` (`maulEbeneBauen`: Abstand von der Lippe in der Tasche, Höhenlinie → `linienAusTreffern`,
+Saaten; `istMaulEbene`), `farbwerk.ts` (`maulEbenePflegen`, `maulGebiet`, `maulTascheVon`), `flaechen.ts` (`flaechenRechnen` mit
+`gebiet`), `werk.ts` (`maulTasche`), `main.ts` (`maulEbenePflegen` je Bild vor `farbWerk.schritt`, `maulEbeneAktiv`,
+`farbeMoeglich`). Probe: `GPU=1 node scripts/pruefen/ozzy-maul-farbe-fenster.mjs [ordner]` (F1 bis F7), dazu 8b und 17 in
+`ozzy-maul-fenster.mjs`; Test „die Ebene Maul“ in `maulEcht.test.ts`.
+
+**Was man wissen muss:**
+
+1. **Die Ebene ist abgeleitet, ihr Inhalt nicht.** Fehlt sie und die Form hat ein Maul (Grundform, Werk in Ruhe), legt Ozzy sie an;
+   hat die Form kein Maul mehr, geht sie. Beides ohne Schritt für ⌘Z. Was auf ihr gemalt wird, sind Schritte wie überall.
+2. **Die Füllungen dieser Ebene bleiben in der Tasche** (`gebiet`: je Dreieck 1, wenn alle drei Ecken zu Tasche oder Lippe
+   gehören; über den Rand des Gebiets wird nie vereint). Eine Farblinie als Grenze knapp hinter der Lippe hielt nicht: Nach den
+   Zügen von Etappe 3 lief die Füllung über die Form. Vermutlich (nicht nachgesehen): Beim Netzwechsel wird ein Ort, dessen
+   Dreieck es nicht mehr gibt, am nächsten Ort der neuen Haut gesucht, und der lag außen.
+3. **Farblinien laufen nie längs einer Kante des Netzes** (`RAND`): Auf der Lippe selbst kann keine liegen.
+4. **Die Bemalung dreht mit der Anzeige von selbst mit:** Sie sitzt an Dreiecken, gezeichnet wird auf dem gezeigten Netz
+   (`werkHaut.netz`), getroffen wird das gezeigte Netz (`farbUnter`, `farbFuellenBei`).
+5. **`farbeMoeglich` gilt am Maul als echte Form auch in der Pose** (vorher in keiner). In der Pose ist `werk.haut` ein anderes
+   Objekt mit denselben Dreiecken: Das Farbwerk leitet dann einmal neu ab, die Orte bleiben.
+6. **Zwei Kriterien älterer Paint-Proben fielen bei hoher Last des Rechners durch** (`ozzy-farbe-fenster.mjs` 2,
+   `ozzy-farbe-ebenen-fenster.mjs` 68; beide hängen an der Uhr). Nicht gegen den Stand davor verglichen.
 
 ## Die Studie in einem Absatz
 

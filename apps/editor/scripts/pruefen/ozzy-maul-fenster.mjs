@@ -31,6 +31,9 @@
 //      hin. Die Oberlippe bleibt, das Werk kommt zur Ruhe, außen schlägt nichts um; der Tropfen des Unterkiefers sitzt an seiner
 //      kürzeren Spitze. Geöffnet faltet nichts.
 //   16 „Lippen verbinden“: Die Lippen liegen wieder aufeinander (Zwillinge), das Werk kommt zur Ruhe.
+// Etappe 4 (die Ebene „Maul“, 20.11.; mehr dazu in `ozzy-maul-farbe-fenster.mjs`):
+//   8b Mit dem Maul ist die Ebene „Maul“ angelegt (die Zahnfleischlinie, zwei Füllungen).
+//   17 Nach allem Ziehen an den Lippen: Jede Farblinie der Ebene hat ihren Weg, und von außen trifft kein Strahl Farbe.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;x,y;…' (Werk, von vorn zum Mundwinkel)] node scripts/pruefen/ozzy-maul-fenster.mjs [ordner für Bilder]
 //   FRISCH=1: statt einer gesicherten Form eine frisch gezeichnete (ein Oval, aufgeblasen, mit den drei Start-Loops); die Linie
 //   des Mauls wird dann aus ihrem Kasten genommen (von links in die Form).
@@ -272,6 +275,11 @@ else {
       `nach dem Schneiden ging der Blick bis ${komma(schauWeit, 2)} auf; Tropfen oben ${k8.oben ? `${komma(k8.oben.x, 0)}/${komma(k8.oben.y, 0)}` : 'fehlt'}, unten ${k8.unten ? `${komma(k8.unten.x, 0)}/${komma(k8.unten.y, 0)}` : 'fehlt'}; Pose oben ${p8.schaedel}°, unten ${p8.kiefer}°; Lippen vorn ${komma(k8.spalt, 2)} auseinander; Lippe ${komma(k8.lang, 0)} lang`,
     );
     await bild('7-tropfen');
+    {
+      const f8 = await O('farbe');
+      const m8 = f8.ebenen.find((e) => e.name === 'Maul');
+      ok('8b mit dem Maul ist die Ebene „Maul“ angelegt', !!m8 && m8.linien === 1 && m8.fuellungen === 2 && f8.fehl === 0, `Ebenen: ${f8.ebenen.map((e) => `${e.name} (${e.linien} Linien, ${e.fuellungen} Füllungen)`).join(', ')}; ohne Weg ${f8.fehl}`);
+    }
     if (k8.oben && k8.unten && k8.scharnier) {
       // 9 halten
       await s.mouse.move(k8.unten.x, k8.unten.y);
@@ -549,6 +557,29 @@ else {
             `Lippe ${L16 ? `maulLinie ${L16.maulLinie}, ${L16.punkte.length} Punkte` : 'fehlt'}; die Paare liegen höchstens ${Number.isFinite(paarWeit) ? paarWeit.toFixed(3) : 'ungepaart'} auseinander; umgeschlagen ${w16.umgeschlagen}; Meldung: ${w16.meldung}`,
           );
           await bild('15-verbunden');
+          // 17 die Farben der Ebene „Maul“ sind innen geblieben (die Lippen wurden gezogen, das Netz hat mehrfach gewechselt)
+          const f17 = await O('farbe');
+          const m17 = f17.ebenen.find((e) => e.name === 'Maul');
+          if (m17) await O('farbEbene', 'waehlen', m17.id);
+          await s.waitForTimeout(300);
+          const fehl17 = (await O('farbe')).fehl;
+          const andere17 = f17.ebenen.find((e) => e.name !== 'Maul');
+          if (andere17) await O('farbEbene', 'waehlen', andere17.id);
+          const r17 = await s.evaluate(() => {
+            let farbig = 0;
+            let gesamt = 0;
+            for (let y = 120; y <= 780; y += 10)
+              for (let x = 60; x <= 1380; x += 10) {
+                gesamt++;
+                if (window.__ozzy.farbUnter(x, y)) farbig++;
+              }
+            return { farbig, gesamt };
+          });
+          ok(
+            '17 nach dem Ziehen an den Lippen: jede Farblinie der Ebene „Maul“ hat ihren Weg, von außen trifft kein Strahl Farbe',
+            !!m17 && m17.linien === 1 && m17.fuellungen === 2 && fehl17 === 0 && r17.farbig === 0,
+            `Ebene ${m17 ? `${m17.linien} Linien, ${m17.fuellungen} Füllungen` : 'fehlt'}; ohne Weg ${fehl17}; ${r17.farbig} von ${r17.gesamt} Strahlen treffen Farbe; Netzwechsel der Bemalung ${f17.wechsel.zahl} (gehalten ${f17.wechsel.gehalten}, gesucht ${f17.wechsel.gesucht}, weitester ${f17.wechsel.groesst.toFixed(2)})`,
+          );
         }
       }
       if (ordner) {

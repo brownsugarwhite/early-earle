@@ -124,8 +124,11 @@ type Abschnitt = { von: number; bis: number; knoten: number };
 /**
  * Die Farbflächen: welche Dreiecke ganz zu welcher Füllung gehören und, in den Dreiecken mit Ketten, welche Füllung auf welcher Seite
  * jeder Kette liegt. Spätere Saaten überschreiben frühere in derselben Fläche.
+  *
+ * `gebiet` (Maul, Etappe 4): je Dreieck eine Marke. Eine Füllung überschreitet nie die Kante zwischen zwei Dreiecken mit
+ * verschiedener Marke: So bleibt, was in der Tasche eines Mauls gefüllt ist, in der Tasche; ihre Grenze ist die Lippe selbst.
  */
-export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: readonly Saat[]): Flaechen {
+export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: readonly Saat[], gebiet?: ArrayLike<number> | null): Flaechen {
   const T = k.T;
   const kd = jeDreieck(ketten);
   // Knoten: je Dreieck einer (ohne Ketten das Dreieck selbst; mit Ketten der Rest am Rand, den keine Kette berührt), dazu je Kette zwei Seiten
@@ -262,6 +265,8 @@ export function flaechenRechnen(k: Karte, ketten: readonly Kette[], saaten: read
       if (g < 0) continue;
       const u = Math.floor(g / 3);
       if (u < t) continue;
+      // (ein Gebiet, etwa die Tasche eines Mauls: Über seinen Rand hinweg gehört nichts zusammen)
+      if (gebiet && gebiet[t] !== gebiet[u]) continue;
       const fremd = kanten.get(u);
       if (!eigen && !fremd) {
         M.vereinen(t, u);

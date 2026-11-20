@@ -26,6 +26,11 @@ import {
 import { describe, expect, it } from 'vitest';
 import { KIEFER_MAX, MAUL_HAAR, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
 import { Profil } from '../maulstudie/schnitt';
+import { leereBemalung } from '../ozzy/farbe/bemalung';
+import { type Saat, flaechenRechnen } from '../ozzy/farbe/flaechen';
+import { kettenAller } from '../ozzy/farbe/ketten';
+import { MAUL_EBENE, maulEbeneBauen } from '../ozzy/farbe/maulEbene';
+import { karteVon, ortGespiegelt } from '../ozzy/farbe/ort';
 import { manifoldLaden } from './naht';
 
 const R = 150;
@@ -424,6 +429,70 @@ describe('das Maul als echte Form', () => {
       if ((Math.cos(w) * n0[0] - Math.sin(w) * n0[1]) * n1[0] + (Math.sin(w) * n0[0] + Math.cos(w) * n0[1]) * n1[1] + n0[2] * n1[2] < 0) gefaltet++;
     }
     expect(gefaltet).toBe(0);
+  });
+
+  it('die Ebene „Maul“: eine Zahnfleischlinie und zwei Füllungen, die Farbe bleibt in der Tasche', async () => {
+    const wasm = await manifoldLaden();
+    const d = kugel();
+    const mk = mittlereKante(d.h);
+    const linie = [
+      { x: -50, y: 20 },
+      { x: -100, y: 0 },
+      { x: -150, y: -18 },
+      { x: -190, y: -30 },
+    ];
+    const r = maulSchneidenMit(wasm, { haut: d.h, loops: d.loops }, linie, { ...IDS, mk });
+    if ('fehler' in r) throw new Error(r.fehler);
+    const h = r.haut;
+    const lippe = r.loops[r.loops.length - 1]!;
+    const sW = lippe.punkte.find((p) => p.mundwinkel)!.s;
+    let ecke = 1;
+    for (let j = 1; j < lippe.proben.length - 1; j++) if (Math.abs(lippe.s[j]! - sW) < Math.abs(lippe.s[ecke]! - sW)) ecke = j;
+    const L = maulLage(h, lippe, ecke)!;
+    const erste = L.ersteUnten ? L.unten : L.oben;
+    const sk = kieferSeiten(h, r.loops, lippe.id, { profil: erste.profil, C: L.C }, erste.links ? 1 : -1);
+    const innen = Uint8Array.from({ length: h.n }, (_, v) => (!sk.aussen[v] || sk.lippe.has(v) ? 1 : 0));
+    const k = karteVon(h);
+    const b = leereBemalung();
+    const ebene = maulEbeneBauen(b, k, { innen, lippe: lippe.proben.map((q) => q.ecken[0]), lang: L.unten.lang });
+    if ('fehler' in ebene) throw new Error(ebene.fehler);
+    expect(ebene.name).toBe(MAUL_EBENE);
+    expect(b.ebenen[b.ebenen.length - 1]).toBe(ebene);
+    expect(b.aktiv).toBe(1);
+    expect(ebene.linien.length).toBe(1);
+    expect(ebene.fuellungen.length).toBe(2);
+    // die Zahnfleischlinie beginnt und endet in der Mittelebene (ihr Spiegelbild schließt sie)
+    const zf = ebene.linien[0]!;
+    for (const o of [zf.stuetzen[0]!, zf.stuetzen[zf.stuetzen.length - 1]!]) expect(Math.abs(o.w[0] * h.pos[3 * o.e[0] + 2]! + o.w[1] * h.pos[3 * o.e[1] + 2]! + o.w[2] * h.pos[3 * o.e[2] + 2]!)).toBeLessThan(1e-9);
+    // die Flächen, wie das Farbwerk sie rechnet: mit der Tasche als Gebiet
+    const { ketten, fehl } = kettenAller(k, ebene.linien, true);
+    expect(fehl.length).toBe(0);
+    const saaten: Saat[] = [];
+    ebene.fuellungen.forEach((f, nr) => {
+      saaten.push({ ort: f.saat, farbe: nr });
+      const g = ortGespiegelt(k, f.saat);
+      if (g) saaten.push({ ort: g, farbe: nr });
+    });
+    const gebiet = Uint8Array.from({ length: k.T }, (_, t) => (innen[h.tri[3 * t]!] && innen[h.tri[3 * t + 1]!] && innen[h.tri[3 * t + 2]!] ? 1 : 0));
+    const fl = flaechenRechnen(k, ketten, saaten, gebiet);
+    const zahl = [0, 0];
+    let aussen = 0;
+    for (let t = 0; t < k.T; t++) {
+      const f = fl.ganz[t]!;
+      if (f < 0) continue;
+      if (gebiet[t]) zahl[f]!++;
+      else aussen++;
+    }
+    // beide Farben stehen in der Tasche, außen keine; jedes Dreieck, durch das die Zahnfleischlinie läuft, liegt in der Tasche
+    expect(aussen).toBe(0);
+    expect(zahl[0]!).toBeGreaterThan(3);
+    expect(zahl[1]!).toBeGreaterThan(3);
+    for (const q of fl.rand) expect(gebiet[q.t]).toBe(1);
+    // ohne das Gebiet liefe das Zahnfleisch über die Lippe auf die ganze Form (darum gibt es das Gebiet)
+    const ohne = flaechenRechnen(k, ketten, saaten);
+    let ausgelaufen = 0;
+    for (let t = 0; t < k.T; t++) if (!gebiet[t] && ohne.ganz[t]! >= 0) ausgelaufen++;
+    expect(ausgelaufen).toBeGreaterThan(100);
   });
 
   it('sagt, warum es nicht geht: die Linie trifft die Form nicht', async () => {

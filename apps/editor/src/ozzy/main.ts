@@ -39,6 +39,7 @@ import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND } from './wachs';
 import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
+import { istMaulEbene } from './farbe/maulEbene';
 import { EbenenStapel } from './farbe/ebenenStapel';
 import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
 import { FarbLeiste, alsHex as farbeAlsHex } from './farbe/farbLeiste';
@@ -287,7 +288,8 @@ const istMalgrund = (): boolean => material === 'Wachs' || material === 'Helles 
  * Ist die Bemalung jetzt zu sehen: in der Ruhe, auf einem der zwei Gründe, am aktiven Objekt für sich (Etappe 1: Im Verbund, mit
  * „Dreiecke zeigen“ und in der Pose noch nicht). `farbeMoeglich`: Sie wäre zu sehen, läge schon etwas auf der Form.
  */
-const farbeMoeglich = (): boolean => zustand === 'ruhe' && werkGezeigt && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && !werk.grund;
+// (Maul, Etappe 4: Am Maul als echte Form steht die Bemalung auch in der Pose im Bild; das offene Maul zeigt dort sein Inneres)
+const farbeMoeglich = (): boolean => zustand === 'ruhe' && werkGezeigt && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && (!werk.grund || werk.maulLippe() !== null);
 const farbeZeigen = (): boolean => farbeMoeglich() && !farbWerk.leer;
 let gastStand: { netz: unknown; version: number } | null = null;
 /**
@@ -4114,6 +4116,7 @@ function bild(dt: number): boolean {
   farbWerk.fliessen(dt);
   // (Etappe 6: das Auffächern der Ebenen)
   if (faecherSchritt(dt)) aktiv = true;
+  maulEbenePflegen();
   if (zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && farbWerk.schritt(hautJetzt())) farbBild++;
   if (farbWerk.fliesst) aktiv = true;
   // (nicht `farbAn`: So heißt der Schalter, ob die Farblinien gerade bedient werden; er gilt weiter unten für Tintenlinie und Verdeckung)
@@ -8991,6 +8994,28 @@ function zeigerAufMitte(x: number, y: number): { x: number; y: number } | null {
   return { x: (a.x - werkHaut.mitte.x) * werkHaut.f, y: (a.y - werkHaut.mitte.y) * werkHaut.f };
 }
 
+/**
+ * Maul, Etappe 4: Die Ebene „Maul“ kommt und geht mit dem Maul. Angelegt wird sie, sobald das Werk nach dem Schneiden ruht (bis
+ * dahin wechselt das Netz noch); nimmt ⌘Z das Maul zurück, geht sie mit.
+ */
+function maulEbenePflegen(): void {
+  if (zustand !== 'ruhe' || !werkGezeigt || reihe) return;
+  const hat = farbWerk.bemalung.ebenen.some(istMaulEbene);
+  const lippe = werk.maulLippe();
+  if (!lippe) {
+    if (hat && farbWerk.maulEbenePflegen(hautJetzt(), null) === true) farbBild++;
+    return;
+  }
+  if (hat || werk.grund || werkBeschaeftigt() || maulStrichLaeuft) return;
+  const r = farbWerk.maulEbenePflegen(hautJetzt(), werk.maulTasche());
+  if (r === true) farbBild++;
+  else if (typeof r === 'string') console.info(`Ozzy: Die Ebene „Maul“ ließ sich nicht anlegen (${r})`);
+}
+// (was auf der Ebene „Maul“ gefüllt ist, bleibt in der Tasche: Das Farbwerk fragt das Werk nach ihr, je Netz einmal)
+farbWerk.maulTascheVon = () => werk.maulTasche();
+/** Im Paint-Modus ist die Ebene „Maul“ gewählt: Dann steht das Maul offen, damit man hineinmalen kann */
+const maulEbeneAktiv = (): boolean => malModus && istMaulEbene(aktiveEbene(farbWerk.bemalung));
+
 /** Abstand der Tropfen von ihrer Kieferspitze im Bild (CSS-Pixel, nach vorn und zur Seite): So bleiben die Punkte der Lippe an der Spitze zu greifen */
 const KIEFER_VOR_PX = 36;
 const KIEFER_SEIT_PX = 18;
@@ -9025,7 +9050,8 @@ function kieferUiZeigen(): boolean {
       braucht = true;
     }
   } else {
-    let ziel = kieferZug ? 1 : 0;
+    // (offen, solange ein Tropfen gehalten wird, und im Paint-Modus, solange die Ebene „Maul“ gewählt ist)
+    let ziel = kieferZug || (maulEbeneAktiv() && farbeMoeglich()) ? 1 : 0;
     if (kieferSchau && !kieferZug) {
       const t = (jetzt - kieferSchau.t0) / KIEFER_SCHAU_MS;
       if (t >= 1 || werk.zug) kieferSchau = null;

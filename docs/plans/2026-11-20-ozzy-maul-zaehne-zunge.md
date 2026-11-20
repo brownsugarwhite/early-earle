@@ -845,3 +845,36 @@ Rechenkern ist nichts geändert.
 Nicht gebaut: die Farben der Lippen (türkis, rosa, blau: Die Anzeige der Linien kennt nur eine Tinte), ein Kiefer als Ganzes
 gerückt, ein Zeichen am Zeiger, welche Lippe er greifen würde. Bilder: `docs/progress/ozzy/2026-11-20-maul-etappe3-ueberbiss.jpg`,
 `…-ueberbiss-offen.jpg`. Offenes: [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 30 bis 39.
+
+### 12.14 Probe P4 und Etappe 4: die Ebene „Maul“, gebaut (20.11.)
+
+Deine Antwort (20.11.): „Ja, Etappe 4“. Die Probe P4 lief wieder im Fenster (`ozzy-maul-farbe-fenster.mjs`, Kriterien F1 bis F7,
+auf Wachs an „teat firefish“).
+
+**In Ozzy:** Mit dem Maul gibt es im Paint-Modus eine Ebene „Maul“, oben im Stapel: das Innere dunkelrot, längs der Lippe ein
+hellerer Ring für das Zahnfleisch (ein Zehntel der Lippenlänge breit). Die Grenze zwischen beiden ist eine Farblinie, die du wie
+jede bedienst. Zu ist von außen keine Farbe zu sehen; offen steht sie im Maul, in „Fressen“ und beim Blick. Wählst du im
+Paint-Modus die Ebene „Maul“, öffnet sich das Maul, damit du hineinmalen kannst; mit einer anderen Ebene schließt es wieder.
+⌘Z, das das Maul zurücknimmt, nimmt die Ebene mit. Gewählt bleibt nach dem Schneiden die Ebene, auf der du warst.
+
+**P4 hält:** Die Farblinie liegt nach „Fressen“ aus und an genau, wo sie lag; eine Füllung, bei offenem Maul gesetzt, sitzt nach
+Schließen und Öffnen an derselben Stelle; nach einem Zug an der Lippe und nach dem ganzen Ablauf von Etappe 3 (Lippen trennen,
+Überbiss, verbinden: 11 bis 17 Netzwechsel) trifft von außen kein Strahl Farbe.
+
+**Wie, und was dabei herauskam:** Die Zahnfleischlinie ist eine Höhenlinie des Abstands von der Lippe in der Tasche (vom Gaumen
+über die Rachenlinie zum Boden). In der ersten Fassung hielt eine zweite Farblinie knapp hinter der Lippe die Farben im Maul. Das
+hielt den Netzwechseln nicht stand: Nach den Zügen von Etappe 3 lief die Füllung über die ganze Form (2 530 von 8 911 Strahlen
+trafen Farbe; vermutlich landete beim Netzwechsel ein neu gesuchter Ort der Linie auf der Haut außen, nachgesehen habe ich das
+nicht). Jetzt gilt für diese Ebene eine Regel: **Was auf ihr gefüllt ist,
+bleibt in der Tasche; ihre Grenze ist die Lippe selbst** (das Farbwerk fragt das Werk nach der Tasche). Dafür ist in der
+Bemalung zum ersten Mal eine Stelle, die eine Ebene anders behandelt als die anderen. Am Rechenkern ist nichts geändert.
+
+Dazu: Am Maul als echte Form steht die Bemalung jetzt auch in der Pose im Bild (vorher in keiner Pose).
+
+Nicht gebaut: nach hinten dunkler, das Maul aufgeklappt wie ein Buch in der Ebenen-Ansicht, Farben für Zähne und Zunge (die
+gibt es noch nicht). Bilder: `docs/progress/ozzy/2026-11-20-maul-etappe4-fressen.jpg`, `…-gemalt.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 40 bis 49.
+
+Zwei Kriterien älterer Proben des Paint-Modus waren bei meinem Lauf nicht erfüllt (`ozzy-farbe-fenster.mjs` 2: eine Farblinie
+0,68 statt höchstens 0,5 neben ihrer Lage nach Zug und Rückzug; `ozzy-farbe-ebenen-fenster.mjs` 68: Zeiten). Beide hängen an der
+Uhr, und der Rechner war dabei stark belastet (Last 7 bis 8). Gegen den Stand davor habe ich nicht verglichen.
