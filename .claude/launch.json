@@ -54,6 +54,13 @@
       "url": "http://localhost:5215"
     },
     {
+      "name": "ozzy-shader",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-shader", "--filter", "@ee/editor", "exec", "vite", "--port", "5219", "--strictPort", "--host"],
+      "port": 5219,
+      "url": "http://localhost:5219"
+    },
+    {
       "name": "game-dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ee/game", "exec", "vite", "--port", "5173", "--strictPort"],
