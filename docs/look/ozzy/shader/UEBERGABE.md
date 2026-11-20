@@ -1,8 +1,9 @@
-# Übergabe: 45 Shader für Ozzy (20.11.2026, Runde 2)
+# Übergabe: 47 Shader für Ozzy (20.11.2026, Runde 3)
 
-Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2). Recherche:
+Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 und 3). Recherche:
 `docs/research/2026-11-20-shader-recherche.md`. Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder:
-`docs/progress/ozzy/shader/` (Runde 2: ein Blatt je Gruppe, `2026-11-20-runde-2-*.png`; Runde 1: `2026-11-20-alle-20.png` und einzelne).
+`docs/progress/ozzy/shader/` (ein Blatt je Gruppe, `2026-11-20-runde-2-*.png`; Runde 3: `2026-11-20-runde-3-neu.png`; Runde 1:
+`2026-11-20-alle-20.png` und einzelne).
 
 ## Wo und wie ansehen
 
@@ -16,12 +17,12 @@ Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20
   Blatt aus Bildern: `node scripts/ozzy/bildblatt.mjs <ziel.png> <spalten> <breite je Bild> <bilder…>` (die Breite gilt **je Bild**).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
-## Die 45, in fünf Gruppen
+## Die 47, in fünf Gruppen
 
 - **Spider-Verse (17):** Comicdruck, Aquarell, Indrajal, Punk-Collage, Marker 2099, Tintenfleck, Da Vinci, Glitch, Earth-42,
   Multiplane, Noir, Cartoon, Neunziger, Sienkiewicz, Venom-Blitz, Pixel, LEGO.
 - **Anime & Manga (7):** Anime, Manga, Flammenwesen, Dampfwesen, Shinkai, Ukiyo-e, Gouache.
-- **Materialien (7):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Opal.
+- **Materialien (9):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Opal, Diamant, Diskokugel.
 - **Tiermuster (7):** Leopard, Tiger, Schlange, Elefant, Giraffe, Krokodil, Turing-Haut.
 - **Effekte (7):** Eine Linie, Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
 
@@ -62,3 +63,9 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
     alles total reflektiert (schwarz). Der Austritt ist darum eine Linse (Spiegelbild der vorderen Normale längs des Blicks), und die
     Umgebung ist rundum hell (Hohlkehle), damit jeder gebrochene Strahl Licht trifft.
 10. Die App hält nur drei Vorschau-Server; das Bildskript startet darum seinen eigenen Vite nur für den Lauf.
+11. **Schuppen** (Schlange, Krokodil): regelmäßige Reihen in einer Ebene, je nach Ausrichtung der Fläche eine von drei
+    (`schuppenEbene`, `schuppe2`, `platte2` in `tiere.ts`). Zylinder um eine Achse liefen an den Polen sternförmig zusammen, Zellen im
+    Raum gaben ungleich große Schnitte. Das Muster wird an der Mitte jeder Schuppe gelesen (eine Farbe je Schuppe).
+12. **Diamant:** Facetten entstehen durch Einrasten der Normale auf eine Kugel aus Richtungen (bis 200 Vergleiche je Facette, vier
+    Facetten je Bildpunkt); das ist ein Schliff des Aussehens, keine ebenen Flächen im Raum. **Diskokugel:** Die Normale einer Kachel
+    wird an ihrer Mitte gelesen (Ableitungen der Kachellage im Bild umgekehrt); die Ableitungen stehen darum vor jeder Verzweigung.

@@ -15,6 +15,8 @@ import { EINE_LINIE } from './eineLinie';
 import { ERDE42 } from './erde42';
 import { FEUER } from './feuer';
 import { FLAMMENWESEN } from './flammenwesen';
+import { DIAMANT } from './diamant';
+import { DISKOKUGEL } from './diskokugel';
 import { GLAS } from './glas';
 import { GLITCH } from './glitch';
 import { GOUACHE } from './gouache';
@@ -78,6 +80,8 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   EARLE_SCHUPPEN,
   GLAS,
   OPAL,
+  DIAMANT,
+  DISKOKUGEL,
   // Tiermuster
   LEOPARD,
   TIGER,

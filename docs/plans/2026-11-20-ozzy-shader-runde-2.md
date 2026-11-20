@@ -75,3 +75,25 @@ Danach (Florian: „Ja, die sechs“) die freien aus Runde 1 auf denselben Stand
   warme Gegenfarbe nass in nass.
 - **Tintenfleck:** viel mehr Flecken in zwei Größen, echte Tuschespritzer, Portale mit hellem Innenrand (Tiefe), lange
   Bleistift-Konstruktionslinien.
+
+## Runde 3 (20.11.2026 nachts)
+
+Florian: „wirklich schöne dabei. Die tiermuster finde ich noch nicht gut gelungen. Und kannst du mir noch einen diamant und einen
+realistischen diskokugelshader machen. Alles in höchster qualität. bei den tieren gefallen mir die muster und die verteilung von
+schuppen noch nicht. Den Ukiyo-e shader finde ich von der idee her sehr schön, aber noch nicht gut umgesetzt.“
+(`docs/progress/ozzy/shader/2026-11-20-runde-3-neu.png`)
+
+- **Schuppen neu verteilt:** Die Zylinderabbildung lief an den Polen sternförmig zusammen; Zellen im Raum gaben ungleiche Schnitte
+  (Kieselmosaik). Jetzt regelmäßige Reihen in einer Ebene, je nach Ausrichtung der Fläche eine von drei (Grenzen leicht verrauscht,
+  wie echte Wechsel der Schuppenrichtung). **Schlange:** abgerundete Rauten, die sich zum Schwanz hin überlappen, Farbe Schuppe für
+  Schuppe (Sättel mit schwarzem Rand), breite Bauchschilde. **Krokodil:** oben große Schilde mit Kiel, an den Flanken kleinere, am
+  Bauch ein feines Gitter, Ziegelverband, Bänder Schild für Schild.
+- **Muster:** Elefant als Haut (Felder tiefer Furchen, feinere darin, Querfalten, matt, Staub, rosa Flecken); Giraffe mit scharfen,
+  fein gezackten Rändern und gleich breiten Adern; Leopard mit Rosetten aus drei bis fünf Bruchstücken.
+- **Ukiyo-e neu:** Kimono-Muster (Seigaiha) fest auf der Form statt im Bild schwimmend, Schatten im selben Ton, Bokashi zum Umriss,
+  Konturstock mit Pinselstärke; Bühne als Holzschnitt (Himmel im Bokashi, Sonne, Nebelbänder, Berg mit Schneekappe, Wellen mit
+  Linien und Gischtkrallen, Titelfeld mit Pinselzeichen, Siegel).
+- **Diamant (neu):** Facetten durch Einrasten der Normale, Licht zweimal im Stein gespiegelt, Feuer aus der Dispersion beim Austritt,
+  Juwelierlicht, das sich dreht, Sternfilter.
+- **Diskokugel (neu):** Spiegelkacheln in Breitenreihen, jede eben (Normale an der Kachelmitte), die Kugel dreht sich; jede Kachel wirft
+  ihren Lichtfleck an Wand und Boden (Halbvektor), weiß und farbig, Sternfilter, Dunst.

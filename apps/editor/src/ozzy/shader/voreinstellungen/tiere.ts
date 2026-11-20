@@ -50,6 +50,74 @@ vec2 phasor3(vec3 x, vec3 achse, float f, float streu) {
       }
   return s;
 }
+/** die längste Achse der Form in der Seitenebene (x oder y; z ist die Spiegelachse) und zwei Richtungen quer dazu */
+void achsen(out vec3 A, out vec3 B, out vec3 C) {
+  vec3 ach = pow(uHalb / max(uHalb.x, uHalb.y), vec3(4.0));
+  A = normalize(vec3(ach.x, ach.y, 0.0) + vec3(1e-3, 0.0, 0.0));
+  B = normalize(cross(vec3(0.0, 0.0, 1.0), A));
+  C = cross(A, B);
+}
+/**
+ * Welche Ebene trägt die Schuppen an dieser Stelle (0: Seite, 1: oben/unten, 2: vorn/hinten), nach der Normale, die Grenzen verrauscht
+ * (wie echte Wechsel der Schuppenrichtung); U läuft längs der Körperachse, wo sie in der Ebene liegt, W quer.
+ */
+int schuppenEbene(vec3 n, vec3 q, vec3 A, out vec3 U, out vec3 W) {
+  vec3 an = abs(n) + 0.05 * vec3(snoise(q * 2.2), snoise(q * 2.2 + 5.0), snoise(q * 2.2 + 9.0));
+  int e = (an.z >= an.x && an.z >= an.y) ? 0 : (an.y >= an.x ? 1 : 2);
+  vec3 N = e == 0 ? vec3(0.0, 0.0, 1.0) : (e == 1 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0));
+  vec3 a = A - N * dot(A, N);
+  U = length(a) > 0.3 ? normalize(a) : (e == 1 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 0.0, 1.0));
+  W = cross(N, U);
+  return e;
+}
+/**
+ * Schuppen in einer Ebene, die sich überlappen: Reihen längs x, jede zweite um eine halbe Zelle versetzt (schräge Reihen); jede
+ * Schuppe hinten (gegen x) länger, die vordere deckt. raute: 0 rund, 1 Raute. Ergebnis: Abstand zum sichtbaren Rand (Zellen).
+ */
+float schuppe2(vec2 p, float raute, out vec2 d, out vec2 mitte, out float id) {
+  vec2 ip = floor(p);
+  float best = -1e9, rand = 0.0;
+  d = vec2(0.0); mitte = vec2(0.0); id = 0.0;
+  for (int j = -1; j <= 2; j++)
+    for (int i = -1; i <= 1; i++) {
+      vec2 c = ip + vec2(float(j), float(i));
+      float versatz = 0.5 * mod(c.x, 2.0);
+      vec2 m = c + vec2(0.5, 0.5 + versatz) + 0.05 * (hash22(c) - 0.5);
+      vec2 dd = p - m;
+      vec2 sc = vec2(dd.x * (dd.x < 0.0 ? 0.6 : 1.35), dd.y);
+      float r = mix(length(sc), abs(sc.x) + abs(sc.y) * 1.05, raute);
+      float R = mix(0.84, 1.06, raute);
+      if (r < R && m.x > best) { best = m.x; rand = R - r; d = dd; mitte = m; id = hash12(c + 0.3); }
+    }
+  return rand;
+}
+/** Platten ohne Überlappung (Panzer) in einer Ebene: Ziegelverband, längs gestreckt; Ergebnis: Abstand zur Fuge (Zellen) */
+float platte2(vec2 p, float streck, float versetzt, out vec2 d, out vec2 mitte, out float id) {
+  float zeile = floor(p.y);
+  vec2 pp = vec2(p.x / streck + versetzt * 0.5 * mod(zeile, 2.0), p.y);
+  vec2 c = floor(pp);
+  vec2 f = fract(pp) - 0.5;
+  d = vec2(f.x * streck, f.y);
+  mitte = vec2((c.x + 0.5 - versetzt * 0.5 * mod(zeile, 2.0)) * streck, c.y + 0.5);
+  id = hash12(c + 0.7);
+  vec2 rand2 = (0.5 - abs(f)) * vec2(streck, 1.0);
+  return min(rand2.x, rand2.y);
+}
+/** Höhe der Elefantenhaut (0 eben, negativ in Furchen): Felder großer Furchen, feinere darin, Querfalten */
+float elefantRelief(vec3 q, vec3 A) {
+  vec3 w = q + 0.12 * vec3(snoise(q * 3.0), snoise(q * 3.0 + 3.0), snoise(q * 3.0 + 7.0));
+  vec3 v1 = voronoi3(w * 7.0);
+  vec3 v2 = voronoi3(w * 19.0 + 2.0);
+  float f1 = v1.y - v1.x, f2 = v2.y - v2.x;
+  float gross = 1.0 - smoothstep(0.0, 0.16 + 0.08 * snoise(q * 5.0), f1);
+  float fein = 1.0 - smoothstep(0.0, 0.12, f2);
+  // quer zur Körperachse: tiefe Falten, die auslaufen
+  float fl = dot(q, A) * 26.0 + 2.5 * snoise(q * 2.0);
+  float falte = pow(1.0 - abs(sin(fl)), 6.0) * smoothstep(-0.2, 0.4, snoise(q * 1.5 + 9.0));
+  // Kuppen zwischen den Furchen
+  float kuppe = smoothstep(0.0, 0.35, f1) * 0.25 + 0.08 * snoise(q * 40.0);
+  return kuppe - gross * 0.85 - fein * 0.35 - falte * 0.6;
+}
 /** Richtung der Haare im Bild: die Weltrichtung nach unten, auf die Fläche gelegt */
 vec2 haarRichtung(vec3 n) {
   vec3 t = vec3(0.0, -1.0, 0.0) - n * dot(vec3(0.0, -1.0, 0.0), n);
@@ -149,11 +217,13 @@ export const LEOPARD = tier(
   'Rosetten aus Bruchstücken um dunkle Mitten, kleine Vollflecken, goldenes Fell mit Haarsaum, heller Bauch',
   /* glsl */ `
   float id;
-  vec4 z = zelle3(q * 8.5 * uR_groesse, id);
+  vec4 z = zelle3(q * 9.5 * uR_groesse, id);
   vec3 richtung = normalize(z.xyz + 1e-4);
-  float bruch = snoise(richtung * 2.2 + id * 30.0);
+  // der Ring zerfällt in drei bis fünf Bruchstücke (Lücken nach dem Winkel um die Mitte)
+  float bruch = sin(atan(dot(richtung, vec3(0.6, 0.8, 0.0)), dot(richtung, vec3(0.0, 0.0, 1.0)) + id * 3.0) * (3.0 + floor(id * 2.99)) + id * 20.0) + 0.6 * snoise(richtung * 3.0 + id * 30.0);
   float wellig = 0.07 * snoise(q * 24.0);
-  float ring = smoothstep(0.14, 0.06, abs(z.w - 0.36 - wellig)) * step(-0.45, bruch);
+  float aaL = fwidth(z.w) * 0.8 + 0.01;
+  float ring = smoothstep(0.1 + aaL, 0.1 - aaL, abs(z.w - 0.37 - wellig)) * step(-0.35, bruch);
   float mitte = smoothstep(0.36, 0.26, z.w + wellig);
   float id2;
   vec4 z2 = zelle3(q * 19.0 * uR_groesse + 4.0, id2);
@@ -204,34 +274,47 @@ export const TIGER = tier(
 export const SCHLANGE = tier(
   'schlange',
   'Schlange',
-  'Schuppen in versetzten Reihen mit Fuge und Glanz, Sattelflecken wie beim Python, Regenbogenschimmer der Regenbogenboa',
+  'Python: rautenförmige Schuppen in schrägen Reihen, die sich zum Schwanz hin überlappen; das Muster sitzt Schuppe für Schuppe, breite Bauchschilde, Glanz und ein Hauch Regenbogen',
   /* glsl */ `
-  float u = atan(q.z, q.x) / 6.2831853 * 70.0 * uR_groesse;
-  float v = q.y * 22.0 * uR_groesse;
-  float reihe = floor(v);
-  float uu = u + 0.5 * mod(reihe, 2.0);
-  vec2 f = vec2(fract(uu) - 0.5, fract(v) - 0.5);
-  vec2 zell = vec2(floor(uu), reihe);
-  // gewölbte Schuppe: Höhe und Neigung
-  float h = 1.0 - dot(f * vec2(1.6, 1.25), f * vec2(1.6, 1.25)) * 2.2;
-  float fuge = smoothstep(0.1, -0.15, h);
-  vec3 tu = normalize(vec3(-q.z, 0.0, q.x) + 1e-4);
-  vec3 tv = vec3(0.0, 1.0, 0.0);
-  n = normalize(n0 + (tu * f.x * 1.2 + tv * f.y * 0.9) * 0.55 * (1.0 - fuge));
-  // Sattelflecken
-  float sattel = smoothstep(0.05, 0.25, snoise(vec3(q.x * 2.0, q.y * 4.0, q.z * 2.0)));
-  float sattelRand = smoothstep(0.0, 0.08, abs(snoise(vec3(q.x * 2.0, q.y * 4.0, q.z * 2.0)) - 0.15));
-  vec3 grundS = mix(vec3(0.45, 0.33, 0.16), vec3(0.62, 0.52, 0.3), hash12(zell) * 0.4);
-  vec3 c = mix(grundS, vec3(0.22, 0.14, 0.07), sattel);
-  c = mix(vec3(0.05, 0.035, 0.02), c, sattelRand);
-  c *= 1.0 - 0.75 * fuge;
+  vec3 A, B, C;
+  achsen(A, B, C);
+  vec3 U, W;
+  int eb = schuppenEbene(n0, q, A, U, W);
+  float k = 17.0 * uR_groesse;
+  vec2 p2 = vec2(dot(q, U), dot(q, W)) * k + float(eb) * 17.3;
+  vec2 d, m2;
+  float id;
+  float rand = schuppe2(p2, 0.55, d, m2, id);
+  float fuge = 1.0 - smoothstep(0.0, 0.08, rand);
+  // gewölbt: die Normale kippt mit der Lage in der Schuppe, hinten (frei) stärker
+  vec3 g = U * d.x * 0.75 + W * d.y;
+  g -= n0 * dot(g, n0);
+  n = normalize(n0 + g * 0.5 * (1.0 - fuge));
+  // das Muster an der Mitte der Schuppe: jede Schuppe hat genau eine Farbe
+  vec3 qm = q - (U * (p2.x - m2.x) + W * (p2.y - m2.y)) / k;
+  float m1 = snoise(vec3(dot(qm, A) * 1.9, dot(qm, B) * 2.5, dot(qm, C) * 2.5) + 3.0) + 0.15 * snoise(qm * 5.0);
+  float mm = snoise(qm * 5.0 + 11.0);
+  vec3 gold = vec3(0.7, 0.53, 0.24), braun = vec3(0.3, 0.19, 0.085), schwarz = vec3(0.055, 0.042, 0.03), hell = vec3(0.9, 0.82, 0.56);
+  vec3 c = gold;
+  if (m1 > 0.2) c = braun;
+  if (abs(m1 - 0.2) < 0.1) c = schwarz;
+  if (m1 > 0.55 && mm > 0.5) c = hell;
+  c *= 0.88 + 0.24 * id;
+  c *= 0.84 + 0.16 * smoothstep(-0.4, 0.3, d.x);
+  c *= 1.0 - 0.7 * fuge;
+  // Bauchschilde: breite Platten quer zur Achse
+  float bauch = smoothstep(-0.35, -0.75, n0.y);
+  float lp = dot(q, A) * k * 0.75;
+  float bfuge = 1.0 - smoothstep(0.0, 0.08, min(fract(lp), 1.0 - fract(lp)));
+  vec3 bc = vec3(0.86, 0.8, 0.62) * (0.92 + 0.12 * hash11(floor(lp))) * (1.0 - 0.55 * bfuge);
+  c = mix(c, bc, bauch);
+  n = normalize(mix(n, normalize(n0 + A * (fract(lp) - 0.5) * 0.4), bauch));
   albedo = srgbZuLin(c);
-  // Regenbogenschimmer (dünne Schicht): Farbe nach Blickwinkel
   vec3 V = zumAuge(p);
   float nv = clamp(dot(n, V), 0.0, 1.0);
-  albedo += max(spektral(420.0 + 280.0 * fract(nv * 1.6 + hash12(zell) * 0.15)), vec3(0.0)) * 0.035 * uR_schimmer * (1.0 - fuge) * pow(1.0 - nv, 1.5);
-  glanz = 1.4;
-  rauh = 0.28;`,
+  albedo += max(spektral(420.0 + 280.0 * fract(nv * 1.6 + id * 0.15)), vec3(0.0)) * 0.015 * uR_schimmer * (1.0 - fuge) * pow(1.0 - nv, 1.5);
+  glanz = 1.5;
+  rauh = 0.26;`,
   false,
   GRUND_DSCHUNGEL,
   [
@@ -243,32 +326,29 @@ export const SCHLANGE = tier(
 export const ELEFANT = tier(
   'elefant',
   'Elefant',
-  'Risse in drei Maßstäben, Querfalten, Staub in den Rillen, stumpfes Grau',
+  'Haut wie beim Elefanten: ein Netz tiefer Furchen in unregelmäßigen Feldern, feinere Furchen darin, quer laufende Falten, Staub auf den Kuppen, stumpfes Grau mit rosa Flecken',
   /* glsl */ `
-  vec3 w = q + 0.08 * vec3(snoise(q * 4.0), snoise(q * 4.0 + 3.0), snoise(q * 4.0 + 7.0));
-  vec3 v1 = voronoi3(w * 5.0);
-  vec3 v2 = voronoi3(w * 16.0 + 2.0);
-  vec3 v3 = voronoi3(w * 45.0 + 5.0);
-  float r1 = 1.0 - smoothstep(0.0, 0.07, v1.y - v1.x);
-  float r2 = 1.0 - smoothstep(0.0, 0.08, v2.y - v2.x);
-  float r3 = 1.0 - smoothstep(0.0, 0.1, v3.y - v3.x);
-  float falten = smoothstep(0.75, 1.0, sin(q.y * 140.0 + 4.0 * snoise(q * 6.0))) * 0.6;
-  float rille = max(max(r1, r2 * 0.8), max(r3 * 0.5, falten));
-  // Rillen als Normale (Gradient der Rillenhöhe genähert über die Abstände)
-  float e = 0.004;
-  vec3 v1x = voronoi3((w + vec3(e, 0.0, 0.0)) * 16.0 + 2.0), v1y = voronoi3((w + vec3(0.0, e, 0.0)) * 16.0 + 2.0), v1z = voronoi3((w + vec3(0.0, 0.0, e)) * 16.0 + 2.0);
-  vec3 gr = vec3(v1x.y - v1x.x, v1y.y - v1y.x, v1z.y - v1z.x) - (v2.y - v2.x);
-  n = normalize(n0 + gr / e * 0.004);
-  vec3 grau = vec3(0.42, 0.4, 0.39) * (0.9 + 0.2 * snoise(q * 3.0));
-  vec3 staub = vec3(0.6, 0.52, 0.42);
-  vec3 c = mix(grau, staub, smoothstep(0.2, 0.7, fbm3(q * 4.0)) * 0.35);
-  c *= 1.0 - 0.55 * rille;
-  c = mix(c, staub * 0.8, r2 * 0.25);
+  vec3 A, B, C;
+  achsen(A, B, C);
+  float h0 = elefantRelief(q, A);
+  const float e = 0.0025;
+  vec3 gr = vec3(elefantRelief(q + vec3(e, 0.0, 0.0), A) - h0, elefantRelief(q + vec3(0.0, e, 0.0), A) - h0, elefantRelief(q + vec3(0.0, 0.0, e), A) - h0) / e;
+  gr -= n0 * dot(gr, n0);
+  vec3 korn = vec3(snoise(q * 150.0), snoise(q * 150.0 + 3.0), snoise(q * 150.0 + 6.0));
+  n = normalize(n0 - gr * 0.0075 + (korn - n0 * dot(korn, n0)) * 0.08);
+  float tief = smoothstep(-0.2, -0.75, h0);
+  vec3 grau = vec3(0.47, 0.45, 0.43) * (0.9 + 0.16 * snoise(q * 2.5) + 0.06 * snoise(q * 60.0));
+  // rosa Flecken (Pigmentverlust) an manchen Stellen
+  grau = mix(grau, vec3(0.62, 0.5, 0.47), smoothstep(0.45, 0.7, fbm3n(q * 3.0 + 7.0, 3)) * 0.6);
+  vec3 staub = vec3(0.66, 0.58, 0.46);
+  vec3 c = mix(grau, staub, smoothstep(0.15, 0.6, h0) * smoothstep(0.1, 0.6, n0.y + 0.3) * 0.45);
+  c *= 1.0 - 0.6 * tief;
   albedo = srgbZuLin(c);
-  glanz = 0.15;
-  rauh = 0.8;`,
+  glanz = 0.04;
+  rauh = 0.95;`,
   false,
   GRUND_SAVANNE,
+  [],
 );
 
 export const GIRAFFE = tier(
@@ -276,12 +356,16 @@ export const GIRAFFE = tier(
   'Giraffe',
   'Braune Flecken mit gezackten Rändern, getrennt von hellen Adern, jeder Fleck in eigenem Ton, Fell mit Haarsaum',
   /* glsl */ `
-  vec3 w = q * 4.2 * uR_groesse;
-  w += 0.18 * vec3(snoise(q * 6.0), snoise(q * 6.0 + 3.0), snoise(q * 6.0 + 6.0));
+  vec3 w = q * 4.6 * uR_groesse;
+  w += 0.14 * vec3(snoise(q * 5.0), snoise(q * 5.0 + 3.0), snoise(q * 5.0 + 6.0));
   vec3 vo = voronoi3(w);
-  float ader = 1.0 - smoothstep(0.08, 0.13, vo.y - vo.x + 0.03 * snoise(q * 40.0));
-  vec3 fleck = mix(vec3(0.55, 0.28, 0.1), vec3(0.42, 0.2, 0.08), hash11(vo.z * 13.0));
-  fleck = mix(fleck, vec3(0.68, 0.42, 0.16), smoothstep(0.1, 0.3, vo.x) * 0.0 + 0.25 * smoothstep(0.25, 0.0, vo.x));
+  // gezackter Rand (fein verrauscht), Adern gleich breit und scharf
+  float zack = 0.025 * snoise(q * 45.0) + 0.012 * snoise(q * 110.0);
+  float aa = fwidth(vo.y - vo.x) * 0.8 + 0.004;
+  float ader = 1.0 - smoothstep(0.075 - aa, 0.075 + aa, vo.y - vo.x + zack);
+  vec3 fleck = mix(vec3(0.6, 0.31, 0.12), vec3(0.44, 0.2, 0.08), hash11(vo.z * 13.0));
+  // zur Mitte hin dunkler, am Rand etwas heller (wie beim Netzgiraffen-Fell)
+  fleck *= 0.8 + 0.25 * smoothstep(0.0, 0.3, vo.y - vo.x);
   vec3 creme = vec3(0.93, 0.85, 0.66);
   float bauch = smoothstep(-0.2, -0.6, n0.y);
   albedo = srgbZuLin(mix(mix(fleck, creme, ader), creme, bauch));
@@ -295,27 +379,35 @@ export const GIRAFFE = tier(
 export const KROKODIL = tier(
   'krokodil',
   'Krokodil',
-  'Panzerplatten in Reihen mit Kiel, dunkles Oliv mit hellen Tupfen, helle Bauchschilde, nass glänzend',
+  'Panzer: oben große Schilde in Reihen mit Kiel, an den Flanken kleinere, am Bauch ein feines Gitter heller Platten; tiefe Fugen, Bänder Schild für Schild, nass glänzend',
   /* glsl */ `
-  float bauch = smoothstep(-0.1, -0.5, n0.y);
-  float u = atan(q.z, q.x) / 6.2831853 * mix(34.0, 60.0, bauch) * uR_groesse;
-  float v = q.y * mix(11.0, 16.0, bauch) * uR_groesse;
-  float reihe = floor(v);
-  float uu = u + 0.35 * mod(reihe, 2.0) * (1.0 - bauch);
-  vec2 f = vec2(fract(uu) - 0.5, fract(v) - 0.5);
-  vec2 zell = vec2(floor(uu), reihe);
-  float rechteck = max(abs(f.x) * 1.15, abs(f.y) * 1.25);
-  float fuge = smoothstep(0.4, 0.48, rechteck);
-  float kiel = (1.0 - smoothstep(0.0, 0.08, abs(f.x))) * (1.0 - bauch) * step(0.5, hash12(zell + 3.0));
-  vec3 tu = normalize(vec3(-q.z, 0.0, q.x) + 1e-4);
-  vec3 tv = vec3(0.0, 1.0, 0.0);
-  n = normalize(n0 + (tu * f.x + tv * f.y) * 0.6 * (1.0 - fuge) + n0 * kiel * 0.2 - tu * sign(f.x) * kiel * 0.4);
-  vec3 oben = mix(vec3(0.16, 0.2, 0.1), vec3(0.24, 0.27, 0.13), hash12(zell));
-  oben = mix(oben, vec3(0.42, 0.4, 0.2), step(0.85, hash12(zell + 9.0)) * 0.7);
-  vec3 unten = vec3(0.78, 0.74, 0.55) * (0.92 + 0.08 * hash12(zell));
-  vec3 c = mix(oben, unten, bauch);
-  c *= 1.0 - 0.7 * fuge;
-  c = mix(c, c * 1.3, kiel * 0.6);
+  vec3 A, B, C;
+  achsen(A, B, C);
+  vec3 U, W;
+  int eb = schuppenEbene(n0, q, A, U, W);
+  bool oben = eb == 1 && n0.y > 0.0;
+  bool unten = eb == 1 && n0.y <= 0.0;
+  float k = (oben ? 6.5 : (unten ? 13.0 : 10.0)) * uR_groesse;
+  vec2 p2 = vec2(dot(q, U), dot(q, W)) * k + float(eb) * 11.7;
+  vec2 d, m2;
+  float id;
+  float f = platte2(p2, oben ? 1.25 : (unten ? 1.6 : 1.0), oben ? 0.0 : 1.0, d, m2, id);
+  float fuge = 1.0 - smoothstep(0.02, 0.1, f);
+  // gewölbte Schilde; oben ein Kiel längs der Mitte
+  vec3 g = U * d.x + W * d.y;
+  g -= n0 * dot(g, n0);
+  float kiel = (oben ? 1.0 : 0.0) * (1.0 - smoothstep(0.0, 0.12, abs(d.y))) * step(0.3, id);
+  vec3 quer = W - n0 * dot(W, n0);
+  n = normalize(n0 + g * 0.6 * (1.0 - fuge) - normalize(quer + 1e-5) * sign(d.y) * kiel * 0.45 - g * fuge * 1.1);
+  // Farbe Schild für Schild
+  vec3 qm = q - (U * (p2.x - m2.x) + W * (p2.y - m2.y)) / k;
+  float band = step(0.1, snoise(vec3(dot(qm, A) * 4.5, 0.0, 3.0) + 0.6 * snoise(qm * 2.0)));
+  vec3 c;
+  if (oben) c = mix(vec3(0.2, 0.22, 0.12), vec3(0.085, 0.095, 0.055), band) * (0.86 + 0.28 * id);
+  else if (unten) c = vec3(0.82, 0.78, 0.6) * (0.93 + 0.1 * id);
+  else c = mix(vec3(0.36, 0.35, 0.19), vec3(0.11, 0.11, 0.065), step(0.55, snoise(qm * 5.0 + 2.0))) * (0.88 + 0.24 * id);
+  c = mix(c, c * 1.35, kiel * 0.5);
+  c *= 1.0 - 0.75 * fuge;
   albedo = srgbZuLin(c);
   glanz = 1.8;
   rauh = 0.22;`,

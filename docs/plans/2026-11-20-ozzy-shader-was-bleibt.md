@@ -20,3 +20,13 @@ aufgefallen ist, für einen Feinschlifflauf (Florians Auge entscheidet):
 11. **Alle:** Ozzys Linien und Wände liegen auf dunklen Bühnen dunkel und leise; ob sie dort hell werden sollen, ist seine Wahl.
 12. **Tempo:** auf dem M3 Pro flüssig; am iPhone nicht gemessen. Am teuersten: Ereignishorizont (Strahlengang je Bildpunkt), Staub
     (65 536 Vierecke), Tropfen (Suche der Kante je Bildpunkt unter der Form).
+
+**Nach Runde 3 (Tiermuster, Ukiyo-e, Diamant, Diskokugel):**
+
+13. **Schlange und Krokodil:** Wo die Fläche die Richtung wechselt, wechseln auch die Schuppenreihen (eine Naht, wie bei echten
+    Tieren an Übergängen, aber an Florians Formen manchmal mitten auf einer Wölbung).
+14. **Diskokugel:** An den Polen (oben zwischen den Ohren) laufen die Kachelreihen zusammen; an Wand und Boden bleiben dort ein paar
+    gestreckte Flecken.
+15. **Diamant:** Das Feuer zeigt sich nur an wenigen Facetten (je nach Licht); die Facetten sind ein Einrasten der Normale, keine
+    ebenen Flächen im Raum.
+16. **Ukiyo-e:** Die Pinselzeichen im Titelfeld sind Striche ohne Bedeutung; der Berg ist klein.

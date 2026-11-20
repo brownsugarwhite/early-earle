@@ -23,8 +23,8 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   **Etappe 1, erste Scheibe gebaut** (Offenes: `…-maul-was-bleibt.md`, Feinschliff am Ende):
   [`…-20-ozzy-maul-zaehne-zunge.md`](docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md); Studie `maul.html`.
   Einstieg: [`docs/look/ozzy/maul/UEBERGABE.md`](docs/look/ozzy/maul/UEBERGABE.md).
-- **Sitzung „Shader“ (20.11.):** Zweig `claude/ozzy-shader`, Fenster 5219, 45 Shader in fünf Gruppen (Material „Shader“, ⇧M;
-  Runde 2 gebaut, Urteil steht aus). Einstieg:
+- **Sitzung „Shader“ (20.11.):** Zweig `claude/ozzy-shader`, Fenster 5219, 47 Shader in fünf Gruppen (Material „Shader“, ⇧M;
+  Runde 3 gebaut, Urteil steht aus). Einstieg:
   [`docs/look/ozzy/shader/UEBERGABE.md`](docs/look/ozzy/shader/UEBERGABE.md).
 - **Sitzung „Objekte, Spiegel und Nähte“ (18./19.11., ruht):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211.
   Plan: [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0
