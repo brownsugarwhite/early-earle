@@ -4,7 +4,7 @@
 Objekte und den Paint-Modus). Arbeitsbaum `.claude/worktrees/ozzy`, Fenster 5205 (Eintrag `ozzy`). `claude/ozzy` selbst steht
 weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 
-**Was es gibt:** ein Konzept und eine Studie. **In Ozzy, am Werk und am Rechenkern ist nichts geändert.**
+**Was es gibt:** ein Konzept, eine Studie und zwei Proben. **In Ozzy, am Werk und am Rechenkern ist nichts geändert.**
 
 - Konzept (zur Freigabe): [`docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md`](../../../plans/2026-11-20-ozzy-maul-zaehne-zunge.md).
   Oben Florians Auftrag wörtlich; Abschnitt 3 die Definition („das Maul ist ein Schnitt, kein Umbau“), 4 die Bedienung, 8 was die
@@ -18,9 +18,14 @@ Kieferpunkte) muss nach dem Erstellen bearbeitbar sein wie der Rest des Meshs; d
 Unterbiss und große Hauer auf einer Seite, auch geschlossen. **Daraus der Nachtrag (Plan, Abschnitt 12): Der Schnitt ist nur die
 Geburt; mit dem Bestätigen wird das Maul echte Form** (wie ein angewendetes Abziehen). Probe dazu in Ozzy selbst, ohne Code zu
 ändern: `scripts/ozzy/maul-echt-probe.mjs`, Bildblatt `docs/progress/ozzy/2026-11-20-maul-echte-form-probe.jpg` (Abziehen
-angewendet → Tasche ist Haut, Lippe ist ein Ring mit Kante → Tropfen „Maul“ → „Fressen“ öffnet). **Gefragt ist er jetzt nach einem:
-ob ich die Probe P1 rechne** (das Maul aus einer Linie als echte Form an „teat firefish“, im Kern; Kriterien im Plan, 12.3).
-Nichts aus den Etappen ohne sein Wort bauen.
+angewendet → Tasche ist Haut, Lippe ist ein Ring mit Kante → Tropfen „Maul“ → „Fressen“ öffnet).
+
+**Probe P1 ist gerechnet (20.11., sein Wort: „Ja, P1 rechnen“; Ergebnis im Plan, 12.6; Bildblatt
+`docs/progress/ozzy/2026-11-20-maul-p1-probe.jpg`).** Geöffnet gerechnet (wie in 12.3 festgelegt) hält das Maul nicht. Zu gerechnet,
+mit zwei Linien im Maul, hält es an „teat firefish“ fast; die Knochen öffnen nur die Anzeige, und die Kiefer beeinflussen sich
+nicht. Knapp verfehlt: ein gefaltetes Dreieck je Seite am Mundwinkel, der Spalt der Lippen, 1,5 statt 1 außen am Unterkiefer.
+**Gefragt ist er jetzt nach einem: ob ich die Probe P2 rechne** (der Schnitt ohne Spalt und der Mundwinkel, im Kern; Kriterien im
+Plan, 12.7). Nichts aus den Etappen ohne sein Wort bauen.
 
 ## Die Studie in einem Absatz
 
@@ -52,6 +57,41 @@ Formenring und Drehregler steht in `linse.ts`. `main.ts` hält alles zusammen (B
 - **Fenster 5205:** Der alte Server war mit dem Wechsel des Zweigs weg; neu gestartet über den Eintrag `ozzy`. Er gehört der
   Sitzung, die ihn gestartet hat; endet sie, muss ihn die nächste neu starten.
 
+## Die Probe P1 im Kern (`scripts/pruefen/form-maul-echt.ts`)
+
+```bash
+# aus packages/shape; rund 12 s je Lauf, kein Fenster nötig
+OBEN=0 UNTEN=0 BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts   # B: zu gerechnet
+AUFRAEUMEN=0 OBEN=0 UNTEN=0 npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts               # C: ohne Aufräumen
+MAULLINIEN=0 npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts                              # A: geöffnet gerechnet
+# das Blatt als Bild, aus apps/editor: BREITE=1900 HOEHE=780 node scripts/pruefen/html-shot.mjs --jpg <pfad>.html
+```
+
+Schalter: `NAME=<Form>`, `OBEN`, `UNTEN` (Grad, mit denen gerechnet wird; 0 und 0 = zu), `ZEIG_OBEN`, `ZEIG_UNTEN` (Öffnung nur
+für das Bild), `SPALT` (halbe Dicke des Keils), `ZUG` (Weg des gezogenen Lippenpunkts, 0 = aus), `SEITE=lage|schnitt` (Kiefer wie
+zuerst nach der Lage oder nach dem Schnitt statt aus den Linien), `DIAG=1` (alle Linien vor und nach dem Abziehen), `GIER`,
+`NEIGUNG` (zweiter Blick des Blatts).
+
+Was die Probe tut: Form laden und zur Ruhe rechnen (Kontrolle), die Maullinie als dünnen Keil bauen (mit den zwei Linien des Mauls
+als Linien des Keils), mit `objekteVerbinden` abziehen, rechnen, messen (K1 bis K5), mit den Knochen in der Anzeige öffnen, einen
+Punkt der Unterlippe ziehen, und zum Vergleich dieselbe Form ohne Maul genauso aufräumen und rechnen (Kontrolle 2).
+
+Merke:
+
+- **Der Baustein lehnt ab, wenn eine Linie zwischen zwei ihrer Punkte durch ein Teil läuft, das dünner ist als ihr Netz.** Vor dem
+  Abziehen bekommt jede Linie, die die Maullinie kreuzt, dort einen Punkt des Netzes (`kantenTeilenMit`).
+- **Welcher Kiefer ein Punkt ist, nie aus seiner Lage lesen.** Zu liegen die Wände nur um den Spalt auseinander; nach dem Rechnen
+  steht ein Punkt des Bodens auf der Seite des Gaumens. `kieferSeiten` liest es aus den Linien (Lippe am Mundwinkel geteilt, Tasche
+  bis zur Rachenlinie gefüllt). Mit der Lage kamen zwei falsche Befunde heraus (66 gespannte Dreiecke, Oberkiefer bewegt sich 2,76).
+- **Geöffnet rechnen ist keine Ruhe** (Fassung A): Die Tasche ohne Linien bläst sich auf, der Auslauf hinter dem Mundwinkel rundet
+  neu. Die Ruhe ist „zu“, die Knochen drehen nur die Anzeige.
+- **`falten().umgeklappt` sagt nicht, was es zählt.** `umgeschlageneWo` nennt je Dreieck Ort, Fläche und den Winkel gegen die
+  Nachbarn: Splitter des Schnitts (Fläche unter 0,1) sind etwas anderes als ein gefaltetes Dreieck am Mundwinkel (Fläche 15).
+- **`heute().weg` ist nur der letzte Abschnitt.** Wie weit die Haut ging, sagen K3 und K4 (über `flaechenAbstand`).
+- **Linien, die nach `kantenTeilenMit` neue Punkte tragen, nie über die Haut von davor zeichnen:** Die fehlenden Lagen werden im
+  Blatt zu Strichen zum Ursprung (`vorherBild`).
+- Das Aufräumen der Probe ist das des Fensters (`nadelnZusammenlegen`, `nachVerdichten` mit `verdichtenWieImFenster`).
+
 ## Bilder neu machen
 
 ```bash
@@ -63,4 +103,5 @@ node scripts/ozzy/maul-studie-bogen.mjs <ordner>      # setzt die zwei Bildblät
 ## Geprüft
 
 Typen (`pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`) und Lint (`eslint src/maulstudie`) sauber. Tests gibt es für
-die Studie keine. An Ozzy ist nichts geändert, seine Proben habe ich nicht laufen lassen.
+die Studie keine. An Ozzy ist nichts geändert, seine Proben habe ich nicht laufen lassen. Die Probe P1: Lint sauber
+(`eslint scripts/pruefen/form-maul-echt.ts`); sie läuft mit `vite-node` und gehört zu keinem Typenlauf.

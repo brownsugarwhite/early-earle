@@ -489,8 +489,10 @@ Abziehens (Sitzung „Objekte“, ⌥ + Klick):
   Öffnung lag, ist weg. Das ist dein Satz von heute früh, und es ist genau das, was das Anwenden eines Abziehens seit dem 18.11. tut.
 - **Im Maul liegen von Anfang an zwei Linien:** die Mitte von Gaumen und Boden (von der Seite mit der Form der Maullinie, dein Wort
   vom 13.11.) und die Rachenlinie von Mundwinkel zu Mundwinkel (dein Wort vom 14.11.). Mehr nur, wenn du sie ziehst.
-- **Gerechnet wird das Maul leicht geöffnet,** als Bucht zwischen zwei Kiefern, so wie du „maul handgemacht test“ gebaut hast.
-  „Zu“ und jede andere Stellung stellen die Knochen. Du siehst und bearbeitest es in jeder Stellung, auch zu.
+- ~~**Gerechnet wird das Maul leicht geöffnet,** als Bucht zwischen zwei Kiefern, so wie du „maul handgemacht test“ gebaut hast.
+  „Zu“ und jede andere Stellung stellen die Knochen.~~ **Nach der Probe P1 (12.6) umgekehrt: Gerechnet wird das Maul zu.** Das
+  ist die Ruhe der Form; die Knochen öffnen nur, was gezeigt wird (wie die Pose seit dem 14.11.). Du siehst und bearbeitest es in
+  jeder Stellung.
 - **Lippen zusammen:** Jeder Punkt gilt für beide Lippen. **Lippen trennen:** zwei Linien, jeder Kiefer für sich formbar.
   Geschlossen dürfen die Kiefer dann übereinanderstehen; was innen liegt, sieht man nicht. Das ist der Weg zu riesigem Über- und
   Unterbiss.
@@ -539,7 +541,8 @@ Am 18.11. hielt ein angewendetes Abziehen mit Kante. Welche hier gilt, zeigt nur
 | P4 | **Die Ebene „Maul“:** Füllung innen und Zahnfleischlinie in der Tasche, bei offenem Maul gemalt | Farbe und Linie sitzen nach Schließen und Öffnen, wo sie waren |
 
 Hält P1 nicht, sage ich es und zeige, woran es liegt; dann bleibt als zweiter Weg, die Tasche in Schritten zu formen wie am 13.11.
-(das hielt), mit der Zuordnung aus dem Schnitt.
+(das hielt), mit der Zuordnung aus dem Schnitt. **P1 ist gerechnet: Ergebnis in 12.6** (geöffnet gerechnet hält es nicht, zu
+gerechnet mit Linien im Maul fast; der zweite Weg ist dafür nicht nötig).
 
 **Schon bekannt aus dem 18.11. (Plan „Objekte“, Beweis im Kern, zwei Kugeln mit je drei Linien):** Nach dem Abziehen steht die
 Rechnung nach 2 bis 3 Runden, nichts schlägt um, die Kante ist sauber (86°), die Wand der Höhle trägt die Linien des abgezogenen
@@ -559,7 +562,106 @@ echten Tasche die schmale Rundung des Verbunds, nicht die weiche Linie.
 | 6 | **Zunge** | |
 | 7 bis 9 | ein Zahn als kleine Form; Posen; Backen | |
 
+Nach P1 (12.6): In Etappe 1 gehört der Schnitt ohne Spalt, in Etappe 2 ist „zu“ keine Stellung der Knochen mehr, sondern die Ruhe
+der Form.
+
 ### 12.5 Was bei dir liegt
 
 Eine Frage hält den nächsten Schritt auf: **Soll ich die Probe P1 rechnen?** Sie entscheidet, ob Etappe 1 so gebaut werden kann.
+
+Deine Antwort (20.11.): „Ja, P1 rechnen“. Das Ergebnis steht in 12.6, die nächste Frage in 12.7.
+
+### 12.6 Ergebnis der Probe P1 (20.11.)
+
+Bildblatt 4: [`2026-11-20-maul-p1-probe.jpg`](../progress/ozzy/2026-11-20-maul-p1-probe.jpg). Probe im Kern, ohne Fenster:
+`apps/editor/scripts/pruefen/form-maul-echt.ts` (Aufruf im Kopf der Datei; ein Lauf dauert rund 12 Sekunden). In Ozzy, am Werk und
+am Rechenkern ist nichts geändert.
+
+**Kurz:** So, wie ich P1 in 12.3 festgelegt hatte (leicht geöffnet rechnen), hält es **nicht**. So, wie der Nachtrag es sonst
+beschreibt (Linien im Maul, **zu** gerechnet, die Knochen öffnen nur die Anzeige), hält das Maul an „teat firefish“ fast: Die
+Rechnung steht sofort, die Tasche bleibt, fern ändert sich nichts, und die Kiefer beeinflussen sich nicht. Drei meiner Kriterien
+sind knapp verfehlt: ein gefaltetes Dreieck am Mundwinkel, der Spalt der Lippen, und 1,5 statt 1 an der Haut des Unterkiefers.
+
+**Was gerechnet wurde.** Deine Form „teat firefish“, wie das Fenster sie lädt (11 765 Punkte, 17 Linien, mittlere Netzkante 13,3).
+Die Maullinie der Studie, als hauchdünner Keil (0,4 breit) abgezogen und angewendet, mit dem Baustein vom 18.11. Das dauert 0,1 s.
+Danach: 12 312 Punkte, die Lippe ist ein Ring mit Kante (136 Punkte des Netzes). Zwei deiner Linien sind an der Lippe geschnitten:
+die Mittellinie der Form (sie endet jetzt vorn an Ober- und Unterlippe) und die Linie von der Schnauzenspitze über die Seite nach
+hinten (jetzt zwei Stücke, beide hängen an der Lippe). Keine ging verloren.
+
+| | A: wie in 12.3 festgelegt | B: wie im Nachtrag | C: wie B, ohne Aufräumen |
+| --- | --- | --- | --- |
+| Was | Kiefer 8° und 22° geöffnet, so gerechnet, keine Linien im Maul | Linien im Maul (Mitte von Gaumen und Boden, Rachenlinie), zu gerechnet, Netz aufgeräumt wie im Fenster (Nadeln zusammenlegen, verdichten) | dasselbe, das Netz bleibt, wie der Schnitt es hinterlässt |
+| K1 Die Rechnung kommt zur Ruhe | ja, nach 71 Runden | **ja, nach 2 Runden** | ja, nach 3 Runden |
+| K2 Nichts schlägt neu um | **nein:** 6 Dreiecke an der Unterlippe gefaltet | **nein:** je Seite 1 Dreieck am Mundwinkel (siehe unten) | **nein:** je Seite 4 Splitter an der Lippe (siehe unten) |
+| K3 Fern bewegt sich die Haut unter 0,5 | **nein:** 1,34 | ja: 0,48 (davon 0,30 vom Aufräumen selbst) | ja: 0,04 |
+| K4 Zu liegt die Haut außen unter 1 neben der Form von vorher | **nein:** bis 20,44; 578 Punkte über 1 | **knapp nein:** bis 1,52; 28 von 11 814 Punkten über 1 | **knapp nein:** bis 1,38; 20 von 12 035 |
+| K5 Der Spalt der Lippen unter 0,5 | **nein:** 1,65 | **knapp nein:** 0,59 (angelegt war der Spalt 0,40 breit) | **knapp nein:** 0,76 |
+| Die Tasche | bläst sich auf: Wände bis 49,79 neben den geraden Wänden | bleibt: höchstens 0,80 | bleibt: höchstens 0,90 |
+
+Zum Vergleich: Deine Form allein, ohne Maul, bewegt sich beim ersten Rechnen bis 1,95 (sie ist nicht ganz in Ruhe gesichert);
+genauso aufgeräumt und gerechnet wie in B liegt sie danach höchstens 0,30 neben sich selbst.
+
+**Warum A nicht hält.** Eine mit den Knochen geöffnete Form ist für die Rechnung keine Ruhe: Sie rundet die gedrehte Haut im
+Auslauf hinter dem Mundwinkel neu (bis 20 daneben), und eine Tasche ohne eigene Linien bläst sie auf. Das ist dieselbe Erfahrung
+wie am 13.11. (Geometrie fertig ins Netz bauen und die Rechnung darauf loslassen). Der Satz „gerechnet wird das Maul leicht
+geöffnet“ aus 12.1 ist damit falsch und oben gestrichen.
+
+**Was in B und C hält** (Bildblatt 4, obere Reihe):
+
+- **Zu ist die Ruhe.** Die Rechnung steht nach 2 bis 3 Runden. Fern vom Maul liegt die Haut danach 0,04 (C) und 0,48 (B) neben
+  der Form von vorher; in B kommen davon 0,30 vom Aufräumen selbst (so viel bewegt es die Form auch ohne Maul).
+- **Die Tasche bleibt eine Tasche,** sobald die zwei Linien in ihr liegen (die Mitte von Gaumen und Boden, die Rachenlinie). Diese
+  zwei Linien sind also nicht nur da, damit du etwas zum Anfassen hast: Sie halten das Maul.
+- **Die Knochen öffnen nur die Anzeige,** wie die Pose seit dem 14.11. Geöffnet (8° und 22°) spannt sich kein einziges Dreieck quer
+  über das Maul, mit und ohne Aufräumen.
+- **Welcher Kiefer ein Punkt ist, steht in den Linien des Mauls:** Die Lippe teilt sich am Mundwinkel in Ober- und Unterlippe; in
+  der Tasche gehört zu einer Lippe, was von ihr aus zu erreichen ist, ohne die Rachenlinie zu überschreiten. Gegenprobe: An 1 836
+  von 1 838 Punkten dasselbe wie die Zuordnung gleich nach dem Schnitt. Es braucht dafür keinen eigenen Wert je Punkt, der jeden
+  Netzwechsel überstehen muss.
+- **Die Kiefer beeinflussen sich nicht** (dein Satz aus dem Auftrag). Ein Punkt der Unterlippe, 15 von der Oberlippe weggezogen
+  (zu): Der Unterkiefer folgt bis 14,84. Der Oberkiefer bewegt sich 0,00 (B) und höchstens 0,02 (C), seine Lippe 0,00, fern 0,06
+  bis 0,13. In B steht die Rechnung nach 2 Runden, in C nach 85. (Das ist der Fall „Lippen getrennt“: In der Probe sind Ober- und
+  Unterlippe zwei Ränder derselben Linie. Mit Lippen zusammen zieht ein Punkt mit Absicht beide.)
+
+**Was nicht hält, und wo es liegt:**
+
+1. **Der Mundwinkel (K2 in B).** Das Aufräumen legt am Mundwinkel je Seite ein Dreieck gefaltet auf seinen Nachbarn (Fläche 15,
+   175° gegen den Nachbarn). Dort ist die Tasche dünner als das Netz; das ist die Probe P2. Ohne Aufräumen (C) sind es stattdessen
+   je Seite 4 Splitter des Schnitts an Lippe und Mundwinkel (Fläche höchstens 0,05; ein gewöhnliches Dreieck dieses Netzes hat
+   rund 77), die bei der kleinsten Bewegung umklappen.
+2. **Der Spalt (K5).** Die Bibliothek braucht einen Keil mit Breite; die Rechnung weitet ihn von 0,40 auf 0,59 bis 0,76. Im Bau
+   muss die Lippe ohne Spalt entstehen (die Dreiecke an der Linie direkt teilen, Ober- und Unterlippe als Zwillinge am selben
+   Ort). Das ist nicht gezeigt.
+3. **Die Haut außen am Unterkiefer (K4).** Bis 1,38 und 1,52 neben der Form von vorher, an 20 bis 28 Punkten, rund 40 unter der
+   Lippe an der Seite. Die Ursache ist nicht belegt. Meine Deutung: An der harten Kante der Lippe rundet jede Seite für sich,
+   weil die Haut nicht mehr glatt über die Maullinie läuft.
+4. **Am gezogenen Lippenpunkt** falten sich je Seite ein bis zwei weitere Dreiecke (Fläche 3 bis 10). Das Aufräumen, das im Werk
+   nach jedem Zug läuft, lief in der Probe nicht; ob es Dreiecke an einer harten Kante aufrichtet, ist nicht geprüft.
+
+**Zwei Fehler meiner eigenen Probe, die ich unterwegs gefunden habe** (damit die Zahlen oben nicht mit früheren verwechselt
+werden): Zuerst hatte ich jeden Punkt nach seiner Lage einem Kiefer zugeordnet. Zu liegen die Wände aber nur 0,4 auseinander, und
+nach dem Rechnen steht ein Punkt des Bodens leicht auf der Seite des Gaumens. Daraus kamen zwei falsche Befunde: „66 Dreiecke
+spannen sich quer über das Maul“ und „der Oberkiefer bewegt sich 2,76“. Mit der Zuordnung aus den Linien sind es 0 und 0,00. Und
+das Bild „die Form von vorher“ zeigte erst zwei Striche, die es nicht gibt.
+
+**Was die Probe nicht zeigt:** nichts in Ozzy (kein Fenster, kein Look: Das Bildblatt ist ein flach schattiertes Messbild). Nur
+diese eine Form und diese eine Maullinie. Kein Bearbeiten bei geöffnetem Maul, kein „Lippen trennen“, keine Bemalung, kein Ziehen
+an Punkten im Maul, kein K an der Lippe.
+
+**Was daraus für den Bau folgt** (ändert 12.1 an einer Stelle, sonst nichts):
+
+- Die Ruhe der Form ist das geschlossene Maul. Die Knochen drehen nur, was gezeigt wird. Das Werk kennt das schon (Pose).
+- Die zwei Linien im Maul entstehen mit dem Maul und gehören fest dazu.
+- Der Kiefer eines Punkts wird aus Lippe und Rachenlinie gelesen.
+- Der Schnitt braucht eine eigene Fassung ohne Spalt, und der Mundwinkel braucht eine Antwort (P2), bevor Etappe 1 in Ozzy beginnt.
+
+### 12.7 Was jetzt bei dir liegt
+
+Eine Frage hält den nächsten Schritt auf: **Soll ich die Probe P2 rechnen?** Wieder nur im Kern, an „teat firefish“: der Schnitt
+ohne Spalt (Ober- und Unterlippe als Zwillinge am selben Ort) und der Mundwinkel. Kriterien, vorher festgelegt: zu ist der Spalt
+genau null; nach dem Aufräumen des Werks ist am Mundwinkel nichts gefaltet; geöffnet spannt sich nichts über das Maul; außen
+liegt die Haut weniger als 1 neben der Form von vorher (oder ich zeige, woher der Rest kommt). Hält das, kann Etappe 1 in Ozzy
+beginnen.
+
+Die anderen Wege: zuerst P3 („Lippen trennen“ an deinem Blatt 06), oder hier anhalten.
 

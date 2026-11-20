@@ -712,6 +712,16 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   **Nachtrag (Plan, Abschnitt 12): Das Maul soll nach dem Bestätigen echte Form werden.** Probe in Ozzy selbst:
   `scripts/ozzy/maul-echt-probe.mjs` (zwei Objekte, Abziehen mit ⌥ + Klick anwenden, `#maul-tropfen`, `#fressen-knopf`). Merke:
   Der Tropfen „Maul“ hängt an der Naht im Bild; erst antippen, dann den Blick wechseln (sonst liegt er außerhalb des Fensters).
+  **Probe P1 im Kern (20.11.; Plan, 12.6):** `scripts/pruefen/form-maul-echt.ts` (aus `packages/shape`: `[OBEN=0 UNTEN=0]
+  [AUFRAEUMEN=0] [MAULLINIEN=0] [BLATT=<pfad>] npx vite-node ../../apps/editor/scripts/pruefen/form-maul-echt.ts`, 12 s): die
+  Maullinie als dünner Keil mit `objekteVerbinden` abgezogen, an „teat firefish“. Geöffnet gerechnet hält das Maul nicht (die Tasche
+  ohne Linien bläst sich auf). **Zu gerechnet, mit zwei Linien im Maul (Mitte von Gaumen und Boden, Rachenlinie), hält es fast;** die
+  Knochen drehen nur die Anzeige, die Kiefer beeinflussen sich nicht. Merke: (1) Der Baustein lehnt ab, wenn eine Linie zwischen
+  zwei ihrer Punkte durch ein Teil läuft, das dünner ist als ihr Netz: vorher `kantenTeilenMit` genau auf der Schnittlinie. (2)
+  Welcher Kiefer ein Punkt ist, nie aus seiner Lage lesen (zu liegen die Wände nur um den Spalt auseinander): aus den Linien
+  (`kieferSeiten` in der Probe: Lippe am Mundwinkel geteilt, Tasche bis zur Rachenlinie gefüllt). (3) `falten().umgeklappt` zählt
+  Splitter des Schnitts (Fläche unter 0,1) wie echte Falten; `umgeschlageneWo` nennt Ort und Fläche. (4) Das Aufräumen faltet am
+  Mundwinkel je Seite ein Dreieck (offen: P2). Alles Weitere: `docs/look/ozzy/maul/UEBERGABE.md`.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`
