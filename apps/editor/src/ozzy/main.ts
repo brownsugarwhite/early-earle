@@ -36,6 +36,9 @@ import { type FeldTreffer, werkFelder } from './werkFelder';
 import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
 import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
+import { ShaderHaut } from './shader/shaderHaut';
+import { ShaderWahl } from './shader/wahl';
+import { VOREINSTELLUNGEN } from './shader/voreinstellungen';
 import { WACHS_FARBTON_GRUND } from './wachs';
 import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
 import { EbenenStapel } from './farbe/ebenenStapel';
@@ -180,6 +183,8 @@ const haut = new Haut(renderer);
 /** die Haut des Werks mit einem festen Material statt der Seifenhaut (Solid, Zebra, Wachs) */
 const feste = new FesteHaut(renderer);
 feste.wachsFarbton(wachsWerte.farbton);
+/** die Shader (20.11., `shader/`): 20 Voreinstellungen, gewählt in der Tafel `#shader-wahl` */
+const shaderHaut = new ShaderHaut(renderer);
 const gast = new GastHaut(leinwandGast);
 const anzeige = new FluessigeAnzeige(leinwandLinien);
 const blatt = new Blatt(linienWerte, freihandWerte);
@@ -198,15 +203,17 @@ let fassung: Fassung = Number(params.get('fassung') ?? 0) as Fassung;
  * (`gast.ts`), Grün (`gruen.ts`)
  */
 const MATERIAL_GRUEN = 'Grün';
-const MATERIALIEN = [...FESTE_MATERIALIEN, ...GAST_MATERIALIEN, MATERIAL_GRUEN] as const;
-type Material = FestesMaterial | GastMaterial | typeof MATERIAL_GRUEN;
+/** die Shader (20.11.): ein Eintrag im Menü, welcher es ist, sagt die Wahl `shaderWahl` */
+const MATERIAL_SHADER = 'Shader';
+const MATERIALIEN = [...FESTE_MATERIALIEN, ...GAST_MATERIALIEN, MATERIAL_GRUEN, MATERIAL_SHADER] as const;
+type Material = FestesMaterial | GastMaterial | typeof MATERIAL_GRUEN | typeof MATERIAL_SHADER;
 const istGast = (m: Material): m is GastMaterial => (GAST_MATERIALIEN as readonly string[]).includes(m);
 /**
  * Das Material der Haut (Florian, 18.11.): null = die Seifenhaut in ihrer Fassung, sonst eines der festen Materialien. Im Menü gemerkt;
  * `?material=solid|zebra|wachs|jelly|helles solid|grün|seifenhaut` für Proben.
  */
 let material: Material | null = ((): Material | null => {
-  let wahl = params.get('material');
+  let wahl = params.get('shader') !== null ? MATERIAL_SHADER : params.get('material');
   if (wahl === null) {
     try {
       wahl = localStorage.getItem('ozzy.material');
@@ -289,6 +296,8 @@ const istMalgrund = (): boolean => material === 'Wachs' || material === 'Helles 
 const farbeMoeglich = (): boolean => zustand === 'ruhe' && werkGezeigt && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && !werk.grund;
 const farbeZeigen = (): boolean => farbeMoeglich() && !farbWerk.leer;
 let gastStand: { netz: unknown; version: number } | null = null;
+/** das Netz, das die Shader gerade zeigen */
+let shaderStand: { netz: unknown; version: number } | null = null;
 /**
  * Das grüne Material: Sein Renderer (three/webgpu und das Earle-Material aus `@ee/render`) wird erst geladen, wenn es gewählt ist;
  * bis dahin kostet es Ozzy nichts.
@@ -1968,6 +1977,7 @@ function groesse(): void {
   renderer.setSize(W, H, false);
   haut.groesse(W, H, D);
   feste.groesse(W, H, D);
+  shaderHaut.groesse(W, H, D);
   gast.groesse(W, H, D);
   gruen?.groesse(W, H, D);
   anzeige.groesse(W * D, H * D);
@@ -4168,6 +4178,23 @@ function bild(dt: number): boolean {
               }
             : null,
         ueberzugStand: farbeDa && material === 'Helles Solid' ? `${farbBild}|${werkHaut.version}|${malModus && !farbAn ? 1 : 0}` : '',
+      });
+      if (unruhig) aktiv = true;
+    } else if (material === MATERIAL_SHADER) {
+      // die Shader (20.11.): die glatte Anzeige wie bei Solid und Wachs, mit dem gewählten Shader; ein bewegter hält das Bild am Laufen
+      gast.aus();
+      if (!shaderStand || shaderStand.netz !== zeigN || shaderStand.version !== werkHaut.version) {
+        shaderHaut.netzSetzen(zeigN, wicklungVon(zeigN));
+        shaderStand = { netz: zeigN, version: werkHaut.version };
+      }
+      const unruhig = shaderHaut.zeichnen(kam.aktiv, shaderWahl.wahl, {
+        schnitt: schnittJetzt,
+        spiegelSchnitt: spiegelSchnittJetzt(),
+        flach: dreieckeZeigen,
+        deckung: (1 - 0.7 * roentgen) * (schnittJetzt ? 1 - glatt(flach) : 1),
+        buehne: shaderWahl.buehne,
+        regler: shaderWahl.regler(),
+        mass: lageRaum?.s ?? 1,
       });
       if (unruhig) aktiv = true;
     } else {
@@ -7540,7 +7567,8 @@ window.addEventListener('keydown', (e) => {
   else if (zustand === 'blatt' && k === 'e') waehlenTaste('ellipse');
   else if (zustand === 'blatt' && k === 'E') waehlenTaste('wuerfel');
   else if (zustand === 'blatt' && (k === 'v' || k === 'V' || k === 'a' || k === 'A')) waehlenTaste('auswahl');
-  else if (k === 'm' || k === 'M') materialWeiter();
+  else if (k === 'M') shaderWeiter(e.altKey ? -1 : 1);
+  else if (k === 'm') materialWeiter();
   else return;
   anstossen();
 });
@@ -8580,7 +8608,20 @@ MATERIALIEN.forEach((name) => {
   b.addEventListener('click', () => materialSetzen(name));
   fassungKnoepfe.append(b);
 });
+/**
+ * Die Wahl der Shader (20.11.): Tafel unten rechts, solange das Material „Shader“ gilt. ⇧M schaltet zum nächsten Shader (⌥⇧M zum
+ * vorigen); `?shader=<name>` wählt ihn beim Laden.
+ */
+const shaderWahl = new ShaderWahl($<HTMLElement>('shader-wahl'), VOREINSTELLUNGEN, params.get('shader'));
+shaderWahl.aenderung = () => anstossen();
+function shaderWeiter(schritt: number): void {
+  if (material !== MATERIAL_SHADER) materialSetzen(MATERIAL_SHADER);
+  else shaderWahl.weiter(schritt);
+  werk.G.meldung = `Shader: ${ShaderHaut.finden(shaderWahl.wahl).name}`;
+  anstossen();
+}
 function materialZeigen(): void {
+  shaderWahl.sichtbar(material === MATERIAL_SHADER);
   [...fassungKnoepfe.children].forEach((b, i) =>
     b.setAttribute('aria-pressed', String(i < FASSUNGEN.length ? material === null && i === fassung : MATERIALIEN[i - FASSUNGEN.length] === material)),
   );
@@ -9800,6 +9841,17 @@ const haken = {
   material: (m?: string | null): string => {
     if (m !== undefined) materialSetzen(m === null ? null : (MATERIALIEN.find((x) => x.toLowerCase() === m.toLowerCase()) ?? null));
     return material ?? FASSUNGEN[fassung]!;
+  },
+  /** die Shader: wählen (Name), Bühne und Regler setzen; zurück: Wahl, Zeit des letzten Bilds (ms), Zahl der Bilder */
+  shader: (id?: string, o?: { buehne?: boolean; regler?: Record<string, number> }) => {
+    if (id !== undefined) {
+      if (material !== MATERIAL_SHADER) materialSetzen(MATERIAL_SHADER);
+      shaderWahl.waehlen(id);
+    }
+    if (o?.buehne !== undefined) shaderWahl.buehne = o.buehne;
+    for (const [k, v] of Object.entries(o?.regler ?? {})) shaderWahl.reglerSetzen(k, v);
+    anstossen();
+    return { wahl: shaderWahl.wahl, buehne: shaderWahl.buehne, regler: shaderWahl.regler(), liste: VOREINSTELLUNGEN.map((v) => v.id), ...shaderHaut.mess };
   },
   /** Jelly und helles Solid: Zeiten des letzten Bilds (ms) und das Fenster, das der Renderer bekam (Gerätepunkte) */
   /** das grüne Material: Zeit des letzten Bilds (ms), Zahl der Bilder, WebGPU oder WebGL2, und ob seine Fläche zu sehen ist */

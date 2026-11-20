@@ -1198,3 +1198,115 @@ body.bild #ansichts-tropfen {
 #ansichts-tropfen.hoch {
   bottom: 74px;
 }
+
+/* Shader (20.11.2026, Plan docs/plans/2026-11-20-ozzy-shader.md): die Wahl unten rechts, solange das Material „Shader“ gilt */
+.shader-wahl {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 4;
+  width: 268px;
+  max-height: calc(100% - 96px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 9px 12px 12px;
+  border-radius: 14px;
+  border: 0.5px solid var(--haar);
+  background: color-mix(in srgb, var(--papier) 93%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform-origin: calc(100% - 22px) 100%;
+  animation: tropfen-auf 460ms var(--feder);
+}
+.shader-wahl[hidden],
+body.bild .shader-wahl {
+  display: none;
+}
+.shader-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.shader-titel {
+  font-family: 'Lobster', Georgia, serif;
+  font-size: 17px;
+}
+.shader-gruppe {
+  margin: 8px 0 3px;
+  color: var(--leise);
+  font-size: 11px;
+}
+.shader-reihe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.shader-wahl button {
+  font-size: 11.5px;
+  padding: 1px 8px;
+}
+.shader-wahl button:hover {
+  border-color: var(--tinte);
+}
+.shader-wahl button[aria-pressed='true'] {
+  background: var(--tinte);
+  color: var(--papier);
+  border-color: var(--tinte);
+}
+.shader-zeile {
+  margin: 10px 0 2px;
+  color: var(--leise);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.shader-regler label {
+  display: grid;
+  grid-template-columns: 88px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.shader-regler .zahl {
+  text-align: right;
+  color: var(--leise);
+  font-variant-numeric: tabular-nums;
+}
+.shader-regler input[type='range'] {
+  width: 100%;
+  height: 12px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: --gross 260ms var(--feder);
+}
+.shader-regler input[type='range']:hover,
+.shader-regler input[type='range']:active {
+  --gross: 1.7;
+}
+.shader-regler input[type='range']::-webkit-slider-runnable-track {
+  height: 0.5px;
+  background: var(--tinte);
+}
+.shader-regler input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.25px;
+  border-radius: 50%;
+  background: var(--tinte);
+  transform: scale(calc(var(--gross) * var(--dehn-x)), calc(var(--gross) * var(--dehn-y)));
+}
+.shader-regler input[type='range']::-moz-range-track {
+  height: 0.5px;
+  background: var(--tinte);
+}
+.shader-regler input[type='range']::-moz-range-thumb {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tinte);
+  transform: scale(calc(var(--gross) * var(--dehn-x)), calc(var(--gross) * var(--dehn-y)));
+}
