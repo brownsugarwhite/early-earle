@@ -1,8 +1,10 @@
-# Übergabe: 51 Shader für Ozzy (20.11.2026, Runde 4)
+# Übergabe: 52 Shader für Ozzy (20.11.2026, Runde 5)
 
-Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 4). Recherche:
-`docs/research/2026-11-20-shader-recherche.md`, für die Tiere `docs/research/2026-11-20-tiermuster-recherche.md`. Offenes:
-`docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 4: `2026-11-20-runde-4-tiere.png`,
+Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 5). Recherche:
+`docs/research/2026-11-20-shader-recherche.md`, für die Tiere `docs/research/2026-11-20-tiermuster-recherche.md`, für den T-Rex
+`docs/research/2026-11-20-t-rex-haut-recherche.md`. Offenes:
+`docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 5: `2026-11-20-runde-5-trex-stile.png`, `-farben.png`, `-nah.png`;
+Runde 4: `2026-11-20-runde-4-tiere.png`,
 `-stile.png`, `-materialien.png`, `-nah.png`; Runde 3: `2026-11-20-runde-3-neu.png`; je Gruppe nach Runde 2:
 `2026-11-20-runde-2-*.png`; Runde 1: `2026-11-20-alle-20.png` und einzelne).
 
@@ -19,14 +21,15 @@ Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20
   Blatt aus Bildern: `node scripts/ozzy/bildblatt.mjs <ziel.png> <spalten> <breite je Bild> <bilder…>` (die Breite gilt **je Bild**).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
-## Die 51, in fünf Gruppen
+## Die 52, in fünf Gruppen
 
 - **Spider-Verse (17):** Comicdruck, Aquarell, Indrajal, Punk-Collage, Marker 2099, Tintenfleck, Da Vinci, Glitch, Earth-42,
   Multiplane, Noir, Cartoon, Neunziger, Sienkiewicz, Venom-Blitz, Pixel, LEGO.
 - **Anime & Manga (7):** Anime, Manga, Flammenwesen, Dampfwesen, Shinkai, Ukiyo-e, Gouache (Ghibli).
 - **Materialien (10):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Opal, Diamant, Diamantbesatz, Diskokugel.
-- **Tiermuster (10):** Leopard, Tiger, Giraffe, Elefant, Python (`schlange`), Klapperschlange, Korallennatter, Krokodil,
-  Feuersalamander, Turing-Haut. Alle außer Turing-Haut mit dem Regler **Stil: echt · Spider-Verse · Earle**.
+- **Tiermuster (11):** Leopard, Tiger, Giraffe, Elefant, Python (`schlange`), Klapperschlange, Korallennatter, Krokodil,
+  Feuersalamander, T-Rex (`trex`), Turing-Haut. Die Tiere haben den Regler **Stil** (echt, Spider-Verse, Earle), der T-Rex fünf Stile
+  (Kino, Spider-Verse, Earle, Fossil, Spielzeug) und vier Färbungen (Erde, Wald, Asche, Glut).
 - **Effekte (7):** Eine Linie, Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
 
 Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
@@ -91,3 +94,11 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
 16. **Diamantbesatz:** Steine in Zellen im Raum; `rho` ist der Ort im Stein von der Mitte (0) zum Rand (1), aus dem Abstand zur Mitte
     und zum Rand der Zelle (Kissenform). Wird ein Stein im Bild kleiner als rund zehn Bildpunkte, wird er ruhig zusammengefasst (sonst
     flimmert der Schliff).
+17. **T-Rex** (`trex.ts`): eine Haut für alle Stile (`rexHaut`); die Stile zeichnen sie nur verschieden. Die Schuppen sind Zellen im
+    Raum (`pflaster`: genauer Abstand zum Rand und seine Richtung; keine Ebenen, also keine Nähte), die Wölbung rund um die Mitte der
+    Zelle. Die Normale kommt aus dem Gefälle aller Teile (Pflasterschuppen, Schmuckschuppen, Rückenhöcker, Falten, Narben), nicht aus
+    Differenzen. `jeSchuppe` liest das Muster an der Mitte jeder Schuppe (Kino, Fossil), sonst glatt (Comic, Earle, Spielzeug); die
+    Fugen dunkelt jeder Stil selbst ab (im Comic hätten sie ein Mosaik gezeichnet). Schuppen kleiner als rund zwei Bildpunkte (aus
+    `uMass`) treten zurück. Die Rückenhöcker sitzen auf der Spiegelebene, wo die Haut nach oben zeigt. Comic und Spielzeug haben
+    eigene Farben je Färbung (Erde wird im Comic Grün). Regler mit `stufen` zeigen in der Tafel den Namen der Stufe statt der Zahl
+    (`ReglerZeile.stufen`, `wahl.ts`). Gemeinsames GLSL der Tiere: `TIER` aus `tiere.ts`.

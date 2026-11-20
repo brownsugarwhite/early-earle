@@ -39,6 +39,7 @@ import { SIENKIEWICZ } from './sienkiewicz';
 import { STAUB } from './staub';
 import { ELEFANT, GIRAFFE, KLAPPERSCHLANGE, KORALLENNATTER, KROKODIL, LEOPARD, SALAMANDER, SCHLANGE, TIGER } from './tiere';
 import { TINTE } from './tinte';
+import { TREX } from './trex';
 import { TINTENFLECK } from './tintenfleck';
 import { TROPFEN } from './tropfen';
 import { TURING } from './turing';
@@ -93,6 +94,7 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   KORALLENNATTER,
   KROKODIL,
   SALAMANDER,
+  TREX,
   TURING,
   // Effekte
   EINE_LINIE,

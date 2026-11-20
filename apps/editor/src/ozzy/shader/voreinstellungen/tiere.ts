@@ -23,7 +23,7 @@
 import { bildVoreinstellung } from '../bildShader';
 import type { Voreinstellung } from '../kern';
 
-const TIER = /* glsl */ `
+export const TIER = /* glsl */ `
 /** nächste Zelle: Vektor zu ihrer Mitte (xyz) und Abstand (w); id: ihre Kennung */
 vec4 zelle3(vec3 x, out float id) {
   vec3 p = floor(x), f = fract(x);
@@ -292,7 +292,7 @@ vec3 earleGrund(vec2 qb, vec2 css) {
 }
 `;
 
-const STIL: Voreinstellung['regler'][number] = { k: 'stil', name: 'Stil: echt · Spider-Verse · Earle', min: 0, max: 2, schritt: 1, grund: 0 };
+const STIL: Voreinstellung['regler'][number] = { k: 'stil', name: 'Stil', min: 0, max: 2, schritt: 1, grund: 0, stufen: ['echt', 'Spider-Verse', 'Earle'] };
 
 /** ein Tier: die Farbe an einem Punkt der Haut (albedo, Normale gestört, Glanz), dazu ob es Fell hat; jedes Tier in drei Stilen */
 function tier(id: string, name: string, zeile: string, farbe: string, fell: boolean, grund: string, regler: Voreinstellung['regler'] = []): Voreinstellung {

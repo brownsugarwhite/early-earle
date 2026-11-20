@@ -1,6 +1,6 @@
-# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 4, 20.11.2026)
+# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 5, 20.11.2026)
 
-Alle 51 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/2026-11-20-runde-2-*.png`, Runde 4:
+Alle 52 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/2026-11-20-runde-2-*.png`, Runde 4:
 `2026-11-20-runde-4-*.png`). Was mir beim Ansehen aufgefallen ist, für einen Feinschlifflauf (Florians Auge entscheidet):
 
 1. **Die sechs freien aus Runde 1** sind nachgeschärft (Feuer, Rauch, Tinte, Flüssigglas, Aquarell, Tintenfleck). Es bleibt: Im
@@ -44,3 +44,15 @@ Alle 51 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     (56 Schritte je Bildpunkt).
 21. **Gouache:** Striche der Form reichen ein wenig über den Umriss (gewollt); die Wolken bestehen aus kurzen Strichen, Ghibli malt sie
     weicher.
+
+**Nach Runde 5 (T-Rex; Bilder `2026-11-20-runde-5-trex-*.png`):**
+
+22. **T-Rex und die Form:** Der Shader kennt keinen Kopf, keine Beine und keinen Schwanz: Die Bänder laufen quer zur längsten Achse der
+    Form, Bauch ist, was nach unten zeigt, die Rückenhöcker sitzen nur, wo die Spiegelebene oben liegt. Auge, Zähne und Krallen gibt es
+    nicht (dafür müsste der Shader die Teile der Form kennen).
+23. **T-Rex, Narben:** Sie liegen, wo zwei Rauschfelder die Haut treffen; je nach Form und Blick sieht man keine oder mehrere (Regler
+    Narben).
+24. **T-Rex, Bühnen:** stehen still (kein ziehender Rauch, keine fliegenden Saurier). In der Urzeit wirft die Form keinen Schatten (sie
+    schwebt vor der Landschaft). Spielzeug „Erde“ ist braun; das grüne Spielzeug ist die Färbung Wald.
+25. **T-Rex, Tempo:** je Bildpunkt zwei Zellsuchen im Raum (Fossil drei) mit je 54 Zellen, dazu die Bühne; nicht gemessen, weder auf dem
+    Mac noch am iPhone.

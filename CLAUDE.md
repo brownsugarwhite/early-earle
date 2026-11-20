@@ -23,9 +23,8 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   **Etappe 1, erste Scheibe gebaut** (Offenes: `…-maul-was-bleibt.md`, Feinschliff am Ende):
   [`…-20-ozzy-maul-zaehne-zunge.md`](docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md); Studie `maul.html`.
   Einstieg: [`docs/look/ozzy/maul/UEBERGABE.md`](docs/look/ozzy/maul/UEBERGABE.md).
-- **Sitzung „Shader“ (20.11.):** Zweig `claude/ozzy-shader`, Fenster 5219, 51 Shader in fünf Gruppen (Material „Shader“, ⇧M;
-  Runde 4 gebaut: Tiere in drei Stilen, drei Schlangen, Salamander, LEGO fest an der Form, Diamant, Diamantbesatz, Diskokugel,
-  Gouache neu; sein Urteil: „wirklich sehr gute arbeit“; offen: Shader im Spiel, z. B. Ghibli für Fell). Einstieg:
+- **Sitzung „Shader“ (20.11.):** Zweig `claude/ozzy-shader`, Fenster 5219, 52 Shader in fünf Gruppen (Material „Shader“, ⇧M;
+  Runde 4 sein Urteil: „wirklich sehr gute arbeit“; Runde 5: T-Rex in fünf Stilen; später: Probe „Ghibli-Fell“ im Spiel). Einstieg:
   [`docs/look/ozzy/shader/UEBERGABE.md`](docs/look/ozzy/shader/UEBERGABE.md).
 - **Sitzung „Objekte, Spiegel und Nähte“ (18./19.11., ruht):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211.
   Plan: [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0

@@ -176,7 +176,8 @@ export class ShaderWahl {
       zahl.className = 'zahl';
       const schreiben = (): void => {
         const x = Number(eingabe.value);
-        zahl.textContent = z.schritt >= 1 ? String(Math.round(x)) : x.toFixed(z.schritt >= 0.1 ? 1 : 2).replace('.', ',');
+        const stufe = z.stufen?.[Math.round(x - z.min)];
+        zahl.textContent = stufe ?? (z.schritt >= 1 ? String(Math.round(x)) : x.toFixed(z.schritt >= 0.1 ? 1 : 2).replace('.', ','));
       };
       schreiben();
       eingabe.addEventListener('input', () => {
