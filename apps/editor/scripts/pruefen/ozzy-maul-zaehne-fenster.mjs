@@ -532,6 +532,65 @@ if (z2.werte && z2.linse.offen) {
   await s.waitForTimeout(900);
   const z3b = await O('zaehne');
   await bild('7-weiter');
+  // W9 und W10 (Feinschlifflauf, Block C): an einem nicht gewählten Zahn ziehen dreht die Ansicht; ein Tipp ins Leere schließt die Linse
+  {
+    await s.click('#zaehne-tropfen');
+    await s.waitForTimeout(1200);
+    const zb = (await O('zaehneImBild')).filter((q) => q.trifft);
+    const T9 = zb.find((q) => !q.unten) ?? zb[0];
+    const blick0 = await O('blick');
+    const vor9 = await O('zaehne');
+    if (T9) {
+      await s.mouse.move(T9.bild[0], T9.bild[1]);
+      await s.waitForTimeout(250);
+      await s.mouse.down();
+      for (let k = 1; k <= 8; k++) {
+        await s.mouse.move(T9.bild[0] + 10 * k, T9.bild[1] + 2 * k);
+        await s.waitForTimeout(30);
+      }
+      await s.mouse.up();
+      await s.waitForTimeout(900);
+    }
+    const blick1 = await O('blick');
+    const z9 = await O('zaehne');
+    ok(
+      'W9 an einem Zahn ziehen, der nicht gewählt ist: die Ansicht dreht (wie ein Zug ins Leere); kein Zahn ist gewählt oder gerückt, die Linse bleibt offen',
+      !!T9 && Math.abs(blick1.gier - blick0.gier) > 0.1 && vor9.wahl === null && z9.wahl === null && z9.linse.offen && JSON.stringify(z9.werte) === JSON.stringify(vor9.werte),
+      T9 ? `Zahn ${T9.i} ${T9.unten ? 'unten' : 'oben'}: Gier ${blick0.gier.toFixed(2)} → ${blick1.gier.toFixed(2)}; Wahl ${z9.wahl ? 'ein Zahn' : 'keine'}; Linse ${z9.linse.offen ? 'offen' : 'zu'}` : 'kein Zahn im Bild, den ein Tipp trifft',
+    );
+    // W10: von fern (die Form klein in der Mitte) ein Tipp auf die Form: Die Linse bleibt; ein Tipp ins Leere: Sie schließt
+    await O('blickSetzen', { gier: blick0.gier, neigung: blick0.neigung, zoom: 1 });
+    await s.waitForTimeout(1200);
+    const orte = [[160, 640], [1250, 640], [160, 330], [1250, 330], [720, 820]];
+    let leer = null;
+    for (const o of orte) if (!(await O('formUnter', o[0], o[1])) && !(await O('zahnUnter', o[0], o[1]))) { leer = o; break; }
+    let aufForm = null;
+    for (const o of [[720, 430], [760, 460], [690, 470], [800, 440]]) if ((await O('formUnter', o[0], o[1])) && !(await O('zahnUnter', o[0], o[1]))) { aufForm = o; break; }
+    for (let i = 0; i < 2 && (await O('bearbeiten')).auswahl.length + (await O('bearbeiten')).werkAuswahl.length > 0; i++) {
+      await s.keyboard.press('Escape');
+      await s.waitForTimeout(300);
+    }
+    const offenVorher = (await O('zaehne')).linse.offen;
+    if (aufForm) await klick(aufForm[0], aufForm[1]);
+    await s.waitForTimeout(500);
+    const nachForm = (await O('zaehne')).linse.offen;
+    // (der Tipp auf die Form kann dort etwas gewählt haben: Esc leert es, die Linse bleibt)
+    for (let i = 0; i < 2 && (await O('bearbeiten')).auswahl.length + (await O('bearbeiten')).werkAuswahl.length > 0; i++) {
+      await s.keyboard.press('Escape');
+      await s.waitForTimeout(300);
+    }
+    const offenDavor = (await O('zaehne')).linse.offen;
+    if (leer) await klick(leer[0], leer[1]);
+    await s.waitForTimeout(1200);
+    const z10 = await O('zaehne');
+    ok(
+      'W10 ein Tipp auf die Form lässt die Linse offen; ein Tipp ins Leere schließt sie (die Zähne bleiben, das Maul geht zu)',
+      !!leer && !!aufForm && offenVorher && nachForm && offenDavor && !z10.linse.offen && !!z10.werte && JSON.stringify(z10.werte) === JSON.stringify(vor9.werte) && (await O('kiefer')).blick < 0.05 && !(await gedrueckt()),
+      `auf der Form bei ${aufForm ? aufForm.join('/') : 'nichts gefunden'}: Linse danach ${nachForm ? 'offen' : 'ZU'}; ins Leere bei ${leer ? leer.join('/') : 'nichts gefunden'}: Linse danach ${z10.linse.offen ? 'OFFEN' : 'zu'}; Blick ${(await O('kiefer')).blick.toFixed(2)}`,
+    );
+    await O('blickSetzen', { gier: blick0.gier, neigung: blick0.neigung, zoom: blick0.zoom });
+    await s.waitForTimeout(1200);
+  }
   // W8 in der Pose bei geschlossener Linse: ein Tipp auf einen Zahn öffnet sie für seine Reihe. Hängt an der Stelle ein Punkt oder
   // eine Linie der Form am Zeiger, geht die Form vor: dann den nächsten Zahn versuchen (ein Tipp daneben leert die Auswahl wieder)
   {

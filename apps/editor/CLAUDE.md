@@ -809,6 +809,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Scheibe war nur im Bild von Nahem zu sehen (von vorn unten ins Maul: `blickSetzen({ gier: -2.3, neigung: -0.45, zoom: 6 })`).
   (59) Ein Rahmen längs einer Kurve wird mitgeführt, nicht je Stelle neu aus einer festen Achse bestimmt. (60) Von der Seite
   liegt die Zunge hinter der nahen Zahnreihe: Proben greifen sie an einem Knoten, der zu sehen ist. Probe: U5b bis U5d, K1 bis K6.
+  **Feinschlifflauf, Block A bis C (20.11.; `docs/plans/2026-11-20-ozzy-maul-feinschliff.md`):** Merke: (61) Ein Wert an Zähnen
+  oder Zunge geht nur über `zaehneWert` und `zungeWert` (kein `werkNeu`, Gelesenes gilt weiter). (62) Wer etwas „je Bild neu“
+  baut, solange die Knochen drehen: Die Winkel gehören in den Schlüssel, dann gilt es bei still offenem Maul weiter
+  (`werkBlatt.signatur`). (63) Tempo beweist man an der Zahl der Bilder, die Ozzy rechnet, und daran, wie oft die Haut neu
+  gerechnet wird (Haken `messen`), nicht nur am längsten Bild. (64) Proben, die sichern, schreiben nach `wesen/` nur unter
+  `ozzy-probe-…` und löschen die Datei am Ende. Proben: `ozzy-maul-sichern-fenster.mjs`, `ozzy-maul-material-fenster.mjs`.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

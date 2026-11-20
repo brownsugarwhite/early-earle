@@ -10,8 +10,9 @@ in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen t
 Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält) und Etappe 5 in vier Scheiben (Zähne sprießen und gehen mit den
 Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe) und Etappe 6 in drei
 Scheiben (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und Farbe; sie stößt an Zähne, bleibt in der Pose
-liegen und klebt, wo sie abgelegt wird). Als Nächstes, auf Florians Wort: Etappe 7 (ein Zahn als kleine Form) oder der große
-Feinschlifflauf.** Offenes steht
+liegen und klebt, wo sie abgelegt wird). Danach der Feinschlifflauf, Block A bis C (geprüft, schneller, kleine Bedienung; unten
+„Der Feinschlifflauf“). Als Nächstes, auf Florians Wort: Block D (die Lippe als seine Linie), Etappe 7 oder der Rechenkern.**
+Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -396,6 +397,20 @@ K1 bis K6); Test „die Zunge stößt an …“; Haken `__ozzy.zunge().klebt`, `
    Zeiger und vor den Zähnen liegt.
 9. **`uebernehmen` nimmt auch die Maße der Zähne mit:** Sonst läge sie nach jedem neu gelesenen Platz ein Bild lang halb in
    den Zähnen.
+
+## Der Feinschlifflauf, Block A bis C (20.11.)
+
+Plan, Gruppen und Ergebnis: [`docs/plans/2026-11-20-ozzy-maul-feinschliff.md`](../../../plans/2026-11-20-ozzy-maul-feinschliff.md).
+
+- **Geprüft (A):** zwei neue Proben, `ozzy-maul-sichern-fenster.mjs` (S1 bis S5; schreibt `wesen/ozzy-probe-maul.eewesen` und
+  löscht sie wieder) und `ozzy-maul-material-fenster.mjs` (M1 bis M3; mit Ordner ein Blatt aller Materialien). Jede Probe des
+  Mauls nimmt `NAME` und `LINIE`: für „strange bird“ `LINIE='-560,50;-500,52;-440,50;-380,46;-330,40'`.
+- **Tempo (B):** `zaehneWert` und `zungeWert` in `main.ts` („Werte am Maul setzen“) sind der eine Weg, einen Wert zu setzen:
+  kein `werkNeu`, und `maulGelesenMitnehmen` lässt gelten, was aus der Form gelesen ist. `zaehneRechnen` läuft je Bild in
+  `werkBild` (nicht mehr im Block der Haut). `werkBlatt.signatur` gilt auch, wenn die Knochen die Anzeige drehen (die Winkel
+  gehören zur Zeile).
+- **Bedienung (C):** der Tipp ins Leere (`buehnenTipp`, `werkHautTreffen`), das Drehen am nicht gewählten Zahn
+  (`zahnZug.dreht`), `linsePerle`, `GANG_WEITET`. Haken: `__ozzy.formUnter(x, y)`, `__ozzy.zahnUnter(x, y)`.
 
 ## Die Studie in einem Absatz
 

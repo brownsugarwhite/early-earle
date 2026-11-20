@@ -9562,10 +9562,16 @@ const zahnZiele = (): LinsenZiele => ({
 function linseHolen(fuer: 'zaehne' | 'zunge', vorlage: number): Linse {
   const ziele = fuer === 'zaehne' ? zahnZiele() : zungenZiele();
   if (!zahnLinse) zahnLinse = new Linse(linseEl, zahnKugel(), ziele, LINSE_GROESSE);
-  else if (linseFuer !== fuer) zahnLinse.zieleSetzen(ziele, vorlage);
+  else if (linseFuer !== fuer) {
+    // (jedes Teil behält die Perle, die bei ihm zuletzt galt)
+    linsePerle[linseFuer] = zahnLinse.perleNr;
+    zahnLinse.zieleSetzen(ziele, vorlage, linsePerle[fuer]);
+  }
   linseFuer = fuer;
   return zahnLinse;
 }
+/** die Perle, die an der Linse zuletzt galt, je Teil */
+const linsePerle: Record<'zaehne' | 'zunge', number> = { zaehne: 0, zunge: 0 };
 
 function linseOeffnen(): void {
   const z = werk.G.maul?.zaehne;
@@ -9658,9 +9664,9 @@ function linseSchritt(darf: boolean): boolean {
 
 const zahnMarken = [$<HTMLDivElement>('zahn-marke-a'), $<HTMLDivElement>('zahn-marke-b')];
 /** der laufende Griff an einem Zahn; `dx`, `dy`: wo sein Fuß beim Drücken neben dem Zeiger stand (so bleibt er beim Rücken unter dem Zeiger) */
-let zahnZug: { id: number; x0: number; y0: number; kiefer: 'oben' | 'unten'; i: number; greift: boolean; bewegt: boolean; schritt: boolean; dx: number; dy: number } | null = null;
+let zahnZug: { id: number; x0: number; y0: number; kiefer: 'oben' | 'unten'; i: number; greift: boolean; bewegt: boolean; schritt: boolean; dx: number; dy: number; dreht: boolean } | null = null;
 /** ein Drücken auf die Bühne neben den Zähnen, solange ein Zahn gewählt ist (ohne Weg losgelassen hebt es die Wahl auf) */
-let buehnenTipp: { id: number; x: number; y: number } | null = null;
+let buehnenTipp: { id: number; x: number; y: number; gewaehlt: boolean } | null = null;
 /** ein paar Bildpunkte neben einem Zahn gelten noch (kleine Zähne, Finger) */
 const ZAHN_NAH: readonly (readonly [number, number])[] = [
   [0, 0],
@@ -9866,7 +9872,9 @@ buehne.addEventListener(
     if (!q) {
       // (kein Zahn: vielleicht die Zunge, dann gehört der Griff ihr)
       if (!zungeZuerst && zungeGreifen(e, x, y)) return;
-      if (zahnWahl) buehnenTipp = { id: e.pointerId, x, y };
+      // (ein Tipp neben die Zähne: Er hebt die Wahl am Zahn auf; ist an der Form nichts gewählt und trifft er nichts, schließt er
+      // die Linse)
+      if (zahnWahl || linseDa()) buehnenTipp = { id: e.pointerId, x, y, gewaehlt: bearbeiten.auswahl.size > 0 || werk.G.auswahl.length > 0 };
       return;
     }
     // Solange die Linse offen ist, gehen die Zähne vor. Ist sie zu (in „Fressen“ sieht man die Zähne auch so), gehen Punkte und
@@ -9893,7 +9901,7 @@ buehne.addEventListener(
     const w = zahnWahl;
     const greift = !!z && !!w && w.kiefer === kiefer && (w.i === q.i || (!w.allein && partner(z[kiefer], w.i) === q.i));
     const fuss = werkOrtImBild(zahnRahmen(q, werk.alsAnzeige(() => werk.haut.pos)).ort, vpJetzt());
-    zahnZug = { id: e.pointerId, x0: x, y0: y, kiefer, i: q.i, greift, bewegt: false, schritt: false, dx: fuss[0] - x, dy: fuss[1] - y };
+    zahnZug = { id: e.pointerId, x0: x, y0: y, kiefer, i: q.i, greift, bewegt: false, schritt: false, dx: fuss[0] - x, dy: fuss[1] - y, dreht: false };
     zeiger.x = x;
     zeiger.y = y;
     zeiger.da = true;
@@ -9922,6 +9930,14 @@ buehne.addEventListener(
     if (!zg.bewegt && Math.hypot(x - zg.x0, y - zg.y0) < 4) return;
     zg.bewegt = true;
     if (zg.greift) zahnRuecken(zg, x, y);
+    else {
+      // An einem Zahn, der nicht gewählt ist, zu ziehen dreht die Ansicht (wie ein Zug ins Leere): Vorher tat es nichts.
+      if (!zg.dreht) {
+        zg.dreht = true;
+        drehenBeginnen(zg.x0, zg.y0, e.timeStamp);
+      }
+      drehenZiehen(x, y, e.timeStamp);
+    }
     anstossen();
   },
   true,
@@ -9956,6 +9972,7 @@ function zahnZugEnde(e: PointerEvent, tipp: boolean): void {
       // schon frei
     }
     if (tipp && !zg.bewegt) zahnTippen(zg.kiefer, zg.i);
+    if (zg.dreht) drehenLos(e.timeStamp);
     linseGriff = null;
     anstossen();
     return;
@@ -9965,9 +9982,14 @@ function zahnZugEnde(e: PointerEvent, tipp: boolean): void {
   if (!t || e.pointerId !== t.id) return;
   buehnenTipp = null;
   const [x, y] = lageIm(e);
-  if (tipp && zahnWahl && Math.hypot(x - t.x, y - t.y) < 4) {
+  if (!tipp || Math.hypot(x - t.x, y - t.y) >= 4) return;
+  if (zahnWahl) {
     zahnWahl = null;
     anstossen();
+  } else if (linseDa() && !t.gewaehlt && !werkHautTreffen(x, y) && !werkHautTreffen(x, y, true)) {
+    // Ein Tipp ins Leere schließt die Linse (so steht es im Konzept): neben die Form, nicht auf sie. War an der Form etwas
+    // gewählt, leert der Tipp erst diese Auswahl (dieselbe Reihenfolge wie bei Esc).
+    linseSchliessen();
   }
 }
 buehne.addEventListener('pointerup', (e) => zahnZugEnde(e, true), true);
@@ -11286,6 +11308,10 @@ const haken = {
         return { art: h.art, unten: h.unten, gespiegelt: h.gespiegelt, nr: h.nr, s: (h.s0 + h.s1) / 2, bild, trifft: !!fund && fund.h === h, z: ort[2] };
       });
   },
+  /** steht an einem Ort im Bild (CSS-Pixel) ein Zahn, den ein Tipp dort träfe? */
+  zahnUnter: (x: number, y: number): boolean => !!zahnUnterZeiger(x, y),
+  /** liegt an einem Ort im Bild (CSS-Pixel) die Form (grob, am Rechennetz, beide Hälften)? Sonst ist dort „das Leere“ */
+  formUnter: (x: number, y: number): boolean => !!werkHautTreffen(x, y) || !!werkHautTreffen(x, y, true),
   /** die Linse jetzt zeichnen (für Proben, die ihr Bild lesen) */
   linseZeichnen: () => zahnLinse?.zeichnen(),
   /**

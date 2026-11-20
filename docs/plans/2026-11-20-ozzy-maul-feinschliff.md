@@ -61,3 +61,45 @@ Die Punkte 9 bis 11, 50 bis 53, 64, 66, 80, 81 und 83 sind in der Liste schon al
 - Block B: Beim Drehen eines Werts der Zähne von Nahem kein Bild über 34 ms (wie bei der Zunge); ein Bild mit still offenem
   Maul deutlich unter den 26 ms von vorher.
 - Block C: je Punkt ein Kriterium in der Probe der Zähne oder der Zunge.
+
+## Ergebnis (20.11.)
+
+**Block A (prüfen):**
+
+- **Sichern und Laden** (`ozzy-maul-sichern-fenster.mjs`, S1 bis S5): Eine Form mit Maul, Zähnen (eine Reihe mit anderer
+  Vorlage, ein Zahn mit eigenen Werten, einer gezogen, eine Farbe) und Zunge (Werte, Farbe, in „Fressen“ gelegt, in der
+  Grundform an einem Zahn klebend) gesichert und neu geladen: alle Werte gleich; die Zunge lag danach auf 0,1 Bildpunkte wie
+  vorher. Nichts zu beheben.
+- **Materialien** (`ozzy-maul-material-fenster.mjs`, M1 bis M3): Auf allen sieben stehen Zähne und Zunge, ohne Fehler. Auf
+  Jelly heben sie sich nicht ab (Liste, 125).
+- **Zweite Form** „strange bird“: Maul, Zähne und Zunge laufen (Liste, 126). Das Bild mit Zähnen und langer Zunge sieht aus,
+  wie es soll.
+
+**Block B (Tempo),** gemessen von Nahem, nach zehn Sekunden Ruhe:
+
+| Was | vorher | nachher |
+| --- | --- | --- |
+| Größe der Zähne am Rad gedreht: Bilder, die Ozzy rechnet | 206 | 13 |
+| … davon mit neu gerechneter Haut der Form | 58 bis 67 | 0 |
+| Vorlage der Zähne gewechselt: Bilder / mit neuer Haut | 171 / 28 bis 85 | 20 / 0 |
+| ein Bild, während nur die Zunge schwingt (Maul still offen) | 7,6 ms | 3,5 ms |
+| längstes Bild beim Wechsel der Vorlage (in „Fressen“) | 45 ms | 32 ms |
+
+**Block C (Bedienung):** Tipp ins Leere schließt die Linse (W10); an einem nicht gewählten Zahn ziehen dreht die Ansicht (W9);
+die Linse merkt sich je Teil ihre Perle (N8b); der Umriss der Zunge wölbt sich nicht mehr in die Lücken zwischen den Zähnen.
+
+**Geprüft am Ende:** Typen, Lint, 108 Tests; im Fenster die Proben des Mauls, der Farbe, des Sicherns, der Materialien, der
+Zähne, der Zunge und des Werks.
+
+## Was offen bleibt
+
+- **Block D, die Lippe als seine Linie** (4, 5, 30, 31): nicht begonnen. Er greift in den Baustein des Mauls
+  (`form/maulEcht.ts`: die Punkte der Lippe aus seinen Ankern) und in die Anzeige der Linien (`linien/fluessig.ts`: eine Tinte
+  je Linie; `raum.html` ist dort die genaue Vorlage). Das ist ein eigener Schritt und braucht sein Wort.
+- **Gruppe E, sein Auge.** Die Fragen, an denen der nächste Schritt nicht hängt, bleiben in der Liste. Die drei, die er beim
+  Testen als Erstes sieht: Hohe Zähne heben eine lange Zunge weit (107); in der Pose bleibt die Form, nicht die Dehnung (111);
+  die Werte der vier Vorlagen (93).
+- **Gruppe F, Rechenkern:** die feine Kante an der geschlossenen Lippe (1), der Haarspalt (2), die Zwillingsregel (18), die
+  umgeschlagenen Dreiecke am Überbiss (34; an „strange bird“ 14). Nur auf sein Wort.
+- **Gruppe G, Geräte:** iPad und Stift hat niemand geprüft.
+- **Gruppe H, neue Stücke:** Etappe 7 bis 9.

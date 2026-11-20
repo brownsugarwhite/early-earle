@@ -251,12 +251,12 @@ export class Linse {
     this.lauf();
   }
   /**
-   * Die Linse gilt jetzt etwas anderem: andere Vorlagen, Perlen, Reihen, Farbe. Die Ringe werden neu gebaut, die erste Perle gilt,
-   * `vorlage` steht an der Marke.
+   * Die Linse gilt jetzt etwas anderem: andere Vorlagen, Perlen, Reihen, Farbe. Die Ringe werden neu gebaut, `vorlage` steht an
+   * der Marke, die Perle `perle` gilt (wer zwischen zwei Teilen wechselt, gibt die mit, die dort zuletzt galt).
    */
-  zieleSetzen(ziele: LinsenZiele, vorlage: number): void {
+  zieleSetzen(ziele: LinsenZiele, vorlage: number, perle = 0): void {
     this.ziele = ziele;
-    this.perle = 0;
+    this.perle = Math.max(0, Math.min(ziele.perlen.length - 1, perle));
     this.gewaehlt = vorlage;
     this.formWinkel = this.winkelVon(vorlage);
     this.formZiel = this.formWinkel;

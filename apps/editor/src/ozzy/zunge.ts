@@ -89,6 +89,8 @@ const DEHNUNG_BLEIBT = 1.2;
 const ZAHN_UNTER = 0.85;
 /** so steil steigt ihr Boden zu einem Zahn unter ihr höchstens an (Höhe je Länge der Kette) */
 const RAMPE = 0.45;
+/** längs der Kette weitet sich der Gang neben einem Zahn nur so flach (Breite je Länge): Sonst wölbte sich ihr Umriss in jede Lücke zwischen zwei Zähnen */
+const GANG_WEITET = 0.3;
 /** schmaler als dieser Anteil ihrer Breite wird sie zwischen Zähnen nicht */
 const SCHMAL_BIS = 0.45;
 /** die Gabel: wie weit die letzten drei Ringe ausgezogen sind (Anteil ihrer Tiefe) und wie weit ihre Mitte zurückbleibt */
@@ -652,7 +654,7 @@ export class ZungenKette {
           if (unter) {
             if (h.unten) hoch[k] = Math.max(hoch[k]!, spitze - RAMPE * weit);
             else tief[k] = Math.min(tief[k]!, spitze + RAMPE * weit);
-          } else if (reicht > 0) eng[k] = Math.min(eng[k]!, quer - h.r + weit + (1 - reicht) * pl.breite[k]!);
+          } else if (reicht > 0) eng[k] = Math.min(eng[k]!, quer - h.r + GANG_WEITET * weit + (1 - reicht) * pl.breite[k]!);
         }
       }
     }

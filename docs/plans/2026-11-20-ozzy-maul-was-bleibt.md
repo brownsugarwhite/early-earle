@@ -59,6 +59,12 @@ dauernd neu.
 schmaler und unter den oberen flach). In „Fressen“ bleibt sie liegen, wohin du sie ziehst; in der Grundform schnellt sie zurück
 und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp löst sie. Damit ist Etappe 6 gebaut.
 
+**Feinschlifflauf, Block A bis C (20.11.):** Plan und Gruppen in
+[`2026-11-20-ozzy-maul-feinschliff.md`](2026-11-20-ozzy-maul-feinschliff.md). Geprüft: Sichern und Laden mit Maul, Zähnen und
+Zunge; alle Materialien; die zweite Form „strange bird“. Schneller: Ein Wert der Zähne rechnet die Haut nicht mehr neu, das
+Netz der Linien gilt bei still offenem Maul weiter. Bedienung: Ein Tipp ins Leere schließt die Linse, an einem nicht gewählten
+Zahn ziehen dreht die Ansicht, die Linse merkt sich je Teil ihre Perle. Erledigte Punkte sind unten gestrichen; neu: 125 bis 129.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -96,11 +102,13 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 
 12. **Im Maul arbeiten:** neue Linien über das Maul oder in der Tasche, Punkte der Lippe löschen, K an der Lippe (weich fiele die
     Tasche zusammen), die zwei Linien im Maul ziehen.
-13. **Sichern und Laden** einer Form mit Maul in Ozzy (im Kern lädt der Stand; das Fenster ist nicht geprüft). Ein Stand von
-    Etappe 1 bekommt beim Laden sein Maul und die Pose nachgetragen.
+13. ~~Sichern und Laden einer Form mit Maul in Ozzy~~ geprüft (Feinschlifflauf, Probe `ozzy-maul-sichern-fenster.mjs`): Maul,
+    Zähne und Zunge kommen genau so zurück. Ein Stand von Etappe 1 bekommt beim Laden sein Maul und die Pose nachgetragen
+    (das ist nicht geprüft).
 14. **In der Pose arbeiten** an einer Form mit dem neuen Maul: Die Lippe wird in der Pose nicht gezogen (wie am Maul aus einer
     Linie vom 14.11.); alles andere läuft wie am geformten Maul und ist hier nicht geprüft.
-15. **Andere Formen:** geprüft sind „teat firefish“ und ein frisches Oval mit Start-Loops.
+15. **Andere Formen:** geprüft sind „teat firefish“, ein frisches Oval mit Start-Loops und seit dem Feinschlifflauf „strange
+    bird“ (Punkt 126).
 
 ### An den Kiefern (Etappe 2)
 
@@ -179,14 +187,14 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 54. **Wie lang ein Zahn sein darf,** liest Ozzy aus den Winkeln der Knochen (der Spalt der Kiefer an seiner Stelle). Hat das Maul
     geschlossen eine Lücke (getrennte Lippen) oder formt die Pose die Kiefer um, zählt das nicht mit. Zähne dürfen einander und
     den anderen Kiefer schneiden.
-55. **Tempo:** Dreht sich ein Kiefer oder wird ein Wert gestellt, wird mit Zähnen in jedem Bild das Netz der Anzeige neu
-    zusammengesetzt. Einmal gemessen in der Probe (nicht an deinem Gerät): Ein gestellter Wert kostet rund 4 ms je Bild (30
-    statt 26 ms). Der größere Posten sind die 26 ms, die ein Bild mit offenem Maul dort ohnehin braucht: 13 ms die Linien an
-    den Wänden, 8 ms das Netz der Linien (bei offenem Maul in jedem Bild neu gebaut). Beide rechnen nach dem Code an der Form,
-    nicht an den Zähnen; ohne Zähne habe ich nicht gemessen. Gehört in den Feinschliff.
+55. ~~Tempo: Ein gestellter Wert setzt mit Zähnen in jedem Bild die Anzeige neu zusammen; ein Bild mit offenem Maul kostet 26 ms~~
+    erledigt (Feinschlifflauf, Block B): Ein Wert der Zähne rechnet die Haut nicht mehr neu (13 Bilder statt 206 beim Drehen),
+    und das Netz der Linien gilt weiter, solange das Maul still offen steht (3,5 statt 7,6 ms je Bild, während nur die Zunge
+    schwingt). **Es bleibt:** Dreht sich ein Kiefer, rechnen die Linien an den Wänden und das Netz der Linien in jedem Bild
+    (das ändert sich dann wirklich). Alles in der Probe gemessen, nicht an deinem Gerät.
 56. **Nicht geprüft:** Zähne an getrennten oder stark geformten Lippen, mit mehreren Objekten im Verbund, in „Dreiecke zeigen“
-    (dort fehlen sie), Sichern und Laden im Fenster. Ob die unteren Zähne an deiner Form in den Lücken der oberen stehen, habe
-    ich nur im Modell an einer Kugel geprüft.
+    (dort fehlen sie). Ob die unteren Zähne an deiner Form in den Lücken der oberen stehen, habe ich nur im Modell an einer
+    Kugel geprüft. (Sichern und Laden: seit dem Feinschlifflauf geprüft, Punkt 13.)
 57. **Alle Zähne auf einmal nimmt nur ⌘Z.** Eine Reihe allein lässt sich an der Linse auf null Zähne drehen, einen gewählten
     Zahn zieht ⌫.
 58. **Geschätzt:** wie lange sie sprießen (1,1 s), wie lange eine Vorlage in die nächste übergeht (0,32 s), die Werte am Anfang
@@ -194,8 +202,9 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 59. **Fein gerastert:** Jeder Zahn hat 640 Dreiecke, alle 23 zusammen 14 720. Fürs Spiel (höchstens 8 000 je Form) muss das
     Backen die Zähne gröber nehmen.
 60. **Esc schließt die Linse erst, wenn nichts mehr gewählt ist.** Nach dem Schneiden ist die Lippe gewählt: Dann leert das
-    erste Esc die Auswahl, das zweite schließt die Linse; ist ein Zahn gewählt, hebt Esc erst diese Wahl auf. Ein Tipp ins Leere
-    hebt nur die Wahl am Zahn auf, die Linse schließt er nicht (im Konzept schließt er sie).
+    erste Esc die Auswahl, das zweite schließt die Linse; ist ein Zahn gewählt, hebt Esc erst diese Wahl auf. ~~Ein Tipp ins
+    Leere schließt die Linse nicht~~ erledigt (Feinschlifflauf): Ein Tipp neben die Form schließt sie, in derselben Reihenfolge
+    (erst die Wahl am Zahn, erst die Auswahl an der Form). Ein Tipp auf die Form lässt sie offen.
 61. **Ziehst du bei offener Linse an der Form,** geht das Maul so lange zu und danach wieder auf (in der Grundform wird am
     geschlossenen Maul gerechnet). In „Fressen“ bleibt es offen.
 62. **Die Linse steht fest oben rechts** unter der Tafel „Fressen“. Sie kann über der Zeichnung an der Wand liegen und über dem
@@ -208,7 +217,8 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 65. **Was die Linse wählt, steht nicht in ⌘Z:** welche Reihe gilt, welche Perle und welcher Zahn gewählt ist. Nach ⌘Z zeigt sie
     die Werte, die gelten.
 66. ~~Ein gerückter Zahn bleibt im Maul~~ erledigt: Er lässt sich bis 1,2 Breiten des Zahnfleischs vor die Lippe rücken.
-67. **Ziehen an einem Zahn, der nicht gewählt ist, tut nichts** (es dreht auch nicht die Ansicht). Erst antippen, dann ziehen.
+67. ~~Ziehen an einem Zahn, der nicht gewählt ist, tut nichts~~ erledigt (Feinschlifflauf): Es dreht die Ansicht wie ein Zug
+    ins Leere. Rücken weiter: erst antippen, dann ziehen.
 68. **Die Marke ist ein Ring an der Zahnspitze.** Eine gewählte Reihe hat im Bild keine Marke (das sagen die Perlen der Linse).
     Ob die Form vor einem gewählten Zahn steht, misst die Marke grob am Rechennetz.
 69. **Mit der Anzahl fällt alles Eigene der Reihe** (gerückt, Vorlage, Größe, Lücken), auch wenn du beide Reihen zusammen drehst.
@@ -244,7 +254,8 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 86. **Ihr Gewicht zieht nach unten in der Form** (längs ihrer Hochachse). Liegt eine Form auf der Seite, hängt die Zunge falsch.
 87. **Rosa auf Wachs, Solid und Zebra,** sonst wie der Körper. Ihr Rosa liegt nah an dem des Zahnfleischs.
 88. **Geschätzt:** Federn, Dämpfung, Gewicht und Gummi (die Werte der Studie); wie lange sie wächst (0,7 s).
-89. **Nicht geprüft:** iPad und Stift; andere Formen als „teat firefish“; Sichern und Laden mit Zunge; mehrere Objekte.
+89. **Nicht geprüft:** iPad und Stift; mehrere Objekte. (Sichern und Laden und eine zweite Form: seit dem Feinschlifflauf
+    geprüft, Punkte 13 und 126.)
 90. **Sie braucht in der Mitte des Mauls eine Reihe von Punkten** über Boden und Gaumen (das Maul aus einer Linie bringt sie
     mit). Fehlt sie, sagt Ozzy „In diesem Maul findet die Zunge keinen Boden“; den Fall habe ich nicht ausprobiert.
 91. **Fürs Spiel:** 440 Dreiecke (seit der zweiten Scheibe 20 Punkte je Ring) und elf Knoten; das Konzept nennt fürs Backen drei
@@ -267,21 +278,18 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 98. **⌫ nimmt bei offener Linse die Zunge** (ein Schritt). Sind an der Form Punkte gewählt (nach dem Schneiden sind es die der
     Lippe), gilt ⌫ ihnen, und Esc leert erst die Auswahl: dieselbe Reihenfolge wie bei den Zähnen.
 99. **Eine Linse für zwei Teile:** Der Tropfen des anderen Teils stellt sie um; Zähne und Zunge zugleich stellen geht nicht.
-    Welche Perle galt, merkt sie sich beim Umstellen nicht.
+    ~~Welche Perle galt, merkt sie sich beim Umstellen nicht~~ erledigt (Feinschlifflauf): Jedes Teil behält seine Perle.
 100. **Die Zeichen am Formenring** sind klein; „rund“ und „lang“ unterscheiden sich fast nur in der Länge.
-101. **Der erste Wert eines neuen Griffs** kostete in der Probe von Nahem in „Fressen“ ein bis drei Bilder über 34 ms (das
-     längste 120 bis 230 ms); in der gewohnten Ansicht keines (längstes 26 ms). Woran es liegt, habe ich nicht untersucht
-     (vermutlich der Schritt für ⌘Z und was nach ihm neu gelesen wird).
-102. **Bei den Zähnen rechnet jeder gestellte Wert noch die Haut der Form neu** (2,5 s lang in jedem Bild, dazu wird der Löser
-     vorbereitet). Bei der Zunge ist das weg. Bei den Zähnen ginge es genauso, wenn ihr Netz nicht mehr am Neurechnen der Haut
-     hinge (`zaehneRechnen`).
+101. ~~Der erste Wert eines neuen Griffs kostet ein bis drei längere Bilder~~ erledigt (Feinschlifflauf, Block B): Was aus
+     der Form gelesen ist, gilt nach einem Wert-Schritt weiter. Von Nahem gemessen: kein Bild über 34 ms (das längste 32 ms).
+102. ~~Bei den Zähnen rechnet jeder gestellte Wert noch die Haut der Form neu~~ erledigt (Feinschlifflauf, Block B).
 103. **Die Korrektur an der Anzeige** (von Nahem pendelte sie zwischen zwei Feinheitsstufen; Plan 12.20, Punkt 3) gilt für alle
      Formen. Gegengeprüft habe ich an „teat firefish“ und mit der Probe des Werks; die übrigen Fensterproben von Ozzy sind
      nicht gelaufen.
 104. **Der Ton der Linse** wird kurz nach dem Öffnen angelegt (vorher stockte das erste Rasten). Am iPad nicht geprüft: Dort
      ruht ein Ton, bis eine Hand im Spiel ist; die Linse weckt ihn beim ersten Ticken.
-105. **Nicht geprüft (zweite Scheibe):** iPad und Stift; der Farbwähler des Systems von Hand; andere Formen; Sichern und Laden
-     mit den neuen Werten (Spitze, Gabel, Vorlage); andere Materialien als Wachs.
+105. **Nicht geprüft (zweite Scheibe):** iPad und Stift; der Farbwähler des Systems von Hand. (Sichern und Laden, andere
+     Materialien und eine zweite Form: seit dem Feinschlifflauf geprüft, Punkte 13, 125 und 126.)
 106. **Das Anstoßen an Zähne ist kein echtes Stoßen:** Im Maul heben Zähne unter ihr den Boden (eine flache Rampe zu ihrer
      Spitze, höchstens 0,45 steil), Zähne über ihr senken die Decke, Zähne neben ihr machen sie schmaler. Ob ein Zahn „unter“
      oder „neben“ ihr steht, entscheidet eine Schwelle (85 % ihrer halben Breite): Stellst du ihre Breite, springt sie dort
@@ -289,7 +297,8 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 107. **Hohe Zähne heben sie weit:** Über den Vorderzähnen von „teat firefish“ liegt eine lange Zunge um 21 gehoben (ein
      Fünftel der Mundlänge), und die Rampe dorthin beginnt weit hinten im Maul. Ob das gut aussieht, entscheidet dein Auge.
 108. **Zwischen den Zahnreihen wird nur ihr Umriss schmaler** (bis knapp die Hälfte); ihr Rauminhalt bleibt dabei nicht. Der
-     Umriss hat dort noch leichte Stufen (elf Knoten).
+     Umriss wölbt sich seit dem Feinschlifflauf nicht mehr in jede Lücke zwischen zwei Zähnen (der Gang weitet sich längs der
+     Zunge nur flach); er hat weiter elf Knoten.
 109. **Vor der Lippe** weicht sie Zähnen und Lippen als runden Körpern aus. Im Maul stößt sie an die Lippe nicht.
 110. **Die Zinken und die Rille zählen beim Anstoßen nicht:** Gemessen wird an der Mittellinie und der halben Breite je Knoten.
 111. **In der Pose bleibt ihre Form, nicht die Dehnung:** höchstens ein Fünftel länger als in Ruhe (geschätzt). Sie liegt auf
@@ -317,8 +326,28 @@ und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp
 122. **„Sie ruht“ gilt jetzt ab sechs Tausendsteln der Mundlänge je Sekunde** (vorher vier): An Zähnen kriecht sie noch nach.
 123. **Tempo:** Beim Ausschwingen mit 23 Zähnen im Weg, von Nahem, in der Probe im Mittel 21 ms je Bild, das längste 34 ms.
      Nicht auf deinem Gerät gemessen.
-124. **Nicht geprüft (dritte Scheibe):** iPad und Stift; andere Formen; Zähne außen vor der Lippe; getrennte Lippen; Sichern
-     und Laden mit Lage und Kleben; andere Materialien als Wachs; mehrere Objekte.
+124. **Nicht geprüft (dritte Scheibe):** iPad und Stift; Zähne außen vor der Lippe; getrennte Lippen; mehrere Objekte.
+     (Sichern und Laden mit Lage und Kleben, andere Materialien und eine zweite Form: seit dem Feinschlifflauf geprüft,
+     Punkte 13, 125 und 126.)
+125. **Materialien** (Feinschlifflauf, Probe `ozzy-maul-material-fenster.mjs`, Blatt
+     `docs/progress/ozzy/2026-11-20-maul-feinschliff-materialien.jpg`): Auf Solid, Zebra und Wachs stehen Zähne und Zunge in
+     ihren Farben im Maul; auf hellem Solid sind Zähne und Zunge weiß wie der Körper, das Innere trägt die Farben der Ebene
+     „Maul“; auf Grün sind sie grün. **Auf Jelly heben sich Zähne und Zunge nicht ab:** Das offene Maul ist dort nur eine
+     hellere Stelle. Auf der Seifenhaut ist alles Blase.
+126. **„strange bird“** (Feinschlifflauf): Die Form hat vorn schon eine offene Schnabelbucht. Mein Strich traf ihre hintere
+     Wand; das Maul entsteht dort und läuft (Maul 17 von 19 Kriterien, Zähne 24 von 25, Zunge 25 von 27, ohne Fehler und ohne
+     kaputtes Netz). Wo an dieser Form das Maul hingehört (in die Bucht, oder soll die Bucht selbst das Maul werden), ist
+     deine Entscheidung. Die vier Kriterien, die nicht bestanden, hängen an der Form: Der Tropfen „Maul“ hängt ein paar
+     Bildpunkte neben dem Ende des Strichs; beim Überbiss erreicht ein Punkt der Unterlippe sein Ziel nicht (Rest 33
+     Einheiten, 14 umgeschlagene Dreiecke an der Lippe: verwandt mit Punkt 34); die Zunge hängt in Ruhe 3,5 % der Mundlänge
+     durch (die Probe erlaubt 3 %).
+127. **Das Maß „steckt sie in einem Zahn?“** der Probe (`engster`) misst die Zunge als Kugeln von ihrer halben Dicke. Neben
+     einem Zahn zählt aber ihre Breite: Im Zug zeigte es an „strange bird“ −7, ohne dass ich im Bild einen Zahn durch die
+     Zunge sah. Für die Seite braucht die Probe ein besseres Maß.
+128. **Ein Tipp ins Leere schließt die Linse:** „Leer“ heißt neben der Form (grob am Rechennetz gemessen). Die Wände und die
+     Zeichnung an der Wand zählen als leer.
+129. **Sichern und Laden** ist an einem Fall geprüft („teat firefish“ mit allem). Alte Dateien ohne die neuen Werte und
+     Formen mit mehreren Objekten: nicht geprüft.
 
 ### Kleines
 

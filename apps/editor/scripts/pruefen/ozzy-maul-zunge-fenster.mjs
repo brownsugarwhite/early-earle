@@ -556,6 +556,30 @@ if ((await O('werkLinienDaten')).some((l) => l.maulEcht)) {
     n8a.linse.offen && !n8az.linse.offen && !n8az.offen && r8a.zeichen === 8 && r8a.reihen === 2 && r8a.perlen === '#GNVS' && n8a.linse.perle === '#' && n8b.linse.offen && !(await O('zaehne')).linse.offen && r8b.zeichen === 4 && r8b.reihen === 0 && r8b.perlen === 'LBDRSG' && b8.farbe[0] > 1.3 * b8.farbe[1] && (await gedrueckt()) && !(await zaehneGedrueckt()),
     `bei den Zähnen: ${r8a.zeichen} Zeichen, ${r8a.reihen} Reihen, Perlen „${r8a.perlen}“; zurück bei der Zunge: ${r8b.zeichen} Zeichen, ${r8b.reihen} Reihen, Perlen „${r8b.perlen}“, Farbe in der Linse ${b8.farbe.join('/')}`,
   );
+  // N8b (Feinschlifflauf, Block C): die Linse merkt sich je Teil ihre Perle
+  {
+    {
+      const [x, y] = await anLinse(perleGrad(2), PERLEN);
+      await klick(x, y);
+    }
+    const p1 = (await O('zunge')).linse.perle;
+    await s.click('#zaehne-tropfen');
+    await s.waitForTimeout(900);
+    {
+      const [x, y] = await anLinse(perleGrad(3), PERLEN);
+      await klick(x, y);
+    }
+    const p2 = (await O('zaehne')).linse.perle;
+    await s.click('#zunge-tropfen');
+    await s.waitForTimeout(900);
+    const p3 = (await O('zunge')).linse.perle;
+    await s.click('#zaehne-tropfen');
+    await s.waitForTimeout(900);
+    const p4 = (await O('zaehne')).linse.perle;
+    await s.click('#zunge-tropfen');
+    await s.waitForTimeout(900);
+    ok('N8b die Linse merkt sich je Teil ihre Perle: bei der Zunge „D“, bei den Zähnen „V“, hin und her', p1 === 'D' && p2 === 'V' && p3 === 'D' && p4 === 'V' && (await O('zunge')).linse.offen, `Zunge „${p1}“ → Zähne „${p2}“ → Zunge „${p3}“ → Zähne „${p4}“`);
+  }
   // N9 ⌫ nimmt die Zunge, ⌘Z holt sie zurück (sind an der Form noch Punkte gewählt, gilt ⌫ ihnen: Esc leert erst die Auswahl)
   {
     const gewaehlt = (await O('bearbeiten')).auswahl.length;
