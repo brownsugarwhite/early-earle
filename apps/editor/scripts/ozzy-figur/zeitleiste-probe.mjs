@@ -116,6 +116,23 @@ q = await ort('ohrB', 0);
 await p.mouse.click(r0.left + 20, q[1]);
 await p.waitForTimeout(250);
 zeile(`8b Klick auf „Ohr B“: Teil ${await W(() => window.__ozzyWerkzeug.teil)}, Winkel ${vorherW} → ${await winkel()}`);
+// 8c Zwiebelhaut (Z): Bart A bei 150°, davor und danach
+q = await ort('bartA', 0);
+await p.mouse.click(r0.left + 20, q[1]);
+q = await ort('bartA', 150);
+await p.mouse.click(q[0], r0.top + 12);
+await p.mouse.move(700, 300);
+await p.keyboard.press('z');
+await p.waitForTimeout(300);
+const zw = () => W(() => JSON.stringify(window.__ozzyWerkzeug.zwiebelNachbarn()));
+zeile(`8c Zwiebelhaut bei 150° (Bart A): ${await zw()}; Knopf an: ${await W(() => document.getElementById('werkzeugZwiebel').classList.contains('an'))}`);
+if (BILD) await p.screenshot({ path: `${BILD}/zwiebelhaut.png` });
+await p.keyboard.press('j');
+await p.waitForTimeout(300);
+zeile(`   J → ${await winkel()}: ${await zw()}`);
+await p.keyboard.press('z');
+await p.waitForTimeout(200);
+zeile(`   Z aus: ${await zw()}`);
 // 9 „Kopf dreht“ (0°–90°): Klick auf Florians Schlüssel Bart B bei 75,5°
 gespeichert = null;
 await oeffnen('kopf', 0.2);

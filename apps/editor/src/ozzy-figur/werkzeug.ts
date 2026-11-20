@@ -20,6 +20,8 @@ export interface WerkzeugKontext {
   korrekturAus(teil: TeilName, lage: Lage, form: Form): KopfKorrektur;
   /** Kopf auf diesen Winkel stellen (0°–360°) und anhalten */
   winkelSetzen(theta: number): void;
+  /** Lage der gezeigten Szene bei einem anderen Winkel (Zwiebelhaut) */
+  lageBei(theta: number): Lage | null;
   /** alle Schlüssel der Kopfteile mit Herkunft (Zeitleiste) */
   schluessel(): readonly SchluesselEintrag[];
   /** Winkel, bis zu dem die gezeigte Drehung reicht (90° oder 360°) */
@@ -43,6 +45,9 @@ const NAMEN: Partial<Record<TeilName, string>> = {
 const GLATT_GRAD = 4;
 const TINTE = '#1f1a17';
 const ROT = '#d0312d';
+/** Zwiebelhaut: der Schlüssel davor orange, der danach grün (wie Ebenen in Animationsprogrammen: vorher warm, nachher kalt) */
+const VORHER = '#e8743b';
+const NACHHER = '#11a37f';
 /** Zeitleiste: eine Zeile je Kopfteil, von oben nach unten wie die Ebenen (was im Bild oben liegt, steht oben) */
 const ZEILEN: TeilName[] = ['nase', 'bartB', 'bartA', 'kopfA', 'kopfB', 'ohrA', 'ohrSpalt', 'ohrB'];
 /** Maße der Zeitleiste in CSS-Bildpunkten; auf einer kleinen Bühne (iPhone) knapper */
@@ -198,6 +203,10 @@ export class FigurWerkzeug {
   private readonly zl: HTMLCanvasElement;
   private zlZug: { zeile: number } | null = null;
   private zlHover: SchluesselEintrag | null = null;
+  /** Zwiebelhaut: Schlüssel davor und danach des gewählten Teils als Umriss (Taste Z) */
+  zwiebel = false;
+  private zwiebelQuelle: readonly SchluesselEintrag[] | null = null;
+  private readonly zwiebelSpeicher = new Map<number, { name: TeilName; weiss: boolean; form: Form }[]>();
 
   constructor(
     private readonly flaeche: HTMLCanvasElement,
@@ -717,6 +726,7 @@ export class FigurWerkzeug {
     else if (kl === 'v' && !e.shiftKey) this.artSetzen('auswahl');
     else if (kl === 'c' && e.shiftKey) this.artSetzen('umwandeln');
     else if ((kl === 'j' || kl === 'k') && !e.shiftKey) this.schluesselSprung(kl === 'j' ? -1 : 1);
+    else if (kl === 'z' && !e.shiftKey) this.zwiebelUmschalten();
     else if (k === 'Escape') {
       if (this.gewaehlt.size) this.gewaehlt.clear();
       else this.teil = null;
@@ -770,6 +780,7 @@ export class FigurWerkzeug {
           <button type="button" class="knopf" id="werkzeugZurueck" title="⌘Z">Zurück</button>
           <button type="button" class="knopf" id="werkzeugWieder" title="⇧⌘Z">Wieder</button>
           <button type="button" class="knopf" id="werkzeugGanz" title="⌘0">Ganze Figur</button>
+          <button type="button" class="knopf" id="werkzeugZwiebel" title="Taste Z">Zwiebelhaut</button>
         </div>
         <p class="hinweis">Anker und Griffe ziehen; ⇧ für mehrere oder einen Rahmen aufziehen; Pfeiltasten (⇧ 10). Ein glatter Anker bleibt glatt,
         mit ⌥ am Griff wird er eine Ecke. Ankerpunkt: Klick macht Ecke ↔ glatt, aus dem Anker ziehen zieht Griffe heraus. ⌘ + Scrollen zoomt,
@@ -779,7 +790,8 @@ export class FigurWerkzeug {
         <span class="marke gebaut">◇</span> von mir gebaut, <span class="marke falte">•</span> mein verborgener Faltschlüssel,
         <span class="marke dein">◆</span> dein Schlüssel; ab 180° gespiegelt (grau hinterlegt). Klick auf einen Schlüssel springt hin, Ziehen
         dreht den Kopf. J und K springen zum vorigen und nächsten Schlüssel des gewählten Teils. Rot umrandet: meine Schlüssel, die ein Zug
-        hier ersetzt (näher als 4°).</p>
+        hier ersetzt (näher als 4°). Zwiebelhaut (Z): der Schlüssel davor orange, der danach grün, als Umriss über dem Bild, das gewählte
+        Teil kräftig, die übrigen Kopfteile blass.</p>
         <h3 class="unter">Deine Schlüssel</h3>
         <ul id="schluesselListe"></ul>
         <p class="hinweis" id="speicherStand">${this.stand}</p>
@@ -792,6 +804,7 @@ export class FigurWerkzeug {
     document.getElementById('werkzeugZurueck')!.addEventListener('click', () => this.zurueck());
     document.getElementById('werkzeugWieder')!.addEventListener('click', () => this.wieder());
     document.getElementById('werkzeugGanz')!.addEventListener('click', () => this.ganz());
+    document.getElementById('werkzeugZwiebel')!.addEventListener('click', () => this.zwiebelUmschalten());
     document.getElementById('schluesselListe')!.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!b) return;
@@ -815,6 +828,7 @@ export class FigurWerkzeug {
     const werkzeuge = document.getElementById('werkzeuge');
     if (werkzeuge) werkzeuge.style.display = this.an ? '' : 'none';
     document.getElementById('bearbeitenAn')?.classList.toggle('an', this.an);
+    document.getElementById('werkzeugZwiebel')?.classList.toggle('an', this.zwiebel);
     document.querySelectorAll<HTMLButtonElement>('[data-werkzeug]').forEach((b) => b.classList.toggle('an', b.dataset.werkzeug === this.art));
     this.zl.classList.toggle('an', this.an);
     this.flaeche.style.pointerEvents = this.an ? 'auto' : '';
@@ -877,6 +891,39 @@ export class FigurWerkzeug {
       ctx.fillRect(p[0] - r, p[1] - r, 2 * r, 2 * r);
       ctx.strokeRect(p[0] - r, p[1] - r, 2 * r, 2 * r);
     };
+    // Zwiebelhaut: Schlüssel davor (orange) und danach (grün), alle Kopfteile blass, das gewählte kräftig, mit Winkel
+    const nachbarn = this.zwiebelNachbarn();
+    for (const [w, farbe] of [
+      [nachbarn.vor, VORHER],
+      [nachbarn.nach, NACHHER],
+    ] as [number | null, string][]) {
+      if (w === null) continue;
+      const bild = this.teileBei(w);
+      ctx.strokeStyle = farbe;
+      for (const x of bild) {
+        const gewaehltes = x.name === this.teil;
+        pfad(x.form);
+        ctx.globalAlpha = gewaehltes ? 0.95 : 0.3;
+        ctx.lineWidth = (gewaehltes ? 1.8 : 1) * d;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const sel = bild.find((x) => x.name === this.teil);
+      if (sel) {
+        // Winkel an den höchsten Punkt des Teils
+        let oben: Punkt = this.zuBild(sel.form[0]!.p);
+        for (const a of sel.form) {
+          const q = this.zuBild(a.p);
+          if (q[1] < oben[1]) oben = q;
+        }
+        // davor links vom höchsten Punkt, danach rechts davon (liegen beide oben dicht beieinander, überlappen sie sonst)
+        ctx.font = `600 ${11 * d}px system-ui, -apple-system, sans-serif`;
+        ctx.fillStyle = farbe;
+        ctx.textAlign = farbe === VORHER ? 'right' : 'left';
+        ctx.fillText(`${gradText(Math.round(w * 10) / 10)}°`, oben[0] + (farbe === VORHER ? -6 : 6) * d, oben[1] - 6 * d);
+        ctx.textAlign = 'left';
+      }
+    }
     for (const t of teile) {
       if (t.name === this.teil) continue;
       pfad(t.form);
@@ -926,11 +973,68 @@ export class FigurWerkzeug {
     ctx.font = `${12 * d}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = BLAU;
     ctx.fillText(text, 20 * d, 76 * d);
+    let y = 94;
     if (zusatz) {
       ctx.fillStyle = this.zlHover ? 'rgba(31, 111, 235, 0.7)' : ROT;
-      ctx.fillText(zusatz, 20 * d, 94 * d);
+      ctx.fillText(zusatz, 20 * d, y * d);
+      y += 18;
+    }
+    if (this.zwiebel) {
+      const z = this.zwiebelText(nachbarn);
+      ctx.fillStyle = 'rgba(31, 26, 23, 0.55)';
+      ctx.fillText(z.start, 20 * d, y * d);
+      let x = 20 * d + ctx.measureText(z.start).width;
+      for (const [teil, farbe] of [
+        [z.vor, VORHER],
+        [z.nach, NACHHER],
+      ] as [string, string][]) {
+        if (!teil) continue;
+        ctx.fillStyle = farbe;
+        ctx.fillText(teil, x, y * d);
+        x += ctx.measureText(teil).width;
+      }
     }
     this.zlZeichnen(th);
+  }
+
+  // ---- Zwiebelhaut ---------------------------------------------------------------------------------------------------------------
+
+  zwiebelUmschalten(): void {
+    this.zwiebel = !this.zwiebel;
+    this.k.neu();
+  }
+  /** Schlüssel davor und danach des gewählten Teils (ohne Faltschlüssel), im Bereich der Szene */
+  zwiebelNachbarn(): { vor: number | null; nach: number | null } {
+    const lage = this.k.lage();
+    if (!this.zwiebel || !this.teil || !lage) return { vor: null, nach: null };
+    const th = ((lage.theta % 360) + 360) % 360;
+    const max = this.k.bereich();
+    const ws = [...new Set(this.k.schluessel().filter((x) => x.teil === this.teil && x.art !== 'falte' && x.w <= max + 1e-6).map((x) => x.w))].sort((a, b) => a - b);
+    return { vor: ws.filter((w) => w < th - 1e-6).pop() ?? null, nach: ws.find((w) => w > th + 1e-6) ?? null };
+  }
+  private zwiebelText(n: { vor: number | null; nach: number | null }): { start: string; vor: string; nach: string } {
+    if (!this.teil) return { start: 'Zwiebelhaut: Teil wählen (Klick auf ein Teil oder seinen Namen in der Zeitleiste)', vor: '', nach: '' };
+    if (n.vor === null && n.nach === null) return { start: 'Zwiebelhaut: kein Schlüssel davor oder danach', vor: '', nach: '' };
+    return {
+      start: 'Zwiebelhaut:  ',
+      vor: n.vor !== null ? `davor ${gradText(Math.round(n.vor * 10) / 10)}°  ` : '',
+      nach: n.nach !== null ? `danach ${gradText(Math.round(n.nach * 10) / 10)}°` : '',
+    };
+  }
+  /** alle Kopfteile bei einem anderen Winkel (je Raster gemerkt) */
+  private teileBei(w: number): { name: TeilName; weiss: boolean; form: Form }[] {
+    const quelle = this.k.schluessel();
+    if (quelle !== this.zwiebelQuelle) {
+      this.zwiebelQuelle = quelle;
+      this.zwiebelSpeicher.clear();
+    }
+    const fertig = this.zwiebelSpeicher.get(w);
+    if (fertig) return fertig;
+    const lage = this.k.lageBei(w);
+    const bild = lage ? this.k.kopfteile(lage) : [];
+    if (this.zwiebelSpeicher.size > 16) this.zwiebelSpeicher.clear();
+    this.zwiebelSpeicher.set(w, bild);
+    return bild;
   }
 
   /** Zeilen oben links: Winkel, Teil und wessen Schlüssel hier liegt; darunter, was ein Zug hier ersetzt */
@@ -1140,6 +1244,21 @@ export class FigurWerkzeug {
         g.stroke();
       }
       g.globalAlpha = 1;
+    }
+    // Zwiebelhaut: Ringe um die Schlüssel davor und danach
+    if (zi >= 0) {
+      const n = this.zwiebelNachbarn();
+      for (const [w, farbe] of [
+        [n.vor, VORHER],
+        [n.nach, NACHHER],
+      ] as [number | null, string][]) {
+        if (w === null) continue;
+        g.strokeStyle = farbe;
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(x(w), y0 + zi * this.zlm.zeile + this.zlm.zeile / 2, 7.5 * (this.zlm.zeile / 15), 0, 2 * Math.PI);
+        g.stroke();
+      }
     }
     // Abspielkopf mit dem Winkel
     const xp = x(Math.min(max, th));

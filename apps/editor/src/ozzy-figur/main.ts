@@ -151,6 +151,11 @@ const werkzeug = new FigurWerkzeug(oben, document.getElementById('buehne')!, {
     }
     neu();
   },
+  lageBei: (theta) => {
+    if (!BEARBEITBAR.includes(zustand.szene)) return null;
+    const th = ((theta % 360) + 360) % 360;
+    return drehLage(zustand.szene as Drehung, zustand.szene === 'kopf360' ? th / 360 : Math.min(1, th / 90));
+  },
   schluessel: () => rasterVon(daten).schluesselUebersicht(),
   bereich: () => (zustand.szene === 'kopf360' ? 360 : 90),
   neu: () => neu(),

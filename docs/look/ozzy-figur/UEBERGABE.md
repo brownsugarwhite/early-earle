@@ -637,6 +637,15 @@ um es richtig bearbeiten zu können. Im moment shee ich nur meine“. Bilder: `d
   Schlüssel bei 152° fällt weg, gespiegelt bei 210°; ⌘Z nimmt ihn zurück), Klick auf einen Namen, „Kopf dreht“, iPhone hochkant. Dazu
   `werkzeug-probe.mjs` wie am 19.11., 52 Tests, Typen, Lint.
 
+### Zwiebelhaut (20.11. vormittags)
+
+Florian: „Mache erst die Zwiebelhaut“. Knopf „Zwiebelhaut“ oder Taste Z im Bearbeiten: Für das gewählte Teil liegen der Schlüssel davor
+(orange) und danach (grün) als Umriss über dem Bild, an ihrem echten Ort (der Kopf sitzt je Winkel anders); das gewählte Teil kräftig, die
+übrigen Kopfteile blass, der Winkel am höchsten Punkt (davor links, danach rechts). Faltschlüssel zählen nicht. Oben links „Zwiebelhaut: davor
+148°, danach 152°“, in der Zeitleiste Ringe in denselben Farben. Gerechnet über `lageBei` (main.ts), je Raster gemerkt (`teileBei`). Bild:
+`docs/progress/ozzy-figur/2026-11-20-zwiebelhaut.png` (bei 150° sieht man, wie weit Bart A von seinem Schlüssel bei 148° zu meinem bei 152°
+springt). Probe: Abschnitt 8c in `zeitleiste-probe.mjs`.
+
 ## Fallen
 
 - Proben und Prüfaufrufe sehen Florians Schlüssel aus `schluessel.json` (die Seite lädt sie beim Öffnen). Nie seine Schlüssel löschen und nie
