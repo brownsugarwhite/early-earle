@@ -738,6 +738,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `kreuzungenSuchen` ist geometrisch: Enden an Ober- und Unterlippe am selben Ort galten als neue Kreuzung (`ueberDasMaul`). (12)
   `linienGekreuzt` prüft zusammengeklappte Linien je Hälfte (`maulFalte`). (13) P fängt dicht am Umriss die Mitte: die Maullinie
   ein Stück vor der Form beginnen. Offenes: `docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`.
+- **Shader (20.11., Zweig `claude/ozzy-shader`, Fenster 5219):** `src/ozzy/shader/` (20 Voreinstellungen, Renderer `kern.ts`,
+  G-Puffer `daten.ts`, Strömung `stroemung.ts`, eine Linie `linieSim.ts` im Worker). Einbau in `main.ts` über `MATERIAL_SHADER`
+  (wie die festen Materialien: glatte Anzeige, Schnitt, Spiegelschnitt, Röntgen). Merke: GLSL steht in Template-Strings (kein
+  Backtick in Kommentaren); ein neuer Shader ist eine Datei unter `voreinstellungen/` plus eine Zeile in deren `index.ts`. Bilder
+  `scripts/ozzy/shader-bilder.mjs` (eigener Vite für den Lauf). Einstieg: `docs/look/ozzy/shader/UEBERGABE.md`.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

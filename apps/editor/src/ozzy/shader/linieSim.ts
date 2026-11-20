@@ -52,7 +52,7 @@ const VOLL = 9;
 /** wie stark die Linie zur Mitte ihrer Nachbarn gezogen wird (glatte, fließende Kurven statt Zacken) */
 const BIEGEN = Number((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.LINIE_BIEGEN ?? 0.5);
 const QUER = Number((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.LINIE_QUER ?? 0.08);
-const WACHSEN = Number((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.LINIE_WACHSEN ?? 0.9);
+const WACHSEN = Number((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.LINIE_WACHSEN ?? 1.3);
 
 export class LinienSim {
   readonly cap: number;

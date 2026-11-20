@@ -266,6 +266,8 @@ class EineLinie implements ShaderLauf {
         .then(() => {
           if (this.tot) return;
           const dichte = w.regler.dichte ?? 1;
+          // der Abstand wächst mit der Form im Bild: bei jedem Zoom dasselbe Bild (wie eine Zeichnung, nicht wie ein Muster)
+          const rPx = this.formRadiusPx(k);
           this.worker.postMessage(
             {
               art: 'karte',
@@ -276,7 +278,7 @@ class EineLinie implements ShaderLauf {
               zeit: w.zeit * (w.regler.tempo ?? 1),
               mit: PRUEF.mit,
               kamera,
-              werte: { dMin: 2.6 * dichte, dMax: 13 * dichte, gamma: 1.1, atmen: w.regler.atmen ?? 0.6, schritte: Math.round(3 * (w.regler.tempo ?? 1)) },
+              werte: { dMin: Math.max(2.0, rPx * 0.0085) * dichte, dMax: Math.max(8, rPx * 0.036) * dichte, gamma: 1.1, atmen: w.regler.atmen ?? 0.6, schritte: Math.round(4 * (w.regler.tempo ?? 1)) },
             },
             [daten.buffer],
           );
@@ -305,7 +307,7 @@ class EineLinie implements ShaderLauf {
       this.geo.instanceCount = n;
       this.neu = false;
     }
-    this.strich.uniforms.uHalb!.value = 0.55 * (w.regler.strich ?? 1);
+    this.strich.uniforms.uHalb!.value = 0.55 * Math.min(1.7, Math.max(0.85, this.formRadiusPx(k) / 260)) * (w.regler.strich ?? 1);
     const tinte = k.ziel('eineLinie:tinte', { art: 'byte' });
     k.szene(this.szene, this.kamera, tinte, [0, 0, 0, 0]);
     this.ende.uniforms.tTinte!.value = tinte.texture;
@@ -314,6 +316,14 @@ class EineLinie implements ShaderLauf {
     const z = k.ziel('eineLinie:ende', { art: 'byte' });
     k.flaeche(this.ende, z, [0, 0, 0, 0]);
     return z.texture;
+  }
+
+  /** Halbmesser der Form im Bild (CSS-Bildpunkte) */
+  private formRadiusPx(k: ShaderKern): number {
+    const m = k.u.uMitte.value;
+    const rechts = new Vector3(1, 0, 0).transformDirection(k.kamera.matrixWorld).multiplyScalar(k.u.uRadius.value * 0.7).add(m);
+    const a = m.clone().project(k.kamera), b = rechts.project(k.kamera);
+    return Math.hypot(((b.x - a.x) / 2) * (k.b / k.dpr), ((b.y - a.y) / 2) * (k.h / k.dpr));
   }
 
   unruhig(): boolean {

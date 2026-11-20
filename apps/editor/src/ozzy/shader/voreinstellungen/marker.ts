@@ -32,13 +32,14 @@ vec2 markerLage(vec2 p, float winkel, float breite, float seed) {
   vec2 q = drehung(winkel) * p;
   float reihe = floor(q.y / breite);
   float inReihe = fract(q.y / breite);
-  float laenge = 90.0 + 160.0 * hash11(reihe * 1.7 + seed);
-  float s = (q.x + hash11(reihe * 3.3 + seed) * 400.0) / laenge;
+  float laenge = 380.0 + 420.0 * hash11(reihe * 1.7 + seed);
+  float s = (q.x + hash11(reihe * 3.3 + seed) * 900.0) / laenge;
   float f = fract(s);
-  float an = step(0.12, f) * step(f, 0.96) * step(0.04, inReihe) * step(inReihe, 0.97);
-  // Rand des Strichs etwas unruhig (Filz)
-  an *= step(0.0, inReihe - 0.04 - 0.03 * noise2(q * 0.3));
-  float see = an * (smoothstep(0.2, 0.12, f) + smoothstep(0.88, 0.96, f));
+  // lange Striche, die Reihen überlappen leicht (dort wird es dunkler, wie Marker auf Marker)
+  float an = smoothstep(0.02, 0.05, f) * (1.0 - smoothstep(0.95, 0.985, f));
+  float kante = smoothstep(-0.08, 0.02, inReihe - 0.03 * noise2(q * 0.25)) * (1.0 - smoothstep(0.98, 1.08, inReihe + 0.03 * noise2(q * 0.25 + 9.0)));
+  an *= max(kante, 0.0);
+  float see = an * (smoothstep(0.09, 0.05, f) + smoothstep(0.93, 0.97, f));
   return vec2(an, see);
 }
 
@@ -73,10 +74,10 @@ void main() {
   vec3 tinte2 = vec3(0.58, 0.6, 0.74);
   vec3 tinte3 = vec3(0.3, 0.3, 0.42);
   vec2 m1 = markerLage(cssPx, radians(-22.0), 22.0, 1.0);
-  vec2 m2 = markerLage(cssPx + 37.0, radians(-19.0), 17.0, 2.0);
-  vec2 m3 = markerLage(cssPx + 71.0, radians(-25.0), 14.0, 3.0);
+  vec2 m2 = markerLage(cssPx + 37.0, radians(-21.0), 30.0, 2.0);
+  vec2 m3 = markerLage(cssPx + 71.0, radians(-23.0), 24.0, 3.0);
   float n1 = smoothstep(0.95, 0.8, wert), n2 = smoothstep(0.6, 0.48, wert), n3 = smoothstep(0.33, 0.24, wert);
-  bild *= mix(vec3(1.0), tinte1, max(m1.x, 0.75) * n1 * maske);
+  bild *= mix(vec3(1.0), tinte1, 0.85 * n1 * maske);
   bild *= mix(vec3(1.0), tinte2, (m2.x * n2 + 0.25 * m2.y * n2) * maske);
   bild *= mix(vec3(1.0), tinte3, (m3.x * n3 + 0.3 * m3.y * n3) * maske);
   // der Horizont in der Spiegelung: ein warmer Markerstrich
@@ -89,7 +90,7 @@ void main() {
   float strich = step(0.35, noise2(vec2(gq.x * 0.08, floor(gq.y / 3.0))));
   bild = mix(bild, vec3(1.0), smoothstep(0.25, 0.6, glanz) * mix(1.0, strich, 0.6) * maske);
   // Neon im Schatten: das Stufenmuster glimmt rot
-  float neon = muster((g.p - uMitte) / uRadius, g.n) * smoothstep(0.4, 0.18, wert) * maske * uR_neon;
+  float neon = muster((g.p - uMitte) / uRadius, g.n) * smoothstep(0.3, 0.12, wert) * maske * uR_neon * 0.8;
   bild = mix(bild, NEON, neon * 0.85);
   // Fineliner
   float linie = kanteBei(vUv, 0.75 * uDpr);
