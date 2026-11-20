@@ -942,3 +942,40 @@ ich nicht gemessen (Liste, Punkt 55).
 **Was von Etappe 5 noch fehlt:** Zähne im Bild antippen (Reihe, einzelner Zahn) und rücken, ein Zahn ohne Spiegelbild, Zähne
 außen vor der Lippe, die Farbe, die Perlen Biegung und Wurzel. Bild: `docs/progress/ozzy/2026-11-20-maul-etappe5-linse.jpg`.
 Offenes: [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 65.
+
+### 12.17 Etappe 5, dritte Scheibe: Zähne im Bild wählen und rücken (20.11.)
+
+Deine Antwort (20.11.): „Ja, Zähne wählen“.
+
+**In Ozzy:**
+
+- **Antippen:** Ein Tipp auf einen Zahn wählt seine Reihe (die Linse geht auf, wenn sie zu ist). Ein zweiter Tipp wählt den Zahn
+  mit seinem Spiegelbild, ein dritter ihn allein, ein vierter führt zurück zur Reihe. Die Linse sagt kurz, was gilt („oben“,
+  „Paar“, „allein“). An der Spitze jedes gewählten Zahns steht ein Ring; steht die Form davor, ist er blass und gepunktet.
+- **Stellen:** Ist ein Zahn gewählt, stellen der Formenring und die Perle `G` nur ihn (`G`: seine Größe gegen die Reihe, 100 % ist
+  wie die Reihe). Die anderen Perlen stellen weiter seine Reihe.
+- **Rücken:** Ziehen rückt einen gewählten Zahn auf dem Zahnfleisch, längs der Reihe und zur Tiefe des Mauls. Er bleibt im Maul
+  und auf seiner Wand. Ist er mit seinem Spiegelbild gewählt, rückt es genauso.
+- **Ziehen:** ⌫ zieht den gewählten Zahn, dort bleibt eine Lücke; ⌘Z bringt ihn zurück. Bei offener Linse lässt ⌫ nie die Luft ab.
+- **Aufheben:** Ein Tipp daneben oder Esc hebt die Wahl am Zahn auf (die Linse bleibt offen).
+- **Vorrang:** Solange die Linse offen ist, gehören Tipps auf Zähne den Zähnen. Ist sie zu (in „Fressen“ sieht man die Zähne
+  auch), gehen Punkte und Linien der Form vor; ein Tipp auf einen Zahn, an dem nichts von der Form hängt, öffnet die Linse.
+
+So geht ein Hauer auf einer Seite: den Zahn dreimal antippen (allein), am Formenring „Hauer“, mit `G` größer. Innen wird er
+dabei wie jeder Zahn nie länger als der Spalt der Kiefer; ein Hauer, der bei geschlossenem Maul herausschaut, braucht die Zähne
+außen (Liste, Punkt 53).
+
+**Wie:** Eine Reihe trägt für einzelne Zähne eigene Werte (`ZahnReihe.eigen`, je Nummer des Zahns: gerückt, Vorlage, Größe,
+gezogen); alles andere bleibt abgeleitet wie bisher. Wer die Anzahl einer Reihe ändert, lässt ihr Eigenes fallen (die Nummern
+meinen dann andere Zähne). Getroffen wird ein Zahn mit einem Strahl auf das Netz der Zähne; die Haut der Form davor verdeckt ihn.
+Beim Rücken wird der Weg im Bild in die zwei Richtungen des Zahns an der Haut zerlegt (längs des Zahnfleischs, zur Lippe).
+
+**Geprüft** im Fenster (`ozzy-maul-zaehne-fenster.mjs`, W1 bis W8, mit echten Zeigergesten, an „teat firefish“): Reihe, Paar,
+allein; „Hauer“ nur an zwei Zähnen; beim Rücken zum Nachbarn folgte der Fuß dem Zeiger (102 % des Wegs von 18 Bildpunkten), das
+Spiegelbild rückte genauso; `G` nur am einen Zahn; ⌫ und ⌘Z; der Tipp daneben; die Anzahl lässt Eigenes fallen; in „Fressen“
+öffnet ein Tipp auf einen Zahn die Linse. Im Modell (Test „die Zähne“): gezogen, gerückt (auch über die Enden hinaus), eigene
+Größe und Vorlage, der Rahmen eines Zahns an der Haut. Die Proben des Mauls und der Ebene „Maul“ halten, die Studie läuft.
+
+**Was von Etappe 5 noch fehlt:** Zähne außen vor der Lippe, eine eigene Farbe, die Perlen Biegung und Wurzel. Bild:
+`docs/progress/ozzy/2026-11-20-maul-etappe5-einzelner-zahn.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 73.

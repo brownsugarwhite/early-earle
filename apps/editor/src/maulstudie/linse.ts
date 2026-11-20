@@ -167,6 +167,10 @@ export class Linse {
     this.zeigen();
     this.lauf();
   }
+  /** ein kurzes Wort dort, wo sonst die Zahl des Drehreglers steht (in Ozzy: wem die Linse jetzt gilt) */
+  melden(text: string): void {
+    this.zahlZeigen(text);
+  }
 
   oeffnen(form: ZahnForm, vorlage: number): void {
     this.offen = true;

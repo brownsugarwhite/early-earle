@@ -7,9 +7,9 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 **Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. in Ozzy die erste Scheibe von Etappe 1 (das
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
 in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
-Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält), dazu zwei Scheiben von Etappe 5 (Zähne sprießen und gehen mit den
-Kiefern mit; die Linse stellt sie). Als Nächstes, auf Florians Wort: der Rest von Etappe 5 (Zähne wählen und rücken) oder
-Etappe 6 (Zunge).** Offenes steht
+Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält), dazu drei Scheiben von Etappe 5 (Zähne sprießen und gehen mit den
+Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen). Von Etappe 5 fehlen die Zähne außen und die Farbe. Als
+Nächstes, auf Florians Wort: Etappe 6 (Zunge).** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -234,6 +234,37 @@ gedrückte Tropfen). Probe: `GPU=1 node scripts/pruefen/ozzy-maul-zaehne-fenster
 7. **Das Feld der Tasche** (`taschenFeld`) wird je Netz und Schritt einmal gerechnet (`zaehneFeldJetzt`), nicht je gestelltem Wert.
 8. **Die Probe:** 60° sind rechnerisch genau vier Rasten, sie dreht 62°. Am Rad der Maus zählt Playwright bei zwei Gerätepunkten
    je CSS-Pixel den halben Weg (`mausRad`). Ein Esc zu viel lässt die Luft ab (zurück aufs Blatt).
+
+## Etappe 5 in Ozzy, dritte Scheibe: einzelne Zähne (20.11.)
+
+**Was es gibt:** Zähne im Bild antippen (Reihe, Zahn mit Spiegelbild, Zahn allein, zurück zur Reihe), Formenring und `G` nur für
+den gewählten Zahn, Ziehen rückt ihn auf dem Zahnfleisch, ⌫ zieht ihn (Lücke). Plan, 12.17. **Was fehlt:** Zähne außen, Farbe,
+die Perlen Biegung und Wurzel.
+
+**Wo:** `src/form/werk.ts` (`ZahnReihe.eigen`, `ZahnEigen`), `src/ozzy/zaehne.ts` (`zahnPlaetze` liest `eigen`; `eigenSetzen`,
+`mitAnzahl`, `partner`, `zahnRahmen`), `src/ozzy/main.ts` („Zähne im Bild wählen und rücken“: `zahnUnterZeiger`, `zahnTippen`,
+`zahnRuecken`, `zahnZiehen`, `zahnMarkenZeigen`, die Weiche an `#buehne`; `zahnWahl`), `ozzy.html` und `ozzy.css`
+(`.zahn-marke`). Probe: `ozzy-maul-zaehne-fenster.mjs` (W1 bis W8); Haken `__ozzy.zaehneImBild()` und `zaehne().wahl`.
+
+**Was man wissen muss:**
+
+1. **`eigen` wird nie am Ort geändert** (`eigenSetzen` gibt eine neue Reihe mit neuem `eigen`): Die Schritte für ⌘Z teilen sich
+   das Objekt. Mit der Anzahl fällt es (`mitAnzahl`, `zaehnePaar`): Die Nummern meinen dann andere Zähne.
+2. **`ZahnPlatz` trägt, was gilt:** `i`, `form`, `ds`, `dz` (im Maul festgehalten), `lang`, `breit`. Wer rückt, rechnet vom
+   geltenden Versatz aus weiter; vom gespeicherten aus liefe der Wert davon, sobald der Zahn am Rand steht.
+3. **Die Weiche vor der Bühne** hört in der Fangphase an `#buehne` zu. Trifft der Zeiger einen sichtbaren Zahn: `stopPropagation`
+   und `setPointerCapture` an `#buehne`; die Zeichenfläche bekommt dann weder Drücken noch Bewegen (`zeiger.x`, `zeiger.y`
+   selbst setzen). Bei geschlossener Linse vorher das Ziel des Verhaltens für genau diesen Ort bestimmen (`zielJetzt`,
+   `haengt`): Punkte und Linien der Form gehen dann vor.
+4. **`zaehneNetzVon`** sind die Plätze, aus denen das gezeigte Netz gebaut ist: Treffer und Marken rechnen damit, nicht mit
+   `zaehnePlan` (der kann einen Stand weiter sein). Jeder Zahn hat gleich viele Punkte und Dreiecke; seine letzten zwei Punkte
+   sind die Mitte seines Fußes und seine Spitze.
+5. **Es ist immer nur eines gewählt:** Ein Tipp auf einen Zahn leert die Auswahl der Form; eine Auswahl an der Form hebt die Wahl
+   am Zahn auf (`linseSchritt`). So ist ⌫ eindeutig. Bei offener Linse lässt ⌫ nie die Luft ab.
+6. **Rücken** (`zahnRuecken`): der Rest zwischen Zeiger und Fuß im Bild, zerlegt in die zwei Richtungen des Zahns an der
+   gezeigten Haut (`zahnRahmen`: längs nach hinten, zur Lippe); liegen sie im Bild fast ineinander, gilt nur die längere. Je
+   Bewegung ein Schritt.
+7. **`zaehneImBild()`** (Haken) schießt je Zahn Strahlen gegen die ganze Anzeige: nur für Proben, nicht je Bild.
 
 ## Die Studie in einem Absatz
 

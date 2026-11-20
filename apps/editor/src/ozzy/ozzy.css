@@ -297,6 +297,33 @@ body.wende-an #hinweis {
 #linse[hidden] {
   display: none;
 }
+/* dritte Scheibe: ein Ring um die Spitze jedes gewählten Zahns (der Zahn und sein Spiegelbild, oder er allein). Hohl, damit der
+   Zahn zu sehen bleibt; hell mit dunklem Saum, damit er auf Wachs wie auf Papier steht. Steht die Form davor: blass und gepunktet. */
+.zahn-marke {
+  position: fixed;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--papier);
+  box-shadow:
+    0 0 0 0.75px var(--tinte),
+    inset 0 0 0 0.75px var(--tinte);
+  pointer-events: none;
+  transition: transform 120ms var(--feder);
+}
+.zahn-marke.greift {
+  transform: scale(1.35);
+}
+.zahn-marke.verdeckt {
+  border-style: dotted;
+  box-shadow: none;
+  opacity: 0.6;
+}
+.zahn-marke[hidden] {
+  display: none;
+}
 /* Maul, Etappe 2: die zwei Knochen der Kiefer. Je eine Haarlinie vom Mundwinkel zum Tropfen vor der Kieferspitze; oben rosa, unten
    blau (Florians Blatt 05). Ziehen dreht den Kiefer; in der Grundform öffnet Halten das Maul für einen Blick hinein. */
 .kiefer-tropfen {

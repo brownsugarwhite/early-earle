@@ -38,6 +38,10 @@ sprießen Zähne (oben zwölf, unten elf, Vorlage „Tropfen“, vorn größer).
 Vorlage (acht Formen), der Drehregler stellt Anzahl, Größe, Neigung, Verlauf und Sitz. Zwei Perlen (rosa oben, blau unten) sagen,
 ob du beide Reihen stellst oder eine allein. Solange die Linse offen ist, steht das Maul offen.
 
+**Etappe 5, dritte Scheibe (20.11.):** Ein Tipp auf einen Zahn im Bild wählt seine Reihe, ein zweiter den Zahn mit seinem
+Spiegelbild, ein dritter ihn allein. Formenring und `G` stellen dann nur ihn, Ziehen rückt ihn auf dem Zahnfleisch, ⌫ zieht ihn
+(Lücke). So geht ein Hauer auf einer Seite.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -145,16 +149,16 @@ ob du beide Reihen stellst oder eine allein. Solange die Linse offen ist, steht 
 49. **Rillen am Gaumen, Farben für Zähne und Zunge:** Rillen lassen sich als Farblinien ziehen (nicht ausprobiert); Zähne und Zunge
     gibt es noch nicht.
 
-### An den Zähnen (Etappe 5, erste und zweite Scheibe)
+### An den Zähnen (Etappe 5, drei Scheiben)
 
 50. ~~Die Linse fehlt in Ozzy~~ gebaut (zweite Scheibe). **Es fehlen** die Perlen „Biegung“ und „Wurzel“ der Studie und eine
     für die Reichweite der Reihe. Stellst du beide Reihen zusammen, hält die Linse die Teilung (unten einer weniger, in den
     Lücken der oberen); stellst du eine Reihe allein, greifen sie nicht mehr sicher ineinander.
-51. **Zähne wählen und rücken fehlt:** eine Reihe antippen, einen einzelnen Zahn, ihn auf dem Zahnfleisch ziehen; ein Zahn ohne
-    Spiegelbild (dein Hauer auf einer Seite). Die Reihe wählst du bisher an den zwei Perlen der Linse, nicht am Zahn.
+51. ~~Zähne wählen und rücken fehlt~~ gebaut (dritte Scheibe): Reihe, Zahn mit Spiegelbild, Zahn allein; rücken; ⌫ zieht ihn.
+    Was daran offen ist: Punkte 66 bis 73.
 52. **Die Zähne tragen die Farbe der Form** (auf Wachs sind sie Wachs). Elfenbein kommt mit einer Farbe für das Teil.
 53. **Zu stecken alle Zähne im Maul.** Zähne außen vor der Lippe, die geschlossen über dem anderen Kiefer liegen (dein Bild 07),
-    fehlen.
+    fehlen. Darum schaut auch ein Hauer bei geschlossenem Maul nicht heraus: Innen wird er nie länger als der Spalt der Kiefer.
 54. **Wie lang ein Zahn sein darf,** liest Ozzy aus den Winkeln der Knochen (der Spalt der Kiefer an seiner Stelle). Hat das Maul
     geschlossen eine Lücke (getrennte Lippen) oder formt die Pose die Kiefer um, zählt das nicht mit. Zähne dürfen einander und
     den anderen Kiefer schneiden.
@@ -166,13 +170,15 @@ ob du beide Reihen stellst oder eine allein. Solange die Linse offen ist, steht 
 56. **Nicht geprüft:** Zähne an getrennten oder stark geformten Lippen, mit mehreren Objekten im Verbund, in „Dreiecke zeigen“
     (dort fehlen sie), Sichern und Laden im Fenster. Ob die unteren Zähne an deiner Form in den Lücken der oberen stehen, habe
     ich nur im Modell an einer Kugel geprüft.
-57. **Alle Zähne auf einmal nimmt nur ⌘Z.** Eine Reihe allein lässt sich an der Linse auf null Zähne drehen.
+57. **Alle Zähne auf einmal nimmt nur ⌘Z.** Eine Reihe allein lässt sich an der Linse auf null Zähne drehen, einen gewählten
+    Zahn zieht ⌫.
 58. **Geschätzt:** wie lange sie sprießen (1,1 s), wie lange eine Vorlage in die nächste übergeht (0,32 s), die Werte am Anfang
     (aus der Studie).
 59. **Fein gerastert:** Jeder Zahn hat 640 Dreiecke, alle 23 zusammen 14 720. Fürs Spiel (höchstens 8 000 je Form) muss das
     Backen die Zähne gröber nehmen.
 60. **Esc schließt die Linse erst, wenn nichts mehr gewählt ist.** Nach dem Schneiden ist die Lippe gewählt: Dann leert das
-    erste Esc die Auswahl, das zweite schließt die Linse. Ein Tipp ins Leere schließt sie nicht.
+    erste Esc die Auswahl, das zweite schließt die Linse; ist ein Zahn gewählt, hebt Esc erst diese Wahl auf. Ein Tipp ins Leere
+    hebt nur die Wahl am Zahn auf, die Linse schließt er nicht (im Konzept schließt er sie).
 61. **Ziehst du bei offener Linse an der Form,** geht das Maul so lange zu und danach wieder auf (in der Grundform wird am
     geschlossenen Maul gerechnet). In „Fressen“ bleibt es offen.
 62. **Die Linse steht fest oben rechts** unter der Tafel „Fressen“. Sie kann über der Zeichnung an der Wand liegen und über dem
@@ -181,7 +187,20 @@ ob du beide Reihen stellst oder eine allein. Solange die Linse offen ist, steht 
 63. **Das Gefühl des Drehreglers** (Rasten alle 15°, Nachlauf, Ticken, Rad der Maus) ist das der Studie. Am iPad und mit dem
     Stift nicht geprüft.
 64. **Der Zahn in der Linse ist elfenbein,** die Zähne im Maul tragen die Farbe der Form (Punkt 52).
-65. **Was die Linse wählt, steht nicht in ⌘Z:** welche Reihe gilt und welche Perle. Nach ⌘Z zeigt sie die Werte, die gelten.
+65. **Was die Linse wählt, steht nicht in ⌘Z:** welche Reihe gilt, welche Perle und welcher Zahn gewählt ist. Nach ⌘Z zeigt sie
+    die Werte, die gelten.
+66. **Ein gerückter Zahn bleibt im Maul** (mindestens 0,15 Breiten des Zahnfleischs hinter der Lippe). „Höchstens ein Stück vor
+    der Lippe“ aus dem Konzept fehlt, wie die Zähne außen (Punkt 53).
+67. **Ziehen an einem Zahn, der nicht gewählt ist, tut nichts** (es dreht auch nicht die Ansicht). Erst antippen, dann ziehen.
+68. **Die Marke ist ein Ring an der Zahnspitze.** Eine gewählte Reihe hat im Bild keine Marke (das sagen die Perlen der Linse).
+    Ob die Form vor einem gewählten Zahn steht, misst die Marke grob am Rechennetz.
+69. **Mit der Anzahl fällt alles Eigene der Reihe** (gerückt, Vorlage, Größe, Lücken), auch wenn du beide Reihen zusammen drehst.
+70. **Kleine Zähne sind schwer zu treffen:** Vier Bildpunkte daneben gelten noch. Am iPad nicht geprüft; dort drehen Finger nach
+    dem ersten Stift nur noch, das Antippen geht dann nur mit dem Stift.
+71. **Rücken folgt dem Zeiger in Schritten** (je Bewegung eine Annäherung). Längs des Blicks rückt ein Zahn nicht (in der Seite:
+    zur Tiefe des Mauls). An stark gekrümmtem Zahnfleisch und an getrennten Lippen nicht geprüft.
+72. **Ein gezogener Zahn kommt nur mit ⌘Z zurück** (oder mit der Anzahl, mit der alles Eigene fällt).
+73. **Geschätzt:** die Größe eines einzelnen Zahns zwischen 30 und 320 % seiner Reihe; die Marke (16 Bildpunkte).
 
 ### Kleines
 

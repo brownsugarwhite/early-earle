@@ -365,8 +365,16 @@ export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean; zaehn
  * Eine Zahnreihe (Plan „Maul, Zähne, Zunge“, Etappe 5): wie viele Zähne, ihre Größe (1 = ein Zahn füllt seinen Platz), ihre
  * Neigung nach außen (Bogenmaß), wie viel kleiner sie nach hinten werden (0 … 0,9), wie weit die Reihe nach hinten reicht (Anteil
  * der Lippe), ihr Sitz (Abstand von der Lippe in Breiten des Zahnfleischs) und ihre Vorlage (Nummer in `ZAHN_FORMEN`).
+ * `eigen`: was einzelne Zähne anders haben als ihre Reihe, je Nummer des Zahns (0 … anzahl − 1, von einem hinteren Ende der Reihe
+ * um die Spitze zum anderen; das Spiegelbild von i ist anzahl − 1 − i). Wer die Anzahl ändert, lässt `eigen` fallen. `eigen` wird
+ * nie am Ort geändert (jede Änderung ist ein neues Objekt: Die Schritte für ⌘Z teilen es sich).
  */
-export type ZahnReihe = { anzahl: number; groesse: number; neigung: number; verlauf: number; bis: number; sitz: number; form: number };
+export type ZahnReihe = { anzahl: number; groesse: number; neigung: number; verlauf: number; bis: number; sitz: number; form: number; eigen?: Record<number, ZahnEigen> };
+/**
+ * Ein einzelner Zahn gegen seine Reihe: gerückt längs der Reihe nach hinten (`ds`, Anteil der Reichweite) und zur Tiefe des Mauls
+ * (`dz`, Breiten des Zahnfleischs), mit eigener Vorlage, eigenem Faktor der Größe, oder gezogen (`weg`: Dort ist eine Lücke).
+ */
+export type ZahnEigen = { ds?: number; dz?: number; form?: number; faktor?: number; weg?: true };
 export type MaulZaehne = { oben: ZahnReihe; unten: ZahnReihe };
 /* in G: maul */
 /**

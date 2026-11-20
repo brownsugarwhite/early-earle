@@ -31,7 +31,7 @@ import { type Saat, flaechenRechnen } from '../ozzy/farbe/flaechen';
 import { kettenAller } from '../ozzy/farbe/ketten';
 import { MAUL_EBENE, maulEbeneBauen } from '../ozzy/farbe/maulEbene';
 import { karteVon, ortGespiegelt } from '../ozzy/farbe/ort';
-import { ZAEHNE_ANFANG, formNetzGemischt, sitzGrenzen, zaehneNetz, zaehnePaar, zahnPlaetze } from '../ozzy/zaehne';
+import { ZAEHNE_ANFANG, eigenSetzen, formNetzGemischt, mitAnzahl, partner, sitzGrenzen, zaehneNetz, zaehnePaar, zahnPlaetze, zahnRahmen } from '../ozzy/zaehne';
 import { manifoldLaden } from './naht';
 
 const R = 150;
@@ -496,7 +496,7 @@ describe('das Maul als echte Form', () => {
     expect(ausgelaufen).toBeGreaterThan(100);
   });
 
-  it('die Zähne: oben zwölf, unten elf, spiegelgleich; zu stecken sie im Maul, offen zeigen sie zum anderen Kiefer; die Werte der Linse', async () => {
+  it('die Zähne: oben zwölf, unten elf, spiegelgleich; zu stecken sie im Maul, offen zeigen sie zum anderen Kiefer; die Werte der Linse; einzelne Zähne', async () => {
     const wasm = await manifoldLaden();
     const d = kugel();
     const mk = mittlereKante(d.h);
@@ -609,6 +609,69 @@ describe('das Maul als echte Form', () => {
       if (plaetze[q]!.unten) expect(b.max[1]! - fuss[1]!).toBeGreaterThan(fuss[1]! - b.min[1]!);
       else expect(fuss[1]! - b.min[1]!).toBeGreaterThan(b.max[1]! - fuss[1]!);
     }
+    // ---- einzelne Zähne (dritte Scheibe): eigene Werte an der Reihe ----
+    const R0 = ZAEHNE_ANFANG.oben;
+    expect(partner(R0, 2)).toBe(9);
+    expect(partner(ZAEHNE_ANFANG.unten, 5)).toBe(5);
+    const mit = (r: typeof R0): typeof plaetze => zahnPlaetze(k, tasche, L.C, { oben: r, unten: ZAEHNE_ANFANG.unten }).filter((q) => !q.unten);
+    const ohne = mit(R0);
+    const platzVon = (pl: typeof plaetze, i: number): (typeof plaetze)[number] => pl.find((q) => q.i === i)!;
+    expect(ohne.map((q) => q.i)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(ohne.every((q) => q.ds === 0 && q.dz === 0 && q.form === 0)).toBe(true);
+    // gezogen: Dort ist eine Lücke, die anderen stehen, wo sie standen
+    const luecke = mit(eigenSetzen(R0, [2, 9], () => ({ weg: true })));
+    expect(luecke.map((q) => q.i)).toEqual([0, 1, 3, 4, 5, 6, 7, 8, 10, 11]);
+    expect(Math.hypot(...fussVon(platzVon(luecke, 3)).map((x, j) => x - fussVon(platzVon(ohne, 3))[j]!))).toBeLessThan(1e-9);
+    // gerückt längs der Reihe nach hinten: weiter von der Spitze, der Nachbar bleibt; das Spiegelbild rückt genauso
+    const spitze = [0, 1, 2].map((j) => (fussVon(platzVon(ohne, 5))[j]! + fussVon(platzVon(ohne, 6))[j]!) / 2);
+    const weit = (q: (typeof plaetze)[number]): number => Math.hypot(...fussVon(q).map((x, j) => x - spitze[j]!));
+    const gerueckt = mit(eigenSetzen(R0, [4, 7], (e) => ({ ...e, ds: 0.1 })));
+    expect(platzVon(gerueckt, 4).ds).toBeCloseTo(0.1, 6);
+    expect(weit(platzVon(gerueckt, 4))).toBeGreaterThan(weit(platzVon(ohne, 4)) + 0.05 * platzVon(ohne, 4).lang);
+    expect(weit(platzVon(gerueckt, 7))).toBeCloseTo(weit(platzVon(gerueckt, 4)), 6);
+    expect(Math.hypot(...fussVon(platzVon(gerueckt, 3)).map((x, j) => x - fussVon(platzVon(ohne, 3))[j]!))).toBeLessThan(1e-9);
+    // (Größe und Sprießen bleiben die seines Platzes)
+    expect(platzVon(gerueckt, 4).mass).toBeCloseTo(platzVon(ohne, 4).mass, 9);
+    expect(platzVon(gerueckt, 4).vorn).toBeCloseTo(platzVon(ohne, 4).vorn, 9);
+    // weit über das Ende hinaus: Er bleibt auf seiner Wand, sein Versatz ist der, der gilt
+    const zuWeit = platzVon(mit(eigenSetzen(R0, [4], (e) => ({ ...e, ds: 5 }))), 4);
+    expect(zuWeit.ds).toBeGreaterThan(0.1);
+    expect(zuWeit.ds).toBeLessThan(1);
+    const vorDieSpitze = platzVon(mit(eigenSetzen(R0, [4], (e) => ({ ...e, ds: -5 }))), 4);
+    expect(weit(vorDieSpitze)).toBeLessThan(weit(platzVon(ohne, 5)));
+    expect(fussVon(vorDieSpitze).every((x) => Number.isFinite(x))).toBe(true);
+    // gerückt zur Tiefe des Mauls: auf der Linie eines anderen Sitzes, festgehalten in der Tasche
+    const tiefer = platzVon(mit(eigenSetzen(R0, [4], (e) => ({ ...e, dz: 0.3 }))), 4);
+    expect(tiefer.dz).toBeGreaterThan(0.05);
+    expect(tiefer.dz).toBeLessThanOrEqual(0.3 + 1e-9);
+    expect(Math.hypot(...fussVon(tiefer).map((x, j) => x - fussVon(platzVon(ohne, 4))[j]!))).toBeGreaterThan(0.02 * tiefer.breit);
+    expect(platzVon(mit(eigenSetzen(R0, [4], (e) => ({ ...e, dz: 50 }))), 4).dz).toBeLessThan(sitz.max);
+    // eigene Größe und eigene Vorlage
+    const eigen = mit(eigenSetzen(R0, [4], (e) => ({ ...e, faktor: 1.5, form: 7 })));
+    expect(platzVon(eigen, 4).mass / platzVon(ohne, 4).mass).toBeCloseTo(1.5, 9);
+    expect(platzVon(eigen, 4).form).toBe(7);
+    expect(platzVon(eigen, 7).form).toBe(0);
+    // `eigenSetzen` ändert nichts am Ort; ohne Eigenes bleibt kein leerer Eintrag; mit der Anzahl fällt das Eigene
+    const mitEigen = eigenSetzen(R0, [4], (e) => ({ ...e, ds: 0.1 }));
+    expect(R0.eigen).toBeUndefined();
+    expect(eigenSetzen(mitEigen, [4], () => ({})).eigen).toBeUndefined();
+    expect(mitAnzahl(mitEigen, 12)).toBe(mitEigen);
+    expect(mitAnzahl(mitEigen, 13).eigen).toBeUndefined();
+    expect(zaehnePaar({ oben: mitEigen, unten: ZAEHNE_ANFANG.unten }, 14).oben.eigen).toBeUndefined();
+    // der Rahmen eines Zahns an der Haut: sein Fuß, längs und zur Lippe stehen in der Wand; das Spiegelbild ist gespiegelt
+    const qa = platzVon(ohne, 2);
+    const qb = platzVon(ohne, 9);
+    expect(qa.gespiegelt).not.toBe(qb.gespiegelt);
+    const Ra = zahnRahmen(qa, h.pos);
+    const Rb = zahnRahmen(qb, h.pos);
+    const punkt = (u: number[], v: number[]): number => u[0]! * v[0]! + u[1]! * v[1]! + u[2]! * v[2]!;
+    expect(Math.hypot(...Ra.x)).toBeCloseTo(1, 6);
+    expect(Math.abs(punkt(Ra.x, Ra.n))).toBeLessThan(1e-6);
+    expect(Math.abs(punkt(Ra.zl, Ra.n))).toBeLessThan(1e-6);
+    expect(Math.hypot(Ra.ort[0] - Rb.ort[0], Ra.ort[1] - Rb.ort[1], Ra.ort[2] + Rb.ort[2])).toBeLessThan(1e-6);
+    expect(Math.hypot(Ra.x[0] - Rb.x[0], Ra.x[1] - Rb.x[1], Ra.x[2] + Rb.x[2])).toBeLessThan(1e-6);
+    // (längs zeigt von der Spitze nach hinten: Ein Schritt in dieser Richtung führt weiter von der Spitze weg)
+    expect(Math.hypot(...Ra.ort.map((x, j) => x + 0.5 * Ra.x[j]! - spitze[j]!))).toBeGreaterThan(Math.hypot(...Ra.ort.map((x, j) => x - spitze[j]!)));
     // der weiche Wechsel der Vorlage: Das Netz dazwischen hat dieselben Punkte und Dreiecke; am Anfang ist es die alte, am Ende die neue Form
     const halb = zaehneNetz(plaetze, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1, null, () => formNetzGemischt(0, 2, 0.5))!;
     expect(halb.pos.length).toBe(offen.pos.length);

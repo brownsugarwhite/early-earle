@@ -776,6 +776,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (34) Die Linse schließt nicht, wenn `bearbeitenAn` kurz falsch ist (Wechsel der Ansicht). (35) Lagen neben einer Tafel über
   `offsetTop` messen, nicht über `getBoundingClientRect` (Tafeln fliegen ein). (36) `#linse` ist rund ausgeschnitten: Alles
   Gezeichnete muss im Kreis liegen.
+  **Etappe 5, dritte Scheibe: einzelne Zähne (20.11.; Plan 12.17):** `ZahnReihe.eigen` (je Nummer des Zahns: gerückt, Vorlage,
+  Größe, gezogen), in `main.ts` „Zähne im Bild wählen und rücken“. Merke: (37) `eigen` nie am Ort ändern (`eigenSetzen`); mit der
+  Anzahl fällt es (`mitAnzahl`). (38) Die Weiche für die Zähne hört in der Fangphase an `#buehne` zu und fängt den Zeiger dort:
+  Wer an der Bühne etwas Neues greifen lässt, prüft den Vorrang (Linse offen: Zähne zuerst; zu: `zielJetzt`, `haengt`). (39)
+  Treffer und Marken rechnen mit `zaehneNetzVon`, nicht mit `zaehnePlan`. (40) Bei offener Linse lässt ⌫ nie die Luft ab.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

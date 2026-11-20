@@ -1,4 +1,4 @@
-// Ozzy, die Zähne und ihre Linse (Plan „Maul, Zähne, Zunge“, Etappe 5, erste und zweite Scheibe, 20.11.2026), an „teat firefish“
+// Ozzy, die Zähne und ihre Linse (Plan „Maul, Zähne, Zunge“, Etappe 5, erste bis dritte Scheibe, 20.11.2026), an „teat firefish“
 // (NAME) auf Wachs. Kriterien:
 //   Z1 Mit dem Maul hängt unter der Leiste der Tropfen „Zähne“; Zähne gibt es noch keine, die Linse ist zu.
 //   Z2 Ein Tipp: Das Maul hat zwei Zahnreihen (oben zwölf, unten elf), sie sprießen bei offenem Maul. Die Linse ist offen (sie gilt
@@ -12,9 +12,20 @@
 //      öffnet sie wieder, noch einer schließt sie. (Ist noch etwas gewählt, leert das erste Esc die Auswahl.)
 //   L7 Bei offener Linse an der Form gezogen (in der Seite, ein Punkt fern vom Maul): Solange gezogen wird, ist das Maul zu und kein
 //      Zahn hat Länge; die Linse bleibt offen. Danach steht das Maul wieder offen, die Zähne sind da (12 und 11), es ist ein Schritt.
+//   W1 Ein Tipp auf einen Zahn der oberen Reihe im Bild: Die Linse gilt der oberen Reihe; kein einzelner Zahn ist gewählt.
+//   W2 Ein zweiter Tipp auf denselben Zahn: Er und sein Spiegelbild sind gewählt, an beiden steht eine Marke.
+//   W3 Ein Tipp auf „Hauer“ am Formenring: Nur diese zwei Zähne tragen die Vorlage, die Reihe bleibt bei ihrer.
+//   W4 Den gewählten Zahn zum Nachbarn hin gezogen: Er rückt auf dem Zahnfleisch dorthin (sein Fuß folgt dem Zeiger wenigstens die
+//      Hälfte des Wegs), sein Spiegelbild rückt genauso; ein Schritt für ⌘Z.
+//   W5 Ein dritter Tipp: Der Zahn ist allein gewählt (eine Marke); die Perle „G“ und das Rad der Maus stellen nur seine Größe.
+//   W6 ⌫ zieht ihn: Die obere Reihe hat einen Zahn weniger, sein Spiegelbild steht noch; ⌘Z bringt ihn zurück.
+//   W7 Ein Tipp auf die Bühne neben den Zähnen hebt die Wahl am Zahn auf, die Linse bleibt offen. ⌫ ohne gewählten Zahn lässt bei
+//      offener Linse nicht die Luft ab. Die Anzahl gedreht: Was einzelne Zähne eigen hatten, fällt.
 //   Z3 „Fressen“ an: Die Zähne stehen im offenen Maul (ihr Netz ist endlich; der längste ist zwischen 5 und 45 Einheiten lang). Den
 //      Unterkiefer weiter geöffnet: Sie gehen mit, keiner wird kürzer. In der Pose stellt die Linse wie in der Grundform (eine Rast am
 //      Rad der Maus: 12 → 13 und 12; ⌘Z nimmt es zurück).
+//   W8 In „Fressen“ bei geschlossener Linse: Ein Tipp auf einen Zahn (wo kein Punkt der Form am Zeiger hängt) öffnet die Linse für
+//      seine Reihe.
 // Dazu, nur zur Kenntnis: wie lange das Stellen eines Werts dauert (Plätze neu lesen) und die zwei Bilder danach.
 //   Z4 „Fressen“ aus: wieder zu, kein Zahn hat Länge.
 //   Z5 ⌘Z nimmt die Zähne zurück (der Tropfen hängt weiter da), ein weiteres das Maul.
@@ -258,6 +269,142 @@ if (z2.werte && z2.linse.offen) {
     await O('blickSetzen', { gier: -1.6, neigung: 0.05, zoom: 4 });
     await s.waitForTimeout(1000);
   }
+  // ---- dritte Scheibe: Zähne im Bild wählen, rücken, ziehen ----
+  {
+    const imBild = () => O('zaehneImBild');
+    const tippAuf = async (unten, i) => {
+      const q = (await imBild()).find((t) => t.unten === unten && t.i === i);
+      await s.mouse.move(q.bild[0] + 60, q.bild[1] - 60);
+      await s.waitForTimeout(150);
+      await klick(q.bild[0], q.bild[1]);
+      await s.waitForTimeout(350);
+    };
+    const schritteVor = (await O('kiefer')).schritte;
+    // ein Zahn der oberen Reihe, der zu sehen ist und dessen Nachbar nach hinten auch (zu ihm hin wird gezogen)
+    const alle = await imBild();
+    const sichtbar = alle.filter((t) => !t.unten && t.trifft);
+    const T = sichtbar.find((t) => sichtbar.some((n) => n.gespiegelt === t.gespiegelt && Math.abs(n.i - t.i) === 1 && Math.abs(n.i - 5.5) > Math.abs(t.i - 5.5))) ?? sichtbar[0];
+    const P = 11 - T.i;
+    // W1
+    await tippAuf(false, T.i);
+    const w1 = await O('zaehne');
+    ok('W1 ein Tipp auf einen Zahn der oberen Reihe: Die Linse gilt der oberen Reihe; kein einzelner Zahn ist gewählt', w1.linse.offen && w1.linse.reihen.oben && !w1.linse.reihen.unten && w1.wahl === null && w1.marken === 0, `Zahn ${T.i} (von ${alle.filter((t) => !t.unten).length} oben, sichtbar ${sichtbar.length}); gilt oben ${w1.linse.reihen.oben}, unten ${w1.linse.reihen.unten}; Wahl ${JSON.stringify(w1.wahl)}`);
+    // W2
+    await tippAuf(false, T.i);
+    const w2 = await O('zaehne');
+    ok('W2 ein zweiter Tipp auf denselben Zahn: er und sein Spiegelbild sind gewählt, an beiden steht eine Marke', !!w2.wahl && w2.wahl.kiefer === 'oben' && w2.wahl.i === T.i && !w2.wahl.allein && w2.marken === 2, `Wahl ${JSON.stringify(w2.wahl)}, Marken ${w2.marken}`);
+    await bild('5c-paar');
+    // W3 „Hauer“ (das achte Zeichen: 45° links der Marke)
+    {
+      const [x, y] = await anLinse(-135, FORMEN);
+      await klick(x, y);
+      await s.waitForTimeout(900);
+    }
+    const w3 = await O('zaehne');
+    const formen = w3.plaetze.filter((q) => !q.unten).map((q) => q.form);
+    ok(
+      'W3 ein Tipp auf „Hauer“ am Formenring: nur diese zwei Zähne tragen die Vorlage, die Reihe bleibt bei ihrer',
+      w3.werte.oben.form === 0 && w3.werte.oben.eigen?.[T.i]?.form === 7 && w3.werte.oben.eigen?.[P]?.form === 7 && formen.filter((f) => f === 7).length === 2 && formen.filter((f) => f === 0).length === 10 && w3.linse.vorlage === 7 && w3.werte.unten.eigen === undefined,
+      `Vorlagen oben ${formen.join('')}; an der Marke ${w3.linse.vorlage}; Reihe ${w3.werte.oben.form}`,
+    );
+    await bild('5d-hauer');
+    // W4 zum Nachbarn hin ziehen (nach hinten)
+    {
+      const vor = await imBild();
+      const ich = vor.find((t) => !t.unten && t.i === T.i);
+      const hinten = T.i < 5.5 ? T.i - 1 : T.i + 1;
+      const nachbar = vor.find((t) => !t.unten && t.i === hinten);
+      const weg = [nachbar.fuss[0] - ich.fuss[0], nachbar.fuss[1] - ich.fuss[1]];
+      const lang = Math.hypot(weg[0], weg[1]);
+      const sv = (await O('kiefer')).schritte;
+      await s.mouse.move(ich.bild[0], ich.bild[1]);
+      await s.waitForTimeout(250);
+      await s.mouse.down();
+      for (let k = 1; k <= 12; k++) {
+        await s.mouse.move(ich.bild[0] + (weg[0] * k) / 12, ich.bild[1] + (weg[1] * k) / 12);
+        await s.waitForTimeout(40);
+      }
+      // (noch zwei Bewegungen am selben Ort: Jede holt den Rest der Annäherung)
+      for (let k = 0; k < 3; k++) {
+        await s.mouse.move(ich.bild[0] + weg[0] + (k % 2) * 0.5, ich.bild[1] + weg[1]);
+        await s.waitForTimeout(60);
+      }
+      await s.mouse.up();
+      await s.waitForTimeout(600);
+      const nach = await imBild();
+      const ichNach = nach.find((t) => !t.unten && t.i === T.i);
+      const gefolgt = ((ichNach.fuss[0] - ich.fuss[0]) * weg[0] + (ichNach.fuss[1] - ich.fuss[1]) * weg[1]) / (lang * lang);
+      const w4 = await O('zaehne');
+      const e = w4.werte.oben.eigen ?? {};
+      ok(
+        'W4 den gewählten Zahn zum Nachbarn hin gezogen: er rückt auf dem Zahnfleisch dorthin, sein Spiegelbild genauso; ein Schritt für ⌘Z',
+        gefolgt > 0.5 && gefolgt < 1.5 && typeof e[T.i]?.ds === 'number' && e[T.i].ds > 0.01 && e[P]?.ds === e[T.i].ds && e[P]?.dz === e[T.i].dz && e[T.i].form === 7 && (await O('kiefer')).schritte === sv + 1 && !!w4.wahl && w4.netz.endlich,
+        `Weg im Bild ${lang.toFixed(0)} Bildpunkte, der Fuß folgte ${(100 * gefolgt).toFixed(0)} %; ds ${e[T.i]?.ds}, dz ${e[T.i]?.dz} (Spiegelbild ${e[P]?.ds}, ${e[P]?.dz}); Schritte +${(await O('kiefer')).schritte - sv}`,
+      );
+      await bild('5e-gerueckt');
+    }
+    // W5 ein dritter Tipp: allein; „G“ und das Rad der Maus
+    await tippAuf(false, T.i);
+    const w5a = await O('zaehne');
+    {
+      const [x, y] = await anLinse(perleGrad(1), PERLEN);
+      await klick(x, y);
+      await mausRad(0.5);
+    }
+    const w5 = await O('zaehne');
+    ok(
+      'W5 ein dritter Tipp: der Zahn ist allein gewählt (eine Marke); „G“ und das Rad der Maus stellen nur seine Größe',
+      !!w5a.wahl && w5a.wahl.allein && w5a.wahl.i === T.i && w5a.marken === 1 && w5.linse.perle === 'G' && w5.werte.oben.eigen?.[T.i]?.faktor > 1.05 && w5.werte.oben.eigen?.[P]?.faktor === undefined && Math.abs(w5.werte.oben.groesse - w3.werte.oben.groesse) < 1e-9,
+      `Wahl ${JSON.stringify(w5a.wahl)}, Marken ${w5a.marken}; Faktor des Zahns ${w5.werte.oben.eigen?.[T.i]?.faktor}, seines Spiegelbilds ${w5.werte.oben.eigen?.[P]?.faktor ?? 'keiner'}; Größe der Reihe ${w5.werte.oben.groesse.toFixed(2)}`,
+    );
+    await bild('5f-allein-gross');
+    // W6 ⌫ zieht ihn, ⌘Z bringt ihn zurück
+    await s.keyboard.press('Backspace');
+    await s.waitForTimeout(700);
+    const w6 = await O('zaehne');
+    const [o6] = zahl(w6);
+    const stehtNoch = (await O('bearbeiten')).an && (await O('werk')).gezeigt;
+    await bild('5g-luecke');
+    await zurueck();
+    const w6b = await O('zaehne');
+    const [o6b] = zahl(w6b);
+    ok(
+      'W6 ⌫ zieht ihn: die obere Reihe hat einen Zahn weniger, sein Spiegelbild steht noch; ⌘Z bringt ihn zurück',
+      o6 === 11 && w6.werte.oben.eigen?.[T.i]?.weg === true && w6.plaetze.some((q) => !q.unten && q.i === P) && !w6.plaetze.some((q) => !q.unten && q.i === T.i) && w6.wahl === null && w6.werte.oben.anzahl === 12 && stehtNoch && o6b === 12 && w6b.werte.oben.eigen?.[T.i]?.weg === undefined,
+      `Plätze oben ${o6} (Zahn ${T.i} ${w6.plaetze.some((q) => !q.unten && q.i === T.i) ? 'noch da' : 'weg'}, Spiegelbild ${P} ${w6.plaetze.some((q) => !q.unten && q.i === P) ? 'da' : 'weg'}); die Form steht ${stehtNoch ? 'noch' : 'NICHT mehr'}; nach ⌘Z ${o6b}`,
+    );
+    // W7 ein Tipp daneben hebt die Wahl am Zahn auf; die Anzahl gedreht: Eigenes fällt
+    await tippAuf(false, T.i);
+    await tippAuf(false, T.i);
+    const w7a = await O('zaehne');
+    await klick(1000, 760);
+    await s.waitForTimeout(400);
+    const w7b = await O('zaehne');
+    // (⌫ bei offener Linse, ohne dass ein Zahn gewählt ist: Die Form bleibt stehen, die Zähne auch)
+    await s.keyboard.press('Backspace');
+    await s.waitForTimeout(600);
+    const nachLoeschen = await O('zaehne');
+    const formSteht = (await O('werk')).gezeigt && (await O('bearbeiten')).an && !!nachLoeschen.werte && nachLoeschen.linse.offen && zahl(nachLoeschen)[0] === 12;
+    {
+      const [x, y] = await anLinse(perleGrad(0), PERLEN);
+      await klick(x, y);
+      await mausRad(0.3);
+    }
+    const w7c = await O('zaehne');
+    ok(
+      'W7 ein Tipp auf die Bühne daneben hebt die Wahl am Zahn auf, die Linse bleibt offen; die Anzahl gedreht: was einzelne Zähne eigen hatten, fällt',
+      !!w7a.wahl && w7b.wahl === null && w7b.linse.offen && w7b.linse.reihen.oben && !w7b.linse.reihen.unten && !!w7b.werte.oben.eigen && formSteht && w7c.werte.oben.anzahl === 13 && w7c.werte.oben.eigen === undefined && w7c.werte.unten.anzahl === 11,
+      `vor dem Tipp ${JSON.stringify(w7a.wahl)}, danach ${JSON.stringify(w7b.wahl)}, Linse ${w7b.linse.offen ? 'offen' : 'zu'}; ⌫ ohne gewählten Zahn: die Form steht ${formSteht ? 'noch' : 'NICHT mehr'}; nach einer Rast: oben ${w7c.werte.oben.anzahl}, Eigenes ${w7c.werte.oben.eigen ? 'noch da' : 'weg'}`,
+    );
+    // zurück auf den Stand davor (Anzahl, Größe, Rücken, Vorlage) und die Linse wieder für beide Reihen
+    for (let k = 0; k < 8 && (await O('kiefer')).schritte > schritteVor; k++) await zurueck();
+    {
+      const [x, y] = await anLinse(reiheGrad(0), PERLEN);
+      await klick(x, y);
+    }
+    const wEnde = await O('zaehne');
+    if (!(wEnde.werte.oben.anzahl === 12 && wEnde.werte.oben.eigen === undefined && wEnde.linse.reihen.oben && wEnde.linse.reihen.unten)) ok('(nach der dritten Scheibe wieder der Stand davor)', false, `oben ${wEnde.werte.oben.anzahl}, Eigenes ${JSON.stringify(wEnde.werte.oben.eigen)}, gilt ${JSON.stringify(wEnde.linse.reihen)}`);
+  }
   // L6 Esc schließt die Linse (ist noch etwas gewählt, leert das erste Esc die Auswahl); der Tropfen öffnet und schließt sie
   const b0 = await O('bearbeiten');
   const gewaehlt = b0.auswahl.length + b0.werkAuswahl.length;
@@ -300,6 +447,37 @@ if (z2.werte && z2.linse.offen) {
   await s.waitForTimeout(900);
   const z3b = await O('zaehne');
   await bild('7-weiter');
+  // W8 in der Pose bei geschlossener Linse: ein Tipp auf einen Zahn öffnet sie für seine Reihe. Hängt an der Stelle ein Punkt oder
+  // eine Linie der Form am Zeiger, geht die Form vor: dann den nächsten Zahn versuchen (ein Tipp daneben leert die Auswahl wieder)
+  {
+    const kandidaten = (await O('zaehneImBild')).filter((t) => t.trifft).sort((a, b) => Math.abs(Math.abs(a.i - 5.5) - 3) - Math.abs(Math.abs(b.i - 5.5) - 3));
+    let auf = null;
+    let versuche = 0;
+    for (const t of kandidaten.slice(0, 5)) {
+      versuche++;
+      await s.mouse.move(t.bild[0] + 60, t.bild[1] - 60);
+      await s.waitForTimeout(150);
+      await klick(t.bild[0], t.bild[1]);
+      await s.waitForTimeout(500);
+      const z = await O('zaehne');
+      if (z.linse.offen) {
+        auf = { t, z };
+        break;
+      }
+      await klick(1000, 760);
+      await s.waitForTimeout(300);
+    }
+    ok(
+      'W8 in „Fressen“ bei geschlossener Linse: ein Tipp auf einen Zahn öffnet die Linse für seine Reihe',
+      !!auf && auf.z.linse.reihen.oben === !auf.t.unten && auf.z.linse.reihen.unten === auf.t.unten && auf.z.wahl === null && (await O('pose')).an,
+      auf ? `Zahn ${auf.t.i} ${auf.t.unten ? 'unten' : 'oben'} beim ${versuche}. Versuch; gilt oben ${auf.z.linse.reihen.oben}, unten ${auf.z.linse.reihen.unten}` : `kein Tipp öffnete sie (${versuche} Versuche, ${kandidaten.length} Zähne zu sehen)`,
+    );
+    // die Linse wieder zu (der Tropfen), für den nächsten Teil öffnet sie der Tropfen für beide Reihen
+    if ((await O('zaehne')).linse.offen) {
+      await s.click('#zaehne-tropfen');
+      await s.waitForTimeout(600);
+    }
+  }
   // in der Pose: die Linse auf, eine Rast am Rad der Maus (die Perle „#“ gilt noch), ⌘Z, die Linse zu
   await s.click('#zaehne-tropfen');
   await s.waitForTimeout(700);
