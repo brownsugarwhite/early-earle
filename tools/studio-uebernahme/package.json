@@ -1,0 +1,28 @@
+{
+  "name": "@ee/studio-uebernahme",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: Übernahme der Kopfdrehung, der Haltungen und Abläufe aus dem Prototyp als Daten; Vergleichsserver 5294",
+  "type": "module",
+  "scripts": {
+    "uebernehmen": "NODE_OPTIONS=--import=$PWD/../../apps/studio/scripts/proben/schutz.mjs tsx src/uebernahme.ts",
+    "vergleich": "NODE_OPTIONS=--import=$PWD/../../apps/studio/scripts/proben/schutz.mjs vite --config vergleich.vite.config.ts --port 5294 --strictPort",
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-ablage": "workspace:*",
+    "@ee/studio-format": "workspace:*",
+    "@ee/studio-laufzeit": "workspace:*",
+    "@ee/studio-rechnen": "workspace:*",
+    "@ee/studio-store": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

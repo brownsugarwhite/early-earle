@@ -1,0 +1,557 @@
+{
+  "format": "studio",
+  "art": "figur",
+  "versionen": {
+    "bloecke": {
+      "kern": 1,
+      "knochen": 1,
+      "posen": 1,
+      "physik": 1,
+      "bild": 1,
+      "logik": 1,
+      "welt": 1,
+      "ton": 1
+    },
+    "arten": {}
+  },
+  "datensaetze": {
+    "fig": {
+      "fig_pMVM7G951n": {
+        "id": "fig_pMVM7G951n",
+        "name": "Testfigur",
+        "datei": "testfigur",
+        "einheitL": 200,
+        "wurzel": "kn_E4uv2c8nk4",
+        "lage": {
+          "x": "rg_LEjE5wc6pp",
+          "y": "rg_xCicmNPyhz",
+          "drehung": "rg_uyl8aTR0fq"
+        },
+        "herkunft": "gebaut"
+      }
+    },
+    "teil": {
+      "teil_g22zreXofs": {
+        "id": "teil_g22zreXofs",
+        "figur": "fig_pMVM7G951n",
+        "name": "Mund",
+        "art": "linie",
+        "farbe": "#2b2b2b",
+        "ebene": "a2",
+        "anker": [
+          "an_2aP2sBLpnl",
+          "an_rP0PntJXN6",
+          "an_ljojYgmf9m",
+          "an_jfG4YAazxT"
+        ],
+        "form": [
+          [-30, 35, 20, 0, 12],
+          [-10, 45, 5, 8, 8],
+          [10, 45, 175, 8, -20, 8],
+          [30, 35, -20, 12, 0]
+        ],
+        "linie": {
+          "offen": true,
+          "breite": [
+            [
+              0,
+              1.5
+            ],
+            [
+              0.5,
+              3
+            ],
+            [
+              1,
+              1.5
+            ]
+          ]
+        },
+        "rolle": "mund",
+        "seite": "mitte",
+        "herkunft": "gebaut"
+      },
+      "teil_le1bkF4Ydn": {
+        "id": "teil_le1bkF4Ydn",
+        "figur": "fig_pMVM7G951n",
+        "name": "Ohr rechts",
+        "art": "flaeche",
+        "farbe": "schwarz",
+        "ebene": "a0",
+        "anker": [
+          "an_s1sq3sEsgD",
+          "an_VDO5EM2LMG",
+          "an_mLTxVSlQzs",
+          "an_uCIIUtgiRT",
+          "an_QUlDdmZk75"
+        ],
+        "wieGezeichnet": true,
+        "partner": "teil_uM3pasQeA3",
+        "rolle": "ohr",
+        "seite": "rechts",
+        "vorlageName": "ohr-rechts",
+        "herkunft": "vorlage"
+      },
+      "teil_uM3pasQeA3": {
+        "id": "teil_uM3pasQeA3",
+        "figur": "fig_pMVM7G951n",
+        "name": "Ohr links",
+        "art": "flaeche",
+        "farbe": "schwarz",
+        "ebene": "a1",
+        "anker": [
+          "an_82HyRA0qDG",
+          "an_dFl3QaIWaF",
+          "an_3YsyoPKpwc",
+          "an_LJWKFNNzPr",
+          "an_7V4qHkZB5N"
+        ],
+        "wieGezeichnet": true,
+        "partner": "teil_le1bkF4Ydn",
+        "rolle": "ohr",
+        "seite": "links",
+        "vorlageName": "ohr-links",
+        "herkunft": "vorlage"
+      }
+    },
+    "rg": {
+      "rg_3Ap9LO1BD0": {
+        "id": "rg_3Ap9LO1BD0",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Kopf schief",
+        "art": "linie",
+        "bereich": [
+          -15,
+          15
+        ],
+        "standard": 0,
+        "einheit": "grad",
+        "raster": 0.15,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "herkunft": "gebaut"
+      },
+      "rg_HrmIVkiay2": {
+        "id": "rg_HrmIVkiay2",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Kopfdrehung",
+        "art": "kreis",
+        "bereich": [
+          0,
+          360
+        ],
+        "standard": 0,
+        "einheit": "grad",
+        "raster": 0.5,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "hoechsttempo": 160,
+        "spiegel": {
+          "ab": 180,
+          "um": 360,
+          "achseX": 0,
+          "paare": [
+            [
+              "teil_le1bkF4Ydn",
+              "teil_uM3pasQeA3"
+            ]
+          ],
+          "umnummern": [],
+          "reihenfolgeTauschen": true,
+          "regler": [
+            {
+              "regler": "rg_3Ap9LO1BD0",
+              "um": 0
+            }
+          ]
+        },
+        "rolle": "kopf.theta",
+        "herkunft": "gebaut"
+      },
+      "rg_Ik0oQ9W9j2": {
+        "id": "rg_Ik0oQ9W9j2",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Kopfversatz x",
+        "art": "linie",
+        "bereich": [
+          -10,
+          10
+        ],
+        "standard": 0,
+        "einheit": "figur",
+        "raster": 0.1,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "herkunft": "gebaut"
+      },
+      "rg_LEjE5wc6pp": {
+        "id": "rg_LEjE5wc6pp",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Lage x",
+        "art": "linie",
+        "bereich": [
+          -50,
+          50
+        ],
+        "standard": 0,
+        "einheit": "L",
+        "raster": 0.5,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "herkunft": "gebaut"
+      },
+      "rg_O2SlHBGAdz": {
+        "id": "rg_O2SlHBGAdz",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Nicken",
+        "art": "linie",
+        "bereich": [
+          -20,
+          20
+        ],
+        "standard": 0,
+        "einheit": "grad",
+        "raster": 0.2,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "nachlauf": 0.1,
+        "rolle": "knochen.winkel",
+        "herkunft": "gebaut"
+      },
+      "rg_hEOtLfOZL6": {
+        "id": "rg_hEOtLfOZL6",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Kopfversatz y",
+        "art": "linie",
+        "bereich": [
+          -10,
+          10
+        ],
+        "standard": 0,
+        "einheit": "figur",
+        "raster": 0.1,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "herkunft": "gebaut"
+      },
+      "rg_uyl8aTR0fq": {
+        "id": "rg_uyl8aTR0fq",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Lage Drehung",
+        "art": "linie",
+        "bereich": [
+          -180,
+          180
+        ],
+        "standard": 0,
+        "einheit": "grad",
+        "raster": 1.8,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "herkunft": "gebaut"
+      },
+      "rg_xCicmNPyhz": {
+        "id": "rg_xCicmNPyhz",
+        "besitzer": "fig_pMVM7G951n",
+        "name": "Lage y",
+        "art": "linie",
+        "bereich": [
+          -50,
+          50
+        ],
+        "standard": 0,
+        "einheit": "L",
+        "raster": 0.5,
+        "ausgleich": {
+          "dauer": 0.3,
+          "federung": 0
+        },
+        "herkunft": "gebaut"
+      }
+    },
+    "bd": {
+      "bd_CdTBqWOcF0": {
+        "id": "bd_CdTBqWOcF0",
+        "teil": "teil_le1bkF4Ydn",
+        "achsen": [
+          "rg_HrmIVkiay2"
+        ],
+        "wirkung": "ansicht",
+        "mischart": "rahmenRest",
+        "periodisch": true,
+        "herkunft": "gebaut"
+      },
+      "bd_KYuID7Z4M3": {
+        "id": "bd_KYuID7Z4M3",
+        "teil": "teil_g22zreXofs",
+        "achsen": [
+          "rg_3Ap9LO1BD0"
+        ],
+        "wirkung": "zusatz",
+        "mischart": "linear",
+        "periodisch": false,
+        "herkunft": "gebaut"
+      },
+      "bd_f7uyNLzklf": {
+        "id": "bd_f7uyNLzklf",
+        "teil": "teil_uM3pasQeA3",
+        "achsen": [
+          "rg_HrmIVkiay2"
+        ],
+        "wirkung": "ansicht",
+        "mischart": "koordinaten",
+        "periodisch": false,
+        "herkunft": "gebaut"
+      }
+    },
+    "sl": {
+      "sl_1JYdj1jPSr": {
+        "id": "sl_1JYdj1jPSr",
+        "bindung": "bd_CdTBqWOcF0",
+        "an": [
+          0
+        ],
+        "art": "form",
+        "gestalt": [
+          [0, -10, 5, 15, -85, 15],
+          [5, -60, -75, 15, 15],
+          [45, -100, 140, 15, 45, 15],
+          [75, -55, 95, 18, 18],
+          [50, -5, 160, 12, 15]
+        ],
+        "herkunft": "vorlage",
+        "grund": "Ansicht Front"
+      },
+      "sl_5AjY0RWte0": {
+        "id": "sl_5AjY0RWte0",
+        "bindung": "bd_f7uyNLzklf",
+        "an": [
+          90
+        ],
+        "art": "form",
+        "gestalt": [
+          [-30, -10, 171.7, 9.06, -93, 14.96],
+          [-33, -60, -99.13, 14.67, 14.67],
+          [-57, -100, 54.43, 11.85, 120.96, 12.37],
+          [-75, -55, 87, 17.96, 17.96],
+          [-60, -5, 31.24, 7.91, 9.89]
+        ],
+        "herkunft": "gebaut",
+        "grund": "Übernahme"
+      },
+      "sl_CxEJLYDMjW": {
+        "id": "sl_CxEJLYDMjW",
+        "bindung": "bd_CdTBqWOcF0",
+        "an": [
+          45
+        ],
+        "art": "form",
+        "gestalt": [
+          [-18, -10, 5.88, 12.77, -85.75, 14.98],
+          [-13.75, -60, -77.17, 14.86, 14.86],
+          [20.25, -100, 135.37, 13.72, 49.64, 13.92],
+          [45.75, -55, 94.25, 17.98, 17.98],
+          [24.5, -5, 156.82, 10.43, 13.03]
+        ],
+        "herkunft": "gebaut",
+        "grund": "Übernahme"
+      },
+      "sl_GAqQXtv9Fp": {
+        "id": "sl_GAqQXtv9Fp",
+        "bindung": "bd_CdTBqWOcF0",
+        "an": [
+          90
+        ],
+        "art": "form",
+        "gestalt": [
+          [-30, -10, 8.3, 9.06, -87, 14.96],
+          [-27, -60, -80.87, 14.67, 14.67],
+          [-3, -100, 125.57, 11.85, 59.04, 12.37],
+          [15, -55, 93, 17.96, 17.96],
+          [0, -5, 148.76, 7.91, 9.89]
+        ],
+        "herkunft": "dein"
+      },
+      "sl_XHyaA6yrLz": {
+        "id": "sl_XHyaA6yrLz",
+        "bindung": "bd_f7uyNLzklf",
+        "an": [
+          0
+        ],
+        "art": "form",
+        "gestalt": [
+          [0, -10, 175, 15, -95, 15],
+          [-5, -60, -105, 15, 15],
+          [-45, -100, 40, 15, 135, 15],
+          [-75, -55, 85, 18, 18],
+          [-50, -5, 20, 12, 15]
+        ],
+        "herkunft": "vorlage",
+        "grund": "Ansicht Front"
+      },
+      "sl_hsJSLP6Sbo": {
+        "id": "sl_hsJSLP6Sbo",
+        "bindung": "bd_CdTBqWOcF0",
+        "an": [
+          150
+        ],
+        "art": "form",
+        "gestalt": [
+          [-45, -10, 9.92, 7.58, -87.5, 14.96],
+          [-42.5, -60, -82.37, 14.62, 14.62],
+          [-22.5, -100, 120.79, 11.22, 63.43, 11.86],
+          [-7.5, -55, 92.5, 17.95, 17.95],
+          [-20, -5, 143.95, 6.97, 8.72]
+        ],
+        "herkunft": "gebaut",
+        "grund": "Anschluss",
+        "stuetze": true
+      },
+      "sl_lln55TM7i2": {
+        "id": "sl_lln55TM7i2",
+        "bindung": "bd_KYuID7Z4M3",
+        "an": [
+          -15
+        ],
+        "art": "form",
+        "versatz": [
+          [0, -0.2, -4, 0, 0],
+          [0, -0.1, -2, 0, 0],
+          [0, 0.1, -2, 0, -2, 0],
+          [0, 0.2, -4, 0, 0]
+        ],
+        "herkunft": "gebaut",
+        "grund": "Kopf schief"
+      },
+      "sl_sZD52CEVWX": {
+        "id": "sl_sZD52CEVWX",
+        "bindung": "bd_KYuID7Z4M3",
+        "an": [
+          15
+        ],
+        "art": "form",
+        "versatz": [
+          [0, 0.2, 4, 0, 0],
+          [0, 0.1, 2, 0, 0],
+          [0, -0.1, 2, 0, 2, 0],
+          [0, -0.2, 4, 0, 0]
+        ],
+        "herkunft": "gebaut",
+        "grund": "Kopf schief"
+      }
+    },
+    "we": {
+      "we_lPHsL84KOe": {
+        "id": "we_lPHsL84KOe",
+        "figur": "fig_pMVM7G951n",
+        "regler": "rg_HrmIVkiay2",
+        "an": 90,
+        "richtung": "ab",
+        "breite": 10,
+        "art": "ueber",
+        "teil": "teil_le1bkF4Ydn",
+        "bezug": "teil_uM3pasQeA3",
+        "herkunft": "gebaut"
+      }
+    },
+    "kn": {
+      "kn_E4uv2c8nk4": {
+        "id": "kn_E4uv2c8nk4",
+        "figur": "fig_pMVM7G951n",
+        "name": "Kopf",
+        "gelenk": [0, 60],
+        "winkel": "rg_O2SlHBGAdz",
+        "verschiebung": [
+          "rg_Ik0oQ9W9j2",
+          "rg_hEOtLfOZL6"
+        ],
+        "rolle": "kopf",
+        "herkunft": "gebaut"
+      }
+    },
+    "af": {
+      "af_DpJ2KK9Flt": {
+        "id": "af_DpJ2KK9Flt",
+        "teil": "teil_uM3pasQeA3",
+        "art": "starr",
+        "knochen": [
+          "kn_E4uv2c8nk4"
+        ],
+        "mischung": "drehzentren",
+        "gepinnt": [],
+        "herkunft": "gebaut"
+      },
+      "af_pqfyv35T2A": {
+        "id": "af_pqfyv35T2A",
+        "teil": "teil_le1bkF4Ydn",
+        "art": "starr",
+        "knochen": [
+          "kn_E4uv2c8nk4"
+        ],
+        "mischung": "drehzentren",
+        "gepinnt": [],
+        "herkunft": "gebaut"
+      },
+      "af_xEJTQ0WADu": {
+        "id": "af_xEJTQ0WADu",
+        "teil": "teil_g22zreXofs",
+        "art": "starr",
+        "knochen": [
+          "kn_E4uv2c8nk4"
+        ],
+        "mischung": "drehzentren",
+        "gepinnt": [],
+        "herkunft": "gebaut"
+      }
+    },
+    "vb": {
+      "vb_MbUmf56PDv": {
+        "id": "vb_MbUmf56PDv",
+        "figur": "fig_pMVM7G951n",
+        "a": "teil_le1bkF4Ydn",
+        "b": "teil_uM3pasQeA3",
+        "art": "fuge",
+        "mass": 3,
+        "nachKante": false,
+        "herkunft": "gebaut"
+      }
+    },
+    "dr": {
+      "dr_uC8y43jvqI": {
+        "id": "dr_uC8y43jvqI",
+        "besitzer": "fig_pMVM7G951n",
+        "quelle": "rg_HrmIVkiay2",
+        "ziel": "rg_Ik0oQ9W9j2",
+        "kennlinie": [
+          [0, 0],
+          [45, 4],
+          [90, 6],
+          [135, 4],
+          [180, 0]
+        ],
+        "kurve": "weich",
+        "spiegel": {
+          "ab": 180,
+          "um": 360,
+          "negieren": true
+        },
+        "glaetten": 0,
+        "herkunft": "gebaut"
+      }
+    }
+  }
+}

@@ -65,6 +65,27 @@
       "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508", "--filter", "@ee/editor", "exec", "vite", "--port", "5213", "--strictPort", "--host"],
       "port": 5213,
       "url": "http://localhost:5213"
+    },
+    {
+      "name": "studio",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508", "studio"],
+      "port": 5217,
+      "url": "http://localhost:5217"
+    },
+    {
+      "name": "studio-bau",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508", "studio:bau"],
+      "port": 5263,
+      "url": "http://localhost:5263"
+    },
+    {
+      "name": "gassirunde",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/ozzy-animation-physics-294508", "gassirunde"],
+      "port": 5261,
+      "url": "http://localhost:5261"
     }
   ]
 }

@@ -1,0 +1,26 @@
+{
+  "name": "@ee/studio-inhalt",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: Inhalt der Demo über Handgriffe, synthetische Klänge, Glyphen aus Lobster, Probe-Projekte",
+  "type": "module",
+  "scripts": {
+    "inhalt": "NODE_OPTIONS=--import=$PWD/../../apps/studio/scripts/proben/schutz.mjs tsx src/inhalt.ts",
+    "probeprojekt": "NODE_OPTIONS=--import=$PWD/../../apps/studio/scripts/proben/schutz.mjs tsx src/inhalt.ts probeprojekt",
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-ablage": "workspace:*",
+    "@ee/studio-format": "workspace:*",
+    "@ee/studio-laufzeit": "workspace:*",
+    "@ee/studio-rechnen": "workspace:*",
+    "@ee/studio-store": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}

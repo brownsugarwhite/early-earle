@@ -1,0 +1,23 @@
+{
+  "name": "@ee/studio-store",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: Datensätze, Transaktionen, Diffs, Verlauf, Herkunfts- und Schutzregel, Zusammenführen",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-format": "workspace:*"
+  },
+  "devDependencies": {
+    "@ee/studio-rechnen": "workspace:*",
+    "fast-check": "4.10.2",
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}

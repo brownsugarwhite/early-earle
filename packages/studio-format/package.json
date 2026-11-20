@@ -1,0 +1,24 @@
+{
+  "name": "@ee/studio-format",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: Typen und Schemas des Formats v1, Kennungen, Schreiber, Laden, Migrationen, fremde Quellen, Arten",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-rechnen": "workspace:*",
+    "fractional-indexing": "4.0.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2",
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}

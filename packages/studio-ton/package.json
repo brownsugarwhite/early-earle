@@ -1,0 +1,22 @@
+{
+  "name": "@ee/studio-ton",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: Klangplaner, Ausgabe über Web Audio, Freigabe, Wachhund, Musik",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-format": "workspace:*",
+    "@ee/studio-laufzeit": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}

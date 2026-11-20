@@ -1,0 +1,23 @@
+{
+  "name": "@ee/studio-ablage",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: Dateien mit Revision, Sicherungsring, Ereignisse, Sitzungsschlüssel, Live-Weitergabe, Merker, Vite-Plugin (Node)",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-rechnen": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

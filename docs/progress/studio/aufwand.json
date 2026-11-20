@@ -1,0 +1,22 @@
+[
+  {
+    "etappe": "M0",
+    "welle": "Verträge: Bau, Prüfung aus drei Blickwinkeln, Nacharbeit",
+    "workflow": "wf_e2aebb09-fbf",
+    "pakete": ["studio-rechnen", "studio-format", "apps", "wurzel", "studio-laufzeit", "store-pruefdaten"],
+    "agenten": 12,
+    "von": "2026-11-20T19:13+01:00",
+    "bis": "2026-11-20T21:54+01:00",
+    "dauerMin": 161,
+    "tokensAgenten": 6019851,
+    "werkzeugaufrufe": 1327
+  },
+  {
+    "etappe": "M0",
+    "welle": "Integration: Befunde an eigenen Dateien, studio:pruefen, Probe M0 (a), e2e, Stand",
+    "agenten": 0,
+    "von": "2026-11-20T21:55+01:00",
+    "bis": "2026-11-20T22:10+01:00",
+    "dauerMin": 15
+  }
+]

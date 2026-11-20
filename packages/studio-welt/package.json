@@ -1,0 +1,24 @@
+{
+  "name": "@ee/studio-welt",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: Box2D hinter WeltAdapter",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-format": "workspace:*",
+    "@ee/studio-laufzeit": "workspace:*",
+    "@ee/studio-rechnen": "workspace:*",
+    "box2d3-wasm": "6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}

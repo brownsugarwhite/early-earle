@@ -16,7 +16,12 @@
     "e2e": "pnpm --filter @ee/game e2e",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "assets:blender": "node tools/export3d/assets-blender.mjs"
+    "assets:blender": "node tools/export3d/assets-blender.mjs",
+    "studio": "STUDIO_FLORIAN=1 STUDIO_INHALT=content/studio SPIEL_PORT=5261 pnpm --filter @ee/studio stand:zeigen",
+    "gassirunde": "STUDIO_INHALT=content/studio pnpm --filter @ee/ozzy-spiel stand:zeigen",
+    "studio:bau": "pnpm_config_verify_deps_before_run=error NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs SPIEL_PORT=5265 pnpm --filter @ee/studio dev",
+    "studio:stand": "pnpm_config_verify_deps_before_run=error NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs node scripts/studio-stand.mjs",
+    "studio:pruefen": "pnpm_config_verify_deps_before_run=error NODE_OPTIONS=--import=$PWD/apps/studio/scripts/proben/schutz.mjs node scripts/studio-pruefen.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

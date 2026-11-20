@@ -1,0 +1,22 @@
+{
+  "name": "@ee/studio-bild",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Studio: WebGL2-Renderer mit Abstandsfeldern, Zeichenmodell, Effekte, Kostenampel",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../scripts/studio-typen.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee/studio-format": "workspace:*",
+    "@ee/studio-laufzeit": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}
