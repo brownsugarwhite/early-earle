@@ -9,12 +9,14 @@ erstmal mit posen und maul weitermachen.“ **Alles, was übrig bleibt, steht in
 [`docs/plans/2026-11-19-ozzy-paint-was-bleibt.md`](../../../plans/2026-11-19-ozzy-paint-was-bleibt.md)**: was bei ihm liegt
 (A), was nicht gebaut ist (B), was nicht hält (C), was nicht geprüft ist (D), Zusammenführen (E), was die Sitzung „Posen und
 Maul“ vom Paint-Modus wissen muss (F). Wer hier weiterbaut, liest zuerst diese Liste und baut nichts daraus ohne sein Wort.
+**Seine Antwort am 20.11. früh: „Ja, Stand von heute“:** Die neue Sitzung „Posen und Maul“ baut auf diesem Zweig auf (er enthält
+seitdem auch den letzten Commit der Objekte); der erste Schritt in ihrem Arbeitsbaum steht in der Liste, Abschnitt E.
 
 ## 1. Einstieg
 
 | Was | Wo |
 | --- | --- |
-| Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`, Stand `3a091f14`). **Nicht zusammengeführt**, weder mit ihm noch mit `claude/ozzy` noch mit `main`; erst auf sein Wort, am Schluss. |
+| Zweig, Arbeitsbaum | `claude/reverent-feynman-1efdd3`, `.claude/worktrees/reverent-feynman-1efdd3`. Baut auf dem Zweig der Objekte auf (`claude/ozzy-donut-mirror-system-7a31b7`; seit dem 20.11. enthält er ihn ganz, Stand `49378406`). **In `claude/ozzy` und `main` ist nichts zusammengeführt**; erst auf sein Wort, am Schluss. Die Sitzung „Posen und Maul“ baut auf diesem Zweig auf (Florian, 20.11.: „Ja, Stand von heute“). |
 | Fenster | `http://localhost:5215/ozzy.html`, Eintrag `ozzy-paint` in `.claude/launch.json`. Proben: `OZZY_URL=http://localhost:5215/ozzy.html`. Nie unter seinen Fenstern bauen (5205, 5211, 5194). |
 | Was übrig bleibt | [`docs/plans/2026-11-19-ozzy-paint-was-bleibt.md`](../../../plans/2026-11-19-ozzy-paint-was-bleibt.md) (nummerierte Liste, Stand 19.11. abends) |
 | Plan | [`docs/plans/2026-11-19-ozzy-paint-modus.md`](../../../plans/2026-11-19-ozzy-paint-modus.md): Auftrag, seine Antworten, Etappen mit Kriterien, Bauweise (Abschnitt 7), Etappe 1 (Abschnitt 9), Schritte der Etappe 2 (Abschnitt 10), Etappe 2 mit Messwerten und Lücken (Abschnitt 11), Etappe 3, erster Schritt: die Farbe läuft ein (Abschnitt 12), Etappe 3, zweiter Schritt: Farben als Tropfen, Farbtropfen, Pipette (Abschnitt 13), Etappe 4, das Bild der Bedienung in zwei Fassungen (Abschnitt 14), Abschnitt 15: Etappe 4, gebaut (Fassung 1, der Tropfen am Faden), Abschnitt 16: Etappe 5, gebaut (Ebenen), Abschnitt 17: Etappe 6, erster Schritt (die Ebenen-Ansicht, zwei Fassungen zur Wahl), **Abschnitt 18: Etappe 6, gebaut (Fassung B: was er sieht, gemessen, für ihn entschieden, was fehlt, Bauweise)** |

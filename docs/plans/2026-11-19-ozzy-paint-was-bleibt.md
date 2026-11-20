@@ -1,9 +1,12 @@
-# Ozzy, Paint-Modus: was übrig bleibt (Stand 19.11.2026, abends)
+# Ozzy, Paint-Modus: was übrig bleibt (Stand 19.11.2026, abends; ergänzt am 20.11.)
 
 Florian am 19.11. abends, wörtlich:
 
 > Das hast du alles heute wirklich sehr gut umgesetzt. Ich mache morgen in einer neuen session weiter. kannst du alles was übrig
 > bleibt dokumentieren, damit es nicht vergessen wird. Morgen möchte ich erstmal mit posen und maul weitermachen.
+
+Und am 20.11. früh, auf die Frage, von welchem Stand die neue Sitzung baut: **„Ja, Stand von heute“** (gemeint: der Stand vom
+19.11. abends, mit Paint-Modus und Objekten; Abschnitt E).
 
 **Der Strang „Paint-Modus“ ruht damit.** Diese Liste nennt alles, was offen ist: was bei dir liegt, was nicht gebaut ist, was
 nicht hält, was nicht geprüft ist, und was die Sitzung „Posen und Maul“ vom Paint-Modus wissen muss. **Nichts davon wird ohne dein
@@ -24,7 +27,7 @@ Was gebaut ist, steht im Plan [`2026-11-19-ozzy-paint-modus.md`](2026-11-19-ozzy
 | A5 | **Der Schalter „Dreiecke zeigen“:** dein Urteil. | Plan, „Deine Antworten“ |
 | A6 | **Tasten:** B (Paint-Modus), F (Farbtropfen), I (Pipette), X (Ebenen-Ansicht) sind Vorschläge; deine Belegung kommt später. | Plan 4, 18.3 |
 | A7 | **Die acht Farben am Anfang** sind Platzhalter. Deine Palette fehlt. Die Farben gehören bisher zum Browser, nicht zur Form. | Plan 13.3 |
-| A8 | **Zusammenführen** mit dem Zweig der Objekte und mit `claude/ozzy`: wann, und von welchem Stand die neue Sitzung baut (Abschnitt E). | Abschnitt E |
+| A8 | **Zusammenführen** in `claude/ozzy`: wann. (Von welchem Stand die neue Sitzung baut, ist beantwortet: „Ja, Stand von heute“, also auf dem Paint-Zweig.) | Abschnitt E |
 
 Dazu alles, was ich für dich entschieden habe: Es gilt, bis du es umdrehst. Die Listen stehen im Plan (4, 13.3, 15.3, 16.3,
 18.3).
@@ -117,16 +120,27 @@ Dazu alles, was ich für dich entschieden habe: Es gilt, bis du es umdrehst. Die
 - **D6 Weiche Kanten, während du an der Form ziehst:** Der Verlauf geht mit und wird erst danach neu gerechnet; wie das aussieht,
   habe ich nicht angesehen.
 
-## E. Zusammenführen: nichts ist zusammengeführt
+## E. Zusammenführen: in `claude/ozzy` ist nichts zusammengeführt
 
 | Zweig | Stand | Was er enthält |
 | --- | --- | --- |
 | `claude/ozzy` (und `claude/editor-grundlayout`) | `6bef9f17`, 18.11. | die Linie von Ozzy |
 | `claude/ozzy-donut-mirror-system-7a31b7` (Objekte) | `49378406`, 19.11. früh | `claude/ozzy` und 37 Commits der Objekte |
-| `claude/reverent-feynman-1efdd3` (Paint) | 19.11. abends | `claude/ozzy`, die Objekte bis `3a091f14` und 39 Commits des Paint-Modus |
+| `claude/reverent-feynman-1efdd3` (Paint) | 20.11. früh | `claude/ozzy`, die Objekte ganz und die Commits des Paint-Modus |
 
-- Dem Paint-Zweig fehlt vom Zweig der Objekte ein Commit (`49378406`: dein Urteil im Plan der Objekte und das Referenzbild des
-  Wachses; nur Dokumente).
+**Entschieden (Florian, 20.11.): „Ja, Stand von heute“.** Die Sitzung „Posen und Maul“ baut auf dem Paint-Zweig auf; er enthält
+alles. Den einen Commit der Objekte, der ihm noch fehlte (`49378406`: dein Urteil im Plan der Objekte, nur Dokumente), habe ich
+dafür am 20.11. dazugeholt. **In ihrem Arbeitsbaum als Erstes:**
+
+```bash
+git fetch origin && git merge --ff-only origin/claude/reverent-feynman-1efdd3
+```
+
+(Ein Arbeitsbaum, den die App für eine neue Sitzung anlegt, steht auf `main` vom Oktober; der Schritt bringt ihn auf den Stand
+von heute.) Danach `CLAUDE.md` neu lesen.
+
+Offen bleibt (A8), wann alles in `claude/ozzy` zusammengeführt wird: erst auf dein Wort, am Schluss. Dafür:
+
 - **Geteilter Code, den der Paint-Zweig angefasst hat:** `apps/editor/src/ozzy/main.ts` (viele schmale Stellen; Suchwörter in der
   Übergabe, Abschnitt 7), `leiste.ts`, `material.ts`, `gast.ts`, `werkBlatt.ts` (`stiftZiel`), `src/form/ablage.ts`
   (`WesenStand.farbe`), `ozzy.html`, `ozzy.css`, `scripts/pruefen/ozzy-material-fenster.mjs`, beide `CLAUDE.md`,
@@ -134,11 +148,8 @@ Dazu alles, was ich für dich entschieden habe: Es gilt, bis du es umdrehst. Die
   die Proben `ozzy-farbe-*.mjs`, die Skripte `scripts/ozzy/paint-*.mjs`.
 - **Am Rechenkern (`packages/shape`), am Werk (`src/form/werk.ts`), am Verbund, an `src/linien/` und an
   `src/form/blaupause.ts` ist nichts geändert.**
+- Baut die Sitzung der Objekte noch weiter, kommen ihre neuen Commits später dazu (bisher keiner nach `49378406`).
 - Der Stand in `CLAUDE.md` wird beim Zusammenführen ohnehin neu geschrieben.
-
-**Die Frage für die neue Sitzung (A8):** Baut sie auf `claude/ozzy`, laufen drei Stände auseinander, die alle `main.ts` ändern.
-Baut sie auf dem Paint-Zweig, hat sie alles (bis auf den einen Commit der Objekte). Mein Vorschlag: auf dem Paint-Zweig aufbauen
-oder vorher zusammenführen. Das entscheidest du oder die Leitung.
 
 ## F. Für die Sitzung „Posen und Maul“ (ab 20.11.)
 
@@ -171,7 +182,8 @@ als eigene Sitzung, du beschreibst zuerst die Fälle).
 
 **Fenster:** Die Sitzung „Paint-Modus“ hält die Vorschau-Server 5215 (`ozzy-paint`), 5211 (`ozzy-objekte`) und 5199
 (`linien-look`). Endet sie, sind diese Fenster weg, bis jemand sie neu startet (Einträge in `.claude/launch.json`). Eine Sitzung
-hält höchstens drei.
+hält höchstens drei. Die neue Sitzung braucht für ihren Arbeitsbaum ein eigenes Fenster (eigener Eintrag, eigener Port): 5215
+zeigt den Arbeitsbaum des Paint-Zweigs, nicht ihren.
 
 ## G. Aufgefallen, nicht vom Paint-Modus
 

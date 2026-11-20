@@ -21,7 +21,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Grün ohne Bauch; `material.ts`, `gast.ts`, `gruen.ts`). Vergleich mit Sitzung 4:
   `docs/research/2026-11-18-vergleich-5197-ozzy.md`. Offene Fragen und Urteile: `docs/plans/2026-11-17-ozzy-feinschliff.md`. Die
   Sitzung ist auch die des Kerns. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell.
-- **Als Nächstes (Florian, 19.11. abends): Posen und Maul, in neuer Sitzung.**
+- **Als Nächstes (Florian, 19./20.11.): Posen und Maul, neue Sitzung, auf dem Paint-Zweig.**
 - **Sitzung „Objekte, Spiegel und Nähte“ (seit 18.11.):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211
   (`ozzy-objekte`), nicht zusammengeführt. Plan und Stand:
   [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0 bis 5;
