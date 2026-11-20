@@ -25,7 +25,7 @@ export class ShaderHaut {
   private t0 = performance.now();
   private letzte = performance.now();
   /** Zeit des letzten Bilds auf dem Prozessor (ms) und Zahl der Bilder */
-  readonly mess = { ms: 0, bilder: 0, id: '' };
+  readonly mess: { ms: number; bilder: number; id: string; info?: Record<string, number> } = { ms: 0, bilder: 0, id: '' };
 
   constructor(renderer: WebGLRenderer) {
     this.kern = new ShaderKern(renderer);
@@ -76,6 +76,8 @@ export class ShaderHaut {
     this.mess.ms = performance.now() - t;
     this.mess.bilder++;
     this.mess.id = v.id;
+    const info = this.lauf?.info?.();
+    if (info) this.mess.info = info;
     return unruhig;
   }
 

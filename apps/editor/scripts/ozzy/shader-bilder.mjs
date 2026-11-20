@@ -35,7 +35,7 @@ process.env.OZZY_URL = `http://127.0.0.1:${PORT}/ozzy.html`;
 const { auf } = await import('../pruefen/ozzy-teile.mjs');
 const B = Number(process.env.B ?? 1200);
 const H = Number(process.env.H ?? 800);
-const { browser, s, O, geladen, fehler } = await auf({ form: NAME, b: B, h: H, extra: `shader=${nur[0] ?? 'comicdruck'}` });
+const { browser, s, O, geladen, fehler } = await auf({ form: NAME, b: B, h: H, extra: [`shader=${nur[0] ?? 'comicdruck'}`, process.env.EXTRA ?? ''].filter(Boolean).join('&') });
 try {
   await geladen();
   await s.mouse.move(5, 5);
@@ -58,7 +58,7 @@ try {
     });
     fs.writeFileSync(path.join(ordner, `${id}.png`), Buffer.from(bild.split(',')[1], 'base64'));
     if (process.env.SEITE === '1') await s.screenshot({ path: path.join(ordner, `${id}-seite.png`) });
-    console.log(`${id.padEnd(18)} ${m.wahl === id ? '' : `(gewählt: ${m.wahl}) `}${m.ms.toFixed(2).replace('.', ',')} ms auf dem Prozessor, ${m.bilder} Bilder`);
+    console.log(`${id.padEnd(18)} ${m.wahl === id ? '' : `(gewählt: ${m.wahl}) `}${m.ms.toFixed(2).replace('.', ',')} ms auf dem Prozessor, ${m.bilder} Bilder${m.info ? ` ${JSON.stringify(m.info)}` : ''}`);
   }
   if (fehler.length) console.log(`Konsole:\n  ${[...new Set(fehler)].slice(0, 12).join('\n  ')}`);
   else console.log('Konsole ohne Fehler');

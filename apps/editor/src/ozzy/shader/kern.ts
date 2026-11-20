@@ -83,6 +83,8 @@ export interface ShaderLauf {
   bild(k: ShaderKern, w: ShaderWerte): Texture | null;
   /** braucht er das nächste Bild auch, wenn sich nichts ändert (Bewegung, Simulation)? */
   unruhig(w: ShaderWerte): boolean;
+  /** Zahlen für Proben (Punkte, Zeiten) */
+  info?(): Record<string, number>;
   freigeben(): void;
 }
 

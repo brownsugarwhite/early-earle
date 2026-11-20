@@ -6,6 +6,7 @@ import type { Voreinstellung } from '../kern';
 import { AQUARELL } from './aquarell';
 import { COMICDRUCK } from './comicdruck';
 import { DAVINCI } from './davinci';
+import { EINE_LINIE } from './eineLinie';
 import { ERDE42 } from './erde42';
 import { GLITCH } from './glitch';
 import { INDRAJAL } from './indrajal';
@@ -14,4 +15,4 @@ import { MULTIPLANE } from './multiplane';
 import { PUNK } from './punk';
 import { TINTENFLECK } from './tintenfleck';
 
-export const VOREINSTELLUNGEN: Voreinstellung[] = [COMICDRUCK, AQUARELL, INDRAJAL, PUNK, MARKER, TINTENFLECK, DAVINCI, GLITCH, ERDE42, MULTIPLANE];
+export const VOREINSTELLUNGEN: Voreinstellung[] = [COMICDRUCK, AQUARELL, INDRAJAL, PUNK, MARKER, TINTENFLECK, DAVINCI, GLITCH, ERDE42, MULTIPLANE, EINE_LINIE];
