@@ -258,7 +258,7 @@ class Feuer implements ShaderLauf {
 export const FEUER: Voreinstellung = {
   id: 'feuer',
   name: 'Feuer',
-  gruppe: 'Frei',
+  gruppe: 'Effekte',
   zeile: 'Die Form brennt wie Papier: Glutfront, verkohlter Saum, Flammen aus einer Strömungssimulation, Funken; danach wächst sie nach',
   regler: [
     { k: 'tempo', name: 'Tempo', min: 0.2, max: 3, schritt: 0.05, grund: 1 },

@@ -78,7 +78,7 @@ void main() {
 export const OPAL = bildVoreinstellung({
   id: 'opal',
   name: 'Opal',
-  gruppe: 'Frei',
+  gruppe: 'Materialien',
   zeile: 'Schwarzer Opal: Körner beugen nach Bragg je eine Spektralfarbe, die nur aufblitzt, wenn Licht und Blick passen',
   regler: [
     { k: 'korn', name: 'Körnung', min: 0.3, max: 3, schritt: 0.05, grund: 1 },

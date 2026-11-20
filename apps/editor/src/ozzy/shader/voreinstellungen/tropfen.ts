@@ -118,7 +118,7 @@ void main() {
 export const TROPFEN = bildVoreinstellung({
   id: 'tropfen',
   name: 'Tropfen',
-  gruppe: 'Frei',
+  gruppe: 'Effekte',
   zeile: 'Flüssiges Metall: die Haut fließt nach unten, Tropfen wachsen, reißen ab und fallen (Farbton 0 ist Chrom)',
   regler: [
     { k: 'farbton', name: 'Farbton', min: 0, max: 360, schritt: 1, grund: 0 },

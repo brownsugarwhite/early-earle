@@ -1,11 +1,12 @@
 /**
- * Die Wahl der Shader (20.11.2026): eine Tafel unten rechts, solange das Material „Shader“ gilt. Zwei Gruppen (Spider-Verse, Frei),
- * je Shader ein Knopf; darunter seine Zeile und seine Regler, dazu „Bühne“ (der Shader darf seinen eigenen Grund zeichnen). Gemerkt
- * werden Wahl, Bühne und die Werte der Regler je Shader (`localStorage`).
+ * Die Wahl der Shader (20.11.2026): eine Tafel unten rechts, solange das Material „Shader“ gilt. Fünf Gruppen (Spider-Verse, Anime &
+ * Manga, Materialien, Tiermuster, Effekte), jede klappt auf und zu; offen ist immer die Gruppe des gewählten Shaders. Je Shader ein
+ * Knopf; darunter seine Zeile und seine Regler, oben „Bühne“ (der Shader darf seinen eigenen Grund zeichnen). Gemerkt werden Wahl,
+ * Bühne, offene Gruppen und die Werte der Regler je Shader (`localStorage`).
  */
-import type { Voreinstellung } from './kern';
+import { SHADER_GRUPPEN, type ShaderGruppe, type Voreinstellung } from './kern';
 
-type Gemerkt = { wahl: string; buehne: boolean; werte: Record<string, Record<string, number>> };
+type Gemerkt = { wahl: string; buehne: boolean; offen: string[]; werte: Record<string, Record<string, number>> };
 
 const SPEICHER = 'ozzy.shader';
 
@@ -13,6 +14,7 @@ export class ShaderWahl {
   readonly el: HTMLElement;
   private readonly liste: Voreinstellung[];
   private readonly knoepfe = new Map<string, HTMLButtonElement>();
+  private readonly gruppenEl = new Map<ShaderGruppe, { kopf: HTMLButtonElement; reihe: HTMLElement }>();
   private readonly zeileEl: HTMLElement;
   private readonly reglerEl: HTMLElement;
   private readonly buehneKnopf: HTMLButtonElement;
@@ -42,12 +44,19 @@ export class ShaderWahl {
     });
     kopf.append(titel, this.buehneKnopf);
     el.append(kopf);
-    for (const gruppe of ['Spider-Verse', 'Frei'] as const) {
+    for (const gruppe of SHADER_GRUPPEN) {
       const teil = liste.filter((v) => v.gruppe === gruppe);
       if (!teil.length) continue;
-      const h = document.createElement('div');
+      const h = document.createElement('button');
+      h.type = 'button';
       h.className = 'shader-gruppe';
-      h.textContent = gruppe;
+      h.textContent = `${gruppe} · ${teil.length}`;
+      h.addEventListener('click', () => {
+        const i = this.g.offen.indexOf(gruppe);
+        if (i >= 0) this.g.offen.splice(i, 1);
+        else this.g.offen.push(gruppe);
+        this.zeigen();
+      });
       const reihe = document.createElement('div');
       reihe.className = 'shader-reihe';
       for (const v of teil) {
@@ -59,6 +68,7 @@ export class ShaderWahl {
         this.knoepfe.set(v.id, b);
         reihe.append(b);
       }
+      this.gruppenEl.set(gruppe, { kopf: h, reihe });
       el.append(h, reihe);
     }
     this.zeileEl = document.createElement('div');
@@ -74,12 +84,17 @@ export class ShaderWahl {
       const roh = localStorage.getItem(SPEICHER);
       if (roh) {
         const g = JSON.parse(roh) as Partial<Gemerkt>;
-        return { wahl: typeof g.wahl === 'string' ? g.wahl : '', buehne: g.buehne !== false, werte: g.werte && typeof g.werte === 'object' ? g.werte : {} };
+        return {
+          wahl: typeof g.wahl === 'string' ? g.wahl : '',
+          buehne: g.buehne !== false,
+          offen: Array.isArray(g.offen) ? g.offen.filter((x) => typeof x === 'string') : [],
+          werte: g.werte && typeof g.werte === 'object' ? g.werte : {},
+        };
       }
     } catch {
       // ohne Speicher: Grundwerte
     }
-    return { wahl: '', buehne: true, werte: {} };
+    return { wahl: '', buehne: true, offen: [], werte: {} };
   }
 
   private merken(): void {
@@ -136,9 +151,14 @@ export class ShaderWahl {
   }
 
   private zeigen(): void {
-    for (const [id, b] of this.knoepfe) b.setAttribute('aria-pressed', String(id === this.g.wahl));
-    this.buehneKnopf.setAttribute('aria-pressed', String(this.g.buehne));
     const v = this.liste.find((x) => x.id === this.g.wahl)!;
+    for (const [id, b] of this.knoepfe) b.setAttribute('aria-pressed', String(id === this.g.wahl));
+    for (const [gruppe, { kopf, reihe }] of this.gruppenEl) {
+      const offen = gruppe === v.gruppe || this.g.offen.includes(gruppe);
+      reihe.hidden = !offen;
+      kopf.setAttribute('aria-expanded', String(offen));
+    }
+    this.buehneKnopf.setAttribute('aria-pressed', String(this.g.buehne));
     this.zeileEl.textContent = v.zeile;
     this.reglerEl.replaceChildren();
     const werte = this.regler();

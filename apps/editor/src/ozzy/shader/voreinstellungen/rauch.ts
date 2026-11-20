@@ -211,7 +211,7 @@ class Rauch implements ShaderLauf {
 export const RAUCH: Voreinstellung = {
   id: 'rauch',
   name: 'Rauch',
-  gruppe: 'Frei',
+  gruppe: 'Effekte',
   zeile: 'Die Form ist ein Körper aus Rauch: Volumen mit Gegenlicht und Selbstschatten, Fahnen steigen in einer Strömungssimulation auf',
   regler: [
     { k: 'dichte', name: 'Dichte', min: 0.2, max: 3, schritt: 0.05, grund: 1 },

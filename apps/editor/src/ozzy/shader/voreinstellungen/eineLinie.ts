@@ -347,7 +347,7 @@ class EineLinie implements ShaderLauf {
 export const EINE_LINIE: Voreinstellung = {
   id: 'eineLinie',
   name: 'Eine Linie',
-  gruppe: 'Frei',
+  gruppe: 'Effekte',
   zeile: 'Eine einzige Linie, die wächst, fließt und sich nie berührt; ihr Abstand zu sich selbst ist das Licht',
   regler: [
     { k: 'dichte', name: 'Abstand', min: 0.5, max: 2.5, schritt: 0.05, grund: 1 },

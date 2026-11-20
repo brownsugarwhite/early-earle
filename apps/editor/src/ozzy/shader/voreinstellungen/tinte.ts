@@ -203,7 +203,7 @@ class Tinte implements ShaderLauf {
 export const TINTE: Voreinstellung = {
   id: 'tinte',
   name: 'Tinte',
-  gruppe: 'Frei',
+  gruppe: 'Effekte',
   zeile: 'Ein Glas voll Wasser: drei Tinten wirbeln (Navier–Stokes), mischen sich wie Pigment und schwappen, wenn die Form sich dreht',
   regler: [
     { k: 'menge', name: 'Tinte', min: 0, max: 3, schritt: 0.05, grund: 1.4 },

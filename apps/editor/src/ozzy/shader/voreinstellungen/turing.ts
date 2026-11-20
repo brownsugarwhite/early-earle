@@ -167,7 +167,7 @@ class Turing implements ShaderLauf {
 export const TURING: Voreinstellung = {
   id: 'turing',
   name: 'Turing-Haut',
-  gruppe: 'Frei',
+  gruppe: 'Tiermuster',
   zeile: 'Reaktion–Diffusion in einem Volumen um die Form: lebende Muster wachsen über die Haut, oben Labyrinth, unten Flecken',
   regler: [
     { k: 'tempo', name: 'Tempo', min: 0, max: 3, schritt: 0.05, grund: 1 },

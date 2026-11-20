@@ -96,7 +96,7 @@ void main() {
 export const GLAS = bildVoreinstellung({
   id: 'glas',
   name: 'Flüssigglas',
-  gruppe: 'Frei',
+  gruppe: 'Materialien',
   zeile: 'Massives Glas: Brechung durch die ganze Dicke in sechs Wellenlängen (Dispersion), Totalreflexion, Fresnel, Lichtsaum',
   regler: [
     { k: 'dispersion', name: 'Dispersion', min: 0, max: 4, schritt: 0.05, grund: 1.6 },

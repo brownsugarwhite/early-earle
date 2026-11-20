@@ -90,10 +90,13 @@ export interface ShaderLauf {
 
 export type ReglerZeile = { k: string; name: string; min: number; max: number; schritt: number; grund: number };
 
+export const SHADER_GRUPPEN = ['Spider-Verse', 'Anime & Manga', 'Materialien', 'Tiermuster', 'Effekte'] as const;
+export type ShaderGruppe = (typeof SHADER_GRUPPEN)[number];
+
 export interface Voreinstellung {
   id: string;
   name: string;
-  gruppe: 'Spider-Verse' | 'Frei';
+  gruppe: ShaderGruppe;
   /** eine Zeile für die Wahl: woher, was passiert */
   zeile: string;
   regler: ReglerZeile[];

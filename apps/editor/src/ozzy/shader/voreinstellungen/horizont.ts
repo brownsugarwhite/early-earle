@@ -130,7 +130,7 @@ class Horizont implements ShaderLauf {
 export const HORIZONT: Voreinstellung = {
   id: 'horizont',
   name: 'Ereignishorizont',
-  gruppe: 'Frei',
+  gruppe: 'Effekte',
   zeile: 'Die Form als schwarzes Loch: Sie biegt das Licht um ihren eigenen Umriss, Photonenring, glühende Scheibe, die sich über sie biegt',
   regler: [
     { k: 'staerke', name: 'Masse', min: 0, max: 3, schritt: 0.05, grund: 1 },

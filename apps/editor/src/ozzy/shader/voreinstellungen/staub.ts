@@ -319,7 +319,7 @@ class Staub implements ShaderLauf {
 export const STAUB: Voreinstellung = {
   id: 'staub',
   name: 'Staub',
-  gruppe: 'Frei',
+  gruppe: 'Effekte',
   zeile: 'Eine Goldstatue zerfällt zu 65 536 glühenden Teilchen, die im Wind treiben, und setzt sich wieder zusammen',
   regler: [
     { k: 'tempo', name: 'Tempo', min: 0.2, max: 3, schritt: 0.05, grund: 1 },
