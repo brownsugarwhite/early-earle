@@ -1,0 +1,339 @@
+/* Studie „Maul, Zähne, Zunge“ (20.11.2026) im Designsystem „liquid drop“: Papier, Tinte, Haarlinien, Tropfen */
+@font-face {
+  font-family: 'Lobster';
+  src: url('../../../../assets/fonts/lobster/Lobster-Regular.ttf') format('truetype');
+}
+:root {
+  --tinte: #1f1a17;
+  --papier: #ffffff;
+  --haar: rgba(31, 26, 23, 0.28);
+  --oben: #e8306a;
+  --unten: #1f3cf0;
+  --zu: #4fd0c0;
+  --innen: #6b1220;
+  --fleisch: #b8324a;
+  --zunge: #e2607a;
+  --zahn: #f5ecd6;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 13px/1.35 -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+#buehne {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#zeichnung {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+#kopf {
+  position: fixed;
+  left: 18px;
+  top: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  pointer-events: none;
+}
+#kopf .name {
+  font: 26px 'Lobster', Georgia, serif;
+}
+#kopf .unter {
+  color: rgba(31, 26, 23, 0.55);
+}
+#fuss {
+  position: fixed;
+  left: 18px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#meldung {
+  position: fixed;
+  left: 50%;
+  bottom: 54px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--tinte);
+  color: var(--papier);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+/* Tropfen: kleine runde Knöpfe aus Tinte auf Papier */
+.tropfen {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 0.75px solid var(--tinte);
+  background: color-mix(in srgb, var(--papier) 86%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  cursor: grab;
+  padding: 0;
+  transition:
+    transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1),
+    background 0.2s;
+}
+.tropfen:hover {
+  transform: scale(1.18);
+}
+.tropfen.greift {
+  cursor: grabbing;
+  transform: scale(0.86);
+  background: var(--tinte);
+}
+.tropfen.oben {
+  border-color: var(--oben);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--oben) 22%, transparent);
+}
+.tropfen.unten {
+  border-color: var(--unten);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--unten) 22%, transparent);
+}
+.tropfen.winkel {
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: var(--tinte);
+  cursor: default;
+  pointer-events: none;
+}
+.pille {
+  appearance: none;
+  border: 0.75px solid var(--tinte);
+  background: color-mix(in srgb, var(--papier) 90%, transparent);
+  color: var(--tinte);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1),
+    background 0.2s,
+    color 0.2s;
+}
+.pille:hover {
+  transform: scale(1.05);
+}
+.pille[aria-pressed='true'] {
+  background: var(--tinte);
+  color: var(--papier);
+}
+.pille.quillt {
+  animation: quellen 0.5s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+@keyframes quellen {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.leise {
+  color: rgba(31, 26, 23, 0.5);
+  margin-left: 6px;
+}
+
+/* ---------- die Linse (oben rechts): ein rundes Feld mit zwei Ringen ---------- */
+#linse {
+  position: fixed;
+  right: 4px;
+  top: 4px;
+  touch-action: none;
+}
+#linse.quillt {
+  animation: linseQuillt 0.55s cubic-bezier(0.3, 1.5, 0.5, 1);
+  transform-origin: 78% 22%;
+}
+@keyframes linseQuillt {
+  from {
+    transform: scale(0.05);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.linse-bild {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #ffffff 0%, #f6f3ee 62%, #ebe6de 100%);
+  cursor: grab;
+}
+.linse-ringe {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.linse-rand {
+  fill: none;
+  stroke: var(--tinte);
+  stroke-width: 1;
+  pointer-events: none;
+}
+.linse-glanz {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.ring-bahn {
+  fill: none;
+  stroke: var(--haar);
+  stroke-width: 0.5;
+}
+.ring-zeichen {
+  cursor: pointer;
+}
+.ring-zeichen .zeichen-grund {
+  fill: color-mix(in srgb, var(--papier) 92%, transparent);
+  stroke: var(--haar);
+  stroke-width: 0.5;
+  transition:
+    fill 0.2s,
+    stroke 0.2s;
+}
+.ring-zeichen path {
+  fill: var(--zahn);
+  stroke: var(--tinte);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+.ring-zeichen.gilt .zeichen-grund {
+  fill: var(--tinte);
+  stroke: var(--tinte);
+}
+.rad-band {
+  fill: none;
+  stroke: color-mix(in srgb, var(--tinte) 7%, transparent);
+  stroke-width: 15;
+  cursor: grab;
+}
+.zieht-rad .rad-band {
+  stroke: color-mix(in srgb, var(--tinte) 12%, transparent);
+}
+.riffel {
+  stroke: var(--tinte);
+  stroke-width: 0.6;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.riffel.lang {
+  opacity: 0.9;
+  stroke-width: 0.9;
+}
+.marke {
+  fill: var(--tinte);
+  pointer-events: none;
+}
+.rad-tropfen {
+  fill: var(--tinte);
+  pointer-events: none;
+}
+.perle {
+  cursor: pointer;
+}
+.perle circle {
+  fill: color-mix(in srgb, var(--papier) 94%, transparent);
+  stroke: var(--tinte);
+  stroke-width: 0.75;
+  transition: fill 0.2s;
+}
+.perle text {
+  font: 600 10px -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  text-anchor: middle;
+  fill: var(--tinte);
+  pointer-events: none;
+  transition: fill 0.2s;
+}
+.perle.gilt circle {
+  fill: var(--tinte);
+}
+.perle.gilt text {
+  fill: var(--papier);
+}
+.linse-zahl {
+  font: 22px 'Lobster', Georgia, serif;
+  text-anchor: middle;
+  fill: var(--tinte);
+  opacity: 0;
+  transition: opacity 0.6s;
+  pointer-events: none;
+}
+.linse-zahl.da {
+  opacity: 1;
+  transition: opacity 0.08s;
+}
+.linse-griff {
+  fill: var(--papier);
+  stroke: var(--tinte);
+  stroke-width: 0.75;
+  cursor: nwse-resize;
+}
+
+/* ---------- zeichnen ---------- */
+#zeichnung .entwurf {
+  fill: none;
+  stroke: var(--zu);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+body.stift #buehne {
+  cursor: crosshair;
+}
+body.zieht #buehne {
+  cursor: grabbing;
+}
+.maul-tropfen {
+  position: fixed;
+  transform: translateX(-50%);
+  background: var(--tinte);
+  color: var(--papier);
+}
+.maul-tropfen:hover {
+  transform: translateX(-50%) scale(1.06);
+}
+.maul-tropfen.quillt {
+  animation: maulQuillt 0.5s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+@keyframes maulQuillt {
+  from {
+    transform: translateX(-50%) scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}

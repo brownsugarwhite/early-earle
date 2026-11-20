@@ -1,0 +1,429 @@
+/**
+ * Studie „Maul, Zähne, Zunge“ (20.11.2026): die Linse.
+ *
+ * Ein rundes Feld oben rechts, in dem ein kleines Teil groß steht (hier: ein Zahn, im Raum, zum Drehen). Um die Linse liegen
+ * zwei Ringe:
+ * - der **Formenring** (innen): die Vorlagen als kleine Zeichen; man dreht den Ring, was oben an der Marke steht, gilt;
+ * - der **Drehregler** (außen, geriffelt): ein Rad ohne Anschlag wie der Lautstärkeknopf eines alten CD-Spielers. Was er
+ *   stellt, wählen die Perlen an seinem Rand (Anzahl, Größe, Biegung, Neigung, Verlauf).
+ * Das Rad rastet (bei Zahlen je Schritt, sonst fein), läuft nach, wenn man es anschubst, und tickt leise. Ein Tropfen am Rand
+ * zieht die Linse größer.
+ *
+ * Die „Haptik“ kommt aus Bild und Ton: Das iPad hat keinen Motor dafür, und im Browser gibt es am iPhone keinen verlässlichen Weg.
+ * Wo ein Gerät vibrieren kann (`navigator.vibrate`), tickt es zusätzlich in der Hand.
+ */
+import { AmbientLight, Color, DataTexture, DirectionalLight, Group, Mesh, MeshMatcapMaterial, PerspectiveCamera, Scene, WebGLRenderer, DoubleSide } from 'three';
+import { ZAHN_FORMEN, zahnNetz, zahnUmriss, type ZahnForm } from './zahn';
+
+export type Perle = {
+  kurz: string;
+  name: string;
+  /** Wert lesen und um Schritte ändern; `rastet`: je Rast ein ganzer Schritt (sonst fein, zehn je Rast) */
+  wert: () => number;
+  setzen: (wert: number) => void;
+  min: number;
+  max: number;
+  schritt: number;
+  rastet: boolean;
+  zeigen: (w: number) => string;
+};
+
+export type LinsenZiele = {
+  /** eine Vorlage ist gewählt (Index in `ZAHN_FORMEN`) */
+  form: (i: number) => void;
+  perlen: Perle[];
+};
+
+const NS = 'http://www.w3.org/2000/svg';
+const el = <K extends keyof SVGElementTagNameMap>(name: K, attr: Record<string, string | number> = {}): SVGElementTagNameMap[K] => {
+  const e = document.createElementNS(NS, name);
+  for (const [k, v] of Object.entries(attr)) e.setAttribute(k, String(v));
+  return e;
+};
+
+export class Linse {
+  private readonly feld: HTMLElement;
+  private readonly svg: SVGSVGElement;
+  private readonly leinwand: HTMLCanvasElement;
+  private readonly renderer: WebGLRenderer;
+  private readonly szene = new Scene();
+  private readonly kamera = new PerspectiveCamera(26, 1, 0.1, 100);
+  private readonly dreh = new Group();
+  private zahn: Mesh | null = null;
+  private readonly material: MeshMatcapMaterial;
+  private readonly fleisch: Mesh;
+  private groesse = 240;
+  /** Winkel der zwei Ringe (Bogenmaß) und ihr Schwung */
+  private formWinkel = 0;
+  private formZiel: number | null = 0;
+  private radWinkel = 0;
+  private radSchwung = 0;
+  private radRest = 0;
+  private gewaehlt = 0;
+  private perle = 0;
+  private zahl: SVGTextElement | null = null;
+  private zahlUhr = 0;
+  private ton: AudioContext | null = null;
+  private letztesBild = 0;
+  private offen = false;
+  private gierZahn = -0.5;
+  private neigZahn = 0.15;
+  /** der Tropfen an der Marke: wie weit er vom letzten Rasten noch ausgelenkt ist */
+  private tropfenAus = 0;
+
+  constructor(
+    feld: HTMLElement,
+    grau: DataTexture,
+    private readonly ziele: LinsenZiele,
+  ) {
+    this.feld = feld;
+    feld.innerHTML = '';
+    this.leinwand = document.createElement('canvas');
+    this.leinwand.className = 'linse-bild';
+    feld.appendChild(this.leinwand);
+    this.svg = el('svg', { class: 'linse-ringe' });
+    feld.appendChild(this.svg);
+    this.renderer = new WebGLRenderer({ canvas: this.leinwand, antialias: true, alpha: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setClearColor(0xffffff, 0);
+    this.material = new MeshMatcapMaterial({ matcap: grau, color: new Color('#f7efdc'), side: DoubleSide });
+    this.szene.add(new AmbientLight(0xffffff, 1), new DirectionalLight(0xffffff, 1));
+    this.szene.add(this.dreh);
+    // das Zahnfleisch: eine flache Scheibe an der Linie, an der der Zahn aus dem Fleisch tritt
+    this.fleisch = new Mesh(zahnNetz({ laenge: 0.001, breite: 2.6, tiefe: 2.2, spitze: 0, kasten: 2.4, bogen: 0, hoecker: 0, wurzel: 'keine', wurzelLaenge: 0 }, false), new MeshMatcapMaterial({ matcap: grau, color: new Color('#b8324a'), transparent: true, opacity: 0.32, side: DoubleSide, depthWrite: false }));
+    this.dreh.add(this.fleisch);
+    this.kamera.position.set(0, 0.5, 9.5);
+    this.kamera.lookAt(0, 0.5, 0);
+    this.bauen();
+    this.eingaben();
+  }
+
+  get istOffen(): boolean {
+    return this.offen;
+  }
+
+  oeffnen(form: ZahnForm, vorlage: number): void {
+    this.offen = true;
+    this.feld.hidden = false;
+    this.feld.classList.remove('quillt');
+    void this.feld.offsetWidth;
+    this.feld.classList.add('quillt');
+    this.gewaehlt = vorlage;
+    this.formZiel = this.winkelVon(vorlage);
+    this.zahnSetzen(form);
+    this.lauf();
+  }
+  schliessen(): void {
+    this.offen = false;
+    this.feld.hidden = true;
+  }
+
+  /** der Zahn, der in der Linse steht */
+  zahnSetzen(form: ZahnForm): void {
+    if (this.zahn) {
+      this.zahn.removeFromParent();
+      this.zahn.geometry.dispose();
+    }
+    this.zahn = new Mesh(zahnNetz(form, true), this.material);
+    // so groß, dass er die Linse füllt
+    const hoch = form.laenge + (form.wurzel === 'keine' ? 0 : form.wurzelLaenge);
+    const k = 3.6 / Math.max(hoch, 1.6);
+    this.zahn.scale.setScalar(k);
+    this.fleisch.scale.setScalar(k * 0.62);
+    this.dreh.position.y = 0.5 - 0.5 * (form.laenge - (form.wurzel === 'keine' ? 0 : form.wurzelLaenge)) * k;
+    this.dreh.add(this.zahn);
+    this.lauf();
+  }
+
+  private winkelVon(i: number): number {
+    return (-2 * Math.PI * i) / ZAHN_FORMEN.length;
+  }
+
+  private bauen(): void {
+    const s = this.svg;
+    s.innerHTML = '';
+    const G = this.groesse;
+    const R = G / 2;
+    const rand = 58;
+    const W = G + 2 * rand;
+    this.feld.style.width = `${W}px`;
+    this.feld.style.height = `${W}px`;
+    s.setAttribute('viewBox', `${-W / 2} ${-W / 2} ${W} ${W}`);
+    s.setAttribute('width', String(W));
+    s.setAttribute('height', String(W));
+    this.leinwand.style.width = this.leinwand.style.height = `${G}px`;
+    this.leinwand.style.left = this.leinwand.style.top = `${rand}px`;
+    this.renderer.setSize(G, G, false);
+    // die Linse: ein Rand aus Tinte, innen ein heller Schimmer wie auf einem Tropfen
+    s.appendChild(el('circle', { r: R + 0.5, class: 'linse-rand' }));
+    s.appendChild(el('path', { d: `M${-R * 0.72},${-R * 0.42}A${R * 0.86},${R * 0.86} 0 0 1 ${-R * 0.18},${-R * 0.82}`, class: 'linse-glanz' }));
+    // Formenring
+    const r1 = R + 20;
+    const formen = el('g', { class: 'ring-formen' });
+    formen.appendChild(el('circle', { r: r1, class: 'ring-bahn' }));
+    ZAHN_FORMEN.forEach((z, i) => {
+      const a = (2 * Math.PI * i) / ZAHN_FORMEN.length - Math.PI / 2;
+      const g = el('g', { transform: `translate(${(Math.cos(a) * r1).toFixed(2)},${(Math.sin(a) * r1).toFixed(2)}) rotate(${((a * 180) / Math.PI + 90).toFixed(2)})`, class: 'ring-zeichen', 'data-i': i });
+      g.appendChild(el('circle', { r: 13, class: 'zeichen-grund' }));
+      g.appendChild(el('path', { d: zahnUmriss(z.form, 17), transform: 'translate(0,8)' }));
+      const t = el('title');
+      t.textContent = z.name;
+      g.appendChild(t);
+      formen.appendChild(g);
+    });
+    s.appendChild(formen);
+    // Drehregler: geriffelt
+    const r2 = R + 46;
+    const rad = el('g', { class: 'ring-rad' });
+    rad.appendChild(el('circle', { r: r2, class: 'rad-band' }));
+    for (let i = 0; i < 72; i++) {
+      const a = (2 * Math.PI * i) / 72;
+      const lang = i % 6 === 0 ? 6 : 3.5;
+      rad.appendChild(el('line', { x1: Math.cos(a) * (r2 - lang), y1: Math.sin(a) * (r2 - lang), x2: Math.cos(a) * (r2 + lang), y2: Math.sin(a) * (r2 + lang), class: i % 6 === 0 ? 'riffel lang' : 'riffel' }));
+    }
+    s.appendChild(rad);
+    // die Marke oben und der Tropfen, der an ihr hängt
+    s.appendChild(el('path', { d: `M0,${-(r1 + 17)}l-4,-7h8z`, class: 'marke' }));
+    s.appendChild(el('circle', { r: 4.5, cy: -(r2 + 12), class: 'rad-tropfen' }));
+    // Perlen: was der Drehregler stellt (unten links am Rad)
+    const perlen = el('g', { class: 'perlen' });
+    this.ziele.perlen.forEach((p, i) => {
+      const a = Math.PI * (0.62 + 0.115 * i);
+      const g = el('g', { transform: `translate(${(Math.cos(a) * (r2 + 2)).toFixed(2)},${(Math.sin(a) * (r2 + 2)).toFixed(2)})`, class: 'perle', 'data-i': i });
+      g.appendChild(el('circle', { r: 12 }));
+      const t = el('text', { y: 3.6 });
+      t.textContent = p.kurz;
+      g.appendChild(t);
+      const tt = el('title');
+      tt.textContent = p.name;
+      g.appendChild(tt);
+      perlen.appendChild(g);
+    });
+    s.appendChild(perlen);
+    // die Zahl: steht nur, solange gedreht wird
+    this.zahl = el('text', { y: R - 16, class: 'linse-zahl' });
+    s.appendChild(this.zahl);
+    // der Tropfen zum Größerziehen
+    const a = Math.PI * 0.25;
+    s.appendChild(el('circle', { r: 6.5, cx: Math.cos(a) * (r2 + 2), cy: Math.sin(a) * (r2 + 2), class: 'linse-griff' }));
+    this.zeigen();
+  }
+
+  private zeigen(): void {
+    const s = this.svg;
+    s.querySelector<SVGGElement>('.ring-formen')?.setAttribute('transform', `rotate(${((this.formWinkel * 180) / Math.PI).toFixed(2)})`);
+    s.querySelector<SVGGElement>('.ring-rad')?.setAttribute('transform', `rotate(${((this.radWinkel * 180) / Math.PI).toFixed(2)})`);
+    s.querySelectorAll<SVGGElement>('.ring-zeichen').forEach((g) => g.classList.toggle('gilt', Number(g.dataset.i) === this.gewaehlt));
+    s.querySelectorAll<SVGGElement>('.perle').forEach((g) => g.classList.toggle('gilt', Number(g.dataset.i) === this.perle));
+    // der Tropfen an der Marke dehnt sich in Drehrichtung und schnappt beim Rasten zurück
+    const t = s.querySelector<SVGCircleElement>('.rad-tropfen');
+    if (t) {
+      const d = Math.max(-1, Math.min(1, this.tropfenAus));
+      t.setAttribute('transform', `rotate(${(d * 7).toFixed(2)}) scale(${(1 + 0.5 * Math.abs(d)).toFixed(3)},${(1 - 0.28 * Math.abs(d)).toFixed(3)})`);
+      t.style.transformOrigin = `0px ${t.getAttribute('cy')}px`;
+    }
+  }
+
+  private tick(stark: boolean): void {
+    try {
+      this.ton ??= new AudioContext();
+      const c = this.ton;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = stark ? 1500 : 2300;
+      g.gain.setValueAtTime(stark ? 0.07 : 0.035, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.035);
+      o.connect(g).connect(c.destination);
+      o.start();
+      o.stop(c.currentTime + 0.04);
+    } catch {
+      // (kein Ton: dann nur das Bild)
+    }
+    navigator.vibrate?.(stark ? 6 : 3);
+  }
+
+  /** den Drehregler um einen Winkel weiterdrehen: je Rast (15°) ein Schritt */
+  private radDrehen(dw: number): void {
+    const p = this.ziele.perlen[this.perle];
+    if (!p) return;
+    this.radWinkel += dw;
+    const RAST = Math.PI / 12;
+    this.radRest += dw / RAST;
+    this.tropfenAus = this.radRest;
+    const teil = p.rastet ? 1 : 10;
+    const schritte = Math.trunc(this.radRest * teil);
+    if (schritte !== 0) {
+      this.radRest -= schritte / teil;
+      const alt = p.wert();
+      const neu = Math.max(p.min, Math.min(p.max, alt + (schritte * p.schritt) / (p.rastet ? 1 : 10)));
+      if (neu !== alt) {
+        p.setzen(neu);
+        if (p.rastet || Math.floor(neu / p.schritt) !== Math.floor(alt / p.schritt)) this.tick(p.rastet);
+      } else if (p.rastet) this.radSchwung = 0;
+      this.zahlZeigen(p.zeigen(p.wert()));
+    }
+  }
+
+  private zahlZeigen(text: string): void {
+    if (!this.zahl) return;
+    this.zahl.textContent = text;
+    this.zahl.classList.add('da');
+    window.clearTimeout(this.zahlUhr);
+    this.zahlUhr = window.setTimeout(() => this.zahl?.classList.remove('da'), 900);
+  }
+
+  private eingaben(): void {
+    const mitteVon = (): [number, number] => {
+      const r = this.feld.getBoundingClientRect();
+      return [r.left + r.width / 2, r.top + r.height / 2];
+    };
+    let zug: { art: 'formen' | 'rad' | 'zahn' | 'groesse'; w: number; x: number; y: number; t: number; weg: number; g0: number; d0: number; zeichen: number | null } | null = null;
+    const winkel = (e: PointerEvent): number => {
+      const [mx, my] = mitteVon();
+      return Math.atan2(e.clientY - my, e.clientX - mx);
+    };
+    this.feld.addEventListener('pointerdown', (e) => {
+      const [mx, my] = mitteVon();
+      const d = Math.hypot(e.clientX - mx, e.clientY - my);
+      const R = this.groesse / 2;
+      const ziel = e.target as Element;
+      let art: 'formen' | 'rad' | 'zahn' | 'groesse';
+      if (ziel.closest('.linse-griff')) art = 'groesse';
+      else if (ziel.closest('.perle')) {
+        this.perle = Number((ziel.closest('.perle') as SVGGElement).dataset.i);
+        const p = this.ziele.perlen[this.perle]!;
+        this.zahlZeigen(`${p.name} ${p.zeigen(p.wert())}`);
+        this.tick(false);
+        this.zeigen();
+        e.preventDefault();
+        return;
+      } else if (d < R) art = 'zahn';
+      else if (d < R + 33) art = 'formen';
+      else if (d < R + 60) art = 'rad';
+      else return;
+      this.feld.setPointerCapture(e.pointerId);
+      // (das Zeichen unter dem Zeiger jetzt merken: Beim Loslassen meldet der Browser das gefangene Feld, nicht mehr das Zeichen)
+      const zeichen = ziel.closest('.ring-zeichen') as SVGGElement | null;
+      zug = { art, w: winkel(e), x: e.clientX, y: e.clientY, t: performance.now(), weg: 0, g0: this.groesse, d0: d, zeichen: zeichen ? Number(zeichen.dataset.i) : null };
+      this.radSchwung = 0;
+      if (art === 'formen') this.formZiel = null;
+      this.feld.classList.add(`zieht-${art}`);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    this.feld.addEventListener('pointermove', (e) => {
+      if (!zug) return;
+      const jetzt = performance.now();
+      if (zug.art === 'zahn') {
+        this.gierZahn += (e.clientX - zug.x) * 0.012;
+        this.neigZahn = Math.max(-1.2, Math.min(1.2, this.neigZahn + (e.clientY - zug.y) * 0.012));
+      } else if (zug.art === 'groesse') {
+        const [mx, my] = mitteVon();
+        const d = Math.hypot(e.clientX - mx, e.clientY - my);
+        const neu = Math.round(Math.max(150, Math.min(520, zug.g0 + 2 * (d - zug.d0))));
+        if (neu !== this.groesse) {
+          this.groesse = neu;
+          this.bauen();
+        }
+      } else {
+        const w = winkel(e);
+        let dw = w - zug.w;
+        if (dw > Math.PI) dw -= 2 * Math.PI;
+        if (dw < -Math.PI) dw += 2 * Math.PI;
+        zug.w = w;
+        zug.weg += Math.abs(dw);
+        if (zug.art === 'formen') this.formWinkel += dw;
+        else {
+          this.radDrehen(dw);
+          const dt = Math.max(1, jetzt - zug.t) / 1000;
+          this.radSchwung = 0.6 * this.radSchwung + 0.4 * (dw / dt);
+        }
+      }
+      zug.x = e.clientX;
+      zug.y = e.clientY;
+      zug.t = jetzt;
+      this.lauf();
+    });
+    const ende = (): void => {
+      if (!zug) return;
+      const z = zug;
+      zug = null;
+      this.feld.classList.remove('zieht-formen', 'zieht-rad', 'zieht-zahn', 'zieht-groesse');
+      if (z.art === 'formen') {
+        const n = ZAHN_FORMEN.length;
+        let i: number;
+        if (z.weg < 0.03 && z.zeichen !== null) i = z.zeichen;
+        else i = (((Math.round((-this.formWinkel / (2 * Math.PI)) * n) % n) + n) % n);
+        // auf dem kürzeren Weg an die Marke
+        let zielW = this.winkelVon(i);
+        while (zielW - this.formWinkel > Math.PI) zielW -= 2 * Math.PI;
+        while (zielW - this.formWinkel < -Math.PI) zielW += 2 * Math.PI;
+        this.formZiel = zielW;
+        if (i !== this.gewaehlt) {
+          this.gewaehlt = i;
+          this.tick(true);
+          this.ziele.form(i);
+        }
+      } else if (z.art === 'rad' && performance.now() - z.t > 60) this.radSchwung = 0;
+      this.lauf();
+    };
+    this.feld.addEventListener('pointerup', ende);
+    this.feld.addEventListener('pointercancel', ende);
+    // das Rad der Maus dreht den Drehregler
+    this.feld.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        this.radDrehen(-e.deltaY * 0.004);
+        this.lauf();
+      },
+      { passive: false },
+    );
+  }
+
+  private laeuft = false;
+  private lauf(): void {
+    if (this.laeuft || !this.offen) return;
+    this.laeuft = true;
+    this.letztesBild = performance.now();
+    requestAnimationFrame(() => this.bild());
+  }
+
+  private bild(): void {
+    const jetzt = performance.now();
+    const dt = Math.min(0.05, (jetzt - this.letztesBild) / 1000);
+    this.letztesBild = jetzt;
+    let weiter = false;
+    // der Formenring fährt weich an die Marke
+    if (this.formZiel !== null) {
+      const d = this.formZiel - this.formWinkel;
+      if (Math.abs(d) > 1e-3) {
+        this.formWinkel += d * (1 - Math.exp(-dt / 0.07));
+        weiter = true;
+      } else this.formWinkel = this.formZiel;
+    }
+    // der Drehregler läuft nach und kommt an einer Rast zur Ruhe
+    if (Math.abs(this.radSchwung) > 0.25 && !this.feld.classList.contains('zieht-rad')) {
+      this.radDrehen(this.radSchwung * dt);
+      this.radSchwung *= Math.exp(-dt / 0.35);
+      weiter = true;
+    } else if (!this.feld.classList.contains('zieht-rad')) {
+      this.radSchwung = 0;
+      if (Math.abs(this.radRest) > 1e-3 || Math.abs(this.tropfenAus) > 1e-3) {
+        // zwischen zwei Rasten: zurück zur nächsten
+        const k = 1 - Math.exp(-dt / 0.06);
+        const dw = -this.radRest * k * (Math.PI / 12);
+        this.radWinkel += dw;
+        this.radRest *= 1 - k;
+        this.tropfenAus = this.radRest;
+        weiter = true;
+      }
+    }
+    this.zeigen();
+    this.dreh.rotation.set(this.neigZahn, this.gierZahn, 0);
+    this.renderer.render(this.szene, this.kamera);
+    this.laeuft = false;
+    if (weiter) this.lauf();
+  }
+}
