@@ -1102,3 +1102,52 @@ Bilder (Liste, 101).
 **Was von Etappe 6 fehlt:** liegen bleiben in einer Pose, Ablegen auf Zahn oder Lippe, an Zähne stoßen. Bild:
 `docs/progress/ozzy/2026-11-20-maul-etappe6-zunge-linse.jpg`. Offenes:
 [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 92 bis 105.
+
+### 12.21 Etappe 6, dritte Scheibe: anstoßen, ablegen, liegen bleiben (20.11.)
+
+Deine Antwort (20.11.): „Rest der Zunge“.
+
+**In Ozzy:**
+
+- **Sie stößt an Zähne.** Eine lange Zunge liegt über den unteren Vorderzähnen und hängt davor heraus; eine breite wird
+  zwischen den Zahnreihen schmaler; unter einem oberen Zahn wird sie flach. Kein Zahn steht mehr durch sie hindurch. Vor der
+  Lippe weicht sie Zähnen und Lippen aus.
+- **In „Fressen“ bleibt sie liegen,** wohin du sie ziehst: in dieser Richtung und Form, aber nicht gedehnt (sie zieht sich auf
+  höchstens ein Fünftel über ihre Länge zusammen). Das ist ihre Lage in der Pose. Sie geht mit dem Unterkiefer mit; in der
+  Grundform liegt sie wieder an ihrem Platz.
+- **In der Grundform schnellt sie zurück,** außer du lässt sie auf einem Zahn oder einer Lippe los: Dann klebt die Stelle,
+  an der du gegriffen hast, dort. Sie bleibt kleben, wenn das Maul zugeht und wieder aufgeht.
+- **Ein Doppeltipp auf die Zunge löst sie** (aus ihrer Lage oder vom Zahn). Jedes Ablegen und Lösen ist ein Schritt für ⌘Z.
+
+**Wie:** Zähne und Lippen sind für die Zunge Stücke mit runden Enden (`Hindernis`; die Zähne so lang, wie sie gezeigt werden,
+`zahnKapseln`). Im Maul gehören die Zähne zu Boden und Gaumen: Ein unterer Zahn, über dem die Kette liegt, hebt ihren Boden
+als flache Rampe zu seiner Spitze; ein oberer senkt so die Decke; einer neben ihr begrenzt ihre Breite (`zaehneMessen`). Das
+Kleben ist ein Wert an der Zunge (`klebt`: welcher Knoten, an welchem Zahn oder wo an welcher Lippe), ihre Lage in der Pose
+auch (`lage`: je Knoten längs, hoch und quer an seinem Platz auf dem Unterkiefer). Das Netz führt seinen Rahmen jetzt von Ring
+zu Ring mit.
+
+**Geprüft** im Fenster (`ozzy-maul-zunge-fenster.mjs`, jetzt auch U5b bis U5d und K1 bis K6, an „teat firefish“ auf Wachs, mit
+echten Zeigergesten): In „Fressen“ um 157 % gedehnt und losgelassen, lag sie nach 1,6 s still, 17 % über ihrer Länge, in der
+Richtung des Zugs. Den Unterkiefer von 62° auf 40° gestellt, ging sie mit (23 Bildpunkte); zurückgestellt, lag sie wieder
+genau so. „Fressen“ aus: an ihrem Platz; wieder an: in ihrer Lage. Doppeltipp: zurück. Mit 23 Zähnen: Die lange Zunge lag
+über den Vorderzähnen (ihr Boden dort um 21 gehoben, ihre Mittellinie ist 112 lang) und steckte in keinem. In der Grundform auf
+einen oberen Zahn gelegt, klebte sie an ihm (7 Bildpunkte neben seiner Spitze), auch nach Schließen und Öffnen der Linse; im
+Freien losgelassen, löste sie sich; auf der Unterlippe klebte sie an der Lippe. Dazu die Proben der Zähne, des Mauls und der
+Farbe. Im Modell (Test „die Zunge stößt an …“, an einer Kugel): über einem Zahn, zwischen zwei Zähnen, unter einem oberen Zahn,
+jeweils in Ruhe; Kleben an Zahn und Lippe; die Lage mit ihren Gegenproben.
+
+**Was erst das Fenster zeigte** (jedes davon habe ich in den Bildern gesehen, nicht in den Zahlen):
+
+1. **Runde Stoßkörper knäuelten die Zunge.** Mein erster Bau ließ jeden Knoten einem Zahn zur Seite ausweichen: Eine lange
+   Zunge wurde vor den Vorderzähnen zu einem Knäuel, durch eine breite standen die Zähne hindurch. Deshalb jetzt Boden und Decke.
+2. **Ein steiler Buckel am Zahn ließ die Kette nie ruhen** (sie hat die Länge nicht, um darüberzusteigen). Deshalb die flache
+   Rampe.
+3. **Die kurze Zunge wurde in einem fort hochgeworfen:** Das letzte Stück der Kette ist kurz und zappelt; an ihm gemessen,
+   galt ein Zahn weit vor der Spitze immer wieder als „unter ihr“. Jetzt zählt dort die Richtung des Bodens. Und Zähne schieben
+   die Zunge ohne Schwung.
+4. **Zur Seite gezogen verdrehte sich ihr Netz** zu einem geknickten Band. Jetzt wird der Rahmen mitgeführt.
+5. **Gedehnt losgelassen blieb ein dünner Streifen stehen.** Jetzt bleibt die Form, nicht die Dehnung.
+6. **Von der Seite ging der Griff an einen Zahn,** wenn die Zunge vor ihm lag. Jetzt gehört er der Zunge, wo sie vorn liegt.
+
+**Damit ist Etappe 6 gebaut.** Bild: `docs/progress/ozzy/2026-11-20-maul-etappe6-zunge-rest.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 106 bis 124.

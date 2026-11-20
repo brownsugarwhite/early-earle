@@ -335,6 +335,40 @@ export const formGemischt = (von: number, nach: number, t: number): ZahnForm => 
 /** ihr Netz (nicht gemerkt: je Bild des Wechsels einmal gebaut) */
 export const formNetzGemischt = (von: number, nach: number, t: number): FormNetz => netzAus(formGemischt(von, nach, t));
 
+/** ein Zahn als Körper, an dem etwas anstößt (die Zunge): ein Stück mit runden Enden vom Fuß bis kurz unter die Spitze */
+export type ZahnKapsel = { a: [number, number, number]; b: [number, number, number]; r: number; unten: boolean; i: number; gespiegelt: boolean };
+/**
+ * Die Zähne als Körper, so lang und so dick, wie `zaehneNetz` sie mit denselben Angaben zeigt (in Einheiten des Werks). Ein Zahn,
+ * der gerade keine Länge hat (das Maul ist zu), hat Radius null: Er steht dann nur für seinen Fuß.
+ */
+export function zahnKapseln(plaetze: readonly ZahnPlatz[], P: ArrayLike<number>, spalt: (r: number) => number, wuchs: (vorn: number) => number, formVon?: (q: ZahnPlatz) => FormNetz | null): ZahnKapsel[] {
+  return plaetze.map((q) => {
+    const g = formVon?.(q) ?? formNetz(q.form);
+    const { ort, n, zl } = rahmenRoh(q, P);
+    const c = Math.cos(q.reihe.neigung);
+    const s = Math.sin(q.reihe.neigung);
+    const Y: [number, number, number] = [n[0] * c + zl[0] * s, n[1] * c + zl[1] * s, n[2] * c + zl[2] * s];
+    const { lam, dick } = zahnLaenge(q, g, spalt, wuchs);
+    const lang = g.laenge * q.mass * lam;
+    const r = 0.42 * g.tiefe * dick;
+    // (die Achse reicht bis einen Radius unter die Spitze: Die Kappe endet dort, wo der Zahn endet)
+    const achse = Math.max(lang - r, 1e-6 * (1 + q.mass));
+    const sz = q.gespiegelt ? -1 : 1;
+    return { a: [ort[0], ort[1], ort[2] * sz], b: [ort[0] + Y[0] * achse, ort[1] + Y[1] * achse, (ort[2] + Y[2] * achse) * sz], r, unten: q.unten, i: q.i, gespiegelt: q.gespiegelt };
+  });
+}
+/** wie lang (Anteil seiner ganzen Länge) und wie dick (Maß quer) ein Zahn gerade gezeigt wird */
+function zahnLaenge(q: ZahnPlatz, g: FormNetz, spalt: (r: number) => number, wuchs: (vorn: number) => number): { lam: number; dick: number } {
+  // die Länge: im Maul nie länger als der Spalt der Kiefer dort (zu: null); vor der Lippe behält der Zahn seine Länge (ganz,
+  // sobald er um seine halbe Tiefe draußen steht); und so weit, wie er schon gesprossen ist
+  const w = Math.max(0, Math.min(1, wuchs(q.vorn)));
+  const voll = g.laenge * q.mass;
+  const imMaul = voll > 1e-9 ? Math.max(0, Math.min(1, (0.92 * spalt(q.r)) / voll)) : 0;
+  const frei = q.aussen > 0 ? Math.min(1, q.aussen / Math.max(1e-9, 0.5 * g.tiefe * q.mass)) : 0;
+  const lam = w * (imMaul + (1 - imMaul) * frei);
+  return { lam, dick: q.mass * (0.35 + 0.65 * w) * (lam > 0 ? 1 : 0) };
+}
+
 /**
  * Die Zähne als Netz für die Anzeige, an der gezeigten Haut. `P`: die Lagen des Rechennetzes, wie sie gezeigt werden (mit den
  * Knochen gedreht), in Einheiten des Werks; Welt = Werk / `f` + `mitte`. `spalt(r)`: so weit stehen die Kiefer im Abstand r vom
@@ -375,14 +409,7 @@ export function zaehneNetz(
     const s = Math.sin(q.reihe.neigung);
     const Y: [number, number, number] = [n[0] * c + zl[0] * s, n[1] * c + zl[1] * s, n[2] * c + zl[2] * s];
     const Z: [number, number, number] = [zl[0] * c - n[0] * s, zl[1] * c - n[1] * s, zl[2] * c - n[2] * s];
-    // die Länge: im Maul nie länger als der Spalt der Kiefer dort (zu: null); vor der Lippe behält der Zahn seine Länge (ganz,
-    // sobald er um seine halbe Tiefe draußen steht); und so weit, wie er schon gesprossen ist
-    const w = Math.max(0, Math.min(1, wuchs(q.vorn)));
-    const voll = g.laenge * q.mass;
-    const imMaul = voll > 1e-9 ? Math.max(0, Math.min(1, (0.92 * spalt(q.r)) / voll)) : 0;
-    const frei = q.aussen > 0 ? Math.min(1, q.aussen / Math.max(1e-9, 0.5 * g.tiefe * q.mass)) : 0;
-    const lam = w * (imMaul + (1 - imMaul) * frei);
-    const dick = q.mass * (0.35 + 0.65 * w) * (lam > 0 ? 1 : 0);
+    const { lam, dick } = zahnLaenge(q, g, spalt, wuchs);
     const sz = q.gespiegelt ? -1 : 1;
     const k = g.pos.length / 3;
     for (let i = 0; i < k; i++) {

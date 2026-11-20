@@ -800,6 +800,15 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   messen, nicht nur in der gewohnten Ansicht. Der Haken `messen` nennt die Teile eines Bilds. (53) `werkHaut.rechnen` bleibt
   fein, wenn die Lage gleich ist (`vollJetzt`): Sonst pendelt die Anzeige in Ruhe zwischen zwei Stufen. (54) Proben ohne Ordner
   für Bilder legen `apps/editor/undefined/` an: den Ordner immer mitgeben. Probe: `ozzy-maul-zunge-fenster.mjs` (N1 bis N10).
+  **Etappe 6, dritte Scheibe: anstoßen, ablegen, liegen bleiben (20.11.; Plan 12.21):** `Hindernis`, `zaehneMessen`,
+  `MaulZunge.klebt/lage`, in `main.ts` „Anstoßen, ablegen, liegen bleiben“. Merke: (55) Eine Kette aus Knoten weicht Körpern
+  nicht sauber zur Seite aus: Was unter ihr steht, gehört in ihren Boden (flache Rampe), was neben ihr steht, in ihre Breite.
+  (56) Ein Maß, das an der Lage der Knoten hängt und die Knoten versetzt, pendelt: von oben gesehen messen, einmal je Bild,
+  gedämpft, mit Schwelle; nie an einem kurzen Endstück messen. (57) Was die Knoten schiebt, weil sich ein Maß geändert hat,
+  darf keinen Schwung geben. (58) „Ruht“ und „besteht die Probe“ sagen nichts über das Aussehen: Jeder der sechs Fehler dieser
+  Scheibe war nur im Bild von Nahem zu sehen (von vorn unten ins Maul: `blickSetzen({ gier: -2.3, neigung: -0.45, zoom: 6 })`).
+  (59) Ein Rahmen längs einer Kurve wird mitgeführt, nicht je Stelle neu aus einer festen Achse bestimmt. (60) Von der Seite
+  liegt die Zunge hinter der nahen Zahnreihe: Proben greifen sie an einem Knoten, der zu sehen ist. Probe: U5b bis U5d, K1 bis K6.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

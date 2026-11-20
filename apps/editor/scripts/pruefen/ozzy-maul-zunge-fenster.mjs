@@ -23,6 +23,13 @@
 //   N8 Der Tropfen „Zähne“ stellt die Linse auf die Zähne um (acht Zeichen, zwei Reihen), der Tropfen „Zunge“ wieder zurück.
 //   N9 ⌫ bei offener Linse nimmt die Zunge (ein Schritt, die Linse schließt); ⌘Z holt sie zurück.
 //   N10 Esc schließt die Linse: Das Maul geht zu, kein Tropfen ist gedrückt.
+// Dritte Scheibe (anstoßen, ablegen, liegen bleiben; U5 und U5b bis U5d prüfen das Liegenbleiben in „Fressen“):
+//   K1 In „Fressen“ stehen der Zunge die Zähne und die Lippen im Weg; in Ruhe steckt sie in keinem.
+//   K2 Eine lange Zunge liegt über den unteren Zähnen, nicht in ihnen; auch während an ihr gezogen wird.
+//   K3 Grundform (Linse offen): auf einem Zahn losgelassen, klebt die gegriffene Stelle an ihm (ein Schritt); sie ruht dort.
+//   K4 Die Linse zu und wieder auf: Sie klebt weiter.
+//   K5 Im Freien losgelassen: Sie löst sich und schnellt zurück (ein Schritt).
+//   K6 Auf der Unterlippe losgelassen, klebt sie an der Lippe; ein Doppeltipp löst sie; ⌘Z.
 //   U8 Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;…'] node scripts/pruefen/ozzy-maul-zunge-fenster.mjs [ordner für Bilder]
 import { chromium } from '@playwright/test';
@@ -203,7 +210,9 @@ if (u2.werte && u2.kette) {
     }
     await s.waitForTimeout(700);
     const gezogen = (await O('zunge')).kette;
+    const imZug = (await O('zunge')).knoten;
     await bild('4-gezogen');
+    const sv = (await O('kiefer')).schritte;
     await s.mouse.up();
     let ruhtNach = -1;
     const t0 = Date.now();
@@ -214,12 +223,97 @@ if (u2.werte && u2.kette) {
         break;
       }
     }
-    const danach = (await O('zunge')).kette;
+    const liegt = await O('zunge');
+    await bild('4b-liegt');
+    // (dritte Scheibe: In der Pose bleibt sie liegen, wohin sie gezogen wurde: in dieser Richtung, aber nicht gedehnt (höchstens ein
+    // Fünftel länger als in Ruhe). Das ist ihre Lage in „Fressen“, ein Schritt für ⌘Z)
+    const richtung = (kn) => [kn[10][0] - kn[1][0], kn[10][1] - kn[1][1]];
+    const [ra, rb] = [richtung(imZug), richtung(liegt.knoten)];
+    const winkel = (Math.acos(Math.max(-1, Math.min(1, (ra[0] * rb[0] + ra[1] * rb[1]) / (Math.hypot(ra[0], ra[1]) * Math.hypot(rb[0], rb[1]) || 1)))) * 180) / Math.PI;
     ok(
-      'U5 Gummi: an ihr gegriffen und aus dem Maul gezogen, ist sie deutlich länger als in Ruhe; losgelassen schnellt sie zurück und ruht',
-      gezogen.greift && gezogen.laenge > 1.2 * gezogen.ruheLaenge && !danach.greift && !danach.bewegt && danach.laenge < 1.06 * danach.ruheLaenge && ruhtNach > 0,
-      `gezogen: Länge ${gezogen.laenge.toFixed(1)} bei ${gezogen.ruheLaenge.toFixed(1)} in Ruhe (${(100 * (gezogen.laenge / gezogen.ruheLaenge - 1)).toFixed(0)} % gedehnt), gegriffen ${gezogen.greift}; losgelassen: ruht nach ${ruhtNach} ms, Länge ${danach.laenge.toFixed(1)}`,
+      'U5 Gummi: an ihr gegriffen und aus dem Maul gezogen, ist sie deutlich länger als in Ruhe; in „Fressen“ losgelassen bleibt sie in dieser Richtung liegen, aber nicht gedehnt (ein Schritt)',
+      gezogen.greift && gezogen.laenge > 1.2 * gezogen.ruheLaenge && !liegt.kette.greift && !liegt.kette.bewegt && ruhtNach > 0 && Array.isArray(liegt.lage) && liegt.lage.length === 43 && liegt.inPose && winkel < 12 && liegt.kette.laenge > 1.1 * gezogen.ruheLaenge && liegt.kette.laenge < 1.26 * gezogen.ruheLaenge && (await O('kiefer')).schritte === sv + 1,
+      `gezogen: Länge ${gezogen.laenge.toFixed(1)} bei ${gezogen.ruheLaenge.toFixed(1)} in Ruhe (${(100 * (gezogen.laenge / gezogen.ruheLaenge - 1)).toFixed(0)} % gedehnt); losgelassen: ruht nach ${ruhtNach} ms, Länge ${liegt.kette.laenge.toFixed(1)} (${(100 * (liegt.kette.laenge / gezogen.ruheLaenge - 1)).toFixed(0)} % über ihrer Ruhe), von der Wurzel zur Spitze ${winkel.toFixed(1)}° neben der Richtung im Zug; Lage ${liegt.lage ? `${liegt.lage.length} Zahlen` : 'keine'}; Schritte +${(await O('kiefer')).schritte - sv}`,
     );
+    // U5b der Unterkiefer weiter zu: Sie geht mit ihm mit; zurück gestellt, liegt sie wieder genau so
+    {
+      const stellen = (grad) =>
+        s.evaluate((g) => {
+          const r = document.getElementById('fressen-maul');
+          r.value = String(g);
+          r.dispatchEvent(new Event('input', { bubbles: true }));
+          r.dispatchEvent(new Event('change', { bubbles: true }));
+        }, grad);
+      const warten = async () => {
+        for (let i = 0; i < 60; i++) {
+          await s.waitForTimeout(100);
+          if (!(await O('zunge')).kette.bewegt) return;
+        }
+      };
+      await stellen(40);
+      await warten();
+      const enger = await O('zunge');
+      await stellen(62);
+      await warten();
+      const wieder = await O('zunge');
+      ok(
+        'U5b den Unterkiefer weiter geschlossen: die Zunge geht mit ihm mit (ihre Lage bleibt dieselbe); zurück gestellt, liegt sie wieder wie vorher',
+        Math.hypot(enger.vorn[0] - liegt.vorn[0], enger.vorn[1] - liegt.vorn[1]) > 10 && JSON.stringify(enger.lage) === JSON.stringify(liegt.lage) && !enger.kette.bewegt && Math.hypot(wieder.vorn[0] - liegt.vorn[0], wieder.vorn[1] - liegt.vorn[1]) < 4,
+        `bei 40°: der Knoten ${Math.hypot(enger.vorn[0] - liegt.vorn[0], enger.vorn[1] - liegt.vorn[1]).toFixed(1)} px gewandert; zurück bei 62°: ${Math.hypot(wieder.vorn[0] - liegt.vorn[0], wieder.vorn[1] - liegt.vorn[1]).toFixed(1)} px neben vorher`,
+      );
+      // (die zwei Schritte des Reglers wieder weg: Die Zählung danach bleibt, wie sie war)
+      await zurueck();
+      await zurueck();
+    }
+    // U5c „Fressen“ aus: In der Grundform liegt sie an ihrem Platz; wieder an: in ihrer Lage
+    {
+      await s.click('#fressen-knopf');
+      await s.waitForTimeout(1500);
+      await ruhig();
+      await s.waitForTimeout(1500);
+      const grund = await O('zunge');
+      await s.click('#fressen-knopf');
+      await s.waitForTimeout(1500);
+      await ruhig();
+      await s.waitForTimeout(2000);
+      const pose = await O('zunge');
+      ok(
+        'U5c „Fressen“ aus: in der Grundform liegt sie an ihrem Platz (ihre Lage gehört zur Pose); „Fressen“ wieder an: sie liegt wieder so',
+        !grund.inPose && Array.isArray(grund.lage) && grund.kette.laenge < 1.1 * gezogen.ruheLaenge && pose.inPose && !pose.kette.bewegt && Math.hypot(pose.vorn[0] - liegt.vorn[0], pose.vorn[1] - liegt.vorn[1]) < 4 && pose.kette.laenge > 0.9 * liegt.kette.laenge,
+        `Grundform: Länge ${grund.kette.laenge.toFixed(1)}; wieder in „Fressen“: Länge ${pose.kette.laenge.toFixed(1)}, der Knoten ${Math.hypot(pose.vorn[0] - liegt.vorn[0], pose.vorn[1] - liegt.vorn[1]).toFixed(1)} px neben vorher`,
+      );
+    }
+    // U5d Doppeltipp auf die Zunge: zurück an ihren Platz (ein Schritt); ⌘Z bringt ihre Lage zurück
+    {
+      const z0 = await O('zunge');
+      const sv2 = (await O('kiefer')).schritte;
+      // (an einem Knoten, der aus dem Maul heraussteht: Die Mitte der Zunge liegt von der Seite gesehen hinter der Wange)
+      await s.mouse.move(z0.vorn[0], z0.vorn[1]);
+      await s.waitForTimeout(200);
+      for (let i = 0; i < 2; i++) {
+        await s.mouse.down();
+        await s.waitForTimeout(50);
+        await s.mouse.up();
+        await s.waitForTimeout(110);
+      }
+      for (let i = 0; i < 60; i++) {
+        await s.waitForTimeout(100);
+        if (!(await O('zunge')).kette.bewegt) break;
+      }
+      const los = await O('zunge');
+      const sn = (await O('kiefer')).schritte;
+      await zurueck();
+      await s.waitForTimeout(1200);
+      const wieder = await O('zunge');
+      await zurueck();
+      await s.waitForTimeout(1200);
+      const ohne = await O('zunge');
+      ok(
+        'U5d Doppeltipp auf die Zunge: zurück an ihren Platz, in ihrer Länge (ein Schritt); ⌘Z bringt ihre Lage zurück, ein zweites nimmt sie wieder',
+        los.lage === null && los.kette.laenge < 1.06 * los.kette.ruheLaenge && los.kette.spitzeAb < 0.05 * los.kette.lang && sn === sv2 + 1 && Array.isArray(wieder.lage) && Math.hypot(wieder.vorn[0] - liegt.vorn[0], wieder.vorn[1] - liegt.vorn[1]) < 6 && ohne.lage === null && (await O('kiefer')).schritte === sv,
+        `nach dem Doppeltipp: Lage ${los.lage ? 'noch da' : 'weg'}, Länge ${los.kette.laenge.toFixed(1)} bei ${los.kette.ruheLaenge.toFixed(1)}, Schritte +${sn - sv2}; nach ⌘Z: Lage ${wieder.lage ? 'wieder da' : 'fehlt'}; nach dem zweiten: ${ohne.lage ? 'noch da' : 'weg'}`,
+      );
+    }
   }
   await s.click('#fressen-knopf');
   await s.waitForTimeout(1500);
@@ -493,6 +587,156 @@ if ((await O('werkLinienDaten')).some((l) => l.maulEcht)) {
   await s.waitForTimeout(900);
   const n10 = await O('zunge');
   ok('N10 Esc schließt die Linse: das Maul geht zu, kein Tropfen ist gedrückt', offenVor && !n10.linse.offen && !n10.offen && !(await gedrueckt()) && !(await zaehneGedrueckt()) && (await O('kiefer')).blick < 0.05 && !!n10.werte && (await O('werkLinienDaten')).length > 0, `vorher ${offenVor ? 'offen' : 'zu'}, danach ${n10.linse.offen ? 'offen' : 'zu'}; Blick ${(await O('kiefer')).blick.toFixed(2)}`);
+
+  // ---------- dritte Scheibe: anstoßen und ablegen ----------
+  /** die Zunge an einem ihrer Knoten greifen und zu einem Ort im Bild ziehen (der Zeiger bleibt gedrückt) */
+  const zungeZiehen = async (von, nach, schritte = 14) => {
+    await s.mouse.move(von[0] + 60, von[1] - 60);
+    await s.waitForTimeout(150);
+    await s.mouse.move(von[0], von[1]);
+    await s.waitForTimeout(250);
+    await s.mouse.down();
+    for (let k = 1; k <= schritte; k++) {
+      await s.mouse.move(von[0] + ((nach[0] - von[0]) * k) / schritte, von[1] + ((nach[1] - von[1]) * k) / schritte);
+      await s.waitForTimeout(30);
+    }
+    await s.waitForTimeout(500);
+  };
+  // K1 in „Fressen“: Zähne und Lippen stehen im Weg
+  await s.click('#zunge-tropfen');
+  await s.waitForTimeout(900);
+  await s.click('#fressen-knopf');
+  await s.waitForTimeout(1500);
+  await ruhig();
+  await zungeRuht();
+  const k1 = await O('zunge');
+  ok(
+    'K1 in „Fressen“ stehen der Zunge die Zähne und die Lippen im Weg; in Ruhe steckt sie in keinem',
+    k1.inPose && k1.hindernisse.zaehne === 23 && k1.hindernisse.alle > 60 && k1.hindernisse.engster > -0.5 && !k1.kette.bewegt,
+    `Hindernisse ${k1.hindernisse.alle}, davon Zähne mit Länge ${k1.hindernisse.zaehne}; der engste Abstand ${k1.hindernisse.engster.toFixed(2)} (unter null: sie steckt darin)`,
+  );
+  // K2 eine lange Zunge: über den unteren Zähnen, nicht in ihnen; auch im Zug
+  {
+    await O('zunge', { laenge: 1.22, breite: 0.68, dicke: 0.07, rille: 0.3, spitz: 0.15, gabel: 0, form: 3 });
+    await zungeRuht();
+    await s.waitForTimeout(600);
+    const lang = await O('zunge');
+    await bild('13-lang-ueber-zaehnen');
+    // an ihr (an einem Knoten vor der Lippe: Der ist von der Seite zu sehen) nach hinten unten in die Zähne ziehen: Die Knoten,
+    // die nicht an der Hand sind, bleiben draußen
+    const griff = lang.knoten[9];
+    const nachUnten = [lang.mitte[0], lang.mitte[1] + 30];
+    await zungeZiehen(griff, nachUnten);
+    const imZug = await O('zunge');
+    await bild('14-in-die-zaehne-gezogen');
+    await s.mouse.up();
+    await zungeRuht();
+    const liegtDort = await O('zunge');
+    ok(
+      'K2 eine lange Zunge liegt über den unteren Zähnen, nicht in ihnen; auch während an ihr gezogen wird',
+      lang.platz.draussen >= 2 && lang.hindernisse.engster > -0.6 && lang.netz.endlich && lang.zahnMasse.hoch.some((x) => x > 5) && imZug.kette.greift && imZug.hindernisse.engster > -1.5 && liegtDort.hindernisse.engster > -0.6 && Array.isArray(liegtDort.lage),
+      `in Ruhe: engster Abstand ${lang.hindernisse.engster.toFixed(2)}, ihr Boden über den Zähnen gehoben bis ${Math.max(...lang.zahnMasse.hoch).toFixed(1)}; im Zug: ${imZug.kette.greift ? 'gegriffen' : 'NICHT gegriffen'}, engster ${imZug.hindernisse.engster.toFixed(2)}; dort losgelassen: engster ${liegtDort.hindernisse.engster.toFixed(2)}`,
+    );
+    // (ihre Lage und die lange Vorlage wieder weg: zurück zur runden Zunge ohne Lage)
+    for (let i = 0; i < 4 && ((await O('zunge')).lage || (await O('zunge')).werte.form === 3); i++) await zurueck();
+    await zungeRuht();
+  }
+  // K3 Grundform: auf einem Zahn loslassen
+  await s.click('#fressen-knopf');
+  await s.waitForTimeout(1500);
+  await ruhig();
+  await zungeRuht();
+  {
+    const z = await O('zunge');
+    const H = await O('zungeHindernisseImBild');
+    // ein oberer Zahn, den ein Loslassen trifft, möglichst nah an der Zunge im Bild
+    const zaehne = H.filter((h) => h.art === 'zahn' && !h.unten && h.trifft).sort((a, b) => Math.hypot(a.bild[0] - z.vorn[0], a.bild[1] - z.vorn[1]) - Math.hypot(b.bild[0] - z.vorn[0], b.bild[1] - z.vorn[1]));
+    const T = zaehne[0];
+    const sv = await schritteJetzt();
+    if (T) {
+      await zungeZiehen(z.vorn, T.bild);
+      await s.mouse.up();
+      await zungeRuht();
+    }
+    const k3 = await O('zunge');
+    const ab = k3.klebt && k3.knoten[k3.klebt.k] && T ? Math.hypot(k3.knoten[k3.klebt.k][0] - T.bild[0], k3.knoten[k3.klebt.k][1] - T.bild[1]) : -1;
+    await bild('15-klebt-am-zahn');
+    ok(
+      'K3 Grundform (Linse offen): auf einem Zahn losgelassen, klebt die gegriffene Stelle an ihm (ein Schritt); sie ruht dort',
+      !!T && !k3.inPose && !!k3.klebt && k3.klebt.art === 'zahn' && k3.klebt.unten === false && k3.klebt.nr === T.nr && k3.klebt.gespiegelt === T.gespiegelt && !!k3.klebtJetzt && !k3.kette.bewegt && ab >= 0 && ab < 14 && k3.lage === null && (await schritteJetzt()) === sv + 1,
+      T ? `Zahn ${T.nr} oben${T.gespiegelt ? ' (Spiegelbild)' : ''}: klebt ${k3.klebt ? `Knoten ${k3.klebt.k} an Zahn ${k3.klebt.nr}, Anteil ${k3.klebt.t}` : 'nicht'}; der Knoten ${ab.toFixed(1)} px neben der Spitze des Zahns; Länge ${k3.kette.laenge.toFixed(1)} bei ${k3.kette.ruheLaenge.toFixed(1)}; Schritte +${(await schritteJetzt()) - sv}` : `kein oberer Zahn, den ein Loslassen trifft (${H.filter((h) => h.art === 'zahn').length} Zähne im Bild)`,
+    );
+    // K4 die Linse zu und wieder auf
+    for (let i = 0; i < 2 && (await O('zunge')).linse.offen; i++) {
+      await s.keyboard.press('Escape');
+      await s.waitForTimeout(500);
+    }
+    await s.waitForTimeout(1200);
+    const zu = await O('zunge');
+    await s.click('#zunge-tropfen');
+    await s.waitForTimeout(1200);
+    await zungeRuht();
+    const auf = await O('zunge');
+    const ab4 = auf.klebt && auf.knoten[auf.klebt.k] && T ? Math.hypot(auf.knoten[auf.klebt.k][0] - T.bild[0], auf.knoten[auf.klebt.k][1] - T.bild[1]) : -1;
+    ok('K4 die Linse zu und wieder auf: sie klebt weiter', !zu.linse.offen && !!zu.klebt && zu.netz.endlich && auf.linse.offen && !!auf.klebt && !!auf.klebtJetzt && ab4 >= 0 && ab4 < 14, `zu: klebt ${zu.klebt ? 'ja' : 'nein'}; wieder offen: der Knoten ${ab4.toFixed(1)} px neben der Spitze des Zahns`);
+    // K5 im Freien loslassen: gelöst
+    {
+      const z5 = await O('zunge');
+      const sv5 = await schritteJetzt();
+      const kn = z5.knoten[z5.klebt?.k ?? 8];
+      const r = [z5.spitze[0] - z5.mitte[0], z5.spitze[1] - z5.mitte[1]];
+      const frei = [z.spitze[0] + (z.spitze[0] - z.mitte[0]) * 2.2, z.spitze[1] + (z.spitze[1] - z.mitte[1]) * 2.2];
+      void r;
+      await zungeZiehen(kn, frei);
+      const dort = await O('zungeHindernisseImBild');
+      await s.mouse.up();
+      await zungeRuht();
+      const k5 = await O('zunge');
+      ok(
+        'K5 im Freien losgelassen: sie löst sich und schnellt zurück (ein Schritt)',
+        k5.klebt === null && k5.klebtJetzt === null && !k5.kette.bewegt && k5.kette.laenge < 1.06 * k5.kette.ruheLaenge && k5.kette.spitzeAb < 0.05 * k5.kette.lang && (await schritteJetzt()) === sv5 + 1,
+        `klebt ${k5.klebt ? 'noch' : 'nicht mehr'}; Länge ${k5.kette.laenge.toFixed(1)} bei ${k5.kette.ruheLaenge.toFixed(1)}; Schritte +${(await schritteJetzt()) - sv5}; (Hindernisse im Bild: ${dort.length})`,
+      );
+    }
+    // K6 auf der Unterlippe loslassen; Doppeltipp löst; ⌘Z
+    {
+      const z6 = await O('zunge');
+      const H6 = await O('zungeHindernisseImBild');
+      const lippen = H6.filter((h) => h.art === 'lippe' && h.unten && h.trifft && h.s > 0.08 && h.s < 0.5).sort((a, b) => Math.hypot(a.bild[0] - z6.vorn[0], a.bild[1] - z6.vorn[1]) - Math.hypot(b.bild[0] - z6.vorn[0], b.bild[1] - z6.vorn[1]));
+      const Lp = lippen[0];
+      const sv6 = await schritteJetzt();
+      if (Lp) {
+        await zungeZiehen(z6.vorn, Lp.bild);
+        await s.mouse.up();
+        await zungeRuht();
+      }
+      const k6 = await O('zunge');
+      const ab6 = k6.klebt && k6.knoten[k6.klebt.k] && Lp ? Math.hypot(k6.knoten[k6.klebt.k][0] - Lp.bild[0], k6.knoten[k6.klebt.k][1] - Lp.bild[1]) : -1;
+      await bild('16-klebt-an-der-lippe');
+      const klebtAnLippe = !!Lp && !!k6.klebt && k6.klebt.art === 'lippe' && k6.klebt.unten === true && Math.abs(k6.klebt.t - Lp.s) < 0.08 && !k6.kette.bewegt && ab6 >= 0 && ab6 < 16 && (await schritteJetzt()) === sv6 + 1;
+      // Doppeltipp auf die Zunge (an dem Knoten, der klebt: Der ist zu sehen)
+      const m = k6.klebt ? k6.knoten[k6.klebt.k] : k6.vorn;
+      await s.mouse.move(m[0], m[1]);
+      await s.waitForTimeout(200);
+      for (let i = 0; i < 2; i++) {
+        await s.mouse.down();
+        await s.waitForTimeout(50);
+        await s.mouse.up();
+        await s.waitForTimeout(110);
+      }
+      await zungeRuht();
+      const los = await O('zunge');
+      const sn = await schritteJetzt();
+      await zurueck();
+      await zungeRuht();
+      const wieder = await O('zunge');
+      ok(
+        'K6 auf der Unterlippe losgelassen, klebt sie an der Lippe (ein Schritt); ein Doppeltipp löst sie (ein Schritt); ⌘Z lässt sie wieder kleben',
+        klebtAnLippe && los.klebt === null && los.kette.laenge < 1.06 * los.kette.ruheLaenge && sn === sv6 + 2 && !!wieder.klebt && wieder.klebt.art === 'lippe',
+        Lp ? `Unterlippe bei ${Lp.s.toFixed(2)}${Lp.gespiegelt ? ' (Spiegelbild)' : ''}: klebt ${k6.klebt ? `${k6.klebt.art} ${k6.klebt.unten ? 'unten' : 'oben'} bei ${k6.klebt.t}` : 'nicht'}, der Knoten ${ab6.toFixed(1)} px daneben; nach dem Doppeltipp ${los.klebt ? 'klebt noch' : 'gelöst'}, Schritte +${sn - sv6}; nach ⌘Z ${wieder.klebt ? 'klebt wieder' : 'klebt nicht'}` : `kein Stück der Unterlippe, das ein Loslassen trifft (${H6.filter((h) => h.art === 'lippe').length} Stücke im Bild)`,
+      );
+    }
+  }
 }
 ok('U8 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 4).join(' | '));
 await browser.close();

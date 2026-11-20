@@ -8,9 +8,10 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
 in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
 Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält) und Etappe 5 in vier Scheiben (Zähne sprießen und gehen mit den
-Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe), dazu zwei Scheiben von
-Etappe 6 (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und Farbe). Als Nächstes, auf Florians Wort: der Rest
-von Etappe 6 (liegen bleiben in einer Pose, Ablegen, an Zähne stoßen) oder Etappe 7.** Offenes steht
+Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe) und Etappe 6 in drei
+Scheiben (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und Farbe; sie stößt an Zähne, bleibt in der Pose
+liegen und klebt, wo sie abgelegt wird). Als Nächstes, auf Florians Wort: Etappe 7 (ein Zahn als kleine Form) oder der große
+Feinschlifflauf.** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -359,6 +360,42 @@ fehlt:** liegen bleiben in einer Pose, Ablegen, an Zähne stoßen.
 8. **Die Anzeige bleibt fein, wenn sich die Lage nicht ändert** (`werkHaut.rechnen`, `vollJetzt`). Vorher pendelte sie von Nahem
    zwischen zwei Stufen, ohne Eingabe (13-mal in 4 s voll neu). Wer dort wieder `v.voll === voll` verlangt, holt das zurück.
 9. **Der Ton der Linse** wird kurz nach dem Öffnen angelegt (`requestIdleCallback`); das erste Rasten stockte sonst.
+
+## Etappe 6 in Ozzy, dritte Scheibe: anstoßen, ablegen, liegen bleiben (20.11.)
+
+**Was es gibt:** Die Zunge stößt an Zähne (sie liegt über den unteren, wird zwischen den Reihen schmaler, unter den oberen
+flach); in „Fressen“ bleibt sie liegen, wohin sie gezogen wird (ihre Lage in der Pose); in der Grundform klebt sie, wenn sie
+auf einem Zahn oder einer Lippe losgelassen wird; ein Doppeltipp löst sie. Plan, 12.21. **Damit ist Etappe 6 gebaut.**
+
+**Wo:** `src/ozzy/zunge.ts` (`Hindernis`, `lippenHindernisse`, `klebenSuchen`, `klebenAn`, `klebeOrt`; in `ZungenKette`:
+`hindernisse`, `klebt`, `lage`, `zaehneMessen`, `lageJetzt`, `breiteGrenze`, `engster`, `zahnMasse`), `src/ozzy/zaehne.ts`
+(`zahnKapseln`, `zahnLaenge`), `src/form/werk.ts` (`MaulZunge.klebt`, `.lage`, `ZungenKleben`), `src/ozzy/main.ts` („Anstoßen,
+ablegen, liegen bleiben“: `zungeAblageUnter`, `zungeLoslassen`, `zungeLoesen`; in `zungeSchritt` die Hindernisse;
+`zahnKoerperJetzt` aus `zaehneRechnen`). Probe: `GPU=1 node scripts/pruefen/ozzy-maul-zunge-fenster.mjs [ordner]` (U5b bis U5d,
+K1 bis K6); Test „die Zunge stößt an …“; Haken `__ozzy.zunge().klebt`, `.lage`, `.hindernisse`, `.zahnMasse`, `.knoten`;
+`__ozzy.zungeHindernisseImBild()`.
+
+**Was man wissen muss:**
+
+1. **Im Maul sind Zähne Boden und Decke, keine Stoßkörper** (`zaehneMessen`): Ein Zahn unter der Kette hebt ihren Boden als
+   flache Rampe (`RAMPE`), einer über ihr senkt die Decke, einer neben ihr begrenzt ihre Breite. Knoten, die einem Zahn zur
+   Seite ausweichen, knäuelten die Kette; ein steiler Buckel ließ sie nie ruhen.
+2. **Gemessen wird von oben gesehen** (ohne die Höhe über dem Boden) und einmal je Bild, zur Hälfte nachgeführt, ab einer
+   Schwelle. Jede dieser drei Regeln steht da, weil die Kette ohne sie pendelte. „Vor der Spitze“ zählt an der Richtung des
+   Bodens, nicht am letzten Stück der Kette (das zappelt).
+3. **Zähne schieben ohne Schwung** (der Ort von vorher rückt mit, `ohne`): Der Stoß nimmt nur das Tempo in den Zahn hinein.
+   Sonst wirft ein Maß, das springt, die Zunge durchs Maul. Boden und Gaumen selbst geben weiter Schwung.
+4. **`klebt` und `lage` sind Werte an der Zunge** (mit ⌘Z, Sichern und Laden). `lage` gilt nur in der Pose (`werk.grund`),
+   `klebt` nur ohne Lage. Beide nie am Ort ändern.
+5. **Die Lage misst an `bodenRahmen`** (längs und hoch am Platz des Knotens auf dem Unterkiefer), nicht an `auf`: Das dreht
+   mit der Öffnung des Mauls. `lageJetzt` verteilt die Knoten längs der Bahn neu und kürzt auf `DEHNUNG_BLEIBT`.
+6. **Der Klebeort wird je Bild neu gelesen** (`klebeOrt`): am Zahn über seine Nummer, an der Lippe über den Anteil ihrer Länge.
+   Gibt es das Stück nicht mehr, klebt sie nicht (der Wert bleibt stehen).
+7. **Das Netz führt seinen Rahmen mit** (`zungeNetz`): „quer“ kommt vom Ring davor, „oben“ wird nur an der Wurzel gewählt.
+8. **Die Weiche vor der Bühne:** bei offener Linse der Zähne erst die Zähne, sonst erst die Zunge, wo sie genau unter dem
+   Zeiger und vor den Zähnen liegt.
+9. **`uebernehmen` nimmt auch die Maße der Zähne mit:** Sonst läge sie nach jedem neu gelesenen Platz ein Bild lang halb in
+   den Zähnen.
 
 ## Die Studie in einem Absatz
 

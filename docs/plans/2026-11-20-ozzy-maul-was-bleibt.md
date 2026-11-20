@@ -55,6 +55,10 @@ zurück. Der Tropfen hält das Maul dafür offen.
 lange Zunge reicht über die Lippe und hängt dort durch. ⌫ nimmt die Zunge. Von Nahem rechnet die Anzeige in Ruhe nicht mehr
 dauernd neu.
 
+**Etappe 6, dritte Scheibe (20.11.):** Die Zunge stößt an Zähne (sie legt sich über die unteren, wird zwischen den Reihen
+schmaler und unter den oberen flach). In „Fressen“ bleibt sie liegen, wohin du sie ziehst; in der Grundform schnellt sie zurück
+und klebt, wenn du sie auf einem Zahn oder einer Lippe loslässt. Ein Doppeltipp löst sie. Damit ist Etappe 6 gebaut.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -227,13 +231,13 @@ dauernd neu.
 78. **Einen Zahn über die Lippe rücken** habe ich nur im Modell geprüft (sein Versatz), nicht mit dem Zeiger im Fenster.
 79. **Der Farbwähler** ist der des Systems; am iPad nicht geprüft.
 
-### An der Zunge (Etappe 6, zwei Scheiben)
+### An der Zunge (Etappe 6, drei Scheiben)
 
 80. ~~Die Linse für die Zunge fehlt~~ gebaut (zweite Scheibe); was daran offen ist: Punkte 92 bis 105.
-81. **Sie schnellt immer zurück,** auch in „Fressen“. Im Konzept bleibt sie in einer Pose liegen, wo du sie loslässt.
-82. **Sie stößt nur an Boden und Gaumen,** gemessen an ihrem eigenen Platz: nicht an Zähne, Wangen oder die Lippe. Weit zur
-    Seite oder nach hinten gezogen kann sie durch die Form gehen.
-83. **Ablegen** (die Spitze bleibt auf einem Zahn oder der Lippe kleben): nicht gebaut.
+81. ~~Sie schnellt immer zurück, auch in „Fressen“~~ gebaut (dritte Scheibe): In der Pose bleibt sie liegen; Offenes: 111 bis 114.
+82. **Sie stößt an Boden, Gaumen und Zähne,** gemessen an ihrem eigenen Platz: nicht an Wangen, und im Maul nicht an die
+    Lippe. Weit zur Seite oder nach hinten gezogen kann sie durch die Form gehen.
+83. ~~Ablegen~~ gebaut (dritte Scheibe); Offenes: 115 bis 118.
 84. **Zu ist sie flach und nicht zu sehen.** An getrennten Lippen mit einer Lücke nicht geprüft.
 85. **Die Linse der Zunge hält das Maul offen** (ihr Tropfen öffnet sie). Ohne sie kommst du nur in „Fressen“ oder bei offener
     Linse der Zähne an die Zunge.
@@ -255,7 +259,7 @@ dauernd neu.
     kürzer als die runde.
 95. **Lang:** Vor der Lippe liegt sie in der Verlängerung des vorderen Fünftels des Bodens und hängt durch (ihr Platz hält sie
     dort mit einem Viertel der Feder: geschätzt). Zu steht sie zwischen den geschlossenen Lippen heraus, innen flach, außen mit
-    ganzer Dicke: Am Übergang kann sie in die Lippe schneiden. An Zähne stößt sie nicht.
+    ganzer Dicke: Am Übergang kann sie in die Lippe schneiden. (An Zähne stößt sie seit der dritten Scheibe: 106 bis 110.)
 96. **Die Breite vorn:** Bis 78 % der Mundlänge folgt sie dem Maul, weiter vorn bleibt sie so breit wie dort. In einem spitzen
     Maul kann sie zwischen dort und der Lippe etwas breiter sein als das Maul.
 97. **Die Werte laufen nach** (rund 0,07 s): Eine Vorlage wächst hin, statt zu springen; auch der Drehregler ist dadurch einen
@@ -278,6 +282,43 @@ dauernd neu.
      ruht ein Ton, bis eine Hand im Spiel ist; die Linse weckt ihn beim ersten Ticken.
 105. **Nicht geprüft (zweite Scheibe):** iPad und Stift; der Farbwähler des Systems von Hand; andere Formen; Sichern und Laden
      mit den neuen Werten (Spitze, Gabel, Vorlage); andere Materialien als Wachs.
+106. **Das Anstoßen an Zähne ist kein echtes Stoßen:** Im Maul heben Zähne unter ihr den Boden (eine flache Rampe zu ihrer
+     Spitze, höchstens 0,45 steil), Zähne über ihr senken die Decke, Zähne neben ihr machen sie schmaler. Ob ein Zahn „unter“
+     oder „neben“ ihr steht, entscheidet eine Schwelle (85 % ihrer halben Breite): Stellst du ihre Breite, springt sie dort
+     von „schmaler“ auf „darüber“.
+107. **Hohe Zähne heben sie weit:** Über den Vorderzähnen von „teat firefish“ liegt eine lange Zunge um 21 gehoben (ein
+     Fünftel der Mundlänge), und die Rampe dorthin beginnt weit hinten im Maul. Ob das gut aussieht, entscheidet dein Auge.
+108. **Zwischen den Zahnreihen wird nur ihr Umriss schmaler** (bis knapp die Hälfte); ihr Rauminhalt bleibt dabei nicht. Der
+     Umriss hat dort noch leichte Stufen (elf Knoten).
+109. **Vor der Lippe** weicht sie Zähnen und Lippen als runden Körpern aus. Im Maul stößt sie an die Lippe nicht.
+110. **Die Zinken und die Rille zählen beim Anstoßen nicht:** Gemessen wird an der Mittellinie und der halben Breite je Knoten.
+111. **In der Pose bleibt ihre Form, nicht die Dehnung:** höchstens ein Fünftel länger als in Ruhe (geschätzt). Sie liegt auf
+     der Bahn, auf der du sie losgelassen hast, aber kürzer: Ihre Spitze ist dann nicht dort, wo dein Zeiger war.
+112. **Ihre Lage steht an der Zunge,** nicht an der Pose: Es gibt bisher nur „Fressen“. Mit mehreren Posen gehört sie zur
+     Pose (Konzept 4.10).
+113. **Die Lage hängt am Unterkiefer.** Stellst du den Oberkiefer („Kopf“) oder schließt das Maul weiter, wird sie von Gaumen
+     und oberen Zähnen flach gedrückt, wo sie hineinragt.
+114. **Ändert sich danach die Zunge** (Länge, Vorlage) **oder das Maul, bleibt die alte Lage** und passt vielleicht nicht mehr.
+     Ein Doppeltipp löst sie.
+115. **Kleben:** Es klebt die Stelle, an der du gegriffen hast, nicht immer die Spitze. Geklebt und weit gedehnt wird sie
+     dünn; was vor der Klebestelle liegt, hängt frei. Sie löst sich nie von selbst, auch wenn das Maul weit aufgeht.
+116. **Ablegen geht nur in der Grundform** (bei offener Linse). In „Fressen“ bleibt sie überall liegen, klebt aber nicht an
+     einem oberen Zahn: Sie geht dort mit dem Unterkiefer.
+117. **Was als „auf dem Zahn losgelassen“ gilt:** der Zeiger näher als 8 Bildpunkte an einem Zahn oder einer Lippe, die Form
+     nicht davor. Geklebt wird, wohin du zeigst, auch wenn die Zunge in der Tiefe woanders war: Ein Zahn an der Seite zieht
+     sie zur Seite.
+118. **Der Doppeltipp** (zwei Tipps in 0,4 s, höchstens 14 Bildpunkte auseinander: geschätzt). Am iPad nicht geprüft.
+119. **Der Griff:** Wo die Zunge vor einem Zahn liegt, gehört der Griff ihr; bei offener Linse der Zähne gehen weiter die
+     Zähne vor. Von der Seite verdecken die Zähne der nahen Reihe die Zunge: Dort greifst du Zähne.
+120. **Schwung:** Zähne schieben die Zunge ohne Schwung (ein Zahn, der wächst oder den du stellst, wirft sie nicht). Boden und
+     Gaumen nehmen sie weiter mit Schwung mit.
+121. **Die Maße der Zähne werden je Bild nur zur Hälfte nachgeführt** und erst ab einer Schwelle (drei Tausendstel der
+     Mundlänge): Ohne das pendelte die Kette. Sie liegt deshalb bis zu einem Drittel einer Einheit neben dem genauen Maß.
+122. **„Sie ruht“ gilt jetzt ab sechs Tausendsteln der Mundlänge je Sekunde** (vorher vier): An Zähnen kriecht sie noch nach.
+123. **Tempo:** Beim Ausschwingen mit 23 Zähnen im Weg, von Nahem, in der Probe im Mittel 21 ms je Bild, das längste 34 ms.
+     Nicht auf deinem Gerät gemessen.
+124. **Nicht geprüft (dritte Scheibe):** iPad und Stift; andere Formen; Zähne außen vor der Lippe; getrennte Lippen; Sichern
+     und Laden mit Lage und Kleben; andere Materialien als Wachs; mehrere Objekte.
 
 ### Kleines
 

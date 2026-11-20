@@ -31,8 +31,8 @@ import { type Saat, flaechenRechnen } from '../ozzy/farbe/flaechen';
 import { kettenAller } from '../ozzy/farbe/ketten';
 import { MAUL_EBENE, maulEbeneBauen } from '../ozzy/farbe/maulEbene';
 import { karteVon, ortGespiegelt } from '../ozzy/farbe/ort';
-import { ZAEHNE_ANFANG, eigenSetzen, formNetzGemischt, mitAnzahl, partner, sitzGrenzen, zaehneNetz, zaehnePaar, zahnPlaetze, zahnRahmen } from '../ozzy/zaehne';
-import { ZUNGEN_FORMEN, ZUNGE_ANFANG, ZUNGE_KNOTEN, ZUNGE_RING, ZungenKette, zungeGerade, zungeNetz, zungePlatz, zungePlatzAuf, zungenBoden, zungenProfil, zungenUmriss } from '../ozzy/zunge';
+import { ZAEHNE_ANFANG, eigenSetzen, formNetzGemischt, mitAnzahl, partner, sitzGrenzen, zaehneNetz, zaehnePaar, zahnKapseln, zahnPlaetze, zahnRahmen } from '../ozzy/zaehne';
+import { type Hindernis, ZUNGEN_FORMEN, ZUNGE_ANFANG, ZUNGE_KNOTEN, ZUNGE_RING, ZungenKette, klebeOrt, klebenAn, klebenSuchen, lippenHindernisse, zungeGerade, zungeNetz, zungePlatz, zungePlatzAuf, zungenBoden, zungenProfil, zungenUmriss } from '../ozzy/zunge';
 import { manifoldLaden } from './naht';
 
 const R = 150;
@@ -610,6 +610,36 @@ describe('das Maul als echte Form', () => {
       if (plaetze[q]!.unten) expect(b.max[1]! - fuss[1]!).toBeGreaterThan(fuss[1]! - b.min[1]!);
       else expect(fuss[1]! - b.min[1]!).toBeGreaterThan(b.max[1]! - fuss[1]!);
     }
+    // ---- die Zähne als Körper (für die Zunge): je Zahn ein Stück mit runden Enden, so lang, wie das Netz ihn zeigt ----
+    {
+      const zuK = zahnKapseln(plaetze, h.pos, () => 0, () => 1);
+      const offenK = zahnKapseln(plaetze, h.pos, () => 1e6, () => 1);
+      expect(zuK.length).toBe(plaetze.length);
+      // zu hat kein Zahn Länge: kein Körper (Radius null), er steht für seinen Fuß
+      expect(zuK.every((c) => c.r === 0 && Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1], c.b[2] - c.a[2]) < 1e-3)).toBe(true);
+      for (let q = 0; q < plaetze.length; q++) {
+        const c = offenK[q]!;
+        expect(c).toMatchObject({ unten: plaetze[q]!.unten, i: plaetze[q]!.i, gespiegelt: plaetze[q]!.gespiegelt });
+        expect(c.r).toBeGreaterThan(0.05 * plaetze[q]!.mass);
+        // der Fuß des Körpers ist der Fuß des Zahns; seine Kappe endet an der Spitze des Netzes (auf ein Zehntel der Länge genau)
+        const fuss = je(zu, q).min;
+        expect(Math.hypot(c.a[0] - fuss[0]!, c.a[1] - fuss[1]!, c.a[2] - fuss[2]!)).toBeLessThan(1e-3);
+        const achse = Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1], c.b[2] - c.a[2]);
+        const e = [(c.b[0] - c.a[0]) / achse, (c.b[1] - c.a[1]) / achse, (c.b[2] - c.a[2]) / achse];
+        // (die Spitze des Netzes: der Punkt, der längs der Achse am weitesten vom Fuß liegt)
+        let spitze = 0;
+        const k0 = (offen.pos.length / 3 / plaetze.length) * q;
+        for (let v = 0; v < offen.pos.length / 3 / plaetze.length; v++) {
+          const i = 3 * (k0 + v);
+          spitze = Math.max(spitze, (offen.pos[i]! - c.a[0]) * e[0]! + (offen.pos[i + 1]! - c.a[1]) * e[1]! + (offen.pos[i + 2]! - c.a[2]) * e[2]!);
+        }
+        expect(Math.abs(achse + c.r - spitze)).toBeLessThan(0.1 * spitze);
+        // jeder Punkt des Netzes liegt nah an seinem Körper (nicht weiter als die halbe Breite eines Zahns davon weg)
+        expect(c.r).toBeLessThan(0.6 * spitze);
+      }
+      // ein Spiegelbild steht bei z ≤ 0
+      expect(offenK.filter((c) => c.gespiegelt).every((c) => c.a[2] <= 1e-9)).toBe(true);
+    }
     // ---- einzelne Zähne (dritte Scheibe): eigene Werte an der Reihe ----
     const R0 = ZAEHNE_ANFANG.oben;
     expect(partner(R0, 2)).toBe(9);
@@ -872,6 +902,258 @@ describe('das Maul als echte Form', () => {
     const netz = zungeNetz(kette, 1, { x: 0, y: 0 });
     expect(netz.pos.every((x) => Number.isFinite(x))).toBe(true);
     expect(inhaltVon(netz)).toBeGreaterThan(100);
+  });
+
+  it('die Zunge stößt an Zähne und Lippen, klebt, wo sie abgelegt wird, und bleibt in der Pose liegen', async () => {
+    const { h, k, tasche, innen, kiefer } = await maulFuerZunge();
+    const K = ZUNGE_KNOTEN;
+    // (die ersten zwei Knoten sind die Wurzel: Sie sitzen am Kiefer)
+    const WURZEL = 2;
+    const B = zungenBoden(k, tasche)!;
+    const platz = zungePlatzAuf(B, ZUNGE_ANFANG);
+    // offen wie im Test der Zunge: der Gaumen 40 angehoben
+    const start = new ZungenKette(platz);
+    start.setzen(h.pos);
+    const auf = [start.auf[15]!, start.auf[16]!];
+    const offenP = Float64Array.from(h.pos);
+    for (let v = 0; v < h.n; v++) {
+      if (innen[v] && kiefer[v] === -1) {
+        offenP[3 * v]! += 40 * auf[0]!;
+        offenP[3 * v + 1]! += 40 * auf[1]!;
+      }
+    }
+    const ruhig = (kette: ZungenKette, P: ArrayLike<number>, bilder: number): void => {
+      for (let i = 0; i < bilder; i++) kette.schritt(1 / 60, P);
+    };
+    const abstand = (p: ArrayLike<number>, i: number, c: Hindernis): number => {
+      const v = [c.b[0] - c.a[0], c.b[1] - c.a[1], c.b[2] - c.a[2]];
+      const w = [p[i]! - c.a[0], p[i + 1]! - c.a[1], p[i + 2]! - c.a[2]];
+      const vv = v[0]! * v[0]! + v[1]! * v[1]! + v[2]! * v[2]! || 1;
+      const u = Math.max(0, Math.min(1, (w[0]! * v[0]! + w[1]! * v[1]! + w[2]! * v[2]!) / vv));
+      return Math.hypot(w[0]! - u * v[0]!, w[1]! - u * v[1]!, w[2]! - u * v[2]!);
+    };
+
+    // ---- die Lippen als Hindernisse: zwei Lippen, jede mit ihrem Spiegelbild, von der Spitze zum Mundwinkel
+    expect(B.lippe.unten.length).toBeGreaterThan(10);
+    expect(B.lippe.oben.length).toBeGreaterThan(10);
+    expect(Math.abs(h.pos[3 * B.lippe.unten[0]! + 2]!)).toBeLessThan(1e-6);
+    expect(Math.abs(h.pos[3 * B.lippe.oben[0]! + 2]!)).toBeLessThan(1e-6);
+    expect(B.lippe.unten.every((v) => kiefer[v]! >= 0) && B.lippe.oben.every((v) => kiefer[v]! <= 0)).toBe(true);
+    const lippen = lippenHindernisse(B, offenP);
+    expect(lippen.length).toBeGreaterThan(40);
+    for (const art of [true, false])
+      for (const gespiegelt of [true, false]) {
+        const stuecke = lippen.filter((x) => x.unten === art && x.gespiegelt === gespiegelt);
+        expect(stuecke.length).toBeGreaterThan(5);
+        expect(stuecke[0]!.s0).toBe(0);
+        expect(stuecke[stuecke.length - 1]!.s1).toBeCloseTo(1, 9);
+        for (let i = 1; i < stuecke.length; i++) expect(stuecke[i]!.s0).toBeCloseTo(stuecke[i - 1]!.s1, 9);
+        expect(stuecke.every((x) => x.r > 0 && (gespiegelt ? x.a[2] <= 1e-9 && x.b[2] <= 1e-9 : x.a[2] >= -1e-9 && x.b[2] >= -1e-9))).toBe(true);
+      }
+
+    // ---- anstoßen: ein unterer Zahn steht mitten unter ihr (in der Mittelebene, am Platz von Knoten 6), 14 hoch und 3 dick.
+    // Ohne ihn liegt der Knoten tiefer als seine Spitze; mit ihm legt sie sich darüber, ohne Knick
+    const ortAn = (P: ArrayLike<number>, q: { a: number; b: number; u: number }): number[] => [0, 1, 2].map((x) => P[3 * q.a + x]! + q.u * (P[3 * q.b + x]! - P[3 * q.a + x]!));
+    const frei = new ZungenKette(platz);
+    frei.setzen(offenP);
+    ruhig(frei, offenP, 180);
+    const hoehe = (kt: ZungenKette, i: number): number => {
+      const F = ortAn(offenP, platz.boden[i]!);
+      return (kt.pos[3 * i]! - F[0]!) * kt.auf[3 * i]! + (kt.pos[3 * i + 1]! - F[1]!) * kt.auf[3 * i + 1]!;
+    };
+    const F6 = ortAn(offenP, platz.boden[6]!);
+    const n6 = [frei.auf[18]!, frei.auf[19]!];
+    const m = [frei.pos[18]!, frei.pos[19]!, 0];
+    const zahn: Hindernis = { a: [F6[0]!, F6[1]!, 0], b: [F6[0]! + 14 * n6[0]!, F6[1]! + 14 * n6[1]!, 0], r: 3, art: 'zahn', unten: true, gespiegelt: false, nr: 3, s0: 0, s1: 1 };
+    expect(hoehe(frei, 6)).toBeLessThan(14);
+    const kette = new ZungenKette(platz);
+    kette.hindernisse = [zahn];
+    kette.setzen(offenP);
+    // (gleich beim Setzen liegt sie darüber: so kommt sie nach dem Laden)
+    expect(hoehe(kette, 6)).toBeGreaterThan(17);
+    ruhig(kette, offenP, 240);
+    expect(kette.bewegt).toBe(false);
+    // (auf ein halbes Prozent der Mundlänge genau: Die Maße der Zähne werden mit einer kleinen Schwelle nachgeführt)
+    expect(hoehe(kette, 6)).toBeGreaterThan(17 + 0.8 * platz.dicke[6]! * kette.dickeMass(6) - 0.005 * platz.lang);
+    expect(kette.engster).toBeGreaterThan(-0.005 * platz.lang);
+    // ihr Boden steigt als flache Rampe zum Zahn an: Die Nachbarn liegen deutlich höher als ohne Zahn, weiter hinten weniger, und
+    // nirgends steigt sie steiler an als die Rampe (ein steiler Buckel ließe die Kette nie ruhen)
+    expect(hoehe(kette, 5)).toBeGreaterThan(hoehe(frei, 5) + 3);
+    expect(hoehe(kette, 7)).toBeGreaterThan(hoehe(frei, 7) + 3);
+    expect(hoehe(kette, 2) - hoehe(frei, 2)).toBeLessThan(hoehe(kette, 5) - hoehe(frei, 5) - 3);
+    for (let i = 3; i <= 6; i++) expect(hoehe(kette, i) - hoehe(kette, i - 1)).toBeLessThan(0.6 * platz.stueck[i - 1]! + 1.5);
+    // sie bleibt in der Mittelebene und läuft ohne Knick nach vorn (jedes Stück zeigt zur Spitze hin)
+    const nachVorn = [frei.pos[3 * (K - 1)]! - frei.pos[0]!, frei.pos[3 * (K - 1) + 1]! - frei.pos[1]!];
+    for (let i = 0; i < K; i++) expect(Math.abs(kette.pos[3 * i + 2]!)).toBeLessThan(1e-9);
+    for (let i = 0; i + 1 < K; i++) expect((kette.pos[3 * i + 3]! - kette.pos[3 * i]!) * nachVorn[0]! + (kette.pos[3 * i + 4]! - kette.pos[3 * i + 1]!) * nachVorn[1]!).toBeGreaterThan(0);
+    expect(kette.laenge).toBeLessThan(1.2 * kette.ruheLaenge);
+    expect(zungeNetz(kette, 1, { x: 0, y: 0 }).pos.every((x) => Number.isFinite(x))).toBe(true);
+    // ein Zahn ohne Länge (das Maul ist zu) hebt nichts
+    const ohne = new ZungenKette(platz);
+    ohne.hindernisse = [{ ...zahn, r: 0 }];
+    ohne.setzen(offenP);
+    ruhig(ohne, offenP, 120);
+    expect(Math.abs(hoehe(ohne, 6) - hoehe(frei, 6))).toBeLessThan(1e-6);
+    // zwei Zähne neben ihr (am Rand ihrer Breite, in ihrer Höhe): Sie steigt nicht, sie wird dort schmaler
+    {
+      const w6 = platz.breite[6]!;
+      const neben = (seite: number): Hindernis => ({ ...zahn, a: [zahn.a[0], zahn.a[1], seite * 0.95 * w6], b: [zahn.b[0], zahn.b[1], seite * 0.95 * w6], nr: seite > 0 ? 1 : 2, gespiegelt: seite < 0 });
+      const eng = new ZungenKette(platz);
+      eng.hindernisse = [neben(1), neben(-1)];
+      eng.setzen(offenP);
+      ruhig(eng, offenP, 180);
+      expect(Math.abs(hoehe(eng, 6) - hoehe(frei, 6))).toBeLessThan(0.5);
+      expect(eng.breiteGrenze(6)).toBeCloseTo(0.95 * w6 - 3, 3);
+      expect(frei.breiteGrenze(6)).toBe(Infinity);
+      const breit = (kt: ZungenKette): number => {
+        const n = zungeNetz(kt, 1, { x: 0, y: 0 });
+        let b = 0;
+        for (let j = 0; j < ZUNGE_RING; j++) b = Math.max(b, Math.abs(n.pos[3 * (6 * ZUNGE_RING + j) + 2]!));
+        return b;
+      };
+      expect(breit(frei)).toBeGreaterThan(0.97 * w6);
+      expect(breit(eng)).toBeLessThan(0.95 * w6 - 3 + 0.05);
+      expect(breit(eng)).toBeGreaterThan(0.45 * w6 - 0.05);
+    }
+    // ein oberer Zahn über ihr, der bis 8 über den Boden herabhängt: Die Decke ist dort gesenkt, sie wird flach und bleibt darunter
+    {
+      const obenZ: Hindernis = { ...zahn, a: [F6[0]! + 40 * n6[0]!, F6[1]! + 40 * n6[1]!, 0], b: [F6[0]! + 11 * n6[0]!, F6[1]! + 11 * n6[1]!, 0], unten: false, nr: 4 };
+      const flach = new ZungenKette(platz);
+      flach.hindernisse = [obenZ];
+      flach.setzen(offenP);
+      ruhig(flach, offenP, 180);
+      expect(frei.dickeMass(6)).toBeGreaterThan(0.9);
+      expect(flach.dickeMass(6)).toBeLessThan(frei.dickeMass(6) - 0.2);
+      expect(hoehe(flach, 6)).toBeLessThan(8);
+      expect(flach.bewegt).toBe(false);
+    }
+
+    // ---- ablegen: Der Strahl des Zeigers findet den Zahn; die Spitze klebt daran und geht mit ihm mit
+    const oben: Hindernis = { a: [m[0]! - 20, m[1]! + 45, 0], b: [m[0]! - 20, m[1]! + 30, 0], r: 4, art: 'zahn', unten: false, gespiegelt: false, nr: 5, s0: 0, s1: 1 };
+    const fund = klebenSuchen([zahn, oben], [oben.a[0], oben.a[1] - 8, 200], [0, 0, -1], 1)!;
+    expect(fund.h).toBe(oben);
+    expect(fund.u).toBeGreaterThan(0.4);
+    expect(fund.u).toBeLessThan(0.7);
+    expect(fund.weit).toBeGreaterThan(190);
+    expect(fund.weit).toBeLessThan(200);
+    // (daneben vorbei: nichts)
+    expect(klebenSuchen([zahn, oben], [oben.a[0] + 40, oben.a[1] + 40, 200], [0, 0, -1], 1)).toBeNull();
+    const kl = klebenAn(K - 1, fund);
+    expect(kl).toMatchObject({ k: K - 1, art: 'zahn', unten: false, gespiegelt: false, nr: 5 });
+    const rk = 0.8 * platz.dicke[K - 1]!;
+    const ort = klebeOrt([zahn, oben], kl, rk)!;
+    // (zum Auge hin auf dem Zahn, um seinen Radius von der Achse)
+    expect(abstand(ort, 0, oben)).toBeCloseTo(4 + rk, 3);
+    expect(ort[2]).toBeGreaterThan(3.5);
+    kette.hindernisse = [zahn, oben];
+    kette.klebt = { k: K - 1, ort };
+    ruhig(kette, offenP, 240);
+    expect(Math.hypot(kette.pos[3 * (K - 1)]! - ort[0], kette.pos[3 * (K - 1) + 1]! - ort[1], kette.pos[3 * (K - 1) + 2]! - ort[2])).toBeLessThan(1e-9);
+    expect(kette.spitzeAb).toBeGreaterThan(10);
+    expect(kette.bewegt).toBe(false);
+    // der obere Zahn wandert 50 weiter weg: Die Zunge dehnt sich, die Spitze bleibt an ihm
+    const weiter: Hindernis = { ...oben, a: [oben.a[0] - 30, oben.a[1] + 40, 0], b: [oben.b[0] - 30, oben.b[1] + 40, 0] };
+    const ort2 = klebeOrt([zahn, weiter], kl, rk)!;
+    expect(Math.hypot(ort2[0] - ort[0], ort2[1] - ort[1])).toBeCloseTo(50, 6);
+    const vorher = kette.laenge;
+    kette.hindernisse = [zahn, weiter];
+    kette.klebt = { k: K - 1, ort: ort2 };
+    ruhig(kette, offenP, 240);
+    expect(kette.laenge).toBeGreaterThan(vorher + 15);
+    expect(Math.hypot(kette.pos[3 * (K - 1)]! - ort2[0], kette.pos[3 * (K - 1) + 1]! - ort2[1])).toBeLessThan(1e-9);
+    // gezogen ist der Zahn weg: kein Ort mehr; gelöst schnellt sie zurück
+    expect(klebeOrt([zahn], kl, rk)).toBeNull();
+    kette.klebt = null;
+    ruhig(kette, offenP, 300);
+    expect(kette.laenge).toBeLessThan(1.2 * kette.ruheLaenge);
+    // an einer Lippe: Der Ort liegt auf dem Stück der Lippe, das diesen Anteil ihrer Länge trägt
+    const lf = klebenSuchen(lippen, [lippen[10]!.a[0], lippen[10]!.a[1] + 0.5, 400], [0, 0, -1], 2)!;
+    expect(lf.h.art).toBe('lippe');
+    const lk = klebenAn(K - 1, lf);
+    expect(lk.t).toBeGreaterThanOrEqual(lf.h.s0 - 1e-3);
+    expect(lk.t).toBeLessThanOrEqual(lf.h.s1 + 1e-3);
+    const lo = klebeOrt(lippen, lk, 1)!;
+    expect(abstand(lo, 0, lf.h)).toBeLessThan(lf.h.r + 1 + 0.2);
+
+    // ---- liegen bleiben: an der Spitze gegriffen und nach oben vorn zur Seite gezogen; ihre Lage gemerkt; losgelassen bleibt sie
+    // in dieser Form liegen (auf der Bahn, auf der sie lag), aber nicht gedehnt: höchstens ein Fünftel länger als in Ruhe
+    const pose = new ZungenKette(platz);
+    pose.setzen(offenP);
+    ruhig(pose, offenP, 120);
+    const ruheOrt = pose.ort(K - 1);
+    const natur = pose.ruheLaenge;
+    pose.greifen(K - 1);
+    pose.ziehen([ruheOrt[0] - 45, ruheOrt[1] + 40, 25]);
+    ruhig(pose, offenP, 120);
+    expect(pose.laenge).toBeGreaterThan(1.3 * natur);
+    const lage = pose.lageJetzt();
+    expect(lage.length).toBe(4 * K - 1);
+    const gezogen = Float64Array.from(pose.pos);
+    pose.lassen();
+    pose.lage = lage;
+    ruhig(pose, offenP, 300);
+    expect(pose.bewegt).toBe(false);
+    // jeder Knoten liegt auf der Bahn, auf der sie losgelassen wurde (auf zwei Hundertstel der Mundlänge)
+    const zurBahn = (x: ArrayLike<number>, i: number): number => {
+      let best = Infinity;
+      for (let j = 0; j + 1 < K; j++) {
+        const v = [gezogen[3 * j + 3]! - gezogen[3 * j]!, gezogen[3 * j + 4]! - gezogen[3 * j + 1]!, gezogen[3 * j + 5]! - gezogen[3 * j + 2]!];
+        const w = [x[i]! - gezogen[3 * j]!, x[i + 1]! - gezogen[3 * j + 1]!, x[i + 2]! - gezogen[3 * j + 2]!];
+        const u = Math.max(0, Math.min(1, (w[0]! * v[0]! + w[1]! * v[1]! + w[2]! * v[2]!) / (v[0]! * v[0]! + v[1]! * v[1]! + v[2]! * v[2]! || 1)));
+        best = Math.min(best, Math.hypot(w[0]! - u * v[0]!, w[1]! - u * v[1]!, w[2]! - u * v[2]!));
+      }
+      return best;
+    };
+    for (let i = WURZEL; i < K; i++) expect(zurBahn(pose.pos, 3 * i)).toBeLessThan(0.02 * platz.lang);
+    // nicht mehr gedehnt, aber weit von ihrem Platz: zur Seite und nach oben
+    expect(pose.laenge).toBeLessThan(1.25 * natur);
+    expect(pose.laenge).toBeGreaterThan(1.1 * natur);
+    expect(Math.hypot(pose.pos[3 * (K - 1)]! - ruheOrt[0], pose.pos[3 * (K - 1) + 1]! - ruheOrt[1], pose.pos[3 * (K - 1) + 2]!)).toBeGreaterThan(25);
+    expect(pose.pos[3 * (K - 1) + 2]!).toBeGreaterThan(8);
+    const liegt = Float64Array.from(pose.pos);
+    // ihr Netz verdreht sich nicht, auch wenn sie zur Seite zeigt: Von Ring zu Ring dreht „quer“ nur wenig (kein Umschlagen)
+    {
+      const n = zungeNetz(pose, 1, { x: 0, y: 0 });
+      expect(n.pos.every((x) => Number.isFinite(x))).toBe(true);
+      const querVon = (ring: number): number[] => {
+        const a = 3 * (ring * ZUNGE_RING);
+        const b = 3 * (ring * ZUNGE_RING + ZUNGE_RING / 2);
+        const v = [n.pos[a]! - n.pos[b]!, n.pos[a + 1]! - n.pos[b + 1]!, n.pos[a + 2]! - n.pos[b + 2]!];
+        const l = Math.hypot(v[0]!, v[1]!, v[2]!) || 1;
+        return v.map((x) => x / l);
+      };
+      for (let ring = 1; ring < K - 1; ring++) {
+        const [u, v] = [querVon(ring - 1), querVon(ring)];
+        expect(u[0]! * v[0]! + u[1]! * v[1]! + u[2]! * v[2]!).toBeGreaterThan(0.7);
+      }
+      expect(inhaltVon(n)).toBeGreaterThan(50);
+    }
+    // (ohne die Lage schnellte sie zurück: die Gegenprobe)
+    const zurueck = new ZungenKette(platz);
+    zurueck.setzen(offenP);
+    zurueck.greifen(K - 1);
+    zurueck.ziehen([ruheOrt[0] - 45, ruheOrt[1] + 40, 25]);
+    ruhig(zurueck, offenP, 120);
+    zurueck.lassen();
+    ruhig(zurueck, offenP, 300);
+    expect(Math.hypot(zurueck.pos[3 * (K - 1)]! - ruheOrt[0], zurueck.pos[3 * (K - 1) + 1]! - ruheOrt[1], zurueck.pos[3 * (K - 1) + 2]!)).toBeLessThan(0.03 * platz.lang);
+    // sie geht mit dem Unterkiefer mit: Springt die ganze Form um 30 zur Seite, liegt sie nach dem Ausschwingen genauso, um 30 versetzt
+    const versetzt = Float64Array.from(offenP, (x, i) => (i % 3 === 0 ? x + 30 : x));
+    ruhig(pose, versetzt, 300);
+    let weg2 = 0;
+    for (let i = 0; i < 3 * K; i++) weg2 = Math.max(weg2, Math.abs(pose.pos[i]! - liegt[i]! - (i % 3 === 0 ? 30 : 0)));
+    expect(weg2).toBeLessThan(0.02 * platz.lang);
+    // eine neue Kette mit dieser Lage liegt gleich dort (so kommt sie nach dem Laden und nach ⌘Z)
+    const neu = new ZungenKette(platz);
+    neu.lage = lage;
+    neu.setzen(offenP);
+    let weg3 = 0;
+    for (let i = 0; i < 3 * K; i++) weg3 = Math.max(weg3, Math.abs(neu.pos[i]! - liegt[i]!));
+    expect(weg3).toBeLessThan(0.03 * platz.lang);
+    // ohne Lage wieder an ihren Platz
+    pose.lage = null;
+    ruhig(pose, offenP, 300);
+    expect(Math.hypot(pose.pos[3 * (K - 1)]! - ruheOrt[0], pose.pos[3 * (K - 1) + 1]! - ruheOrt[1], pose.pos[3 * (K - 1) + 2]!)).toBeLessThan(0.03 * platz.lang);
   });
 
   it('die Zunge: liegt auf dem Boden und ist zu flach; kommt dem Kiefer mit Verzögerung nach; dehnt sich wie Gummi und schnellt zurück', async () => {

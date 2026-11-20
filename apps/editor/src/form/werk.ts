@@ -367,9 +367,17 @@ export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean; zaehn
  * Rille oben (Anteil der Dicke) und, wenn sie eine eigene trägt, ihre Farbe (`#rrggbb`; fehlt: Rosa). Wo sie liegt und wie sie
  * sich bewegt, liest die Anzeige daraus und aus der Tasche. Seit der zweiten Scheibe: `spitz` (0 rund … 1 spitz zulaufend),
  * `gabel` (0 … 1: wie tief sie vorn gespalten ist) und `form` (die Vorlage, die zuletzt gewählt wurde; sie setzt alle Werte).
- * Eine Länge über 1 reicht über die Lippe hinaus.
+ * Eine Länge über 1 reicht über die Lippe hinaus. Seit der dritten Scheibe: `klebt` (sie ist abgelegt: Ein Knoten sitzt an einem
+ * Zahn oder einer Lippe) und `lage` (ihre Lage in der Pose „Fressen“: je Knoten längs, hoch und quer an seinem Platz auf dem
+ * Unterkiefer, dann die Längen ihrer Stücke; nie am Ort ändern).
  */
-export type MaulZunge = { laenge: number; breite: number; dicke: number; rille: number; spitz?: number; gabel?: number; form?: number; farbe?: string };
+export type MaulZunge = { laenge: number; breite: number; dicke: number; rille: number; spitz?: number; gabel?: number; form?: number; farbe?: string; klebt?: ZungenKleben; lage?: number[] };
+/**
+ * Die Zunge klebt: Knoten `k` sitzt an einem Zahn (`nr`: seine Nummer in der Reihe; `t`: Anteil seiner Länge vom Fuß zur Spitze)
+ * oder an einer Lippe (`t`: Anteil ihrer Länge von der Spitze zum Mundwinkel). `d`: in welcher Richtung er daran anliegt, im
+ * Rahmen des Stücks (längs, quer, das Dritte).
+ */
+export type ZungenKleben = { k: number; art: 'zahn' | 'lippe'; unten: boolean; gespiegelt: boolean; nr: number; t: number; d: [number, number, number] };
 /**
  * Eine Zahnreihe (Plan „Maul, Zähne, Zunge“, Etappe 5): wie viele Zähne, ihre Größe (1 = ein Zahn füllt seinen Platz), ihre
  * Neigung nach außen (Bogenmaß), wie viel kleiner sie nach hinten werden (0 … 0,9), wie weit die Reihe nach hinten reicht (Anteil
