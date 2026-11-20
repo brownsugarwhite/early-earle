@@ -133,3 +133,31 @@ spider-verse und earle. Gib alles!“ Recherche: `docs/research/2026-11-20-tierm
 - **Gouache neu:** Das ganze Bild ist aus Pinselstrichen gemalt (Deckfarbe wie in den Ghibli-Hintergründen): jeder Strich eine Farbe,
   der Wölbung nach, spitz auslaufend und ausgefranst, in drei Lagen (grob, mittel, fein an Kanten und Lichtern); Name jetzt
   „Gouache (Ghibli)“.
+
+## Runde 5: T-Rex (20.11.2026 spät)
+
+Florian: „kannst du mir noch eine richtig guten t rex shader bauen in verschiedenen styles. Gib dir dabei besonders mühe.“ (Die Probe
+„Ghibli-Fell“ im Spiel: später.) Recherche: `docs/research/2026-11-20-t-rex-haut-recherche.md`.
+
+Ein Shader **„T-Rex“** (Tiermuster) mit dem Regler **Stil** in fünf Stufen. Die Haut ist in allen Stilen dieselbe (gleiche Schuppen,
+Bänder, Narben an denselben Stellen der Form); nur gezeichnet wird sie anders.
+
+- **Haut:** Pflasterschuppen als Zellen im Raum (keine Ebenen, also keine Nähte), gewölbt, mit Fugen; dazwischen größere
+  Schmuckschuppen (Kegel), einzeln und in Gruppen; auf der Rückenlinie (Spiegelebene oben) eine Reihe großer Höcker; Querfalten in
+  Zonen, an der Unterseite tiefer; Gegenschattierung (Rücken dunkel, Flanken heller, Bauch hell); unregelmäßige Querbinden, die zu
+  den Flanken hin in Flecken zerfallen; Sprenkel; Narben (drei parallele Krallenspuren: glatt, hell, mit aufgeworfenem Rand); Schmutz
+  in den Fugen, Schlamm unten; nass in Flecken. Vier Färbungen: Erde, Wald, Asche, Glut.
+- **Kino:** Licht eines Abends (warmes Streiflicht, kühles Himmelslicht, Gegenlicht), Licht scheint rot durch dünne Stellen, Glanz auf
+  den Kuppen der Schuppen, matt in den Fugen. Bühne: Urzeit am Abend (tiefe Sonne im Dunst, Vulkan mit Glut und Rauchsäule,
+  Bergketten, Palmfarne, Farne im Vordergrund, Flugsaurier).
+- **Spider-Verse:** flache Farben, Tuschekontur, die Schuppen als Tuschebögen nur im Schatten, Raster in den Halbtönen, Schraffur im
+  Kernschatten, versetzte Farbplatte, farbiges Randlicht. Bühne: Comic-Knall mit Speedlines und Raster.
+- **Earle:** vier harte Stufen, Schatten in Petrol, die Schuppen als Lichtpunkte fest an der Form, Bänder in Juwelfarben. Bühne:
+  Earles Wald.
+- **Fossil:** versteinerte Haut wie bei einer Dinosaurier-Mumie im Museum: dunkles Gestein mit dem Relief der Schuppen,
+  Mineralflecken, Risse mit Kristallen, gekittete Bruchstellen, Lack. Bühne: dunkler Saal, Spotlicht im Staub.
+- **Spielzeug:** Weichplastik: gespritzte Schuppen, Farbe mit Sprühkante, Trockenpinsel auf den Kuppen, dunkle Lasur in den Fugen,
+  Gussnaht längs der Spiegelebene, Klarlack. Bühne: Kinderzimmer (Holzboden, Tapete, Licht vom Fenster).
+- **Regler:** Stil und Färbung zeigen ihren Namen statt einer Zahl (auch der Stil der übrigen Tiere); dazu Schuppen, Bänder, Narben,
+  Schmutz, Nässe.
+- **Probe:** je Stil ein Bild an „strange bird“ und eins nah; Konsole ohne Fehler; Typen und Lint sauber.
