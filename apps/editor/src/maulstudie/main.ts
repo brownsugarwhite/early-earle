@@ -20,7 +20,6 @@ import {
   DataTexture,
   DoubleSide,
   FloatType,
-  Line,
   LineBasicMaterial,
   LineSegments,
   Matrix4,
@@ -42,6 +41,9 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { manifoldLaden, type Wasm } from '../form/naht';
 import { wachsKugel } from '../ozzy/wachs';
 import { formLaden, type Form } from './form';
@@ -92,6 +94,7 @@ function groesse(): void {
   renderer.setSize(b, h, false);
   kamera.aspect = b / h;
   kamera.updateProjectionMatrix();
+  for (const m of Object.values(lippeMat)) m.resolution.set(b, h);
   anstossen();
 }
 window.addEventListener('resize', groesse);
@@ -183,7 +186,8 @@ const wandMaterial = new ShaderMaterial({
     }`,
 });
 const linienMaterial = new LineBasicMaterial({ color: 0x1f1a17, transparent: true, opacity: 0.55 });
-const lippeMat = { oben: new LineBasicMaterial({ color: 0xe8306a }), unten: new LineBasicMaterial({ color: 0x1f3cf0 }), zu: new LineBasicMaterial({ color: 0x2fb8a6 }) };
+/** die Lippe in Florians Farben (sein Blatt 05): zu türkis, offen oben rosa, unten blau */
+const lippeMat = { oben: new LineMaterial({ color: 0xe8306a, linewidth: 2.6 }), unten: new LineMaterial({ color: 0x1f3cf0, linewidth: 2.6 }), zu: new LineMaterial({ color: 0x2fb8a6, linewidth: 2.6 }) };
 const punktBild = ((): CanvasTexture => {
   const c = document.createElement('canvas');
   c.width = c.height = 32;
@@ -214,6 +218,7 @@ let maulAn = true;
 let linienAn = true;
 let zaehneAn = false;
 let zungeAn = true;
+let knochenAn = adresse.get('knochen') !== '0';
 
 let koerperNetz: Mesh | null = null;
 let hautNetz: Mesh | null = null;
@@ -221,7 +226,8 @@ let wandNetz: Mesh | null = null;
 type Mitgeher = { ruhe: Float32Array; nor: Float32Array; seite: Int8Array; gewicht: Float32Array | null; geo: BufferGeometry };
 let striche: (Mitgeher & { netz: LineSegments }) | null = null;
 let kreuze: (Mitgeher & { netz: Points }) | null = null;
-let lippen: { oben: Mitgeher & { netz: Line }; unten: Mitgeher & { netz: Line } } | null = null;
+type Lippe = Mitgeher & { netz: Line2; gestellt: Float32Array };
+let lippen: { oben: Lippe; unten: Lippe } | null = null;
 let auslauf: Uint32Array | null = null;
 let normalenPuffer: Float32Array | null = null;
 
@@ -343,12 +349,14 @@ function linienBauen(): void {
       const o = m.profil.ort(s);
       L.push(o.x, o.y, (i <= n ? 1 : -1) * (u >= 1 ? 0 : bei(s)));
     }
-    const eine = (oben: boolean): Mitgeher & { netz: Line } => {
+    const eine = (oben: boolean): Lippe => {
       const q = mitgeher(L, new Array<number>(L.length / 3).fill(oben === m.obenLinks ? 1 : -1), null);
-      const netz = new Line(q.geo, lippeMat.zu);
+      const geo = new LineGeometry();
+      geo.setPositions(L);
+      const netz = new Line2(geo, lippeMat.zu);
       netz.renderOrder = 4;
       szene.add(netz);
-      return { ...q, netz };
+      return { ...q, netz, gestellt: Float32Array.from(L) };
     };
     lippen = { oben: eine(true), unten: eine(false) };
   }
@@ -493,11 +501,15 @@ function kieferZeigen(): void {
     const wn = wandNetz.geometry.getAttribute('normal') as BufferAttribute;
     kieferStellen(schnitt, winkel.oben, winkel.unten, { pos: schnitt.wand.pos, nor: schnitt.wand.nor, seite: schnitt.wand.seite, gewicht: null }, { pos: wp.array as Float32Array, nor: wn.array as Float32Array });
     wp.needsUpdate = wn.needsUpdate = true;
-    for (const q of [striche, kreuze, lippen?.oben, lippen?.unten]) {
+    for (const q of [striche, kreuze]) {
       if (!q) continue;
       const p = q.geo.getAttribute('position') as BufferAttribute;
       kieferStellen(schnitt, winkel.oben, winkel.unten, { pos: q.ruhe, nor: q.nor, seite: q.seite, gewicht: q.gewicht }, { pos: p.array as Float32Array, nor: q.nor });
       p.needsUpdate = true;
+    }
+    for (const q of lippen ? [lippen.oben, lippen.unten] : []) {
+      kieferStellen(schnitt, winkel.oben, winkel.unten, { pos: q.ruhe, nor: q.nor, seite: q.seite, gewicht: null }, { pos: q.gestellt, nor: q.nor });
+      (q.netz.geometry as LineGeometry).setPositions(q.gestellt);
     }
     if (lippen) {
       // zu: eine Linie (wie in Florians Blatt türkis), offen: oben rosa, unten blau
@@ -594,7 +606,17 @@ function tropfenStellen(): void {
     const [x, y] = imBild(schnitt.C.x, schnitt.C.y, z);
     tropfenWinkel.style.left = `${x.toFixed(1)}px`;
     tropfenWinkel.style.top = `${y.toFixed(1)}px`;
+    // die Knochen laufen in der Mitte des Kopfs (z = 0) vom Scharnier zur Kieferspitze
+    const [sx, sy] = imBild(schnitt.C.x, schnitt.C.y, 0);
+    [tropfenOben, tropfenUnten].forEach((el, i) => {
+      const l = knochen[i]!;
+      l.setAttribute('x1', sx.toFixed(1));
+      l.setAttribute('y1', sy.toFixed(1));
+      l.setAttribute('x2', el.style.left.replace('px', ''));
+      l.setAttribute('y2', el.style.top.replace('px', ''));
+    });
   }
+  for (const l of knochen) l.style.display = an && knochenAn ? '' : 'none';
   entwurfZeigen();
 }
 
@@ -775,6 +797,13 @@ const zeichnung = document.getElementById('zeichnung') as unknown as SVGSVGEleme
 const entwurfPfad = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 entwurfPfad.setAttribute('class', 'entwurf');
 zeichnung.appendChild(entwurfPfad);
+/** die zwei Kieferknochen: je eine Haarlinie vom Mundwinkel zum Tropfen an der Kieferspitze */
+const knochen = [0, 1].map(() => {
+  const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  l.setAttribute('class', 'knochen');
+  zeichnung.appendChild(l);
+  return l;
+});
 const maulTropfen = document.createElement('button');
 maulTropfen.type = 'button';
 maulTropfen.className = 'pille maul-tropfen';
@@ -803,9 +832,12 @@ function entwurfZeigen(): void {
 /** wie dick die Form an einer Stelle der Seitenebene ist (0: daneben) */
 function dickeBei(p: V2): number {
   if (!koerperNetz) return 0;
+  // (von beiden Seiten: Das Material der Haut zeigt nur seine Vorderseite, ein Strahl trifft also nur beim Eintreten)
   strahl.set(new Vector3(p.x, p.y, 1e5), new Vector3(0, 0, -1));
-  const t = strahl.intersectObject(koerperNetz, false);
-  return t.length >= 2 ? t[t.length - 1]!.distance - t[0]!.distance : 0;
+  const a = strahl.intersectObject(koerperNetz, false)[0];
+  strahl.set(new Vector3(p.x, p.y, -1e5), new Vector3(0, 0, 1));
+  const b = strahl.intersectObject(koerperNetz, false)[0];
+  return a && b ? a.point.z - b.point.z : 0;
 }
 
 /** einen Strich glätten: ausdünnen, dann zweimal Ecken abschneiden */
@@ -1204,6 +1236,10 @@ const haken = {
     kieferZeigen();
     zeichnen();
   },
+  knochen: (an: boolean) => {
+    knochenAn = an;
+    zeichnen();
+  },
   waehlen: (kiefer: Kiefer | null, i: number | null = null) => {
     auswahlSetzen(kiefer ? { kiefer, i } : null);
     zeichnen();
@@ -1232,6 +1268,13 @@ const haken = {
     zeichnen();
   },
   stift: (an: boolean) => stiftSetzen(an),
+  /** ein Ort der Form im Bild (CSS-Pixel) und die Spitze der Zunge im Bild */
+  imBild: (x: number, y: number, z = 0) => imBild(x, y, z),
+  zungenSpitze: () => {
+    if (!zunge) return null;
+    const o = zunge.ort(zunge.knoten - 2);
+    return imBild(o.x, o.y, o.z);
+  },
   /** einen Strich vorgeben, als wäre er gezeichnet (Seitenebene), und bestätigen */
   strich: (p: V2[], bestaetigen = false) => {
     strich = p.slice();
