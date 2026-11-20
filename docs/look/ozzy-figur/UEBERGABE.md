@@ -1,4 +1,4 @@
-# Übergabe: Ozzy-Figur (Stand 19.11.2026 nachts: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in fünfter Fassung, dazu das Werkzeug zum Selbst-Bearbeiten (Stufe 1); 3D-Wege ruhen)
+# Übergabe: Ozzy-Figur (Stand 20.11.2026 früh: zurück im 2D; Kopf dreht 360°, Szene kopf360, 90°–180° in fünfter Fassung, dazu das Werkzeug zum Selbst-Bearbeiten (Stufe 1) mit Zeitleiste aller Schlüssel; 3D-Wege ruhen)
 
 Neuer Strang neben dem Prototyp `claude/maskottchen`: Ozzy als 2,5D-Bewegungswerkzeug mit Physik, aus Florians eigenen SVGs.
 Zweig `claude/ozzy-animation-physics-294508` (aufgesetzt auf `claude/maskottchen` @ ebb6fd21), Arbeitsbaum
@@ -604,20 +604,52 @@ einfach selbst anpassen lässt. Baue mir dazu vektorbearbeitungstools wie in ill
   Dev-Server (`vite.config.ts`, `/__ozzy-figur/schluessel`), gelesen beim Öffnen. Jede Änderung baut das Raster neu (rund 0,13 s); beim Ziehen
   zeigt das Werkzeug die gezogene Form direkt (`ersetzen`).
 - **Winkelregler** der 360°-Szene zeigt jetzt den echten Winkel (vorher ein Viertel davon).
-- **Geprüft** (`node scripts/ozzy-figur/werkzeug-probe.mjs` aus `apps/editor`; sichert seine Schlüssel und schreibt sie zurück): Anker,
+- **Geprüft** (`node scripts/ozzy-figur/werkzeug-probe.mjs` aus `apps/editor`; seit dem 20.11. mit einer Attrappe der Datei, siehe Fallen): Anker,
   glatter Griff (Knick bleibt 0°), Griff mit ⌥ (Ecke), Ankerpunkt hin und zurück, Auswahl, Pfeiltasten, Rahmen, Winkel, Änderung bei 210° gilt
   gespiegelt bei 150°, Zoom, Datei, Zurück und Wieder, nach dem Neuladen derselbe Stand. Ohne Schlüssel alles wie vorher (Schlüssel 0,00,
   52 Tests). Zwei kräftig gezogene Schlüssel bei 150° ergeben keinen Sprung (größte Änderung je 2° 11 370, ohne 11 244).
 - **Offen:** sein Urteil zur Bedienung; Stufe 2 (Körper) und 3 (Haltungen, Abläufe) nach seinem Wort; Illustrator-Rundweg später.
 
+### Zeitleiste mit allen Schlüsseln (20.11. früh)
+
+Florian, nachdem er die ersten Schlüssel gesetzt hatte (16 an Bart A und B, Maske A und B): „Ich müsste aber auch deine schlüsselbilder sehen
+um es richtig bearbeiten zu können. Im moment shee ich nur meine“. Bilder: `docs/progress/ozzy-figur/2026-11-20-zeitleiste.png` (360°),
+`…-zeitleiste-90.png` („Kopf dreht“), `…-zeitleiste-iphone.png`.
+
+- **Zeitleiste** unter der Bühne, nur im Bearbeiten (`werkzeug.ts`, `zlZeichnen`; die Figur wird darüber eingepasst, `einpassen(…, unten)`):
+  eine Zeile je Kopfteil, oben, was im Bild oben liegt (Nase, Bart B, Bart A, Maske A, Maske B, Ohr A, Ohrspalt, Ohr B). Schwarze Raute:
+  seine Vorlage (Logo, 3/4, Profil, Rücken, seine Übermalung bei 67°); helle Raute: von mir gebaut; Punkt: verborgener Faltschlüssel; blaue
+  Raute: sein Schlüssel. Ab 180° grau hinterlegt und blasser (gespiegelt). Abspielkopf mit Winkel. „Kopf dreht 360°“ zeigt 0°–360°, „Kopf
+  dreht“ und „Ozzy dreht sich“ 0°–90°. Auf kleiner Bühne (iPhone) knapper (114 statt 153 Bildpunkte).
+- **Bedienung:** Klick auf eine Raute springt genau dorthin und wählt das Teil (Maus 5, Finger 9 Bildpunkte daneben); Klick oder Ziehen
+  daneben dreht den Kopf (0,5°), in der Zeile des gewählten Teils rastet er an dessen Schlüsseln ein; Klick auf den Namen wählt nur das Teil.
+  J und K springen zum vorigen und nächsten Schlüssel des gewählten Teils (ohne Teil: aller; Faltschlüssel zählen nicht).
+- **Status oben links:** wessen Schlüssel hier liegt und wozu („mein Schlüssel: Bart dreht mit dem Gesicht weg“, „deine Vorlage: Profil“,
+  „dein Schlüssel (gespiegelt aus 150°, Bart A)“, „zwischen zwei Schlüsseln“); über einer Raute der Schlüssel unter dem Zeiger. Darunter rot,
+  welche meiner Schlüssel ein Zug hier ersetzen würde (näher als 4°, `wegfallend`); in der Zeitleiste sind sie rot umrandet.
+- **Raster** (`raster.ts`): Jeder Schlüssel trägt seine Herkunft (`Schluessel.art`: vorlage, dein, gebaut, falte) und wozu er da ist
+  (`grund`); das Spiegeln nimmt beides mit. `schluesselUebersicht()` gibt je Teil die Schlüssel, die das Bild bestimmen, wie `szene` sie
+  liest: 0°–90° und 270°–360° aus der ersten Hälfte mit ihrem Anschluss, 90°–270° aus der Drehung nach hinten, Teile ohne Rücken von 180° bis
+  270° aus dem Partner. Die Anschlussschlüssel der ersten Hälfte hinter 90° wirken nur mit und stehen nicht in der Zeitleiste. Je Raster
+  einmal gerechnet (168 Schlüssel mit seinen 16).
+- **Geprüft** (`node scripts/ozzy-figur/zeitleiste-probe.mjs` aus `apps/editor`, `BILD=<ordner>` für Bilder): Übersicht, Klick auf eine Raute,
+  J/K, Text über einer Raute (auch gespiegelt), Ziehen im Lineal und in einer Zeile (rastet ein), Zug bei 150° (sein Schlüssel kommt dazu, mein
+  Schlüssel bei 152° fällt weg, gespiegelt bei 210°; ⌘Z nimmt ihn zurück), Klick auf einen Namen, „Kopf dreht“, iPhone hochkant. Dazu
+  `werkzeug-probe.mjs` wie am 19.11., 52 Tests, Typen, Lint.
+
 ## Fallen
 
-- Proben und Prüfaufrufe sehen Florians Schlüssel aus `schluessel.json` (die Seite lädt sie beim Öffnen). Wer gegen den Stand ohne seine
-  Schlüssel vergleicht, liest die Datei vorher und schreibt sie danach zurück (wie `werkzeug-probe.mjs`). Nie seine Schlüssel löschen.
+- Proben und Prüfaufrufe sehen Florians Schlüssel aus `schluessel.json` (die Seite lädt sie beim Öffnen). Nie seine Schlüssel löschen und nie
+  in seine Datei schreiben: Er arbeitet oft gleichzeitig im Fenster, und was er speichert, während eine Probe die Datei geleert hat, wäre beim
+  Zurückschreiben verloren. Proben laden und speichern deshalb über eine Attrappe im Browser (`page.route('**/__ozzy-figur/schluessel', …)`,
+  wie `werkzeug-probe.mjs` und `zeitleiste-probe.mjs`) und prüfen am Ende, dass seine Datei unberührt ist.
+- Hat Florian das Fenster offen (`lsof -nP -iTCP:5213` zeigt Chrome), lädt jede Änderung unter `src/ozzy-figur` seine Seite neu (Zoom und ⌘Z
+  weg). Größere Umbauten in einer Kopie bauen (`src/ozzy-figur-bau/` mit `ozzy-figur-bau.html`, gleicher Server; eine fremde Seite lädt seine
+  nicht neu) und erst am Ende in einem Schritt zurückkopieren; die Kopie danach löschen.
 
 - Schlüssel kurz vor 180° werden in die zweite Hälfte gespiegelt (Teil n bei 360° − w ist der gespiegelte Partner bei w). Florians Rücken ist
-  nicht spiegelgleich. Seit der sechsten Fassung bekommen gespiegelte Schlüssel über `ASYM_BIS` den Unterschied weich dazu; vorher holte jedes
-  Teil ihn zwischen 180° und dem ersten gespiegelten Schlüssel nach (Zwischenschlüssel des mittleren Ohrs bis 170°: das linke Ohr lief hinter
+  nicht spiegelgleich. In der sechsten Fassung bekamen gespiegelte Schlüssel über `ASYM_BIS` den Unterschied weich dazu (mit ihren Formen
+  zurückgenommen, steht nicht mehr im Code); sonst holt jedes Teil ihn zwischen 180° und dem ersten gespiegelten Schlüssel nach (Zwischenschlüssel des mittleren Ohrs bis 170°: das linke Ohr lief hinter
   180° 37 Einheiten in 10°). Der Ausgleich muss vor dem Gesicht auslaufen (Bart und Ohrspalt werden ohne ihn gespiegelt). Die Ohren um 180°
   prüfen: `npx vite-node scripts/ozzy-figur/teil-weg.ts ohrA 170 196 2`.
 - Weiß über Schwarz an derselben Kante: Mit Kantenglättung ergibt „Schwarz halb, darüber Weiß halb“ 75 % Grau, eine Linie, die niemand

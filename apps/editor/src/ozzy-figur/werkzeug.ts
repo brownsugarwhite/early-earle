@@ -3,7 +3,7 @@
 // Schlüssel des Teils bei diesem Winkel (raster.ts, KopfKorrektur), die Nachbarn blenden weich ein. Gespeichert über den Dev-Server in
 // docs/look/ozzy-figur/schluessel.json. Keine Punkte hinzufügen oder löschen: Jedes Teil hat in allen Schlüsseln dieselben Anker.
 import { abflachen, type Form, type Punkt } from './form';
-import type { KopfKorrektur, Lage } from './raster';
+import { KORREKTUR_NAH, type KopfKorrektur, type Lage, type SchluesselEintrag } from './raster';
 import type { Ansicht, Szene } from './renderer';
 import type { TeilName } from './vorlagen/import';
 
@@ -20,6 +20,10 @@ export interface WerkzeugKontext {
   korrekturAus(teil: TeilName, lage: Lage, form: Form): KopfKorrektur;
   /** Kopf auf diesen Winkel stellen (0°–360°) und anhalten */
   winkelSetzen(theta: number): void;
+  /** alle Schlüssel der Kopfteile mit Herkunft (Zeitleiste) */
+  schluessel(): readonly SchluesselEintrag[];
+  /** Winkel, bis zu dem die gezeigte Drehung reicht (90° oder 360°) */
+  bereich(): number;
   neu(): void;
 }
 
@@ -37,6 +41,13 @@ const NAMEN: Partial<Record<TeilName, string>> = {
 };
 /** ein Griff gilt als „glatt“ mit seinem Gegengriff, wenn beide höchstens so viel Grad von einer Geraden abweichen */
 const GLATT_GRAD = 4;
+const TINTE = '#1f1a17';
+const ROT = '#d0312d';
+/** Zeitleiste: eine Zeile je Kopfteil, von oben nach unten wie die Ebenen (was im Bild oben liegt, steht oben) */
+const ZEILEN: TeilName[] = ['nase', 'bartB', 'bartA', 'kopfA', 'kopfB', 'ohrA', 'ohrSpalt', 'ohrB'];
+/** Maße der Zeitleiste in CSS-Bildpunkten; auf einer kleinen Bühne (iPhone) knapper */
+const ZL_GROSS = { lineal: 26, zeile: 15, unten: 7, links: 74, rechts: 20, schrift: 10 };
+const ZL_KLEIN = { lineal: 22, zeile: 11, unten: 4, links: 60, rechts: 12, schrift: 9 };
 
 type Zug =
   | { art: 'anker'; teil: TeilName; start: Punkt; form0: Form; welche: number[]; bewegt: boolean }
@@ -122,6 +133,18 @@ function linienAbstand(pts: number[], q: Punkt): number {
 }
 const runden = (v: number): number => Math.round(v * 100) / 100;
 const gradText = (w: number): string => (Number.isInteger(w) ? String(w) : w.toFixed(1)).replace('.', ',');
+const gradListe = (ws: number[]): string => {
+  const t = ws.map((w) => `${gradText(w)}°`);
+  return t.length > 1 ? `${t.slice(0, -1).join(', ')} und ${t[t.length - 1]}` : (t[0] ?? '');
+};
+/** wessen Schlüssel das ist, in Florians Worten */
+function herkunft(e: SchluesselEintrag): string {
+  const spiegel = e.von ? ` (gespiegelt aus ${gradText(e.von.w)}°, ${NAMEN[e.von.teil] ?? e.von.teil})` : '';
+  if (e.art === 'vorlage') return `deine Vorlage${e.grund ? `: ${e.grund}` : ''}${spiegel}`;
+  if (e.art === 'dein') return `dein Schlüssel${spiegel}`;
+  if (e.art === 'falte') return `mein verborgener Faltschlüssel${e.grund ? `: ${e.grund}` : ''}`;
+  return `mein Schlüssel${e.grund ? `: ${e.grund}` : ''}${spiegel}`;
+}
 
 /** Datei: eine Zeile je Schlüssel, jeder Anker als [px, py, ix, iy, ox, oy] */
 export function schluesselSchreiben(liste: readonly KopfKorrektur[]): string {
@@ -171,6 +194,10 @@ export class FigurWerkzeug {
   private speicherUhr = 0;
   private stand = '';
   private bearbeitbar = false;
+  /** Zeitleiste unter der Bühne (nur im Bearbeiten) */
+  private readonly zl: HTMLCanvasElement;
+  private zlZug: { zeile: number } | null = null;
+  private zlHover: SchluesselEintrag | null = null;
 
   constructor(
     private readonly flaeche: HTMLCanvasElement,
@@ -189,6 +216,38 @@ export class FigurWerkzeug {
         this.zeiger(null);
       }
     });
+    this.zl = document.createElement('canvas');
+    this.zl.id = 'zeitleiste';
+    buehne.appendChild(this.zl);
+    this.zl.addEventListener('pointerdown', (e) => this.zlRunter(e));
+    this.zl.addEventListener('pointermove', (e) => this.zlBewegen(e));
+    this.zl.addEventListener('pointerup', () => (this.zlZug = null));
+    this.zl.addEventListener('pointercancel', () => (this.zlZug = null));
+    this.zl.addEventListener('pointerleave', () => this.zlHoverSetzen(null));
+    this.zl.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      { passive: false },
+    );
+  }
+
+  /** CSS-Bildpunkte, die die Zeitleiste unten auf der Bühne belegt (die Figur wird darüber eingepasst) */
+  untenBelegt(): number {
+    if (!this.an) return 0;
+    this.zlMasse();
+    return this.zlHoehe();
+  }
+  private zlm = ZL_GROSS;
+  private zlMasse(): void {
+    this.zlm = (this.zl.parentElement?.clientHeight ?? 1000) < 700 ? ZL_KLEIN : ZL_GROSS;
+    const hoehe = `${this.zlHoehe()}px`;
+    if (this.zl.style.height !== hoehe) this.zl.style.height = hoehe;
+  }
+  private zlHoehe(): number {
+    return this.zlm.lineal + ZEILEN.length * this.zlm.zeile + this.zlm.unten;
   }
 
   // ---- Ansicht -------------------------------------------------------------------------------------------------------------
@@ -657,6 +716,7 @@ export class FigurWerkzeug {
     if (kl === 'a' && !e.shiftKey) this.artSetzen('direkt');
     else if (kl === 'v' && !e.shiftKey) this.artSetzen('auswahl');
     else if (kl === 'c' && e.shiftKey) this.artSetzen('umwandeln');
+    else if ((kl === 'j' || kl === 'k') && !e.shiftKey) this.schluesselSprung(kl === 'j' ? -1 : 1);
     else if (k === 'Escape') {
       if (this.gewaehlt.size) this.gewaehlt.clear();
       else this.teil = null;
@@ -682,6 +742,8 @@ export class FigurWerkzeug {
     this.an = !this.an;
     this.zug = null;
     this.live = null;
+    this.zlZug = null;
+    this.zlHover = null;
     if (this.an) {
       const lage = this.k.lage();
       if (lage) this.k.winkelSetzen(Math.round((((lage.theta % 360) + 360) % 360) * 2) / 2);
@@ -713,6 +775,11 @@ export class FigurWerkzeug {
         mit ⌥ am Griff wird er eine Ecke. Ankerpunkt: Klick macht Ecke ↔ glatt, aus dem Anker ziehen zieht Griffe heraus. ⌘ + Scrollen zoomt,
         Scrollen oder Leertaste + Ziehen verschiebt. „,“ und „.“ drehen den Kopf um 1° (⇧ 5°). Jede Änderung ist ein Schlüssel bei diesem
         Winkel, davor und danach blendet es weich ein; die zweite Hälfte gilt gespiegelt mit.</p>
+        <p class="hinweis">Zeitleiste unten: alle Schlüssel je Teil. <span class="marke vorlage">◆</span> deine Vorlage,
+        <span class="marke gebaut">◇</span> von mir gebaut, <span class="marke falte">•</span> mein verborgener Faltschlüssel,
+        <span class="marke dein">◆</span> dein Schlüssel; ab 180° gespiegelt (grau hinterlegt). Klick auf einen Schlüssel springt hin, Ziehen
+        dreht den Kopf. J und K springen zum vorigen und nächsten Schlüssel des gewählten Teils. Rot umrandet: meine Schlüssel, die ein Zug
+        hier ersetzt (näher als 4°).</p>
         <h3 class="unter">Deine Schlüssel</h3>
         <ul id="schluesselListe"></ul>
         <p class="hinweis" id="speicherStand">${this.stand}</p>
@@ -749,6 +816,7 @@ export class FigurWerkzeug {
     if (werkzeuge) werkzeuge.style.display = this.an ? '' : 'none';
     document.getElementById('bearbeitenAn')?.classList.toggle('an', this.an);
     document.querySelectorAll<HTMLButtonElement>('[data-werkzeug]').forEach((b) => b.classList.toggle('an', b.dataset.werkzeug === this.art));
+    this.zl.classList.toggle('an', this.an);
     this.flaeche.style.pointerEvents = this.an ? 'auto' : '';
     this.flaeche.style.touchAction = this.an ? 'none' : '';
     if (!this.an) this.flaeche.style.cursor = '';
@@ -852,13 +920,258 @@ export class FigurWerkzeug {
       ctx.strokeRect(Math.min(z.startPx[0], z.jetztPx[0]), Math.min(z.startPx[1], z.jetztPx[1]), Math.abs(z.jetztPx[0] - z.startPx[0]), Math.abs(z.jetztPx[1] - z.startPx[1]));
       ctx.setLineDash([]);
     }
-    // oben links: Winkel, Teil, ob hier einer seiner Schlüssel liegt
+    // oben links: Winkel, Teil, wessen Schlüssel hier liegt (über der Zeitleiste: der Schlüssel unter dem Zeiger)
     const th = ((lage.theta % 360) + 360) % 360;
-    const ort = this.teil ? this.k.korrekturAus(this.teil, lage, teile.find((x) => x.name === this.teil)!.form) : null;
-    const hier = ort ? this.liste.some((x) => x.teil === ort.teil && x.w === ort.w) : false;
-    const text = `${gradText(Math.round(th * 2) / 2)}°  ·  ${this.teil ? (NAMEN[this.teil] ?? this.teil) : 'Teil oder Anker anklicken'}${hier ? '  ·  dein Schlüssel' : ''}${this.zoom.z !== 1 ? `  ·  Zoom ${Math.round(this.zoom.z * 100)} %` : ''}`;
+    const { text, zusatz } = this.status(th);
     ctx.font = `${12 * d}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = BLAU;
     ctx.fillText(text, 20 * d, 76 * d);
+    if (zusatz) {
+      ctx.fillStyle = this.zlHover ? 'rgba(31, 111, 235, 0.7)' : ROT;
+      ctx.fillText(zusatz, 20 * d, 94 * d);
+    }
+    this.zlZeichnen(th);
+  }
+
+  /** Zeilen oben links: Winkel, Teil und wessen Schlüssel hier liegt; darunter, was ein Zug hier ersetzt */
+  private status(th: number): { text: string; zusatz: string } {
+    let text = `${gradText(Math.round(th * 10) / 10)}°  ·  ${this.teil ? (NAMEN[this.teil] ?? this.teil) : 'Teil oder Anker anklicken'}`;
+    let zusatz = '';
+    if (this.zlHover) {
+      const h = this.zlHover;
+      text = `${gradText(Math.round(h.w * 10) / 10)}°  ·  ${NAMEN[h.teil] ?? h.teil}  ·  ${herkunft(h)}`;
+      zusatz = 'Klick springt hin';
+    } else if (this.teil) {
+      const hier = this.k.schluessel().find((x) => x.teil === this.teil && Math.abs(x.w - th) < 0.01);
+      text += `  ·  ${hier ? herkunft(hier) : 'zwischen zwei Schlüsseln'}`;
+      const weg = this.wegfallend(th);
+      if (weg.length) zusatz = `Ziehen hier ersetzt ${weg.length === 1 ? 'meinen Schlüssel' : 'meine Schlüssel'} bei ${gradListe(weg)} (näher als ${KORREKTUR_NAH}°)`;
+    }
+    if (this.zoom.z !== 1) text += `  ·  Zoom ${Math.round(this.zoom.z * 100)} %`;
+    return { text, zusatz };
+  }
+  /** Prüfhaken: die Zeilen oben links */
+  statusText(): string {
+    const lage = this.k.lage();
+    if (!lage || !this.an) return '';
+    const { text, zusatz } = this.status(((lage.theta % 360) + 360) % 360);
+    return zusatz ? `${text} | ${zusatz}` : text;
+  }
+
+  // ---- Zeitleiste ----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * gebaute Schlüssel des gewählten Teils, die ein Schlüssel an diesem Winkel ersetzen würde (raster.ts, korrekturEinsetzen): näher als
+   * KORREKTUR_NAH, auf derselben Hälfte, nicht an den gezeichneten Winkeln
+   */
+  private wegfallend(th: number): number[] {
+    if (!this.teil) return [];
+    const w = Math.round(th * 2) / 2;
+    const fest = [0, 45, 90, 180];
+    return this.k
+      .schluessel()
+      .filter((x) => x.teil === this.teil && x.art === 'gebaut' && x.w !== w && Math.abs(x.w - w) < KORREKTUR_NAH && (w <= 180 ? x.w <= 180 : x.w > 180) && !fest.includes(x.w <= 180 ? x.w : 360 - x.w))
+      .map((x) => x.w);
+  }
+  private zlX(w: number): number {
+    const b = this.zl.clientWidth;
+    return this.zlm.links + (w / this.k.bereich()) * Math.max(1, b - this.zlm.links - this.zlm.rechts);
+  }
+  private zlWinkel(x: number): number {
+    const b = this.zl.clientWidth;
+    const max = this.k.bereich();
+    return Math.max(0, Math.min(max, ((x - this.zlm.links) / Math.max(1, b - this.zlm.links - this.zlm.rechts)) * max));
+  }
+  private zlZeile(y: number): number {
+    const i = Math.floor((y - this.zlm.lineal) / this.zlm.zeile);
+    return i >= 0 && i < ZEILEN.length ? i : -1;
+  }
+  private zlPunkt(e: PointerEvent): Punkt {
+    const r = this.zl.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  }
+  /** der Schlüssel der Zeile, der x am nächsten liegt (höchstens `radius` Bildpunkte daneben: die Maus trifft die Raute, der Finger etwas daneben) */
+  private zlTreffer(x: number, zeile: number, radius = 5): SchluesselEintrag | null {
+    if (zeile < 0) return null;
+    const max = this.k.bereich();
+    let best: SchluesselEintrag | null = null;
+    let bestD = radius;
+    for (const e of this.k.schluessel()) {
+      if (e.teil !== ZEILEN[zeile] || e.w > max + 1e-6) continue;
+      const d = Math.abs(this.zlX(e.w) - x);
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    return best;
+  }
+  private zlRunter(e: PointerEvent): void {
+    if (!this.an || !this.k.lage()) return;
+    e.preventDefault();
+    this.zl.setPointerCapture(e.pointerId);
+    const [x, y] = this.zlPunkt(e);
+    const zeile = this.zlZeile(y);
+    if (zeile >= 0) this.teilWaehlen(ZEILEN[zeile]!);
+    // Klick auf den Namen: nur das Teil wählen, der Winkel bleibt
+    if (x < this.zlm.links - 6) {
+      this.k.neu();
+      return;
+    }
+    const t = this.zlTreffer(x, zeile, e.pointerType === 'mouse' ? 5 : 9);
+    this.zlZug = { zeile };
+    this.k.winkelSetzen(t ? t.w : Math.round(this.zlWinkel(x) * 2) / 2);
+  }
+  private zlBewegen(e: PointerEvent): void {
+    if (!this.an) return;
+    const [x, y] = this.zlPunkt(e);
+    if (this.zlZug) {
+      // Ziehen dreht den Kopf (auf 0,5°); nahe einem Schlüssel des gewählten Teils rastet er dort ein
+      const t = this.zlTreffer(x, this.teil ? ZEILEN.indexOf(this.teil) : -1);
+      this.k.winkelSetzen(t ? t.w : Math.round(this.zlWinkel(x) * 2) / 2);
+      return;
+    }
+    const t = this.zlTreffer(x, this.zlZeile(y));
+    this.zl.style.cursor = t || (x < this.zlm.links - 6 && this.zlZeile(y) >= 0) ? 'pointer' : 'ew-resize';
+    this.zlHoverSetzen(t);
+  }
+  private zlHoverSetzen(t: SchluesselEintrag | null): void {
+    if (t === this.zlHover) return;
+    this.zlHover = t;
+    this.k.neu();
+  }
+  /** zum vorigen (−1) oder nächsten (+1) Schlüssel des gewählten Teils, ohne Teil aller Kopfteile; Faltschlüssel zählen nicht */
+  schluesselSprung(richtung: -1 | 1): void {
+    const lage = this.k.lage();
+    if (!lage) return;
+    const th = ((lage.theta % 360) + 360) % 360;
+    const max = this.k.bereich();
+    const ws = [...new Set(this.k.schluessel().filter((x) => x.art !== 'falte' && x.w <= max && (!this.teil || x.teil === this.teil)).map((x) => x.w))].sort((a, b) => a - b);
+    const ziel = richtung < 0 ? ws.filter((w) => w < th - 1e-6).pop() : ws.find((w) => w > th + 1e-6);
+    if (ziel !== undefined) this.k.winkelSetzen(ziel);
+  }
+
+  private zlZeichnen(th: number): void {
+    const c = this.zl;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const b = c.clientWidth;
+    const h = c.clientHeight;
+    if (!b || !h) return;
+    if (c.width !== Math.round(b * dpr) || c.height !== Math.round(h * dpr)) {
+      c.width = Math.round(b * dpr);
+      c.height = Math.round(h * dpr);
+    }
+    this.zlMasse();
+    const g = c.getContext('2d')!;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, b, h);
+    const max = this.k.bereich();
+    const x = (w: number): number => this.zlX(w);
+    const y0 = this.zlm.lineal;
+    const y1 = this.zlm.lineal + ZEILEN.length * this.zlm.zeile;
+    // zweite Hälfte (gespiegelt) grau hinterlegt, das gewählte Teil blau
+    if (max > 180) {
+      g.fillStyle = 'rgba(31, 26, 23, 0.045)';
+      g.fillRect(x(180), y0, x(max) - x(180), y1 - y0);
+    }
+    const zi = this.teil ? ZEILEN.indexOf(this.teil) : -1;
+    if (zi >= 0) {
+      g.fillStyle = 'rgba(31, 111, 235, 0.09)';
+      g.fillRect(0, y0 + zi * this.zlm.zeile, b, this.zlm.zeile);
+    }
+    // Lineal
+    const fein = max > 90 ? 5 : 1;
+    const grob = max > 90 ? 45 : 15;
+    g.strokeStyle = 'rgba(31, 26, 23, 0.32)';
+    g.lineWidth = 1;
+    g.beginPath();
+    for (let w = 0; w <= max + 1e-6; w += fein) {
+      const xx = Math.round(x(w)) + 0.5;
+      g.moveTo(xx, y0);
+      g.lineTo(xx, y0 - (w % grob === 0 ? 7 : w % (fein * 2) === 0 ? 4 : 2.5));
+    }
+    g.stroke();
+    g.font = `${this.zlm.schrift}px system-ui, -apple-system, sans-serif`;
+    g.fillStyle = 'rgba(31, 26, 23, 0.55)';
+    for (let w = 0; w <= max + 1e-6; w += grob) {
+      g.textAlign = w === 0 ? 'left' : w >= max ? 'right' : 'center';
+      g.fillText(`${w}°`, x(w) + (w === 0 ? -2 : w >= max ? 3 : 0), y0 - 10);
+    }
+    // Zeilen
+    g.textAlign = 'left';
+    ZEILEN.forEach((n, i) => {
+      const ym = y0 + i * this.zlm.zeile + this.zlm.zeile / 2;
+      g.fillStyle = i === zi ? BLAU : 'rgba(31, 26, 23, 0.62)';
+      g.fillText(NAMEN[n] ?? n, 12, ym + 3.5);
+      g.strokeStyle = 'rgba(31, 26, 23, 0.09)';
+      g.beginPath();
+      g.moveTo(x(0), Math.round(ym) + 0.5);
+      g.lineTo(x(max), Math.round(ym) + 0.5);
+      g.stroke();
+    });
+    // Schlüssel
+    const weg = new Set(this.wegfallend(th));
+    for (const e of this.k.schluessel()) {
+      if (e.w > max + 1e-6) continue;
+      const i = ZEILEN.indexOf(e.teil);
+      if (i < 0) continue;
+      const cx = x(e.w);
+      const cy = y0 + i * this.zlm.zeile + this.zlm.zeile / 2;
+      const gross = (e === this.zlHover ? 1.45 : 1) * (this.zlm.zeile / 15);
+      g.globalAlpha = e.w > 180 && e.w < 360 ? 0.6 : 1;
+      if (e.art === 'falte') {
+        g.fillStyle = 'rgba(31, 26, 23, 0.5)';
+        g.beginPath();
+        g.arc(cx, cy, 1.8 * gross, 0, 2 * Math.PI);
+        g.fill();
+      } else {
+        const r = (e.art === 'dein' ? 5 : 4.4) * gross;
+        g.beginPath();
+        g.moveTo(cx, cy - r);
+        g.lineTo(cx + r, cy);
+        g.lineTo(cx, cy + r);
+        g.lineTo(cx - r, cy);
+        g.closePath();
+        const ersetzt = e.art === 'gebaut' && e.teil === this.teil && weg.has(e.w);
+        g.fillStyle = e.art === 'dein' ? BLAU : e.art === 'vorlage' ? TINTE : ersetzt ? '#fde3e2' : '#fff';
+        g.fill();
+        g.lineWidth = ersetzt ? 1.6 : 1.1;
+        g.strokeStyle = e.art === 'dein' ? BLAU : ersetzt ? ROT : TINTE;
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+    // Abspielkopf mit dem Winkel
+    const xp = x(Math.min(max, th));
+    g.strokeStyle = BLAU;
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(xp, y0 - 3);
+    g.lineTo(xp, y1);
+    g.stroke();
+    const txt = `${gradText(Math.round(th * 10) / 10)}°`;
+    g.font = '600 10px system-ui, -apple-system, sans-serif';
+    const tb = g.measureText(txt).width + 8;
+    const fx = Math.max(0, Math.min(b - tb, xp - tb / 2));
+    g.fillStyle = BLAU;
+    g.beginPath();
+    g.roundRect(fx, 1, tb, 13, 3);
+    g.fill();
+    g.fillStyle = '#fff';
+    g.textAlign = 'center';
+    g.fillText(txt, fx + tb / 2, 11);
+    g.textAlign = 'left';
+  }
+
+  /** Prüfhaken: Ort eines Schlüssels in der Zeitleiste (Bildschirm, CSS-Bildpunkte) */
+  zeitleisteOrt(teil: TeilName, w: number): Punkt | null {
+    const i = ZEILEN.indexOf(teil);
+    if (i < 0 || !this.an) return null;
+    const r = this.zl.getBoundingClientRect();
+    return [r.left + this.zlX(w), r.top + this.zlm.lineal + i * this.zlm.zeile + this.zlm.zeile / 2];
+  }
+  /** Prüfhaken: alle Schlüssel mit Herkunft */
+  uebersicht(): readonly SchluesselEintrag[] {
+    return this.k.schluessel();
   }
 }

@@ -28,6 +28,13 @@ Vorher: Die Formen der Kopfdrehung gehen auf die fünfte Fassung (33f13ebf) zur�
 - **Probe:** bei 150° einen Anker ziehen → Schlüssel in der Datei, nach dem Neuladen dieselbe Form, ⌘Z nimmt ihn zurück; ohne Schlüssel
   bleibt alles wie vorher (Vorlagen genau, keine Sprünge).
 
+## Stufe 1b (20.11. früh): alle Schlüssel sehen
+
+Florian: „Ich müsste aber auch deine schlüsselbilder sehen um es richtig bearbeiten zu können. Im moment shee ich nur meine“. Gebaut: eine
+**Zeitleiste** unter der Bühne mit allen Schlüsseln je Kopfteil und ihrer Herkunft (seine Vorlage, von mir gebaut, verborgener Faltschlüssel,
+seine), Klick springt hin, Ziehen dreht den Kopf, J und K springen von Schlüssel zu Schlüssel. Oben links steht, wessen Schlüssel hier liegt und
+wozu, und rot, welche meiner Schlüssel ein Zug hier ersetzt (näher als 4°). Einzelheiten in der Übergabe, Abschnitt „Zeitleiste“.
+
 ## Stufe 2: Körper drehen (ψ)
 
 Dieselben Werkzeuge für Bohne, Beine, Keile, Fenster und Schwanz in „Körper dreht“ und „Ozzy dreht sich“ (Schlüssel über ψ). Dabei die

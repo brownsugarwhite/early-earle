@@ -102,10 +102,11 @@ export function rahmen(name: SzenenName): [number, number, number, number] {
   return k;
 }
 
-export function einpassen(name: SzenenName, w: number, h: number, oben: number, rand: number): Ansicht {
+/** `unten`: unten belegt (Zeitleiste des Werkzeugs), die Figur wird darüber eingepasst */
+export function einpassen(name: SzenenName, w: number, h: number, oben: number, rand: number, unten = 0): Ansicht {
   const [x0, y0, x1, y1] = rahmen(name);
-  const s = Math.min((w - 2 * rand) / (x1 - x0), (h - oben - 2 * rand) / (y1 - y0));
-  return { massstab: s, x0: (x0 + x1) / 2 - w / 2 / s, y0: (y0 + y1) / 2 - (h + oben) / 2 / s };
+  const s = Math.min((w - 2 * rand) / (x1 - x0), (h - oben - unten - 2 * rand) / (y1 - y0));
+  return { massstab: s, x0: (x0 + x1) / 2 - w / 2 / s, y0: (y0 + y1) / 2 - (h - unten + oben) / 2 / s };
 }
 
 // ---- Seite --------------------------------------------------------------------------------------------------------------
@@ -150,6 +151,8 @@ const werkzeug = new FigurWerkzeug(oben, document.getElementById('buehne')!, {
     }
     neu();
   },
+  schluessel: () => rasterVon(daten).schluesselUebersicht(),
+  bereich: () => (zustand.szene === 'kopf360' ? 360 : 90),
   neu: () => neu(),
 });
 
@@ -312,7 +315,7 @@ function anzeigen(): void {
   werkzeug.anzeigen(BEARBEITBAR.includes(zustand.szene));
   leiste.querySelectorAll('output').forEach((o) => {
     const el = document.getElementById(o.htmlFor.value) as HTMLInputElement | null;
-    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : istAblauf(zustand.szene) ? `${Math.round(zustand.t * 100)} %` : voll ? `${(Math.round(zustand.t * 720) / 2).toString().replace('.', ',')}°` : `${Math.round(zustand.t * 90)}°`) : el.id === 'kopfwinkel' ? `${el.value}°` : el.value;
+    if (el) o.textContent = el.id === 'winkel' ? (zustand.szene.startsWith('haltung') ? `${(zustand.t * 2).toFixed(2)} (0 Stehen, 1 Sitzen, 2 Liegen)` : istAblauf(zustand.szene) ? `${Math.round(zustand.t * 100)} %` : `${(Math.round(zustand.t * (voll ? 720 : 180)) / 2).toString().replace('.', ',')}°`) : el.id === 'kopfwinkel' ? `${el.value}°` : el.value;
   });
 }
 
@@ -326,7 +329,7 @@ function zeichnen(): void {
     oben.width = renderer.breite;
     oben.height = renderer.hoehe;
   }
-  ansicht = einpassen(zustand.szene, renderer.breite, renderer.hoehe, 56 * dpr, 24 * dpr);
+  ansicht = einpassen(zustand.szene, renderer.breite, renderer.hoehe, 56 * dpr, 24 * dpr, werkzeug.untenBelegt() * dpr);
   basisAnsicht = ansicht;
   // Steuerung: Das Bild folgt Ozzys Lage in der Welt (er verschiebt sich, damit Pfoten und Hintern stehen bleiben)
   if (zustand.szene === 'steuern') ansicht = { ...ansicht, x0: ansicht.x0 + kamera.x };

@@ -76,6 +76,33 @@ body {
 #oben {
   pointer-events: none;
 }
+/* Zeitleiste des Werkzeugs: alle Schlüssel der Kopfteile, nur im Bearbeiten */
+#buehne #zeitleiste {
+  inset: auto 0 0 0;
+  display: none;
+  background: var(--papier);
+  border-top: 1px solid var(--haar);
+  touch-action: none;
+  cursor: ew-resize;
+}
+#buehne #zeitleiste.an {
+  display: block;
+}
+.marke {
+  font-style: normal;
+}
+.marke.vorlage {
+  color: var(--tinte);
+}
+.marke.gebaut {
+  color: var(--tinte);
+}
+.marke.falte {
+  color: var(--leise);
+}
+.marke.dein {
+  color: #1f6feb;
+}
 #leiste {
   position: fixed;
   top: 0;

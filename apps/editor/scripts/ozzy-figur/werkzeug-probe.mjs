@@ -1,12 +1,31 @@
 // Probe des Werkzeugs (Stufe 1) mit echten Maus- und Tastenereignissen gegen den laufenden Dev-Server (Port 5213): node scripts/ozzy-figur/werkzeug-probe.mjs
-// Arbeitet mit leerer Schlüsseldatei (docs/look/ozzy-figur/schluessel.json); Florians Schlüssel werden vorher gelesen und am Ende zurückgeschrieben.
+// [SEITE=ozzy-figur.html]. Beginnt ohne Schlüssel und schreibt nie in Florians Schlüsseldatei (docs/look/ozzy-figur/schluessel.json): Laden
+// und Speichern der Seite laufen über eine Attrappe (page.route). Bis zum 20.11. leerte die Probe seine Datei und schrieb sie am Ende zurück;
+// was er währenddessen speicherte, wäre verloren gewesen.
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const { chromium } = require('@playwright/test');
+const DATEI = new URL('../../../../docs/look/ozzy-figur/schluessel.json', import.meta.url);
+const seine = readFileSync(DATEI, 'utf8');
 const b = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal'] });
 const p = await b.newPage({ viewport: { width: 1300, height: 900 } });
-const SEITE = 'http://localhost:5213/ozzy-figur.html?szene=kopf360&t=';
-const leeren = () => p.evaluate(() => fetch('/__ozzy-figur/schluessel', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: '{"version":1,"kopf":[]}\n' }).then((r) => r.status));
+const fehler = [];
+p.on('pageerror', (e) => fehler.push(e.message));
+const SEITE = `http://localhost:5213/${process.env.SEITE ?? 'ozzy-figur.html'}?szene=kopf360&t=`;
+const LEER = '{"version":1,"kopf":[]}\n';
+let ablage = LEER;
+await p.route('**/__ozzy-figur/schluessel', (r) => {
+  if (r.request().method() === 'PUT') {
+    ablage = r.request().postData() ?? LEER;
+    return r.fulfill({ status: 200, body: 'ok' });
+  }
+  return r.fulfill({ status: 200, contentType: 'application/json', body: ablage });
+});
+const leeren = () => {
+  ablage = LEER;
+  return 'Attrappe leer';
+};
 const oeffnen = async (theta) => { await p.goto(SEITE + theta / 360); await p.waitForFunction(() => window.__ozzyWerkzeug && window.__ozzyFigur, null, { timeout: 60000 }); await p.waitForTimeout(700); };
 const ort = async (teil, j, wo = 'p') => { const r = await p.evaluate(([t, j, w]) => { const q = window.__ozzyWerkzeug.ankerImBild(t, j, w); const k = document.getElementById('oben').getBoundingClientRect(); return q && [q[0] + k.left, q[1] + k.top]; }, [teil, j, wo]); return r; };
 const ziehen = async (von, nach, mod) => { if (mod) await p.keyboard.down(mod); await p.mouse.move(von[0], von[1]); await p.mouse.down(); for (let i = 1; i <= 6; i++) await p.mouse.move(von[0] + ((nach[0] - von[0]) * i) / 6, von[1] + ((nach[1] - von[1]) * i) / 6); await p.mouse.up(); if (mod) await p.keyboard.up(mod); await p.waitForTimeout(250); };
@@ -14,9 +33,7 @@ const keys = () => p.evaluate(() => window.__ozzyWerkzeug.schluessel().map((k) =
 const anker = (teil, j, th) => p.evaluate(([t, j, th]) => { const a = window.__ozzyFigur.lageTeile({ psi: 90, theta: th, nurKopf: true }).find((x) => x.name === t).form[j]; return { p: a.p.map((v) => +v.toFixed(2)), i: a.i.map((v) => +v.toFixed(2)), o: a.o.map((v) => +v.toFixed(2)) }; }, [teil, j, th]);
 const glatt = (a) => { const e = [a.p[0] - a.i[0], a.p[1] - a.i[1]], u = [a.o[0] - a.p[0], a.o[1] - a.p[1]]; const le = Math.hypot(...e), lu = Math.hypot(...u); return le < 0.01 || lu < 0.01 ? 'ohne Griff' : ((Math.acos(Math.min(1, (e[0] * u[0] + e[1] * u[1]) / (le * lu))) * 180) / Math.PI).toFixed(1) + '°'; };
 const zeile = (t) => console.log(t);
-await oeffnen(150);
-const gesichert = await p.evaluate(() => fetch('/__ozzy-figur/schluessel', { cache: 'no-store' }).then((r) => r.text()));
-zeile(`leeren: ${await leeren()}`);
+zeile(`leeren: ${leeren()}`);
 await oeffnen(150);
 await p.keyboard.press('b');
 await p.waitForTimeout(200);
@@ -96,16 +113,12 @@ await p.click('#werkzeugGanz');
 const zoomNach = await p.evaluate(() => window.__ozzyWerkzeug['zoom'].z);
 zeile(`10 Zoom: ⌘= → ${zoomText}, Ganze Figur → ${zoomNach}`);
 // 11 Datei
-const datei = await p.evaluate(() => fetch('/__ozzy-figur/schluessel', { cache: 'no-store' }).then((r) => r.text()));
-zeile(`11 Datei: ${datei.split('\n').length - 3} Schlüssel-Zeilen`);
+zeile(`11 gespeichert (Attrappe): ${ablage.split('\n').length - 3} Schlüssel-Zeilen`);
 // 12 aufräumen: leeren und prüfen, dass ohne Schlüssel alles wie vorher ist
-zeile(`12 leeren: ${await leeren()}`);
+zeile(`12 leeren: ${leeren()}`);
 await oeffnen(150);
 const leer = await anker('ohrB', 2, 150);
 zeile(`   ohne Schlüssel Spitze bei 150° ${leer.p} (vorher ${t0.p})`);
-const zurueck = await p.evaluate((t) => fetch('/__ozzy-figur/schluessel', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: t }).then((r) => r.status), gesichert);
-zeile(`Florians Schlüssel zurückgeschrieben: ${zurueck}`);
-const fehler = [];
-p.on('pageerror', (e) => fehler.push(e.message));
+zeile(`Florians Datei unberührt: ${readFileSync(DATEI, 'utf8') === seine}`);
 zeile(`Fehler auf der Seite: ${fehler.length ? fehler.join('; ') : 'keine'}`);
 await b.close();

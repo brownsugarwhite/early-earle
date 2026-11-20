@@ -15,9 +15,26 @@ import { type Anker, type Gewichte, gewichteAus, HALTUNGEN, Haltungen } from './
 
 export { pchip } from './form';
 
+/** Herkunft eines Schlüssels (Zeitleiste des Werkzeugs): Florians Vorlage, Florians Schlüssel aus dem Werkzeug, gebaut, verborgener Faltschlüssel */
+export type SchluesselArt = 'vorlage' | 'dein' | 'gebaut' | 'falte';
+
 export interface Schluessel {
   w: number;
   form: Form;
+  /** Herkunft (fehlt: gebaut) */
+  art?: SchluesselArt;
+  /** wozu der Schlüssel da ist (Zeitleiste) */
+  grund?: string;
+}
+
+/** ein Schlüssel eines Kopfteils, wie er das Bild an seinem Winkel bestimmt (Zeitleiste des Werkzeugs) */
+export interface SchluesselEintrag {
+  teil: TeilName;
+  w: number;
+  art: SchluesselArt;
+  grund?: string;
+  /** zweite Hälfte: der Schlüssel der ersten, aus dem er gespiegelt ist */
+  von?: { teil: TeilName; w: number };
 }
 
 /**
@@ -30,7 +47,7 @@ export interface KopfKorrektur {
   form: Form;
 }
 /** gebaute Schlüssel eines Teils, die näher als so viele Grad an einem von Florians Schlüsseln liegen, fallen weg (sonst ein Sprung dazwischen) */
-const KORREKTUR_NAH = 4;
+export const KORREKTUR_NAH = 4;
 
 /** Form zwischen Schlüsseln: Anker per PCHIP, Griffe nach Winkel (stetig abgewickelt) und Länge; glatt bleibt glatt */
 export function formAusSchluesseln(keys: readonly Schluessel[], w: number): Form {
@@ -141,7 +158,7 @@ function faltSchluessel(keys: Schluessel[]): void {
       f[j] = { p: m, i: [m[0] - tx * li, m[1] - ty * li], o: m };
       f[j1] = { p: m, i: m, o: [m[0] + tx * lo, m[1] + ty * lo] };
     }
-    neu.push({ w, form: f });
+    neu.push({ w, form: f, art: 'falte', grund: 'zwei Anker treffen sich hier, statt aneinander vorbeizulaufen' });
   }
   for (const k of neu) keys.push(k);
   keys.sort((x, y) => x.w - y.w);
@@ -445,6 +462,7 @@ export class FigurRaster {
     const back = d.ansichten.back;
     for (const n of KOPF) if (!hat(back, n)) this.ohneRuecken.add(n);
     const kopfKeys: [number, FigurAnsicht][] = [[0, logo], [45, viertel], [90, profil], [180, back]];
+    const vorlageName: Record<number, string> = { 0: 'Logo', 45: '3/4-Ansicht', 90: 'Profil', 180: 'Rücken' };
     const mitten = new Map<number, Punkt>();
     for (const [w, a] of kopfKeys) mitten.set(w, kopfMitte([k(a, 'kopfA'), k(a, 'kopfB')]));
     for (const n of KOPF) {
@@ -456,7 +474,7 @@ export class FigurRaster {
         if (w === 180) this.rueckenWieEingelesen.set(n, verschieben(k(a, n), -mitten.get(w)![0], -mitten.get(w)![1]));
         const b = RUECKEN_ANKER[n];
         if (w === 180 && b) f = umnummerieren(f, b, true);
-        keys.push({ w, form: f });
+        keys.push({ w, form: f, art: 'vorlage', grund: vorlageName[w]! });
       }
       this.kopf.set(n, keys);
     }
@@ -464,7 +482,7 @@ export class FigurRaster {
     for (const z of ZWISCHEN) {
       const keys = this.kopf.get(z.teil);
       if (!keys || keys.some((k) => k.w === z.w)) continue;
-      keys.push({ w: z.w, form: z.form });
+      keys.push({ w: z.w, form: z.form, art: 'vorlage', grund: 'deine Übermalung' });
       keys.sort((x, y) => x.w - y.w);
     }
     // Ohrspalt vorn: unter dem nahen Ohr verborgen (es wird danach gezeichnet)
@@ -472,7 +490,7 @@ export class FigurRaster {
       const keil45 = this.kopf.get('ohrSpalt')!.find((s) => s.w === 45)!.form;
       const o45 = schwerpunkt(this.kopf.get('ohrA')!.find((s) => s.w === 45)!.form);
       const o0 = schwerpunkt(this.kopf.get('ohrA')!.find((s) => s.w === 0)!.form);
-      this.kopf.get('ohrSpalt')!.unshift({ w: 0, form: verschieben(keil45, o0[0] - o45[0], o0[1] - o45[1]) });
+      this.kopf.get('ohrSpalt')!.unshift({ w: 0, form: verschieben(keil45, o0[0] - o45[0], o0[1] - o45[1]), grund: 'Ohrspalt vorn verborgen unter dem nahen Ohr' });
     }
     // Florians Schlüssel bis 90° (dahinter nach den gebauten, in rueckseiteBauen)
     for (const z of this.korrekturen) if (z.w <= 90) this.korrekturEinsetzen(z);
@@ -484,8 +502,8 @@ export class FigurRaster {
       for (const [n, keys] of this.kopf) vorn.set(n, [...keys.filter((x) => x.w <= 90), anschluss.get(n) ?? keys.find((x) => x.w > 90)!]);
       for (const [n, keys] of vorn) {
         const liste = keys.slice();
-        for (const x of vorn.get(PARTNER_KOPF[n]!)!) if (x.w > 0) liste.push({ w: 360 - x.w, form: kopfGespiegelt(n, x.form) });
-        liste.push({ w: 360, form: n === 'ohrSpalt' ? kopfGespiegelt(n, keys[0]!.form) : keys[0]!.form });
+        for (const x of vorn.get(PARTNER_KOPF[n]!)!) if (x.w > 0) liste.push({ ...x, w: 360 - x.w, form: kopfGespiegelt(n, x.form) });
+        liste.push({ ...keys[0]!, w: 360, form: n === 'ohrSpalt' ? kopfGespiegelt(n, keys[0]!.form) : keys[0]!.form });
         liste.sort((x, y) => x.w - y.w);
         faltSchluessel(liste);
         this.kopfVorn.set(n, liste);
@@ -637,7 +655,7 @@ export class FigurRaster {
     // Bart (nah und fern): mit seinen Haaren wie im Profil, nur schmaler, in voller Höhe; ab GESICHT_WEG_BIS ohne Breite außerhalb des Kopfs
     for (const n of ['bartA', 'bartB'] as TeilName[]) {
       const f90 = keyBei(n, 90)!;
-      dazu(n, ...GESICHT_WEG.map((w) => ({ w, form: weg(f90, w) })));
+      dazu(n, ...GESICHT_WEG.map((w) => ({ w, form: weg(f90, w), grund: 'Bart dreht mit dem Gesicht weg' })));
     }
     // nahe Maske übernimmt die Schnauze: Ihr Scheitel (Stück 8 → 0) liegt im Profil unter dem Weiß. Bis WICKEL[0] wird Anker 8 die Spitze
     // der Stirnfranse (dort, wo das Weiß von oben her die ferne Maske erreicht), Anker 0 die Kinnspitze (tiefster Punkt der fernen Maske); die
@@ -706,7 +724,7 @@ export class FigurRaster {
         b7.o = [b7.p[0] + g[n - 2]!.o[0] - g[n - 2]!.p[0], b7.p[1] + g[n - 2]!.o[1] - g[n - 2]!.p[1]];
         const b2 = basis[2]!;
         b2.i = [b2.p[0] + g[2]!.i[0] - g[2]!.p[0], b2.p[1] + g[2]!.i[1] - g[2]!.p[1]];
-        neu.push({ w, form: basis });
+        neu.push({ w, form: basis, grund: 'Maske A übernimmt die Schnauze, das Gesicht dreht weg' });
       }
       dazu('kopfA', ...neu);
     }
@@ -721,20 +739,26 @@ export class FigurRaster {
       const cy = (k[1] + k[3]) / 2;
       const rand = (w: number): number => weg([{ p: [xs, cy], i: [xs, cy], o: [xs, cy] }], w)[0]!.p[0];
       const knubbel = (w: number, b: number, h: number): Form => abbilden(n90, (q) => [rand(w) + (q[0] - xs) * b, cy + (q[1] - cy) * h]);
-      dazu('nase', { w: 94, form: n90 }, ...NASE_FORM.map((x) => ({ w: x.w, form: knubbel(x.w, x.breite, x.hoehe) })), { w: NASE_WEG, form: punktForm(n90, [rand(NASE_WEG) - 2, cy]) });
+      dazu(
+        'nase',
+        { w: 94, form: n90, grund: 'Nase kommt im Profil zur Ruhe' },
+        ...NASE_FORM.map((x) => ({ w: x.w, form: knubbel(x.w, x.breite, x.hoehe), grund: 'Nase wird am Rand schmaler und kleiner' })),
+        { w: NASE_WEG, form: punktForm(n90, [rand(NASE_WEG) - 2, cy]), grund: 'Nase ist am Rand verschwunden' },
+      );
     }
     // Ohren: Das mittlere (fernes Ohr im Profil) bleibt von der Seite länger nah am linken. Zwischenschlüssel nur bis 125°: Später verdeckte
     // es die Ecke der nahen Maske rechts oben nicht mehr (runde Schulter), und gespiegelt in der zweiten Hälfte holte das linke Ohr gleich
     // hinter 180° den Unterschied des nicht spiegelgleichen Rückens nach (ein Sprung)
     {
       const zwei: Schluessel[] = [{ w: 0, form: keyBei('ohrB', 90)! }, { w: 1, form: keyBei('ohrB', 180)! }];
-      dazu('ohrB', ...[110, 125].map((w) => ({ w, form: formAusSchluesseln(zwei, ((w - 90) / 90) ** OHR_ZOEGERN) })));
+      dazu('ohrB', ...[110, 125].map((w) => ({ w, form: formAusSchluesseln(zwei, ((w - 90) / 90) ** OHR_ZOEGERN), grund: 'fernes Ohr bleibt von der Seite länger nah' })));
     }
     // Ohrspalt: zieht sich zwischen den Ohren auf einen Punkt zusammen
     {
       const s90 = keyBei('ohrSpalt', 90)!;
       const p = schwerpunkt(s90);
-      dazu('ohrSpalt', { w: SPALT_WEG, form: punktForm(s90, p) }, { w: 180, form: punktForm(s90, p) });
+      const g = 'Ohrspalt zieht sich zwischen den Ohren zusammen';
+      dazu('ohrSpalt', { w: SPALT_WEG, form: punktForm(s90, p), grund: g }, { w: 180, form: punktForm(s90, p), grund: g });
     }
     // Hinterkopf ohne Einbruch: Die ferne Maske (B) ist im Profil nur der Streifen vorn an der Schnauze, im Rücken die linke Hälfte. Sie
     // bleibt an der Schnauze, bis die nahe Maske darum liegt, taucht dann im Kopf unter (MASKE_UNTER), liegt zusammengeschoben am linken
@@ -742,7 +766,7 @@ export class FigurRaster {
     // breiter, die nahe Maske (A) zieht sich dahinter von selbst zur Mitte zurück
     {
       const b180 = keyBei('kopfB', 180)!;
-      dazu('kopfB', { w: WICKEL[0]!, form: weg(b90, WICKEL[0]!) });
+      dazu('kopfB', { w: WICKEL[0]!, form: weg(b90, WICKEL[0]!), grund: 'Maske B dreht mit der Schnauze weg' });
       const c = schwerpunkt(zwischen('kopfA', MASKE_UNTER));
       const bUnter = abbilden(zwischen('kopfB', MASKE_UNTER), (q) => [c[0] + (q[0] - c[0]) * 0.001, c[1] + (q[1] - c[1]) * 0.001]);
       const kb = kasten(b180);
@@ -750,16 +774,21 @@ export class FigurRaster {
       const xa = ka[0] + 60;
       const cyb = (ka[1] + ka[3]) / 2;
       const bLinks = abbilden(b180, (q) => [xa + (q[0] - kb[0]) * 0.12, cyb + (q[1] - (kb[1] + kb[3]) / 2) * 0.55]);
-      dazu('kopfB', { w: MASKE_UNTER, form: bUnter }, { w: MASKE_LINKS, form: bLinks }, { w: MASKE_DA, form: b180 });
+      dazu(
+        'kopfB',
+        { w: MASKE_UNTER, form: bUnter, grund: 'Maske B taucht in Maske A unter' },
+        { w: MASKE_LINKS, form: bLinks, grund: 'Maske B liegt klein am linken Rand' },
+        { w: MASKE_DA, form: b180, grund: 'Maske B ist die linke Hälfte wie im Rücken' },
+      );
     }
     // Florians Schlüssel hinter 90°: nach den gebauten, vor dem Spiegeln (so gelten sie gespiegelt auch in der zweiten Hälfte)
     for (const z of this.korrekturen) if (z.w > 90) this.korrekturEinsetzen(z);
     for (const keys of this.kopf.values()) keys.sort((x, y) => x.w - y.w);
-    const erste = new Map([...this.kopf].map(([n, keys]) => [n, keys.map((x) => ({ w: x.w, form: x.form }))]));
+    const erste = new Map([...this.kopf].map(([n, keys]) => [n, keys.map((x) => ({ ...x }))]));
     for (const [n, keys] of this.kopf) {
-      for (const x of erste.get(PARTNER_KOPF[n]!)!) if (x.w > 0 && x.w < 180) keys.push({ w: 360 - x.w, form: kopfGespiegelt(n, x.form) });
-      const vorn = erste.get(n)!.find((x) => x.w === 0)!.form;
-      keys.push({ w: 360, form: n === 'ohrSpalt' ? kopfGespiegelt(n, vorn) : vorn });
+      for (const x of erste.get(PARTNER_KOPF[n]!)!) if (x.w > 0 && x.w < 180) keys.push({ ...x, w: 360 - x.w, form: kopfGespiegelt(n, x.form) });
+      const vorn = erste.get(n)!.find((x) => x.w === 0)!;
+      keys.push({ ...vorn, w: 360, form: n === 'ohrSpalt' ? kopfGespiegelt(n, vorn.form) : vorn.form });
       keys.sort((x, y) => x.w - y.w);
     }
   }
@@ -777,7 +806,7 @@ export class FigurRaster {
       const w = keys[i]!.w;
       if (w === z.w || (Math.abs(w - z.w) < KORREKTUR_NAH && !fest(w))) keys.splice(i, 1);
     }
-    keys.push({ w: z.w, form: z.form });
+    keys.push({ w: z.w, form: z.form, art: 'dein' });
     keys.sort((x, y) => x.w - y.w);
   }
 
@@ -795,6 +824,34 @@ export class FigurRaster {
     if (w <= 180) return { teil, w, form: kopf };
     if (w >= 360) return { teil, w: 0, form: kopf };
     return { teil: PARTNER_KOPF[teil]!, w: 360 - w, form: kopfGespiegelt(teil, kopf) };
+  }
+
+  private uebersicht: SchluesselEintrag[] | null = null;
+  /**
+   * Alle Schlüssel der Kopfteile, wie sie das Bild bestimmen (Zeitleiste des Werkzeugs): 0°–90° und 270°–360° aus der ersten Hälfte mit
+   * ihrem Anschluss, dazwischen die Drehung nach hinten; die zweite Hälfte ist die erste gespiegelt (A und B getauscht). Teile, die im
+   * Rücken fehlen, nehmen von 180° bis 270° das Gegenstück der ersten Hälfte (wie `szene`)
+   */
+  schluesselUebersicht(): readonly SchluesselEintrag[] {
+    if (this.uebersicht) return this.uebersicht;
+    const aus: SchluesselEintrag[] = [];
+    const eintrag = (n: TeilName, x: Schluessel, quelle: TeilName = PARTNER_KOPF[n]!): void => {
+      const e: SchluesselEintrag = { teil: n, w: x.w, art: x.art ?? 'gebaut' };
+      if (x.grund) e.grund = x.grund;
+      if (x.w > 180 && x.w < 360 && x.art !== 'falte') e.von = { teil: quelle, w: 360 - x.w };
+      aus.push(e);
+    };
+    for (const n of KOPF) {
+      for (const x of this.kopfVorn.get(n)!) if (x.w <= 90 || x.w >= 270) eintrag(n, x);
+      for (const x of this.kopf.get(n)!) if (x.w > 90 && x.w <= 180) eintrag(n, x);
+      if (this.ohneRuecken.has(n)) {
+        const p = PARTNER_KOPF[n]!;
+        for (const x of this.kopf.get(p)!) if (x.w > 90 && x.w < 180) eintrag(n, { ...x, w: 360 - x.w }, p);
+      } else for (const x of this.kopf.get(n)!) if (x.w > 180 && x.w < 270) eintrag(n, x);
+    }
+    aus.sort((a, b) => a.w - b.w);
+    this.uebersicht = aus;
+    return aus;
   }
 
   /** Versatz des Kopfs vom Hals bei θ (0°–360°; die zweite Hälfte gespiegelt) */
