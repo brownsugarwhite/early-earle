@@ -87,7 +87,7 @@ export function kieferSeiten(
   R: MaulRahmen,
   /** die Seite der ersten Hälfte der Kette, wenn sie feststeht (bei getrennten Lippen sagt die Lage der Haut neben der Lippe sie nicht mehr sicher) */
   ersteFest?: 1 | -1,
-): { seite: Int8Array; aussen: Uint8Array; lippe: Set<number>; ersteSeite: 1 | -1; getrennt: boolean } {
+): { seite: Int8Array; aussen: Uint8Array; lippe: Set<number>; ersteSeite: 1 | -1; getrennt: boolean; rachen: Set<number>; winkel: number } {
   const lage = (v: number): { s: number; d: number; hinten: boolean } => R.profil.naechster(h.pos[3 * v]!, h.pos[3 * v + 1]!);
   const beiC = (v: number): number => Math.hypot(h.pos[3 * v]! - R.C.x, h.pos[3 * v + 1]! - R.C.y);
   const seite = new Int8Array(h.n);
@@ -183,7 +183,10 @@ export function kieferSeiten(
     rand = weiter;
   }
   for (let v = 0; v < h.n; v++) if (seite[v] === 0) seite[v] = lage(v).d >= 0 ? 1 : -1;
-  return { seite, aussen, lippe, ersteSeite, getrennt };
+  // (die Punkte der Rachenlinie und der Mundwinkel gehören zu keinem Kiefer allein: Ihre Seite oben ist nur die der Lage)
+  const rachen = new Set<number>();
+  for (let v = 0; v < h.n; v++) if (fest[v] === 2) rachen.add(v);
+  return { seite, aussen, lippe, ersteSeite, getrennt, rachen, winkel: winkelV };
 }
 
 /** Der Keil längs der Maullinie: ein geschlossenes Netz, spiegelgleich in z, mit den zwei Linien des Mauls als seinen Linien */

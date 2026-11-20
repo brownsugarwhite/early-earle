@@ -27,7 +27,13 @@ export const ZAHNFLEISCH_BREIT = 0.1;
 const BREIT_MIN = 2;
 
 /** die Tasche eines Mauls, wie das Werk sie nennt: je Punkt des Netzes, ob er zu Tasche oder Lippe gehört; die Kette der Lippe; ihre Länge in der Seite */
-export type MaulTasche = { innen: ArrayLike<number>; lippe: readonly number[]; lang: number };
+export type MaulTasche = {
+  innen: ArrayLike<number>;
+  lippe: readonly number[];
+  lang: number;
+  /** je Punkt: +1 Unterkiefer, −1 Oberkiefer, 0 keiner allein (Rachenlinie, Mundwinkel, außen); für die Zähne */
+  kiefer?: ArrayLike<number>;
+};
 
 export const istMaulEbene = (e: Ebene): boolean => e.name === MAUL_EBENE;
 
@@ -49,7 +55,7 @@ function zurStrecke(px: number, py: number, pz: number, ax: number, ay: number, 
  * letzte genau in der Mittelebene, dazwischen einer je Dreieck, das sie quert. Null: Sie ließ sich nicht von der Mitte zur Mitte
  * verfolgen.
  */
-function hoehenlinie(k: Karte, d: Float64Array, wand: Uint8Array, hoehe: number): Ort[] | null {
+export function hoehenlinie(k: Karte, d: Float64Array, wand: Uint8Array, hoehe: number): Ort[] | null {
   const netz = k.netz;
   const tri = netz.tri;
   const pos = netz.pos;
@@ -112,15 +118,14 @@ function hoehenlinie(k: Karte, d: Float64Array, wand: Uint8Array, hoehe: number)
 }
 
 /**
- * Die Ebene „Maul“ für diese Tasche bauen und oben auf die Bemalung legen (die aktive Ebene bleibt, wie sie ist). Zurück: die
- * Ebene, oder warum es nicht geht.
+ * Was aus der Tasche gelesen wird: ihre Wand auf der Hälfte z ≥ 0 (je Dreieck 1, wenn seine drei Ecken zu Tasche oder Lippe
+ * gehören) und je Punkt der Tasche sein Abstand von der Lippe (ihre Kette und deren Spiegelbild, im Raum). `dMax`, `tief`: der
+ * größte Abstand und sein Punkt. Null: Die Tasche ist zu klein.
  */
-export function maulEbeneBauen(b: Bemalung, k: Karte, tasche: MaulTasche): Ebene | { fehler: string } {
-  if (b.ebenen.length >= EBENEN_HOECHSTENS) return { fehler: 'es gibt schon zu viele Ebenen' };
+export function taschenFeld(k: Karte, tasche: MaulTasche): { d: Float64Array; wand: Uint8Array; dMax: number; tief: number } | null {
   const netz = k.netz;
   const pos = netz.pos;
   const tri = netz.tri;
-  if (!k.spiegel) return { fehler: 'das Maul braucht die gespiegelte Form' };
   // die Wand der Tasche auf der Hälfte z ≥ 0: Dreiecke, deren drei Ecken zu Tasche oder Lippe gehören
   const wand = new Uint8Array(k.T);
   let wandZahl = 0;
@@ -131,7 +136,7 @@ export function maulEbeneBauen(b: Bemalung, k: Karte, tasche: MaulTasche): Ebene
     wand[t] = 1;
     wandZahl++;
   }
-  if (wandZahl < 4) return { fehler: 'die Tasche ist zu klein' };
+  if (wandZahl < 4) return null;
   // je Punkt der Tasche sein Abstand von der Lippe (ihre Kette und deren Spiegelbild, im Raum)
   const d = new Float64Array(netz.n).fill(Infinity);
   const L = tasche.lippe;
@@ -158,9 +163,25 @@ export function maulEbeneBauen(b: Bemalung, k: Karte, tasche: MaulTasche): Ebene
       tief = v;
     }
   }
+  return { d, wand, dMax, tief };
+}
+/** so breit ist das Zahnfleisch: ein Zehntel der Lippenlänge, in einer flachen Tasche höchstens ein Drittel ihrer Tiefe */
+export const zahnfleischBreit = (tasche: MaulTasche, dMax: number): number => Math.max(BREIT_MIN, Math.min(ZAHNFLEISCH_BREIT * tasche.lang, dMax / 3));
+
+/**
+ * Die Ebene „Maul“ für diese Tasche bauen und oben auf die Bemalung legen (die aktive Ebene bleibt, wie sie ist). Zurück: die
+ * Ebene, oder warum es nicht geht.
+ */
+export function maulEbeneBauen(b: Bemalung, k: Karte, tasche: MaulTasche): Ebene | { fehler: string } {
+  if (b.ebenen.length >= EBENEN_HOECHSTENS) return { fehler: 'es gibt schon zu viele Ebenen' };
+  const netz = k.netz;
+  const tri = netz.tri;
+  if (!k.spiegel) return { fehler: 'das Maul braucht die gespiegelte Form' };
+  const feld = taschenFeld(k, tasche);
+  if (!feld) return { fehler: 'die Tasche ist zu klein' };
+  const { d, wand, dMax, tief } = feld;
   if (tief < 0 || !(dMax > 3 * BREIT_MIN)) return { fehler: 'die Tasche ist zu flach' };
-  // das Zahnfleisch: ein Zehntel der Lippenlänge, in einer flachen Tasche höchstens ein Drittel ihrer Tiefe
-  const breit = Math.max(BREIT_MIN, Math.min(ZAHNFLEISCH_BREIT * tasche.lang, dMax / 3));
+  const breit = zahnfleischBreit(tasche, dMax);
   let naechste = b.naechste;
   const linieBei = (hoehe: number): Farblinie[] | null => {
     const orte = hoehenlinie(k, d, wand, hoehe);

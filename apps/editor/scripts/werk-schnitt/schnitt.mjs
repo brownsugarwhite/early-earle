@@ -26,7 +26,7 @@
 //      `maulIstGeformt`, `maulSchnitt` (mit `alle`), `maulAktuell`, `knochenJetzt` (`kieferWinkel`), `alsAnzeige` (`anzeigeDreht`)
 //      und `standAnwenden`. Dazu (Etappe 3): `MaulZustand` mit `echt` und `ersteUnten`, `maulSeitenMerken`, `maulLippe`,
 //      `lippenGetrennt`, `lippeGewaehlt`, `LIPPEN_NAH`, `lippeNachZeiger`, `lippenTrennen`, `lippenVerbinden`. Dazu (Etappe 4):
-//      `maulTasche`.
+//      `maulTasche`. Dazu (Etappe 5): `ZahnReihe`, `MaulZaehne`, `MaulZustand.zaehne`, `zaehneSetzen`.
 //      (Was die Sitzungen „Objekte“ und „Paint-Modus“ ins Werk gesetzt haben, steht hier nicht.)
 // Geprüft am 16.11.: Aus `kurven.ts` von 179dfa4a (mit Schritt 1) entstehen genau `werk.ts` und `kurven.ts` von 5039cead.
 import fs from 'node:fs';

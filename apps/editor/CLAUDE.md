@@ -766,6 +766,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   stand (nach den Zügen von Etappe 3 lief die Füllung über die Form; vermutlich landet ein neu gesuchter Ort außen). (27) Am Maul als echte Form gilt `farbeMoeglich`
   auch in der Pose. (28) Im Paint-Modus mit gewählter Ebene „Maul“ steht das Maul offen (`maulEbeneAktiv`). Proben:
   `ozzy-maul-farbe-fenster.mjs` (F1 bis F7), 8b und 17 in `ozzy-maul-fenster.mjs`.
+  **Etappe 5, erste Scheibe: die Zähne (20.11.; Plan 12.15):** `src/ozzy/zaehne.ts`; die Zähne sind Werte am Maul
+  (`G.maul.zaehne`, `werk.zaehneSetzen`). Merke: (29) Plätze und Netz sind abgeleitet (`zaehnePlaetzeJetzt`, `zaehneRechnen` nach
+  `werkHaut.rechnen`); ein Zahn hängt an zwei Orten der Wand wie die Bemalung. (30) Ihr Netz steht bei den ruhenden Netzen
+  (`ruheZeigen`): Wer dort oder in `zeigeNetzAlle` etwas ändert, denkt an die Zähne. (31) Zu hat jeder Zahn die Länge null.
+  (32) Die Zahnformen und die Linse liegen in `src/maulstudie/` (die Linse ist in Ozzy noch nicht eingebaut). Probe:
+  `ozzy-maul-zaehne-fenster.mjs` (Z1 bis Z6).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

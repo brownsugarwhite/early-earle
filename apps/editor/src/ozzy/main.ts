@@ -40,6 +40,7 @@ import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND } from './wachs';
 import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
 import { istMaulEbene } from './farbe/maulEbene';
+import { ZAEHNE_ANFANG, type ZahnPlatz, zaehneNetz, zahnPlaetze } from './zaehne';
 import { EbenenStapel } from './farbe/ebenenStapel';
 import { FarbBlatt, type Sicht as FarbSicht } from './farbe/farbBlatt';
 import { FarbLeiste, alsHex as farbeAlsHex } from './farbe/farbLeiste';
@@ -846,6 +847,9 @@ let ruheSicht = 1;
 const RUHE_AUF_DEM_BLATT = 0.38;
 /** das Netz aller ruhenden Objekte, wie die Seifenhaut es zeigt (neu, wenn sich ihre Reihe ändert) */
 let ruheNetzGemerkt: { schl: string; netz: HautNetz | null } = { schl: '', netz: null };
+/** Maul, Etappe 5: die Zähne des aktiven Objekts als Netz an der gezeigten Haut (null: keine), und ein Zähler seiner Stände */
+let zaehneNetzJetzt: HautNetz | null = null;
+let zaehneVersion = 0;
 const objektName = (): string => (ruhende.length ? `Form ${aktivId}` : werk.G.ablageName || (aktivId > 1 ? `Form ${aktivId}` : 'Form'));
 
 /** mehrere Netze der Seifenhaut zu einem (die Lagen liegen alle im Raum); `sicht`: je Netz, wie deutlich es zu sehen ist (fehlt: ganz) */
@@ -967,14 +971,12 @@ function facettenNetz(): HautNetz | null {
 function ruheZeigen(): void {
   const teile = ruhende.filter((r) => r.haut.zeigeNetz && !verbundVerdeckt(r.id));
   const blass = (r: Ruhend): boolean => verbundVon.get(r.id)?.art === 'abziehen';
-  const schl = teile.map((r) => `${r.id}:${r.haut.kennung}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}${blass(r) ? 'b' : ''}`).join('|');
+  // (Maul, Etappe 5: Die Zähne des aktiven Objekts stehen als eigenes Netz dabei; so zeigt sie jedes Material wie ein ruhendes Objekt)
+  const zn = zaehneNetzJetzt && !verbundVerdeckt(aktivId) ? zaehneNetzJetzt : null;
+  const schl = teile.map((r) => `${r.id}:${r.haut.kennung}:${r.haut.version}:${r.haut.spiegelbild ? 1 : 0}${blass(r) ? 'b' : ''}`).join('|') + (zn ? `|z${zaehneVersion}` : '');
   if (schl === ruheNetzGemerkt.schl) return;
-  const netz = teile.length
-    ? netzeVereinen(
-        teile.map((r) => r.haut.zeigeNetz!),
-        teile.map((r) => (blass(r) ? GEIST_SICHT : 1)),
-      )
-    : null;
+  const netze = [...teile.map((r) => r.haut.zeigeNetz!), ...(zn ? [zn] : [])];
+  const netz = netze.length ? netzeVereinen(netze, [...teile.map((r) => (blass(r) ? GEIST_SICHT : 1)), ...(zn ? [1] : [])]) : null;
   ruheNetzGemerkt = { schl, netz };
   haut.ruheSetzen(netz, 0);
 }
@@ -1465,7 +1467,7 @@ function verbundPflegen(dt: number): boolean {
     verbundGezeigt = b;
     haut.ruheSetzen(b?.netz ?? null, 1);
   }
-  if (ruhende.length || ruheNetzGemerkt.netz) ruheZeigen();
+  if (ruhende.length || ruheNetzGemerkt.netz || zaehneNetzJetzt) ruheZeigen();
   if (verbund.fehler !== verbundFehler) {
     verbundFehler = verbund.fehler;
     if (verbundFehler) werk.G.meldung = `Verschmelzen und Abziehen: ${verbundFehler} · die Objekte stehen für sich`;
@@ -2515,6 +2517,7 @@ function werkBild(dt: number, m: Moment | null): boolean {
     // eine freie Form mit „Spiegel an“ zeigt ihr Spiegelbild (nur Anzeige: `zeigeNetz` ist dann doppelt)
     werkHaut.spiegelbild = werk.istFrei() && werk.G.spiegelbild;
     werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6, w));
+    zaehneRechnen();
     mess.teile[1] = performance.now() - th;
     const zn = werkHaut.zeigeNetz;
     if (werkHaut.nurDehnung && zn === hautZeigt) haut.dehnungErneuern();
@@ -8975,8 +8978,8 @@ const kieferEl = {
  * Tropfen wandert dabei unter dem Zeiger weg.
  */
 let kieferZug: { oben: boolean; x0: number; y0: number; yLetzt: number; w: number | null; roh: number; bewegt: boolean; vorher: werk.Schnappschuss } | null = null;
-/** nach dem Schneiden zeigt sich das Maul einmal (auf und wieder zu) */
-let kieferSchau: { t0: number } | null = null;
+/** nach dem Schneiden zeigt sich das Maul einmal (auf und wieder zu); `ms`: wie lange (sonst `KIEFER_SCHAU_MS`) */
+let kieferSchau: { t0: number; ms?: number } | null = null;
 const KIEFER_SCHAU_MS = 1500;
 let kieferZeit = 0;
 
@@ -9053,7 +9056,7 @@ function kieferUiZeigen(): boolean {
     // (offen, solange ein Tropfen gehalten wird, und im Paint-Modus, solange die Ebene „Maul“ gewählt ist)
     let ziel = kieferZug || (maulEbeneAktiv() && farbeMoeglich()) ? 1 : 0;
     if (kieferSchau && !kieferZug) {
-      const t = (jetzt - kieferSchau.t0) / KIEFER_SCHAU_MS;
+      const t = (jetzt - kieferSchau.t0) / (kieferSchau.ms ?? KIEFER_SCHAU_MS);
       if (t >= 1 || werk.zug) kieferSchau = null;
       else ziel = t < 0.55 ? 1 : 0;
     }
@@ -9065,6 +9068,21 @@ function kieferUiZeigen(): boolean {
       werkNeu = true;
       braucht = true;
     } else if (kieferSchau) braucht = true;
+  }
+  // ---- die Zähne sprießen; der Tropfen „Zähne“ unter der Leiste, solange das Maul noch keine hat ----
+  if (zahnWuchs) {
+    if (jetzt - zahnWuchs.t0 > ZAHN_WUCHS_MS + 80) zahnWuchs = null;
+    werkNeu = true;
+    braucht = true;
+  }
+  {
+    const zeigen = !!k && !werk.G.maul?.zaehne && bearbeitenAn && !malModus && vier < 0.02 && !werk.zug && !werk.maulLauf && !reihe && !werkBlatt.maulStrich;
+    zaehneTropfen.hidden = !zeigen;
+    if (zeigen) {
+      const r = leisteEl.getBoundingClientRect();
+      zaehneTropfen.style.left = `${(r.left + r.width / 2).toFixed(1)}px`;
+      zaehneTropfen.style.top = `${(r.bottom + 10).toFixed(1)}px`;
+    }
   }
   // ---- die Tropfen ----
   const an =
@@ -9097,6 +9115,73 @@ function kieferUiZeigen(): boolean {
   }
   return braucht;
 }
+
+// ---------- Die Zähne (Maul, Etappe 5, erste Scheibe) ----------
+//
+// Die Zähne sind Werte am Maul (`werk.G.maul.zaehne`). Wo sie sitzen, wird aus der Tasche gelesen (`zaehne.ts`), neu nach jedem
+// Schritt und jedem Netzwechsel; gezeigt werden sie als eigenes Netz an der gezeigten Haut (bei den ruhenden Netzen: `ruheZeigen`).
+const zaehneTropfen = $<HTMLButtonElement>('zaehne-tropfen');
+const leisteEl = $<HTMLElement>('leiste');
+let zaehnePlan: { haut: object; schl: string; plaetze: ZahnPlatz[] } | null = null;
+/** die Zähne sprießen gerade (von der Spitze nach hinten) */
+let zahnWuchs: { t0: number } | null = null;
+const ZAHN_WUCHS_MS = 1100;
+let zaehneStand = '';
+
+/** die Plätze der Zähne für den Stand des Werks (neu gelesen nach jedem Schritt, jedem Netzwechsel und wenn sich ihre Werte ändern) */
+function zaehnePlaetzeJetzt(): ZahnPlatz[] {
+  const z = werk.G.maul?.zaehne;
+  if (!z) {
+    zaehnePlan = null;
+    return [];
+  }
+  const schl = `${werk.zurueck.length}|${JSON.stringify(z)}`;
+  if (zaehnePlan && zaehnePlan.haut === werk.haut && (zaehnePlan.schl === schl || werk.zug)) return zaehnePlan.plaetze;
+  const tasche = werk.maulTasche();
+  const plaetze = tasche ? zahnPlaetze(farbWerk.karteFuer(hautJetzt()), tasche, tasche.C, z) : [];
+  zaehnePlan = { haut: werk.haut, schl, plaetze };
+  return plaetze;
+}
+/** das Netz der Zähne an der Haut, wie sie eben gezeigt wird (nach `werkHaut.rechnen`) */
+function zaehneRechnen(): void {
+  const plaetze = zustand === 'ruhe' && werkGezeigt ? zaehnePlaetzeJetzt() : [];
+  if (!plaetze.length) {
+    if (zaehneNetzJetzt) {
+      zaehneNetzJetzt = null;
+      zaehneVersion++;
+      zaehneStand = '';
+    }
+    return;
+  }
+  const k = werk.kieferKnochen();
+  const auf = k ? ((k.oben.grad + k.unten.grad) * k.gezeigt * Math.PI) / 180 : 0;
+  const t = zahnWuchs ? (performance.now() - zahnWuchs.t0) / ZAHN_WUCHS_MS : 2;
+  // (zu und fertig gesprossen ändert sich an den Zähnen nichts: Sie stecken im Maul)
+  const stand = `${zaehnePlan?.schl}|${werkHaut.version}|${auf.toFixed(5)}|${Math.min(2, t).toFixed(3)}`;
+  if (stand === zaehneStand && zaehneNetzJetzt) return;
+  if (auf === 0 && t >= 2 && zaehneNetzJetzt && zaehneStand.endsWith('|0.00000|2.000') && zaehnePlan && zaehneStand.startsWith(`${zaehnePlan.schl}|`)) return;
+  zaehneStand = stand;
+  const P = werk.alsAnzeige(() => werk.haut.pos);
+  // von der Spitze nach hinten: Jeder Zahn wächst über ein Drittel der Zeit, der hinterste beginnt nach zwei Dritteln
+  const wuchs = (vorn: number): number => {
+    if (t >= 1) return 1;
+    const x = Math.max(0, Math.min(1, (t - (1 - vorn) * 0.66) / 0.34));
+    return x * x * (3 - 2 * x);
+  };
+  // (ein neues Netz je Stand: Wer die Netze zusammensetzt, erkennt den Wechsel am Netz selbst)
+  zaehneNetzJetzt = zaehneNetz(plaetze, P, werkHaut.f, werkHaut.mitte, (r) => 2 * r * Math.sin(auf / 2), wuchs);
+  zaehneVersion++;
+}
+zaehneTropfen.addEventListener('click', () => {
+  if (werk.zug || werk.maulLauf || !werk.maulLippe() || werk.G.maul?.zaehne) return;
+  if (!werk.zaehneSetzen(ZAEHNE_ANFANG)) return;
+  // sie sprießen bei offenem Maul (zu stecken sie im Maul und wären nicht zu sehen)
+  const jetzt = performance.now();
+  zahnWuchs = { t0: jetzt + 260 };
+  if (!werk.grund) kieferSchau = { t0: jetzt, ms: 3000 };
+  werkNeu = true;
+  anstossen();
+});
 
 /** der Winkel des Zeigers um den Mundwinkel in der Spiegelebene (Bogenmaß), null: von hier aus nicht zu lesen */
 function kieferZeigerWinkel(x: number, y: number): number | null {
@@ -9831,6 +9916,52 @@ const haken = {
       gedehnt,
       ms,
       schritte: werk.zurueck.length,
+    };
+  },
+  /**
+   * Maul, Etappe 5: die Zähne. `werte`: setzen (`'anfang'`: die Werte, mit denen ein Maul beginnt; null: nehmen). Zurück: die Werte
+   * am Maul, die Plätze (je Zahn Kiefer, Spiegelbild, Maß, wie weit vorn) und das gezeigte Netz (Punkte, Dreiecke, sein Kasten in
+   * der Welt und die größte Länge eines Zahns: der weiteste Punkt von seinem Fuß, in Einheiten des Werks).
+   */
+  zaehne: (werte?: werk.MaulZaehne | 'anfang' | null) => {
+    if (werte !== undefined) {
+      werk.zaehneSetzen(werte === 'anfang' ? ZAEHNE_ANFANG : werte);
+      werkNeu = true;
+      anstossen();
+    }
+    const plaetze = zaehnePlaetzeJetzt();
+    const n = zaehneNetzJetzt;
+    let lang = 0;
+    if (n) {
+      // (die Punkte eines Zahns stehen hintereinander; sein Fuß ist der Mittelwert seiner ersten Punkte: hier grob über den Kasten)
+      let v0 = 0;
+      for (let q = 0; q < plaetze.length; q++) {
+        const k = n.pos.length / 3 / plaetze.length;
+        let y0 = Infinity;
+        let y1 = -Infinity;
+        let x0 = Infinity;
+        let x1 = -Infinity;
+        let z0 = Infinity;
+        let z1 = -Infinity;
+        for (let i = v0; i < v0 + k; i++) {
+          x0 = Math.min(x0, n.pos[3 * i]!);
+          x1 = Math.max(x1, n.pos[3 * i]!);
+          y0 = Math.min(y0, n.pos[3 * i + 1]!);
+          y1 = Math.max(y1, n.pos[3 * i + 1]!);
+          z0 = Math.min(z0, n.pos[3 * i + 2]!);
+          z1 = Math.max(z1, n.pos[3 * i + 2]!);
+        }
+        lang = Math.max(lang, Math.hypot(x1 - x0, y1 - y0, z1 - z0) * werkHaut.f);
+        v0 += k;
+      }
+    }
+    return {
+      werte: werk.G.maul?.zaehne ?? null,
+      tropfen: !zaehneTropfen.hidden,
+      plaetze: plaetze.map((q) => ({ unten: q.unten, gespiegelt: q.gespiegelt, mass: q.mass, vorn: q.vorn, r: q.r })),
+      netz: n ? { punkte: n.pos.length / 3, dreiecke: n.index.length / 3, endlich: n.pos.every((x) => Number.isFinite(x)) } : null,
+      lang,
+      spriesst: zahnWuchs !== null,
     };
   },
   /** Maul, Etappe 3: die Lippen trennen oder verbinden (ohne Angabe: nur lesen); zurück, ob sie getrennt sind (null: kein solches Maul) */

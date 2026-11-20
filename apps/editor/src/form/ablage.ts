@@ -10,6 +10,8 @@ import type { Loop, V3 } from '@ee/shape/dicht';
 import type { FlacheHaut } from './verfeinern';
 import type { BemalungDatei } from '../ozzy/farbe/bemalung';
 
+/** eine Zahnreihe in der Datei (wie `ZahnReihe` im Werk) */
+export type ZahnReiheDatei = { anzahl: number; groesse: number; neigung: number; verlauf: number; bis: number; sitz: number; form: number };
 export type WesenStand = {
   /** mittlere Kante des Startnetzes: das Maß für Verdichten, Kreuzungen und die Genauigkeit der Linien */
   mk: number;
@@ -17,8 +19,8 @@ export type WesenStand = {
   loops: Loop[];
   /** nächste Kennung für Loops und für Kreuzungen */
   ids: [number, number];
-  /** `echt`: ein Maul als echte Form (seit dem 20.11.), auch mit getrennten Lippen; `ersteUnten`: welche Hälfte der Lippe die untere ist */
-  maul: { id: number; echt?: true; ersteUnten?: boolean } | null;
+  /** `echt`: ein Maul als echte Form (seit dem 20.11.), auch mit getrennten Lippen; `ersteUnten`: welche Hälfte der Lippe die untere ist; `zaehne`: die zwei Zahnreihen (`werk.ZahnReihe`) */
+  maul: { id: number; echt?: true; ersteUnten?: boolean; zaehne?: { oben: ZahnReiheDatei; unten: ZahnReiheDatei } } | null;
   /**
    * `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose; dazu die Stelle
    * `s` jedes Punkts und die Länge der Linie, als der Versatz gemerkt wurde (daran findet die Pose ihre Punkte wieder, wenn die

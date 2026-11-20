@@ -360,7 +360,14 @@ export let naechsteKreuzung = 1;
  * `ersteUnten`: Die erste Hälfte der Kette der Lippe ist die Unterlippe (beim Schneiden gelesen und gemerkt: Getrennt gezogen
  * sagt es die Lage nicht mehr sicher).
  */
-export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean } | null;
+export type MaulZustand = { id: number; echt?: true; ersteUnten?: boolean; zaehne?: MaulZaehne } | null;
+/**
+ * Eine Zahnreihe (Plan „Maul, Zähne, Zunge“, Etappe 5): wie viele Zähne, ihre Größe (1 = ein Zahn füllt seinen Platz), ihre
+ * Neigung nach außen (Bogenmaß), wie viel kleiner sie nach hinten werden (0 … 0,9), wie weit die Reihe nach hinten reicht (Anteil
+ * der Lippe), ihr Sitz (Abstand von der Lippe in Breiten des Zahnfleischs) und ihre Vorlage (Nummer in `ZAHN_FORMEN`).
+ */
+export type ZahnReihe = { anzahl: number; groesse: number; neigung: number; verlauf: number; bis: number; sitz: number; form: number };
+export type MaulZaehne = { oben: ZahnReihe; unten: ZahnReihe };
 /* in G: maul */
 /**
  * Die Fressen-Pose: Knochen (Grad) und Blendshape, je Punkt der Haut die Verschiebung gegen die Grundform vor den Knochen (null:
@@ -971,7 +978,7 @@ export function lippenGetrennt(): boolean | null {
  * zur Lippe gehört; die Kette der Lippe (Punktnummern); die Länge der Lippe in der Seite. Null: kein solches Maul, oder die Tasche
  * ist nicht in Gaumen und Boden getrennt. In der Pose an der Grundform gelesen (das Netz ist dasselbe).
  */
-export function maulTasche(): { innen: Uint8Array; lippe: number[]; lang: number } | null {
+export function maulTasche(): { innen: Uint8Array; lippe: number[]; lang: number; kiefer: Int8Array; C: V2 } | null {
   const m = G.maul;
   if (!m?.echt) return null;
   const h = grund ? grund.haut : haut;
@@ -984,8 +991,32 @@ export function maulTasche(): { innen: Uint8Array; lippe: number[]; lang: number
   const sk = kieferSeiten(h, alle, l.id, { profil: erste.profil, C: L.C }, erste.links ? 1 : -1);
   if (!sk.getrennt) return null;
   const innen = new Uint8Array(h.n);
-  for (let v = 0; v < h.n; v++) if (!sk.aussen[v] || sk.lippe.has(v)) innen[v] = 1;
-  return { innen, lippe: l.proben.map((q) => q.ecken[0]), lang: Math.max(L.oben.lang, L.unten.lang) };
+  // je Punkt der Tasche sein Kiefer (+1 unten, −1 oben); die Rachenlinie und der Mundwinkel gehören keinem allein
+  const kiefer = new Int8Array(h.n);
+  const unten = L.untenLinks ? 1 : -1;
+  const winkel = sk.winkel >= 0 ? [sk.winkel, h.spiegel[sk.winkel]!] : [];
+  for (let v = 0; v < h.n; v++) {
+    if (sk.aussen[v] && !sk.lippe.has(v)) continue;
+    innen[v] = 1;
+    if (!sk.rachen.has(v) && !winkel.includes(v)) kiefer[v] = sk.seite[v] === unten ? 1 : -1;
+  }
+  return { innen, lippe: l.proben.map((q) => q.ecken[0]), lang: Math.max(L.oben.lang, L.unten.lang), kiefer, C: L.C };
+}
+
+/**
+ * Die Zähne des Mauls setzen oder nehmen (Etappe 5): Sie stehen am Maul der Form (`G.maul.zaehne`) als Werte je Reihe; wo jeder
+ * Zahn sitzt, liest die Anzeige daraus und aus der Tasche. `schritt`: ein Schritt für ⌘Z (falsch, während ein Regler gedreht
+ * wird: Dann legt ihn an, wer den Handgriff beginnt). Zurück: ob es geschehen ist.
+ */
+export function zaehneSetzen(z: MaulZaehne | null, schritt = true): boolean {
+  const m = G.maul;
+  if (!m?.echt || zug) return false;
+  if (schritt) zurueck.push(schnappschuss());
+  const { zaehne: _alt, ...rest } = m;
+  void _alt;
+  G.maul = z ? { ...rest, zaehne: { oben: { ...z.oben }, unten: { ...z.unten } } } : rest;
+  anzeige.allesZeigen();
+  return true;
 }
 
 /** Ist ein Punkt der Lippe des Mauls gewählt (sie selbst, einer ihrer Punkte, oder ein Punkt einer Linie, die dort an ihr hängt)? */
@@ -6028,7 +6059,14 @@ export function standAnwenden(st: WesenStand): string {
     pos: Float64Array.from(h.pos),
     auswahl: [],
     ids: [st.ids[0], st.ids[1]],
-    maul: st.maul ? { id: st.maul.id, ...(st.maul.echt === true ? { echt: true as const } : {}), ...(typeof st.maul.ersteUnten === 'boolean' ? { ersteUnten: st.maul.ersteUnten } : {}) } : null,
+    maul: st.maul
+      ? {
+          id: st.maul.id,
+          ...(st.maul.echt === true ? { echt: true as const } : {}),
+          ...(typeof st.maul.ersteUnten === 'boolean' ? { ersteUnten: st.maul.ersteUnten } : {}),
+          ...(st.maul.zaehne ? { zaehne: { oben: { ...st.maul.zaehne.oben }, unten: { ...st.maul.zaehne.unten } } } : {}),
+        }
+      : null,
     pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null, linien: st.pose.linien ?? null },
     grund: g && st.grund ? { haut: g, pos: Float64Array.from(g.pos), loops: st.grund.loops.map(kopieLoop) } : null,
     ruhe: st.ruhe ? { setzen: st.ruhe.setzen === true, nurInRuhe: st.ruhe.nurInRuhe === true, verdichten: st.ruhe.verdichten === true, ziele: zieleAus(st) } : null,

@@ -878,3 +878,30 @@ gibt es noch nicht). Bilder: `docs/progress/ozzy/2026-11-20-maul-etappe4-fressen
 Zwei Kriterien älterer Proben des Paint-Modus waren bei meinem Lauf nicht erfüllt (`ozzy-farbe-fenster.mjs` 2: eine Farblinie
 0,68 statt höchstens 0,5 neben ihrer Lage nach Zug und Rückzug; `ozzy-farbe-ebenen-fenster.mjs` 68: Zeiten). Beide hängen an der
 Uhr, und der Rechner war dabei stark belastet (Last 7 bis 8). Gegen den Stand davor habe ich nicht verglichen.
+
+### 12.15 Etappe 5, erste Scheibe: die Zähne sprießen (20.11.)
+
+Deine Antwort (20.11.): „Ja, Etappe 5“.
+
+**In Ozzy:** Hat die Form ein Maul, hängt unter der Leiste der Tropfen „Zähne“. Ein Tipp: Das Maul öffnet sich, und aus beiden
+Kiefern sprießen Zähne, von der Spitze nach hinten: oben zwölf, unten elf (die unteren stehen in den Lücken der oberen), Vorlage
+„Tropfen“, spiegelgleich, vorn größer. Jeder Zahn hängt starr an seinem Kiefer und geht mit ihm mit, in „Fressen“ und beim Blick.
+Zu stecken die Zähne im Maul: Innen wird ein Zahn nie länger als der Spalt zwischen den Kiefern. ⌘Z nimmt die Zähne zurück. Sie
+stehen im Stand der Form (`standJetzt`) und kommen so mit in die Datei; Sichern und Laden habe ich im Fenster nicht geprüft.
+
+**Wie:** Die Zähne sind Werte am Maul (je Reihe Anzahl, Größe, Neigung, Verlauf, Reichweite, Sitz, Vorlage), keine Punkte der Form.
+Wo jeder sitzt, wird aus der Tasche gelesen: Die Reihe läuft auf der Höhenlinie des halben Zahnfleischs ihrer Wand; ein Zahn hängt
+an zwei Orten dieser Linie (Dreieck und Gewichte, wie die Bemalung) und geht so von selbst mit der Haut mit. Seine Form ist die
+Vorlage der Studie (`maulstudie/zahn.ts`). Gezeigt werden alle Zähne als ein eigenes Netz neben der Haut, in jedem Material.
+
+**Geprüft** im Fenster (`ozzy-maul-zaehne-fenster.mjs`, Z1 bis Z6, an „teat firefish“ auf Wachs) und im Modell (Test „die Zähne“):
+zwölf und elf Plätze, elf davon Spiegelbilder; zu hat kein Zahn Länge; offen zeigen die oberen nach unten, die unteren nach oben.
+Dass die unteren Zähne in den Lücken der oberen stehen, prüft nur der Test (an einer Kugel, nicht an deiner Form): Die untere
+Reihe reicht dafür einen halben Zahn weniger weit nach hinten, so haben beide dieselbe Teilung. Das gilt für die Werte am Anfang,
+nicht für beliebige. (Zuerst reichten beide Reihen gleich weit: Da standen die unteren nur vorn in den Lücken, hinten den oberen
+gegenüber.)
+
+**Was von Etappe 5 fehlt:** die Linse mit Formenring und Drehregler (Anzahl, Größe, Neigung, Verlauf, Sitz und die acht Vorlagen
+lassen sich in Ozzy noch nicht stellen), Zähne wählen und rücken, ein Zahn ohne Spiegelbild, Zähne außen vor der Lippe, die Farbe
+(die Zähne tragen die Farbe der Form). Bild: `docs/progress/ozzy/2026-11-20-maul-etappe5-zaehne.jpg`. Offenes:
+[`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 50 bis 59.

@@ -7,7 +7,8 @@ weiter auf `6bef9f17`: zusammengeführt ist nichts, das bleibt Florians Wort.
 **Was es gibt:** ein Konzept, eine Studie, zwei Proben im Kern und **seit dem 20.11. in Ozzy die erste Scheibe von Etappe 1 (das
 Maul aus einer Linie als echte Form) und Etappe 2 (die Kiefer als Tropfen, „Fressen“, der Blick ins Maul)**, siehe unten „Etappe 1
 in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen trennen, Über- und Unterbiss; die Probe P3 hält) und
-Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält). Als Nächstes, auf Florians Wort: Etappe 5 (Zähne).** Offenes steht
+Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält), dazu die erste Scheibe von Etappe 5 (Zähne sprießen und gehen
+mit den Kiefern mit). Als Nächstes, auf Florians Wort: der Rest von Etappe 5 (die Linse, Zähne wählen und rücken).** Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
 großen Feinschlifflauf, keine einzelnen Vergleiche und Tests („Du musst mir nicht immer Vergleiche und Tests zeigen“).
@@ -169,6 +170,36 @@ Saaten; `istMaulEbene`), `farbwerk.ts` (`maulEbenePflegen`, `maulGebiet`, `maulT
    Objekt mit denselben Dreiecken: Das Farbwerk leitet dann einmal neu ab, die Orte bleiben.
 6. **Zwei Kriterien älterer Paint-Proben fielen bei hoher Last des Rechners durch** (`ozzy-farbe-fenster.mjs` 2,
    `ozzy-farbe-ebenen-fenster.mjs` 68; beide hängen an der Uhr). Nicht gegen den Stand davor verglichen.
+
+## Etappe 5 in Ozzy, erste Scheibe: die Zähne (20.11.)
+
+**Was es gibt:** der Tropfen „Zähne“ unter der Leiste; zwei Zahnreihen, die sprießen, mit den Kiefern mitgehen und zu im Maul
+stecken. Plan, 12.15. **Was fehlt:** die Linse (Formenring, Drehregler), Zähne wählen und rücken, ein Zahn ohne Spiegelbild, Zähne
+außen, die Farbe.
+
+**Wo:** `src/ozzy/zaehne.ts` (`zahnPlaetze`: die Plätze aus der Tasche; `zaehneNetz`: das Netz an der gezeigten Haut;
+`ZAEHNE_ANFANG`), `werk.ts` (`MaulZustand.zaehne`, `ZahnReihe`, `zaehneSetzen`; `maulTasche` gibt je Punkt den Kiefer und das
+Scharnier), `farbe/maulEbene.ts` (`taschenFeld`, `hoehenlinie`, `zahnfleischBreit` sind jetzt für beide da), `main.ts`
+(„Die Zähne“: `zaehnePlaetzeJetzt`, `zaehneRechnen` nach `werkHaut.rechnen`, das Sprießen; in `ruheZeigen` steht ihr Netz bei
+den ruhenden Netzen), `ozzy.html` (`#zaehne-tropfen`). Zahnformen: `src/maulstudie/zahn.ts`. Probe:
+`GPU=1 node scripts/pruefen/ozzy-maul-zaehne-fenster.mjs [ordner]`; Test „die Zähne“; Haken `__ozzy.zaehne()`.
+
+**Was man wissen muss:**
+
+1. **Die Zähne sind Werte am Maul** (`G.maul.zaehne`): mit ⌘Z und im Stand der Form (`standJetzt`, `standAnwenden`), also auch
+   in der Datei (Sichern und Laden im Fenster ungeprüft). Plätze und Netz sind abgeleitet: Die Plätze
+   werden nach jedem Schritt, jedem Netzwechsel und jeder Änderung der Werte neu gelesen, das Netz nach jedem Rechnen der Haut.
+2. **Ein Zahn hängt an zwei Orten der Wand** (Hälfte z ≥ 0) und einem Anteil dazwischen; sein Spiegelbild wird gespiegelt
+   gezeichnet (z und Umlaufsinn). Die Normale der Wand zeigt aus der Form, in der Tasche also ins Maul: Das ist seine Achse.
+3. **Das Netz der Zähne steht bei den ruhenden Netzen** (`ruheZeigen`, `ruheNetzGemerkt`): So zeigt es jedes Material, auch die
+   Seifenhaut. Es ist je Stand ein neues Objekt; wer Netze zusammensetzt, erkennt den Wechsel daran.
+4. **Zu hat jeder Zahn die Länge null** (`spalt(r)` = 2 · r · sin(Winkel / 2)); das Netz behält dabei seine Punkte und Dreiecke.
+5. **`kieferSeiten` nennt jetzt auch die Punkte der Rachenlinie und den Mundwinkel:** Sie gehören keinem Kiefer allein
+   (`maulTasche().kiefer` ist dort 0); wer eine Wand der Tasche meint, fragt die Punkte, die einem Kiefer gehören.
+6. **Die Werte am Anfang (`ZAEHNE_ANFANG`) greifen ineinander:** unten ein Zahn weniger, und die untere Reihe reicht einen
+   halben Zahn weniger weit (`bis` 0,788 = 0,86 · 11 / 12). So haben beide Reihen dieselbe Teilung, und die unteren Zähne stehen
+   in den Lücken der oberen (der Test prüft es). Wer die Linse einbaut, hält das beim Stellen der Anzahl.
+7. **Ein Zahn hat 640 Dreiecke** (die Vorlage der Studie, unverändert): 23 Zähne sind 14 720. Fürs Backen gröber nehmen.
 
 ## Die Studie in einem Absatz
 

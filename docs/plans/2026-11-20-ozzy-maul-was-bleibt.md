@@ -31,6 +31,9 @@ für das Zahnfleisch, dazwischen eine Farblinie zum Bearbeiten. Zu sieht man dav
 Paint-Modus die Ebene „Maul“ gewählt, öffnet sich das Maul zum Hineinmalen. Die Farbe bleibt im Maul, auch wenn du an den Lippen
 ziehst.
 
+**Etappe 5, erste Scheibe (20.11.):** Unter der Leiste hängt mit dem Maul der Tropfen „Zähne“. Ein Tipp: Aus beiden Kiefern
+sprießen Zähne (oben zwölf, unten elf, Vorlage „Tropfen“, vorn größer). Sie gehen mit ihrem Kiefer mit; zu stecken sie im Maul.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -60,8 +63,8 @@ ziehst.
 
 9. ~~Öffnen (Etappe 2)~~ gebaut; was daran offen ist, steht unter „An den Kiefern“.
 10. ~~„Lippen trennen“ (Etappe 3)~~ gebaut; was daran offen ist, steht unter „An den Lippen“.
-11. ~~Die Ebene „Maul“ (Etappe 4)~~ gebaut; was daran offen ist, steht unter „An der Ebene Maul“. Es fehlen Zähne (5),
-    Zunge (6), Posen und Backen.
+11. ~~Die Ebene „Maul“ (Etappe 4)~~ gebaut; was daran offen ist, steht unter „An der Ebene Maul“. Die Zähne (5) gibt es in
+    einer ersten Scheibe (siehe „An den Zähnen“). Es fehlen die Zunge (6), Posen und Backen.
 
 ### Nicht geprüft
 
@@ -137,6 +140,28 @@ ziehst.
     und Zahnfleisch ineinander, beides bliebe im Maul. In den Proben kam es nicht vor (bis 17 Netzwechsel).
 49. **Rillen am Gaumen, Farben für Zähne und Zunge:** Rillen lassen sich als Farblinien ziehen (nicht ausprobiert); Zähne und Zunge
     gibt es noch nicht.
+
+### An den Zähnen (Etappe 5, erste Scheibe)
+
+50. **Die Linse fehlt in Ozzy** (Formenring, Drehregler mit Perlen): Anzahl, Größe, Neigung, Verlauf, Sitz und die Vorlage lassen
+    sich noch nicht stellen. Die acht Vorlagen und die Linse der Studie sind da und warten auf den Einbau. Mit ihr muss die
+    Reichweite der unteren Reihe der Anzahl folgen: Nur mit den Werten am Anfang stehen die unteren Zähne in den Lücken der oberen.
+51. **Zähne wählen und rücken fehlt:** eine Reihe antippen, einen einzelnen Zahn, ihn auf dem Zahnfleisch ziehen; ein Zahn ohne
+    Spiegelbild (dein Hauer auf einer Seite).
+52. **Die Zähne tragen die Farbe der Form** (auf Wachs sind sie Wachs). Elfenbein kommt mit einer Farbe für das Teil.
+53. **Zu stecken alle Zähne im Maul.** Zähne außen vor der Lippe, die geschlossen über dem anderen Kiefer liegen (dein Bild 07),
+    fehlen.
+54. **Wie lang ein Zahn sein darf,** liest Ozzy aus den Winkeln der Knochen (der Spalt der Kiefer an seiner Stelle). Hat das Maul
+    geschlossen eine Lücke (getrennte Lippen) oder formt die Pose die Kiefer um, zählt das nicht mit. Zähne dürfen einander und
+    den anderen Kiefer schneiden.
+55. **Tempo:** Dreht sich ein Kiefer, wird mit Zähnen in jedem Bild das Netz der Anzeige neu zusammengesetzt. Nicht gemessen.
+56. **Nicht geprüft:** Zähne an getrennten oder stark geformten Lippen, mit mehreren Objekten im Verbund, in „Dreiecke zeigen“
+    (dort fehlen sie), Sichern und Laden im Fenster. Ob die unteren Zähne an deiner Form in den Lücken der oberen stehen, habe
+    ich nur im Modell an einer Kugel geprüft.
+57. **Nehmen lassen sich die Zähne nur mit ⌘Z.** Der Tropfen „Zähne“ ist nach dem Tipp weg.
+58. **Geschätzt:** wie lange sie sprießen (1,1 s, das Maul steht dafür 3 s offen), die Werte am Anfang (aus der Studie).
+59. **Fein gerastert:** Jeder Zahn hat 640 Dreiecke, alle 23 zusammen 14 720. Fürs Spiel (höchstens 8 000 je Form) muss das
+    Backen die Zähne gröber nehmen.
 
 ### Kleines
 

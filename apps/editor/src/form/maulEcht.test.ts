@@ -31,6 +31,7 @@ import { type Saat, flaechenRechnen } from '../ozzy/farbe/flaechen';
 import { kettenAller } from '../ozzy/farbe/ketten';
 import { MAUL_EBENE, maulEbeneBauen } from '../ozzy/farbe/maulEbene';
 import { karteVon, ortGespiegelt } from '../ozzy/farbe/ort';
+import { ZAEHNE_ANFANG, zaehneNetz, zahnPlaetze } from '../ozzy/zaehne';
 import { manifoldLaden } from './naht';
 
 const R = 150;
@@ -493,6 +494,103 @@ describe('das Maul als echte Form', () => {
     let ausgelaufen = 0;
     for (let t = 0; t < k.T; t++) if (!gebiet[t] && ohne.ganz[t]! >= 0) ausgelaufen++;
     expect(ausgelaufen).toBeGreaterThan(100);
+  });
+
+  it('die Zähne: oben zwölf, unten elf, spiegelgleich; zu stecken sie im Maul, offen zeigen sie zum anderen Kiefer', async () => {
+    const wasm = await manifoldLaden();
+    const d = kugel();
+    const mk = mittlereKante(d.h);
+    const linie = [
+      { x: -50, y: 20 },
+      { x: -100, y: 0 },
+      { x: -150, y: -18 },
+      { x: -190, y: -30 },
+    ];
+    const r = maulSchneidenMit(wasm, { haut: d.h, loops: d.loops }, linie, { ...IDS, mk });
+    if ('fehler' in r) throw new Error(r.fehler);
+    const h = r.haut;
+    const lippe = r.loops[r.loops.length - 1]!;
+    const sW = lippe.punkte.find((p) => p.mundwinkel)!.s;
+    let ecke = 1;
+    for (let j = 1; j < lippe.proben.length - 1; j++) if (Math.abs(lippe.s[j]! - sW) < Math.abs(lippe.s[ecke]! - sW)) ecke = j;
+    const L = maulLage(h, lippe, ecke)!;
+    const erste = L.ersteUnten ? L.unten : L.oben;
+    const sk = kieferSeiten(h, r.loops, lippe.id, { profil: erste.profil, C: L.C }, erste.links ? 1 : -1);
+    // die Tasche, wie das Werk sie nennt (`werk.maulTasche`)
+    const innen = new Uint8Array(h.n);
+    const kiefer = new Int8Array(h.n);
+    const unten = L.untenLinks ? 1 : -1;
+    for (let v = 0; v < h.n; v++) {
+      if (sk.aussen[v] && !sk.lippe.has(v)) continue;
+      innen[v] = 1;
+      if (!sk.rachen.has(v) && v !== sk.winkel && v !== h.spiegel[sk.winkel]) kiefer[v] = sk.seite[v] === unten ? 1 : -1;
+    }
+    expect(sk.rachen.size).toBeGreaterThan(2);
+    const k = karteVon(h);
+    const plaetze = zahnPlaetze(k, { innen, lippe: lippe.proben.map((q) => q.ecken[0]), lang: L.unten.lang, kiefer }, L.C, ZAEHNE_ANFANG);
+    expect(plaetze.filter((q) => !q.unten).length).toBe(12);
+    expect(plaetze.filter((q) => q.unten).length).toBe(11);
+    // oben sechs Paare, unten fünf Paare und ein Zahn an der Spitze; vorn sind sie größer als hinten
+    expect(plaetze.filter((q) => q.gespiegelt).length).toBe(11);
+    const vorn = plaetze.filter((q) => q.vorn > 0.8);
+    const hinten = plaetze.filter((q) => q.vorn < 0.2);
+    expect(Math.min(...vorn.map((q) => q.mass))).toBeGreaterThan(Math.max(...hinten.map((q) => q.mass)));
+    // die unteren stehen in den Lücken der oberen: Von jedem unteren Zahn aus sind die zwei nächsten oberen etwa gleich weit weg
+    // (stünde er einem oberen gegenüber, wäre der nächste viel näher als der übernächste)
+    const fussVon = (q: (typeof plaetze)[number]): number[] => {
+      const p = (o: { e: readonly number[]; w: readonly number[] }): number[] => [0, 1, 2].map((x) => o.w[0]! * h.pos[3 * o.e[0]! + x]! + o.w[1]! * h.pos[3 * o.e[1]! + x]! + o.w[2]! * h.pos[3 * o.e[2]! + x]!);
+      const a = p(q.a);
+      const b = p(q.b);
+      const ort = a.map((x, i) => x + q.u * (b[i]! - x));
+      return q.gespiegelt ? [ort[0]!, ort[1]!, -ort[2]!] : ort;
+    };
+    const obere = plaetze.filter((q) => !q.unten).map(fussVon);
+    let versatz = Infinity;
+    for (const q of plaetze.filter((q2) => q2.unten)) {
+      const f = fussVon(q);
+      const weiten = obere.map((o) => Math.hypot(o[0]! - f[0]!, o[1]! - f[1]!, o[2]! - f[2]!)).sort((x, y) => x - y);
+      versatz = Math.min(versatz, weiten[0]! / weiten[1]!);
+    }
+    expect(versatz).toBeGreaterThan(0.6);
+    // zu (kein Spalt): Jeder Zahn steckt im Maul, er hat keine Ausdehnung
+    const je = (n: { pos: Float32Array }, nr: number): { min: number[]; max: number[] } => {
+      const m = n.pos.length / 3 / plaetze.length;
+      const min = [Infinity, Infinity, Infinity];
+      const max = [-Infinity, -Infinity, -Infinity];
+      for (let i = nr * m; i < (nr + 1) * m; i++)
+        for (let x = 0; x < 3; x++) {
+          min[x] = Math.min(min[x]!, n.pos[3 * i + x]!);
+          max[x] = Math.max(max[x]!, n.pos[3 * i + x]!);
+        }
+      return { min, max };
+    };
+    const zu = zaehneNetz(plaetze, h.pos, 1, { x: 0, y: 0 }, () => 0, () => 1)!;
+    expect(zu.pos.every((x) => Number.isFinite(x))).toBe(true);
+    for (let q = 0; q < plaetze.length; q++) {
+      const b = je(zu, q);
+      expect(Math.hypot(b.max[0]! - b.min[0]!, b.max[1]! - b.min[1]!, b.max[2]! - b.min[2]!)).toBeLessThan(1e-6);
+    }
+    // offen (der Spalt reicht jedem): Die Zähne des Oberkiefers hängen nach unten, die des Unterkiefers stehen nach oben
+    const offen = zaehneNetz(plaetze, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1)!;
+    expect(offen.pos.length).toBe(zu.pos.length);
+    expect(offen.pos.every((x) => Number.isFinite(x))).toBe(true);
+    for (let q = 0; q < plaetze.length; q++) {
+      const fuss = je(zu, q).min;
+      const b = je(offen, q);
+      const lang = Math.max(b.max[1]! - fuss[1]!, fuss[1]! - b.min[1]!);
+      expect(lang).toBeGreaterThan(0.5 * plaetze[q]!.mass);
+      // (die Kugel steht gerade: „zum anderen Kiefer“ ist hier im Wesentlichen nach unten oder nach oben)
+      if (plaetze[q]!.unten) expect(b.max[1]! - fuss[1]!).toBeGreaterThan(fuss[1]! - b.min[1]!);
+      else expect(fuss[1]! - b.min[1]!).toBeGreaterThan(b.max[1]! - fuss[1]!);
+    }
+    // spiegelgleich: zu jedem Punkt eines gespiegelten Zahns gibt es den seines Zwillings bei −z
+    const nr = plaetze.findIndex((q) => q.gespiegelt);
+    const zw = plaetze.findIndex((q) => !q.gespiegelt && q.unten === plaetze[nr]!.unten && Math.abs(q.vorn - plaetze[nr]!.vorn) < 1e-9 && q.vorn < 0.99);
+    expect(zw).toBeGreaterThanOrEqual(0);
+    const A = je(offen, nr);
+    const B = je(offen, zw);
+    expect(Math.abs(A.min[2]! + B.max[2]!)).toBeLessThan(1e-4);
+    expect(Math.abs(A.max[0]! - B.max[0]!)).toBeLessThan(1e-4);
   });
 
   it('sagt, warum es nicht geht: die Linie trifft die Form nicht', async () => {
