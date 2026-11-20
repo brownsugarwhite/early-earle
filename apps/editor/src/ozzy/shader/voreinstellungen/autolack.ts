@@ -51,7 +51,7 @@ void main() {
     float nv = clamp(dot(n, V), 0.0, 1.0);
     // Grundlack mit Farbwechsel
     float hue = uR_farbton / 360.0;
-    vec3 vorn = hsv(vec3(fract(hue), 0.92, 0.75));
+    vec3 vorn = hsv(vec3(fract(hue), 0.9, 0.9));
     vec3 kipp = hsv(vec3(fract(hue + uR_flip * 0.12), 0.95, 0.35));
     vec3 lack = srgbZuLin(mix(vorn, kipp, pow(1.0 - nv, 1.4)));
     vec3 R = reflect(-V, n);
@@ -60,22 +60,22 @@ void main() {
     vec3 weich = autostudio(R) * 0.4;
     weich += autostudio(normalize(R + t1 * 0.25)) * 0.15 + autostudio(normalize(R - t1 * 0.25)) * 0.15;
     weich += autostudio(normalize(R + t2 * 0.25)) * 0.15 + autostudio(normalize(R - t2 * 0.25)) * 0.15;
-    vec3 grundlack = lack * (0.08 + weich * 0.55);
+    vec3 grundlack = lack * (0.14 + weich * 0.95);
     // Metallflitter: Rastergröße so, dass eine Zelle 1 bis 2 Bildpunkte deckt
     float fw = max(length(fwidth(g.p)) / uRadius, 1e-5);
     float k = exp2(floor(log2(clamp(0.6 / fw, 64.0, 4096.0))));
     vec3 zelle = floor(q * k);
     vec3 zufall = hash33(zelle);
-    vec3 nf = normalize(n + (zufall * 2.0 - 1.0) * 0.4);
+    vec3 nf = normalize(n + (zufall * 2.0 - 1.0) * 0.22);
     vec3 Rf = reflect(-V, nf);
-    float funkeln = smoothstep(1.2, 3.5, luma(autostudio(Rf))) * step(0.35, hash13(zelle + 7.0));
-    vec3 flitter = mix(vec3(1.0), lack * 2.0, 0.35) * funkeln * uR_flitter * 1.8;
+    float funkeln = smoothstep(1.5, 4.5, luma(autostudio(Rf))) * step(0.55, hash13(zelle + 7.0));
+    vec3 flitter = mix(vec3(1.0), lack * 2.5, 0.5) * funkeln * uR_flitter * 0.55;
     // Klarlack auf welliger Normale (Orangenhaut)
     float e = 0.004;
     vec3 oq = q * 70.0;
     float o0 = snoise(oq);
     vec3 orange = vec3(snoise(oq + vec3(e * 70.0, 0.0, 0.0)) - o0, snoise(oq + vec3(0.0, e * 70.0, 0.0)) - o0, snoise(oq + vec3(0.0, 0.0, e * 70.0)) - o0);
-    vec3 nc = normalize(n + orange * 0.035 * uR_orangenhaut);
+    vec3 nc = normalize(n + orange * 0.014 * uR_orangenhaut);
     vec3 Rc = reflect(-V, nc);
     float F = fresnelS(max(dot(nc, V), 0.0), 0.04);
     vec3 klar = autostudio(Rc);

@@ -8,17 +8,18 @@
 import { bildVoreinstellung } from '../bildShader';
 
 const FRAGMENT = /* glsl */ `
-/** Dampf an p (uv): Deckung und ob die Stelle im Schatten der Wolke liegt (y) */
-vec2 dampf(vec2 p, vec2 c0, float rUv, float t, float aspekt) {
+/** Dampf an p (uv): Deckung und ob die Stelle im Schatten der Wolke liegt (y); hB, hH: halbe Breite und Höhe der Form im Bild */
+vec2 dampf(vec2 p, vec2 c0, float hB, float hH, float t, float aspekt) {
   float deck = 0.0, schatten = 0.0;
-  vec2 licht = vec2(-0.6, 0.8) * rUv * 0.06;
-  for (int i = 0; i < 18; i++) {
+  vec2 licht = vec2(-0.6, 0.8) * hH * 0.05;
+  for (int i = 0; i < 24; i++) {
     float fi = float(i);
     float h = hash11(fi * 3.17 + 0.5);
-    float alter = fract(t * (0.07 + 0.05 * h) * uR_tempo + h * 7.0);
-    vec2 start = c0 + vec2((hash11(fi * 1.9) - 0.5) * 1.1 * rUv / aspekt, rUv * (0.35 + 0.35 * hash11(fi * 5.3)));
-    vec2 m = start + vec2(sin(alter * 4.0 + fi) * 0.15 * rUv / aspekt, alter * rUv * 2.6 * uR_menge);
-    float gr = rUv * (0.1 + 0.18 * alter + 0.06 * h) * (1.0 - smoothstep(0.7, 1.0, alter)) * smoothstep(0.0, 0.12, alter);
+    float alter = fract(t * (0.09 + 0.06 * h) * uR_tempo + h * 7.0);
+    // die Wolken steigen aus dem oberen Teil des Körpers
+    vec2 start = c0 + vec2((hash11(fi * 1.9) - 0.5) * 1.3 * hB / aspekt, hH * (0.05 + 0.55 * hash11(fi * 5.3)));
+    vec2 m = start + vec2(sin(alter * 4.0 + fi) * 0.12 * hB / aspekt, alter * hH * 1.7 * uR_menge);
+    float gr = hH * (0.07 + 0.2 * alter + 0.05 * h) * (1.0 - smoothstep(0.72, 1.0, alter)) * smoothstep(0.0, 0.1, alter);
     for (int j = 0; j < 4; j++) {
       float fj = float(j);
       vec2 o = (hash21(fi * 11.0 + fj) - 0.5) * gr * vec2(1.4 / aspekt, 0.9);
@@ -41,6 +42,8 @@ void main() {
   vec2 c0 = insBild(uMitte);
   vec3 randW = uMitte + (uViewInv * vec4(0.0, 1.0, 0.0, 0.0)).xyz * uRadius;
   float rUv = length(insBild(randW) - c0);
+  float hH = rUv * uHalb.y / uRadius;
+  float hB = rUv * max(uHalb.x, uHalb.z) / uRadius;
   vec2 qb = gl_FragCoord.xy / uAufl;
   vec3 grund = mix(vec3(1.0, 0.86, 0.82), vec3(0.86, 0.84, 1.0), qb.y);
   vec2 pz = fract(css / 26.0 + vec2(0.0, floor(css.x / 26.0) * 0.5)) - 0.5;
@@ -71,8 +74,8 @@ void main() {
   bild = mix(bild, konturF, linie);
   a = max(a, linie);
   // Dampf vor allem
-  vec2 d = dampf(vUv, c0, rUv, t, aspekt);
-  vec2 dRand = dampf(vUv + vec2(0.0012, 0.0), c0, rUv, t, aspekt);
+  vec2 d = dampf(vUv, c0, hB, hH, t, aspekt);
+  vec2 dRand = dampf(vUv + vec2(0.0012, 0.0), c0, hB, hH, t, aspekt);
   float kanteD = clamp(abs(d.x - dRand.x) * 2.0, 0.0, 1.0);
   vec3 dampfF = mix(vec3(1.0), vec3(0.78, 0.84, 0.98), d.y);
   bild = mix(bild, dampfF, d.x * 0.96);
@@ -81,8 +84,8 @@ void main() {
   // Hitzekringel über dem Kopf
   for (int i = 0; i < 3; i++) {
     float fi = float(i);
-    vec2 m = c0 + vec2((fi - 1.0) * 0.35 * rUv / aspekt, rUv * 1.15);
-    vec2 dd = (vUv - m) * vec2(aspekt, 1.0) / rUv;
+    vec2 m = c0 + vec2((fi - 1.0) * 0.45 * hB / aspekt, hH * 1.1);
+    vec2 dd = (vUv - m) * vec2(aspekt, 1.0) / hH;
     float y = dd.y - 0.06 * sin(dd.x * 0.0 + dd.y * 18.0 + t * 6.0 + fi);
     float welle = abs(dd.x - 0.04 * sin(dd.y * 22.0 + t * 8.0 + fi * 2.0));
     float k = (1.0 - smoothstep(0.012, 0.022, welle)) * step(0.0, dd.y) * step(dd.y, 0.32) * step(0.5, fract(t * 0.7 + fi * 0.33));

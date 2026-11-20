@@ -96,28 +96,35 @@ void main() {
     float v;
     vec3 q = (g.p - uMitte) / uRadius;
     int stufe = earleLicht(g.n, g.p, v);
-    // Schuppen: Zylinder um die Hochachse, Reihen versetzt, jede Schuppe ein Bogen nach unten
-    float u = atan(q.z, q.x) / 6.2831853 * 26.0 * uR_groesse;
-    float w = q.y * 7.0 * uR_groesse;
-    float reihe = floor(w);
-    float uu = u + 0.5 * mod(reihe, 2.0);
-    vec2 zelle = vec2(floor(uu), reihe);
-    vec2 f = vec2(fract(uu) - 0.5, fract(w));
-    // Abstand zum Bogen der Schuppe darüber deckt den oberen Teil
-    float r = length(vec2(f.x, (f.y - 1.0) * 1.1));
-    float drin = 1.0 - smoothstep(0.62, 0.66, r);
-    float sichel = smoothstep(0.5, 0.56, r) * (1.0 - smoothstep(0.6, 0.63, r));
-    // Farbe der Schuppe: ihre Stufe, dazu ein Schimmer je Schuppe
+    // Schuppen wie Dachziegel, aus Zellen im Raum (ohne Pole): jede Zelle eine Kugel; wo mehrere liegen, deckt die höhere. So ist
+    // von jeder Schuppe ein Stück mit runder Unterkante zu sehen, auf jeder Form.
+    vec3 x = q * 10.0 * uR_groesse;
+    vec3 ip = floor(x);
+    float besteY = -1e9;
+    vec3 f = vec3(0.0);
+    vec3 zelle = vec3(0.0);
+    float rand = 0.0;
+    for (int kk = -1; kk <= 1; kk++)
+      for (int jj = -1; jj <= 1; jj++)
+        for (int ii = -1; ii <= 1; ii++) {
+          vec3 b = ip + vec3(float(ii), float(jj), float(kk));
+          vec3 c = b + 0.5 + 0.28 * (hash33(b) - 0.5);
+          vec3 d = x - c;
+          float r = length(d);
+          if (r < 1.05 && c.y > besteY) { besteY = c.y; f = d; zelle = b; rand = 1.05 - r; }
+        }
+    // Farbe der Schuppe: ihre Stufe, manche eine Stufe heller
     int s = stufe;
-    float jitter = hash12(zelle);
-    if (jitter > 0.85 && s < 4) s += 1;
+    if (hash13(zelle) > 0.85 && s < 4) s += 1;
     vec3 c = earleStufe(s, uR_palette);
-    // Gold auf jeder dritten Schuppe in der Mitte
-    float gold = step(0.66, hash12(zelle + 9.0)) * (1.0 - smoothstep(0.08, 0.12, length(f - vec2(0.0, 0.42))));
+    // ein heller Bogen innen an der Unterkante (Licht auf dem Rand), außen eine dunkle Fuge
+    float unten = smoothstep(0.15, -0.35, f.y);
+    float bogen = (1.0 - smoothstep(0.08, 0.16, rand)) * smoothstep(0.05, 0.08, rand) * unten;
+    c = mix(c, earleStufe(min(s + 1, 4), uR_palette), bogen * step(1.0, float(s)));
+    c = mix(c, earleStufe(max(s - 2, 0), uR_palette), (1.0 - smoothstep(0.0, 0.05, rand)) * 0.95);
+    // ein Goldpunkt auf jeder vierten Schuppe
+    float gold = step(0.75, hash13(zelle + 9.0)) * (1.0 - smoothstep(0.09, 0.13, length(f - vec3(0.0, -0.3, 0.0))));
     c = mix(c, vec3(0.86, 0.68, 0.28), gold * step(1.5, float(s)));
-    // heller Bogen oben (Licht auf der Kante), dunkle Fuge unten
-    c = mix(c, earleStufe(min(s + 1, 4), uR_palette), sichel * step(1.0, float(s)));
-    c = mix(c, earleStufe(0, uR_palette), (1.0 - drin) * 0.9);
     bild = mix(bild, c, maske);
     a = max(a, maske);
   }

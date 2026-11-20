@@ -42,3 +42,22 @@ Opal fertig (größere, verlaufende Farbflächen, Tiefe mit Parallaxe, Politur).
 Teilchen mit Größe, Licht und Bewegungsunschärfe; Tropfen: die Flüssigkeit als eine Form aus Körper und Tropfen; Horizont: Scheibe als
 glühendes Plasma, doppeltes Bild, kein Scherenschnitt). Danach Feuer, Rauch, Tinte, Glas, Aquarell, Tintenfleck auf denselben
 Qualitätsstand.
+
+## Stand (20.11.2026 nachts)
+
+Gebaut: die Wahl in fünf Gruppen und alle 25 neuen. Neu gedacht und fertig:
+
+- **Opal:** Jedes Korn ist ein schmalbandiger Spiegel (Bragg) und zeigt das Studiolicht aus seiner Spiegelrichtung; kleine Kugeln
+  häufiger als große, drei Lagen Tiefe, Potch dazwischen, Politur.
+- **Ereignishorizont:** jeder Bildpunkt verfolgt seinen Lichtstrahl um eine Masse in der Mitte (Binet-Gleichung); Scheibe mit
+  Filamenten nach Kepler, Doppler (D⁴) und Rotverschiebung; die Form ist der Horizont.
+- **Tropfen:** Honig, Karamell, Kirschsirup oder Chrom; Tropfen als Abstandsfeld (wachsen, schnüren sich ab, fallen), Meniskus zur
+  Form, Licht durch die Flüssigkeit (Beer–Lambert).
+- **Staub:** Goldstatue mit glühenden Rissen; 65 536 Teilchen als Blattgold und Funken, mit Bewegungs- und Tiefenunschärfe und Glühen.
+- **Tiger** aus Phasor-Rauschen (Streifen, die sich gabeln und spitz enden), Leopard und Schlange nachgeschärft.
+- Nachgeschärft: Autolack (satter Lack, feiner Flitter, ruhige Lichtbänder), Haut (sichtbare Poren, Felderung, Sommersprossen, mehr
+  Licht und Schatten), Earle-Schuppen (Dachziegel aus Zellen im Raum, ohne Pole), Sienkiewicz (echte Tuschespritzer, Lasuren, ein
+  roter Fleck, trockene Pinselstriche), Flammenwesen (höhere, spitze Flammen, größere Funken), Dampfwesen (der Dampf steigt aus dem
+  Körper).
+
+Noch nicht auf den neuen Stand gebracht: Feuer, Rauch, Tinte, Flüssigglas, Aquarell, Tintenfleck (siehe „was bleibt“).

@@ -44,9 +44,11 @@ void main() {
   vec2 q = css / max(rPx, 40.0);
   vec2 warp = vec2(fbm2(q * 2.2 + vec2(0.0, -t * 1.1)), fbm2(q * 2.2 + vec2(5.2, -t * 1.3))) - 0.5;
   vec2 uvW = vUv + vec2(warp.x * 0.35, warp.y * 0.15) * rUv;
-  float H = waerme(uvW, rUv * 1.35 * uR_hoehe);
-  float zungen = fbm2(vec2(q.x * 3.2, q.y * 1.4 - t * 2.4)) - 0.5;
-  float f = H * 1.25 + zungen * 0.55 * smoothstep(0.0, 0.5, H) - 0.05;
+  float H = waerme(uvW, rUv * 2.1 * uR_hoehe);
+  float zungen = fbm2(vec2(q.x * 3.4, q.y * 0.85 - t * 2.6)) - 0.5;
+  float grat = 1.0 - abs(fbm2(vec2(q.x * 2.4 + 3.0, q.y * 0.6 - t * 2.0)) * 2.0 - 1.0);
+  zungen += (grat - 0.6) * 0.45;
+  float f = H * 1.3 + zungen * 0.72 * smoothstep(0.0, 0.45, H) - 0.06;
   float aa = max(fwidth(f), 1e-3);
   float s1 = smoothstep(0.26 - aa, 0.26 + aa, f);
   float s2 = smoothstep(0.42 - aa, 0.42 + aa, f);
@@ -92,9 +94,9 @@ void main() {
     float h = hash11(fi * 7.31);
     float alter = fract(t * (0.18 + 0.2 * h) + h * 13.0);
     vec2 p0 = c0 + vec2((hash11(fi * 3.7) - 0.5) * 1.6 * rUv * uAufl.y / uAufl.x, -0.2 * rUv);
-    vec2 p = p0 + vec2(sin(alter * 6.0 + fi) * 0.12 * rUv * uAufl.y / uAufl.x, alter * rUv * 3.2);
+    vec2 p = p0 + vec2(sin(alter * 6.0 + fi) * 0.14 * rUv * uAufl.y / uAufl.x, alter * rUv * 4.0);
     vec2 d = (vUv - p) * uAufl / uDpr;
-    float gr = (3.0 + 4.0 * hash11(fi)) * (1.0 - alter);
+    float gr = (5.0 + 7.0 * hash11(fi)) * (1.0 - alter * 0.8);
     float rt = raute(d, vec2(gr * 0.6, gr * 1.4));
     bild = mix(bild, flammenPalette(4, stil), rt);
     a = max(a, rt);

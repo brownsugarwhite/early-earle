@@ -12,13 +12,13 @@ import { bildVoreinstellung } from '../bildShader';
 
 const FRAGMENT = /* glsl */ `
 float relief(vec3 q) {
-  vec3 vo = voronoi3(q * 260.0);
-  float pore = smoothstep(0.32, 0.0, vo.x) * step(0.35, vo.z);
-  vec3 a = normalize(vec3(1.0, 0.6, 0.2)), b = normalize(vec3(-0.5, 1.0, 0.4));
-  float l1 = abs(fract(dot(q, a) * 70.0 + 0.4 * snoise(q * 20.0)) - 0.5);
-  float l2 = abs(fract(dot(q, b) * 70.0 + 0.4 * snoise(q * 20.0 + 3.0)) - 0.5);
-  float felder = smoothstep(0.06, 0.0, min(l1, l2));
-  return -pore * 0.7 - felder * 0.25 + 0.15 * snoise(q * 40.0);
+  vec3 vo = voronoi3(q * 85.0);
+  float pore = smoothstep(0.3, 0.0, vo.x) * step(0.3, vo.z);
+  // Hautfelderung: feine Furchen als Grate eines Rauschens, in zwei Richtungen gestreckt (keine Gitterlinien)
+  float f1 = 1.0 - abs(snoise(vec3(q.x * 30.0, q.y * 12.0, q.z * 30.0)));
+  float f2 = 1.0 - abs(snoise(vec3(q.x * 12.0 + 5.0, q.y * 30.0, q.z * 12.0)));
+  float felder = smoothstep(0.88, 0.98, max(f1, f2));
+  return -pore * 0.9 - felder * 0.35 + 0.18 * snoise(q * 16.0);
 }
 float ggxD(vec3 n, vec3 h, float r) { return ggx(max(dot(n, h), 0.0), r); }
 vec3 kanalHuelle(float ndl, vec3 weite) { return clamp((vec3(ndl) + weite) / (1.0 + weite), 0.0, 1.0) * clamp((vec3(ndl) + weite) / (1.0 + weite), 0.0, 1.0); }
@@ -39,25 +39,27 @@ void main() {
     vec3 lx = texture(tLage, vUv + vec2(px.x, 0.0)).xyz, ly = texture(tLage, vUv + vec2(0.0, px.y)).xyz;
     float kr = clamp((length(nx - g.n) / max(length(lx - g.p), 1e-4) + length(ny - g.n) / max(length(ly - g.p), 1e-4)) * 0.5 * uRadius * 0.15, 0.0, 1.0);
     // feines Relief als Normale
-    float e = 0.0015;
+    float e = 0.003;
     float h0 = relief(q);
     vec3 gr = vec3(relief(q + vec3(e, 0.0, 0.0)) - h0, relief(q + vec3(0.0, e, 0.0)) - h0, relief(q + vec3(0.0, 0.0, e)) - h0) / e;
     gr -= g.n * dot(gr, g.n);
-    vec3 nf = normalize(g.n - gr * 0.0009 * uR_poren);
+    vec3 nf = normalize(g.n - gr * 0.0022 * uR_poren);
     // Farbe
-    vec3 hell = vec3(0.92, 0.66, 0.54), dunkel = vec3(0.34, 0.19, 0.12);
+    vec3 hell = vec3(0.86, 0.6, 0.5), dunkel = vec3(0.34, 0.19, 0.12);
     vec3 albedo = srgbZuLin(mix(hell, dunkel, uR_ton));
     float rot = smoothstep(0.35, 0.75, fbm3(q * 2.5)) * uR_roete;
     albedo *= mix(vec3(1.0), vec3(1.12, 0.84, 0.82), rot);
-    albedo *= 1.0 - 0.12 * smoothstep(0.55, 0.8, fbm3(q * 9.0 + 4.0));
+    albedo *= 1.0 - 0.14 * smoothstep(0.5, 0.8, fbm3(q * 7.0 + 4.0));
+    vec3 sp = voronoi3(q * 38.0 + 11.0);
+    albedo = mix(albedo, albedo * vec3(0.72, 0.6, 0.52), (1.0 - smoothstep(0.12, 0.2, sp.x)) * step(0.82, sp.z) * 0.6);
     // Lichter
     vec3 L1 = ausSicht(normalize(vec3(-0.55, 0.55, 0.62)));
     vec3 L2 = ausSicht(normalize(vec3(0.75, 0.25, -0.62)));
     vec3 L3 = ausSicht(normalize(vec3(0.3, -0.2, 0.93)));
-    vec3 weite = vec3(0.55, 0.22, 0.12) * (0.5 + kr);
-    vec3 diff = kanalHuelle(dot(g.n, L1), weite) * vec3(1.0, 0.97, 0.93) * 2.4;
-    diff += kanalHuelle(dot(g.n, L3), weite) * vec3(0.75, 0.82, 1.0) * 0.35;
-    diff += vec3(0.08, 0.075, 0.08);
+    vec3 weite = vec3(0.42, 0.16, 0.09) * (0.5 + kr);
+    vec3 diff = kanalHuelle(dot(g.n, L1), weite) * vec3(1.0, 0.96, 0.9) * 2.5;
+    diff += kanalHuelle(dot(g.n, L3), weite) * vec3(0.75, 0.82, 1.0) * 0.14;
+    diff += vec3(0.035, 0.032, 0.036);
     // Durchlicht aus der Dicke
     vec4 hh = texture(tHinten, vUv);
     float dicke = hh.w > g.z ? (hh.w - g.z) / uRadius : 1.0;
@@ -71,15 +73,15 @@ void main() {
       vec3 H = normalize(L + V);
       float ndl = max(dot(nf, L), 0.0);
       float F = fresnelS(max(dot(H, V), 0.0), 0.028);
-      float spec = (0.85 * ggxD(nf, H, 0.32) + 0.15 * ggxD(nf, H, 0.62)) * F * ndl;
-      c += vec3(1.0) * spec * st * 0.25 * porenGlanz;
+      float spec = (0.8 * ggxD(nf, H, 0.36) + 0.2 * ggxD(nf, H, 0.6)) * F * ndl;
+      c += vec3(1.0) * spec * st * 0.6 * porenGlanz;
     }
     // Flaum am Rand
     c += vec3(0.85, 0.8, 0.78) * pow(1.0 - max(dot(g.n, V), 0.0), 4.0) * 0.12;
     bild = mix(bild, c, maske);
     a = max(a, maske);
   }
-  vec3 aus = linZuSrgb(aces(bild * 1.05));
+  vec3 aus = linZuSrgb(aces(bild * 0.9));
   farbe = vec4(aus * a, a);
 }
 `;
