@@ -57,6 +57,7 @@ export class ShaderHaut {
       if (this.laufId) this.kern.zieleFreigeben(`${this.laufId}:`);
       this.lauf = v.bauen(this.kern);
       this.laufId = v.id;
+      delete this.mess.info;
       this.t0 = t;
       this.kern.bildNr = 0;
     }

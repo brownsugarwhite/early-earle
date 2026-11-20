@@ -14,6 +14,8 @@ import { INDRAJAL } from './indrajal';
 import { MARKER } from './marker';
 import { MULTIPLANE } from './multiplane';
 import { PUNK } from './punk';
+import { RAUCH } from './rauch';
+import { TINTE } from './tinte';
 import { TINTENFLECK } from './tintenfleck';
 
-export const VOREINSTELLUNGEN: Voreinstellung[] = [COMICDRUCK, AQUARELL, INDRAJAL, PUNK, MARKER, TINTENFLECK, DAVINCI, GLITCH, ERDE42, MULTIPLANE, EINE_LINIE, FEUER];
+export const VOREINSTELLUNGEN: Voreinstellung[] = [COMICDRUCK, AQUARELL, INDRAJAL, PUNK, MARKER, TINTENFLECK, DAVINCI, GLITCH, ERDE42, MULTIPLANE, EINE_LINIE, FEUER, TINTE, RAUCH];

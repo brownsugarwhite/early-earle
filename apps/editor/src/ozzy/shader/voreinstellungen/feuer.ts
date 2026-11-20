@@ -53,7 +53,7 @@ void main() {
   vec4 alt = texture(tAlt, vUv);
   float q = quelleBei(vUv) * uZuendung;
   float flackern = 0.4 + 1.2 * noise2(vUv * vec2(180.0, 40.0) + vec2(0.0, -uZeit * 6.0));
-  float T = alt.r * exp(-0.85 * uDt) + q * uDt * 20.0 * flackern;
+  float T = alt.r * exp(-1.15 * uDt) + q * uDt * 9.0 * flackern;
   float rauch = alt.g * exp(-0.6 * uDt) + q * uDt * 0.9 + alt.r * uDt * 0.12;
   farbe = vec4(min(T, 4.0), min(rauch, 3.0), 0.0, 1.0);
 }
@@ -86,7 +86,7 @@ ${BRAND}
 vec3 feuerFarbe(float T) {
   // Temperatur des Felds (0 … 4) in Kelvin und Helligkeit
   float K = 950.0 + 650.0 * clamp(T, 0.0, 2.4);
-  float hell = pow(clamp(T, 0.0, 4.0), 1.25) * 2.4;
+  float hell = pow(clamp(T, 0.0, 4.0), 1.35) * 1.7;
   return schwarzkoerper(K) * hell;
 }
 /** die Fläche der Form an einer Stelle: Papier, gebräunt, verkohlt, Glut */
