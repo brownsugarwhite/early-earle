@@ -94,18 +94,21 @@ void main() {
   // Papier (kalt gepresst), auf der Bühne mit senkrechten Streifen in der Stimmung
   vec3 bild = vec3(0.995, 0.99, 0.975) * korn;
   if (uBuehne > 0.5) {
-    float streifen = fbm2(vec2(cssPx.x * 0.045, cssPx.y * 0.0025 + t * 0.01));
-    float wolke = fbm2(cssPx * 0.0035 + vec2(t * 0.008, 0.0));
-    bild = lasur(bild, pB, 0.85 * smoothstep(0.2, 0.7, wolke) + 0.4 * smoothstep(0.45, 0.7, streifen));
-    bild = lasur(bild, p2, 0.45 * smoothstep(0.58, 0.8, streifen) * smoothstep(0.25, 0.7, wolke));
-    bild = lasur(bild, p1, 0.5 * smoothstep(0.5, 0.75, fbm2(cssPx * 0.006 + 40.0)));
+    float streifen = fbm2(vec2(cssPx.x * 0.011, cssPx.y * 0.0018 + t * 0.006));
+    float wolke = fbm2(cssPx * 0.0032 + vec2(t * 0.006, 0.0));
+    float bahn = smoothstep(0.5, 0.56, streifen);
+    float bahnRand = smoothstep(0.5, 0.53, streifen) * (1.0 - smoothstep(0.53, 0.6, streifen));
+    bild = lasur(bild, pB, 0.8 * smoothstep(0.2, 0.7, wolke) * (0.85 + 0.3 * tal));
+    bild = lasur(bild, p2, (0.38 * bahn + 0.3 * bahnRand) * smoothstep(0.2, 0.6, wolke) * (0.85 + 0.3 * tal));
+    bild = lasur(bild, p1, 0.4 * smoothstep(0.5, 0.75, fbm2(cssPx * 0.006 + 40.0)));
   }
   // Lasuren übereinander, mit Granulation in den Tälern des Papiers
-  float gran = 1.0 + 0.55 * tal;
-  bild = lasur(bild, p1, (0.85 + 0.3 * rand) * innen * gran + 0.5 * saum1);
-  bild = lasur(bild, p1, 0.45 * innen * smoothstep(0.35, 0.75, fbm2(cssPx * 0.02 + t * 0.02)));
-  bild = lasur(bild, p2, (0.75 * c2 + 0.6 * rand2) * gran * (1.0 - 0.6 * bluete));
-  bild = lasur(bild, p3, (0.8 * c3 + 0.55 * rand3) * gran * (1.0 - 0.5 * bluete));
+  float gran = 1.0 + 0.9 * tal;
+  bild = lasur(bild, p1, (0.95 + 0.3 * rand) * innen * gran + 0.6 * saum1);
+  bild = lasur(bild, p1, 0.55 * innen * smoothstep(0.35, 0.75, fbm2(cssPx * 0.02 + t * 0.02)));
+  bild = lasur(bild, pB * vec3(1.0, 0.85, 0.7), 0.5 * innen * smoothstep(0.45, 0.7, fbm2(cssPx * 0.008 + 17.0)) * smoothstep(0.0, 0.4, v));
+  bild = lasur(bild, p2, (0.95 * c2 + 0.9 * rand2) * gran * (1.0 - 0.6 * bluete));
+  bild = lasur(bild, p3, (0.95 * c3 + 0.8 * rand3) * gran * (1.0 - 0.5 * bluete));
   bild = lasur(bild, p2, 0.45 * bluetenRand);
   bild = lasur(bild, p2, 0.75 * tropfen);
   // Vorzeichnung: Bleistift, etwas daneben, auf Zweiern

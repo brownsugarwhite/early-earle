@@ -14,15 +14,58 @@ const FRAGMENT = /* glsl */ `
 const vec3 TINTE = vec3(0.025, 0.025, 0.035);
 const vec3 PAPIER = vec3(0.975, 0.97, 0.955);
 
-/** Fleck an einer Lage der Form: Abstand zum Rand (< 0 innen), Kennung */
+/** Fleck an einer Lage der Form: Abstand zum Rand (< 0 innen), Kennung; zwei Lagen, große und kleine */
 vec2 fleck(vec3 p, float t) {
-  vec3 q = (p - uMitte) / uRadius * 2.3 * uR_dichte;
+  vec3 q = (p - uMitte) / uRadius * 3.4 * uR_dichte;
   vec3 vo = voronoi3(q);
-  float r = 0.22 + 0.24 * hash11(vo.z * 13.0) + 0.07 * sin(t * (0.4 + vo.z) + vo.z * 30.0) * uR_atmen;
-  r *= step(0.22, hash11(vo.z * 7.0 + 1.0));
+  float r = 0.16 + 0.26 * hash11(vo.z * 13.0) + 0.06 * sin(t * (0.4 + vo.z) + vo.z * 30.0) * uR_atmen;
+  r *= step(0.18, hash11(vo.z * 7.0 + 1.0));
   float rand = vo.x + 0.07 * snoise(q * 3.5 + 2.0) + 0.03 * snoise(q * 9.0);
-  return vec2(rand - r, vo.z);
+  vec2 a = vec2(rand - r, vo.z);
+  vec3 q2 = q * 2.6 + 19.0;
+  vec3 vo2 = voronoi3(q2);
+  float r2 = (0.12 + 0.18 * hash11(vo2.z * 17.0)) * step(0.45, hash11(vo2.z * 5.0 + 2.0));
+  vec2 b = vec2((vo2.x + 0.05 * snoise(q2 * 2.0) - r2) / 2.6, vo2.z + 0.5);
+  return a.x < b.x ? a : b;
 }
+/** Tusche, die aufschlägt: Klecks mit weichen Beulen, Satellitentropfen, Sprühnebel (in Bildpunkten) */
+float spritzer(vec2 p, float seed, float dichte) {
+  const float zell = 240.0;
+  vec2 i = floor(p / zell);
+  float best = 0.0;
+  for (int y = -1; y <= 1; y++)
+    for (int x = -1; x <= 1; x++) {
+      vec2 z = i + vec2(float(x), float(y));
+      float h = hash12(z + seed);
+      if (h > dichte) continue;
+      vec2 c = (z + 0.25 + 0.5 * hash22(z + seed * 3.1)) * zell;
+      vec2 d = p - c;
+      float dl = length(d);
+      float r = zell * (0.025 + 0.13 * pow(hash12(z + 7.0 + seed), 2.0));
+      if (dl > r * 5.0) continue;
+      float w = atan(d.y, d.x);
+      vec2 ws = vec2(cos(w), sin(w));
+      float beule = 0.16 * snoise(vec3(ws * 1.3, h * 17.0)) + 0.07 * snoise(vec3(ws * 3.5, h * 5.0));
+      float rr = r * (1.0 + beule);
+      float klecks = 1.0 - smoothstep(rr - 0.9, rr + 0.9, dl);
+      float sat = 0.0;
+      for (int k = 0; k < 14; k++) {
+        float fk = float(k);
+        float hk = hash11(h * 91.0 + fk * 7.13);
+        float wk = hash11(h * 37.0 + fk * 3.7) * 6.2832;
+        float ak = r * (1.15 + 2.8 * hk * hk);
+        float sk = r * (0.17 - 0.038 * (ak / r)) * (0.6 + 0.6 * hash11(fk + h * 13.0));
+        vec2 rk = vec2(cos(wk), sin(wk));
+        vec2 dk = d - rk * ak;
+        vec2 lok = vec2(dot(dk, rk) / (1.0 + 1.6 * hk), dot(dk, vec2(-rk.y, rk.x)));
+        sat = max(sat, (1.0 - smoothstep(sk - 0.7, sk + 0.7, length(lok))) * step(0.35, sk));
+      }
+      float nebel = step(1.0 - smoothstep(r * 4.5, r * 1.0, dl) * 0.1, hash12(floor(p / 1.6) + seed * 17.0 + h * 3.0));
+      best = max(best, max(max(klecks, sat), nebel));
+    }
+  return best;
+}
+
 
 /** die Welt hinter dem Loch: Schleier und Sterne, mit Tiefe */
 vec3 jenseits(vec2 p, float id, float t) {
@@ -86,17 +129,24 @@ void main() {
   // Bühne: Spritzer und schwebende Portale
   float a = 1.0;
   if (uBuehne > 0.5) {
-    vec3 bv = voronoi2(cssPx / 140.0);
-    float portal = step(0.86, bv.z) * smoothstep(0.24, 0.18, bv.x + 0.05 * fbm2(cssPx * 0.08));
-    // Spritzer in Gruppen um wenige Mitten, groß und klein
-    vec3 sv = voronoi2(cssPx / 260.0 + 11.0);
-    float gruppe = step(0.62, sv.z) * smoothstep(0.55, 0.1, sv.x);
-    vec2 zelle = floor(cssPx / 7.0);
-    float punktR = 0.6 + 2.6 * pow(hash12(zelle + 3.0), 3.0);
-    float spritzer = gruppe * step(0.9, hash12(zelle)) * step(length(fract(cssPx / 7.0) * 7.0 - 3.5 - (hash22(zelle) - 0.5) * 3.0), punktR);
+    vec3 bv = voronoi2(cssPx / 170.0);
+    float pr = bv.x + 0.05 * fbm2(cssPx * 0.08);
+    float portal = step(0.88, bv.z) * smoothstep(0.26, 0.2, pr);
+    float portalRand = step(0.88, bv.z) * smoothstep(0.24, 0.215, pr) * (1.0 - smoothstep(0.215, 0.19, pr));
+    float spr = spritzer(cssPx, 2.0, 0.16);
+    // Bleistift: ein paar lange Konstruktionsstriche
+    float striche = 0.0;
+    for (int i = 0; i < 5; i++) {
+      float fi = float(i);
+      vec2 rr = vec2(cos(fi * 1.9 + 0.4), sin(fi * 1.9 + 0.4));
+      float abst = abs(dot(cssPx - uAufl / uDpr * 0.5, vec2(-rr.y, rr.x)) - (hash11(fi * 3.3) - 0.5) * 700.0);
+      striche = max(striche, (1.0 - smoothstep(0.3, 0.9, abst)) * (0.25 + 0.35 * noise2(cssPx * 0.05 + fi)));
+    }
     vec3 grund = PAPIER * papier(cssPx * 1.2);
-    grund = mix(grund, TINTE + jenseits(cssPx * 0.7, bv.z, t) * 0.8, portal);
-    grund = mix(grund, TINTE, spritzer * 0.85);
+    grund = mix(grund, vec3(0.35, 0.35, 0.38), striche * 0.5);
+    grund = mix(grund, TINTE + jenseits(cssPx * 0.7, bv.z, t) * 0.9, portal);
+    grund += vec3(0.55, 0.85, 1.0) * portalRand * 0.45;
+    grund = mix(grund, TINTE, spr * 0.9);
     bild = mix(grund, bild, max(maske, linie));
   } else {
     a = max(maske, linie);

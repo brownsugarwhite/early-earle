@@ -3,9 +3,10 @@
 Alle 45 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/2026-11-20-runde-2-*.png`). Was mir beim Ansehen
 aufgefallen ist, für einen Feinschlifflauf (Florians Auge entscheidet):
 
-1. **Noch auf dem Stand von Runde 1:** Feuer, Rauch, Tinte, Flüssigglas, Aquarell, Tintenfleck. Florian: „halten den
-   qualitätsstandard nicht ganz“. Feuer wirkt im Zyklus mal zu stark, mal zu schwach (Funken als echte Teilchen wie bei Staub wären
-   schöner); Tinte noch pastellig; Aquarell auf der Form blass; Tintenfleck mit wenigen Flecken auf der Form.
+1. **Die sechs freien aus Runde 1** sind nachgeschärft (Feuer, Rauch, Tinte, Flüssigglas, Aquarell, Tintenfleck). Es bleibt: Im
+   Feuer zeigen sich am Rand des Rauchs runde Ballen; im Rauch liegt am Ohr eine dunkle Sichel (dort ist der Körper dünn); die Tinte
+   sammelt sich mit der Zeit unten (sie sinkt) und wird dort einförmig; im Glas ist der Austritt eine Näherung (Linse), nicht der
+   echte Weg durch die Form; die Bleistiftlinien bei Tintenfleck laufen durch das ganze Bild.
 2. **Eine Linie:** braucht nach der Wahl rund 15 Sekunden, bis sie die Form füllt; Kontrast weicher als die Vorlage.
 3. **Ereignishorizont:** In Ozzys Standardblick (von schräg oben) ist der Bogen der Rückseite über der Form nur leicht gebogen; wie in
    „Interstellar“ wirkt es erst flach von der Seite. Der Photonenring ist eine feine Linie um den Umriss.

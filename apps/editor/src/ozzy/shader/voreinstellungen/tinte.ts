@@ -44,11 +44,11 @@ void main() {
     vec2 r; float an;
     vec2 p = duese(i, uZeit, r, an);
     vec2 d = (vUv - p) * vec2(uAufl.x / uAufl.y, 1.0);
-    float g = exp(-dot(d, d) / 0.00018);
+    float g = exp(-dot(d, d) / 0.00006);
     vec3 farbstoff = i == 0 ? vec3(1.0, 0.0, 0.0) : (i == 1 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0));
     add += farbstoff * g * an;
   }
-  farbe = vec4(min(alt.rgb + add * uDt * 6.0 * uMenge, vec3(2.5)), 1.0);
+  farbe = vec4(min(alt.rgb + add * uDt * 22.0 * uMenge, vec3(3.0)), 1.0);
 }
 `;
 
@@ -60,6 +60,7 @@ uniform sampler2D tAlt;
 uniform float uDt;
 uniform mat4 uVorherVP;
 uniform float uSchwappen;
+uniform sampler2D tTinteAlt;
 ${DUESEN}
 out vec4 farbe;
 void main() {
@@ -69,9 +70,12 @@ void main() {
     vec2 r; float an;
     vec2 p = duese(i, uZeit, r, an);
     vec2 d = (vUv - p) * vec2(uAufl.x / uAufl.y, 1.0);
-    float g = exp(-dot(d, d) / 0.00035);
-    v += r * g * an * uDt * 2600.0;
+    float g = exp(-dot(d, d) / 0.00012);
+    v += r * g * an * uDt * 3600.0;
   }
+  // Tinte ist schwerer als Wasser: sie sinkt in Fahnen mit Pilzköpfen
+  vec3 tinteHier = texture(tTinteAlt, vUv).rgb;
+  v.y -= (tinteHier.r + tinteHier.g + tinteHier.b) * uDt * 150.0;
   // die Wand bewegt sich: das Wasser bleibt zurück
   vec4 n = texture(tNormal, vUv);
   if (n.a > 0.5 && uDt > 0.0) {
@@ -149,12 +153,12 @@ class Tinte implements ShaderLauf {
 
   constructor(k: ShaderKern) {
     this.daten = new GDaten(k);
-    this.fluss = new Stroemung(k, 'tinte:fluss', { skala: 0.25, farbSkala: 0.5 });
+    this.fluss = new Stroemung(k, 'tinte:fluss', { skala: 0.33, farbSkala: 0.75 });
     this.maske = new WeicheMaske(k);
     this.weich = new WeicheMaske(k);
     const g = { tNormal: { value: null }, tLage: { value: null } };
     this.qFarbe = k.flaecheProgramm(QUELLE_FARBE, { ...g, tAlt: { value: null }, uDt: { value: 0 }, uMenge: { value: 1 } });
-    this.qGeschw = k.flaecheProgramm(QUELLE_GESCHW, { ...g, tAlt: { value: null }, uDt: { value: 0 }, uVorherVP: { value: new Matrix4() }, uSchwappen: { value: 1 } });
+    this.qGeschw = k.flaecheProgramm(QUELLE_GESCHW, { ...g, tAlt: { value: null }, tTinteAlt: { value: null }, uDt: { value: 0 }, uVorherVP: { value: new Matrix4() }, uSchwappen: { value: 1 } });
     this.ende = k.flaecheProgramm(ENDE, { ...g, tHinten: { value: null }, tWeich: { value: null }, tTinte: { value: null }, uDichte: { value: 1 } });
   }
 
@@ -173,8 +177,9 @@ class Tinte implements ShaderLauf {
     this.qGeschw.uniforms.uDt!.value = dt;
     (this.qGeschw.uniforms.uVorherVP!.value as Matrix4).copy(k.vorherViewProj);
     this.qGeschw.uniforms.uSchwappen!.value = w.regler.schwappen ?? 1;
+    this.qGeschw.uniforms.tTinteAlt!.value = this.fluss.farbe().lesen.texture;
     this.fluss.einbringen('geschw', this.qGeschw);
-    this.fluss.schritt({ dt, wirbel: 14 * (w.regler.wirbel ?? 1), druckSchritte: 20, geschwAbklingen: 0.12, farbeAbklingen: 0.035, frei });
+    this.fluss.schritt({ dt, wirbel: 18 * (w.regler.wirbel ?? 1), druckSchritte: 20, geschwAbklingen: 0.12, farbeAbklingen: 0.012, frei });
     const u = this.ende.uniforms;
     u.tHinten!.value = hinten;
     u.tWeich!.value = this.weich.rechnen(k, d.normal, 'tinte:schatten', 0.25, 14);

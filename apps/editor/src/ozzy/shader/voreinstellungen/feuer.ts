@@ -40,6 +40,9 @@ float quelleBei(vec2 uv) {
   vec3 p = texture(tLage, uv).xyz;
   float f = brandBei(p);
   float q = smoothstep(0.04, 0.0, abs(f));
+  // die Front brennt in einzelnen Zungen, die wandern
+  float zunge = snoise(vec3((p - uMitte) / uRadius * 5.5 + vec3(0.0, -uZeit * 1.3, uZeit * 0.4)));
+  q *= 0.15 + 1.3 * smoothstep(-0.05, 0.6, zunge);
   if (f < 0.0) {
     vec4 h = texture(tHinten, uv);
     if (h.w > 0.0) {
@@ -53,8 +56,8 @@ void main() {
   vec4 alt = texture(tAlt, vUv);
   float q = quelleBei(vUv) * uZuendung;
   float flackern = 0.4 + 1.2 * noise2(vUv * vec2(180.0, 40.0) + vec2(0.0, -uZeit * 6.0));
-  float T = alt.r * exp(-1.15 * uDt) + q * uDt * 9.0 * flackern;
-  float rauch = alt.g * exp(-0.6 * uDt) + q * uDt * 0.9 + alt.r * uDt * 0.12;
+  float T = alt.r * exp(-0.6 * uDt) + q * uDt * 7.0 * flackern;
+  float rauch = alt.g * exp(-0.85 * uDt) + q * uDt * 0.45 + alt.r * uDt * 0.16;
   farbe = vec4(min(T, 4.0), min(rauch, 3.0), 0.0, 1.0);
 }
 `;
@@ -85,8 +88,8 @@ uniform float uPruef;
 ${BRAND}
 vec3 feuerFarbe(float T) {
   // Temperatur des Felds (0 … 4) in Kelvin und Helligkeit
-  float K = 950.0 + 650.0 * clamp(T, 0.0, 2.4);
-  float hell = pow(clamp(T, 0.0, 4.0), 1.35) * 1.7;
+  float K = 900.0 + 820.0 * clamp(T, 0.0, 2.0);
+  float hell = pow(clamp(T, 0.0, 3.0), 1.75) * 1.25;
   return schwarzkoerper(K) * hell;
 }
 /** die Fläche der Form an einer Stelle: Papier, gebräunt, verkohlt, Glut */
@@ -161,12 +164,38 @@ void main() {
   }
   // Rauch dunkelt ab, Flammen leuchten
   float rauch = clamp(feuer.g, 0.0, 3.0);
-  bild *= exp(-rauch * 0.35);
+  vec3 rauchFarbe = vec3(0.075, 0.068, 0.062) + vec3(0.5, 0.2, 0.06) * schein * 0.02;
+  bild = mix(bild, rauchFarbe, 1.0 - exp(-rauch * 0.5));
   vec3 flamme = feuerFarbe(feuer.r) * uFeuerStaerke;
-  // Funken: kurze helle Punkte, wo es heiß ist
-  float funke = step(0.997, hash12(floor(cssPx / 2.0) + floor(uZeit * 30.0))) * smoothstep(0.3, 1.2, feuer.r);
-  flamme += vec3(3.0, 1.6, 0.6) * funke;
+  // Funken: steigen aus dem Feuer, kurze Striche in Bewegungsrichtung (nur wo es an ihrem Ursprung brennt)
+  float aspekt = uAufl.x / uAufl.y;
+  vec2 c0 = insBild(uMitte);
+  float rUv = length(insBild(uMitte + (uViewInv * vec4(0.0, 1.0, 0.0, 0.0)).xyz * uRadius) - c0);
+  for (int i = 0; i < 44; i++) {
+    float fi = float(i);
+    float h = hash11(fi * 3.71 + 0.2);
+    float per = 1.3 + 1.5 * hash11(fi * 1.3);
+    float zyk = floor(uZeit / per + h * 5.0);
+    float alter = fract(uZeit / per + h * 5.0);
+    vec2 start = c0 + vec2((hash11(fi * 7.1 + zyk) - 0.5) * 1.3 * rUv / aspekt, (hash11(fi * 2.3 + zyk * 1.7) - 0.6) * 1.3 * rUv);
+    float heiss = texture(tFeuer, start).r;
+    if (heiss < 0.15) continue;
+    float wx = sin(alter * 7.0 + fi) * 0.05 * rUv / aspekt;
+    vec2 pos = start + vec2(wx, (0.9 * alter * alter + 0.45 * alter) * rUv);
+    vec2 vel = vec2(cos(alter * 7.0 + fi) * 0.35 * rUv / aspekt, (1.8 * alter + 0.45) * rUv);
+    vec2 pa = (vUv - pos) * vec2(aspekt, 1.0);
+    vec2 ba = -vel * 0.03 * vec2(aspekt, 1.0);
+    float tt = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-9), 0.0, 1.0);
+    float dpx = length(pa - ba * tt) * uAufl.y / uDpr;
+    float s = (1.0 - smoothstep(0.5, 1.4, dpx)) * (1.0 - tt * 0.75) * (1.0 - alter) * smoothstep(0.15, 0.5, heiss);
+    flamme += schwarzkoerper(mix(2300.0, 1150.0, alter)) * s * 5.0;
+  }
   vec3 farbeLin = bild + flamme;
+  if (uPruef > 1.5) {
+    float fq = g.a > 0.5 ? smoothstep(0.04, 0.0, abs(brandBei(g.p))) : 0.0;
+    farbe = vec4(fq, clamp(feuer.r, 0.0, 1.0), 0.0, 1.0);
+    return;
+  }
   if (uPruef > 0.5) {
     vec2 v = texture(tGeschw, vUv).xy;
     farbe = vec4(clamp(-v.y / 200.0, 0.0, 1.0), clamp(v.y / 200.0, 0.0, 1.0), clamp(feuer.r, 0.0, 1.0) * 0.5, 1.0);
@@ -193,18 +222,18 @@ class Feuer implements ShaderLauf {
 
   constructor(k: ShaderKern) {
     this.daten = new GDaten(k);
-    this.fluss = new Stroemung(k, 'feuer:fluss', { skala: 0.25, farbSkala: 0.33 });
+    this.fluss = new Stroemung(k, 'feuer:fluss', { skala: 0.33, farbSkala: 0.5 });
     const g = { tNormal: { value: null }, tLage: { value: null }, tHinten: { value: null }, uBrand: { value: 0 } };
     this.qFarbe = k.flaecheProgramm(QUELLE_FARBE, { ...g, tAlt: { value: null }, uZuendung: { value: 1 }, uDt: { value: 0 } });
     this.qGeschw = k.flaecheProgramm(QUELLE_GESCHW, { tAlt: { value: null }, tFeuer: { value: null }, uDt: { value: 0 } });
-    this.ende = k.flaecheProgramm(ENDE, { ...g, tFeuer: { value: null }, tWeich: { value: null }, uWaechst: { value: 0 }, uFeuerStaerke: { value: 1 }, tGeschw: { value: null }, uPruef: { value: new URLSearchParams(location.search).get('feuerPruef') === '1' ? 1 : 0 } });
+    this.ende = k.flaecheProgramm(ENDE, { ...g, tFeuer: { value: null }, tWeich: { value: null }, uWaechst: { value: 0 }, uFeuerStaerke: { value: 1 }, tGeschw: { value: null }, uPruef: { value: Number(new URLSearchParams(location.search).get('feuerPruef') ?? 0) } });
   }
 
-  /** der Lauf des Brands: 10 s brennen, 1 s Asche, 3,5 s nachwachsen, 1,5 s Ruhe (mal Tempo) */
+  /** der Lauf des Brands: 10 s gleichmäßig brennen (die Spitze glimmt von Anfang an), 1 s Asche, 3,5 s nachwachsen, 1,5 s Ruhe (mal Tempo) */
   private lauf(t: number): { brand: number; zuendung: number; waechst: number } {
     const T = t % 16;
     const ein = (x: number): number => x * x * (3 - 2 * x);
-    if (T < 10) return { brand: -0.05 + 1.17 * ein(T / 10), zuendung: 1, waechst: 0 };
+    if (T < 10) return { brand: 0.08 + 1.04 * (T / 10), zuendung: 1, waechst: 0 };
     if (T < 11) return { brand: 1.12, zuendung: 0.4, waechst: 0 };
     if (T < 14.5) return { brand: 1.12 - 1.17 * ein((T - 11) / 3.5), zuendung: 0, waechst: 1 };
     return { brand: -0.05, zuendung: 0, waechst: 0 };
@@ -228,7 +257,7 @@ class Feuer implements ShaderLauf {
     this.qGeschw.uniforms.uDt!.value = dt;
     this.qGeschw.uniforms.tFeuer!.value = this.fluss.farbe().lesen.texture;
     this.fluss.einbringen('geschw', this.qGeschw);
-    this.fluss.schritt({ dt, wirbel: 26 * (w.regler.wirbel ?? 1), druckSchritte: 18, geschwAbklingen: 0.25, farbeAbklingen: 0, auftrieb: [120, 5] });
+    this.fluss.schritt({ dt, wirbel: 13 * (w.regler.wirbel ?? 1), druckSchritte: 18, geschwAbklingen: 0.25, farbeAbklingen: 0, auftrieb: [420, -40] });
     this.ende.uniforms.tFeuer!.value = this.fluss.farbe().lesen.texture;
     this.ende.uniforms.tGeschw!.value = this.fluss.geschw().lesen.texture;
     this.ende.uniforms.uWaechst!.value = l.waechst;

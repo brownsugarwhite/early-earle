@@ -19,8 +19,9 @@ float rauchDichte(vec3 p) {
   float t = uZeit * uSteigen;
   vec3 w = q * 1.6 + vec3(0.0, -t * 0.45, t * 0.08);
   w += 0.35 * vec3(snoise(w * 0.9 + 7.0), snoise(w * 0.9 + 13.0), snoise(w * 0.9 + 21.0));
-  float n = fbm3n(w * 1.5, 4);
-  return clamp(n * 1.9 + 0.32, 0.0, 1.6);
+  float n = fbm3n(w * 1.5, 5);
+  float ballen = smoothstep(-0.12, 0.42, n);
+  return ballen * ballen * 1.6;
 }
 `;
 
@@ -39,7 +40,7 @@ void main() {
   if (g.a < 0.5) { farbe = vec4(0.0); return; }
   vec4 h = texture(tHinten, vUv);
   vec3 a = g.p;
-  vec3 b = h.w > g.z ? lageAusTiefe(vUv, h.w) : a + blickDurch(vUv) * uRadius * 0.3;
+  vec3 b = h.w > g.z ? lageAusTiefe(vUv, h.w) : a + blickDurch(vUv) * uRadius * 0.015;
   float lang = length(b - a);
   vec3 dir = (b - a) / max(lang, 1e-4);
   const int N = 28;
@@ -61,10 +62,13 @@ void main() {
     // Selbstschatten zum Gegenlicht
     float zumLicht = 0.0;
     for (int j = 1; j <= 3; j++) zumLicht += rauchDichte(p + Lg * uRadius * 0.12 * float(j));
-    float tl = exp(-zumLicht * 0.55 * uDichteMal);
-    vec3 gegen = vec3(1.0, 0.72, 0.42) * 9.0 * hg(c1, 0.55) * tl;
-    vec3 vorn = vec3(0.45, 0.55, 0.75) * 0.9 * hg(c2, 0.2) * (0.35 + 0.65 * tl);
-    vec3 umgebung = vec3(0.04, 0.05, 0.08);
+    float tl = exp(-zumLicht * 0.9 * uDichteMal);
+    float zumVorn = 0.0;
+    for (int j = 1; j <= 3; j++) zumVorn += rauchDichte(p + Lv * uRadius * 0.1 * float(j));
+    float tv = exp(-zumVorn * 0.8 * uDichteMal);
+    vec3 gegen = vec3(1.0, 0.72, 0.42) * 10.0 * hg(c1, 0.6) * tl;
+    vec3 vorn = vec3(0.55, 0.62, 0.8) * 2.2 * hg(c2, 0.25) * tv;
+    vec3 umgebung = vec3(0.025, 0.03, 0.05);
     float aufnahme = 1.0 - exp(-sigma * schritt);
     licht += durch * aufnahme * (gegen + vorn + umgebung);
     durch *= 1.0 - aufnahme;
@@ -96,7 +100,7 @@ void main() {
   float oben = g.a > 0.5 ? smoothstep(0.3, 0.9, g.n.y) : 0.0;
   float puls = noise2(vUv * vec2(40.0, 25.0) + vec2(uZeit * 0.7, -uZeit * 1.3));
   float q = (min(rand, 1.0) * 0.8 + oben * 0.35) * smoothstep(0.35, 0.75, puls);
-  float d = alt.g * exp(-0.22 * uDt) + q * uDt * 1.6 * uFahnen;
+  float d = alt.g * exp(-0.3 * uDt) + q * uDt * 1.0 * uFahnen;
   farbe = vec4(0.0, min(d, 2.0), 0.0, 1.0);
 }
 `;
@@ -134,8 +138,9 @@ void main() {
   float a = uBuehne > 0.5 ? 1.0 : 0.0;
   // Fahnen: vom Gegenlicht durchleuchtet
   float f = texture(tFahnen, q).g;
-  float fd = 1.0 - exp(-f * 1.6);
-  vec3 fahne = mix(vec3(0.5, 0.55, 0.65), vec3(1.0, 0.75, 0.5), exp(-r * r / 0.08)) * 0.9;
+  float fd = 1.0 - exp(-f * 1.1);
+  float dicht = smoothstep(0.2, 1.4, f);
+  vec3 fahne = mix(vec3(0.36, 0.39, 0.47), vec3(1.0, 0.74, 0.48), exp(-r * r / 0.07) * (1.0 - 0.6 * dicht)) * (0.95 - 0.35 * dicht);
   bild = bild * (1.0 - fd) + fahne * fd;
   a = max(a, fd);
   // der Körper
@@ -157,7 +162,7 @@ class Rauch implements ShaderLauf {
 
   constructor(k: ShaderKern) {
     this.daten = new GDaten(k);
-    this.fluss = new Stroemung(k, 'rauch:fluss', { skala: 0.25, farbSkala: 0.33 });
+    this.fluss = new Stroemung(k, 'rauch:fluss', { skala: 0.33, farbSkala: 0.5 });
     const g = { tNormal: { value: null }, tLage: { value: null } };
     this.volumen = k.flaecheProgramm(VOLUMEN, { ...g, tHinten: { value: null }, uDichteMal: { value: 1 }, uSteigen: { value: 1 } });
     this.qFarbe = k.flaecheProgramm(QUELLE_FARBE, { ...g, tAlt: { value: null }, uDt: { value: 0 }, uFahnen: { value: 1 } });

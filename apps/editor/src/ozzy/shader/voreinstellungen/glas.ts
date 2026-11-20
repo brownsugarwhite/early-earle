@@ -1,7 +1,8 @@
 /**
  * Flüssigglas (frei; hyperrealistisch; Apples „Liquid Glass“ von 2025 hat Glas zum Trend gemacht, und Ozzys Designsystem heißt
  * „liquid drop“). Die Form ist massives Glas: Ein Strahl bricht an der Vorderseite, läuft durch die Dicke der Form (Vorder- bis
- * Rückseite), bricht an der Rückseite wieder (oder wird dort ganz zurückgeworfen) und trifft eine Wand hinter der Form. Das geschieht
+ * Rückseite), bricht an der Rückseite wieder (oder wird dort ganz zurückgeworfen) und trifft eine Wand hinter der Form: ein Fotostudio
+ * für Glas (helle Hohlkehle, schwarze Karten seitlich für die dunklen Kanten, farbige Folien). Das geschieht
  * für sechs Wellenlängen mit je eigenem Brechungsindex: Dispersion, Regenbogensäume an Kanten. Dicke färbt (Beer–Lambert), Fresnel
  * spiegelt ein Studio, ein heller Saum liegt innen am Umriss wie bei Liquid Glass. Die Wand (Bühne) ist ein farbiges Bild mit Kreisen
  * und feinen Linien, damit man sieht, wie das Glas sie verzerrt; ohne Bühne ein helles Raster.
@@ -9,35 +10,33 @@
 import { bildVoreinstellung } from '../bildShader';
 
 const FRAGMENT = /* glsl */ `
-/** die Wand hinter der Form: Ebene quer zum Blick, etwas hinter der Form */
+/** die Umgebung in Richtung d (vom Glas aus gesehen): ein Fotostudio für Glas als Hohlkehle rundum. Hell, eine Softbox hinter der
+ *  Form, zwei schwarze Karten seitlich (stark gebrochene Strahlen treffen sie: die dunklen Kanten im Glas), farbige Folien oben, feine
+ *  Linien am Boden. Ohne Bühne ein helles Raster auf einer Wand hinter der Form. */
 vec3 wand(vec3 p, vec3 d) {
   vec3 vorn = normalize((uViewInv * vec4(0.0, 0.0, -1.0, 0.0)).xyz);
   vec3 rechts = normalize((uViewInv * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
   vec3 hoch = normalize((uViewInv * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-  vec3 ebene = uMitte + vorn * uRadius * 1.6;
-  float dn = dot(d, vorn);
-  float t = dn > 1e-4 ? dot(ebene - p, vorn) / dn : 1e4;
-  vec3 w = p + d * t;
-  vec2 q = vec2(dot(w - uMitte, rechts), dot(w - uMitte, hoch)) / uRadius;
   if (uBuehne < 0.5) {
-    // helles Raster
+    vec3 ebene = uMitte + vorn * uRadius * 1.6;
+    float dn = dot(d, vorn);
+    if (dn <= 1e-3) return vec3(0.9);
+    vec3 w = p + d * (dot(ebene - p, vorn) / dn);
+    vec2 q = vec2(dot(w - uMitte, rechts), dot(w - uMitte, hoch)) / uRadius;
     vec2 r = abs(fract(q * 4.0) - 0.5);
-    float linie = smoothstep(0.47, 0.5, max(r.x, r.y));
-    return vec3(0.97) - 0.25 * linie;
+    return vec3(0.97) - 0.25 * smoothstep(0.47, 0.5, max(r.x, r.y));
   }
-  vec3 c = mix(vec3(0.08, 0.12, 0.45), vec3(0.55, 0.18, 0.62), smoothstep(-1.2, 1.4, q.x + 0.4 * q.y));
-  c = mix(c, vec3(1.0, 0.55, 0.25), smoothstep(0.4, 2.2, q.y - 0.3 * q.x) * 0.8);
-  // große Kreise
-  for (int i = 0; i < 4; i++) {
-    vec2 m = vec2(-1.1 + 0.8 * float(i), 0.6 * sin(float(i) * 2.3)) + vec2(0.0, -0.2);
-    float r = 0.35 + 0.15 * float(i % 2);
-    float k = 1.0 - smoothstep(r - 0.01, r + 0.01, length(q - m));
-    vec3 kf = i == 0 ? vec3(1.0, 0.82, 0.2) : (i == 1 ? vec3(0.2, 0.9, 0.85) : (i == 2 ? vec3(1.0, 0.3, 0.45) : vec3(0.95)));
-    c = mix(c, kf, k * 0.92);
-  }
-  // feine Linien schräg
-  float l = smoothstep(0.42, 0.5, abs(fract((q.x - q.y) * 6.0) - 0.5));
-  c = mix(c, vec3(1.0), l * 0.35);
+  float phi = atan(dot(d, rechts), dot(d, vorn));
+  float th = asin(clamp(dot(d, hoch), -1.0, 1.0));
+  vec3 c = mix(vec3(0.5, 0.52, 0.56), vec3(0.92, 0.93, 0.95), smoothstep(-0.6, 0.35, th));
+  c += vec3(0.34) * exp(-(phi * phi * 2.5 + (th - 0.12) * (th - 0.12) * 4.0));
+  float ap = abs(phi);
+  float karte = smoothstep(0.82, 0.9, ap) * (1.0 - smoothstep(1.28, 1.36, ap)) * (1.0 - smoothstep(0.6, 0.85, abs(th)));
+  c = mix(c, vec3(0.015), karte * 0.95);
+  c *= mix(vec3(1.0), vec3(0.62, 0.88, 1.25), smoothstep(0.12, 0.6, th - phi * 0.5) * uR_folie);
+  c *= mix(vec3(1.0), vec3(1.25, 0.72, 0.88), smoothstep(0.12, 0.6, th + phi * 0.5) * uR_folie);
+  float l = smoothstep(0.44, 0.5, abs(fract(phi * 9.0) - 0.5)) * smoothstep(-0.05, -0.35, th);
+  c = mix(c, c * 0.55, l * 0.6);
   return c;
 }
 void main() {
@@ -56,17 +55,17 @@ void main() {
   vec3 n = g.n;
   vec4 h = texture(tHinten, vUv);
   float dicke = h.w > g.z ? h.w - g.z : uRadius * 0.2;
-  vec3 nh = h.w > g.z ? normalize(h.xyz) : n;
+  vec3 nh = normalize(n - 2.0 * dot(n, V) * V);
   // sechs Wellenlängen, je eigener Brechungsindex (Dispersion übertrieben für das Auge)
   vec3 summe = vec3(0.0), gewicht = vec3(0.0);
   for (int i = 0; i < 6; i++) {
     float lambda = 420.0 + float(i) * 52.0;
-    float eta = 1.46 + 0.045 * uR_dispersion * (pow(550.0 / lambda, 2.0) - 1.0) + 0.06;
+    float eta = mix(1.0, 1.5, uR_brechung) + 0.045 * uR_dispersion * (pow(550.0 / lambda, 2.0) - 1.0);
     vec3 r1 = refract(-V, n, 1.0 / eta);
     vec3 pe = g.p + r1 * dicke;
     vec3 r2 = refract(r1, -nh, eta);
-    if (dot(r2, r2) < 1e-6) r2 = reflect(r1, -nh);
-    vec3 s = srgbZuLin(wand(pe, r2));
+    // Totalreflexion: das Licht bleibt im Glas und kommt gedämpft aus einer anderen Richtung (dunkler Saum)
+    vec3 s = srgbZuLin(dot(r2, r2) < 1e-6 ? wand(pe, reflect(r1, -nh)) * 0.4 : wand(pe, r2));
     vec3 w = max(spektral(lambda), vec3(0.0));
     summe += s * w;
     gewicht += w;
@@ -99,7 +98,9 @@ export const GLAS = bildVoreinstellung({
   gruppe: 'Materialien',
   zeile: 'Massives Glas: Brechung durch die ganze Dicke in sechs Wellenlängen (Dispersion), Totalreflexion, Fresnel, Lichtsaum',
   regler: [
-    { k: 'dispersion', name: 'Dispersion', min: 0, max: 4, schritt: 0.05, grund: 1.6 },
+    { k: 'dispersion', name: 'Dispersion', min: 0, max: 4, schritt: 0.05, grund: 1.1 },
+    { k: 'folie', name: 'Farbfolien', min: 0, max: 1.5, schritt: 0.05, grund: 0.8 },
+    { k: 'brechung', name: 'Brechung', min: 0, max: 1.2, schritt: 0.01, grund: 0.62 },
     { k: 'toenung', name: 'Tönung', min: 0, max: 3, schritt: 0.05, grund: 0.6 },
     { k: 'farbton', name: 'Farbton', min: 0, max: 360, schritt: 1, grund: 190 },
   ],

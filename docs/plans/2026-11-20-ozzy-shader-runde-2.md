@@ -60,4 +60,18 @@ Gebaut: die Wahl in fünf Gruppen und alle 25 neuen. Neu gedacht und fertig:
   roter Fleck, trockene Pinselstriche), Flammenwesen (höhere, spitze Flammen, größere Funken), Dampfwesen (der Dampf steigt aus dem
   Körper).
 
-Noch nicht auf den neuen Stand gebracht: Feuer, Rauch, Tinte, Flüssigglas, Aquarell, Tintenfleck (siehe „was bleibt“).
+Danach (Florian: „Ja, die sechs“) die freien aus Runde 1 auf denselben Stand
+(`docs/progress/ozzy/shader/2026-11-20-runde-2-die-sechs.png`):
+
+- **Feuer:** Die Glutfront brennt in wandernden Zungen; die Flammen steigen hoch und kühlen langsamer, wirbeln weniger (Zungen statt
+  Quellwolken), der Rauch steigt mit und zieht grau ab, Funken fliegen als Striche aus dem Feuer; der Brand läuft gleichmäßig (die
+  Spitze glimmt von Anfang an), die Simulation rechnet feiner.
+- **Rauch:** Ballen mit Lücken, kräftiger Selbstschatten, ein gerichtetes Licht von vorn, feinere Fahnen; die hellen Linien am Umriss
+  sind weg.
+- **Tinte:** schmale, kräftige Strahlen, viel mehr Tinte, sie sinkt (schwerer als Wasser) und bildet Fäden; feinere Simulation.
+- **Flüssigglas:** ein Fotostudio für Glas als Hohlkehle rundum (schwarze Karten zeichnen die Kanten, farbige Folien), der Austritt
+  wie an einer Linse (die Normale der Rückseite am selben Bildpunkt warf fast alles zurück: schwarz), Regler Brechung und Farbfolien.
+- **Aquarell:** breite Bahnen mit getrocknetem Rand statt Regenstreifen, kräftigere Lasuren auf der Form, stärkere Granulation, eine
+  warme Gegenfarbe nass in nass.
+- **Tintenfleck:** viel mehr Flecken in zwei Größen, echte Tuschespritzer, Portale mit hellem Innenrand (Tiefe), lange
+  Bleistift-Konstruktionslinien.

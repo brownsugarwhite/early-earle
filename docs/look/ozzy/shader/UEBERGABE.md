@@ -53,6 +53,12 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
    unscharf (gleiche Lichtmenge). Sie liegen im selben Ziel wie die Statue (Tiefe), Blättchen deckend, Funken addiert.
 6. **Ereignishorizont:** Strahlengang bis 260 Schritte je Bildpunkt (der teuerste Shader); die Masse ist so klein, dass ihr runder
    Schatten hinter der Form bleibt.
-7. Zeiten für Aufnahmen: `__ozzy.shader(name, { neu: true })` beginnt von vorn. Feuer (16 s), Staub (12 s) und Eine Linie brauchen
-   Zeit: Feuer bei rund 5,5 s, Staub bei 3,3 s, Eine Linie ab 10 s aufnehmen.
-8. Die App hält nur drei Vorschau-Server; das Bildskript startet darum seinen eigenen Vite nur für den Lauf.
+7. Zeiten für Aufnahmen: `__ozzy.shader(name, { neu: true })` beginnt von vorn. Feuer (16 s), Staub (12 s), Tinte und Eine Linie
+   brauchen Zeit: Feuer bei rund 4,3 s, Staub bei 3,3 s, Tinte bei 7 s, Eine Linie ab 10 s aufnehmen.
+8. **Feuer prüfen:** `?feuerPruef=1` zeigt die Geschwindigkeit (grün steigt, rot sinkt), `?feuerPruef=2` die Quelle (rot) und die
+   Temperatur (grün). Die Strömung rechnet mit y nach oben wie das Bild; Auftrieb `[Temperatur hebt, Rauch drückt]`, beim Feuer ist
+   der Rauch warm (negativer zweiter Wert: er steigt mit).
+9. **Flüssigglas:** Die Normale der Rückseite am selben Bildpunkt gehört nicht zur Austrittsstelle des Strahls; mit ihr wurde fast
+    alles total reflektiert (schwarz). Der Austritt ist darum eine Linse (Spiegelbild der vorderen Normale längs des Blicks), und die
+    Umgebung ist rundum hell (Hohlkehle), damit jeder gebrochene Strahl Licht trifft.
+10. Die App hält nur drei Vorschau-Server; das Bildskript startet darum seinen eigenen Vite nur für den Lauf.
