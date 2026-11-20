@@ -698,6 +698,17 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `ohneLinie`. Gemessen: Die Form steht, K an einer Naht hält (−2,2 % statt −22 %), aber zwischen drei Loops fällt die Haut ein
   (Kreis −9,7 % Rauminhalt). Wo die Loops sitzen und wie aufgeblasen wird, daran wird mit Florian noch gearbeitet (Plan „Objekte,
   Spiegel und Nähte“, Abschnitt 11). Haken `radien()` misst die Rundheit.
+- **Studie „Maul, Zähne, Zunge“ (20.11., Zweig `claude/ozzy-maul`; Konzept `docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md`):**
+  `maul.html`, `src/maulstudie/` (steht neben Ozzy, liest eine gesicherte Form, ändert weder Ozzy noch Werk noch Kern). Das Maul
+  ist ein Schnitt in der gezeigten Haut längs einer Linie in der Seitenebene (`schnitt.ts`, `manifold-3d` über `manifoldLaden`);
+  Kiefer drehen je Punkt um den Mundwinkel (`kieferFeld`, `kieferStellen`). Merke: (1) Die Bibliothek braucht einen Keil mit
+  Breite: Geschlossen zeigt die Studie darum die Form selbst; die geschnittene Haut zeigte eine Haarlinie. (2) Im Auslauf hinter
+  dem Mundwinkel die Normalen aus der gestellten Haut neu rechnen (`auslaufNormalen`). (3) Die Wand hat fast keine eigenen Punkte:
+  ihre Farbe (Zahnfleischring) rechnet der Shader je Bildpunkt aus der Tabelle `MaulSchnitt.breite`. (4) Wer den Zeiger fängt
+  (`setPointerCapture`), bekommt beim Loslassen das fangende Feld als Ziel: das Angetippte beim Drücken merken (`linse.ts`). (5)
+  Ein Strahl von three trifft ein einseitiges Material nur beim Eintreten (`dickeBei` schießt von beiden Seiten). (6) Bilder:
+  `scripts/ozzy/maul-studie-bilder.mjs`, `maul-studie-bogen.mjs`; Haken `window.__maul`. Einstieg:
+  `docs/look/ozzy/maul/UEBERGABE.md`.
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

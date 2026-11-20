@@ -50,7 +50,7 @@ import { formLaden, type Form } from './form';
 import { fleischBreite, platzBei, randAbstand, reihe, type GebissWerte, type ZahnPlatz } from './gebiss';
 import { Linse, type Perle } from './linse';
 import { BREITE_N, auslaufDreiecke, auslaufNormalen, kieferFeld, kieferStellen, maulSchneiden, type MaulSchnitt, type V2 } from './schnitt';
-import { ZAHN_FORMEN, mischen, zahnNetz, type ZahnForm } from './zahn';
+import { ZAHN_FORMEN, mischen, zahnNetz, type Wurzel, type ZahnForm } from './zahn';
 import { Zunge } from './zunge';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -703,6 +703,7 @@ const perleWerte = (name: 'groesse' | 'neigung' | 'verlauf' | 'sitz', min: numbe
   },
   zeigen,
 });
+const WURZELN: Wurzel[] = ['keine', 'kegel', 'zwei', 'drei', 'knolle'];
 const perlen: Perle[] = [
   {
     kurz: '#',
@@ -762,6 +763,21 @@ const perlen: Perle[] = [
       if (f) formSetzen({ ...f, bogen: w });
     },
     zeigen: (w) => `${Math.round((w * 180) / Math.PI)}°`,
+  },
+  {
+    // die Wurzel sieht man nur in der Linse: Im Maul steckt sie im Zahnfleisch
+    kurz: 'W',
+    name: 'Wurzel',
+    min: 0,
+    max: 4,
+    schritt: 1,
+    rastet: true,
+    wert: () => WURZELN.indexOf(zielForm()?.wurzel ?? 'kegel'),
+    setzen: (w) => {
+      const f = zielForm();
+      if (f) formSetzen({ ...f, wurzel: WURZELN[Math.round(w)] ?? 'kegel' });
+    },
+    zeigen: (w) => ['ohne', 'eine', 'zwei', 'drei', 'Knolle'][Math.round(w)] ?? '',
   },
   perleWerte('neigung', -0.6, 1.2, 'N', 'Neigung', (w) => `${Math.round((w * 180) / Math.PI)}°`),
   perleWerte('verlauf', 0, 0.9, 'V', 'Verlauf', (w) => `${Math.round(w * 100)} %`),

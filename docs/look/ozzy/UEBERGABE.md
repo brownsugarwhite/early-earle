@@ -1,9 +1,14 @@
-# Übergabe: Ozzy (Stand 19.11.2026, früh)
+# Übergabe: Ozzy (Stand 20.11.2026)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“): Man zeichnet eine
 Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im Raum, in den eingerasteten Ansichten und in den Vier
 Ansichten. Gerechnet wird mit dem Kern von Sitzung 4; seit dem 17.11. nachts ist die Sitzung von Ozzy auch die des Kerns und ändert
 ihn (bisher: C1, C2, D1).
+
+**Sitzung „Maul, Zähne, Zunge“ (seit 20.11.).** Zweig `claude/ozzy-maul` (vom Paint-Zweig), im Arbeitsbaum `ozzy`, Fenster 5205.
+Ein Konzept zur Freigabe und eine Studie neben Ozzy (`maul.html`); **in Ozzy, am Werk und am Rechenkern ist nichts geändert.**
+Alles dazu: [`maul/UEBERGABE.md`](maul/UEBERGABE.md), Konzept
+[`docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md`](../../plans/2026-11-20-ozzy-maul-zaehne-zunge.md). Sein Urteil steht aus.
 
 **Sitzung „Paint-Modus“ (seit 19.11., eigener Zweig auf dem Stand der Objekte).** Zweig `claude/reverent-feynman-1efdd3`, Fenster
 `http://localhost:5215/ozzy.html` (Eintrag `ozzy-paint`), nicht zusammengeführt. Gebaut: das Material „Wachs“ (ZBrushs
