@@ -665,3 +665,23 @@ beginnen.
 
 Die anderen Wege: zuerst P3 („Lippen trennen“ an deinem Blatt 06), oder hier anhalten.
 
+Deine Antwort (20.11.): „Ja, P2 rechnen“.
+
+### 12.8 Probe P2: Aufbau und Messweise (festgelegt, bevor gerechnet wird)
+
+**Aufbau.** Wie Fassung B in 12.6: die Maullinie als dünner Keil abgezogen und angewendet (das schneidet deine Linien an der
+Lippe und legt die zwei Linien ins Maul). Neu ist der Schritt danach, der Reißverschluss: Alle Punkte der Lippe und der Tasche
+kommen genau auf die Maullinie; der Spalt ist dann zu, Gaumen und Boden liegen aufeinander. Die Lippe wird ein zusammengeklappter
+Loop, dessen Punkte paarweise Zwillinge sind (dein Bild aus dem Auftrag). Das Modell dafür hat der Kern seit dem 14.11.
+(`maulLinie.ts`, hier mit dem Winkel 0: Die zweite Lippe ist genau das Abbild der ersten). Dann aufräumen wie im Fenster und rechnen.
+
+| Nr. | Kriterium | Wie gemessen |
+| --- | --- | --- |
+| Z1 | Zu ist der Spalt genau null | (a) an der Linie: Ober- und Unterlippe haben dieselben Punkte und Griffe (Abweichung 0); (b) am Netz: größter Abstand eines Punkts der einen Lippe zur Kette der anderen, gleich nach dem Schließen und nach dem Rechnen |
+| Z2 | Am Mundwinkel ist nach dem Aufräumen nichts gefaltet | kein Dreieck steht steiler als 120° gegen einen Nachbarn, mit dem es keine Kante einer harten Linie teilt (Lippe, Rachenlinie); die alte Zählung nenne ich dazu, mit Ort und Fläche |
+| Z3 | Geöffnet spannt sich nichts über das Maul | mit den Knochen 8° und 22° geöffnet (nur Anzeige): kein Dreieck, dessen Kante sich mehr als verdoppelt; Falten wie Z2 als Angabe |
+| Z4 | Außen liegt die Haut zu weniger als 1 neben der Form von vorher | Abstand jedes Punkts außen zur Fläche der Form von vorher; bleibt ein Rest, zeige ich, woher er kommt |
+| Z5 | Die geschlossene Linie lässt sich als Ganzes ziehen | ein Punkt der Lippe 15 gezogen, sein Zwilling geht mit: Die Rechnung steht, Z1 und Z2 gelten weiter |
+
+Dazu wie in P1: Die Rechnung kommt zur Ruhe, fern vom Maul bewegt sich die Haut weniger als 0,5.
+
