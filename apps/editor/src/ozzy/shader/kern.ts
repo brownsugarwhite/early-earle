@@ -91,7 +91,7 @@ export interface ShaderLauf {
 /** ein Regler; mit `stufen` zeigt die Tafel statt der Zahl den Namen der Stufe (Schritt 1, ab `min`) */
 export type ReglerZeile = { k: string; name: string; min: number; max: number; schritt: number; grund: number; stufen?: string[] };
 
-export const SHADER_GRUPPEN = ['Spider-Verse', 'Anime & Manga', 'Materialien', 'Tiermuster', 'Effekte'] as const;
+export const SHADER_GRUPPEN = ['Spider-Verse', 'Anime & Manga', 'Materialien', 'Tiermuster', 'Fell & Flausch', 'Effekte'] as const;
 export type ShaderGruppe = (typeof SHADER_GRUPPEN)[number];
 
 export interface Voreinstellung {

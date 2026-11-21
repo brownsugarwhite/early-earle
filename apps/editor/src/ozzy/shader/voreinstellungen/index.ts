@@ -13,6 +13,7 @@ import { DAVINCI } from './davinci';
 import { EARLE_HAUT, EARLE_SCHUPPEN } from './earle';
 import { EINE_LINIE } from './eineLinie';
 import { ERDE42 } from './erde42';
+import { FELL, GIRAFFE, LEOPARD, TIGER } from './fell';
 import { FEUER } from './feuer';
 import { FLAMMENWESEN } from './flammenwesen';
 import { DIAMANT, PAVE } from './diamant';
@@ -37,7 +38,7 @@ import { RAUCH } from './rauch';
 import { SHINKAI } from './shinkai';
 import { SIENKIEWICZ } from './sienkiewicz';
 import { STAUB } from './staub';
-import { ELEFANT, GIRAFFE, KLAPPERSCHLANGE, KORALLENNATTER, KROKODIL, LEOPARD, SALAMANDER, SCHLANGE, TIGER } from './tiere';
+import { ELEFANT, KLAPPERSCHLANGE, KORALLENNATTER, KROKODIL, SALAMANDER, SCHLANGE } from './tiere';
 import { TINTE } from './tinte';
 import { TREX } from './trex';
 import { TINTENFLECK } from './tintenfleck';
@@ -96,6 +97,8 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   SALAMANDER,
   TREX,
   TURING,
+  // Fell & Flausch
+  FELL,
   // Effekte
   EINE_LINIE,
   FEUER,

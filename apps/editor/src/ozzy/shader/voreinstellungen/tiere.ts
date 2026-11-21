@@ -8,17 +8,14 @@
  * Schatten, Schraffur, Tuschekontur, die Farbplatte leicht versetzt, Papier mit Raster) oder **Earle** (Siebdruck: vier harte Stufen
  * im Streiflicht, Schatten in Petrol, Lichtpunkte, Himmel in Bändern, Hügel und gotische Stämme).
  *
- * - **Leopard:** Rosetten aus drei bis fünf Bruchstücken (C-Formen, die Enden spitz) um eine dunklere Mitte, dazwischen Vollflecken
- *   (Zwei-Stufen-Turing: Tupfen werden zu Rosetten), goldenes Fell, heller Bauch, Haarsaum.
- * - **Tiger:** Streifen aus Phasor-Rauschen, die sich gabeln und spitz enden.
+ * - **Leopard, Tiger, Giraffe** laufen seit Runde 6 auf dem Fell aus Schalen (`fell.ts`); ihre Muster stehen dort.
  * - **Python, Klapperschlange, Korallennatter:** Schuppen in schrägen Reihen, die sich zum Schwanz hin überlappen (die vordere deckt;
  *   unter ihrer freien Kante liegt ein Schatten), gewölbt, die Farbe Schuppe für Schuppe. Python glatt mit Sätteln und Schimmer;
  *   Klapperschlange gekielt (ein Grat je Schuppe, matt) mit Rauten auf dem Rücken und Ringen am Schwanz; Korallennatter glänzend in
  *   Ringen Rot, Gelb, Schwarz, die roten Schuppen mit schwarzer Spitze.
  * - **Krokodil:** oben Knochenplatten in Reihen mit Grat und Grübchen, an den Flanken runde Höcker, am Bauch glatte Schilde.
  * - **Feuersalamander:** glänzendes Schwarz mit gelben, teils zu Streifen verbundenen Flecken, nasse Haut mit Poren und Wärzchen.
- * - **Elefant:** Felder tiefer Furchen, Querfalten, matt, Staub. **Giraffe:** Zellen mit abgerundeten Ecken, gleich breite helle
- *   Adern, die Flecken innen dunkler, Fell.
+ * - **Elefant:** Felder tiefer Furchen, Querfalten, matt, Staub.
  */
 import { bildVoreinstellung } from '../bildShader';
 import type { Voreinstellung } from '../kern';
@@ -408,78 +405,6 @@ const BAUCHSCHILDE = /* glsl */ `
   c = mix(c, bc, bauch);
   n = normalize(mix(n, normalize(n0 + A * (fract(lp) - 0.5) * 0.4), bauch));`;
 
-export const LEOPARD = tier(
-  'leopard',
-  'Leopard',
-  'Rosetten, dicht an dicht: ein unterbrochener Ring aus Bruchstücken folgt dem Rand seines Flecks, innen dunkleres Gold; zum Bauch hin werden daraus Vollflecken; goldenes Fell mit Haarsaum',
-  /* glsl */ `
-  // Rosetten: Zellen im Raum; der Ring folgt dem Rand seiner Zelle (genauer Abstand zum Rand), mit Lücken, fransig wie Fell
-  float id;
-  vec3 mz;
-  float e = zelleRand3(q * 9.0 * uR_groesse, mz, id);
-  // Ecken runden: der Abstand zum Rand gemischt mit dem zur Mitte (rund), so wird aus dem Vieleck ein rundlicher Fleck
-  e = mix(e, 0.42 - length(mz), 0.45);
-  e += 0.02 * snoise(q * 50.0) + 0.012 * snoise(q * 120.0);
-  vec3 ri = normalize(mz + 1e-4);
-  // Bruchstücke rund um die Mitte: drei bis fünf, in der Mitte dick, an den Enden spitz (C-Formen)
-  float bruch = snoise(ri * 0.7 + id * 37.0) + 0.3 * snoise(ri * 1.6 + id * 11.0);
-  float luecke = 0.035 + 0.035 * hash11(id * 5.1);
-  float dicke = (0.09 + 0.07 * hash11(id * 8.3)) * smoothstep(-0.3, 0.2, bruch);
-  float aa = fwidth(e) + 0.004;
-  float ring = smoothstep(luecke - aa, luecke + aa, e) * (1.0 - smoothstep(luecke + dicke - aa, luecke + dicke + aa, e)) * step(0.005, dicke);
-  float innen = smoothstep(luecke + 0.1 - aa, luecke + 0.13 + aa, e);
-  // unten an den Flanken werden die Rosetten zu Vollflecken (die Grundform des Musters), am Bauch seltener
-  float unten = smoothstep(0.05, -0.4, n0.y);
-  float bauch = smoothstep(-0.45, -0.8, n0.y);
-  float voll = smoothstep(0.17 - aa, 0.17 + aa, e - 0.05 * hash11(id * 9.3)) * mix(1.0, step(0.5, hash11(id * 2.7)), bauch);
-  // kleine Tupfen zwischen den Rosetten
-  float id2;
-  vec4 z2 = zelle3(q * 17.0 * uR_groesse + 4.0, id2);
-  float klein = (1.0 - smoothstep(0.13 - aa, 0.16 + aa, z2.w + 0.04 * snoise(q * 30.0))) * step(0.62, id2);
-  vec3 gold = mix(vec3(0.76, 0.5, 0.21), vec3(0.86, 0.67, 0.41), smoothstep(0.3, -0.3, n0.y));
-  gold = mix(gold, vec3(0.95, 0.92, 0.85), bauch);
-  gold *= 0.93 + 0.1 * snoise(q * 3.0) + 0.04 * snoise(q * 11.0);
-  float ros = 1.0 - unten;
-  vec3 c = mix(gold, vec3(0.66, 0.43, 0.19) * (0.9 + 0.2 * hash11(id * 4.4)), innen * ros * 0.7);
-  float schwarz = max(ring * ros, voll * unten);
-  schwarz = max(schwarz, klein * (1.0 - innen * ros) * (1.0 - bauch));
-  c = mix(c, vec3(0.05, 0.035, 0.025), schwarz);
-  albedo = srgbZuLin(c);
-  glanz = 0.2;
-  rauh = 0.7;`,
-  true,
-  GRUND_SAVANNE,
-  [{ k: 'groesse', name: 'Fleckengröße', min: 0.4, max: 2.5, schritt: 0.05, grund: 1 }],
-);
-
-export const TIGER = tier(
-  'tiger',
-  'Tiger',
-  'Streifen, die sich gabeln und spitz enden (Phasor-Rauschen), quer zur Längsachse, kräftiges Orange, weißer Bauch, Fell mit Haarsaum',
-  /* glsl */ `
-  vec3 A, B, C;
-  achsen(A, B, C);
-  vec2 ph = phasor3(q * 3.7 * uR_groesse, A, 1.75, 0.4);
-  float amp = length(ph);
-  float welle = ph.y / max(amp, 1e-4);
-  float schwelle = 0.25 + 0.45 * smoothstep(-0.3, 0.6, snoise(q * 1.7 + 3.0)) - 0.2 * smoothstep(0.2, 0.8, n0.y);
-  schwelle = mix(schwelle, 1.1, smoothstep(-0.2, -0.75, n0.y));
-  schwelle = mix(schwelle, 1.1, smoothstep(0.65, 0.92, abs(dot(n0, A))));
-  schwelle = mix(1.1, schwelle, smoothstep(0.08, 0.3, amp));
-  float aa = fwidth(welle) * 0.9 + 0.01;
-  float streifen = smoothstep(schwelle - aa, schwelle + aa, welle);
-  float bauch = smoothstep(-0.05, -0.55, n0.y);
-  vec3 orange = mix(vec3(0.8, 0.38, 0.09), vec3(0.93, 0.63, 0.32), smoothstep(0.3, -0.3, n0.y));
-  orange *= 0.92 + 0.16 * snoise(q * 3.0 + 1.0);
-  albedo = srgbZuLin(mix(orange, vec3(0.95, 0.92, 0.86), bauch));
-  albedo = mix(albedo, srgbZuLin(vec3(0.05, 0.034, 0.028)), streifen);
-  glanz = 0.2;
-  rauh = 0.7;`,
-  true,
-  GRUND_DSCHUNGEL,
-  [{ k: 'groesse', name: 'Streifen', min: 0.4, max: 2.5, schritt: 0.05, grund: 1 }],
-);
-
 export const SCHLANGE = tier(
   'schlange',
   'Python',
@@ -636,33 +561,6 @@ export const ELEFANT = tier(
   rauh = 0.95;`,
   false,
   GRUND_SAVANNE,
-);
-
-export const GIRAFFE = tier(
-  'giraffe',
-  'Giraffe',
-  'Netzgiraffe: Flecken mit abgerundeten Ecken, getrennt von gleich breiten hellen Adern, fein gezackte Ränder, innen dunkler, jeder Fleck in eigenem Ton, Fell mit Haarsaum',
-  /* glsl */ `
-  vec3 w = q * 4.4 * uR_groesse;
-  w += 0.13 * vec3(snoise(q * 5.0), snoise(q * 5.0 + 3.0), snoise(q * 5.0 + 6.0));
-  vec4 vo = voronoiF3(w);
-  // Ader: Abstand zur nächsten Grenze; an Ecken (drei Zellen) breiter, so runden sich die Flecken
-  float kante = vo.y - vo.x;
-  float ecke = vo.z - vo.x;
-  float zack = 0.018 * snoise(q * 45.0) + 0.009 * snoise(q * 110.0);
-  float abst = min(kante, ecke * 0.55 + 0.02) + zack;
-  float aa = fwidth(abst) * 0.8 + 0.004;
-  float ader = 1.0 - smoothstep(0.065 - aa, 0.065 + aa, abst);
-  vec3 fleck = mix(vec3(0.6, 0.31, 0.12), vec3(0.42, 0.19, 0.075), hash11(vo.w * 13.0));
-  fleck *= 0.78 + 0.28 * smoothstep(0.0, 0.32, abst);
-  vec3 creme = vec3(0.94, 0.88, 0.72);
-  float bauch = smoothstep(-0.2, -0.6, n0.y);
-  albedo = srgbZuLin(mix(mix(fleck, creme, ader), creme, bauch));
-  glanz = 0.15;
-  rauh = 0.75;`,
-  true,
-  GRUND_SAVANNE,
-  [{ k: 'groesse', name: 'Fleckengröße', min: 0.4, max: 2.5, schritt: 0.05, grund: 1 }],
 );
 
 export const KROKODIL = tier(
