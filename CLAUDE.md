@@ -20,7 +20,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Materialien (`material.ts`, `gast.ts`, `gruen.ts`). Offene Fragen und Urteile:
   `docs/plans/2026-11-17-ozzy-feinschliff.md`. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell.
 - **Sitzung „Maul, Zähne, Zunge“ (20.11.):** Zweig `claude/ozzy-maul` (vom Paint-Zweig), Fenster 5205.
-  **Etappe 1 bis 8 gebaut** (Offenes: `…-maul-was-bleibt.md`; Feinschliff A bis D):
+  **Etappe 1 bis 8 gebaut, Backen Scheibe 1** (Offenes: `…-maul-was-bleibt.md`):
   [`…-20-ozzy-maul-zaehne-zunge.md`](docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md); Studie `maul.html`.
   Einstieg: [`…/maul/UEBERGABE.md`](docs/look/ozzy/maul/UEBERGABE.md).
 - **Sitzung „Objekte, Spiegel und Nähte“ (18./19.11., ruht):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211.

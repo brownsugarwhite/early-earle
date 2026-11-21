@@ -16,7 +16,8 @@ Feinschlifflauf“), danach Punkt 130 behoben (die Zahnfleischlinie behält ihre
 Der Zahn in der Linse trägt drei Linien und lässt sich eingerastet an ihnen formen; unten „Etappe 7“), dann Etappe 8 in vier
 Scheiben (Posen: in „Fressen“ ist jede Lippe frei, die Grundform bleibt; „Grundform“ und „Fressen“ als Tropfen an einem Faden,
 dazwischen wandert die Form; mehrere Posen mit Plus, direkter Fahrt von Pose zu Pose, Benennen und Löschen; Zähne je Pose;
-unten „Etappe 8“). Florian am 21.11.: „Kiefer richten und feinschliff kommen dann zum schluss“; ihm ist einiges aufgefallen, das
+unten „Etappe 8“), dann Etappe 9, Scheibe 1 (Backen fürs Spiel: ein Spielnetz mit höchstens 8 000 Dreiecken und der
+Schalter „Wie im Spiel“; unten „Etappe 9“). Florian am 21.11.: „Kiefer richten und feinschliff kommen dann zum schluss“; ihm ist einiges aufgefallen, das
 bringt er in einem eigenen großen Feedback-Durchgang. Als Nächstes also, auf sein Wort: sein Feedback, dann die Kiefer
 (Liste, 20 bis 22) und der Feinschliff; offen daneben: ob die Linie im Maul der Lippe folgt (131), Backen, der Rechenkern
 (153: ein Netz für alle Lagen).**
@@ -560,6 +561,37 @@ Bild: `docs/progress/ozzy/2026-11-21-maul-etappe8-posen.jpg`. Offenes: Liste, 15
     in `werte` die Zähne der Lage, an der gearbeitet wird, dazu `grund`, `versatz`, `jePose`; `zahnPunkte()` gibt alle Punkte
     der gezeigten Zähne. Am Faden steht die Form in der LINKEN Pose und wandert zur rechten: Der Anteil ist rechts 1.
 
+## Etappe 9 in Ozzy: Backen fürs Spiel (21.11.)
+
+Plan und Ergebnis: [`docs/plans/2026-11-21-ozzy-maul-etappe-9-backen.md`](../../../plans/2026-11-21-ozzy-maul-etappe-9-backen.md).
+Bild: `docs/progress/ozzy/2026-11-21-maul-etappe9-backen.jpg`. Offenes: Liste, 187 bis 196. Gebaut ist Scheibe 1 (Backkern
+und Ansicht); Zunge, Farben, Datei und das Spiel selbst auf sein Wort.
+
+- **Die Regel des Spielnetzes** (`form/spielform.ts`, rein, mit Tests): Jeder Punkt hat eine Grundlage, je Pose einen Versatz
+  und je Pose einen Drehwinkel. Ruhe = Grundlage + Σ Anteil · Versatz; gedreht wird um das Scharnier (ein Punkt des Netzes: der
+  Mundwinkel in der gemischten Ruhe) um Σ Anteil · Winkel. `spielformAus` (aus den Lagen, wie der Editor sie ZEIGT: je Pose
+  zurückgedreht), `spielLage` (die Rechnung des Spiels; später ein Vertex-Shader), `normalenAngleichen`, `lippenGleichTeilen`,
+  `abstaendeZumNetz` (fürs Prüfen).
+- **Backen** (`ozzy/backen.ts`, ohne DOM): die Punkte der Teilung der Anzeige (`werk.anzeigeIndex`, `anzeigeQuelle`),
+  ausgedünnt mit `backen` aus dem Rechenkern (unverändert benutzt), in der Pose mit dem engsten offenen Maul, mit den Normalen
+  und den Drehwinkeln zweier Posen als Merkmalen. Normalen je Lage aus dem Rechner der glatten Anzeige
+  (`WerkHaut.backDaten()`: ein eigener `GlattPlan`, Stufe 0). Die Zähne je Lage aus `zaehneNetz`, je Zahnform einmal auf 40
+  Dreiecke ausgedünnt; ihre Grundlage ist die geschlossene Grundform (Länge null).
+- **Zu ist unsichtbar:** Die zwei Lippen sind im Rechennetz verschieden unterteilt (keine Zwillinge über die Nummer in der
+  Kette). `lippenGleichTeilen` gibt jeder Lippe an jeder Stelle (Anteil der Länge vom Mundwinkel zur Spitze, über die
+  Spiegelebene weiter bis 2) einen Punkt, an der die andere einen hat; ein eingesetzter Punkt liegt zwischen zwei gezeigten
+  Punkten (`Gebacken.vonPunkt`, `vonPunktB`, `anteil`). In der Grundlage liegen die Punkte der einen Lippe auf denen der
+  anderen, die Lippen von außen tragen dort dieselbe Normale.
+- **Werk:** `spielDaten()` (Grundform, Scharnier, je Pose Ruhe und Drehwinkel bei ihren ganzen Winkeln, die Grundform mit den
+  Kiefern bei null, die Kette der Lippe, der Spiegel). Die Grundlage ist die Grundform mit geschlossenem Haarspalt
+  (`MAUL_HAAR`).
+- **Ozzy:** Schalter `#spiel` im Feinregler, `spielSetzen`, `spielSchluessel` (woran das gebackene Netz hängt; nicht daran, ob
+  eine Pose betreten ist), `spielBacken`, `spielNetzJetzt` (im Bild: `spielN` ersetzt `zeigN`; die Zähne für sich in ihrer
+  Farbe über `ZahnBild`), `spielAnteile` (die Anteile der Reihe), `spielGrund` (warum die Ansicht nicht zeigt). Die Ansicht gilt
+  im Raum (eingerastet zeichnet kein Material). Die Bemalung ist in der Ansicht aus (`spielZeigt` in `farbeMoeglich`).
+- **Probe:** `ozzy-backen-fenster.mjs` (B1 bis B7; `BIS=B4|B6`, `ZOOM`). Haken: `spiel(an?, kostenNeu?)`, `spielPruefen(mitNah)`.
+  Sie baut die Form in der eingerasteten Seite und prüft im Raum.
+
 ## Die Studie in einem Absatz
 
 Sie lädt eine gesicherte Form (`/__wesen/<Name>`: Haut des Rechennetzes und Linien), verfeinert sie ein- oder zweimal (Loop) und
@@ -692,4 +724,11 @@ Etappe 8, Scheibe 4 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest r
 `-pose-` (6), `-sichern-` (5), `-lippe-` (12), `-farbe-fenster` (8): alle erfüllt. Nicht gelaufen: die übrigen Proben des
 Paint-Modus, `ozzy-maul-material-fenster`. Angesehen: „Fressen“ mit größeren Zähnen, die Hälfte am Faden, „Pose 2“ mit
 gerücktem Zahn, nah am Maul. Nicht angesehen: iPad, der Raum, die Fahrt als Bewegung (nur Standbilder und Zahlen).
+
+Etappe 9, Scheibe 1 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest run src/form/ src/ozzy/` (153 Tests), im Fenster
+`ozzy-backen-fenster.mjs` (B1 bis B7 erfüllt, elf Läufe bis dahin), `ozzy-maul-fenster` (19), `-zaehne-` (27), `-posen-` (15),
+`-posen-zaehne-` (11), `-zunge-` (28), `-farbe-` (8), `-material-fenster` (3): alle erfüllt. Nicht gelaufen: `-zahnform-`,
+`-posen-reihe-`, `-sichern-`, `-lippe-`, die übrigen Proben des Paint-Modus. Angesehen: Grundform und „Fressen“ im Raum auf
+Wachs, glatt und gebacken nebeneinander, die Dreiecke des Spielnetzes, das grüne Material. Nicht angesehen: die Fahrt als
+Bewegung, Pose 2, iPad.
 

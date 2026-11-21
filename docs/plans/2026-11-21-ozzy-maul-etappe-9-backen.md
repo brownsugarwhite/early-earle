@@ -91,3 +91,56 @@ der Normalen an der geschlossenen Lippe.
 Zunge, Farben, Datei, das Spiel selbst; beide Hälften gleich ausdünnen (der Ausdünner kennt den Spiegel nicht; gemessen wird,
 wie verschieden die Hälften werden); harte Linien, die keine Lippe sind, bleiben wie in der Teilung der Anzeige (nicht eigens
 geprüft); Formen ohne Spiegel, Verbund und mehrere Objekte.
+
+## 6. Ergebnis der Scheibe 1 (21.11.)
+
+Gebaut (Commits `12be33d0`, `0ccb2d31`). Bild:
+[`docs/progress/ozzy/2026-11-21-maul-etappe9-backen.jpg`](../progress/ozzy/2026-11-21-maul-etappe9-backen.jpg).
+
+**Was er jetzt kann:** Im Feinregler steht der Schalter „Wie im Spiel“. Im Raum zeigt Ozzy dann statt der Haut das gebackene
+Netz: höchstens 8 000 Dreiecke für Haut, Maul und Zähne (an „teat firefish“ 7 936 statt 23 400), gebacken in unter einer
+Zehntelsekunde, neu nach jedem Schritt, sobald die Form steht. Die Reihe der Posen und der Faden treiben es mit der Rechnung
+des Spiels; mit „Dreiecke zeigen“ dazu sieht er die Dreiecke des Spielnetzes; mit dem grünen Material sieht er es im Material
+des Spiels. Zu ist das Maul im Spielnetz nicht zu sehen.
+
+**Was sich gegen den Plan geändert hat (offen gesagt):**
+
+- **Die Ansicht gilt im Raum.** Eingerastet zeichnet Ozzy das Blatt mit den Linien, kein Material; dort bleibt alles wie es
+  ist. Die Probe läuft deshalb im Raum.
+- **Die Grundlage ist die Grundform mit den Kiefern bei null.** Die Form ist mit einem Haarspalt am Maul gerechnet (0,03°
+  am Mundwinkel); im Spielnetz ist er zu. B2 heißt für die Grundform deshalb: die Haut außen höchstens 0,1 daneben (gemessen
+  0,07), nicht 0,01.
+- **Die zwei Lippen haben im Rechennetz keine Zwillinge Punkt für Punkt** (sie sind verschieden unterteilt: 24 und 22 Punkte
+  je Lippe). Der Plan nahm an, die Lippen lägen Punkt für Punkt aufeinander. Das Spielnetz teilt jetzt beide Lippen an
+  denselben Stellen längs der Lippe (wo eine einen Punkt hat, bekommt die andere einen: er liegt zwischen zwei Punkten der
+  Form) und legt in der Grundlage die Punkte der einen Lippe auf die der anderen. B4 misst das; die Normalen dürfen 0,05°
+  auseinander liegen statt 0 (die Genauigkeit der Zahlen: gemessen 0,016°).
+- **Ausgedünnt wird in der Pose mit dem engsten offenen Maul,** mit dem Drehwinkel dieser und der weitesten Pose als
+  Merkmalen. Mit nur der weitesten Pose knickte die Haut in „Fressen“ am Hals 7,8 Einheiten neben der Anzeige.
+- **B6:** Die Probe läuft im Raum, und dort kosten Linien und Wände je Bild einer Fahrt schon rund 15 ms (Liste, 157). Gemessen
+  wird deshalb, was die Ansicht selbst je Bild kostet, und dieselbe Fahrt mit und ohne Ansicht.
+
+**Proben** (`ozzy-backen-fenster.mjs`, an „teat firefish“ mit Zähnen, „Fressen“ und einer zweiten Pose; alle erfüllt, die
+Werte des letzten von elf Läufen)
+
+| Nr. | Gemessen |
+| --- | --- |
+| B1 | 7 936 Dreiecke (Haut 7 016, Zähne 920) statt 23 400; 4 162 Punkte |
+| B2 | „Fressen“ und Pose 2: Haut 0,000, Zähne 0,000, Normalen 0,02°. Grundform: Haut außen 0,069, Zähne 0,055, Normalen der Haut außen 0,04°; mit Absicht anders: die Lippen bis 1,2 längs der Lippe verschoben (in anderen Läufen bis 2,3), ihre Normalen bis 9,8°, in der Tasche bis 1,1° |
+| B3 | Grundform außen: 183 992 Punkte der glatten Anzeige, neun Zehntel bis 0,86, im Mittel 0,42, höchstens 2,31. „Fressen“: 0,85 / 0,41 / 2,31. Dazu gemessen: Pose 2 höchstens 5,42 (am Hals); in der Tasche höchstens 1,6 |
+| B4 | 48 Punkte der Lippen von außen, 23 Paare am selben Ort (Abstand 0), Normalen dort höchstens 0,016° verschieden; beide Lippen stehen an 23 Stellen, 16 davon eingesetzt |
+| B5 | am Faden: Anteile 0,5 wie die Reihe. Die Rechnung des Spiels liegt dort neben der Fahrt des Editors: Haut 0,6 (andere Läufe bis 1,15), Zähne 10,9, Normalen an den Lippen bis 44° |
+| B6 | gebacken in 74 ms (67 bis 78); die Ansicht selbst im teuersten Bild 0,5 ms; vier Fahrten: nicht neu gebacken, jedes der 151 Bilder zeigt das Spielnetz; unterwegs im Raum mit der Ansicht 24,5 ms je Bild, ohne 23,6 ms |
+| B7 | aus: Haut 0 neben vorher; grün: geladen, zu sehen (WebGPU), das Spielnetz gezeigt |
+
+Dazu: 14 Tests für `form/spielform.ts` (die Rechnung des Spiels, die Normalen an der geschlossenen Lippe, die Lippen gleich
+teilen, der Abstand zum Netz); `npx vitest run src/form/ src/ozzy/` (153 Tests), Typen, Lint. Es laufen weiter:
+`ozzy-maul-fenster` (19), `-zaehne-` (27), `-posen-` (15), `-posen-zaehne-` (11), `-zunge-` (28), `-farbe-` (8),
+`-material-fenster` (3).
+
+**Für ihn entschieden (sein Urteil steht aus):** der Schalter im Feinregler (kein Tropfen); 40 Dreiecke je Zahn, der Rest für
+die Haut; die Grundlage mit geschlossenem Haarspalt; zwischen den Lagen mischt das Spiel die Posen (die Zähne wachsen mit dem
+Anteil der Pose).
+
+**Offen:** Liste, Punkte 187 bis 196.
+

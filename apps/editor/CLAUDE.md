@@ -902,6 +902,21 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   gewähltem Teil messen. (106) Ein Schlüssel für „an den Zähnen hat sich etwas geändert“ braucht den Anteil der Fahrt selbst:
   Zwei Posen können dieselbe Haut und dieselben Winkel haben und sich nur in den Zähnen unterscheiden. Probe:
   `ozzy-maul-posen-zaehne-fenster.mjs` (Z1 bis Z9).
+- **Backen fürs Spiel (Etappe 9, Scheibe 1, 21.11.):** `form/spielform.ts` (die Rechnung des Spiels), `ozzy/backen.ts`,
+  Schalter „Wie im Spiel“ (`spielNetzJetzt` in `main.ts`), `werk.spielDaten`, `WerkHaut.backDaten`. Merke: (107) Der Ausdünner
+  des Kerns lässt Punkte der Form stehen: Backen heißt „welche Punkte, welche Dreiecke“; jede Lage wird an denselben Punkten
+  abgelesen und stimmt dort genau. Was je Punkt gilt, muss nie umgerechnet werden. (108) Eingerastet zeichnet kein Material
+  (das Blatt mit den Linien): Eine Ansicht, die ein Netz statt der Haut zeigt, lebt im Raum; `spielGrund` sagt, warum sie
+  nicht zeigt. Eine Probe, die in der Seite baut, wechselt zum Prüfen mit `0` in den Raum. (109) Die zwei Lippen sind im
+  Rechennetz verschieden unterteilt: nie Zwillinge über die Nummer in der Kette annehmen, über die Stelle längs der Lippe
+  gehen. (110) Merkmale für den Ausdünner zählen gegen die Ausdehnung des Netzes. Hängt ein Feld an der Pose (der Auslauf der
+  Kiefer ist bei kleinem Winkel schmaler), braucht jede Pose ihr Merkmal, sonst knickt die Haut in der anderen (gemessen 7,8
+  statt 2,3). (111) Netze, die je Bild neu beschrieben werden, bleiben dieselben Dinge (`FesteHaut.netzSetzen` legt sonst je
+  Bild neue Puffer an) und melden den Wechsel über einen Zähler; `ZahnBild` erkennt ihn am Ding. (112) Ein Schlüssel über
+  Lagen darf nicht daran hängen, ob eine Pose betreten ist (Ruhe minus Grundform ist ihr Blendshape nur bis auf Rundung):
+  runden, sonst backt jede Fahrt neu. (113) Ein Zähler, den das Lesen zurücksetzt, wird von jeder Probe verfälscht, die je
+  Bild liest: ausdrücklich zurücksetzen. (114) Zeiten im Raum nie gegen die der Seite halten: Dort kosten Linien und Wände je
+  Bild einer Fahrt rund 15 ms; dieselbe Fahrt mit und ohne das Neue messen. Probe: `ozzy-backen-fenster.mjs` (B1 bis B7).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

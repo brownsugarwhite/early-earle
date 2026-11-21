@@ -105,6 +105,13 @@ anderen stehen. Die Linse sagt beim Wechsel kurz, wessen Zähne sie zeigt; die S
 offener Linse bleibt das Maul beim Wechsel zwischen Grundform und Pose offen (vorher klappte es erst zu). Bild:
 `docs/progress/ozzy/2026-11-21-maul-etappe8-zaehne-je-pose.jpg`. Neu: 177 bis 186.
 
+**Etappe 9, Scheibe 1 (21.11.), „Backen“:** Im Feinregler steht der Schalter „Wie im Spiel“. Im Raum zeigt Ozzy dann statt
+der Haut das gebackene Netz: höchstens 8 000 Dreiecke für Haut, Maul und Zähne (an „teat firefish“ 7 936 statt 23 400), neu
+gebacken nach jedem Schritt, sobald die Form steht. Die Reihe der Posen und der Faden treiben es mit der Rechnung des Spiels;
+in jeder Pose liegt jeder Punkt genau dort, wo Ozzy ihn zeigt. Mit „Dreiecke zeigen“ dazu siehst du die Dreiecke des
+Spielnetzes, mit dem grünen Material das Material des Spiels. Zu ist das Maul im Spielnetz nicht zu sehen. Plan und Ergebnis:
+`2026-11-21-ozzy-maul-etappe-9-backen.md`; Bild: `docs/progress/ozzy/2026-11-21-maul-etappe9-backen.jpg`. Neu: 187 bis 196.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -571,6 +578,33 @@ offener Linse bleibt das Maul beim Wechsel zwischen Grundform und Pose offen (vo
      je Bild dasselbe tun, habe ich nicht gesucht.
 186. **Nicht geprüft:** der Sitz je Pose (Zähne, die in einer Pose vor die Lippe treten); Zähne außen auf der Fahrt aus der
      Grundform; die Zunge an Zähnen, die wandern; Zähne je Pose im Paint-Modus und in den Vier Ansichten; „strange bird“; iPad.
+187. **„Wie im Spiel“ gilt im Raum** (dort zeichnen die Materialien). Eingerastet zeigt Ozzy weiter das Blatt mit den Linien
+     und der glatten Form. Der Schalter steht im Feinregler neben „Dreiecke zeigen“ (für dich entschieden: kein Tropfen).
+188. **Gebacken sind Haut, Tasche und Zähne.** Es fehlen: die Zunge; die Farben (Ebene „Maul“, Zähne, Zunge, Bemalung): Auf
+     Wachs trägt das Maul innen die Farbe des Wachses, im grünen Material tragen die Zähne die der Haut; die Datei fürs Spiel
+     und das Laden im Spiel.
+189. **Ausgedünnt wird in einer Lage** (der Pose mit dem engsten offenen Maul), mit dem Drehwinkel dieser und der weitesten
+     Pose als Merkmalen. In der anderen Pose liegt die Haut am Hals, wo die Drehung des Kiefers ausläuft, bis 5,4 Einheiten
+     neben der glatten Anzeige (in Grundform und „Fressen“ 2,3). Mit mehr als zwei Posen zählen die mittleren nicht. Sauber
+     wäre: Alle Lagen zählen beim Ausdünnen. Dafür braucht der Ausdünner im Rechenkern mehr Merkmale (dein Wort), oder Ozzy
+     ruft ihn selbst (eine Abhängigkeit mehr im Editor).
+190. **Die zwei Lippen sind im Rechennetz verschieden unterteilt** (24 und 22 Punkte): Zwillinge Punkt für Punkt gibt es nicht.
+     Das Spielnetz teilt beide Lippen an denselben Stellen (16 von 23 Stellen eingesetzt) und legt in der Grundlage die Punkte
+     der einen Lippe auf die der anderen: bis 1,2 bis 2,3 Einheiten längs der Lippe verschoben, nur zu. Sind die Lippen in der
+     Grundform getrennt (Überbiss), wird nichts angeglichen (nicht geprüft).
+191. **Der Haarspalt der Rechnung ist im Spielnetz zu** (die Kiefer bei null): Die Haut liegt dort bis 0,07 neben der
+     Grundform, wie Ozzy sie zeigt.
+192. **Zwischen den Lagen rechnet das Spiel anders als die Fahrt des Editors.** Das Spiel mischt die Posen: Die Zähne wachsen
+     mit dem Anteil der Pose, die Normalen der Lippen wandern von „zu“ nach „offen“. Der Editor rechnet die Drehung der Kiefer
+     je Winkel neu und zeigt einen Zahn ganz, sobald der Spalt reicht. Auf der Hälfte: Haut bis 1,2, Zähne bis 10,9 (ein
+     halber Zahn), Normalen an den Lippen bis 44°. Die Ansicht zeigt die Rechnung des Spiels.
+193. **Den Blick ins Maul gibt es im Spiel nicht:** Mit offener Linse steht das Maul in der Ansicht in der Grundform zu.
+194. **Die Hälften sind nicht spiegelgleich ausgedünnt** (3 484 und 3 506 Dreiecke): Der Ausdünner kennt den Spiegel nicht.
+195. **Das Tempo im Raum** bleibt wie Punkt 157: Eine Fahrt kostet dort je Bild 23 bis 25 ms, mit und ohne Ansicht (Linien 10,
+     Wände 5 bis 6, Haut 4 bis 5), das erste Bild rund 100 ms. Die Ansicht selbst kostet höchstens 0,5 ms je Bild.
+196. **Nicht geprüft:** mehr als zwei Posen; Formen ohne Maul (im Fenster einmal von Hand: 8 000 statt 22 894 Dreiecke); harte
+     Linien, die keine Lippe sind; mehrere Objekte (dann zeigt Ozzy die Haut wie sonst); Zähne außen; Jelly und helles Solid;
+     „strange bird“; iPad.
 
 ### Kleines
 

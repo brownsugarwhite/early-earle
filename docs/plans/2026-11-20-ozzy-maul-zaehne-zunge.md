@@ -567,8 +567,11 @@ Stand 21.11.: Etappe 7 („ein Zahn als kleine Form“) ist gebaut, Plan und Erg
 vier Scheiben gebaut (in „Fressen“ ist jede Lippe frei, die Grundform bleibt; Grundform und Fressen als Tropfen an einem Faden,
 dazwischen wandert die Form; mehrere Posen mit Plus, Fahrt von Pose zu Pose, Benennen und Löschen; Zähne je Pose), Plan und
 Ergebnis in
-[`2026-11-21-ozzy-maul-etappe-8-posen.md`](2026-11-21-ozzy-maul-etappe-8-posen.md). Florian am 21.11.: Die Kiefer richten
-und der Feinschliff kommen zum Schluss, nach seinem eigenen großen Feedback-Durchgang.
+[`2026-11-21-ozzy-maul-etappe-8-posen.md`](2026-11-21-ozzy-maul-etappe-8-posen.md). Etappe 9 („Backen“): Scheibe 1 ist gebaut
+(ein Spielnetz mit höchstens 8 000 Dreiecken, der Schalter „Wie im Spiel“), Plan und Ergebnis in
+[`2026-11-21-ozzy-maul-etappe-9-backen.md`](2026-11-21-ozzy-maul-etappe-9-backen.md); Abschnitt 7 oben ist dort an „das Maul
+ist echte Form“ angepasst. Florian am 21.11.: Die Kiefer richten und der Feinschliff kommen zum Schluss, nach seinem eigenen
+großen Feedback-Durchgang.
 
 Nach P1 (12.6): In Etappe 1 gehört der Schnitt ohne Spalt, in Etappe 2 ist „zu“ keine Stellung der Knochen mehr, sondern die Ruhe
 der Form.
