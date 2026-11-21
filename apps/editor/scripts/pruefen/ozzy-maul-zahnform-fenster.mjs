@@ -21,8 +21,12 @@
 //      Reihe behält ihre.
 //   G10 Tempo: Während die Spitze gezogen wird, rechnet ein Bild im Mittel höchstens 12 ms (Ozzy) und 3 ms (die Linse), keines
 //      über 16,7 ms.
-//   G11 Keine Fehler in der Konsole.
+//   G11 Sichern und neu laden: Die Werte der Zähne sind dieselben (die eigene Form der Reihe und die des einzelnen Zahns), die
+//      Zähne stehen wie vorher (ihr Netz ist endlich, der längste Zahn gleich lang).
+//   G12 Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;…'] node scripts/pruefen/ozzy-maul-zahnform-fenster.mjs [ordner für Bilder]
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { flickenAnlegen } from './ozzy-teile.mjs';
 
@@ -31,6 +35,13 @@ const NAME = process.env.NAME ?? 'teat firefish';
 const LINIE = (process.env.LINIE ?? '-860,172;-735,156;-700,152;-665,156;-640,165').split(';').map((t) => t.split(',').map(Number));
 const BIS = process.env.BIS ?? '';
 const basis = process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html';
+// (für G11: Die Probe sichert unter einem eigenen Namen in `wesen/` und räumt ihn wieder weg)
+const PROBE = 'ozzy-probe-zahnform';
+const datei = `${fileURLToPath(new URL('../../../../wesen/', import.meta.url))}${PROBE}.eewesen`;
+const aufraeumen = () => {
+  if (fs.existsSync(datei)) fs.unlinkSync(datei);
+};
+aufraeumen();
 const browser = await chromium.launch({ args: process.env.GPU === '1' ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] : [] });
 const s = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
 const fehler = [];
@@ -364,8 +375,43 @@ if (sp10) {
 }
 ok('G10 Tempo: Während die Spitze gezogen wird, rechnet ein Bild im Mittel höchstens 12 ms (Ozzy) und 3 ms (Linse), keines über 16,7 ms', tempo.n > 40 && tempo.mittel <= 12 && tempo.linse <= 3 && tempo.max + tempo.linse <= 16.7, `${tempo.n} Bilder; Ozzy im Mittel ${tempo.mittel.toFixed(1)} ms, das längste ${tempo.max.toFixed(1)} ms; die Linse höchstens ${tempo.linse.toFixed(1)} ms`);
 
-// G11 Konsole
-ok('G11 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
+// G11 Sichern und neu laden
+let g11 = false;
+let g11text = '';
+try {
+  await s.keyboard.press('Escape');
+  await s.waitForTimeout(300);
+  const vor = await O('zaehne');
+  const meldung = await O('sichern', PROBE);
+  await s.waitForTimeout(800);
+  const s2 = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+  s2.on('pageerror', (e) => fehler.push(String(e)));
+  s2.on('console', (m) => {
+    if (m.type() === 'error') fehler.push(m.text());
+  });
+  await s2.goto(`${basis}?form=${encodeURIComponent(PROBE)}`);
+  await s2.waitForFunction(() => !!window.__ozzy);
+  const O2 = (f, ...a) => s2.evaluate(([f2, a2]) => window.__ozzy[f2](...a2), [f, a]);
+  await s2.waitForTimeout(300);
+  await s2.waitForFunction(() => window.__ozzy.bearbeiten().an && !window.__ozzy.bearbeiten().beschaeftigt && !window.__ozzy.werk().beschaeftigt, null, { timeout: 120000 });
+  await O2('material', 'wachs');
+  await s2.waitForTimeout(1500);
+  // (die Zähne haben erst Länge, wenn das Maul offen steht: die Linse öffnen)
+  await s2.click('#zaehne-tropfen');
+  await s2.waitForTimeout(2600);
+  const nach = await O2('zaehne');
+  const eigen = Object.values(nach.werte?.oben.eigen ?? {}).filter((e) => e.form === -1 && e.gestalt).length;
+  g11 = fs.existsSync(datei) && !/geht so nicht|fehl/i.test(meldung) && JSON.stringify(nach.werte) === JSON.stringify(vor.werte) && nach.werte.oben.form === -1 && !!nach.werte.oben.gestalt && eigen === 2 && !!nach.netz && nach.netz.endlich && nach.plaetze.length === vor.plaetze.length;
+  g11text = `Meldung „${meldung}“; Werte ${JSON.stringify(nach.werte) === JSON.stringify(vor.werte) ? 'gleich' : 'ANDERS'}; eigene Form der Reihe ${nach.werte?.oben.gestalt ? 'da' : 'FEHLT'}, einzelner Zähne: ${eigen}; Plätze ${vor.plaetze.length} → ${nach.plaetze.length}; Netz ${nach.netz ? `endlich ${nach.netz.endlich}` : 'keins'}`;
+  if (ordner) await s2.screenshot({ path: `${ordner}/ozzy-maul-zahnform-11-geladen.png` });
+  await s2.close();
+} finally {
+  aufraeumen();
+}
+ok('G11 gesichert und neu geladen: dieselben Werte (die eigene Form der Reihe und die des einzelnen Zahns), die Zähne stehen wie vorher', g11, g11text);
+
+// G12 Konsole
+ok('G12 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 await browser.close();
 console.log(schlecht ? `\n${schlecht} Kriterien nicht erfüllt` : '\nalle Kriterien erfüllt');
 process.exit(schlecht ? 1 : 0);

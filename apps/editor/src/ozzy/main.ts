@@ -42,6 +42,7 @@ import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, 
 import { istMaulEbene, taschenFeld } from './farbe/maulEbene';
 import { FAKTOR_MAX, FAKTOR_MIN, type FormNetz, ZAEHNE_ANFANG, type ZahnPlatz, eigenSetzen, formGemischt, formNetz, formNetzGemischt, gestaltVon, mitAnzahl, partner, platzNetz, sitzGrenzen, vorlageNr, zaehneNetz, type ZahnKapsel, zahnKapseln, zaehnePaar, zahnPlaetze, zahnRahmen } from './zaehne';
 import { EIGENE, type GestaltLinie, type ZahnGestalt, gestaltAusForm, gestaltNetz, gestaltUmriss, netzGemischt } from './zahnGestalt';
+import { ZEIGER_WINKEL, type ZeigerArt, umfangVerteilen, zeigerUmrissVon } from './zeigerForm';
 import { strahlAufNetz } from './farbe/treffer';
 import { ZAHN_FARBE, ZahnBild } from './zahnBild';
 import {
@@ -4423,8 +4424,10 @@ function bild(dt: number): boolean {
         : 'Paint-Modus · P zeichnet eine Farblinie · Punkte ziehen · F Farbtropfen: Klick auf die Form füllt bis an die Farblinien · I Pipette · Ebenen: der Stapel rechts, X fächert sie auf · ins Leere ziehen: drehen · M wechselt den Grund · ⌘Z · B zurück zur Form'
       : zustand === 'ruhe' && werkGezeigt && linseOffen() && raumWerkzeug === 'auswahl' && !bearbeiten.stift && bearbeiten.auswahl.size === 0
       ? zahnWahl
-        ? `Zahn gewählt${zahnWahl.allein ? ' (allein)' : ''} · ziehen rückt ihn auf dem Zahnfleisch · Formenring und G stellen nur ihn · noch ein Tipp: ${zahnWahl.allein ? 'zurück zur Reihe' : 'ohne sein Spiegelbild'} · ⌫ zieht ihn · Esc`
-        : 'Zähne · Formenring: Vorlage · Drehregler: was die Perle sagt (# G N V S) · Zahn antippen: seine Reihe, noch einmal: der Zahn mit seinem Spiegelbild · Esc schließt die Linse'
+        ? `Zahn gewählt${zahnWahl.allein ? ' (allein)' : ''} · ziehen rückt ihn auf dem Zahnfleisch · Formenring, G und die Linien in der Linse stellen nur ihn · noch ein Tipp: ${zahnWahl.allein ? 'zurück zur Reihe' : 'ohne sein Spiegelbild'} · ⌫ zieht ihn · Esc`
+        : zahnLinse?.formt
+          ? 'Zahn formen · Punkte der Linie ziehen · die Linie zwischen zwei Punkten ziehen · nahe an einem Punkt: seine Richtung drehen (⌥ knickt) · P setzt einen Punkt · ⌫ löscht gewählte · ins Leere ziehen: drehen · ⌘Z'
+          : 'Zähne · Formenring: Vorlage · Drehregler: was die Perle sagt (# G N V S) · Zahn antippen: seine Reihe, noch einmal: der Zahn mit seinem Spiegelbild · in der Linse eine Linie des Zahns antippen: Dort lässt sie sich formen · Esc schließt die Linse'
       : zustand === 'ruhe' && werkGezeigt && zungeOffen() && raumWerkzeug === 'auswahl' && !bearbeiten.stift && bearbeiten.auswahl.size === 0
       ? werk.grund
         ? 'Zunge in „Fressen“ · ziehen und loslassen: Sie bleibt so liegen · Doppeltipp auf sie: zurück an ihren Platz · Formenring und Drehregler (L B D R S G) stellen ihre Form · ⌫ nimmt sie · Esc schließt die Linse'
@@ -4497,7 +4500,6 @@ function lippenOffen(): number {
 const GRUEN: [number, number, number] = [0xb9 / 255, 0xd1 / 255, 0xb4 / 255];
 /** S14: das Grün des Verdeckten im Röntgen (kräftiger, es ist jetzt greifbar) */
 const GRUEN_ROENTGEN: [number, number, number] = [0x5e / 255, 0x8f / 255, 0x57 / 255];
-const ZEIGER_WINKEL = [(32 * Math.PI) / 180, (80 * Math.PI) / 180];
 
 /** der Zeiger der Linien-Studie: Dreieck, Spitze oben links */
 function zeigerForm(x: number, y: number): Szene['zeiger'] {
@@ -4517,81 +4519,10 @@ function zeigerForm(x: number, y: number): Szene['zeiger'] {
 
 // ---------- S13 (liquid drop, Idee 8): der Zeiger in der Form des Werkzeugs ----------
 
-/** Pfeil (Auswahl), Spitze (P und Freihand), Schlinge (Lasso), Ring (Pinsel an der Haut; so groß wie sein Einfluss) */
-type ZeigerArt = 'pfeil' | 'spitze' | 'schlinge' | 'ring';
 /** der Zeiger jetzt: Umriss um die Spitze (Gerätepunkte), Füllung; ob er gerade von einer Form in die andere gleitet */
 const zeigerGestalt = { punkte: new Float32Array(2 * ZEIGER_PUNKTE), fuell: 1, bereit: false, gleitet: false };
 /** der Zeiger liegt über der Haut des Werks und der Pinsel würde ziehen */
 let zeigerPinsel = false;
-
-/** der Umriss einer Art, die Spitze im Ursprung (Gerätepunkte, y nach unten), so groß wie der Pfeil (L) */
-function zeigerUmrissVon(art: ZeigerArt, L: number, ring: number): [number, number][] {
-  const w0 = ZEIGER_WINKEL[0]!;
-  const w1 = ZEIGER_WINKEL[1]!;
-  const dw = (w0 + w1) / 2;
-  const d: [number, number] = [Math.cos(dw), Math.sin(dw)];
-  const q: [number, number] = [-Math.sin(dw), Math.cos(dw)];
-  const bei = (a: number, b: number): [number, number] => [a * d[0] + b * q[0], a * d[1] + b * q[1]];
-  if (art === 'pfeil')
-    return [
-      [0, 0],
-      [L * Math.cos(w0), L * Math.sin(w0)],
-      [L * Math.cos(w1), L * Math.sin(w1)],
-    ];
-  if (art === 'spitze') return [[0, 0], bei(0.42 * L, 0.2 * L), bei(1.0 * L, 0.2 * L), bei(1.0 * L, -0.2 * L), bei(0.42 * L, -0.2 * L)];
-  if (art === 'schlinge') {
-    // ein kurzer Faden von der Spitze, dann die Schlinge (der Faden hin und zurück ist eine Linie)
-    const ende = bei(0.3 * L, 0);
-    const m = bei(0.62 * L, 0);
-    const rd = 0.32 * L;
-    const rq = 0.44 * L;
-    const pkt: [number, number][] = [[0, 0], ende];
-    for (let k = 1; k < 20; k++) {
-      const t = Math.PI + (2 * Math.PI * k) / 20;
-      pkt.push([m[0] + rd * Math.cos(t) * d[0] + rq * Math.sin(t) * q[0], m[1] + rd * Math.cos(t) * d[1] + rq * Math.sin(t) * q[1]]);
-    }
-    pkt.push(ende);
-    return pkt;
-  }
-  // Ring um die Spitze; der erste Punkt zeigt nach oben links (dorthin, wo die anderen ihre Spitze haben)
-  const pkt: [number, number][] = [];
-  for (let k = 0; k < ZEIGER_PUNKTE; k++) {
-    const t = dw + Math.PI + (2 * Math.PI * k) / ZEIGER_PUNKTE;
-    pkt.push([ring * Math.cos(t), ring * Math.sin(t)]);
-  }
-  return pkt;
-}
-
-/** einen geschlossenen Umriss auf `n` Punkte verteilen, je Kante nach ihrer Länge (die Ecken bleiben Ecken) */
-function umfangVerteilen(poly: [number, number][], n: number): Float32Array {
-  const m = poly.length;
-  const len = poly.map((p, i) => Math.hypot(poly[(i + 1) % m]![0] - p[0], poly[(i + 1) % m]![1] - p[1]));
-  const summe = len.reduce((a, b) => a + b, 0) || 1;
-  const zahl = len.map((l) => Math.max(1, Math.round((n * l) / summe)));
-  let rest = n - zahl.reduce((a, b) => a + b, 0);
-  while (rest !== 0) {
-    let k = 0;
-    for (let i = 1; i < m; i++) if (rest > 0 ? len[i]! / zahl[i]! > len[k]! / zahl[k]! : zahl[i]! > zahl[k]!) k = i;
-    if (rest < 0 && zahl[k]! <= 1) break;
-    zahl[k] = zahl[k]! + Math.sign(rest);
-    rest -= Math.sign(rest);
-  }
-  const aus = new Float32Array(2 * n);
-  let j = 0;
-  poly.forEach((p, i) => {
-    const q = poly[(i + 1) % m]!;
-    for (let k = 0; k < zahl[i]! && j < n; k++, j++) {
-      const t = k / zahl[i]!;
-      aus[2 * j] = p[0] + (q[0] - p[0]) * t;
-      aus[2 * j + 1] = p[1] + (q[1] - p[1]) * t;
-    }
-  });
-  for (; j < n; j++) {
-    aus[2 * j] = aus[2 * j - 2]!;
-    aus[2 * j + 1] = aus[2 * j - 1]!;
-  }
-  return aus;
-}
 
 /** welche Form der Zeiger gerade hat */
 function zeigerArtJetzt(): ZeigerArt {
@@ -9645,6 +9576,7 @@ const zahnZiele = (): LinsenZiele => ({
     setzen: gestaltStellen,
     stift: () => bearbeiten.stift,
     werte: linienWerte,
+    gewechselt: () => anstossen(),
     gegriffen: () => {
       // (es ist immer nur eines gewählt: Was an der Form gewählt war, ist es nicht mehr)
       if (bearbeiten.auswahl.size > 0 || werk.G.auswahl.length > 0) {

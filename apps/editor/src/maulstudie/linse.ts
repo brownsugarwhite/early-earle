@@ -28,11 +28,12 @@
  * zurückgelesen, und hat es sich geändert, gilt die neue Gestalt (`LinsenZiele.gestalt.setzen`).
  */
 import { AmbientLight, BufferAttribute, BufferGeometry, Color, DataTexture, DirectionalLight, Group, Mesh, MeshMatcapMaterial, PerspectiveCamera, RGBAFormat, SRGBColorSpace, Scene, Vector3, WebGLRenderer, DoubleSide } from 'three';
-import { FluessigeAnzeige, type Szene } from '../linien/fluessig';
+import { FluessigeAnzeige, type Szene, ZEIGER_PUNKTE } from '../linien/fluessig';
 import { type Netz, punktEinsetzen } from '../linien/netz';
 import type { StiftWerk } from '../linien/stift';
 import { type Ansicht as LinienAnsicht, GRUNDWERTE, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
 import { Kapseln } from '../ozzy/kapseln';
+import { umfangVerteilen, zeigerUmrissVon } from '../ozzy/zeigerForm';
 import { type Abbildung, type GestaltLinie, type ZahnGestalt, gestaltAlsNetz, gestaltAusNetz, gestaltBauFein, gestaltLinieGleich, gestaltOhneAnker, netzLagen, normalen } from '../ozzy/zahnGestalt';
 import { ZAHN_FORMEN, wurzelBau, wurzelProfil, zahnNetz, zahnUmriss, type ZahnForm } from './zahn';
 
@@ -84,6 +85,8 @@ export type LinsenGestalt = {
   werte: LinienWerte;
   /** in der Linse ist etwas gegriffen: An der Form ist dann nichts mehr gewählt (es ist immer nur eines gewählt) */
   gegriffen?: () => void;
+  /** der Zahn ist eingerastet oder hat sich gelöst (`Linse.formt` hat gewechselt): Die Seite zeigt ihren Hinweis neu */
+  gewechselt?: () => void;
 };
 
 /** eine Ansicht, in die der Zahn einrastet: welche Linie dort ihre Punkte trägt und wie er dann steht */
@@ -209,7 +212,7 @@ export class Linse {
   private readonly kapseln = new Kapseln();
   private verhalten: Verhalten | null = null;
   /** das Netz, das das Verhalten hält: für welche Linie, aus welcher Gestalt, mit welcher Abbildung, in welcher Ansicht; `fest`: die geteilten Punkte */
-  private netzStand: { linie: GestaltLinie; gestalt: ZahnGestalt; A: Abbildung; fest: number[]; blick: Blick } | null = null;
+  private netzStand: { linie: GestaltLinie; gestalt: ZahnGestalt; A: Abbildung; fest: number[]; blick: Blick; veraltet?: boolean } | null = null;
   /** eingerastet in diese Ansicht (null: frei gedreht); wie weit die Kamera schon schmal ist und wie weit die Ansicht von oben gilt (0 … 1) */
   private rast: Blick | null = null;
   private flach = 0;
@@ -414,8 +417,13 @@ export class Linse {
   schliessen(): void {
     this.offen = false;
     this.feld.hidden = true;
-    this.verhalten?.zeigerWeg();
+    this.griffEnden();
+  }
+  /** ein laufender Griff an einer Linie endet (die Linse schließt, oder der Zahn verliert seine Linien); der Zeiger ist weg */
+  private griffEnden(): void {
+    if (this.linienZug) this.verhalten?.loslassen();
     this.linienZug = false;
+    this.verhalten?.zeigerWeg();
   }
 
   /** der Zahn, der in der Linse steht: eine Vorlage aus ihren Zahlen, ohne Linien (so in der Studie und während die Vorlage wechselt) */
@@ -541,8 +549,7 @@ export class Linse {
     this.fein = null;
     this.netzStand = null;
     this.stille = [];
-    this.linienZug = false;
-    this.verhalten?.zeigerWeg();
+    this.griffEnden();
     this.feld.classList.remove('formt');
   }
 
@@ -977,7 +984,8 @@ export class Linse {
   private blickSchritt(dt: number): boolean {
     if (this.teilArt !== 'zahn') return false;
     let weiter = false;
-    const r = this.gestalt ? this.rast : null;
+    // (auch ohne Linien, während die Vorlage weich wechselt: Der Zahn bleibt in seiner Ansicht, die Kamera schmal)
+    const r = this.rast;
     const k = 1 - Math.exp(-dt / 0.07);
     const zu = (ist: number, soll: number, eps: number): number => {
       if (Math.abs(soll - ist) <= eps) return soll;
@@ -1134,14 +1142,17 @@ export class Linse {
     this.dreh.updateMatrixWorld(true);
     this.kamera.updateMatrixWorld();
     const formt = !!z && this.eingerastet();
-    this.feld.classList.toggle('formt', formt);
+    if (formt !== this.feld.classList.contains('formt')) {
+      this.feld.classList.toggle('formt', formt);
+      z?.gewechselt?.();
+    }
     const v = this.verhalten;
     if (!formt || !z) {
       if (v && !this.linienZug) v.zeigerWeg();
       return false;
     }
     // (das Netz gilt der Ansicht, in der es gelesen wurde: In einer anderen wird es neu gelesen)
-    const neu = !this.netzStand || this.netzStand.blick !== this.rast;
+    const neu = !this.netzStand || this.netzStand.blick !== this.rast || !!this.netzStand.veraltet;
     if (neu) this.netzNeu();
     const V = this.verhalten!;
     if (V.stift !== z.stift()) V.stiftSchalten(z.stift());
@@ -1211,7 +1222,19 @@ export class Linse {
       }
       this.stille.push({ linie: kette.linie, x, y, vorn });
     }
-    this.anzeige.zeichnen({ prim: K.puffer, anzahl: K.n, k0: sz?.k0 ?? 0, k1: sz?.k1 ?? werte.weich * D, felder: K.felder, tinte: TINTE, gruen: GRUEN, zeiger: sz?.zeiger ?? null, zeigerFarbe: 1 });
+    // der Zeiger wie auf der Bühne: der weiße Pfeil, mit P die Spitze der Feder
+    const zg = sz?.zeiger ?? null;
+    let umriss: Szene['zeigerUmriss'] = null;
+    if (zg && this.verhalten?.stift) {
+      const form = umfangVerteilen(zeigerUmrissVon('spitze', Math.hypot(zg.bx - zg.ax, zg.by - zg.ay), 0), ZEIGER_PUNKTE);
+      const punkte = new Float32Array(2 * ZEIGER_PUNKTE);
+      for (let i = 0; i < ZEIGER_PUNKTE; i++) {
+        punkte[2 * i] = zg.ax + form[2 * i]!;
+        punkte[2 * i + 1] = zg.ay + form[2 * i + 1]!;
+      }
+      umriss = { punkte, fuell: 1 };
+    }
+    this.anzeige.zeichnen({ prim: K.puffer, anzahl: K.n, k0: sz?.k0 ?? 0, k1: sz?.k1 ?? werte.weich * D, felder: K.felder, tinte: TINTE, gruen: GRUEN, zeiger: zg, zeigerFarbe: 1, zeigerUmriss: umriss });
     this.linienGezeichnet = true;
   }
 
@@ -1304,6 +1327,10 @@ export class Linse {
     v.umschalt = umschalt;
     if (this.linienZug) this.lauf();
   }
+  /** der Zahn ist eingerastet, und seine Linie lässt sich formen */
+  get formt(): boolean {
+    return this.offen && this.feld.classList.contains('formt');
+  }
   /** so viele Punkte der Linie sind gewählt (0: keiner, oder der Zahn ist nicht eingerastet) */
   get linienGewaehlt(): number {
     return this.verhalten && this.eingerastet() ? this.verhalten.auswahl.size : 0;
@@ -1337,7 +1364,9 @@ export class Linse {
     if (weg) {
       this.linienGriff++;
       if (z.setzen(g, this.linienGriff)) {
-        this.netzStand = null;
+        // (der Zahn bleibt stehen, wie er steht; nur das Netz der Linie wird neu gelesen)
+        st.gestalt = g;
+        st.veraltet = true;
         this.gestaltZeigen(g);
       }
       this.tick(false);
