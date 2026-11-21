@@ -20,7 +20,8 @@
 import { bildVoreinstellung } from '../bildShader';
 import type { Voreinstellung } from '../kern';
 
-export const TIER = /* glsl */ `
+/** Zellen, Phasor-Rauschen und Achsen (ohne Ableitungen: auch im Vertex-Shader nutzbar) */
+export const TIER_ZELLEN = /* glsl */ `
 /** nächste Zelle: Vektor zu ihrer Mitte (xyz) und Abstand (w); id: ihre Kennung */
 vec4 zelle3(vec3 x, out float id) {
   vec3 p = floor(x), f = fract(x);
@@ -79,26 +80,6 @@ float zelleRand3(vec3 x, out vec3 mitte, out float id) {
   id = hash13(p + mb + 0.37);
   return md;
 }
-/**
- * Platten mit runden Ecken in einer Ebene (Reihen, mit versetzt = 1 jede zweite um eine halbe Platte verschoben). Ergebnis: Abstand
- * zum Rand der Platte (innen positiv, in der Fuge negativ); d: Ort in der Platte, aussen: Richtung zum nächsten Rand
- */
-float platteRund(vec2 p, float streck, float versetzt, float rund, float spalt, out vec2 d, out vec2 mitte, out float id, out vec2 aussen) {
-  float zeile = floor(p.y);
-  float vs = versetzt * 0.5 * mod(zeile, 2.0);
-  vec2 pp = vec2(p.x / streck + vs, p.y);
-  vec2 c = floor(pp);
-  d = vec2((fract(pp.x) - 0.5) * streck, fract(pp.y) - 0.5);
-  mitte = vec2((c.x + 0.5 - vs) * streck, c.y + 0.5);
-  id = hash12(c + 0.7);
-  vec2 hs = vec2(0.5 * streck, 0.5) - spalt * 0.5 - hash22(c + 3.1) * 0.05;
-  vec2 w = abs(d) - hs + rund;
-  float g = max(w.x, w.y);
-  float sd = min(g, 0.0) + length(max(w, 0.0)) - rund;
-  vec2 gr = g > 0.0 ? max(w, 0.0) / max(length(max(w, 0.0)), 1e-5) : (w.x > w.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
-  aussen = sign(d) * gr;
-  return -sd;
-}
 /** Phasor-Rauschen (Tricard u. a. 2019): Summe von Gabor-Kernen; aus der Phase werden Streifen, die sich gabeln und enden */
 vec2 phasor3(vec3 x, vec3 achse, float f, float streu) {
   vec3 p = floor(x), fr = fract(x);
@@ -121,6 +102,30 @@ void achsen(out vec3 A, out vec3 B, out vec3 C) {
   A = normalize(vec3(ach.x, ach.y, 0.0) + vec3(1e-3, 0.0, 0.0));
   B = normalize(cross(vec3(0.0, 0.0, 1.0), A));
   C = cross(A, B);
+}
+`;
+
+export const TIER = /* glsl */ `
+${TIER_ZELLEN}
+/**
+ * Platten mit runden Ecken in einer Ebene (Reihen, mit versetzt = 1 jede zweite um eine halbe Platte verschoben). Ergebnis: Abstand
+ * zum Rand der Platte (innen positiv, in der Fuge negativ); d: Ort in der Platte, aussen: Richtung zum nächsten Rand
+ */
+float platteRund(vec2 p, float streck, float versetzt, float rund, float spalt, out vec2 d, out vec2 mitte, out float id, out vec2 aussen) {
+  float zeile = floor(p.y);
+  float vs = versetzt * 0.5 * mod(zeile, 2.0);
+  vec2 pp = vec2(p.x / streck + vs, p.y);
+  vec2 c = floor(pp);
+  d = vec2((fract(pp.x) - 0.5) * streck, fract(pp.y) - 0.5);
+  mitte = vec2((c.x + 0.5 - vs) * streck, c.y + 0.5);
+  id = hash12(c + 0.7);
+  vec2 hs = vec2(0.5 * streck, 0.5) - spalt * 0.5 - hash22(c + 3.1) * 0.05;
+  vec2 w = abs(d) - hs + rund;
+  float g = max(w.x, w.y);
+  float sd = min(g, 0.0) + length(max(w, 0.0)) - rund;
+  vec2 gr = g > 0.0 ? max(w, 0.0) / max(length(max(w, 0.0)), 1e-5) : (w.x > w.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+  aussen = sign(d) * gr;
+  return -sd;
 }
 /** welche Ebene trägt die Schuppen hier (0 Seite, 1 oben/unten, 2 vorn/hinten); U längs der Körperachse, W quer */
 int schuppenEbene(vec3 n, vec3 q, vec3 A, out vec3 U, out vec3 W) {

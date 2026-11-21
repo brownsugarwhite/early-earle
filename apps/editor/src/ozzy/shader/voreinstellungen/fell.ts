@@ -18,13 +18,13 @@
  *   Farbton drehbar.
  * - **Licht** Echt: Kajiya-Kay mit zwei verschobenen Glanzlinien (Scheuermann 2004), Wurzeln dunkler, Gegenlicht am Rand.
  */
-import { FrontSide, InstancedBufferGeometry, type IUniform, Mesh, type RawShaderMaterial, Scene, type Texture } from 'three';
+import { BufferGeometry, FrontSide, GLSL3, InstancedBufferGeometry, type IUniform, Matrix4, Mesh, Points, RawShaderMaterial, Scene, type Texture } from 'three';
 import { WeicheMaske } from '../bildShader';
 import { G_UNIFORMS } from '../daten';
 import { DRUCK, FARBE, LICHT, RAUSCHEN } from '../glsl';
 import type { ReglerZeile, ShaderGruppe, ShaderKern, ShaderLauf, ShaderWerte, Voreinstellung } from '../kern';
 import { BUEHNEN } from './buehnen';
-import { TIER } from './tiere';
+import { TIER_ZELLEN } from './tiere';
 
 export const FELL_STILE = ['Echt', 'Ghibli', 'Anime', 'Spider-Verse', 'Manga', 'Plüsch'];
 export const FELL_MUSTER = [
@@ -67,7 +67,7 @@ const ZEICHNUNG = [
   { s: 0, busch: 0, gross: 7 },
 ];
 
-const SCHALEN_VERTEX = /* glsl */ `
+const SCHALEN_VERTEX_KOPF = /* glsl */ `
 precision highp float;
 uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
@@ -78,9 +78,13 @@ uniform float uSchalen;
 uniform float uLaenge;
 uniform float uStrich;
 uniform float uSchwer;
+uniform sampler2D tMuster;
+uniform float uMusterBreite;
 in vec3 position;
 in vec3 normal;
 in float aSeite;
+out vec3 vMuster;
+out float vAgouti;
 out vec3 vWelt;
 out vec3 vWurzel;
 out vec3 vNormal;
@@ -104,9 +108,48 @@ void main() {
   vSpiegel = vec2(aSeite, position.z);
   vH = h;
   vStrich = s;
+  // das Muster je Ecke an der Wurzel, einmal gerechnet (MUSTER_PUNKTE); ein Fellmuster ist weicher als ein Dreieck
+  int W = int(uMusterBreite);
+  vec4 m = texelFetch(tMuster, ivec2(gl_VertexID % W, gl_VertexID / W), 0);
+  vMuster = m.rgb;
+  vAgouti = m.a;
   gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
 }
 `;
+
+/** das Muster einmal je Ecke: jede Ecke ein Punkt in einer Textur (Zeile für Zeile, uMusterBreite je Zeile) */
+const MUSTER_PUNKTE_VERTEX = /* glsl */ `
+precision highp float;
+uniform mat4 modelMatrix;
+uniform vec3 uHalb;
+uniform float uRadius;
+uniform vec3 uMitte;
+uniform float uScheckung;
+uniform float uMusterBreite;
+uniform float uMusterHoehe;
+in vec3 position;
+in vec3 normal;
+out vec4 vMuster;
+void main() {
+  vec4 w0 = modelMatrix * vec4(position, 1.0);
+  vec3 n = normalize(mat3(modelMatrix) * normal);
+  vec3 q = (w0.xyz - uMitte) / uRadius;
+  float ag;
+  vec3 c = tonDrehen(fellMuster(int(uR_muster + 0.5), q, n, ag), uR_farbton);
+  vMuster = vec4(scheckung(c, q, n, uScheckung), ag);
+  float i = float(gl_VertexID);
+  vec2 xy = vec2(mod(i, uMusterBreite), floor(i / uMusterBreite));
+  gl_Position = vec4((xy + 0.5) / vec2(uMusterBreite, uMusterHoehe) * 2.0 - 1.0, 0.0, 1.0);
+  gl_PointSize = 1.0;
+}
+`;
+const MUSTER_PUNKTE_FRAGMENT = /* glsl */ `
+precision highp float;
+in vec4 vMuster;
+out vec4 farbe;
+void main() { farbe = vMuster; }
+`;
+const MUSTER_BREITE = 1024;
 
 /** Muster: Haarfarbe (sRGB) an der Wurzel q (Maß der Form); agouti 0 … 1 (Bänder im Haar) */
 const MUSTER = /* glsl */ `
@@ -280,6 +323,23 @@ vec3 scheckung(vec3 c, vec3 q, vec3 n0, float staerke) {
 /** Haare in Büscheln finden */
 const HAARE = /* glsl */ `
 struct Haar { float a; float id; float bid; vec3 wurzel; float rand; vec3 quer; float hoehe; };
+/** nächste Zelle unter den acht nächsten (Mitten in 0,15 … 0,85 gestreut): Vektor zur Mitte (xyz), Abstand (w), Kennung */
+vec4 zelleAcht(vec3 x, out float id) {
+  vec3 p = floor(x), f = fract(x);
+  vec3 o = step(0.5, f) - 1.0;
+  vec4 best = vec4(0.0, 0.0, 0.0, 9.0);
+  id = 0.0;
+  for (int k = 0; k <= 1; k++)
+    for (int j = 0; j <= 1; j++)
+      for (int i = 0; i <= 1; i++) {
+        vec3 b = o + vec3(float(i), float(j), float(k));
+        vec3 r = b + 0.15 + 0.7 * hash33(p + b) - f;
+        float d = dot(r, r);
+        if (d < best.w) { best = vec4(r, d); id = hash13(p + b + 0.37); }
+      }
+  best.w = sqrt(best.w);
+  return best;
+}
 /**
  * Haare: eine Zelle je Haar (s: Abstand im Maß der Form, dicke: Radius in Zellen; die Wurzel bleibt so in ihrer Zelle, kein
  * Nachbar nötig), in Büscheln (Zellen der Größe s * gross; die Spitzen laufen zur Mitte, busch 0 … 1), Locken verschieben den Ort
@@ -294,7 +354,7 @@ Haar haarDuenn(vec3 q, vec3 n, float h, float s, float busch, float locke, float
   if (busch > 0.001) {
     float C = s * gross;
     float cid;
-    vec4 z = zelle3(q / C, cid);
+    vec4 z = zelleAcht(q / C, cid);
     vec3 c = q + z.xyz * C;
     c -= n * dot(c - q, n);
     float k = busch * smoothstep(0.0, 1.0, h);
@@ -337,15 +397,16 @@ Haar bueschel(vec3 q, vec3 n, float h, float s, float spitz, vec3 S) {
   Haar r;
   vec3 hq = q / s;
   vec3 p = floor(hq);
+  vec3 o = step(0.5, fract(hq)) - 1.0;
   vec3 Sa = length(S) > 1e-3 ? normalize(S) : normalize(cross(n, vec3(0.31, 0.93, 0.17)));
   vec3 Sq = cross(n, Sa);
   float best = 9.0;
   vec3 bestSeed = vec3(0.0), bestD = vec3(0.0);
   float bestId = 0.0, bestL = 1.0;
-  for (int k = -1; k <= 1; k++)
-    for (int j = -1; j <= 1; j++)
-      for (int i = -1; i <= 1; i++) {
-        vec3 b = p + vec3(float(i), float(j), float(k));
+  for (int k = 0; k <= 1; k++)
+    for (int j = 0; j <= 1; j++)
+      for (int i = 0; i <= 1; i++) {
+        vec3 b = p + o + vec3(float(i), float(j), float(k));
         vec3 seed = b + 0.15 + 0.7 * hash33(b);
         vec3 d = hq - seed;
         d -= n * dot(d, n);
@@ -492,6 +553,8 @@ in vec3 vNormal;
 in vec2 vSpiegel;
 in float vH;
 in vec3 vStrich;
+in vec3 vMuster;
+in float vAgouti;
 layout(location = 0) out vec4 farbe;
 layout(location = 1) out vec4 kennung;
 ${RAUSCHEN}${FARBE}${LICHT}${DRUCK}
@@ -522,11 +585,15 @@ void main() {
   } else {
     f = haarDuenn(q, n0, h, max(uDicht, uMinPx / pxq), uBusch, uLocke, uDicke, uGross);
   }
-  if (f.a < 0.02) discard;
+  if (f.a < 0.02) {
+    // Deckung null statt verwerfen: so darf die Grafikkarte Verdecktes vorher aussortieren
+    farbe = vec4(0.0);
+    kennung = vec4(0.0);
+    return;
+  }
   kennung = vec4(duenn ? f.id : f.bid, h, 0.0, 1.0);
-  float agouti;
-  vec3 alb = tonDrehen(fellMuster(int(uR_muster + 0.5), f.wurzel, n0, agouti), uR_farbton);
-  alb = scheckung(alb, f.wurzel, n0, uScheckung);
+  float agouti = vAgouti;
+  vec3 alb = vMuster;
   // Agouti: Wurzel dunkel, ein helles Band, dunkle Spitze
   if (agouti > 0.0 && h > 0.0 && duenn) {
     float band = smoothstep(0.45, 0.6, f.hoehe) * (1.0 - smoothstep(0.78, 0.9, f.hoehe));
@@ -619,6 +686,11 @@ type FellArt = { id: string; name: string; gruppe: ShaderGruppe; zeile: string; 
 
 class FellLauf implements ShaderLauf {
   private readonly geo = new InstancedBufferGeometry();
+  private readonly punkte = new BufferGeometry();
+  private readonly punkteSzene = new Scene();
+  private readonly muster: RawShaderMaterial;
+  private musterSchluessel = '';
+  private readonly mu: Record<string, IUniform> = { tMuster: { value: null }, uMusterBreite: { value: MUSTER_BREITE }, uMusterHoehe: { value: 1 } };
   private readonly szene = new Scene();
   private readonly schalen: RawShaderMaterial;
   private readonly zusammen: RawShaderMaterial;
@@ -640,16 +712,30 @@ class FellLauf implements ShaderLauf {
     uScheckung: { value: 0 },
   };
   private n = 0;
+  private readonly sicht = new Matrix4();
+  private stand = -1;
+  private nachziehen = false;
 
   constructor(k: ShaderKern, regler: ReglerZeile[]) {
     this.regler = regler;
     for (const r of regler) this.ru[`uR_${r.k}`] = { value: r.grund };
     const kopf = regler.map((r) => `uniform float uR_${r.k};`).join('\n');
-    this.schalen = k.netzProgramm(`${SCHALEN_FRAGMENT_KOPF}\n${kopf}\n${TIER}\n${MUSTER}\n${HAARE}\n${STILE}\n${SCHALEN_MAIN}`, {
-      vertex: SCHALEN_VERTEX,
-      uniforms: { ...this.ru, ...this.fu },
+    this.schalen = k.netzProgramm(`${SCHALEN_FRAGMENT_KOPF}\n${kopf}\n${HAARE}\n${STILE}\n${SCHALEN_MAIN}`, {
+      vertex: SCHALEN_VERTEX_KOPF,
+      uniforms: { ...this.ru, ...this.fu, ...this.mu },
       seite: FrontSide,
     });
+    this.muster = new RawShaderMaterial({
+      glslVersion: GLSL3,
+      uniforms: { ...k.u, ...this.ru, ...this.fu, ...this.mu },
+      vertexShader: MUSTER_PUNKTE_VERTEX.replace('void main() {', `${kopf}\n${RAUSCHEN}\n${TIER_ZELLEN}\n${MUSTER}\nvoid main() {`),
+      fragmentShader: MUSTER_PUNKTE_FRAGMENT,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const punkte = new Points(this.punkte, this.muster);
+    punkte.frustumCulled = false;
+    this.punkteSzene.add(punkte);
     this.schalen.alphaToCoverage = true;
     const mesh = new Mesh(this.geo, this.schalen);
     mesh.frustumCulled = false;
@@ -669,6 +755,8 @@ class FellLauf implements ShaderLauf {
     if (this.geo.getAttribute('normal') !== nor) this.geo.setAttribute('normal', nor);
     if (this.geo.getAttribute('aSeite') !== seite) this.geo.setAttribute('aSeite', seite);
     if (this.geo.index !== g.index) this.geo.setIndex(g.index);
+    if (this.punkte.getAttribute('position') !== pos) this.punkte.setAttribute('position', pos);
+    if (this.punkte.getAttribute('normal') !== nor) this.punkte.setAttribute('normal', nor);
     return true;
   }
 
@@ -684,7 +772,13 @@ class FellLauf implements ShaderLauf {
     // so viele Schalen, dass eine Schicht im Bild höchstens rund anderthalb Bildpunkte dick ist
     const lPx = L * k.u.uMass.value * k.u.uRadius.value;
     const basis = duenn ? Math.round(pluesch.n * (0.7 + 0.3 * Math.min(laenge, 2))) : 24;
-    this.n = Math.max(basis, Math.min(64, Math.round(lPx / 1.5)));
+    const voll = Math.max(basis, Math.min(40, Math.round(lPx / 1.8)));
+    // in Bewegung (Blick oder Form) weniger als die Hälfte der Schalen; steht das Bild, folgt eins in voller Güte
+    const bewegt = !this.sicht.equals(k.u.uView.value) || k.netzStand !== this.stand;
+    this.sicht.copy(k.u.uView.value);
+    this.stand = k.netzStand;
+    this.n = bewegt ? Math.max(10, Math.round(voll * 0.45)) : voll;
+    this.nachziehen = bewegt;
     const u = this.fu;
     u.uSchalen!.value = this.n;
     u.uLaenge!.value = L;
@@ -700,7 +794,19 @@ class FellLauf implements ShaderLauf {
     u.uSpitz!.value = stil === 2 ? 1.0 : 0.85;
     u.uScheckung!.value = w.regler.scheckung ?? 0;
     this.geo.instanceCount = this.n + 1;
-    const ziel = k.ziel('fell:schalen', { proben: 4, tiefe: true, art: 'byte', anzahl: 2 });
+    const anzahl = k.geo.getAttribute('position')!.count;
+    const hoehe = Math.max(1, Math.ceil(anzahl / MUSTER_BREITE));
+    const schluessel = `${k.netzStand}|${anzahl}|${w.regler.muster}|${w.regler.farbton}|${w.regler.scheckung}`;
+    const mz = k.ziel(`fell:muster:${hoehe}`, { breite: MUSTER_BREITE, hoehe, art: 'half', filter: 'nearest' });
+    if (schluessel !== this.musterSchluessel || this.mu.tMuster!.value !== mz.texture) {
+      this.mu.uMusterHoehe!.value = hoehe;
+      this.punkte.setDrawRange(0, anzahl);
+      k.szene(this.punkteSzene, k.kamera, mz, [0, 0, 0, 0]);
+      this.mu.tMuster!.value = mz.texture;
+      this.musterSchluessel = schluessel;
+    }
+    // in Bewegung in kleinerer Auflösung (die Kosten wachsen mit der Fläche), steht das Bild, voll
+    const ziel = bewegt ? k.ziel('fell:schalen:bewegt', { proben: 4, tiefe: true, art: 'byte', anzahl: 2, skala: 0.7 }) : k.ziel('fell:schalen', { proben: 4, tiefe: true, art: 'byte', anzahl: 2 });
     k.szene(this.szene, k.kamera, ziel, [0, 0, 0, 0]);
     const zu = this.zusammen.uniforms;
     zu.tFell!.value = ziel.textures[0];
@@ -712,14 +818,16 @@ class FellLauf implements ShaderLauf {
   }
 
   unruhig(): boolean {
-    return false;
+    return this.nachziehen;
   }
 
   info(): Record<string, number> {
-    return { schalen: this.n };
+    return { schalen: this.n, ecken: this.punkte.getAttribute("position")?.count ?? 0, dreiecke: (this.geo.index?.count ?? 0) / 3 };
   }
 
   freigeben(): void {
+    this.muster.dispose();
+    this.punkte.dispose();
     this.schalen.dispose();
     this.zusammen.dispose();
     this.weich.freigeben();
