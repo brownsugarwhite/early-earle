@@ -21,10 +21,12 @@
  * keine Naht, wo die Fläche die Richtung wechselt), am Bauch Querplatten. Stile: Echt, Anime, Manga, Spider-Verse, Earle.
  */
 import { bildVoreinstellung } from '../bildShader';
-import type { ReglerZeile } from '../kern';
+import type { IUniform } from 'three';
+import type { ReglerZeile, ShaderKern, ShaderWerte } from '../kern';
 import { BUEHNEN } from './buehnen';
 import { HAUT_STILE } from './hautStile';
 import { TIER } from './tiere';
+import { type FeldWunsch, schuppenFeld } from './schuppenFeld';
 import { PFLASTER } from './trex';
 
 const STILE = ['Echt', 'Anime', 'Manga', 'Spider-Verse', 'Earle'];
@@ -325,16 +327,57 @@ const SCHLANGE_KOPF = /* glsl */ `
   float t = hautT(n0);
   vec3 A, B, C;
   achsen(A, B, C);
-  float f = K / uR_groesse * (stil == 0 ? 1.0 : 0.8);
-  h.lod = smoothstep(2.0, 6.0, uMass * uRadius / f);
-  vec2 uv;
-  float id, schatten;
-  vec3 mz;
-  float innen = schindel(q * f, n0, S, Q, FORM, uv, id, schatten, mz);
-  vec3 qm = mix(q, mz / f, h.lod);
-  float uN = clamp(uv.x / FORM.y, -0.6, 1.0);
-  float unter = 1.0 - smoothstep(0.0, 0.22, schatten);
-  float fuge = innen < 0.0 ? 1.0 : 1.0 - smoothstep(0.0, 0.1, innen);
+  float f = 1.0 / uSchuppe;
+  // Gitter aus den Phasen des Schuppenfelds (Runde 8): a, b längs der zwei schrägen Reihen; Ableitungen ohne Sprung aus cos und sin
+  vec4 ph = texture(tPhasen, vUv);
+  float rU = max(dot(ph.xy, ph.xy), 1e-6);
+  float rW = max(dot(ph.zw, ph.zw), 1e-6);
+  float Uw = atan(ph.y, ph.x);
+  float Ww = atan(ph.w, ph.z);
+  vec4 phx = dFdx(ph);
+  vec4 phy = dFdy(ph);
+  vec2 dU = vec2(ph.x * phx.y - ph.y * phx.x, ph.x * phy.y - ph.y * phy.x) / rU;
+  vec2 dW = vec2(ph.z * phx.w - ph.w * phx.z, ph.z * phy.w - ph.w * phy.z) / rW;
+  vec2 gab = vec2(Uw + Ww, Uw - Ww) / 6.2831853;
+  vec2 da = (dU + dW) / 6.2831853;
+  vec2 db = (dU - dW) / 6.2831853;
+  vec3 dpx = dFdx(p);
+  vec3 dpy = dFdy(p);
+  float detJ = da.x * db.y - da.y * db.x;
+  vec3 pa = abs(detJ) > 1e-14 ? (dpx * db.y - dpy * db.x) / detJ : vec3(0.0);
+  vec3 pb = abs(detJ) > 1e-14 ? (dpy * da.x - dpx * da.y) / detJ : vec3(0.0);
+  h.lod = smoothstep(2.5, 7.0, 1.0 / max(length(da) + length(db), 1e-6));
+  vec2 fz = fract(gab) - 0.5;
+  // die oberste Schuppe: unter den Zellen (-1,-1), (-1,0), (0,-1), (0,0) die vorderste, die den Punkt deckt; jede Schuppe reicht
+  // nach hinten über ihre Zelle hinaus (FORM.x) und ist eine gerundete Raute (Norm FORM.y, Breite FORM.z)
+  float innen = -1.0;
+  vec2 uv = vec2(0.0);
+  vec2 xyB = fz;
+  float schatten = 1.0;
+  bool gefunden = false;
+  for (int k = 0; k < 4; k++) {
+    int kk = k == 0 ? 3 : (k == 1 ? 1 : (k == 2 ? 2 : 0));
+    vec2 o = -vec2(float(kk - (kk / 2) * 2), float(kk / 2));
+    vec2 xy = fz - o;
+    float u = xy.x + xy.y;
+    float v = xy.x - xy.y;
+    float uu = (u - FORM.x * 0.5) / (1.0 + FORM.x * 0.5);
+    float vv = v / FORM.z;
+    float d = pow(pow(abs(uu), FORM.y) + pow(abs(vv), FORM.y), 1.0 / FORM.y);
+    float inn = 1.0 - d;
+    if (!gefunden && inn > 0.0) { gefunden = true; innen = inn; uv = vec2(u, v) * 0.5; xyB = xy; }
+    else if (!gefunden) schatten = min(schatten, -inn);
+  }
+  // Mitte der Schuppe im Raum: von hier um die Lage in der Zelle zurück; dort wird das Muster gelesen
+  vec3 pm = p - pa * xyB.x - pb * xyB.y;
+  // wo das Gitter verzerrt ist (Zellen viel größer als eine Schuppe, Wirbel), ist die geschätzte Mitte unsicher: dort der Punkt selbst
+  float guete = smoothstep(3.0, 1.4, (length(pa) + length(pb)) / uRadius * f);
+  vec3 qm = mix(q, (pm - uMitte) / uRadius, h.lod * guete);
+  vec3 mz = qm * f;
+  float id = clamp(0.5 + 0.55 * snoise(qm * f * 1.3), 0.0, 1.0);
+  float uN = clamp(uv.x * 2.0 / (1.0 + FORM.x), -0.8, 1.0);
+  float unter = 1.0 - smoothstep(0.0, 0.18, schatten);
+  float fuge = innen < 0.0 ? 1.0 : 1.0 - smoothstep(0.0, 0.08, innen);
   float pn, pl;
   float platte = bauchPlatte(q, f, pn, pl);
   float bauch = smoothstep(0.66, 0.74, t);
@@ -355,10 +398,14 @@ const SCHLANGE_ENDE = /* glsl */ `
   h.fuge = mix(max(fuge, unter * 0.6), 1.0 - smoothstep(0.0, 0.07, platte), bauch);
   h.rand = mix(max(innen, 0.0) * 0.45, platte, bauch);
 `;
-function schlange(k: number, form: string, kiel: string, muster: string, bauchfarbe: string, glanz: string, rauh: string): string {
+/**
+ * eine Schlange auf dem Schuppenfeld (Runde 8): form = (Überstand nach hinten, Rundung der Raute 1 spitz … 2 rund, Breite, frei)
+ */
+function schlange(form: string, kiel: string, muster: string, bauchfarbe: string, glanz: string, rauh: string, schiller = '0.0'): string {
   return /* glsl */ `
+uniform sampler2D tPhasen;
+uniform float uSchuppe;
 Haut hautBei(vec3 p, vec3 n0, int stil) {
-  const float K = ${k.toFixed(1)};
   const vec4 FORM = ${form};
   ${SCHLANGE_KOPF}
   ${muster}
@@ -367,14 +414,14 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
   ${SCHLANGE_ENDE}
   h.glanz = ${glanz};
   h.rauh = ${rauh};
+  h.schiller = ${schiller} * (1.0 - bauch * 0.6);
   return h;
 }
 `;
 }
 
 const PYTHON = schlange(
-  24,
-  'vec4(0.55, 0.95, 0.62, 0.45)',
+  'vec4(0.3, 1.7, 0.98, 0.0)',
   '0.0',
   `float m1 = snoise(vec3(dot(qm, A) * 1.9, dot(qm, B) * 2.5, dot(qm, C) * 2.5) + 3.0) + 0.15 * snoise(qm * 5.0);
   float mm = snoise(qm * 5.0 + 11.0);
@@ -385,11 +432,11 @@ const PYTHON = schlange(
   c *= 0.88 + 0.24 * id;`,
   'vec3(0.86, 0.8, 0.62)',
   '1.4',
-  '0.24',
+  '0.2',
+  '0.7',
 );
 const KLAPPER = schlange(
-  30,
-  'vec4(0.5, 1.05, 0.55, 0.9)',
+  'vec4(0.42, 1.25, 0.9, 0.0)',
   '1.0',
   `// Rauten längs des Rückens (um die Spiegelebene), Spitze an Spitze: hellere Mitte, dunkle Raute, cremefarbener Saum
   float uR = abs(fract(laengs / 0.5) - 0.5) * 2.0;
@@ -408,8 +455,7 @@ const KLAPPER = schlange(
   '0.55',
 );
 const KORALLE = schlange(
-  26,
-  'vec4(0.55, 0.9, 0.66, 0.3)',
+  'vec4(0.25, 1.8, 1.0, 0.0)',
   '0.0',
   `// Ringe längs der Achse: Rot breit, Gelb schmal, Schwarz breit, Gelb schmal; echt Schuppe für Schuppe, gezeichnet glatt
   vec3 qr = stil == 0 ? qm : q;
@@ -421,6 +467,37 @@ const KORALLE = schlange(
   'vec3(0.92, 0.82, 0.66)',
   '1.9',
   '0.16',
+);
+
+const BOA = schlange(
+  'vec4(0.28, 1.8, 1.0, 0.0)',
+  '0.0',
+  `// Regenbogenboa: Orange bis Rotbraun, dunkle Ringe (Augenflecken) längs des Rückens, Flecken an den Flanken, starker Schiller
+  vec3 c = mix(vec3(0.78, 0.42, 0.18), vec3(0.62, 0.3, 0.14), smoothstep(-0.4, 0.6, snoise(qm * 2.2)));
+  float r = length(vec2((fract(laengs * 2.3 + 0.08 * snoise(qm * 3.0)) - 0.5) * 1.1, qm.z * 2.2));
+  float ring = 1.0 - smoothstep(0.03, 0.06, abs(r - 0.24));
+  float flanke = 1.0 - smoothstep(0.08, 0.13, length(vec2(fract(laengs * 4.6 + 0.5) - 0.5, (abs(qm.z) - 0.34) * 2.5)));
+  c = mix(c, vec3(0.08, 0.04, 0.03), max(ring, flanke * 0.9));
+  c *= 0.9 + 0.2 * id;`,
+  'vec3(0.9, 0.78, 0.6)',
+  '1.7',
+  '0.12',
+  '1.0',
+);
+const BAUMPYTHON_GLSL = schlange(
+  'vec4(0.3, 1.7, 0.98, 0.0)',
+  '0.0',
+  `// Grüner Baumpython: leuchtendes Grün, längs der Rückenlinie weiße Schuppen in Gruppen, einzelne weiße auf den Flanken
+  vec3 c = mix(vec3(0.1, 0.58, 0.16), vec3(0.24, 0.72, 0.2), smoothstep(-0.4, 0.6, snoise(qm * 1.7)));
+  float ruecken = 1.0 - smoothstep(0.06, 0.1, abs(qm.z));
+  float gruppe = smoothstep(0.3, 0.55, snoise(vec3(laengs * 7.0, 0.0, 3.0)));
+  if (ruecken * gruppe > 0.5 && id > 0.35) c = vec3(0.95, 0.96, 0.9);
+  if (id > 0.93 && snoise(qm * 4.0) > 0.4) c = vec3(0.92, 0.95, 0.88);
+  c *= 0.92 + 0.14 * id;`,
+  'vec3(0.86, 0.9, 0.32)',
+  '1.6',
+  '0.14',
+  '0.3',
 );
 
 const KROKODIL_GLSL = /* glsl */ `
@@ -581,8 +658,19 @@ void main() {
 `;
 }
 
-function haut(id: string, name: string, zeile: string, glsl: string, echtGrund: string, regler: ReglerZeile[] = [], grundStil = 1) {
+function haut(id: string, name: string, zeile: string, glsl: string, echtGrund: string, regler: ReglerZeile[] = [], grundStil = 1, feld?: FeldWunsch) {
   return bildVoreinstellung({
+    ...(feld
+      ? {
+          uniforms: { tPhasen: { value: null }, uSchuppe: { value: feld.laenge } },
+          vorher: (k: ShaderKern, w: ShaderWerte, u: Record<string, IUniform>) => {
+            const g = w.regler.groesse ?? 1;
+            const wunsch = { laenge: feld.laenge / g, breite: feld.breite / g };
+            u.tPhasen!.value = schuppenFeld(k).bild(k, wunsch);
+            u.uSchuppe!.value = wunsch.laenge;
+          },
+        }
+      : {}),
     id,
     name,
     gruppe: 'Tiermuster',
@@ -635,20 +723,22 @@ export const KRAKE_HAUT = haut(
 export const SCHLANGE = haut(
   'schlange',
   'Python',
-  'Python: glatte Schuppen, die sich als Schindeln überlappen (keine Naht), Sättel mit schwarzem Rand Schuppe für Schuppe, Bauchplatten, Glanz; Stile Echt, Anime, Manga, Spider-Verse, Earle',
+  'Python: glatte Schuppen in regelmäßigen schrägen Reihen (Schuppenfeld auf dem Netz), Sättel mit schwarzem Rand Schuppe für Schuppe, Bauchschilde, Glanz mit Schiller; Stile Echt, Anime, Manga, Spider-Verse, Earle',
   PYTHON,
   'waldBokeh',
   [],
   0,
+  { laenge: 0.055, breite: 0.048 },
 );
 export const KLAPPERSCHLANGE = haut(
   'klapperschlange',
   'Klapperschlange',
-  'Gekielte Schuppen (ein Grat je Schuppe, matt), Rauten auf dem Rücken mit hellem Saum, Ringe am Schwanzende, Bauchplatten; Stile Echt, Anime, Manga, Spider-Verse, Earle',
+  'Gekielte Schuppen in schrägen Reihen (ein Grat je Schuppe, matt), Rauten auf dem Rücken mit hellem Saum, Ringe am Schwanzende, Bauchschilde; Stile Echt, Anime, Manga, Spider-Verse, Earle',
   KLAPPER,
   'wuesteGrund',
   [],
   0,
+  { laenge: 0.05, breite: 0.038 },
 );
 export const KORALLENNATTER = haut(
   'korallennatter',
@@ -658,6 +748,27 @@ export const KORALLENNATTER = haut(
   'waldBokeh',
   [{ k: 'ringe', name: 'Ringe', min: 0.4, max: 2.5, schritt: 0.05, grund: 1 }],
   0,
+  { laenge: 0.055, breite: 0.05 },
+);
+export const REGENBOGENBOA = haut(
+  'regenbogenboa',
+  'Regenbogenboa',
+  'Regenbogenboa: glatte Schuppen in schrägen Reihen, Orange mit dunklen Augenflecken, starker Regenbogenschiller im Licht; Stile Echt, Anime, Manga, Spider-Verse, Earle',
+  BOA,
+  'waldBokeh',
+  [],
+  0,
+  { laenge: 0.05, breite: 0.045 },
+);
+export const BAUMPYTHON = haut(
+  'baumpython',
+  'Grüner Baumpython',
+  'Grüner Baumpython: leuchtend grüne Schuppen in schrägen Reihen, weiße Schuppen in Gruppen längs des Rückens, gelber Bauch; Stile Echt, Anime, Manga, Spider-Verse, Earle',
+  BAUMPYTHON_GLSL,
+  'waldBokeh',
+  [],
+  0,
+  { laenge: 0.05, breite: 0.045 },
 );
 export const KROKODIL = haut(
   'krokodil',
