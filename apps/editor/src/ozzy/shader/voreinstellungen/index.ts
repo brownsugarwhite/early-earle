@@ -42,6 +42,7 @@ import { STAUB } from './staub';
 import { ELEFANT, KLAPPERSCHLANGE, KORALLENNATTER, KROKODIL, SALAMANDER, SCHLANGE } from './tiere';
 import { TINTE } from './tinte';
 import { TREX } from './trex';
+import { CHAMAELEON_HAUT, DRACHE_HAUT, FROSCH_HAUT, KRAKE_HAUT } from './haeute';
 import { TINTENFLECK } from './tintenfleck';
 import { TROPFEN } from './tropfen';
 import { TURING } from './turing';
@@ -97,6 +98,10 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   KROKODIL,
   SALAMANDER,
   TREX,
+  DRACHE_HAUT,
+  FROSCH_HAUT,
+  CHAMAELEON_HAUT,
+  KRAKE_HAUT,
   TURING,
   // Fell & Flausch
   FELL,

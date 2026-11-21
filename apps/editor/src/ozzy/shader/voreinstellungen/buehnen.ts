@@ -352,4 +352,30 @@ vec3 jahrmarktGrund(vec2 css, vec2 qb) {
   }
   return srgbZuLin(c);
 }
+/** unter Wasser: Blau nach unten tiefer, Lichtfinger von oben, Lichtnetz (Kaustik) oben, Schwebteilchen und Bläschen */
+vec3 unterWasser(vec2 css, vec2 qb) {
+  float asp = uAufl.x / uAufl.y;
+  vec2 u = vec2((qb.x - 0.5) * asp, qb.y);
+  vec3 c = mix(vec3(0.01, 0.07, 0.16), vec3(0.08, 0.42, 0.6), smoothstep(0.0, 1.0, qb.y));
+  float strahl = 0.0;
+  for (int i = 0; i < 5; i++) {
+    float fi = float(i);
+    float x0 = (hash11(fi * 3.7) - 0.5) * asp * 1.2;
+    float neig = (hash11(fi * 1.3) - 0.5) * 0.5;
+    float d = abs(u.x - (x0 + neig * (1.0 - qb.y)));
+    strahl += (1.0 - smoothstep(0.0, 0.05 + 0.06 * hash11(fi * 7.1), d)) * smoothstep(0.1, 1.0, qb.y) * (0.5 + 0.5 * hash11(fi * 9.3));
+  }
+  c += vec3(0.35, 0.7, 0.75) * strahl * 0.25;
+  vec3 vo = voronoi2(css * vec2(0.012, 0.03));
+  c += vec3(0.4, 0.8, 0.85) * (1.0 - smoothstep(0.0, 0.05, vo.y - vo.x)) * smoothstep(0.75, 1.0, qb.y) * 0.12 * (0.5 + noise2(css * 0.01));
+  vec2 gz = floor(css / 15.0);
+  vec2 gf = fract(css / 15.0) - 0.5 - (hash22(gz) - 0.5) * 0.6;
+  c += vec3(0.6, 0.85, 0.9) * step(0.975, hash12(gz + 6.0)) * (1.0 - smoothstep(0.03, 0.08, length(gf))) * 0.5;
+  vec2 bz = floor(css / 70.0);
+  vec2 bf = fract(css / 70.0) - 0.5 - (hash22(bz + 2.0) - 0.5) * 0.5;
+  float br = 0.06 + 0.1 * hash12(bz + 8.0);
+  float blase = (1.0 - smoothstep(br - 0.01, br, length(bf))) * smoothstep(br - 0.04, br - 0.005, length(bf)) * step(0.82, hash12(bz + 4.0));
+  c += vec3(0.7, 0.9, 1.0) * blase * 0.5;
+  return srgbZuLin(c);
+}
 `;

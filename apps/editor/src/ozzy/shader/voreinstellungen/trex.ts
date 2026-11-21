@@ -21,9 +21,11 @@
  */
 import { bildVoreinstellung } from '../bildShader';
 import { BUEHNEN } from './buehnen';
+import { HAUT_STILE } from './hautStile';
 import { TIER } from './tiere';
 
-const HAUT = /* glsl */ `
+/** Pflasterschuppen (genauer Abstand zum Rand einer Zelle im Raum und seine Richtung), auch für andere Häute */
+export const PFLASTER = /* glsl */ `
 /** Ableitung von smoothstep(a, b, x) nach x */
 float glattD(float a, float b, float x) { float t = clamp((x - a) / (b - a), 0.0, 1.0); return 6.0 * t * (1.0 - t) / (b - a); }
 /**
@@ -61,6 +63,10 @@ float pflaster(vec3 x, out vec3 steigt, out vec3 mitte, out float id) {
   id = hash13(p + mb + 0.37);
   return md;
 }
+`;
+
+const HAUT = /* glsl */ `
+${PFLASTER}
 /** die vier Färbungen (sRGB): Rücken, Flanke, Bauch, Binde, Tupfen */
 void rexFarben(out vec3 rue, out vec3 fla, out vec3 bau, out vec3 ban, out vec3 tup) {
   int i = int(uR_faerbung + 0.5);
@@ -477,11 +483,26 @@ ${HAUT}
 ${KINO}
 ${ZEICHNUNG}
 ${DINGE}
+${HAUT_STILE}
+/** die Haut des T-Rex für die gemeinsamen Stile (Anime, Manga) */
+Haut rexZuHaut(RexHaut r) {
+  Haut h;
+  h.farbe = r.farbe;
+  h.n = r.n;
+  h.hoehe = r.hoehe;
+  h.fuge = r.fuge;
+  h.rand = r.rand1;
+  h.glanz = r.glanz;
+  h.rauh = r.rauh;
+  h.lod = r.lod;
+  return h;
+}
 void main() {
   vec2 css = gl_FragCoord.xy / uDpr;
   int stil = int(uR_stil + 0.5);
   // im Comic sitzt die Farbplatte ein wenig neben der Tusche
   vec2 versatz = stil == 1 ? vec2(1.5, -1.0) * uDpr / uAufl : vec2(0.0);
+  bool gezeichnet = stil == 1 || stil == 2 || stil >= 5;
   GPunkt g = gLesen(vUv + versatz);
   float maske = deckungBei(vUv + versatz);
   vec2 qb = gl_FragCoord.xy / uAufl;
@@ -492,16 +513,18 @@ void main() {
     else if (stil == 1) bild = comicKnall(css, qb);
     else if (stil == 2) bild = earleGrund(qb, css);
     else if (stil == 3) bild = museumGrund(css, qb);
-    else bild = kinderzimmerGrund(css, qb);
+    else if (stil == 4) bild = kinderzimmerGrund(css, qb);
+    else if (stil == 5) bild = animeHimmel(css, qb);
+    else bild = mangaGrund(css, qb);
     // der Schatten der Form auf der Wand (Fossil, Spielzeug)
-    if (stil >= 3) {
+    if (stil == 3 || stil == 4) {
       float sch = texture(tWeich, vUv + vec2(0.025, stil == 3 ? 0.05 : 0.04)).r;
       bild *= 1.0 - (stil == 3 ? 0.7 : 0.45) * sch;
     }
   }
   if (g.a > 0.5) {
     vec3 V = zumAuge(g.p);
-    float faktor = stil == 1 ? 1.7 : (stil == 2 ? 1.8 : (stil == 4 ? 1.25 : 1.0));
+    float faktor = stil == 1 || stil >= 5 ? 1.7 : (stil == 2 ? 1.8 : (stil == 4 ? 1.25 : 1.0));
     float relief = stil == 4 ? 0.5 : (stil == 3 ? 0.85 : 1.0);
     RexHaut h = rexHaut(g.p, g.n, faktor, relief, stil == 0 || stil == 3 ? 1.0 : 0.0);
     vec3 c;
@@ -512,16 +535,18 @@ void main() {
     } else if (stil == 1) c = rexComic(h, g.n, V, css);
     else if (stil == 2) c = rexEarle(h, g.n, V);
     else if (stil == 3) c = rexFossil(h, g.n, V);
-    else c = rexSpielzeug(h, g.n, V);
+    else if (stil == 4) c = rexSpielzeug(h, g.n, V);
+    else if (stil == 5) c = srgbZuLin(hautAnime(rexZuHaut(h), g.n, V));
+    else c = srgbZuLin(hautManga(rexZuHaut(h), g.n, V, css));
     bild = mix(bild, c, maske);
     a = max(a, maske);
   }
-  if (stil == 1 || stil == 2) {
-    float linie = kanteBei(vUv, (stil == 1 ? 1.9 : 1.0) * uDpr);
-    bild = mix(bild, stil == 1 ? vec3(0.004, 0.004, 0.01) : vec3(0.004, 0.012, 0.016), linie);
+  if (gezeichnet) {
+    float linie = kanteBei(vUv, (stil == 1 ? 1.9 : (stil == 2 ? 1.0 : 1.4)) * uDpr);
+    bild = mix(bild, stil == 2 ? vec3(0.004, 0.012, 0.016) : vec3(0.004, 0.004, 0.01), linie);
     a = max(a, linie);
   }
-  vec3 aus = stil == 1 || stil == 2 ? linZuSrgb(bild) : linZuSrgb(aces(bild * 1.05));
+  vec3 aus = gezeichnet ? linZuSrgb(bild) : linZuSrgb(aces(bild * 1.05));
   farbe = vec4(aus * a, a);
 }
 `;
@@ -533,7 +558,7 @@ export const TREX = bildVoreinstellung({
   zeile:
     'T-Rex in fünf Stilen (Kino, Spider-Verse, Earle, Fossil, Spielzeug): Pflasterschuppen mit Schmuckschuppen und Rückenhöckern, Falten, Querbinden, Krallennarben, Schlamm',
   regler: [
-    { k: 'stil', name: 'Stil', min: 0, max: 4, schritt: 1, grund: 0, stufen: ['Kino', 'Spider-Verse', 'Earle', 'Fossil', 'Spielzeug'] },
+    { k: 'stil', name: 'Stil', min: 0, max: 6, schritt: 1, grund: 0, stufen: ['Kino', 'Spider-Verse', 'Earle', 'Fossil', 'Spielzeug', 'Anime', 'Manga'] },
     { k: 'faerbung', name: 'Färbung', min: 0, max: 3, schritt: 1, grund: 0, stufen: ['Erde', 'Wald', 'Asche', 'Glut'] },
     { k: 'schuppen', name: 'Schuppen', min: 0.4, max: 2.5, schritt: 0.05, grund: 1 },
     { k: 'baender', name: 'Bänder', min: 0, max: 1.6, schritt: 0.05, grund: 1 },
