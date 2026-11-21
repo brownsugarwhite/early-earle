@@ -58,7 +58,7 @@ export function kronenProfil(f: ZahnForm, u: number): number {
   return Math.max(0, 1 - Math.pow(Math.min(1, u), p)) ** q * bauch * (0.86 + 0.14 * Math.min(1, u * 6));
 }
 
-type Bau = { pos: number[]; idx: number[] };
+export type Bau = { pos: number[]; idx: number[] };
 const SEG = 20;
 
 /** ein Stapel Ringe von `von` nach `bis` (Ortsfunktion je Ring und Winkel), unten und oben geschlossen */
@@ -103,6 +103,41 @@ function stapel(b: Bau, ringe: number, ort: (i: number, w: number) => [number, n
 
 const hoch = (x: number, n: number): number => Math.sign(x) * Math.pow(Math.abs(x), 2 / n);
 
+/**
+ * Die Wurzel für sich (der Teil unter dem Zahnfleisch): an `b` angehängt (oder ein neuer Bau). `hx`, `hz`: halbe Breite und Tiefe
+ * der Krone, `L`: Länge der Wurzel. Die Linse hängt sie auch unter einen Zahn aus Linien (`ozzy/zahnGestalt.ts`).
+ */
+export function wurzelBau(wurzel: Wurzel, hx: number, hz: number, L: number, b: Bau = { pos: [], idx: [] }): Bau {
+  if (wurzel === 'keine') return b;
+  const zinke = (cx: number, cz: number, rx: number, rz: number, laenge: number, neig: number, knolle: boolean): void => {
+    stapel(
+      b,
+      9,
+      (i, w) => {
+        const v = i / 8;
+        const r = knolle ? Math.sqrt(Math.max(0, 1 - Math.pow(2 * v - 0.9, 2) * 0.83)) * (1 - 0.2 * v) : Math.pow(1 - v, 0.7) * (1 - 0.12 * Math.sin(Math.PI * v));
+        return [cx * (1 + neig * v) + Math.cos(w) * rx * Math.max(0.03, r), -laenge * v, cz + Math.sin(w) * rz * Math.max(0.03, r)];
+      },
+      false,
+      true,
+    );
+    // (der Deckel dieser Zinke zeigt nach unten: Die Ringe laufen abwärts, die Dreiecke stehen damit richtig herum nach innen;
+    // für die Studie reicht beidseitig gezeichnet)
+  };
+  const hals = 0.86;
+  if (wurzel === 'kegel') zinke(0, 0, hx * hals, hz * hals, L, 0, false);
+  else if (wurzel === 'knolle') zinke(0, 0, hx * hals, hz * hals, L, 0, true);
+  else if (wurzel === 'zwei') {
+    zinke(-0.5 * hx, 0, hx * 0.5, hz * hals, L, 0.35, false);
+    zinke(0.5 * hx, 0, hx * 0.5, hz * hals, L, 0.35, false);
+  } else {
+    zinke(-0.5 * hx, 0.3 * hz, hx * 0.46, hz * 0.52, L, 0.4, false);
+    zinke(0.5 * hx, 0.3 * hz, hx * 0.46, hz * 0.52, L, 0.4, false);
+    zinke(0, -0.45 * hz, hx * 0.46, hz * 0.5, L * 0.9, 0, false);
+  }
+  return b;
+}
+
 /** das Netz eines Zahns; `mitWurzel`: auch der Teil unter dem Zahnfleisch (in der Linse zu sehen, im Maul steckt er im Fleisch) */
 export function zahnNetz(f: ZahnForm, mitWurzel = true): BufferGeometry {
   const b: Bau = { pos: [], idx: [] };
@@ -140,35 +175,7 @@ export function zahnNetz(f: ZahnForm, mitWurzel = true): BufferGeometry {
     !mitWurzel || f.wurzel === 'keine',
     true,
   );
-  if (mitWurzel && f.wurzel !== 'keine') {
-    const L = f.wurzelLaenge;
-    const zinke = (cx: number, cz: number, rx: number, rz: number, laenge: number, neig: number, knolle: boolean): void => {
-      stapel(
-        b,
-        9,
-        (i, w) => {
-          const v = i / 8;
-          const r = knolle ? Math.sqrt(Math.max(0, 1 - Math.pow(2 * v - 0.9, 2) * 0.83)) * (1 - 0.2 * v) : Math.pow(1 - v, 0.7) * (1 - 0.12 * Math.sin(Math.PI * v));
-          return [cx * (1 + neig * v) + Math.cos(w) * rx * Math.max(0.03, r), -laenge * v, cz + Math.sin(w) * rz * Math.max(0.03, r)];
-        },
-        false,
-        true,
-      );
-      // (der Deckel dieser Zinke zeigt nach unten: Die Ringe laufen abwärts, die Dreiecke stehen damit richtig herum nach innen;
-      // für die Studie reicht beidseitig gezeichnet)
-    };
-    const hals = 0.86;
-    if (f.wurzel === 'kegel') zinke(0, 0, hx * hals, hz * hals, L, 0, false);
-    else if (f.wurzel === 'knolle') zinke(0, 0, hx * hals, hz * hals, L, 0, true);
-    else if (f.wurzel === 'zwei') {
-      zinke(-0.5 * hx, 0, hx * 0.5, hz * hals, L, 0.35, false);
-      zinke(0.5 * hx, 0, hx * 0.5, hz * hals, L, 0.35, false);
-    } else {
-      zinke(-0.5 * hx, 0.3 * hz, hx * 0.46, hz * 0.52, L, 0.4, false);
-      zinke(0.5 * hx, 0.3 * hz, hx * 0.46, hz * 0.52, L, 0.4, false);
-      zinke(0, -0.45 * hz, hx * 0.46, hz * 0.5, L * 0.9, 0, false);
-    }
-  }
+  if (mitWurzel && f.wurzel !== 'keine') wurzelBau(f.wurzel, hx, hz, f.wurzelLaenge, b);
   const g = new BufferGeometry();
   g.setAttribute('position', new BufferAttribute(Float32Array.from(b.pos), 3));
   g.setIndex(b.idx);

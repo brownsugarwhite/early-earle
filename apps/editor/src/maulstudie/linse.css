@@ -29,6 +29,15 @@
   background: radial-gradient(circle at 34% 28%, #ffffff 0%, #f6f3ee 62%, #ebe6de 100%);
   cursor: grab;
 }
+/* Etappe 7: die Leinwand der Linien über dem Bild des Zahns; eingerastet (`formt`) zeichnet sie auch den Zeiger */
+.linse-linien {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+#linse.formt .linse-bild {
+  cursor: none;
+}
 .linse-ringe {
   position: absolute;
   inset: 0;

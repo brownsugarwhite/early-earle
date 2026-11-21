@@ -603,6 +603,26 @@ export function gestaltAusNetz(g: ZahnGestalt, linie: GestaltLinie, netz: Netz, 
   return gestaltAngleichen(neu, linie);
 }
 
+/**
+ * Ist diese Linie in beiden Gestalten dieselbe (bis auf `eps`)? Verglichen werden die Stücke (ein fehlender Griff zählt wie der
+ * gerade auf den Nachbarn zu), die Ecken und die Nummern der geteilten Anker.
+ */
+export function gestaltLinieGleich(a: ZahnGestalt, b: ZahnGestalt, linie: GestaltLinie, eps = 1e-7): boolean {
+  const A = linieVon(a, linie);
+  const B = linieVon(b, linie);
+  const n = A.length;
+  if (B.length !== n) return false;
+  if (linie === 'vorn' ? a.spitzeV !== b.spitzeV : linie === 'seite' ? a.spitzeS !== b.spitzeS : a.ecken.some((e, i) => e !== b.ecken[i])) return false;
+  const zu = linie === 'quer';
+  for (let i = 0; i < n; i++) if (A[i]!.ecke !== B[i]!.ecke) return false;
+  for (let i = 0; i < (zu ? n : n - 1); i++) {
+    const s = stueckZwischen(A[i]!, A[(i + 1) % n]!);
+    const t = stueckZwischen(B[i]!, B[(i + 1) % n]!);
+    for (let k = 0; k < 4; k++) if (Math.abs(s[k]!.x - t[k]!.x) > eps || Math.abs(s[k]!.y - t[k]!.y) > eps) return false;
+  }
+  return true;
+}
+
 /** die Lagen im Netz, wie die geordnete Gestalt sie verlangt (nach `gestaltAusNetz`): nur die Punkte, in der Folge der Linie */
 export function netzLagen(g: ZahnGestalt, linie: GestaltLinie, A: Abbildung): [number, number][] {
   return linieVon(g, linie).map((a) => [A.ax * a.x + A.bx * a.y + A.ox, A.ay * a.x + A.by * a.y + A.oy]);

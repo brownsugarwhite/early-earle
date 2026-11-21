@@ -336,6 +336,11 @@ export class Verhalten {
   /** ⌥ gehalten (Richtung losreißen, nicht einrasten); ⇧ (im Raum: aus der Haut kippen statt auf ihr drehen, auch während des Drehens) */
   alt = false;
   kippen = false;
+  /**
+   * Ozzy (21.11., ein Zahn als kleine Form in der Linse): Wer das Netz in 2D hält, rückt nach jedem Zug an Punkten oder an einer
+   * Stelle zurecht, was nicht frei ist (ein Punkt, der auf einer Geraden bleibt). Fehlt: nichts, wie bisher.
+   */
+  halten: ((netz: Netz) => void) | null = null;
   private dreher2d = new Dreher2D(
     () => this.netz,
     (n) => {
@@ -1371,6 +1376,7 @@ export class Verhalten {
         if (g.mehrere) punkteZiehen(g.start, this.netz, g.mehrere, dx, dy);
         else if (g.ziel.art === 'punkt') punktZiehen(g.start, this.netz, g.ziel.pi, dx, dy);
         else if (g.ziel.art === 'linie') stelleZiehen(g.start, this.netz, g.ziel.li, g.ziel.si, g.ziel.t, dx, dy);
+        this.halten?.(this.netz);
         this.abtasten();
       }
       bewegt = true;
