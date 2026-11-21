@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>illudiy Intro-Studie</title>
+<style>
+:root {
+  --bg: #17131b; --panel: #211b27; --panel2: #2a2332; --line: #3a3144; --text: #f2edf6; --muted: #b3a8bf; --dim: #8a7f96;
+  --pink: #ff73a9; --teal: #003f4e; --lav: #c9b8fb; --purple: #946ff9; --accent: #ff73a9;
+  --a: #58a6ff; --b: #ffad4a; --h: #62d987;
+  --radius: 14px; --gutter: 16px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--lav); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter); }
+header { padding: 28px 0 10px; }
+h1 { font-size: clamp(26px, 4vw, 40px); line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.01em; }
+h1 span { background: linear-gradient(90deg, #fe73aa, #ffa5dd 55%, #c9b8fb); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lead { color: var(--muted); max-width: 820px; margin: 0; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+nav.toc a { color: var(--text); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 14px; }
+nav.toc a:hover { border-color: var(--pink); }
+section { padding: 34px 0 6px; }
+h2 { font-size: 24px; margin: 0 0 6px; }
+h3 { font-size: 18px; margin: 22px 0 6px; }
+p { margin: 8px 0; }
+.muted { color: var(--muted); }
+.stage { position: relative; background: #17131b; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; aspect-ratio: 16 / 9; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage .badge { position: absolute; left: 12px; top: 10px; font-size: 12px; color: var(--dim); letter-spacing: .04em; pointer-events: none; }
+.controls { display: grid; gap: 10px; margin-top: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seq { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+.seq:hover { border-color: #5a4d68; }
+.seq[aria-pressed="true"] { border-color: var(--pink); background: #3a1f30; }
+.seq.main { font-weight: 600; }
+.group-label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin-right: 4px; }
+.btn { border: 1px solid var(--line); background: var(--panel2); color: var(--text); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 14px; cursor: pointer; min-width: 44px; }
+.btn:hover { border-color: #5a4d68; }
+input[type=range] { flex: 1; min-width: 160px; accent-color: var(--pink); }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; min-width: 92px; text-align: right; }
+label.tog { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.caption { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--muted); font-size: 15px; }
+.caption b { color: var(--text); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.card h3 { margin-top: 0; }
+.card ul { margin: 6px 0 0; padding-left: 18px; }
+.card li { margin: 3px 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--muted); }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+td.n { text-align: center; font-variant-numeric: tabular-nums; }
+tr.pick td { background: rgba(255,115,169,.07); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.compare { position: relative; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #17131b; aspect-ratio: 2000 / 937; }
+.compare img, .compare canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.compare .cut { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); pointer-events: none; }
+.compare .tag { position: absolute; top: 8px; font-size: 12px; background: rgba(0,0,0,.45); padding: 2px 8px; border-radius: 999px; color: #fff; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0; }
+.fact { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.fact b { display: block; font-size: 22px; }
+.fact span { color: var(--muted); font-size: 13px; }
+.timeline { position: relative; margin: 12px 0 4px; }
+.tl-row { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; margin: 5px 0; font-size: 13px; }
+.tl-track { position: relative; height: 18px; background: var(--panel); border-radius: 6px; border: 1px solid var(--line); }
+.tl-bar { position: absolute; top: 2px; bottom: 2px; border-radius: 4px; }
+.tl-axis { display: grid; grid-template-columns: 150px 1fr; gap: 10px; font-size: 12px; color: var(--dim); }
+.tl-ticks { position: relative; height: 16px; }
+.tl-ticks span { position: absolute; transform: translateX(-50%); }
+code { background: var(--panel2); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
+@media (max-width: 640px) { .tl-row, .tl-axis { grid-template-columns: 96px 1fr; } .stage { aspect-ratio: 4 / 3; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><span>illudiy</span> · Intro-Studie</h1>
+  <p class="lead">Exakter Vektor-Nachbau des Logos, Analyse seiner Täuschungen, Recherche und ein Intro, das aus dem Nichts kommt und ohne Schnitt in den einzigen Blickwinkel einrastet, in dem das Unmögliche stimmt.</p>
+  <nav class="toc"><a href="#buehne">Bühne</a><a href="#nachbau">Nachbau</a><a href="#taeuschungen">Täuschungen</a><a href="#konzept">Konzept</a><a href="#recherche">Recherche</a><a href="#offen">Offen</a></nav>
+</header>
+
+<section id="buehne">
+  <div class="stage" id="stage"><canvas id="cv"></canvas><div class="badge" id="badge"></div></div>
+  <div class="controls">
+    <div class="row"><span class="group-label">Intro</span>
+      <button class="seq main" data-seq="A">Intro A · Einrasten</button>
+      <button class="seq main" data-seq="B">Intro B · mit Kippwelle</button>
+      <button class="seq main" data-seq="K">Kurzfassung</button>
+    </div>
+    <div class="row"><span class="group-label">Tests</span>
+      <button class="seq" data-seq="T1">1 Magischer Blickwinkel</button>
+      <button class="seq" data-seq="T2">2 Aus dem Boden</button>
+      <button class="seq" data-seq="T3">3 Kippwelle</button>
+      <button class="seq" data-seq="T4">4 Figur und Grund</button>
+      <button class="seq" data-seq="T5">5 Punkte mit Physik</button>
+      <button class="seq" data-seq="T6">6 Platte, Rand, Schatten</button>
+      <button class="seq" data-seq="END">Endbild</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="play" aria-label="Abspielen oder anhalten">❚❚</button>
+      <button class="btn" id="restart" aria-label="Von vorn">↺</button>
+      <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Zeit">
+      <span class="time" id="time">0,00 s</span>
+    </div>
+    <div class="row">
+      <span class="group-label">Tempo</span>
+      <button class="btn spd" data-s="1" aria-pressed="true">1×</button><button class="btn spd" data-s="0.5">½×</button><button class="btn spd" data-s="0.25">¼×</button><button class="btn spd" data-s="0.1">⅒×</button>
+      <label class="tog"><input type="checkbox" id="loop" checked> Schleife</label>
+      <label class="tog"><input type="checkbox" id="analysis"> Flächen nach Richtung</label>
+      <label class="tog"><input type="checkbox" id="overlay"> Original darüber (50 %)</label>
+    </div>
+    <div class="caption" id="caption"></div>
+  </div>
+</section>
+
+<section id="nachbau">
+  <h2>Nachbau</h2>
+  <p class="muted">Jede gerade Kante ist im Original gemessen (Querschnitte mit Subpixel-Genauigkeit, Geradenfit), jede Kurve aus gemessenen Randpunkten neu gesetzt. Der Schieber zeigt links das Original (Bild), rechts den Vektor.</p>
+  <div class="compare" id="compare"><img id="origImg" alt="Original-Logo"><canvas id="vecCv"></canvas><div class="cut" id="cut"></div><span class="tag" style="left:8px">Original</span><span class="tag" style="right:8px">Vektor</span></div>
+  <div class="row" style="margin-top:10px"><input type="range" id="wipe" min="0" max="1000" value="500" aria-label="Vergleich"><button class="btn" id="blink">Blinken</button></div>
+  <div class="facts">
+    <div class="fact"><b>±0,1 px</b><span>Lage der Kanten gegenüber dem Original</span></div>
+    <div class="fact"><b>1,2 / 255</b><span>mittlere Farbabweichung (Kantenglättung)</span></div>
+    <div class="fact"><b>0,02 %</b><span>Pixel mit mehr als 100 Stufen Abweichung</span></div>
+    <div class="fact"><b>28 Flächen</b><span>4 Verläufe, 3 Masken, 2 Kreise</span></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Raster und Maße</h3><ul>
+      <li>2:1-Dimetrie (26,57°), von Hand gezeichnet: gemessene Schrägen zwischen 23,9° (Unterkante erstes l) und 30,5° (linker y-Arm).</li>
+      <li>Punkte: exakte Kreise, r = 72,03 px. Pink bei 312,05 | 312,92, Weiß bei 1308,57 | 311,95.</li>
+      <li>Kontur (Platte) etwa 57–66 px um die Buchstaben, Verlaufsrand 23 px oben und links, 26–29 px unten.</li>
+      <li>®: Ring r 19,23 bis 23,60 px, das R neu gezeichnet.</li></ul></div>
+    <div class="card"><h3>Farben und Verläufe</h3><ul>
+      <li>Hintergrund <code>#17131B</code>, Petrol <code>#003F4E</code>, Pink <code>#FF73A9</code>, Weiß <code>#FFFFFF</code>, ® <code>#CBBDFB</code>.</li>
+      <li>Weiß: <b>ein gemeinsamer</b> senkrechter Verlauf über das ganze Wort, Weiß bei y 404 → <code>#EFE8F2</code> bei y 622. Reinweiß bleiben Fuß des ersten l, linke D-Seite, D-Bogen unten und der weiße Punkt.</li>
+      <li>D-Vorderseite: eigener Verlauf unter 40°, <code>#EEE5EF</code> → Weiß.</li>
+      <li>Rand hell, waagrecht: <code>#FE73AA</code> → <code>#FFA5DD</code> → <code>#C9B8FB</code>. Rand dunkel: <code>#DF508D</code> → <code>#E55FAC</code> → <code>#946FF9</code>.</li></ul></div>
+    <div class="card"><h3>Der Schatten auf dem Verlaufsrand</h3><p>Die dunkle Unterseite des Rands ist genau der Schlagschatten der Platte entlang der Isometrie-Achse. Seine zwei Grenzen beginnen <b>exakt an den Plattenecken</b> (gemessen ≤ 0,7 px) und laufen unter 31,3° (unten links) und 27,5° (oben rechts) durch den Rand. Dadurch schwebt die Platte über dem Rand.</p></div>
+  </div>
+</section>
+
+<section id="taeuschungen">
+  <h2>Die Täuschungen im Logo</h2>
+  <p class="muted">Schalte auf der Bühne <b>„Flächen nach Richtung“</b> ein: jede Fläche wird nach ihrer Lage im Raum gefärbt. So sieht man, wo eine Fläche ihre Richtung wechselt, was ein echter Körper nie tut.</p>
+  <div class="legend" style="margin:8px 0 14px"><span><i class="sw" style="background:var(--a)"></i>linke Seitenfläche (Oberkante fällt nach rechts)</span><span><i class="sw" style="background:var(--b)"></i>rechte Seitenfläche (Oberkante steigt nach rechts)</span><span><i class="sw" style="background:var(--h)"></i>waagrechte Fläche</span><span><i class="sw" style="background:linear-gradient(var(--a),var(--b))"></i>verwunden: wechselt die Richtung</span></div>
+  <div class="grid2">
+    <div class="card"><h3>Licht ohne Quelle</h3><p>Pink und Weiß sind keine festen Seiten. Beim ersten i ist links Pink und rechts Weiß, beim ll ist es umgekehrt, das D hat links Weiß, vorne Lavendel und oben Pink. Das Auge sucht eine Lichtquelle und findet keine eindeutige, deshalb kippen die Körper zwischen erhaben und vertieft.</p></div>
+    <div class="card"><h3>i: Quader ohne Deckel</h3><p>Die Deckfläche hat die Farbe der Kontur und verschwindet in ihr (grün in der Richtungsansicht). Der Stamm liest sich zugleich als Säule und als Schacht, ein Necker-Kippbild. Der pinke Punkt liegt genau auf diesem unsichtbaren Deckel.</p></div>
+    <div class="card"><h3>ll: verwundene Flächen</h3><p>Die weißen Balken beginnen oben als linke Seitenfläche (Oberkante fällt mit 27°) und enden unten als rechte Seitenfläche (Unterkante steigt mit 24° und 26,5°). Das pinke Zwischenstück dreht genau andersherum. Jede Fläche ist in sich um 90° verwunden, wie bei Penrose. Der Fuß des ersten l steht vor dem zweiten l, dessen Boden aber unter ihm liegt, und der pinke Boden stößt an die Seitenfläche des i.</p></div>
+    <div class="card"><h3>u: nach beiden Seiten extrudiert</h3><p>Die weiße Vorderfläche zeigt nach rechts. Links liegt ihre Extrusion nach hinten (Deckel und Seitenwand), rechts zugleich eine Extrusion nach vorn (Seitenwand und versetzte Schale, die hinter dem D verschwindet). Die Vorderfläche ist damit gleichzeitig vorne und hinten.</p></div>
+    <div class="card"><h3>D: eigenes Licht</h3><p>Der Körper ist sauber nach hinten extrudiert, aber die Vorderfläche hat ein eigenes, schräges Licht. Die Gegenform schneidet unten links bis an die Kante, der untere Bogen wirkt dadurch wie eine eigene, vorgelagerte Fläche.</p></div>
+    <div class="card"><h3>zweites i: das Negativ</h3><p>Der Stamm hat die Farbe der Kontur (Figur und Grund kehren sich um) und wirkt als Schlitz. Man sieht zwei parallele pinke Wände, was bei einem Körper unmöglich ist. Der weiße Punkt liegt hinter der linken Wand und dem Stamm, aber vor der rechten Wand: eine unmögliche Verdeckung. Pinker Punkt auf dem positiven i, weißer Punkt im negativen i.</p></div>
+    <div class="card"><h3>y: geteilte Wand</h3><p>Die linke pinke Wand des y ist zugleich die rechte Wand des zweiten i. Der linke Arm steigt mit 30,5° steiler an als alles andere und kippt dadurch leicht nach vorn.</p></div>
+    <div class="card"><h3>Rahmen: Platte über Licht</h3><p>Die Petrol-Kontur wirkt als Platte, die über dem Verlaufsrand schwebt; ihr Schatten fällt genau entlang der Isometrie-Achse. Die Platte ist zugleich Hintergrund und Oberfläche: dieselbe Farbe bildet den Deckel des ersten i und den Stamm des zweiten.</p></div>
+  </div>
+</section>
+
+<section id="konzept">
+  <h2>Konzept: „Der Moment, in dem es passt“</h2>
+  <p>Das Logo ist eine Parallelprojektion. Unmögliches gibt es darin nur aus genau einem Blickwinkel. Das Intro zeigt die Buchstaben deshalb zuerst als glaubhafte Körper in einem echten Raum und lässt sie dann ohne Schnitt in diesen Blickwinkel einrasten. Erst dort schließen sich die Fugen zu den unmöglichen Formen. Danach kommt die Platte und kehrt Figur und Grund um, der Schatten fällt, und das Licht setzt sich.</p>
+  <h3>Ablauf Intro A (4,7 s)</h3>
+  <div class="timeline" id="timeline"></div>
+  <div class="tablewrap"><table>
+    <tr><th>Zeit</th><th>Akt</th><th>Was passiert</th><th>Welche Täuschung</th></tr>
+    <tr><td>0,00–1,0</td><td>Aus dem Nichts</td><td>Kamera auf Bodenhöhe, alles liegt flach: nichts ist zu sehen, ganz ohne Ausblendung. Die Buchstaben steigen als Welle von links nach rechts aus dem Boden, jeder mit eigener Feder.</td><td>Kantenansicht, Kinetic Depth</td></tr>
+    <tr><td>0,0–2,05</td><td>Kamerafahrt</td><td>Die Kamera hebt sich, kreist von 74° auf 45° und fährt per Dolly-Zoom aus der Perspektive in die Parallelprojektion. Ein Grad Überschwingen öffnet die Fugen noch einmal, dann rastet sie bei 45°/30° ein.</td><td>Magischer Blickwinkel, Vertigo-Effekt</td></tr>
+    <tr><td>1,45–3,0</td><td>Punkte</td><td>Der pinke Punkt fällt mit echter Schwerkraft auf den unsichtbaren Deckel des ersten i, staucht sich und springt zweimal. Der weiße Punkt fällt in das negative i und versinkt halb hinter dem Stamm.</td><td>Tunnel-Effekt, unmögliche Verdeckung</td></tr>
+    <tr><td>2,35–2,9</td><td>Platte</td><td>Die Petrol-Platte wächst in Iso-Rauten hinter den Buchstaben hervor. Der Deckel des i und der Stamm des zweiten i verschwinden in ihr: aus der Säule wird ein Schacht, aus dem Balken ein Schlitz.</td><td>Figur-Grund-Umkehr</td></tr>
+    <tr><td>2,55–3,5</td><td>Rand und Schatten</td><td>Der Verlaufsrand wächst nach, dann streicht der Schatten entlang der Isometrie-Achse unter die Platte, genau so, wie das Logo ihn konstruiert. Die ganze Marke atmet einmal kurz.</td><td>Schlagschatten als Tiefenhinweis</td></tr>
+    <tr><td>3,0–4,15</td><td>Licht</td><td>Die weichen Weißverläufe und das schräge Licht des D gleiten in ihre Lage. Zuletzt springt das ® mit einer kleinen Feder auf.</td><td>Licht von oben</td></tr>
+  </table></div>
+  <h3>Physik</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Element</th><th>Bewegung</th><th>Werte</th></tr>
+    <tr><td>Buchstaben steigen</td><td>gedämpfte Feder, je Buchstabe 75 ms versetzt</td><td>ζ 0,58, ω 8,2 → 9 % Überschwingen</td></tr>
+    <tr><td>Kamera</td><td>Schwung mit Abbremsen, ein kleines Überschwingen, weiches Zurück</td><td>1° Azimut, 0,45° Höhe, steht bei 2,05 s exakt</td></tr>
+    <tr><td>Dolly-Zoom</td><td>Perspektive 1/1300 → 0 (Parallelprojektion)</td><td>bis 1,9 s</td></tr>
+    <tr><td>Punkte</td><td>Fall mit Schwerkraft, zwei Sprünge, Stauchen beim Aufprall, Strecken im Flug</td><td>g 2600 px/s², Stoßzahl 0,42 und 0,38</td></tr>
+    <tr><td>Platte, Rand</td><td>fast kritisch gedämpfte Federn, Rand 0,2 s später</td><td>ζ 0,9</td></tr>
+    <tr><td>Atmen</td><td>einmalige Schwingung der ganzen Marke</td><td>1,2 %, abklingend</td></tr>
+    <tr><td>®</td><td>Feder mit Überschwingen</td><td>ζ 0,5</td></tr>
+  </table></div>
+  <h3>Technik</h3>
+  <p>Jede Fläche ist ein exakter Vektor. Für die Kamerafahrt liegt jede Fläche auf ihrer eigenen Ebene im Raum: sie wird entlang der Blickrichtung der Endkamera gehoben, das verändert das Endbild nicht, aus jedem anderen Winkel aber fallen die Teile auseinander. Verwundene Flächen werden zu Regelflächen. Das letzte Bild ist pixelgleich mit dem statischen Logo (gleiche Abweichung zum Original wie das SVG).</p>
+  <h3>Bewusst weggelassen</h3>
+  <p class="muted">Ames-Raum, Reverspektive und Hohlmaske brauchen Perspektive oder Schattierung, die das Logo nicht hat. Op-Art ist laut und flimmert. Partikel, Lichtreflexe und Einblendungen wirken billig. Alphablenden werden nirgends gebraucht: alles entsteht aus Kantenansicht, Wachsen oder Verdecken.</p>
+</section>
+
+<section id="recherche">
+  <h2>Recherche: ehrliche Gegenüberstellung</h2>
+  <p class="muted">Bewertet von 1 bis 5 für unseren Fall. Ausführlich mit Quellen in <code>RECHERCHE.md</code>.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Technik</th><th>Herkunft</th><th class="n">Wow</th><th class="n">Eleganz</th><th class="n">Passung</th><th class="n">Machbar</th><th>Urteil</th></tr>
+    <tr class="pick"><td>Magischer Blickwinkel</td><td>Perth-Dreieck, Inception, Channel-4-Idents, Monument Valley</td><td class="n">5</td><td class="n">5</td><td class="n">5</td><td class="n">3</td><td>Kern des Intros: die Kamera ordnet ruhende Teile.</td></tr>
+    <tr class="pick"><td>Figur-Grund</td><td>Rubin, FedEx-Pfeil</td><td class="n">3</td><td class="n">5</td><td class="n">5</td><td class="n">5</td><td>Steckt im Logo, die Platte löst sie aus.</td></tr>
+    <tr class="pick"><td>Kinetic Depth</td><td>Wallach &amp; O’Connell 1953, Bees &amp; Bombs</td><td class="n">3</td><td class="n">4</td><td class="n">4</td><td class="n">4</td><td>Trägt die Fahrt: Bewegung beweist den Körper.</td></tr>
+    <tr class="pick"><td>Tunnel-Effekt</td><td>Michotte</td><td class="n">3</td><td class="n">4</td><td class="n">4</td><td class="n">5</td><td>Der weiße Punkt versinkt hinter dem Stamm.</td></tr>
+    <tr class="pick"><td>Licht von oben</td><td>Ramachandran 1988</td><td class="n">4</td><td class="n">5</td><td class="n">5</td><td class="n">5</td><td>Als Kippwelle in Intro B und Test 3.</td></tr>
+    <tr><td>Necker, Schröder</td><td>Escher „Belvedere“</td><td class="n">3</td><td class="n">4</td><td class="n">5</td><td class="n">5</td><td>Kippt von selbst zu langsam, nur über Hinweise.</td></tr>
+    <tr><td>Sugihara-Körper</td><td>Illusion des Jahres 2010, 2016, 2020</td><td class="n">5</td><td class="n">4</td><td class="n">4</td><td class="n">2</td><td>Stärkste Ergänzung für später.</td></tr>
+    <tr><td>Regeln aus Fez, Echochrome</td><td>Spiele</td><td class="n">4</td><td class="n">5</td><td class="n">5</td><td class="n">4</td><td>Liefert das Regelwerk des Einrastens.</td></tr>
+    <tr><td>Endlose Bewegung</td><td>Penrose-Treppe, Shepard-Ton</td><td class="n">3</td><td class="n">4</td><td class="n">4</td><td class="n">4</td><td>Für Ton und Schleife, nicht als Schluss.</td></tr>
+    <tr><td>Anamorphose, Billboards</td><td>Holbein, Varini, Shinjuku-Katze</td><td class="n">4</td><td class="n">3</td><td class="n">3</td><td class="n">3</td><td>Prinzip steckt schon im Blickwinkel.</td></tr>
+    <tr><td>Hohlmaske</td><td>Gregory, Andrus</td><td class="n">3</td><td class="n">3</td><td class="n">2</td><td class="n">3</td><td>Braucht Schattierung.</td></tr>
+    <tr><td>Reverspektive</td><td>Patrick Hughes</td><td class="n">4</td><td class="n">3</td><td class="n">2</td><td class="n">2</td><td>Braucht Perspektive.</td></tr>
+    <tr><td>Ames-Raum, -Fenster</td><td>Herr der Ringe</td><td class="n">3</td><td class="n">2</td><td class="n">1</td><td class="n">3</td><td>Wirkt wie Physikmuseum.</td></tr>
+    <tr><td>Op-Art</td><td>Vasarely, Renault 1972</td><td class="n">3</td><td class="n">2</td><td class="n">2</td><td class="n">4</td><td>Laut, gegen die weichen Verläufe.</td></tr>
+  </table></div>
+  <h3>Was die Bewegung hochwertig macht</h3>
+  <p>Apple rät zu wenig Überschwingen („bounciness needs to be purposeful“); SwiftUI nutzt als Standard 0,5 s bei Dämpfung 0,825, Motion (Framer) 0,5. Deshalb hier: Kamera fast ohne Nachschwingen, Körper mit sichtbarer Feder, jeder Teil mit eigener Feder und versetzt. Billig wirken lineare Bewegung, alles gleichzeitig, Einblenden statt Physik, Partikel und Lichtreflexe.</p>
+</section>
+
+<section id="offen">
+  <h2>Offen</h2>
+  <div class="grid2">
+    <div class="card"><h3>Für dein Auge</h3><ul>
+      <li>Intro A oder B als Hauptfassung? B hängt die Kippwelle an, sie ist kräftiger, aber länger.</li>
+      <li>Kamera aus 74° (von rechts) oder lieber von links kommend?</li>
+      <li>Soll der Stamm des zweiten i vor der Platte als Petrol-Säule sichtbar sein (jetzt so) oder erst mit der Platte entstehen?</li></ul></div>
+    <div class="card"><h3>Nächste Schritte</h3><ul>
+      <li>Ton: Shepard-Glissando während der Fahrt, das beim Einrasten aufgeht.</li>
+      <li>Export als Video (60 fps) für Präsentation und App-Start, Kurzfassung für den Splash.</li>
+      <li>Optional: echte Sugihara-Geometrie für einen Buchstaben.</li></ul></div>
+  </div>
+</section>
+<footer>illudiy Intro-Studie · Vektor, Engine und Texte in <code>docs/look/illudiy/</code></footer>
+</div>
+
+<script>/*MODEL*/</script>
+<script>/*ENGINE*/</script>
+<script>
+(() => {
+  const ORIG = '/*ORIG*/';
+  const E = window.ILLUDIY, SEQ = E.SEQ;
+  const CAP = {
+    A: '<b>Intro A · Einrasten.</b> Aus dem Nichts: Kamera auf Bodenhöhe, die Buchstaben steigen als Welle auf. Die Kamera kreist per Dolly-Zoom in die Parallelprojektion und rastet bei 45°/30° ein. Dann fallen die Punkte, die Platte kehrt Figur und Grund um, Rand und Schatten folgen, das Licht setzt sich.',
+    B: '<b>Intro B · mit Kippwelle.</b> Wie A, danach läuft eine scharfe Lichtwelle über das Wort und tauscht Pink und Weiß: Für einen Moment kippen die Körper vom Relief zur Gravur.',
+    K: '<b>Kurzfassung (2 s).</b> Ohne Kamerafahrt, für den App-Start: Aufsteigen, Platte, Punkte, Schatten.',
+    T1: '<b>Test 1 · Magischer Blickwinkel.</b> Nur die Kamerafahrt mit Dolly-Zoom. Achte auf das ll und das zweite i: Die Flächen hängen nicht zusammen, erst bei 45°/30° schließen sich die Fugen.',
+    T2: '<b>Test 2 · Aus dem Boden.</b> Feste Endkamera, die Körper steigen mit Federn auf (2,5D ohne Fahrt). Zum Vergleich mit Test 1.',
+    T3: '<b>Test 3 · Kippwelle.</b> Licht von oben: In der Welle sind Pink und Weiß vertauscht. Dieselben Flächen lesen sich dort als vertieft.',
+    T4: '<b>Test 4 · Figur und Grund.</b> Ohne Platte sind Deckel des i und Stamm des zweiten i sichtbare Flächen. Mit der Platte verschwinden sie: Säule wird Schacht, Balken wird Schlitz.',
+    T5: '<b>Test 5 · Punkte mit Physik.</b> Schwerkraft, zwei Sprünge, Stauchen. Der weiße Punkt versinkt halb hinter dem Stamm.',
+    T6: '<b>Test 6 · Platte, Rand, Schatten.</b> Die Platte wächst in Iso-Rauten, der Rand folgt, der Schatten streicht entlang der Isometrie-Achse ein.',
+    END: '<b>Endbild.</b> Identisch mit dem statischen Vektor.' };
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d'), stage = document.getElementById('stage');
+  const scrub = document.getElementById('scrub'), timeEl = document.getElementById('time'), playBtn = document.getElementById('play');
+  const img = new Image(); img.src = ORIG; document.getElementById('origImg').src = ORIG;
+  let seq = 'A', t = 0, playing = true, speed = 1, last = performance.now(), loop = true, analysis = false, overlay = false;
+  function fit() { const r = stage.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2); cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); draw(); }
+  function draw() { E.render(ctx, cv.width, cv.height, seq, t, { analysis, overlay: overlay && img.complete ? img : null, overlayAlpha: 0.5 }); scrub.value = Math.round(t / SEQ[seq].dur * 1000); timeEl.textContent = t.toFixed(2).replace('.', ',') + ' s / ' + SEQ[seq].dur.toFixed(1).replace('.', ','); document.getElementById('badge').textContent = SEQ[seq].name; }
+  function setSeq(k) { seq = k; t = 0; document.querySelectorAll('.seq').forEach(b => b.setAttribute('aria-pressed', b.dataset.seq === k)); document.getElementById('caption').innerHTML = CAP[k] || ''; playing = k !== 'END'; playBtn.textContent = playing ? '❚❚' : '▶'; draw(); }
+  function tick(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; if (playing) { t += dt * speed; const D = SEQ[seq].dur; if (t > D + 0.9) { if (loop) t = 0; else { t = D; playing = false; playBtn.textContent = '▶'; } } draw(); } requestAnimationFrame(tick); }
+  document.querySelectorAll('.seq').forEach(b => b.addEventListener('click', () => setSeq(b.dataset.seq)));
+  playBtn.addEventListener('click', () => { playing = !playing; if (playing && t >= SEQ[seq].dur) t = 0; playBtn.textContent = playing ? '❚❚' : '▶'; last = performance.now(); });
+  document.getElementById('restart').addEventListener('click', () => { t = 0; playing = true; playBtn.textContent = '❚❚'; draw(); });
+  scrub.addEventListener('input', () => { t = scrub.value / 1000 * SEQ[seq].dur; playing = false; playBtn.textContent = '▶'; draw(); });
+  document.querySelectorAll('.spd').forEach(b => b.addEventListener('click', () => { speed = +b.dataset.s; document.querySelectorAll('.spd').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+  document.getElementById('loop').addEventListener('change', e => loop = e.target.checked);
+  document.getElementById('analysis').addEventListener('change', e => { analysis = e.target.checked; draw(); });
+  document.getElementById('overlay').addEventListener('change', e => { overlay = e.target.checked; draw(); });
+  window.addEventListener('resize', fit); setSeq('A'); fit(); requestAnimationFrame(tick);
+  // Vergleich
+  const vc = document.getElementById('vecCv'), vctx = vc.getContext('2d'), cmp = document.getElementById('compare'), wipe = document.getElementById('wipe'), cut = document.getElementById('cut');
+  function drawCmp() { const r = cmp.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2); vc.width = Math.round(r.width * d); vc.height = Math.round(r.height * d); vctx.clearRect(0, 0, vc.width, vc.height);
+    const tmp = document.createElement('canvas'); tmp.width = 2000; tmp.height = 937; E.render(tmp.getContext('2d'), 2000, 937, 'END', 0, { identity: true }); vctx.drawImage(tmp, 0, 0, vc.width, vc.height); applyWipe(); }
+  function applyWipe() { const f = wipe.value / 1000; vc.style.clipPath = `inset(0 0 0 ${f * 100}%)`; cut.style.left = `calc(${f * 100}% - 1px)`; }
+  wipe.addEventListener('input', applyWipe); let blinkT = null;
+  document.getElementById('blink').addEventListener('click', e => { if (blinkT) { clearInterval(blinkT); blinkT = null; e.target.textContent = 'Blinken'; applyWipe(); return; } e.target.textContent = 'Blinken aus'; let on = false; blinkT = setInterval(() => { on = !on; vc.style.clipPath = on ? 'inset(0 0 0 0)' : 'inset(0 0 0 100%)'; }, 600); });
+  window.addEventListener('resize', drawCmp); drawCmp();
+  // Ablaufgrafik
+  const bars = [['Kamera einrasten', 0, 2.05, '#c9b8fb'], ['Aufsteigen', 0.05, 1.0, '#ff73a9'], ['Dolly-Zoom', 0, 1.9, '#946ff9'], ['Punkte', 1.45, 3.0, '#ffffff'], ['Platte', 2.35, 2.9, '#3c8aa0'], ['Rand', 2.56, 3.2, '#ffa5dd'], ['Schatten', 2.86, 3.61, '#df508d'], ['Licht setzt sich', 3.0, 4.15, '#efe8f2'], ['®', 3.85, 4.3, '#cbbdfb']];
+  const tl = document.getElementById('timeline'); const D = 4.7;
+  tl.innerHTML = bars.map(([n, a, b, c]) => `<div class="tl-row"><span>${n}</span><div class="tl-track"><div class="tl-bar" style="left:${a / D * 100}%;width:${(b - a) / D * 100}%;background:${c}"></div></div></div>`).join('') +
+    `<div class="tl-axis"><span></span><div class="tl-ticks">${[0, 1, 2, 3, 4].map(s => `<span style="left:${s / D * 100}%">${s} s</span>`).join('')}</div></div>`;
+})();
+</script>
+</body>
+</html>
