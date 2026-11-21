@@ -43,6 +43,7 @@ import { TINTE } from './tinte';
 import { TREX } from './trex';
 import { SCHLEIM } from './schleim';
 import { MATRIX } from './matrix';
+import { ORNAMENT } from './ornament';
 import { BATLLO_DACH, SAGRADA, TRENCADIS } from './gaudi';
 import { ACHAT, GRANIT, JADE, LAPIS, MALACHIT, MARMOR, OBSIDIAN, SANDSTEIN } from './steine';
 import { CHAMAELEON_HAUT, DRACHE_HAUT, ELEFANT, FROSCH_HAUT, KLAPPERSCHLANGE, KORALLENNATTER, KRAKE_HAUT, KROKODIL, SALAMANDER, SCHLANGE } from './haeute';
@@ -79,6 +80,7 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   SHINKAI,
   UKIYOE,
   GOUACHE,
+  ORNAMENT,
   // Materialien
   AUTOLACK,
   HAUT,
