@@ -875,6 +875,18 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Schritten mit Werkzeugen die Ansicht prüfen (`bearbeiten().flaechen`: Die Probe lief unbemerkt im Raum weiter, zwei Kriterien
   bestanden dort zufällig). (94) Eine Gegenprobe mit einem Flicken, der die neue Regel abschaltet, zeigt, ob ein Kriterium
   überhaupt unterscheidet. Probe: `ozzy-maul-posen-fenster.mjs` (P1 bis P8, Q1 bis Q4; `BIS=`, `NUR=Q`).
+  **Scheibe 3, mehrere Posen (21.11.):** `werk.posen` (alle), `pose` die gewählte; `poseZiel`, `poseWechseln`, `poseZeile`.
+  Merke: (95) Die gewählte Pose wird am Ort geändert, die anderen nie (ein neues Ding an ihren Platz): Die Schritte für ⌘Z
+  teilen ihre Felder. Wer `pose = …` setzt, hält `posen` mit (`poseErsetzen`). (96) Was je Pose gilt und bisher an anderer
+  Stelle stand (die Lage der Zunge am Maul), wird beim Wechsel der gewählten Pose getauscht (`zungeTauschen`), statt jeden
+  Leser umzubauen. (97) Jeder Wert je Punkt des Netzes, den es je Pose gibt, geht in `netzGewachsen` für ALLE Posen mit
+  (`versatzNeu`), in beiden Zweigen. (98) Schlüssel, die an der gezeigten Lage hängen, nehmen `werk.poseZeile()` (eine Stelle
+  für Anteil, Ziel, Winkel, Blick). (99) Ein Zeiger, der in der Reihe einen Tropfen trägt, trifft unter sich den Tropfen
+  selbst: `pointer-events: none`, solange er getragen wird, sonst findet `elementFromPoint` den Mülleimer nie. Halten
+  (Benennen) und Tippen am selben Tropfen: Der Klick nach dem Halten gilt nicht (`poseOhneKlick`). (100) Zeitkriterien
+  fremder Proben fallen bei hoher Last des Rechners (Load über 10): vor einem Urteil direkt gegen den Stand davor messen
+  (`git checkout <stand> -- apps/editor/src apps/editor/ozzy.html`, Probe, zurück). Probe:
+  `ozzy-maul-posen-reihe-fenster.mjs` (R1 bis R9).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

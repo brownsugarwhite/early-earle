@@ -91,6 +91,12 @@ näheren Tropfen. Wächst das Netz in einer Lage, liegen seine neuen Punkte in d
 Ergebnis: [`2026-11-21-ozzy-maul-etappe-8-posen.md`](2026-11-21-ozzy-maul-etappe-8-posen.md), Bild
 `docs/progress/ozzy/2026-11-21-maul-etappe8-posen.jpg`. Neu: 153 bis 166.
 
+**Etappe 8, Scheibe 3 (21.11.), „mehrere Posen“:** Am Ende der Reihe hängt ein kleines Plus: Es legt eine Pose an, eine Kopie
+dessen, was du gerade siehst. Ein Tipp auf einen Tropfen fährt dorthin, auch direkt von Pose zu Pose; am Faden zwischen zwei
+Posen gezogen wandert die Form zwischen ihnen. Einen Tropfen halten benennt die Pose, ihn auf den Mülleimer ziehen löscht sie
+(eine bleibt immer); ⌘Z nimmt Anlegen, Benennen und Löschen zurück. Jede Pose hat ihre Winkel, ihre Form und die Lage ihrer
+Zunge; Sichern und Laden tragen alle. Bild: `docs/progress/ozzy/2026-11-21-maul-etappe8-mehrere-posen.jpg`. Neu: 167 bis 176.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -493,9 +499,9 @@ Ergebnis: [`2026-11-21-ozzy-maul-etappe-8-posen.md`](2026-11-21-ozzy-maul-etappe
      auf der Lippe: Bei offener Linse greifst du dort keinen Lippenpunkt. Ist die Linse zu, gehen Punkte und Linien vor.
 160. **Unterwegs** (am Faden gehalten) wird nichts gezogen, die Tropfen der Kiefer und die zwei Regler ruhen. Zähne und Zunge
      sind dabei nicht gesperrt (nicht geprüft). Tasten für die Fahrt gibt es nicht.
-161. **Ein Tipp auf „Fressen“ in der Pose führt zurück in die Grundform** (wie der Knopf bisher). Mit mehreren Posen müsste
-     er die Pose nur wählen.
-162. **Mehrere Posen („Plus“), Zähne und Zunge je Pose** fehlen (Scheibe 3, auf dein Wort). Die Pose bleibt gespiegelt.
+161. **Ein Tipp auf die gewählte Pose führt zurück in die Grundform** (wie der Knopf bisher; so auch mit mehreren Posen).
+162. ~~Mehrere Posen („Plus“) und die Zunge je Pose fehlen~~ gebaut (Scheibe 3). **Zähne je Pose** fehlen: Ihre Werte gelten
+     für alle Lagen. Die Pose bleibt gespiegelt.
 163. **Die Gegenrichtung** (das Netz wächst in der Grundform, die neuen Punkte der Pose liegen auf deren Fläche) ist gebaut
      und an einem Fall gezählt (14 neue Punkte, bis 2,6 anders als mit der Regel von vorher). Im Bild verglichen ist nur die
      Richtung von der Pose zur Grundform.
@@ -506,6 +512,29 @@ Ergebnis: [`2026-11-21-ozzy-maul-etappe-8-posen.md`](2026-11-21-ozzy-maul-etappe
      nach dem Zug zurück liegt die ferne Farblinie 0,35 neben vorher; 4: beim Drehen fällt ein Bild aus). Mit und ohne die
      Änderungen von Etappe 8 gleich (Gegenprobe mit Flicken); seit wann, ist nicht geprüft (die Proben des Paint-Modus liefen
      seit dem 20.11. nicht mehr).
+
+167. **Eine neue Pose ist eine Kopie dessen, was du siehst:** in einer Pose diese Pose, in der Grundform die Grundform (das
+     Maul zu, die Winkel null). Sie heißt „Pose 2“ … und steht am Ende der Reihe; umordnen lässt sich die Reihe nicht.
+168. **Löschen geht nur über den Mülleimer** (den Tropfen dorthin ziehen), benennen nur durch Halten; Tasten gibt es dafür
+     nicht. Namen dürfen doppelt sein (höchstens 24 Zeichen), eine Form trägt höchstens acht Posen.
+169. **Aus der Grundform an einen Faden zwischen zwei Posen gegriffen** springt die Anzeige in die linke der zwei Posen und
+     wandert von dort (kein weicher Anfang).
+170. **Unterwegs zu einer Pose, die nicht betreten ist,** liegt ihre Haut an neuen Punkten des Netzes auf ihren Linien nur so
+     genau, wie das Netz die Linie auflöst; erst beim Ankommen setzt sie sich darauf. Ein kleiner Ruck am Ziel ist möglich
+     (nicht beobachtet, nicht gemessen).
+171. **Ein weiter Zug in einer Pose ändert die gezeigte Haut der anderen Lagen** um die Feinheit des Netzes (wie 153):
+     in zwei Läufen bis 0,79 und 0,83 an „Fressen“ und an der Grundform (0,65 und 0,70 % der Proben über 0,05), nahe an
+     der Grenze der Probe (1).
+172. **Beim Wandern zwischen zwei Posen** zeigen die zwei Regler die Winkel der linken Pose und ruhen; die Tropfen der Kiefer
+     sind so lange aus.
+173. **Die Lage der Zunge gehört jetzt zur Pose** (112): von Hand im Skript geprüft, nicht in einer Probe. Ändert sich die
+     Zunge oder das Maul, bleibt die alte Lage jeder Pose stehen (114).
+174. **Wählen in der Grundform** gibt es nicht für sich: Ein Tipp auf eine Pose fährt immer hinein. Die Regler und die Tropfen
+     der Kiefer gelten in der Grundform der zuletzt gewählten Pose.
+175. **Nicht geprüft:** iPad und Stift (Halten zum Benennen, Tragen zum Mülleimer); mehr als zwei Posen im Bild (der Umbruch
+     der Reihe in eine zweite Zeile); Paint-Modus und Vier Ansichten mit mehreren Posen; mehrere Objekte; das Maul vom 13.11.
+176. **Das Tempo der Zahnform-Probe (G10)** fiel bei hoher Last des Rechners zweimal durch (16,2 und 12,3 statt 12 ms je
+     Bild). Direkt gegen den Stand vor Scheibe 3 gemessen ist es gleich (9,0 und 8,5 ms).
 
 ### Kleines
 

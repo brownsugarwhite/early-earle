@@ -15,9 +15,11 @@ am 21.11. Block D (die Lippe als seine Linie: ihre Punkte sind seine Anker, sein
 Feinschlifflauf“), danach Punkt 130 behoben (die Zahnfleischlinie behält ihren Weg), dann Etappe 7 (ein Zahn als kleine Form:
 Der Zahn in der Linse trägt drei Linien und lässt sich eingerastet an ihnen formen; unten „Etappe 7“), dann Etappe 8 in zwei
 Scheiben (Posen: in „Fressen“ ist jede Lippe frei, die Grundform bleibt; „Grundform“ und „Fressen“ als Tropfen an einem Faden,
-dazwischen wandert die Form; unten „Etappe 8“). Als Nächstes, auf Florians Wort: mehrere Posen (Scheibe 3), die Kiefer (Liste,
-20 bis 22: Lappen und Stufe stehen dem runden Maul im Weg), ob die Linie im Maul der Lippe folgt (131), Backen oder der
-Rechenkern (153: ein Netz für alle Lagen).**
+dazwischen wandert die Form; mehrere Posen mit Plus, direkter Fahrt von Pose zu Pose, Benennen und Löschen; unten
+„Etappe 8“). Florian am 21.11.: „Kiefer richten und feinschliff kommen dann zum schluss“; ihm ist einiges aufgefallen, das
+bringt er in einem eigenen großen Feedback-Durchgang. Als Nächstes also, auf sein Wort: sein Feedback, dann die Kiefer
+(Liste, 20 bis 22) und der Feinschliff; offen daneben: ob die Linie im Maul der Lippe folgt (131), Backen, der Rechenkern
+(153: ein Netz für alle Lagen).**
 Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
@@ -517,6 +519,26 @@ Bild: `docs/progress/ozzy/2026-11-21-maul-etappe8-posen.jpg`. Offenes: Liste, 15
 - **Fallen der Probe:** Esc nur mit Auswahl (`abwaehlen`); die Ansicht nach Werkzeugschritten prüfen (`ansicht()`: Die Probe
   lief einmal unbemerkt im Raum weiter). Zähne über den Haken `zaehne('anfang')` einschalten (der Tropfen öffnet die Linse).
   Die Haut zweier Stände an der gezeigten Haut vergleichen (`hautStand(true)`, `hautAbstand`), nicht am Rechennetz.
+- **Scheibe 3, mehrere Posen (Plan, Abschnitt 7; Bild `…-maul-etappe8-mehrere-posen.jpg`; Offenes: Liste, 167 bis 176):**
+  - *Werk:* `posen` (alle, in der Reihenfolge der Reihe), `pose` ist die gewählte und eine von ihnen. Die gewählte wird am
+    Ort geändert, die anderen nie (neues Ding an ihren Platz: Die Schritte für ⌘Z teilen ihre Felder). `PoseStand.name`,
+    `.zunge` (die Lage der Zunge einer Pose, die nicht gewählt ist; die der gewählten steht am Maul, `zungeTauschen`).
+    Handgriffe: `poseAnlegen` (Kopie des Gezeigten, Schritt), `poseWaehlen` (in der Grundform), `poseWechseln` (von der
+    betretenen in eine andere: verlassen, betreten), `poseLoeschen`, `poseBenennen`. `Schnappschuss.posen`,
+    `WesenStand.posen` und `poseNr` (`pose` bleibt darin die gewählte; eine Form mit nur der einen unbenannten Pose sichert
+    wie vorher).
+  - *Netz:* `netzGewachsen` führt den Versatz jeder Pose nach (`versatzNeu`): in der Pose die der anderen Posen (aus der Lage
+    der betretenen), in der Grundform alle.
+  - *Anzeige:* `poseZiel` (eine andere Pose und wie weit die Anzeige dort ist), `lageVon` (Grundform plus Versatz, Linien wie
+    beim Betreten: `poseLoopsAus`), `ruheGemischt` mischt zwei Lagen, `winkelGezeigt` die Winkel; `poseZeile()` ist die eine
+    Zeile für alle Schlüssel, die an der gezeigten Lage hängen (Netz der Linien, Lagen für die Zähne, Zunge).
+  - *Ozzy:* Die Reihe wird aus den Posen gebaut (`posenBauen`, `posenMessen`, `posenZeigen`); Lagen zählen dort 0 =
+    Grundform, k = Pose k − 1. `poseFahren(z)` (Fahrt über `poseAnteil` oder `poseZiel`), Fäden (`fadenBeginnen`,
+    `fadenZiehen`, `fadenLoslassen`), Plus (`poseNeu`), Halten (`poseNameOeffnen`, Feld `#pose-name`), Tragen zum Mülleimer
+    (`poseWeg`). Kennungen: `#pose-grundform`, `#fressen-knopf` (erste Pose), `#posen button.pose[data-nr="k"]`,
+    `#posen .posen-faden[data-nr="k"]`, `#pose-plus`. Der Haken `pose()` meldet `nr`, `namen`, `winkel`, `ziel`.
+  - *Probe:* `ozzy-maul-posen-reihe-fenster.mjs` (R1 bis R9; `BIS=R2|R4|R5|R7`); sichert unter `ozzy-probe-posen-reihe`.
+    Die Zunge greift man im Raum von vorn (`blickSetzen({ gier: -1.6, neigung: 0.05, zoom: 4 })`), nicht in der Seite.
 
 ## Die Studie in einem Absatz
 
@@ -636,3 +658,10 @@ Etappe 8 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest run src/form
 hält zwei Kriterien nicht, mit und ohne die Änderungen der Etappe gleich (Liste 166). Gegenproben mit Flicken: die Regel von
 vorher für neue Punkte (P4 fällt), der Plan der Anzeige neu angelegt (Bilder gleich). Angesehen: Grundform und Pose auf Wachs
 von Nahem, die Tafel in drei Ständen. Nicht angesehen: iPad; das Maul „groß und rund“ ist nicht gezeigt (Liste 154).
+
+Etappe 8, Scheibe 3 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest run src/form/ src/ozzy/` (123 Tests; alle 161
+unter `src/`), im Fenster `ozzy-maul-posen-reihe-fenster.mjs` (R1 bis R9 erfüllt, zwei Läufe),
+`ozzy-maul-posen-fenster` (15), `ozzy-maul-fenster` (19), `-sichern-` (5), `-zunge-` (28), `-zaehne-` (27), `-pose-` (6),
+`-lippe-` (12), `ozzy-zurueck-haut-`, `-bearbeiten-`, `-zuege-fenster` (erfüllt); `ozzy-maul-zahnform-fenster` bis auf sein
+Tempo G10 unter hoher Last (direkt verglichen gleich wie vor der Scheibe). Die Lage der Zunge je Pose von Hand im Skript.
+Nicht gelaufen: die Proben des Paint-Modus. Angesehen: die Reihe mit zwei Posen in drei Ständen. Nicht angesehen: iPad.

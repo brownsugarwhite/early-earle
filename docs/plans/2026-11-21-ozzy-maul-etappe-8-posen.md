@@ -233,3 +233,40 @@ Bestehende Proben, die danach laufen müssen: `ozzy-maul-posen-fenster` (P1 bis 
 - **Die Kiefer** (Liste 20 bis 22) und der Feinschliff: nach seinem Wort zum Schluss, zusammen mit seinem Feedback.
 - Das Maul aus der schmalen Form (vor dem 14.11.) behält seine eine Pose.
 
+### 7.5 Ergebnis (21.11.)
+
+Gebaut (Commit `6a3454af`). Bild:
+[`docs/progress/ozzy/2026-11-21-maul-etappe8-mehrere-posen.jpg`](../progress/ozzy/2026-11-21-maul-etappe8-mehrere-posen.jpg).
+
+**Was er jetzt kann:** alles aus 7.1. In der Tafel oben rechts stehen die Grundform und jede Pose als Tropfen, dazwischen je
+ein Faden, am Ende ein kleines Plus. Plus legt eine Pose an (eine Kopie dessen, was er sieht), ein Tipp fährt direkt von Pose
+zu Pose, am Faden zwischen zwei Posen wandert die Form, Halten benennt, auf den Mülleimer gezogen ist eine Pose weg.
+
+**Proben** (`ozzy-maul-posen-reihe-fenster.mjs`, an „teat firefish“, alle erfüllt)
+
+| Nr. | Gemessen |
+| --- | --- |
+| R1 | „Pose 2“ gewählt, gezeigte Haut 0,000 anders als „Fressen“, Winkel gleich; ein Schritt, ⌘Z nimmt sie |
+| R2 | Pose 2 geformt (Linien bis 32,9 anders, Maul 50°): „Fressen“ Linien 0,000 und 34°/8°, Grundform Linien 0,000 |
+| R3 | das Maul läuft von 42,0° nach 58,0° in 18 Bildern, nie darunter (größter Schritt 1,3°); danach Pose 2, Linien 0,000 |
+| R4 | am Faden: Anteil 0,500, Maul 50,0° (das Mittel), der ferne Punkt 0,0 % neben der Mitte; bei 0,3 losgelassen „Fressen“, bei 0,72 Pose 2 |
+| R5 | Netz 11 698 → 11 890 Punkte (zweiter Lauf 11 878): „Fressen“ Linien 0,000, gezeigte Haut höchstens 0,79 (zweiter Lauf 0,83; 0,65 und 0,70 % der Proben über 0,05); Grundform 0,000 und 0,79 (0,82; je 0,61 %) |
+| R6 | „Gähnen“ steht am Tropfen; ein Schritt, ⌘Z gibt „Pose 2“ zurück |
+| R7 | geladen: Fressen, Gähnen; gewählt die zweite, Pose an; Winkel 34/8 und 50/8; Linien aller drei Lagen 0,000 |
+| R8 | nach dem Mülleimer: „Fressen“, Grundform; ⌘Z bringt „Gähnen“ zurück (Linien 0,000); die letzte Pose bleibt („Eine Pose bleibt immer“) |
+| R9 | unterwegs im Mittel 9,4 ms je Bild, das langsamste 24,9 ms (zweiter Lauf 10,7 und 26,3 ms) |
+
+Die zwei Läufe unterscheiden sich in R5 und R9, weil das Netz je nach Takt der Bilder an anderen Stellen wächst.
+
+Dazu laufen weiter: `ozzy-maul-posen-fenster` (P1 bis P8, Q1 bis Q4), `ozzy-maul-fenster`, `-sichern-`, `-zunge-`, `-zaehne-`,
+`-pose-`, `-lippe-fenster`, `ozzy-zurueck-haut-`, `-bearbeiten-`, `-zuege-fenster` und 123 Tests. `ozzy-maul-zahnform-fenster`
+hält alles bis auf sein Tempo (G10) bei hoher Last des Rechners; direkt gegen den Stand vor dieser Scheibe gemessen ist es gleich
+(9,0 ms vorher, 8,5 ms jetzt je Bild). Die Lage der Zunge je Pose ist von Hand im Skript geprüft (in „Fressen“ abgelegt, Plus
+nimmt sie mit, in Pose 2 gelöst, „Fressen“ behält seine).
+
+**Für ihn entschieden (sein Urteil steht aus):** Eine neue Pose ist eine Kopie dessen, was zu sehen ist (in der Grundform: das
+Maul zu). Sie heißt „Pose 2“ … und steht am Ende der Reihe. Ein Tipp auf die gewählte Pose führt zurück in die Grundform.
+Benennen durch Halten, Löschen über den Mülleimer der Leiste. Höchstens acht Posen.
+
+**Offen:** Liste, Punkte 167 bis 176.
+
