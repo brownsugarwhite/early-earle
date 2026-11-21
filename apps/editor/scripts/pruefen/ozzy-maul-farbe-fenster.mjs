@@ -93,6 +93,7 @@ const raster = async () => {
     ([a, b, c, d]) => {
       const zahl = {};
       const ort = {};
+      const wo = [];
       let gesamt = 0;
       for (let y = b; y <= d; y += 5)
         for (let x = a; x <= c; x += 5) {
@@ -100,10 +101,11 @@ const raster = async () => {
           gesamt++;
           if (!f) continue;
           zahl[f] = (zahl[f] ?? 0) + 1;
+          if (wo.length < 4) wo.push({ x, y });
           // (ein Ort mitten in einer Farbe: der, um den auch die vier Nachbarn dieselbe Farbe haben)
           if (!ort[f] && [-5, 5].every((e) => window.__ozzy.farbUnter(x + e, y) === f && window.__ozzy.farbUnter(x, y + e) === f)) ort[f] = { x, y };
         }
-      return { zahl, ort, gesamt };
+      return { zahl, ort, gesamt, wo };
     },
     [x0, y0, x1, y1],
   );
@@ -185,6 +187,13 @@ if (maul) {
     const f4 = await O('farbe');
     await blick();
     const zu = await raster();
+    // (trifft zu ein Strahl Farbe: wo, und ein Bild der Stelle)
+    if (zu.wo?.length && ordner) {
+      const o = zu.wo[0];
+      console.log(`     zu trifft ein Strahl Farbe bei ${zu.wo.map((q) => `${q.x.toFixed(0)}/${q.y.toFixed(0)}`).join(', ')}`);
+      await s.screenshot({ path: `${ordner}/ozzy-maul-farbe-2a-zu-aussen.png`, clip: { x: Math.max(0, o.x - 150), y: Math.max(0, o.y - 110), width: 300, height: 220 } });
+      await s.screenshot({ path: `${ordner}/ozzy-maul-farbe-2a-zu-ganz.png` });
+    }
     await s.click('#fressen-knopf');
     await s.waitForTimeout(1500);
     await ruhig();

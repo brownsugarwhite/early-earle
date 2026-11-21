@@ -826,8 +826,13 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   und einmal mit Palette ohne farbige Kapseln). (69) Je Kapsel eine Rückfrage an den Raum kostete 0,2 ms je Bild: die Farben
   einer Linie auf einmal holen (`linienFarben`). (70) Esc ohne Auswahl verlässt die Seitenansicht: Proben drücken es nur mit
   Auswahl. (71) Eine Form, die ins Fenster passt, bleibt beim Vergrößern in der Mitte; eine größere wächst um den Zeiger.
-  (72) Ob die Zahnfleischlinie nach einem Zug an der Lippe ihren Weg behält, hängt an der Stelle des Zugs (Liste, 130): Eine
-  Probe, die an einer Stelle besteht, beweist es nicht. Probe: `ozzy-maul-lippe-fenster.mjs` (P1 bis P4, F1 bis F4, U1 bis U3).
+  (72) Eine Probe, die an einer Stelle besteht, beweist es nicht für die anderen: Die Farb-Probe zog bis zum 21.11. an dem einen
+  Punkt der Lippe, an dem die Zahnfleischlinie hielt (`PUNKT=<n>` wählt ihn). Probe: `ozzy-maul-lippe-fenster.mjs` (P1 bis P4,
+  F1 bis F4, U1 bis U3). (73) Beim Netzwechsel sucht `orteUebergeben` einen Ort auf
+  der Seite der Haut, auf der er lag (Normale des alten Dreiecks): Wo zwei Häute aufeinanderliegen (Gaumen und Boden im
+  geschlossenen Maul, ein dünner Teil), landete er sonst auf der anderen, und die Farblinie fand keinen Weg mehr. Wer Orte auf
+  der Haut neu sucht, gibt die Seite mit. (74) Eine zweite Regel, die an keinem gemessenen Fall etwas ändert, kommt wieder
+  heraus (Gegenprobe mit einem Flicken, der sie abschaltet).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

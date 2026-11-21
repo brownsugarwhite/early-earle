@@ -185,7 +185,7 @@ bis U3; besteht an „teat firefish“, am frischen Oval und an „strange bird�
 - **D3.** Gebaut: am Umriss begonnen oder dort geendet. Dafür beendet ↩ jetzt auch eine Linie, die an Vorhandenem hängt und
   erst einen gesetzten Punkt hat. Die Regel „drei Netzkanten vom Umriss“ für freie Striche ist nicht gebaut: Sie hätte Striche
   mit drei und mehr Punkten, die heute eine Form auf der Haut werden, zu Maullinien gemacht.
-- **Was dabei aufgefallen ist und nicht behoben wurde** (Liste, 130 und 131): Die Zahnfleischlinie der Ebene „Maul“ kann ihren
+- **Was dabei aufgefallen ist** (Liste, 130 und 131; 130 ist seitdem behoben, siehe unten): Die Zahnfleischlinie der Ebene „Maul“ kann ihren
   Weg verlieren, wenn ein Punkt der Lippe vorn weit gezogen wird. Das ist älter als Block D (mit der Lippe von vorher an einer
   anderen Stelle genauso), die Probe `ozzy-maul-farbe-fenster.mjs` trifft es aber erst jetzt: F4b fällt in zwei von drei
   Läufen. Und die Linie im Maul geht nicht mit, wenn ein Anker der Lippe gezogen wird: Am frischen Oval traf nach einer langen
@@ -194,10 +194,33 @@ bis U3; besteht an „teat firefish“, am frischen Oval und an „strange bird�
   Kriterien; frisches Oval bis auf 17), der Farbe (bis auf F4b), des Sicherns, der Materialien, der Zähne, der Zunge, des Werks,
   des Bearbeitens und des Schnitts mit P.
 
+## Punkt 130: die Zahnfleischlinie behält ihren Weg (21.11.)
+
+Florian: „Ja, beheben“.
+
+- **Befund:** Eine Farblinie ist eine dichte Folge von Orten auf der Haut; zwischen zwei Orten läuft sie gerade über die Haut
+  (`spur`). Findet sich zwischen zweien kein Weg, fehlt die ganze Linie in der Anzeige. Beim Netzwechsel bleibt ein Ort in
+  seinem Dreieck, wenn es das noch gibt; sonst wurde er an der nächsten Stelle der neuen Haut gesucht (`orteUebergeben`),
+  ohne Rücksicht auf die Seite. Im geschlossenen Maul liegen Gaumen und Boden aufeinander (um den Haarspalt getrennt): Ein
+  gesuchter Ort landete dort auch auf der anderen Wand, und von dort gibt es keinen kurzen Weg zum Nachbarn.
+- **Weg:** Die Suche kannte die Frage nach der Seite schon (eine Normale mitgeben; so legt `kurve.ts` Kurven). Die
+  Ortsübergabe gibt jetzt die Normale des alten Dreiecks mit. Eine Zeile Rechnung, keine neue Regel.
+- **Probe:** Test „Netzwechsel, wo zwei Häute aufeinanderliegen“ in `farbe/farbe.test.ts` (ohne die Korrektur fällt er: Der
+  untere Ort landet auf der oberen Haut). Im Fenster: `ozzy-maul-farbe-fenster.mjs` F4b an den Punkten 1, 2, 3 der Lippe
+  („ohne Weg 0“ an allen; in der Standardform fünf von fünf Läufen bestanden, vorher einer von vier);
+  `ozzy-maul-fenster.mjs` mit `FRISCH=1` besteht wieder ganz.
+- **Verworfen:** eine zweite Regel („ein Dreieck, dessen drei Ecken alle auf der Lippe liegen, gehört nur zur Tasche, wenn
+  es an ihr hängt“). Sie war gebaut und geprüft, änderte aber an keinem gemessenen Fall etwas (Gegenprobe am frischen Oval)
+  und ist wieder heraus.
+- **Was bleibt:** Am vordersten Anker von „teat firefish“ liegt nach einem Zug um 8 Einheiten außen an der Lippe eine
+  haarfeine Linie in der Farbe des Zahnfleischs. Das kommt von Punkt 131 (die Tasche klappt hinter der Lippe um, weil die
+  Linie im Maul stehen bleibt), nicht von der Bemalung.
+- **Nebenbei gesehen:** `ozzy-farbe-fenster.mjs` (Paint-Modus) fällt hier an Kriterium 2 (0,65 statt 0,5 Einheiten nach
+  „ziehen und zurück“), mit und ohne diese Korrektur gleich. Das gehört dem Strang Paint-Modus.
+
 ## Was offen bleibt
 
-- **Aus Block D:** die Zahnfleischlinie nach einem weiten Zug an der Lippe (130); ob die Linie im Maul der Lippe folgen soll
-  (131); ein Zeichen am Zeiger für die Lippe (31).
+- **Aus Block D:** ob die Linie im Maul der Lippe folgen soll (131); ein Zeichen am Zeiger für die Lippe (31).
 - **Gruppe E, sein Auge.** Die Fragen, an denen der nächste Schritt nicht hängt, bleiben in der Liste. Die drei, die er beim
   Testen als Erstes sieht: Hohe Zähne heben eine lange Zunge weit (107); in der Pose bleibt die Form, nicht die Dehnung (111);
   die Werte der vier Vorlagen (93).

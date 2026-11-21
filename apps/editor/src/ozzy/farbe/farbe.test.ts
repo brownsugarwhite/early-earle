@@ -520,6 +520,27 @@ describe('Farbe: Ort, Spur, Ketten, Flächen', () => {
     expect(daneben).toBeGreaterThan(2);
   });
 
+  it('Netzwechsel, wo zwei Häute aufeinanderliegen (Gaumen und Boden im geschlossenen Maul): Jeder Ort bleibt auf seiner Seite', () => {
+    // zwei Quadrate am selben Ort, das obere zeigt nach +z, das untere nach −z; im neuen Netz liegt in beiden die andere Diagonale
+    const pos = Float64Array.from([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]);
+    const alt: Netz = { pos, n: 8, tri: Uint32Array.from([0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6]) };
+    const neu: Netz = { pos, n: 8, tri: Uint32Array.from([0, 1, 3, 1, 2, 3, 4, 3 + 4, 5, 5, 3 + 4, 6]) };
+    const oben: Ort = { t: 0, e: [0, 1, 2], w: [0.2, 0.5, 0.3] };
+    const unten: Ort = { t: 2, e: [4, 6, 5], w: [0.3, 0.3, 0.4] };
+    const vorOben = ortLage(alt.pos, oben);
+    const vorUnten = ortLage(alt.pos, unten);
+    const zu = Int32Array.from([0, 1, 2, 3, 4, 5, 6, 7]);
+    const r = orteUebergeben(alt.pos, karteVon(neu), naechsterAuf(neu), [oben, unten], zu);
+    expect(r.gesucht).toBe(2);
+    // (ohne die Seite nähme die Suche für beide das erste Dreieck am Ort: Der untere Ort läge auf der oberen Haut)
+    expect(oben.t).toBeLessThan(2);
+    expect(unten.t).toBeGreaterThanOrEqual(2);
+    const nachOben = ortLage(neu.pos, oben);
+    const nachUnten = ortLage(neu.pos, unten);
+    expect(Math.hypot(nachOben[0] - vorOben[0], nachOben[1] - vorOben[1], nachOben[2] - vorOben[2])).toBeLessThan(1e-3);
+    expect(Math.hypot(nachUnten[0] - vorUnten[0], nachUnten[1] - vorUnten[1], nachUnten[2] - vorUnten[2])).toBeLessThan(1e-3);
+  });
+
   it('zwei Farblinien, die sich kreuzen, trennen vier Flächen: gefüllt wird nur die Linse zwischen ihnen', () => {
     // zwei Kreise gleicher Größe, um die z-Achse und um eine Achse 30° daneben: Sie kreuzen sich an zwei Stellen
     const a: [number, number, number] = [0.5, 0, Math.sqrt(0.75)];

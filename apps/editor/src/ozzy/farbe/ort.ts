@@ -370,7 +370,7 @@ export function punkteZuordnen(altPos: ArrayLike<number>, nAlt: number, neu: Net
  * Gibt es das Dreieck eines Orts im neuen Netz noch (seine drei Punkte sind geblieben und bilden wieder ein Dreieck), bleibt er darin
  * mit denselben Gewichten: Die Bemalung sitzt am Material und rührt sich bei einem Netzwechsel nicht, auch wenn sich die Haut im
  * selben Bild bewegt hat. Sonst (das Dreieck wurde geteilt, gedreht oder zusammengelegt) geht er an die Stelle der neuen Haut, die
- * ihm am nächsten liegt, von der Lage aus, die seine gebliebenen Punkte jetzt haben.
+ * ihm am nächsten liegt, von der Lage aus, die seine gebliebenen Punkte jetzt haben, und auf der Seite der Haut, auf der er lag.
  *
  * Zurück: wie viele Orte in ihrem Dreieck blieben (`gehalten`), wie viele gesucht wurden und wie weit der fernste von ihnen neben der
  * neuen Haut lag (`weit`).
@@ -435,7 +435,24 @@ export function orteUebergeben(altPos: ArrayLike<number>, neu: Karte, naechster:
         z += g * (altPos[3 * o.e[i]! + 2]! + sz);
       }
     }
-    const r = naechster(x, y, z);
+    // Die Seite der Haut, auf der der Ort lag (Maul, Feinschlifflauf, 21.11.): die Normale seines alten Dreiecks. Wo zwei Häute
+    // aufeinanderliegen (Gaumen und Boden im geschlossenen Maul, ein dünner Teil), läge der nächste Ort sonst oft auf der anderen:
+    // Die Farblinie fände von dort keinen Weg mehr zu ihrem Nachbarn und fiele ganz aus der Anzeige (die Zahnfleischlinie nach
+    // einem Zug an der Lippe).
+    const a0 = 3 * o.e[0];
+    const a1 = 3 * o.e[1];
+    const a2 = 3 * o.e[2];
+    const ux = altPos[a1]! - altPos[a0]!;
+    const uy = altPos[a1 + 1]! - altPos[a0 + 1]!;
+    const uz = altPos[a1 + 2]! - altPos[a0 + 2]!;
+    const vx = altPos[a2]! - altPos[a0]!;
+    const vy = altPos[a2 + 1]! - altPos[a0 + 1]!;
+    const vz = altPos[a2 + 2]! - altPos[a0 + 2]!;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    const nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    const r = nl > 1e-12 ? naechster(x, y, z, nx / nl, ny / nl, nz / nl) : naechster(x, y, z);
     const g = ortIn(netz, r.t, r.wa, r.wb, r.wc);
     o.t = g.t;
     o.e = g.e;

@@ -12,8 +12,8 @@ Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zä
 Scheiben (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und Farbe; sie stößt an Zähne, bleibt in der Pose
 liegen und klebt, wo sie abgelegt wird). Danach der Feinschlifflauf, Block A bis C (geprüft, schneller, kleine Bedienung) und
 am 21.11. Block D (die Lippe als seine Linie: ihre Punkte sind seine Anker, seine Farben, Anfang am Umriss; unten „Der
-Feinschlifflauf“). Als Nächstes, auf Florians Wort: die Zahnfleischlinie nach einem weiten Zug an der Lippe (Liste, 130), ob die
-Linie im Maul der Lippe folgt (131), Etappe 7 oder der Rechenkern.**
+Feinschlifflauf“), danach Punkt 130 behoben (die Zahnfleischlinie behält ihren Weg). Als Nächstes, auf Florians Wort: ob die
+Linie im Maul der Lippe folgt (Liste, 131), Etappe 7 oder der Rechenkern.**
 Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
@@ -438,9 +438,12 @@ Plan und Ergebnis im selben Dokument (Abschnitt „Block D“), Bild `docs/progr
 - **Fallen der Proben:** Esc ohne Auswahl verlässt die Seitenansicht (die Probe drückt Esc nur mit Auswahl, `abwaehlen`). Eine
   Form, die ins Fenster passt, bleibt beim Vergrößern in der Mitte (die Probe fährt Raste um Raste heran, solange alle Anker im
   Fenster bleiben). `ozzy-maul-fenster.mjs`: Hat die Lippe je Lippe nur einen Anker, nimmt Kriterium 14 den ersten Zug zurück.
-- **Offen und nicht behoben:** `ozzy-maul-farbe-fenster.mjs` F4b fällt in zwei von drei Läufen (Liste, 130: älter als Block D,
-  hängt an der Stelle des gezogenen Punkts; `PUNKT=<n>` wählt ihn); `ozzy-maul-fenster.mjs` mit `FRISCH=1` fällt an 17 (Liste,
-  131).
+- **Punkt 130 (21.11., behoben):** `farbe/ort.ts`, `orteUebergeben` sucht einen Ort, dessen Dreieck verschwand, auf der Seite
+  der Haut, auf der er lag (die Normale des alten Dreiecks geht in die Suche). Vorher landeten Orte der Zahnfleischlinie im
+  geschlossenen Maul auf der anderen Wand, und die Linie fiel aus der Anzeige. Test in `farbe/farbe.test.ts`;
+  `ozzy-maul-farbe-fenster.mjs` nimmt `PUNKT=<n>` (welcher Punkt der Lippe gezogen wird) und macht ein Bild, wenn zu ein Strahl
+  Farbe trifft. Mit `PUNKT=1` trifft weiter einer (Liste, 131: die Tasche klappt hinter der Lippe um).
+- **Nicht von hier:** `ozzy-farbe-fenster.mjs` fällt an Kriterium 2 (0,65 statt 0,5), mit und ohne die Korrektur gleich.
 
 ## Die Studie in einem Absatz
 

@@ -71,6 +71,9 @@ dieselben Anker. Zu sind die Punkte der Lippe türkis, offen oder getrennt ist d
 Mundwinkel bleibt schwarz (deine Farben aus Blatt 05, auch an den Tropfen der Kiefer). Die Linie darf mit P auf dem Umriss
 beginnen oder dort enden. Bild: `docs/progress/ozzy/2026-11-21-maul-lippe-als-linie.jpg`. Erledigt: 4, 5, 30; neu: 130 bis 137.
 
+**Danach (21.11.), Punkt 130 behoben:** Die Zahnfleischlinie behält ihren Weg, wenn du an der Lippe ziehst (beim Netzwechsel
+bleibt jeder Ort der Bemalung auf seiner Seite der Haut).
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -363,19 +366,23 @@ beginnen oder dort enden. Bild: `docs/progress/ozzy/2026-11-21-maul-lippe-als-li
 
 ### Aus Block D (die Lippe als deine Linie, 21.11.)
 
-130. **Die Zahnfleischlinie kann ihren Weg verlieren, wenn du einen Punkt der Lippe vorn weit ziehst** (gefunden in Block D,
-     aber älter): an „teat firefish“ in der Seite einen Punkt der Lippe im vorderen Drittel um 8 Einheiten nach unten, dann
-     „Fressen“: Das Maul ist innen nur noch dunkelrot, das hellere Zahnfleisch fehlt (die Farblinie der Ebene „Maul“ findet
-     nach dem Netzwechsel zwischen zwei ihrer Orte keinen Weg; einmal traf dabei auch ein Strahl von außen Farbe). Das hängt
-     an der Stelle: Mit der Lippe von vorher fiel es am Punkt bei −715 genauso, am Punkt bei −686 nicht; dort zog die Probe
-     bisher zufällig (`ozzy-maul-farbe-fenster.mjs`, F4b; `PUNKT=<n>` wählt den Punkt). Seit Block D zieht sie am Anker bei
-     −700 und fällt in zwei von drei Läufen. Nicht behoben.
+130. ~~Die Zahnfleischlinie kann ihren Weg verlieren, wenn du einen Punkt der Lippe vorn weit ziehst~~ behoben (21.11., auf
+     dein „Ja, beheben“). Der Fehler war älter als Block D: Beim Netzwechsel wurde ein Ort einer Farblinie, dessen Dreieck
+     verschwand, an der nächsten Stelle der Haut neu gesucht, gleich auf welcher Seite. Im geschlossenen Maul liegen Gaumen
+     und Boden aufeinander; landete ein Ort auf der falschen Wand, fand die Linie von dort keinen Weg zum Nachbarn und fiel
+     ganz aus der Anzeige (das Zahnfleisch verschwand). Jetzt bleibt jeder Ort auf seiner Seite der Haut (`farbe/ort.ts`,
+     `orteUebergeben`: die Suche bekommt die Normale des alten Dreiecks). Gilt für jede Bemalung, auch an dünnen Teilen.
+     Gemessen: `ozzy-maul-farbe-fenster.mjs` F4b besteht an den Punkten 2 und 3 der Lippe (vorher fiel sie am Punkt 2 in drei
+     von vier Läufen), die Zahnfleischlinie behält auch am Punkt 1 ihren Weg; `ozzy-maul-fenster.mjs` mit `FRISCH=1`
+     besteht wieder ganz (Kriterium 17: 0 von 8911 Strahlen). Was am Punkt 1 bleibt, steht unter 131.
 131. **Die Linie im Maul geht nicht mit, wenn du einen Anker der Lippe ziehst.** Sie trägt dieselben Anker, bleibt aber, wo
-     du sie gezeichnet hast: Gaumen und Boden wölben sich dann zwischen Lippe und Mitte. Am frischen Oval traf nach der Folge
-     „Lippen trennen, Oberlippe 6 hoch, Überbiss, Lippen verbinden“ ein Strahl von 8911 von außen Farbe der Ebene „Maul“
-     (knapp über der Lippe an der Spitze; Probe `ozzy-maul-fenster.mjs` mit `FRISCH=1`, Kriterium 17; mit der Lippe von
-     vorher keiner). Ob die Linie im Maul der Lippe folgen soll (dann bleibt die Tasche ein glattes Blatt hinter der Lippe)
+     du sie gezeichnet hast: Gaumen und Boden wölben sich dann zwischen Lippe und Mitte, und dicht hinter der Lippe klappt die
+     Tasche um wie eine Klinge. Zu sehen ist das am vordersten Anker von „teat firefish“ (15 Einheiten hinter der
+     Schnauzenspitze): 8 Einheiten nach unten gezogen, liegt bei geschlossenem Maul außen an der Lippe eine haarfeine Linie in
+     der Farbe des Zahnfleischs (ein Strahl von 2209; `PUNKT=1 node scripts/pruefen/ozzy-maul-farbe-fenster.mjs <ordner>` macht
+     ein Bild davon). Ob die Linie im Maul der Lippe folgen soll (dann bleibt die Tasche ein glattes Blatt hinter der Lippe)
      oder für sich bleibt (ein Gaumen, den du eigens formst), ist deine Entscheidung; es wäre eine neue Regel beim Ziehen.
+     (Der eine Strahl am frischen Oval, Kriterium 17, kam nicht hiervon, sondern von 130.)
 132. **Steht eine Kreuzung für einen Anker** (eine Linie der Form kreuzt die Lippe dichter als 0,6 Netzkanten an ihm), sitzt
      die Ecke der Lippe an der Kreuzung statt an deinem Anker: an „teat firefish“ 2 Einheiten daneben, die Lippe liegt dort bis
      0,8 Einheiten neben der Zeichnung (0,15 Bildpunkte).
