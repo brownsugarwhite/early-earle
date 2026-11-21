@@ -47,6 +47,8 @@ import { MATRIX } from './matrix';
 import { ORNAMENT } from './ornament';
 import { PEDRERA, TRENCADIS, TRENCADIS_VERSE } from './gaudi';
 import { FLOR_POP, PANOT, PERSIANA } from './barcelona';
+import { ARGON_BLAU, HALL_OF_FAME, NEON_ROT, NIETENLEDER } from './strasse';
+import { PLATANE } from './natur';
 import { ACHAT, GRANIT, JADE, LAPIS, MALACHIT, MARMOR, OBSIDIAN, SANDSTEIN } from './steine';
 import { BAUMPYTHON, CHAMAELEON_HAUT, DRACHE_HAUT, ELEFANT, FROSCH_HAUT, KLAPPERSCHLANGE, KORALLENNATTER, KRAKE_HAUT, KROKODIL, REGENBOGENBOA, SALAMANDER, SCHLANGE } from './haeute';
 import { TINTENFLECK } from './tintenfleck';
@@ -114,6 +116,13 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   PANOT,
   FLOR_POP,
   PERSIANA,
+  // Straße
+  HALL_OF_FAME,
+  NIETENLEDER,
+  NEON_ROT,
+  ARGON_BLAU,
+  // Natur
+  PLATANE,
   // Tiermuster
   LEOPARD,
   TIGER,
