@@ -37,3 +37,21 @@ Recherche: `docs/research/2026-11-21-runde-9-recherche.md`.
 ## Proben
 
 Je Shader Bilder an „strange bird“ (Übersicht und nah), Konsole ohne Fehler, Typen und Lint. Sein Auge entscheidet; er sortiert aus.
+
+## Stand (21.11.2026)
+
+Gebaut, alle an „strange bird“ geprüft (Konsole ohne Fehler, Typen und Lint), Bilder `docs/progress/ozzy/shader/2026-11-21-runde-9-*.png`:
+
+1. **Schleim neu** (6d7e403e): Schleimgeist (Skelett als Abstandsfeld durch die Dicke, glühender Kern, Blasen, Dampf, Funken) und
+   Tropfschleim (bucklige nasse Schicht mit Tropfspuren); der alte Schleim ist heraus.
+2. **Felsen** (42580e4c): Fels (Relief in vielen Maßstäben, Bruchflächen, Risse, Mineralkörner, Wasserspuren, Rost, Flechten, Moos)
+   und Bruchsteinmauer nach der Vorlage.
+3. **Schlangen** (ddb7bb53): Die Längsphase folgt der Dichte der Querphase (keine in die Breite gezogenen Schuppen mehr), wo das Gitter
+   trotzdem verzerrt ist, liegen Körnchen wie am Kopf; kleinere Schuppen, feinere Fugen, Glanz je Schuppe, Schiller im Glanz.
+4. **Barcelona** (ac7a9b14): Panot (nachts nach dem Regen), Flor Pop (Spider-Verse-Druck), Persiana (Rollladen mit Graffiti), La
+   Pedrera (Kalkputz und Trencadís aus Marmor und Flaschenglas), Trencadís Verse; Casa Batlló und Sagrada Família heraus.
+5. **Straße und Natur** (39668918): Hall of Fame, Nietenleder, Neon Rot, Argon Blau, Platane.
+6. **Nachtschatten und Sin City** (053eccdb): Nachtschatten, Nachtschatten Alpha, Sin City Regen, Gelb, Rot.
+
+Jetzt 94 Shader in elf Gruppen. Offen (Punkte 54 bis 61 in `2026-11-20-ozzy-shader-was-bleibt.md`): Gòtic-Mauer, Studentenblumen,
+Walrippen, Sticker-Bomb, Tartan, Neonröhren, Moos, Tagschatten, Innenabstand, Reliefschatten für Fels und Mauer.

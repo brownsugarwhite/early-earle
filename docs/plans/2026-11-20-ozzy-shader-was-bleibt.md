@@ -113,3 +113,24 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
 52. **Steine:** Calacatta, Nero Marquina, Labradorit (Recherche) nicht gebaut; Achat wirkt hell.
 53. **Barcelona:** Panot (Sechseckpflaster) und Kugeln auf dem Kamm der Batlló nicht gebaut. **Schleim:** Pfütze und Brennfleck auf
     der Bühne nicht gebaut.
+
+**Nach Runde 9 (Schleim neu, Fels, Schlangen, Barcelona neu, Straße, Natur, Nachtschatten, Sin City; Bilder
+`2026-11-21-runde-9-*.png`; Recherche `docs/research/2026-11-21-runde-9-recherche.md`):**
+
+54. **Schleimgeist:** Skelett, Kern und Blasen nach dem Innenabstand (64³-Abstandsfeld, Schädel in der größten Innenkugel, Knochen
+    auch in den Fortsätzen) nicht gebaut; heute sitzt das Skelett fest an der Mitte. **Tropfschleim:** Spuren starten nicht an
+    waagerechten Lippen, Farbe nicht aus der Dicke der Schicht, Tropfenköpfe ohne eigenes Glanzlicht.
+55. **Fels und Mauer:** Streiflicht und Reliefschatten (laut Recherche der größte Schritt) nur im Panot gebaut; die Mauer nicht in
+    Lagen (Schichten in y), keine Zwickelsteine, kein Kalkfels mit Rillenkarren.
+56. **Schlangen:** Körnchen auf Flossen, Ohren und an den Enden der Achse; am Übergang liegen Körnchen über den Rauten; Muster an
+    den Schuppenmitten wirken nah noch etwas gestuft. Die Strichrichtung aus dem Abstand längs des Körpers (Recherche Runde 8) ist
+    nicht gebaut; das Feld rechnet weiter im Hauptfaden (jetzt mit Größe und Güte, Zeit nicht neu gemessen).
+57. **Barcelona:** Gòtic-Mauer, Studentenblumen (Casa Vicens), Walrippen, Wäscherin nicht gebaut. Panot: Regenringe, Taubenkot; Flor
+    Pop: Paare im Takt wechseln (Warhol); Persiana: anisotroper Glanz längs der Lamellen, an den Grenzen der vier Ebenen sind
+    Buchstaben abgeschnitten.
+58. **Straße:** Sticker-Bomb, Tartan, Neonröhren, Iro, Schwarzlicht nicht gebaut; Leuchtgas zündet nicht beim Anwählen.
+59. **Natur:** Moos (als Schalen wie Fell) nicht gebaut.
+60. **Nachtschatten:** Rückenflossen über der Kontur (im Bild über der Oberkante gezeichnet) und Tagschatten (Perlmutt, Versuch) nicht
+    gebaut; die Platten liegen nach der Lage im Raum (an Formen ohne Rücken oben passen sie nicht).
+61. **Sin City:** Pinselspritzer, weiß leuchtende Tropfen (Regen), gelbe Tropfen (Gelb), Spielart Blaulicht (Rot) nicht gebaut; das
+    Histogramm (nur zwei Werte plus Schmuckfarbe) ist nicht gezählt, die Glättung an den Kanten gibt etwas Grau.

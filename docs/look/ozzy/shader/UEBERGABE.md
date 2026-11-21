@@ -1,13 +1,16 @@
-# Übergabe: 78 Shader für Ozzy (21.11.2026, Runde 8)
+# Übergabe: 94 Shader für Ozzy (21.11.2026, Runde 9)
 
 Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 5),
 `docs/plans/2026-11-21-ozzy-shader-runde-6.md` (Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel),
 `docs/plans/2026-11-21-ozzy-shader-runde-7-fell.md` (Runde 7: Fell schneller, Ghibli-Ränder, Schaf als Stapel; Messungen),
 `docs/plans/2026-11-21-ozzy-shader-runde-8.md` (Runde 8: Schlangen, Drache, Echsen, Schleim, Steine, Barcelona, Zeichenstil,
-Matrix 2.0; Vorlagen in `docs/look/ozzy/shader/vorlagen/`). Recherche: `docs/research/2026-11-21-runde-8-recherche.md` (Runde 8),
+Matrix 2.0; Vorlagen in `docs/look/ozzy/shader/vorlagen/`), `docs/plans/2026-11-21-ozzy-shader-runde-9.md` (Runde 9: Schleim neu,
+Felsen, Schlangen ohne verzogene Schuppen, Barcelona neu, Straße, Natur, Nachtschatten, Sin City). Recherche:
+`docs/research/2026-11-21-runde-9-recherche.md` (Runde 9), `docs/research/2026-11-21-runde-8-recherche.md` (Runde 8),
 `docs/research/2026-11-20-shader-recherche.md`, für die Tiere `docs/research/2026-11-20-tiermuster-recherche.md`, für den T-Rex
 `docs/research/2026-11-20-t-rex-haut-recherche.md`, für Fell und Flausch `docs/research/2026-11-21-fell-flausch-recherche.md`.
-Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 8:
+Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 9:
+`2026-11-21-runde-9-schleim-fels.png`, `-schlangen.png`, `-barcelona.png`, `-strasse-natur.png`, `-nachtschatten-sincity.png`; Runde 8:
 `2026-11-21-runde-8-schlangen.png`, `-drache-echsen.png`, `-schleim-steine.png`, `-barcelona-tusche-matrix.png`; Runde 7, vorher | nachher:
 `2026-11-21-runde-7-fell.png`, `-fell-andere.png`; Runde 6:
 `2026-11-21-runde-6-fell.png`, `-muster.png`, `-flausch.png`, `-haeute.png`, `-tiere.png`, `-nah.png`; Runde 5:
@@ -18,7 +21,7 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
 
 - Zweig `claude/ozzy-shader` (von `claude/ozzy-maul`), Arbeitsbaum `.claude/worktrees/ozzy-shader`, Fenster **5219** (Eintrag
   `ozzy-shader` in `.claude/launch.json`). Nichts ist nach `claude/ozzy-maul` oder `claude/ozzy` zusammengeführt.
-- In Ozzy: Menü (Feinregler) → Knopf **Shader**, dann die Tafel unten rechts: sechs Gruppen zum Auf- und Zuklappen, je Shader ein
+- In Ozzy: Menü (Feinregler) → Knopf **Shader**, dann die Tafel unten rechts: elf Gruppen zum Auf- und Zuklappen, je Shader ein
   Knopf, darunter seine Zeile und seine Regler (Doppelklick setzt einen Regler zurück), oben **Bühne** (der Shader zeichnet seinen
   eigenen Grund). **⇧M** nächster Shader, **⌥⇧M** voriger. Adresse: `?shader=<name>` (z. B. `eineLinie`, `fell`).
 - Bilder ohne Fenster: `node scripts/ozzy/shader-bilder.mjs <ordner> [name …]` aus `apps/editor` (startet für die Dauer des Laufs
@@ -28,20 +31,27 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
   Blatt aus Bildern: `node scripts/ozzy/bildblatt.mjs <ziel.png> <spalten> <breite je Bild> <bilder…>` (die Breite gilt **je Bild**).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
-## Die 78, in acht Gruppen
+## Die 94, in elf Gruppen
 
 - **Spider-Verse (17):** Comicdruck, Aquarell, Indrajal, Punk-Collage, Marker 2099, Tintenfleck, Da Vinci, Glitch, Earth-42,
   Multiplane, Noir, Cartoon, Neunziger, Sienkiewicz, Venom-Blitz, Pixel, LEGO.
 - **Anime & Manga (8):** Anime, Manga, Flammenwesen, Dampfwesen, Shinkai, Ukiyo-e, Gouache (Ghibli), Ornament in Tusche (nach
   der Oni-Vorlage).
-- **Materialien (11):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Schleim, Opal, Diamant, Diamantbesatz,
-  Diskokugel.
-- **Stein (8):** Marmor, Granit, Sandstein, Obsidian, Jade, Lapislazuli, Malachit, Achat (ein Motor, `steine.ts`).
-- **Barcelona (3):** Trencadís, Casa Batlló, Sagrada Família (`gaudi.ts`).
-- **Tiermuster (17):** Leopard, Tiger, Giraffe (seit Runde 6 auf dem Fell), Elefant, Python (`schlange`), Klapperschlange,
+- **Sin City (3, Runde 9, `sincity.ts`):** Regen, Gelb, Rot; ein Kern „Tusche“ (zwei Werte, Pinselkante, Kontur als Gegenteil des
+  Grundes, Regen mit Umkehr, höchstens eine Schmuckfarbe).
+- **Materialien (12):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Schleimgeist, Tropfschleim (`schleim.ts`,
+  Runde 9), Opal, Diamant, Diamantbesatz, Diskokugel.
+- **Stein (10):** Fels, Bruchsteinmauer (`fels.ts`, Runde 9), Marmor, Granit, Sandstein, Obsidian, Jade, Lapislazuli, Malachit, Achat
+  (ein Motor, `steine.ts`).
+- **Barcelona (6):** Trencadís, Trencadís Verse, La Pedrera (`gaudi.ts`), Panot, Flor Pop, Persiana (`barcelona.ts`). Casa Batlló und
+  Sagrada Família sind seit Runde 9 heraus (Florian: „gefallen nicht“).
+- **Straße (4, `strasse.ts`):** Hall of Fame (Ghetto), Nietenleder (Punk), Neon Rot, Argon Blau (Leuchtgas).
+- **Natur (1, `natur.ts`):** Platane.
+- **Tiermuster (19):** Leopard, Tiger, Giraffe (seit Runde 6 auf dem Fell), Elefant, Python (`schlange`), Klapperschlange,
   Korallennatter, Regenbogenboa, Grüner Baumpython, Krokodil, Feuersalamander, T-Rex (`trex`), Drache (Arten Glut, Smaragd, Frost,
-  Nacht), Pfeilgiftfrosch (`frosch`), Chamäleon (`chamaeleon`, Regler Stimmung), Krake, Turing-Haut. Die Häute haben den Regler **Stil** (Echt, Anime, Manga, Spider-Verse, Earle); der T-Rex sieben Stile (Kino,
-  Spider-Verse, Earle, Fossil, Spielzeug, Anime, Manga) und vier Färbungen (Erde, Wald, Asche, Glut).
+  Nacht), Nachtschatten, Nachtschatten Alpha (`nachtschatten.ts`, Runde 9), Pfeilgiftfrosch (`frosch`), Chamäleon (`chamaeleon`,
+  Regler Stimmung), Krake, Turing-Haut. Die Häute haben den Regler **Stil** (Echt, Anime, Manga, Spider-Verse, Earle); der T-Rex
+  sieben Stile (Kino, Spider-Verse, Earle, Fossil, Spielzeug, Anime, Manga) und vier Färbungen (Erde, Wald, Asche, Glut).
 - **Fell & Flausch (6):** Fell (Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch; 20 Muster; sechs Felltypen), Schaf,
   Plüschtier, Wolke (Echt, Ghibli, Anime), Zuckerwatte, Pusteblume (Versuch).
 - **Effekte (8):** Eine Linie, Matrix 2.0 (`matrix`), Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
@@ -175,3 +185,18 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
 27. **Tropfen als Baustein:** `TROPFEN_FORM` (aus `tropfen.ts`) braucht die Regler `tropfen` und `zaeh`; der Schleim nutzt ihn.
 28. **Steine:** Durchscheinende Steine lesen ihr Muster längs des gebrochenen Blicks in drei Tiefen. Die Bühne `studio()` ist für
     Spiegelungen gemacht, nicht als sichtbarer Grund (ein beiger Lichtstreifen stand im Bild).
+29. **Schuppenfeld, Runde 9:** Die Längsphase folgt der Dichte der Querphase (`gross` je Ecke, auf 0,5 bis 2,2 begrenzt, Anfang als
+    Integral in Scheiben längs des Strichs): Schuppen bleiben etwa so lang wie breit. Je Ecke die **Güte** des Gitters (Länge gegen
+    Breite, Winkel, Größe; achtmal geglättet) im zweiten Bild eines Ziels mit zwei Farbanhängen (`anzahl: 2`, `schuppen:feld`,
+    `tGuete`). Die Schlangen legen dort Körnchen (`zelleRand3`) und entscheiden je Körnchen an seiner Mitte (ins Bild gerechnet und
+    dort gelesen): sonst Splitter am Übergang.
+30. **Regler gelten je Shader:** Teilen sich Fassungen einen GLSL-Text, darf keine einen Regler einer anderen nennen, auch nicht in
+    einem toten Zweig (`uR_leuchten`, `uR_falten`: Übersetzungsfehler, das Bild bleibt leer). Im Text einsetzen (`${alpha ? 'uR_leuchten' : '1.0'}`).
+31. **Kacheln aus dem Würfelraster** (`kachel` in `barcelona.ts`, nach `rasterKachel` der Diskokugel): Fuge, wo die Fläche eine
+    Rasterebene kreuzt; die Ebene der Kachel nach der Normale an ihrer Mitte (ins Bild gerechnet, `tNormal`), so bricht ein Motiv
+    nicht. Für Schrift und Lamellen `hochEbene` (vier Ebenen um die Hochachse, y bleibt senkrecht, Grenze verrauscht).
+32. **`schraffur()` zeichnet auch beim Wert 0 feine Linien** (die Mitte jedes Strichs): mit `step(0.02, wert)` abschalten.
+33. **Wasser aus Rauschen** („Senken“) wirkt auf der Form wie ein schwarzes Loch: Pfützen nur in Rillen und Fugen, Spiegelungen
+    brauchen etwas Helles (Gasse gespiegelt, Lichter, Neon).
+34. **Leuchtgas:** Licht aus der Dicke (`rueckseite`), Schein und Spiegelbild aus `tWeich`; ACES am Ende macht den Kern weiß.
+    Bewegte Shader (Flackern, Regen, Ladewelle) brauchen `unruhig: () => true`.
