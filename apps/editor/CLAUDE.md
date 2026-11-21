@@ -833,6 +833,28 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   geschlossenen Maul, ein dünner Teil), landete er sonst auf der anderen, und die Farblinie fand keinen Weg mehr. Wer Orte auf
   der Haut neu sucht, gibt die Seite mit. (74) Eine zweite Regel, die an keinem gemessenen Fall etwas ändert, kommt wieder
   heraus (Gegenprobe mit einem Flicken, der sie abschaltet).
+  **Etappe 7: ein Zahn als kleine Form (21.11.; `docs/plans/2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`):**
+  `ozzy/zahnGestalt.ts` (drei Linien, `gestaltBau`, `gestaltAusForm`, `gestaltAngleichen`, Netz hin und zurück),
+  `maulstudie/linse.ts` (einrasten, zweite Leinwand, eigenes `Verhalten` in 2D), `ozzy/zeigerForm.ts`, `Verhalten.halten`.
+  Merke: (75) Die eigene Form steht als `gestalt` an Reihe und Zahn und gilt mit `form = EIGENE` (−1; `vorlageNr` fällt damit
+  auf die erste Vorlage). Am Formenring ist sie die Nummer `RING_EIGENE`: Werte tragen `EIGENE`, der Ring seine Nummer.
+  (76) Das Netz einer Gestalt im Maul hat dieselbe Folge von Punkten und Dreiecken wie eine Vorlage (16 Ringe mal 20, Boden,
+  Spitze): `zahnUnterZeiger` teilt die Dreiecke durch die Zahl der Zähne, `zaehneImBild` liest Spitze und Fuß an festen
+  Nummern, der weiche Wechsel mischt Punkt für Punkt. (77) Das `Verhalten` der Linien läuft in 2D ohne Raum auf einem `Netz` in
+  Bildpunkten. Wer es ein zweites Mal aufstellt (die Linse), liest das Netz nach jedem `schritt` zurück und vergleicht die
+  Stücke, nicht die Griffe (ein fehlender Griff ist ein Drittel der Sehne); sonst gälte schon das Einrasten als Änderung. Was
+  nicht frei ist, rückt der Haken `halten` nach jedem Zug zurecht. (78) Ein solches Netz gilt der Ansicht, in der es gelesen
+  wurde (`netzStand.blick`): Beim Wechsel der Ansicht blieb sonst die Linie von vorher stehen, und die Probe sah es erst, als
+  sie die Ansicht mitprüfte. (79) Eingerastet bleibt der Zahn stehen, wie er steht, solange an seiner Linie gezogen wird (das
+  Netz liegt in Bildpunkten fest); eine Gestalt von außen (⌘Z, andere Vorlage) füllt die Linse neu. (80) Knicke in der Formel
+  einer Vorlage (`min(…)`) verschleift ihr grobes Netz; als Linie und im feinen Netz stehen sie als Kanten da. Wer eine Formel
+  als Linie anpasst, rundet sie vorher. (81) Ein Deckel, der Punkte mit der Wand teilt, zieht deren Normalen mit (am
+  Zahnfleisch ein dunkler Rand): In der Linse fehlt der Boden der Krone, die Normalen für die ruhenden Linien kommen nur aus
+  der Wand. (82) Wandert ein geteilter Punkt in einer Linie, folgt die andere als Ganzes, nicht nur ihr Punkt (`hoeheFolgen`):
+  Sonst zeigt die Ansicht, in der man zieht, nicht, was man zieht. (83) Playwright bewegt die Maus nur rund 25-mal je Sekunde:
+  Bildabstände beim Ziehen messen die Probe, nicht Ozzy. Tempo misst man an der Rechenzeit je Bild (`messen`; die Linse:
+  `zahnform().ms`). (84) `werk.alsAnzeige` dreht jedes Mal die ganze Haut und alle Linien: Wer nur die Lagen braucht und weiß,
+  dass Haut und Knochen stehen, merkt sie (`zaehneLagen`, 2 ms je Bild). Probe: `ozzy-maul-zahnform-fenster.mjs` (G1 bis G12).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

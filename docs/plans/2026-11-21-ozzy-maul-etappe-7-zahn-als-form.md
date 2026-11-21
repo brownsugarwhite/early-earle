@@ -29,8 +29,8 @@ seine eigenen Linien und Punkte, und die gewohnten Werkzeuge gelten in der Linse
   Spitze, vorn), `quer` (geschlossen in x und z, durch die vier Punkte am Zahnfleisch). Anker wie im Bleistift-Kern (`Anker` aus
   `@ee/shape/zeichnen`: Lage, zwei Griffe, Ecke). Dazu, was die Linien nicht tragen und von der Vorlage bleibt: Höcker, Wurzel.
 - **Die Haut zwischen den Linien:** Die vier Hälften (links, rechts, vorn, hinten) laufen vom Zahnfleisch zur Spitze. Ein Ring geht
-  durch die vier Stellen gleichen Fortschritts (Fortschritt = gestiegene Höhe plus ein kleiner Anteil des Wegs: Ringe folgen der
-  Höhe, flache Kuppen bekommen trotzdem Ringe). Er ist das Bild der Linie quer: in x zwischen links und rechts, in z zwischen hinten
+  durch die vier Stellen gleichen Fortschritts (Fortschritt = Höhe, gestiegen oder gefallen, plus ein kleiner Anteil des Wegs
+  zur Seite: Ringe folgen der Höhe, flache Kuppen bekommen trotzdem Ringe). Er ist das Bild der Linie quer: in x zwischen links und rechts, in z zwischen hinten
   und vorn gespannt, in der Höhe durch die vier Stellen gelegt. So liegen alle drei Linien genau auf der Haut. Überhänge, Haken und
   Zacken auf einer Linie gehen (anders als bei einem Stapel waagerechter Scheiben).
 - **Jede Vorlage als Linien** (`gestaltAusForm`): die vier Hälften und der Querschnitt der Vorlage abgetastet und mit den wenigsten
@@ -53,7 +53,8 @@ seine eigenen Linien und Punkte, und die gewohnten Werkzeuge gelten in der Linse
   Das Netz ist die Linie der Ansicht in Bildpunkten der Linse. Nach jedem Bild wird das Netz zurückgelesen; hat es sich geändert,
   wird die Gestalt gesetzt. Die Punkte am Zahnfleisch bleiben auf seiner Linie, die geteilten Punkte nehmen ihre zweite Linie mit.
   Dafür bekommt `Verhalten` einen kleinen Haken (`halten`), der in 2D nach jedem Zug gerufen wird; ohne ihn bleibt alles wie es ist.
-- Die anderen zwei Linien und, frei gedreht, alle drei stehen ruhig auf dem Zahn (fein; was auf der abgewandten Seite liegt, nicht).
+- Die anderen zwei Linien und, frei gedreht, alle drei stehen ruhig auf dem Zahn (fein; was auf der abgewandten Seite liegt,
+  grün wie Verdecktes an der Form).
 - Ozzy: Ziele der Linse um die Gestalt erweitert, neuntes Zeichen, P und ⌫ und Esc gehen an die Linse, solange dort etwas gewählt
   ist oder der Zeiger in ihr steht; es ist immer nur eines gewählt.
 
@@ -75,3 +76,39 @@ Bestehende Proben, die danach wieder laufen müssen: `ozzy-maul-zaehne-fenster`,
 - Die Wurzel bleibt die der Vorlage (sie ist nur in der Linse zu sehen). Höcker der Backe bleiben als Zusatz der Vorlage.
 - Eine eigene Form an einen anderen Zahn weitergeben (außer: Der Zahn erbt die seiner Reihe).
 - Der Rechenkern (`packages/shape`) bleibt unberührt; `anpassen` und die Pfad-Rechnung werden nur benutzt.
+
+## 5. Ergebnis (21.11.)
+
+Gebaut in drei Scheiben und einem Feinschliff (`b94d3a6e`, `7b417f60`, `a220919b`, `caeaab36`, `464ff64f`). Bild:
+`docs/progress/ozzy/2026-11-21-maul-etappe7-zahn-als-form.jpg` (oben Haken, unten Zacken, beide über die Bedienung geformt; in
+der Linse der Zahn mit den Zacken von vorn, seine Linie mit ihren Punkten, am Formenring das neunte Zeichen).
+
+| Kriterium | Ergebnis |
+| --- | --- |
+| Test: jede Vorlage als Linien höchstens 0,03 neben ihrem Netz, gleich viele Punkte und Dreiecke | hält für alle acht (bei der Backe ohne die Nadel in der Mitte ihrer Kaufläche, siehe unten); von vorn meist fünf Anker, höchstens sieben |
+| Test: alle drei Linien liegen auf der Haut | die Punkte links, rechts, vorn und hinten jedes Rings liegen auf ihrer Linie (unter 0,002, die Abtastung); der erste Ring ist die Linie quer |
+| Test: ein Zahn mit eigener Form steht im Maul; ohne sie bleibt alles | hält (`maulEcht.test.ts`); ohne eigene Form trägt kein Platz eine Gestalt |
+| Fenster G1 bis G9: einrasten, Spitze ziehen, neuntes Zeichen, ⌘Z, P und ⌫, Zahnfleisch, drehen, Seite und oben, ein Zahn allein | alle erfüllt an „teat firefish“ |
+| Fenster G10: Tempo beim Ziehen | Ozzy im Mittel 7,7 ms je Bild (das längste 9 bis 10 ms), die Linse höchstens 2,3 ms |
+| Fenster G11: Sichern und Laden | dieselben Werte, die eigene Form der Reihe und die zweier einzelner Zähne |
+| „ein Zahn, den keine Vorlage kann“ | Zacken (aus „Schaufel“: zwei Punkte mit P, die Spitze nach unten) und ein Haken (aus „Spitz“, von der Seite: drei Griffe), siehe Bild |
+
+Wieder gelaufen und erfüllt: `ozzy-maul-zaehne-fenster`, `ozzy-maul-sichern-fenster`, `ozzy-maul-zunge-fenster`,
+`ozzy-maul-fenster`, `ozzy-bearbeiten-fenster`, `ozzy-zeiger-fenster`; Tests `src/form/`, `src/ozzy/`, `src/linien/` (116);
+Typen; Lint der geänderten Dateien. Die Studie `maul.html` lädt ohne Fehler, ihre Linse zeigt den Zahn wie vorher.
+
+**Was anders wurde als geplant:**
+
+- **Die Spitze nimmt die andere Linie in der Höhe mit** (`hoeheFolgen`). Geplant war nur, dass die geteilten Punkte folgen. Im
+  Versuch stand dann nach dem Senken der Spitze von vorn die Linie von der Seite mit ihren Schultern als Rand um einen Krater,
+  und der Umriss lag nicht mehr auf der Linie.
+- **Die Vorlage als Linien ist am Zahnhals und am Bauch rund.** Die Formel der Vorlagen knickt an zwei Stellen; als Linie
+  standen dort Kanten im Licht.
+- **In der Linse fehlt der Boden der Krone, und die eine Wurzel beginnt am ersten Ring.** Sonst lag am Zahnfleisch ein dunkler
+  Rand (der Boden zog die Normalen nach unten).
+- **Die Höcker klingen zur Mitte der Kaufläche ab** (die Vorlage hat dort eine Nadel, weil alle Ringe in der Spitze
+  zusammenlaufen).
+- **Daneben schneller:** Das Netz der Zähne merkt sich die gedrehten Lagen der Haut. Ein Wert am Drehregler und ein Zug an
+  einer Linie kosten 8 statt 11 ms je Bild.
+
+**Was offen bleibt:** Liste [`2026-11-20-ozzy-maul-was-bleibt.md`](2026-11-20-ozzy-maul-was-bleibt.md), Punkte 138 bis 152.

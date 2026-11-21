@@ -562,6 +562,9 @@ echten Tasche die schmale Rundung des Verbunds, nicht die weiche Linie.
 | 6 | **Zunge** | |
 | 7 bis 9 | ein Zahn als kleine Form; Posen; Backen | |
 
+Stand 21.11.: Etappe 7 („ein Zahn als kleine Form“) ist gebaut, Plan und Ergebnis in
+[`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md).
+
 Nach P1 (12.6): In Etappe 1 gehört der Schnitt ohne Spalt, in Etappe 2 ist „zu“ keine Stellung der Knochen mehr, sondern die Ruhe
 der Form.
 

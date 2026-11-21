@@ -12,8 +12,9 @@ Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zä
 Scheiben (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und Farbe; sie stößt an Zähne, bleibt in der Pose
 liegen und klebt, wo sie abgelegt wird). Danach der Feinschlifflauf, Block A bis C (geprüft, schneller, kleine Bedienung) und
 am 21.11. Block D (die Lippe als seine Linie: ihre Punkte sind seine Anker, seine Farben, Anfang am Umriss; unten „Der
-Feinschlifflauf“), danach Punkt 130 behoben (die Zahnfleischlinie behält ihren Weg). Als Nächstes, auf Florians Wort: ob die
-Linie im Maul der Lippe folgt (Liste, 131), Etappe 7 oder der Rechenkern.**
+Feinschlifflauf“), danach Punkt 130 behoben (die Zahnfleischlinie behält ihren Weg), dann Etappe 7 (ein Zahn als kleine Form:
+Der Zahn in der Linse trägt drei Linien und lässt sich eingerastet an ihnen formen; unten „Etappe 7“). Als Nächstes, auf
+Florians Wort: ob die Linie im Maul der Lippe folgt (Liste, 131), Posen, Backen oder der Rechenkern.**
 Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
@@ -445,6 +446,41 @@ Plan und Ergebnis im selben Dokument (Abschnitt „Block D“), Bild `docs/progr
   Farbe trifft. Mit `PUNKT=1` trifft weiter einer (Liste, 131: die Tasche klappt hinter der Lippe um).
 - **Nicht von hier:** `ozzy-farbe-fenster.mjs` fällt an Kriterium 2 (0,65 statt 0,5), mit und ohne die Korrektur gleich.
 
+## Etappe 7 in Ozzy: ein Zahn als kleine Form (21.11.)
+
+Plan und Ergebnis: [`docs/plans/2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](../../../plans/2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md).
+Bild: `docs/progress/ozzy/2026-11-21-maul-etappe7-zahn-als-form.jpg`. Offenes: Liste, 138 bis 152.
+
+- **Was er kann:** Der Zahn in der Linse trägt drei Linien (von vorn, von der Seite, quer am Zahnfleisch). Ein Tipp auf eine
+  Linie oder Drehen bis unter 9° an ihre Ansicht lässt ihn einrasten (die Kamera wird schmal wie beim Einrasten der Form); dort
+  trägt die Linie ihre Punkte und lässt sich mit A und P formen wie eine Linie der Form. Die eigene Form gilt dem, dem die Linse
+  gilt, und steht als neuntes Zeichen am Formenring.
+- **Die Rechnung (`ozzy/zahnGestalt.ts`, ohne DOM; Tests `zahnGestalt.test.ts`):** `ZahnGestalt` sind drei Linien aus Ankern
+  des Bleistift-Kerns (`vorn` in x und y, offen; `seite` in z und y, offen; `quer` in x und z, geschlossen), dazu Höcker und
+  Wurzel der Vorlage. `gestaltBau`: vier Hälften vom Zahnfleisch zur Spitze, je Ring die vier Stellen gleichen Fortschritts
+  (Höhe plus ein Viertel des Wegs zur Seite), der Ring ist das Bild der Linie quer; durch jeden Anker geht ein Ring.
+  `gestaltAusForm`: jede Vorlage als Linien (`anpassen` aus `@ee/shape/zeichnen`, nur benutzt). `gestaltAngleichen`: was die
+  Linien teilen, die Grenzen, und die andere Linie folgt der Spitze in der Höhe. `gestaltAlsNetz` und `gestaltAusNetz`: die
+  Linie einer Ansicht als Netz der Linien-Anzeige und zurück.
+- **Die Werte:** `ZahnReihe.gestalt` und `ZahnEigen.gestalt` (`form/werk.ts`, `form/ablage.ts`); sie gilt mit `form = EIGENE`
+  (−1) und bleibt stehen, wenn eine Vorlage gilt. `zaehne.ts`: `gestaltVon`, `platzNetz`, `ZahnPlatz.gestalt`.
+- **Die Linse (`maulstudie/linse.ts`):** `gestaltZeigen` (feines Netz, Wurzel), Einrasten (`BLICKE`, `rastPruefen`,
+  `blickAuf`, `kameraStellen`), eine zweite Leinwand `.linse-linien` mit `FluessigeAnzeige` und einem eigenen `Verhalten` in 2D
+  (das Netz ist die Linie in Bildpunkten der Linse: `netzNeu`, `linienLesen`; was nicht frei ist, hält `netzOrdnen` über den
+  neuen Haken `Verhalten.halten`), ruhende Linien als Kapseln (`linienZeichnen`), P setzt Punkte (`KEIN_STIFT`: keine neue
+  Linie, kein freier Tropfen), ⌫ (`linienLoeschen`). Die Seite gibt `LinsenZiele.gestalt` mit (`setzen`, `stift`, `werte`,
+  `gegriffen`, `gewechselt`). Ohne sie (die Studie) ist die Linse wie vorher.
+- **Ozzy (`main.ts`, „Die eigene Form eines Zahns“):** `RING_EIGENE`, `ringNr`, `linseGestalt`, `gestaltStellen`,
+  `wechselNetz`, das neunte Zeichen (`linseZeichen`); ⌥, ⇧, Esc und ⌫ gehen an die Linse, solange dort etwas gewählt ist; Haken
+  `zahnform(blick?)`. Die Umrisse des Zeigers stehen jetzt in `ozzy/zeigerForm.ts` (die Linse zeichnet ihn wie die Bühne).
+- **Daneben schneller:** `zaehneRechnen` merkt sich die gedrehten Lagen der Haut (`zaehneLagen`); ein Wert am Drehregler und
+  ein Zug an einer Linie kosten 8 statt 11 ms je Bild.
+- **Probe:** `ozzy-maul-zahnform-fenster.mjs` (G1 bis G12; `BIS=G2`, `G4`, `G6` oder `G8` bricht früher ab). Sie sichert unter
+  `ozzy-probe-zahnform` und räumt die Datei weg.
+- **Fallen der Probe:** Playwright bewegt die Maus nur rund 25-mal je Sekunde; Bildabstände beim Ziehen messen dann die Probe,
+  nicht Ozzy (gemessen wird die Rechenzeit: Haken `messen`, für die Linse `zahnform().ms`). Esc ohne Auswahl schließt die Linse.
+  `zahnform().formt` gilt erst, wenn das Netz der Ansicht steht (vorher las die Probe nach einem Wechsel die Punkte der alten).
+
 ## Die Studie in einem Absatz
 
 Sie lädt eine gesicherte Form (`/__wesen/<Name>`: Haut des Rechennetzes und Linien), verfeinert sie ein- oder zweimal (Loop) und
@@ -550,3 +586,9 @@ die Studie keine. An Ozzy ist nichts geändert, seine Proben habe ich nicht lauf
 Etappe 1 (20.11.): Typen von Editor und Kern, Lint der geänderten Dateien, `npx vitest run src/form/ src/ozzy/` (38 und 63
 Tests), im Fenster `ozzy-maul-fenster.mjs` (an „teat firefish“ und mit `FRISCH=1`) und `ozzy-p-schnitt-fenster.mjs` (P quer über
 die Form geht wie zuvor). Nicht gelaufen: die übrigen Fensterproben von Ozzy (`ozzy-alle.mjs`).
+
+Etappe 7 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest run src/form/ src/ozzy/ src/linien/` (116 Tests), im Fenster
+`ozzy-maul-zahnform-fenster.mjs` (G1 bis G12 erfüllt), dazu wieder `ozzy-maul-zaehne-fenster`, `ozzy-maul-sichern-fenster`,
+`ozzy-maul-zunge-fenster`, `ozzy-maul-fenster`, `ozzy-bearbeiten-fenster` und `ozzy-zeiger-fenster` (alle erfüllt). Nicht
+gelaufen: die Proben des Paint-Modus und `ozzy-alle.mjs`. Angesehen von Nahem: die Linse frei, von vorn, von der Seite, von
+oben, Säbel und Backe, Zeiger mit A und P; Haken und Zacken in der Linse und im Maul. Nicht angesehen: iPad.

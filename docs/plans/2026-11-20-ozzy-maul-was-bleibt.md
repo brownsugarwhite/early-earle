@@ -74,6 +74,15 @@ beginnen oder dort enden. Bild: `docs/progress/ozzy/2026-11-21-maul-lippe-als-li
 **Danach (21.11.), Punkt 130 behoben:** Die Zahnfleischlinie behält ihren Weg, wenn du an der Lippe ziehst (beim Netzwechsel
 bleibt jeder Ort der Bemalung auf seiner Seite der Haut).
 
+**Etappe 7 (21.11.), „ein Zahn als kleine Form“:** Jeder Zahn in der Linse trägt drei Linien: von vorn, von der Seite und quer
+am Zahnfleisch. Ein Tipp auf eine Linie (oder drehen bis nahe an ihre Ansicht) lässt den Zahn einrasten wie die Form in Ozzy.
+Dort trägt die Linie ihre Punkte, und es gilt dasselbe Verhalten wie an der Form: Punkt ziehen, die Linie zwischen zwei Punkten
+ziehen, Richtung drehen (⌥ knickt), P setzt einen Punkt, ⌫ löscht gewählte. Was du änderst, gilt dem, was gewählt ist (beide
+Reihen, eine Reihe, ein Zahn mit seinem Spiegelbild), die Zähne im Maul gehen sofort mit, je Griff ein Schritt für ⌘Z. Die
+eigene Form steht als neuntes Zeichen am Formenring und bleibt stehen, wenn eine Vorlage gilt; Sichern und Laden tragen sie.
+Plan und Ergebnis: [`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md), Bild
+`docs/progress/ozzy/2026-11-21-maul-etappe7-zahn-als-form.jpg`. Neu: 138 bis 152.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -106,8 +115,8 @@ bleibt jeder Ort der Bemalung auf seiner Seite der Haut).
 9. ~~Öffnen (Etappe 2)~~ gebaut; was daran offen ist, steht unter „An den Kiefern“.
 10. ~~„Lippen trennen“ (Etappe 3)~~ gebaut; was daran offen ist, steht unter „An den Lippen“.
 11. ~~Die Ebene „Maul“ (Etappe 4)~~ gebaut; was daran offen ist, steht unter „An der Ebene Maul“. Die Zähne (5) gibt es in
-    einer ersten Scheibe (siehe „An den Zähnen“). Die Zunge (6) gibt es in zwei Scheiben (siehe „An der Zunge“). Es fehlen
-    Posen und Backen.
+    einer ersten Scheibe (siehe „An den Zähnen“). Die Zunge (6) gibt es in zwei Scheiben (siehe „An der Zunge“). Der Zahn als
+    kleine Form (7) ist gebaut (siehe „An der Zahnform“). Es fehlen Posen und Backen.
 
 ### Nicht geprüft
 
@@ -404,6 +413,48 @@ bleibt jeder Ort der Bemalung auf seiner Seite der Haut).
      klickt, bekommt eine Lippe aus geraden Stücken. Das Stück vom Umriss zum ersten Anker behält am Umriss den Griff quer zur
      Mittelebene (dort läuft die Lippe rund in ihre andere Hälfte); an einer gebogenen Zeichnung liegt es darum nicht exakt,
      gemessen höchstens 0,07 Einheiten daneben.
+
+### An der Zahnform (Etappe 7, 21.11.)
+
+138. **Formen lässt sich der Zahn nur eingerastet** (von vorn, von hinten, von beiden Seiten, von oben). Frei gedreht stehen
+     seine drei Linien nur da; ein Tipp auf eine dreht ihn in ihre Ansicht.
+139. **Kreuzen sich die zwei Hälften einer Linie** (die Spitze weit über ihre Nachbarpunkte hinaus zur Seite gezogen), wird
+     die Haut dort ein flacher Lappen. Die Linie zeigt es; zieht man die zwei Nachbarpunkte nach, steht der Haken (im Versuch
+     drei Griffe). Eine Hilfe oder Sperre gibt es nicht.
+140. **Die Spitze nimmt die andere Linie in der Höhe mit.** Ziehst du die Spitze von vorn höher oder tiefer, wird die Linie
+     von der Seite im Ganzen um dasselbe Maß höher oder niedriger (und umgekehrt). So läuft eine Kerbe durch den Zahn; bliebe
+     die andere Linie stehen, stünden ihre Schultern als Rand um einen Krater. Für dich entschieden, du kannst es umdrehen.
+     Die Linie, an der du ziehst, verhält sich wie jede Linie: Nur ihr Punkt geht.
+141. **Linie und Umriss.** Eingerastet liegt die Linie auf dem Umriss des Zahns, solange die andere Linie nicht über sie
+     hinausragt. Trägt die Linie von der Seite Zacken, die höher sind als die Spitze, sieht man sie von vorn als Buckel
+     hinter der Linie.
+142. **Die Höcker der Backe** bleiben als Zusatz ihrer Vorlage: Sie stehen zwischen den Linien (von vorn ragen sie über die
+     Linie), wachsen mit der Höhe und lassen sich weder formen noch nehmen. In der Mitte der Kaufläche klingen sie ab (die
+     Vorlage selbst hat dort eine kleine Nadel; die bleibt, solange niemand an ihr formt).
+143. **Die Wurzel bleibt die der Vorlage** (zu sehen ist sie nur in der Linse). Eine Zinke nimmt die Form der Linie quer an;
+     zwei und drei Zinken bleiben rund.
+144. **Eine eigene Form je Reihe und je Zahn.** Sie lässt sich nicht an einen anderen Zahn oder die andere Reihe weitergeben
+     (ein Zahn ohne eigene erbt die seiner Reihe; gilt die Linse beiden Reihen, bekommen beide dieselbe). Wer an einer Vorlage
+     formt, ersetzt die eigene Form, die dort stand (⌘Z holt sie zurück). Die Anzahl zu stellen lässt die eigenen Formen
+     einzelner Zähne fallen wie alles, was sie eigen hatten.
+145. **Der erste Griff an einer Vorlage ändert die Zähne im Maul ein wenig.** Die Vorlage als Linien liegt höchstens 0,03
+     Einheiten des Zahns (2 % seiner Länge) neben ihrem Netz. Zahnhals und Bauch sind als Linie rund (die Formel der Vorlagen
+     knickt dort; in ihrem Netz verschleifen das die wenigen Ringe). Bei gebogenen Vorlagen zählt für den Spalt der Kiefer die
+     Höhe statt der Länge des Bogens (Säbel 2,53 statt 2,7): Halb offen steht ein Säbel als eigene Form eine Spur länger.
+146. **Der weiche Wechsel am Formenring** fehlt in der Linse, sobald eine eigene Form beteiligt ist (im Maul gibt es ihn).
+147. **Ruhende Linien** sind grün, wo die Haut dort von dir wegzeigt; ob ein gebogener Zahn sie verdeckt, wird nicht gerechnet.
+     Auf dem elfenbeinfarbenen Zahn wirkt das Grün heller als an der Form.
+148. **Durch jeden Anker geht ein Ring des Netzes** (im Maul 16 Ringe). Wandert ein Anker weit längs seiner Linie, wechselt
+     ein Ring den Platz: Ein kleiner Sprung im Licht ist möglich. Nicht beobachtet, nicht gemessen.
+149. **Von oben** füllt das Zahnfleisch fast die Linse (rosa), und der Zahn steht größer als in den anderen Ansichten.
+150. **Rahmen und Lasso** gibt es in der Linse nicht (mehrere Punkte: ⇧ und Klick; Doppelklick auf die Linie wählt alle).
+     Neue Linien auf dem Zahn gibt es nicht.
+151. **Tempo.** Beim Ziehen rechnet Ozzy 8 ms je Bild und die Linse 2 ms (an „teat firefish“, 23 Zähne). Davon sind 3 ms das
+     vereinte Netz für die festen Materialien: Es wird bei jeder Änderung der Zähne ganz neu angelegt (auch am Drehregler) und
+     ließe sich an der Stelle der Zähne überschreiben.
+152. **Nicht geprüft:** iPad und Stift (der gezeichnete Zeiger in der Linse bleibt nach dem Loslassen des Fingers wohl
+     stehen); die zweite Form; Zähne außen mit eigener Form; die Pose „Fressen“ mit eigener Form (gesehen nur das offene Maul
+     bei offener Linse); ein Zahn mit sehr vielen Punkten.
 
 ### Kleines
 
