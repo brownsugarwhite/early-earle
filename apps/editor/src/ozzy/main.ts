@@ -9547,7 +9547,9 @@ function kieferUiZeigen(): boolean {
     // Zähne offen ist: Sonst sähe man nicht, was man stellt. Wird an der Form gezogen, ist es so lange zu.)
     // In einer Pose (Scheibe 4) gilt der Blick dem, was die Grundform zeigen wird: Zwischen Grundform und Pose bleibt das Maul so
     // weit offen (`werk.offenAnteil`), statt bei offener Linse erst zuzuklappen. In der Pose dreht ein Tropfen den Kiefer selbst.
-    let ziel = (kieferZug && !werk.grund) || (maulEbeneAktiv() && farbeMoeglich()) || (linseDa() && !werk.zug) ? 1 : 0;
+    // (In der Pose hängt er nicht am Ziehen an der Form: Er ist dort nicht zu sehen, und jeder Wechsel ließe neu rechnen, was an
+    // der gezeigten Lage hängt.)
+    let ziel = (kieferZug && !werk.grund) || (maulEbeneAktiv() && farbeMoeglich()) || (linseDa() && (!werk.zug || werk.grund !== null)) ? 1 : 0;
     if (werk.grund) kieferSchau = null;
     if (kieferSchau && !kieferZug) {
       const t = (jetzt - kieferSchau.t0) / (kieferSchau.ms ?? KIEFER_SCHAU_MS);
