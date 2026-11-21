@@ -409,8 +409,28 @@ export type MaulZaehne = { oben: ZahnReihe; unten: ZahnReihe; farbe?: string };
 export type PoseVersatz = { d: V3; ein: V3 | null; aus: V3 | null };
 /** `laenge` und `s`: Länge der Linie und Stelle jedes Punkts, als der Versatz gemerkt wurde (fehlen in Ständen vom 14.11. vormittags) */
 export type PoseLinie = { id: number; laenge?: number; punkte: (PoseVersatz & { s?: number })[] };
-export type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: PoseLinie[] | null };
+/**
+ * `name`: wie die Pose in der Reihe heißt (fehlt: „Fressen“ für die erste, sonst „Pose n“). `zunge`: die Lage der Zunge in dieser
+ * Pose, solange sie nicht die gewählte ist (die der gewählten steht am Maul, `MaulZunge.lage`: dort liest und schreibt Ozzy).
+ */
+export type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: PoseLinie[] | null; name?: string; zunge?: number[] | null };
 export let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null };
+/**
+ * Alle Posen der Form in der Reihenfolge ihrer Tropfen (Etappe 8, Scheibe 3); `pose` ist die gewählte und immer eine von ihnen.
+ * Die gewählte wird am Ort geändert (wie bisher); die anderen nie: Wer an ihnen etwas ändert, setzt ein neues Ding an ihren
+ * Platz (die Schritte für ⌘Z teilen sich ihre Felder).
+ */
+export let posen: PoseStand[] = [pose];
+/** so viele Posen trägt eine Form höchstens */
+export const POSEN_HOECHSTENS = 8;
+/** die gewählte Pose durch eine neue ersetzen (an ihrem Platz in der Reihe) */
+function poseErsetzen(neu: PoseStand): void {
+  const i = posen.indexOf(pose);
+  posen = i >= 0 ? posen.map((x, k) => (k === i ? neu : x)) : [neu];
+  pose = neu;
+}
+/** der Name einer Pose in der Reihe */
+export const poseName = (nr: number): string => posen[nr]?.name ?? (nr === 0 ? 'Fressen' : `Pose ${nr + 1}`);
 /** In der Pose: die Grundform. `haut` und `loops` sind dann die Pose, wie sie zu sehen ist (dasselbe Netz, posierte Lagen). */
 export let grund: { haut: Haut; loops: Loop[] } | null = null;
 /**
@@ -659,7 +679,9 @@ export type Schnappschuss = {
   auswahl: Wahl[];
   ids: [number, number];
   maul: MaulZustand;
+  /** die gewählte Pose; `posen`: alle (fehlt in Ständen von vor dem 21.11.: dann gibt es nur die eine) */
   pose: PoseStand;
+  posen?: PoseStand[];
   grund: { haut: Haut; pos: Float64Array; loops: Loop[] } | null;
   ruhe: RuheOffen | null;
   /** das Maß des Startnetzes (nach „Laden“ oder „Neu“ kann ein Schritt zurück zu einem Wesen mit anderem Maß führen) */
@@ -677,18 +699,23 @@ export const kopieLoop = (l: Loop): Loop => ({
   }),
 });
 export const poseKopie = (p: PoseStand): PoseStand => ({ ...p, delta: p.delta ? Float64Array.from(p.delta) : null });
-export const schnappschuss = (): Schnappschuss => ({
-  loops: loops.map(kopieLoop),
-  haut,
-  pos: Float64Array.from(haut.pos),
-  auswahl: [...G.auswahl],
-  ids: [naechsteId, naechsteKreuzung],
-  maul: G.maul ? { ...G.maul } : null,
-  pose: poseKopie(pose),
-  grund: grund ? { haut: grund.haut, pos: Float64Array.from(grund.haut.pos), loops: grund.loops.map(kopieLoop) } : null,
-  ruhe: ruheOffen ? { ...ruheOffen } : null,
-  mk: MK,
-});
+export const schnappschuss = (): Schnappschuss => {
+  // (die gewählte Pose als Kopie; die anderen teilen ihre Felder mit dem Werk: Sie werden nie am Ort geändert)
+  const kopien = posen.map((x) => (x === pose ? poseKopie(x) : { ...x }));
+  return {
+    loops: loops.map(kopieLoop),
+    haut,
+    pos: Float64Array.from(haut.pos),
+    auswahl: [...G.auswahl],
+    ids: [naechsteId, naechsteKreuzung],
+    maul: G.maul ? { ...G.maul } : null,
+    pose: kopien[posen.indexOf(pose)] ?? poseKopie(pose),
+    posen: kopien,
+    grund: grund ? { haut: grund.haut, pos: Float64Array.from(grund.haut.pos), loops: grund.loops.map(kopieLoop) } : null,
+    ruhe: ruheOffen ? { ...ruheOffen } : null,
+    mk: MK,
+  };
+};
 /** Wiederherstellen samt Ziel: ein Schritt aus der Pose führt in die Pose zurück, einer aus der Grundform in die Grundform */
 export function wiederherstellen(s: Schnappschuss): void {
   loops = s.loops;
@@ -699,8 +726,10 @@ export function wiederherstellen(s: Schnappschuss): void {
     grund = { haut: s.grund.haut, loops: s.grund.loops };
   } else grund = null;
   pose = s.pose;
-  // (ein Stand, der zurückkommt, zeigt seine Pose ganz: Die Fahrt zwischen Grundform und Pose gehört keinem Schritt)
+  posen = s.posen?.includes(s.pose) ? [...s.posen] : [s.pose];
+  // (ein Stand, der zurückkommt, zeigt seine Pose ganz: Die Fahrt zwischen zwei Lagen gehört keinem Schritt)
   poseAnteil = 1;
+  poseZiel = null;
   gemischtGemerkt = null;
   ruheOffen = s.ruhe ? { ...s.ruhe } : null;
   MK = s.mk;
@@ -980,7 +1009,9 @@ export async function maulSchneiden(a: Ansicht, anker: readonly StiftAnker[], in
   // Mit dem Maul gibt es die Pose „Fressen“ schon fertig (oben wenig, unten weit): Die Lippe ist das Maul der Form
   G.maul = { id: r.lippe, echt: true };
   maulSeitenMerken();
+  // (ein neues Maul: Was es an Posen gab, gehörte einem Maul davor)
   pose = { kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null };
+  posen = [pose];
   maulBlick = 0;
   // gewählt ist die Lippe als Ganzes mit ihren sichtbaren Punkten (Ozzy zeigt gewählte Punkte, keine gewählten Linien)
   const l = loops[loopNr(r.lippe)];
@@ -1500,18 +1531,47 @@ export function poseAnteilSetzen(x: number): void {
   // (je Aufruf neu gemischt: Wer den Anteil je Bild setzt, sieht auch, was der Hintergrund inzwischen an der Haut gesetzt hat)
   gemischtGemerkt = null;
 }
-/** Die Anzeige steht zwischen Grundform und Pose: So lange wird nicht gegriffen */
-export const poseWandert = (): boolean => grund !== null && poseAnteil < 1;
+/**
+ * Die Anzeige zwischen der betretenen Pose und einer anderen (Scheibe 3): `t` 0 = die betretene, 1 = die andere. Dazwischen
+ * wandern Haut, Punkte, Griffe und die Winkel der Kiefer von der einen Pose in die andere, ohne Umweg über die Grundform. Nur
+ * Anzeige; am Ziel wechselt `poseWechseln` die Pose.
+ */
+export let poseZiel: { p: PoseStand; t: number } | null = null;
+export function poseZielSetzen(nr: number | null, t = 0): void {
+  const p = nr === null ? undefined : posen[nr];
+  poseZiel = p && grund && p !== pose ? { p, t: Math.max(0, Math.min(1, t)) } : null;
+  gemischtGemerkt = null;
+}
+/** Die Anzeige steht zwischen zwei Lagen (Grundform und Pose, oder zwei Posen): So lange wird nicht gegriffen */
+export const poseWandert = (): boolean => grund !== null && (poseAnteil < 1 || poseZiel !== null);
 /** Die Anzeige dreht mit den Knochen: in der Pose immer, in der Grundform beim Blick ins Maul */
 export const anzeigeDreht = (): boolean => grund !== null || (maulBlick > 0 && G.maul !== null && zug === null);
+/** Die Winkel der Kiefer, wie die Anzeige sie gerade zeigt (Grad, von „zu“): die der Pose, anteilig beim Wandern und beim Blick ins Maul */
+export function winkelGezeigt(): { kiefer: number; schaedel: number } {
+  if (!grund) return { kiefer: pose.kiefer * maulBlick, schaedel: pose.schaedel * maulBlick };
+  const z = poseZiel;
+  if (z) return { kiefer: pose.kiefer + (z.p.kiefer - pose.kiefer) * z.t, schaedel: pose.schaedel + (z.p.schaedel - pose.schaedel) * z.t };
+  return { kiefer: pose.kiefer * poseAnteil, schaedel: pose.schaedel * poseAnteil };
+}
 /** So weit zeigt die Anzeige das Maul gerade offen (Grad, beide Kiefer zusammen; 0: zu) */
-export const maulOffenGrad = (): number => (anzeigeDreht() ? (grund ? poseAnteil : maulBlick) * (pose.kiefer + pose.schaedel) : 0);
+export const maulOffenGrad = (): number => {
+  if (!anzeigeDreht()) return 0;
+  const w = winkelGezeigt();
+  return w.kiefer + w.schaedel;
+};
+/**
+ * Eine Zeile über alles, woran die gedrehte Anzeige hängt (Pose oder Grundform, Blick ins Maul, Anteil, Ziel, Winkel): Wer etwas
+ * merkt, das mit der gezeigten Lage gilt (das Netz der Linien, die Lagen für die Zähne, die Zunge), nimmt sie in seinen Schlüssel.
+ */
+export const poseZeile = (): string =>
+  anzeigeDreht() ? `${grund ? posen.indexOf(pose) : 'g'}|${maulBlick}|${poseAnteil}|${poseZiel ? `${posen.indexOf(poseZiel.p)}:${poseZiel.t}` : ''}|${pose.kiefer}|${pose.schaedel}|${poseZiel ? `${poseZiel.p.kiefer}|${poseZiel.p.schaedel}` : ''}` : 'zu';
 /** Drehwinkel je Punkt für den Stand der Regler (beim Maul aus einer Linie gegen die gerechnete Lage: Regler minus ihre Öffnung) */
 export function knochenJetzt(m: MaulAmLoop): Float64Array {
   const zu = maulZu();
-  // (in der Grundform dreht nur der Blick ins Maul, um seinen Anteil; in der Pose um den Anteil, den die Anzeige von ihr zeigt)
-  const f = grund ? poseAnteil : maulBlick;
-  const k = { kiefer: pose.kiefer * f - zu, schaedel: pose.schaedel * f };
+  // (in der Grundform dreht nur der Blick ins Maul, um seinen Anteil; in der Pose um den Anteil, den die Anzeige von ihr zeigt,
+  // zwischen zwei Posen um das Mittel ihrer Winkel)
+  const w = winkelGezeigt();
+  const k = { kiefer: w.kiefer - zu, schaedel: w.schaedel };
   // (am Maul als echte Form laufen die Drehungen mit dem Winkel breiter aus: `kieferWinkel`)
   return kieferWinkel(m, k, zu) ?? knochenWinkel(m, k, zu);
 }
@@ -1586,39 +1646,20 @@ export function poseBetreten(): boolean {
   // die Ruhe der Pose: mit ihr wird gerechnet, gedreht wird erst beim Zeigen (`alsAnzeige`)
   haut = { ...g.haut, pos: ruhe };
   /** Linien, die an der Haut der Pose abgelesen wurden (statt Grundform plus Versatz) */
-  const abgelesen = new Set<Loop>();
-  loops = g.loops.map((x) => {
-    const c = kopieLoop(x);
-    // Etappe 8 (21.11.): In der Pose ist jede Lippe frei (das Maul steht dort offen, oben und unten sind zwei Orte). Die Kopie der
-    // Lippe ist darum die getrennte Lippe, wie nach „Lippen trennen“; ob die Lippen in der Grundform verbunden sind, weiß die
-    // Grundform (`grundLoopsAus` gibt es ihr beim Verlassen zurück)
-    if (!alt && G.maul?.echt && x.id === G.maul.id) delete c.maulLinie;
-    if (alt) {
+  let abgelesen = new Set<Loop>();
+  if (alt) {
+    loops = g.loops.map((x) => {
+      const c = kopieLoop(x);
       festlegen(haut, c);
       // die Griffe der Linien der Pose (ohne neue Ecken: was in der Pose knickt, gehört der Pose)
       if (hatGriffe(c)) griffeAnlegen(c, c.ruhe);
       return c;
-    }
-    // Die Pose ist eine zweite Lage derselben Linien: ihre Punkte und Griffe = die der Grundform plus Versatz
-    const v = pose.linien?.find((y) => y.id === x.id);
-    const versatz = v ? poseVersatzFuer(v, c) : null;
-    if (versatz) {
-      c.punkte.forEach((q, i) => {
-        const o = versatz[i]!;
-        q.ref = { x: q.ref.x + o.d.x, y: q.ref.y + o.d.y, z: q.ref.z + o.d.z };
-        q.cur = { ...q.ref };
-        if (q.ein && o.ein) q.ein = { x: q.ein.x + o.ein.x, y: q.ein.y + o.ein.y, z: q.ein.z + o.ein.z };
-        if (q.aus && o.aus) q.aus = { x: q.aus.x + o.aus.x, y: q.aus.y + o.aus.y, z: q.aus.z + o.aus.z };
-      });
-      festlegen(haut, c, false);
-    } else if (d) {
-      // ein Blendshape ohne gespeicherte Linien (eine Pose von vor dem 14.11.): Die Linien werden einmal an der Haut der Pose abgelesen
-      festlegen(haut, c);
-      if (hatGriffe(c)) griffeAnlegen(c, c.ruhe, true);
-      abgelesen.add(c);
-    } else festlegen(haut, c, false);
-    return c;
-  });
+    });
+  } else {
+    const r = poseLoopsAus(g.loops, haut, pose, d !== null);
+    loops = r.loops;
+    abgelesen = r.abgelesen;
+  }
   // Die Haut der Pose (Grundform plus Blendshape) setzt sich auf ihre Linien (Grundform plus Versatz). Eine Linie mit Versatz behält
   // dabei die Stelle jeder Probe auf dem Pfad: Es ist dieselbe wie in der Grundform, sonst rückte die Grundform beim Verlassen nach.
   // Nötig, wo die Grundform inzwischen neue Punkte im Netz bekam (ihr Blendshape ist nur aus den Nachbarn gemittelt), und für
@@ -1743,6 +1784,127 @@ export function poseSichern(): void {
       });
 }
 
+// ---------- Mehrere Posen (Etappe 8, Scheibe 3) ----------
+
+/**
+ * Die Lage der Zunge gehört zur Pose (Liste, 112). Die der gewählten Pose steht am Maul (`MaulZunge.lage`); wird eine andere
+ * gewählt, merkt sich die bisherige ihre Lage, und die neue bringt ihre mit. `merken`: falsch, wenn die bisherige wegfällt.
+ */
+function zungeTauschen(von: PoseStand, nach: PoseStand, merken = true): void {
+  const z = G.maul?.zunge;
+  if (merken) von.zunge = z?.lage ? [...z.lage] : null;
+  if (!G.maul || !z) return;
+  const { lage: _lage, ...ohne } = z;
+  void _lage;
+  G.maul = { ...G.maul, zunge: nach.zunge ? { ...ohne, lage: [...nach.zunge] } : ohne };
+}
+
+/** Eine Pose wählen, ohne sie zu betreten (in der Grundform): Regler, Tropfen der Kiefer und der Blick ins Maul gelten dann ihr */
+export function poseWaehlen(nr: number): boolean {
+  const p = posen[nr];
+  if (!p || grund || zug || maulLauf) return false;
+  if (p === pose) return true;
+  zungeTauschen(pose, p);
+  pose = p;
+  return true;
+}
+
+/**
+ * Von der betretenen Pose in eine andere wechseln (am Ende einer Fahrt zwischen zwei Posen; ohne Fahrt springt die Anzeige).
+ * Die verlassene behält, was in ihr geformt wurde. Kein Schritt für ⌘Z.
+ */
+export function poseWechseln(nr: number): boolean {
+  const p = posen[nr];
+  if (!p || !grund || zug || maulLauf) return false;
+  if (p === pose) {
+    poseZiel = null;
+    gemischtGemerkt = null;
+    return true;
+  }
+  const von = pose;
+  poseVerlassen();
+  zungeTauschen(von, p);
+  pose = p;
+  return poseBetreten();
+}
+
+/**
+ * Eine Pose anlegen: eine Kopie dessen, was zu sehen ist (in einer Pose: diese Pose mit ihren Winkeln und ihrer Form; in der
+ * Grundform: die Grundform, das Maul zu). Sie steht am Ende der Reihe, ist gewählt und betreten. Ein Schritt für ⌘Z. Zurück:
+ * ihre Nummer, −1: Es geht hier nicht (die Meldung steht).
+ */
+export function poseAnlegen(): number {
+  if (zug || maulLauf || !G.maul) return -1;
+  if (!maulIstGeformt()) {
+    G.meldung = 'Mehrere Posen gibt es am Maul als echte Form';
+    anzeige.statusZeigen();
+    return -1;
+  }
+  if (posen.length >= POSEN_HOECHSTENS) {
+    G.meldung = `Mehr als ${POSEN_HOECHSTENS} Posen trägt eine Form nicht`;
+    anzeige.statusZeigen();
+    return -1;
+  }
+  zurueck.push(schnappschuss());
+  // (ein Name, den es noch nicht gibt)
+  const namen = new Set(posen.map((_, i) => poseName(i)));
+  let n = posen.length + 1;
+  while (namen.has(`Pose ${n}`)) n++;
+  const name = `Pose ${n}`;
+  const inPose = grund !== null;
+  if (inPose) poseSichern();
+  const lage = G.maul.zunge?.lage;
+  const neu: PoseStand = inPose
+    ? { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta ? Float64Array.from(pose.delta) : null, linien: pose.linien ?? null, name, zunge: lage ? [...lage] : null }
+    : { kiefer: 0, schaedel: 0, delta: null, linien: null, name };
+  posen = [...posen, neu];
+  const nr = posen.length - 1;
+  const gut = inPose ? poseWechseln(nr) : poseWaehlen(nr) && poseBetreten();
+  if (!gut) {
+    const v = zurueck.pop();
+    if (v) wiederherstellen(v);
+    return -1;
+  }
+  G.meldung = `${name}: eine Kopie dessen, was du siehst · halten benennt sie · auf den Mülleimer gezogen ist sie weg`;
+  return nr;
+}
+
+/**
+ * Eine Pose löschen. Danach steht die Form in der Grundform; war die gelöschte die gewählte, ist es ihre Nachbarin. Eine Pose
+ * bleibt immer (das Maul braucht eine, um sich zu öffnen). Ein Schritt für ⌘Z.
+ */
+export function poseLoeschen(nr: number): boolean {
+  const p = posen[nr];
+  if (!p || zug || maulLauf) return false;
+  if (posen.length <= 1) {
+    G.meldung = 'Eine Pose bleibt immer: Das Maul braucht sie, um sich zu öffnen';
+    anzeige.statusZeigen();
+    return false;
+  }
+  zurueck.push(schnappschuss());
+  if (grund) poseVerlassen();
+  const rest = posen.filter((x) => x !== p);
+  if (p === pose) {
+    const neu = rest[Math.min(nr, rest.length - 1)]!;
+    zungeTauschen(p, neu, false);
+    pose = neu;
+  }
+  posen = rest;
+  G.meldung = '';
+  return true;
+}
+
+/** Eine Pose benennen (höchstens 24 Zeichen). Ein Schritt für ⌘Z. */
+export function poseBenennen(nr: number, name: string): boolean {
+  const p = posen[nr];
+  const text = name.trim().replace(/\s+/g, ' ').slice(0, 24);
+  if (!p || !text || zug || maulLauf || poseName(nr) === text) return false;
+  zurueck.push(schnappschuss());
+  if (p === pose) pose.name = text;
+  else posen = posen.map((x) => (x === p ? { ...p, name: text } : x));
+  return true;
+}
+
 // ---------- Die Pose zeigen: Die Knochen drehen nur, was gezeigt wird ----------
 
 /** Punkt p um das Gelenk G um den Winkel t gedreht (in der Seite; die Tiefe bleibt), wie `knochenDrehen` je Punkt des Netzes */
@@ -1798,9 +1960,60 @@ export function loopGedreht(l: Loop, theta: Float64Array, G: V2): Loop {
 }
 
 /**
- * Die Ruhe zwischen Grundform und Pose (Etappe 8): Haut, Punkte, Griffe und Proben der Linien beim Anteil `poseAnteil` der Pose.
- * Null: Die zwei Lagen passen nicht Punkt für Punkt zusammen (dann zeigt die Anzeige die Pose). Gemerkt, bis der Anteil neu gesetzt
- * wird oder Haut und Linien andere sind.
+ * Die Linien einer Pose in ihrer Ruhe: die der Grundform plus ihr Versatz (Punkte und Griffe), auf der Haut der Pose festgelegt.
+ * Ohne gemerkten Versatz, aber mit Blendshape (eine Pose von vor dem 14.11.), werden sie einmal an der Haut der Pose abgelesen
+ * (`abgelesen`). Die Lippe eines Mauls als echte Form ist in der Pose frei (Etappe 8): Ihre Kopie ist die getrennte Lippe, wie nach
+ * „Lippen trennen“; ob die Lippen in der Grundform verbunden sind, weiß die Grundform (`grundLoopsAus` gibt es ihr zurück).
+ */
+function poseLoopsAus(gl: readonly Loop[], h: Haut, p: PoseStand, mitBlendshape: boolean): { loops: Loop[]; abgelesen: Set<Loop> } {
+  const abgelesen = new Set<Loop>();
+  const out = gl.map((x) => {
+    const c = kopieLoop(x);
+    if (G.maul?.echt && x.id === G.maul.id) delete c.maulLinie;
+    // Die Pose ist eine zweite Lage derselben Linien: ihre Punkte und Griffe = die der Grundform plus Versatz
+    const v = p.linien?.find((y) => y.id === x.id);
+    const versatz = v ? poseVersatzFuer(v, c) : null;
+    if (versatz) {
+      c.punkte.forEach((q, i) => {
+        const o = versatz[i]!;
+        q.ref = { x: q.ref.x + o.d.x, y: q.ref.y + o.d.y, z: q.ref.z + o.d.z };
+        q.cur = { ...q.ref };
+        if (q.ein && o.ein) q.ein = { x: q.ein.x + o.ein.x, y: q.ein.y + o.ein.y, z: q.ein.z + o.ein.z };
+        if (q.aus && o.aus) q.aus = { x: q.aus.x + o.aus.x, y: q.aus.y + o.aus.y, z: q.aus.z + o.aus.z };
+      });
+      festlegen(h, c, false);
+    } else if (mitBlendshape) {
+      festlegen(h, c);
+      if (hatGriffe(c)) griffeAnlegen(c, c.ruhe, true);
+      abgelesen.add(c);
+    } else festlegen(h, c, false);
+    return c;
+  });
+  return { loops: out, abgelesen };
+}
+
+/**
+ * Die Lage einer Pose, die nicht betreten ist (Scheibe 3): Haut = Grundform plus ihr Blendshape, Linien wie beim Betreten. Nur für
+ * die Anzeige beim Wandern zwischen zwei Posen; gemerkt, solange Grundform und Pose dieselben sind.
+ */
+let lageGemerkt: { p: PoseStand; delta: Float64Array | null; linien: PoseLinie[] | null | undefined; grundHaut: Haut; grundLoops: Loop[]; pos: Float64Array; loops: Loop[] } | null = null;
+function lageVon(p: PoseStand): { pos: Float64Array; loops: Loop[] } | null {
+  const g = grund;
+  if (!g) return null;
+  const m = lageGemerkt;
+  if (m && m.p === p && m.delta === p.delta && m.linien === p.linien && m.grundHaut === g.haut && m.grundLoops === g.loops) return m;
+  const d = p.delta && p.delta.length === g.haut.pos.length ? p.delta : null;
+  const pos = d ? Float64Array.from(g.haut.pos, (x, i) => x + d[i]!) : Float64Array.from(g.haut.pos);
+  const { loops: L } = poseLoopsAus(g.loops, { ...g.haut, pos }, p, d !== null);
+  lageGemerkt = { p, delta: p.delta, linien: p.linien, grundHaut: g.haut, grundLoops: g.loops, pos, loops: L };
+  return lageGemerkt;
+}
+
+/**
+ * Die Ruhe zwischen zwei Lagen (Etappe 8): Haut, Punkte, Griffe und Proben der Linien. Zwischen Grundform und betretener Pose
+ * beim Anteil `poseAnteil`; mit einem Ziel (`poseZiel`) zwischen der betretenen Pose und der anderen. Null: Die zwei Lagen
+ * passen nicht Punkt für Punkt zusammen (dann zeigt die Anzeige die Pose). Gemerkt, bis Anteil oder Ziel neu gesetzt werden oder
+ * Haut und Linien andere sind.
  */
 let gemischtGemerkt: { haut: Haut; grundHaut: Haut; eigen: Loop[]; grundLoops: Loop[]; pos: Float64Array; loops: Loop[] } | null = null;
 function ruheGemischt(): { pos: Float64Array; loops: Loop[] } | null {
@@ -1808,20 +2021,29 @@ function ruheGemischt(): { pos: Float64Array; loops: Loop[] } | null {
   if (!g || g.haut.pos.length !== haut.pos.length) return null;
   const m = gemischtGemerkt;
   if (m && m.haut === haut && m.grundHaut === g.haut && m.eigen === loops && m.grundLoops === g.loops) return m;
-  const t = poseAnteil;
-  const B = g.haut.pos;
-  const P = haut.pos;
+  const z = poseZiel;
+  const fern = z ? lageVon(z.p) : null;
+  if (z && !fern) return null;
+  // von (t = 0) nach (t = 1): Grundform → betretene Pose, oder betretene Pose → die andere
+  const von = fern ? { pos: haut.pos, loops } : { pos: g.haut.pos, loops: g.loops };
+  const nach = fern ?? { pos: haut.pos, loops };
+  const t = z ? z.t : poseAnteil;
+  const B = von.pos;
+  const P = nach.pos;
+  if (B.length !== P.length) return null;
   const pos = new Float64Array(P.length);
   for (let i = 0; i < P.length; i++) pos[i] = B[i]! + t * (P[i]! - B[i]!);
   const mitte = (a: V3, b: V3): V3 => ({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y), z: a.z + t * (b.z - a.z) });
   const gemischt = loops.map((l) => {
-    const b = g.loops.find((x) => x.id === l.id);
-    if (!b || b.punkte.length !== l.punkte.length || b.ruhe.length !== l.ruhe.length) return l;
+    const a = von.loops.find((x) => x.id === l.id);
+    const b = nach.loops.find((x) => x.id === l.id);
+    if (!a || !b || a.punkte.length !== l.punkte.length || b.punkte.length !== l.punkte.length || a.ruhe.length !== l.ruhe.length || b.ruhe.length !== l.ruhe.length) return l;
     const r = new Float64Array(l.ruhe.length);
-    for (let j = 0; j < r.length; j++) r[j] = b.ruhe[j]! + t * (l.ruhe[j]! - b.ruhe[j]!);
+    for (let j = 0; j < r.length; j++) r[j] = a.ruhe[j]! + t * (b.ruhe[j]! - a.ruhe[j]!);
     const punkte = l.punkte.map((q, i) => {
-      const p = b.punkte[i]!;
-      return { ...q, ref: mitte(p.ref, q.ref), cur: mitte(p.cur, q.cur), ...(q.ein && p.ein ? { ein: mitte(p.ein, q.ein) } : {}), ...(q.aus && p.aus ? { aus: mitte(p.aus, q.aus) } : {}) };
+      const pa = a.punkte[i]!;
+      const pb = b.punkte[i]!;
+      return { ...q, ref: mitte(pa.ref, pb.ref), cur: mitte(pa.cur, pb.cur), ...(pa.ein && pb.ein ? { ein: mitte(pa.ein, pb.ein) } : {}), ...(pa.aus && pb.aus ? { aus: mitte(pa.aus, pb.aus) } : {}) };
     });
     return { ...l, ruhe: r, punkte };
   });
@@ -1939,6 +2161,7 @@ export function poseVerlassen(): void {
   haut = basis;
   grund = null;
   poseAnteil = 1;
+  poseZiel = null;
   gemischtGemerkt = null;
   anzeige.geometrieNeu();
   // was in der Pose an Punkten oder Loops dazukam, liest seine Griffe an der Linie der Grundform ab: auch diese Linien genau auf ihren Pfad
@@ -2012,6 +2235,23 @@ export function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Fl
   };
   const g = grund;
   void vorher;
+  /** harte Punkte des alten Netzes (für die runde Fläche neuer Punkte), erst bei Bedarf */
+  let hartAlt: Uint8Array | null = null;
+  /**
+   * Der Blendshape einer Pose, die nicht betreten ist, für das neue Netz. `dAlt`: ihr Versatz im alten Netz. `altNetz`, `altVon`:
+   * das alte Netz und seine Lagen in der Lage, in der das Netz gewachsen ist (mitgegangen); `grundAltMit`: die Grundform im alten
+   * Netz (mitgegangen); `grundNeu`: die Grundform im neuen. Neue Punkte liegen auf der runden Fläche der Pose von vorher
+   * (`zweiteLage.ts`); ohne die Lagen von vorher gilt der gemittelte Versatz der Nachbarn.
+   */
+  const versatzNeu = (dAlt: Float64Array, altNetz: Haut | null, altVon: Float64Array | null, grundAltMit: ArrayLike<number> | null, grundNeu: ArrayLike<number>, linienAlt: readonly Loop[] | null): Float64Array => {
+    const d = ergaenzen(haut, umordnen(dAlt, 3), m, 3, true);
+    if (!altNetz || !altVon || !grundAltMit || !linienAlt || haut.n <= m || altNetz.n !== nAlt || !maulIstGeformt()) return d;
+    hartAlt ??= hartePunkte(altNetz, linienAlt);
+    const lage = Float64Array.from(grundNeu, (x, i) => x + d[i]!);
+    neuePunkteLegen({ alt: altNetz, altVon, altNach: Float64Array.from(grundAltMit, (x, i) => x + dAlt[i]!), neu: haut, altNr: alt, hart: hartAlt }, lage);
+    for (let i = 3 * m; i < d.length; i++) d[i] = lage[i]! - grundNeu[i]!;
+    return d;
+  };
   if (g) {
     // (in der Pose ist `haut` ihre Ruhe: nichts zurückzudrehen)
     const ruhe = haut.pos;
@@ -2026,28 +2266,31 @@ export function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Fl
     // Lagen deckungsgleich sind (dort stimmt er genau). Wo sich der Versatz von Punkt zu Punkt stark ändert (an den Lippen eines
     // Mauls, das in der Pose weit offen geformt ist), lag er bis 5 längs und 1,5 quer neben der Grundform: Sie bekam Dellen, obwohl
     // in ihr niemand etwas angefasst hatte.
-    if (davor && haut.n > m && g.haut.n === nAlt && davor.haut.n === nAlt && !altePose()) {
-      neuePunkteLegen({ alt: g.haut, altVon: altMitgegangen(davor.haut, ruhe, alt), altNach: g.haut.pos, neu: haut, altNr: alt, hart: hartePunkte(g.haut, g.loops) }, basis);
+    const mit = davor && haut.n > m && g.haut.n === nAlt && davor.haut.n === nAlt && !altePose() ? altMitgegangen(davor.haut, ruhe, alt) : null;
+    if (mit) {
+      hartAlt = hartePunkte(g.haut, g.loops);
+      neuePunkteLegen({ alt: g.haut, altVon: mit, altNach: g.haut.pos, neu: haut, altNr: alt, hart: hartAlt }, basis);
       for (let i = 3 * m; i < d.length; i++) d[i] = ruhe[i]! - basis[i]!;
     }
     const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
+    const grundAlt = g.haut;
+    const linienAlt = g.loops;
     grund = { haut: gh, loops: grundLoopsAus(gh, g.loops) };
     pose.delta = d;
     grundAufPfad(m);
-  } else if (pose.delta && pose.delta.length === 3 * nAlt) {
-    const dAlt = pose.delta;
-    const d = ergaenzen(haut, umordnen(dAlt, 3), m, 3, true);
-    // Etappe 8 (21.11.), dasselbe in der anderen Richtung: Wächst das Netz in der Grundform, liegen die neuen Punkte in der Pose auf
-    // deren runder Fläche von vorher (wo der Blendshape sich von Punkt zu Punkt ändert; sonst teilen sie den ihrer Nachbarn genau).
-    // Die Fläche der Pose von vorher geht dabei mit, wo sich die Grundform bei dieser Änderung bewegt hat (gesetzt).
-    const a = davor?.haut;
-    if (a && haut.n > m && a.n === nAlt && maulIstGeformt()) {
-      const altVon = altMitgegangen(a, haut.pos, alt);
-      const ruhe = Float64Array.from(haut.pos, (x, i) => x + d[i]!);
-      neuePunkteLegen({ alt: a, altVon, altNach: Float64Array.from(altVon, (x, i) => x + dAlt[i]!), neu: haut, altNr: alt, hart: hartePunkte(a, davor.loops) }, ruhe);
-      for (let i = 3 * m; i < d.length; i++) d[i] = ruhe[i]! - haut.pos[i]!;
-    }
-    pose.delta = d;
+    // Scheibe 3: Die Posen, die nicht betreten sind, gehen genauso mit (ihre Lage = Grundform plus ihr Versatz)
+    if (posen.length > 1)
+      posen = posen.map((x) => (x === pose || !x.delta || x.delta.length !== 3 * nAlt ? x : { ...x, delta: versatzNeu(x.delta, mit ? grundAlt : null, mit, grundAlt.pos, gh.pos, linienAlt) }));
+  } else {
+    // In der Grundform (Etappe 8, auch in dieser Richtung): Wächst das Netz hier, liegen die neuen Punkte jeder Pose auf deren
+    // runder Fläche von vorher (wo ihr Blendshape sich von Punkt zu Punkt ändert; sonst teilen sie den ihrer Nachbarn genau). Die
+    // Fläche der Pose von vorher geht dabei mit, wo sich die Grundform bei dieser Änderung bewegt hat (gesetzt).
+    const a = davor?.haut ?? null;
+    const mit = a && haut.n > m && a.n === nAlt && posen.some((x) => x.delta && x.delta.length === 3 * nAlt) ? altMitgegangen(a, haut.pos, alt) : null;
+    const neu = (x: PoseStand): Float64Array | null => (x.delta && x.delta.length === 3 * nAlt ? versatzNeu(x.delta, mit ? a : null, mit, mit, haut.pos, davor?.loops ?? null) : x.delta);
+    const dGewaehlt = neu(pose);
+    if (posen.length > 1) posen = posen.map((x) => (x === pose || !x.delta || x.delta.length !== 3 * nAlt ? x : { ...x, delta: neu(x) }));
+    pose.delta = dGewaehlt;
   }
 }
 
@@ -6171,6 +6414,19 @@ export const BEHALTEN = ((w) => w === '1' || (w !== '0' && !navigator.webdriver)
 export const START_FORM = new URLSearchParams(location.search).get('form') ?? 'kugel';
 export const START_KENNUNG = `${START_FORM}|${DREIECKE}`;
 
+/** eine Pose für die Datei (die gewählte ohne die Lage der Zunge: Die steht am Maul) */
+const poseFuerDatei = (x: PoseStand, gewaehlt: boolean): NonNullable<WesenStand['posen']>[number] => ({
+  kiefer: x.kiefer,
+  schaedel: x.schaedel,
+  delta: x.delta,
+  linien: x.linien ?? null,
+  ...(x.name !== undefined ? { name: x.name } : {}),
+  ...(!gewaehlt && x.zunge ? { zunge: x.zunge } : {}),
+});
+/** alle Posen für die Datei; nichts, solange es nur die eine unbenannte gibt (dann sieht die Datei aus wie vor dem 21.11.) */
+const posenFuerDatei = (alle: readonly PoseStand[], gewaehlt: PoseStand): Pick<WesenStand, 'posen' | 'poseNr'> =>
+  alle.length > 1 || gewaehlt.name !== undefined ? { posen: alle.map((x) => poseFuerDatei(x, x === gewaehlt)), poseNr: Math.max(0, alle.indexOf(gewaehlt)) } : {};
+
 /** Der Stand von jetzt als Wesen (die Lagen als Kopie, die Loops, wie sie sind: gleich packen) */
 export function standJetzt(): WesenStand {
   return {
@@ -6181,6 +6437,7 @@ export function standJetzt(): WesenStand {
     maul: G.maul ? { ...G.maul } : null,
     // `inRuhe`: In der Pose sind `haut` und `loops` dieses Stands ihre Ruhe (bis zum 14.11. die gedrehte Lage)
     pose: { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta, linien: pose.linien ?? null, inRuhe: true },
+    ...posenFuerDatei(posen, pose),
     grund: grund ? { haut: hautFlach(grund.haut), loops: grund.loops } : null,
     ruhe: ruheOffen ? { setzen: ruheOffen.setzen, nurInRuhe: ruheOffen.nurInRuhe, verdichten: ruheOffen.verdichten, ziele: ruheOffen.ziele } : null,
     sicht: { seite: { ...ausschnitt.seite }, front: { ...ausschnitt.front }, top: { ...ausschnitt.top } },
@@ -6197,6 +6454,7 @@ export function standAus(s: Schnappschuss): WesenStand {
     ids: [s.ids[0], s.ids[1]],
     maul: s.maul ? { ...s.maul } : null,
     pose: { kiefer: s.pose.kiefer, schaedel: s.pose.schaedel, delta: s.pose.delta, linien: s.pose.linien ?? null, inRuhe: true },
+    ...posenFuerDatei(s.posen ?? [s.pose], s.pose),
     grund: s.grund ? { haut: hautFlach({ ...s.grund.haut, pos: s.grund.pos }), loops: s.grund.loops } : null,
     ruhe: s.ruhe ? { setzen: s.ruhe.setzen, nurInRuhe: s.ruhe.nurInRuhe, verdichten: s.ruhe.verdichten, ziele: s.ruhe.ziele } : null,
     sicht: null,
@@ -6223,6 +6481,17 @@ export function zieleAus(st: WesenStand): (Float64Array | null)[] | null {
 export function standAnwenden(st: WesenStand): string {
   const h = hautAusFlach({ ...st.haut, pos: Float64Array.from(st.haut.pos) });
   const g = st.grund ? hautAusFlach({ ...st.grund.haut, pos: Float64Array.from(st.grund.haut.pos) }) : null;
+  // die Posen der Datei (seit dem 21.11. alle; vorher die eine)
+  const ausDatei = (q: NonNullable<WesenStand['posen']>[number]): PoseStand => ({
+    kiefer: q.kiefer,
+    schaedel: q.schaedel,
+    delta: q.delta ? Float64Array.from(q.delta) : null,
+    linien: q.linien ?? null,
+    ...(typeof q.name === 'string' ? { name: q.name } : {}),
+    ...(Array.isArray(q.zunge) ? { zunge: [...q.zunge] } : {}),
+  });
+  const allePosen = st.posen?.length ? st.posen.map(ausDatei) : [ausDatei(st.pose)];
+  const gewaehlt = allePosen[Math.max(0, Math.min(allePosen.length - 1, st.posen?.length ? (st.poseNr ?? 0) : 0))]!;
   const s: Schnappschuss = {
     haut: h,
     loops: st.loops.map(kopieLoop),
@@ -6238,7 +6507,8 @@ export function standAnwenden(st: WesenStand): string {
           ...(st.maul.zunge ? { zunge: { ...st.maul.zunge } } : {}),
         }
       : null,
-    pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null, linien: st.pose.linien ?? null },
+    pose: gewaehlt,
+    posen: allePosen,
     grund: g && st.grund ? { haut: g, pos: Float64Array.from(g.pos), loops: st.grund.loops.map(kopieLoop) } : null,
     ruhe: st.ruhe ? { setzen: st.ruhe.setzen === true, nurInRuhe: st.ruhe.nurInRuhe === true, verdichten: st.ruhe.verdichten === true, ziele: zieleAus(st) } : null,
     mk: st.mk,
@@ -6270,7 +6540,7 @@ export function standAnwenden(st: WesenStand): string {
     const lippe = (grund ? grund.loops : loops).find((l) => istMaulLinie(l) && l.maulLinie === MAUL_HAAR);
     if (lippe && !G.maul && !grund) {
       G.maul = { id: lippe.id, echt: true };
-      if (!pose.delta) pose = { kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null };
+      if (!pose.delta) poseErsetzen({ kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null });
     } else if (lippe && G.maul?.id === lippe.id) G.maul = { ...G.maul, echt: true };
     maulSeitenMerken();
     // (in der Pose ist die Lippe frei, seit Etappe 8; ein älterer Stand trägt sie dort noch zusammengeklappt)

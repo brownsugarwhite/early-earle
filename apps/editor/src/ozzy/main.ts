@@ -8740,7 +8740,6 @@ $('knopf-neu').addEventListener('click', () => {
 
 const maulTropfen = $<HTMLButtonElement>('maul-tropfen');
 const fressen = $<HTMLElement>('fressen');
-const fressenKnopf = $<HTMLButtonElement>('fressen-knopf');
 const fressenMaul = $<HTMLInputElement>('fressen-maul');
 const fressenKopf = $<HTMLInputElement>('fressen-kopf');
 const fressenMaulZahl = $<HTMLSpanElement>('fressen-maul-zahl');
@@ -8916,22 +8915,9 @@ function maulUiZeigen(): void {
   const fressenWar = fressen.hidden;
   fressen.hidden = !(an && werk.G.maul);
   if (fressenWar && !fressen.hidden) fressenQuellen();
-  // die Reihe der Posen: der kleine Tropfen am Faden steht beim Anteil der Pose, gedrückt ist der Tropfen der näheren Lage
-  // (nur gesetzt, was sich geändert hat, und der Stand als Verschiebung: Ein Ort in Prozent ließe die Seite in jedem Bild neu anordnen)
-  const anteil = werk.grund ? werk.poseAnteil : 0;
-  const wandert = werk.poseWandert();
-  const zeile = `${anteil.toFixed(4)}|${wandert}`;
-  if (zeile !== posenZeile) {
-    posenZeile = zeile;
-    const inPose = String(anteil >= 0.5);
-    if (fressenKnopf.getAttribute('aria-pressed') !== inPose) {
-      fressenKnopf.setAttribute('aria-pressed', inPose);
-      poseGrundform.setAttribute('aria-pressed', String(anteil < 0.5));
-    }
-    posenStand.style.transform = `translateX(${(100 * anteil).toFixed(2)}%)`;
-    // (unterwegs stellen die Regler nichts: Sie gelten der Pose, wie sie ist)
-    if (fressenMaul.disabled !== wandert) fressenMaul.disabled = fressenKopf.disabled = wandert;
-  }
+  // die Reihe der Posen (je Pose ein Tropfen, der Stand am Faden, gedrückt ist der Tropfen der näheren Lage)
+  if (fressenWar && !fressen.hidden) posenGebaut = '';
+  if (!fressen.hidden) posenZeigen();
   // (am Maul als echte Form gehen die Kiefer weiter auf als am Maul des Kerns: Die Regler reichen so weit wie die Tropfen)
   const lippe = werk.G.maul ? werk.loops[werk.loopNr(werk.G.maul.id)] : undefined;
   const echt = !!lippe && werk.istMaulEcht(lippe);
@@ -9023,37 +9009,131 @@ maulTropfen.addEventListener('click', () => {
 
 // ---------- Die Posen als Tropfen in einer Reihe (Maul, Etappe 8, 21.11.) ----------
 //
-// „Grundform“ und „Fressen“ stehen als zwei Tropfen an einem Faden (Konzept 4.10: „Die Posen stehen als Tropfen in einer Reihe …;
-// zwischen zwei Tropfen gezogen, wandern Punkte und Griffe von der einen Lage zur anderen“). Ein Tipp fährt dorthin: Die Anzeige
-// wandert in rund einer Drittelsekunde von der einen Lage in die andere (`werk.poseAnteil`: Haut, Punkte, Griffe, die Winkel der
-// Knochen; Zähne und Zunge hängen an der gezeigten Haut und gehen mit). Am Faden gezogen folgt die Form dem Zeiger; losgelassen
-// fährt sie zum näheren Tropfen. Bei der Grundform angekommen wird die Pose verlassen. Unterwegs wird nichts gegriffen und nichts
-// gerechnet, und es entsteht kein Schritt für ⌘Z (wie beim Knopf bis dahin). Ein Tipp auf „Fressen“ in der Pose führt wie bisher
-// zurück in die Grundform.
+// Die Grundform und jede Pose stehen als Tropfen in einer Reihe, dazwischen je ein Faden, am Ende ein kleines Plus (Konzept 4.10:
+// „Die Posen stehen als Tropfen in einer Reihe (Grundform, Fressen, Plus); zwischen zwei Tropfen gezogen, wandern Punkte und Griffe
+// von der einen Lage zur anderen“). Die Lagen zählen in der Reihe: 0 ist die Grundform, k die Pose k − 1 des Werks.
+// - Ein Tipp auf einen Tropfen fährt dorthin: Die Anzeige wandert in rund einer Drittelsekunde von der einen Lage in die andere
+//   (Haut, Punkte, Griffe, die Winkel der Kiefer; Zähne und Zunge hängen an der gezeigten Haut und gehen mit), von der Grundform
+//   aus (`werk.poseAnteil`) oder direkt von Pose zu Pose (`werk.poseZiel`). Ein Tipp auf die gewählte Pose führt wie bisher
+//   zurück in die Grundform.
+// - Am Faden zwischen zwei Tropfen gezogen folgt die Form dem Zeiger; losgelassen fährt sie zum näheren Tropfen.
+// - Plus legt eine Pose an: eine Kopie dessen, was zu sehen ist. Einen Tropfen halten: sein Name wird ein Feld. Einen Tropfen auf
+//   den Mülleimer der Leiste ziehen: Die Pose ist weg (wie eine Farbe). Diese drei sind Schritte für ⌘Z.
+// Unterwegs wird nichts gegriffen und nichts gerechnet; Wählen und Wandern sind keine Schritte (wie beim Knopf bis zum 21.11.).
 
 const posenEl = $<HTMLDivElement>('posen');
 const poseGrundform = $<HTMLButtonElement>('pose-grundform');
-const posenFaden = $<HTMLDivElement>('posen-faden');
+const posePlus = $<HTMLButtonElement>('pose-plus');
 const posenStand = $<HTMLSpanElement>('posen-stand');
+const posenName = $<HTMLInputElement>('pose-name');
 /** so lange dauert die ganze Fahrt von einem Tropfen zum anderen (ms); eine kürzere Strecke entsprechend kürzer */
 const POSE_FAHRT_MS = 350;
-/** die laufende Fahrt: von welchem Anteil, wohin, wie lange sie dauert, wie viel davon vergangen ist und wann zuletzt gezählt wurde */
-let poseFahrt: { von: number; nach: 0 | 1; ms: number; zeit: number; zuletzt: number } | null = null;
 /** je Bild zählt die Fahrt höchstens so viel Zeit (ms): Ein langes Bild hält sie an, statt sie zu überspringen */
 const POSE_BILD_MS = 40;
-/** am Faden wird gezogen: der Zeiger, wo er gedrückt wurde, ob er sich schon bewegt hat */
-let poseHand: { id: number; x0: number; bewegt: boolean } | null = null;
-/** wann zuletzt am Faden losgelassen wurde: Der Klick, den der Browser danach meldet, ist kein Tipp */
+/** so lange gehalten, ohne zu ziehen (ms), wird der Name einer Pose ein Feld zum Schreiben */
+const POSE_HALTEN_MS = 550;
+/**
+ * Die laufende Fahrt. `was`: zwischen Grundform und betretener Pose (`anteil`) oder zwischen der betretenen Pose und der Pose
+ * `ziel` des Werks (`ziel`). Von welchem Wert, wohin (0 oder 1), wie lange sie dauert, wie viel davon vergangen ist und wann zuletzt
+ * gezählt wurde.
+ */
+let poseFahrt: { was: 'anteil' | 'ziel'; ziel: number; von: number; nach: 0 | 1; ms: number; zeit: number; zuletzt: number } | null = null;
+/**
+ * Am Zeiger: ein Faden (`faden`: seine Nummer, 1 liegt zwischen Grundform und erster Pose) oder der Tropfen einer Pose (`lage`).
+ * `bewegt`: Es wird gezogen (der Faden: wandern; der Tropfen: tragen). `halten`: die Uhr für das Benennen.
+ */
+let poseHand: { id: number; x0: number; y0: number; bewegt: boolean; faden: number; lage: number; halten: number } | null = null;
+/** wann zuletzt in der Reihe losgelassen wurde: Der Klick, den der Browser danach meldet, ist kein Tipp */
 let poseLosgelassen = -1e9;
-/** was die Reihe zuletzt zeigte (Anteil, unterwegs) */
+/** der nächste Klick in der Reihe gilt nicht (er gehört zu einem Halten) */
+let poseOhneKlick = false;
+/** was die Reihe zuletzt zeigte; wofür sie gebaut ist (die Namen der Posen); wo ihre Tropfen stehen (Ränder und Mitte, in der Reihe) */
 let posenZeile = '';
+let posenGebaut = '';
+let posenOrte: { lx: number; rx: number; y: number }[] = [];
 
-/** der Anteil der Pose an der Stelle x des Fadens */
-function fadenAnteil(x: number): number {
-  const r = posenFaden.getBoundingClientRect();
-  return Math.max(0, Math.min(1, (x - r.left) / Math.max(1, r.width)));
+/** die Tropfen der Lagen: die Grundform, dann je Pose einer */
+const lageKnoepfe = (): HTMLButtonElement[] => [poseGrundform, ...posenEl.querySelectorAll<HTMLButtonElement>('button.pose')];
+const posenFaeden = (): HTMLDivElement[] => [...posenEl.querySelectorAll<HTMLDivElement>('.posen-faden')];
+/** die Lage, in der das Werk steht: 0 die Grundform, sonst die Nummer der betretenen Pose plus eins */
+const lageJetzt = (): number => (werk.grund ? werk.posen.indexOf(werk.pose) + 1 : 0);
+
+/** Die Reihe nach den Posen des Werks bauen (der erste Tropfen und der erste Faden stehen in der Seite, weitere kommen und gehen) */
+function posenBauen(): void {
+  const namen = werk.posen.map((_, i) => werk.poseName(i));
+  const zeile = `${namen.join('\u0001')}|${werk.maulIstGeformt()}`;
+  if (zeile === posenGebaut) return;
+  posenGebaut = zeile;
+  const K = [...posenEl.querySelectorAll<HTMLButtonElement>('button.pose')];
+  const F = posenFaeden();
+  for (let i = K.length; i < namen.length; i++) {
+    const f = document.createElement('div');
+    f.className = 'posen-faden';
+    f.title = 'Ziehen: Die Form wandert zwischen den zwei Posen';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pose';
+    b.setAttribute('aria-pressed', 'false');
+    posenEl.insertBefore(f, posePlus);
+    posenEl.insertBefore(b, posePlus);
+  }
+  for (let i = Math.max(1, namen.length); i < K.length; i++) {
+    F[i]?.remove();
+    K[i]?.remove();
+  }
+  posenEl.querySelectorAll<HTMLButtonElement>('button.pose').forEach((b, i) => {
+    b.textContent = namen[i] ?? '';
+    b.dataset.nr = String(i + 1);
+    if (i > 0) b.title = `${namen[i]}: tippen fährt hin · halten benennt · auf den Mülleimer gezogen ist sie weg`;
+  });
+  posenFaeden().forEach((f, i) => {
+    f.dataset.nr = String(i + 1);
+  });
+  posePlus.hidden = !werk.maulIstGeformt() || namen.length >= werk.POSEN_HOECHSTENS;
+  posenMessen();
 }
-/** in die Pose treten, ohne sie schon zu zeigen (Anteil 0: Die Anzeige ist dieselbe wie in der Grundform); falsch: Es geht hier nicht */
+/** wo die Tropfen in der Reihe stehen (einmal je Bau gelesen, nicht je Bild) */
+function posenMessen(): void {
+  posenOrte = lageKnoepfe().map((b) => ({ lx: b.offsetLeft, rx: b.offsetLeft + b.offsetWidth, y: b.offsetTop + b.offsetHeight / 2 }));
+  posenZeile = '';
+}
+window.addEventListener('resize', () => {
+  posenGebaut = '';
+});
+
+/**
+ * Die Reihe zeigen (je Bild): gedrückt ist der Tropfen der näheren Lage, der kleine Tropfen für den Stand sitzt in Ruhe am Rand
+ * des gewählten Tropfens und läuft unterwegs vom Rand des einen zum Rand des anderen. Gesetzt wird nur, was sich geändert hat,
+ * und der Stand als Verschiebung (ein Ort in Prozent ließe die Seite in jedem Bild neu anordnen).
+ */
+function posenZeigen(): void {
+  posenBauen();
+  const cur = lageJetzt();
+  const z = werk.poseZiel;
+  const a = z ? cur : 0;
+  const b = z ? werk.posen.indexOf(z.p) + 1 : cur;
+  const t = z ? z.t : werk.grund ? werk.poseAnteil : 0;
+  const wandert = werk.poseWandert();
+  const zeile = `${a}|${b}|${t.toFixed(4)}|${wandert}`;
+  if (zeile === posenZeile) return;
+  posenZeile = zeile;
+  const nah = t >= 0.5 ? b : a;
+  lageKnoepfe().forEach((k, i) => {
+    const an = String(i === nah);
+    if (k.getAttribute('aria-pressed') !== an) k.setAttribute('aria-pressed', an);
+  });
+  const A = posenOrte[a];
+  const B = posenOrte[b];
+  if (A && B) {
+    const x0 = b > a ? A.rx : a === 0 && b === 0 ? A.rx : A.lx;
+    const x1 = b > a ? B.lx : b === a ? x0 : B.rx;
+    posenStand.style.transform = `translate(${(x0 + (x1 - x0) * t).toFixed(1)}px, ${(A.y + (B.y - A.y) * t).toFixed(1)}px)`;
+  }
+  // (unterwegs stellen die Regler nichts: Sie gelten der Pose, wie sie ist)
+  if (fressenMaul.disabled !== wandert) fressenMaul.disabled = fressenKopf.disabled = wandert;
+}
+
+/** in die gewählte Pose treten, ohne sie schon zu zeigen (Anteil 0: Die Anzeige ist dieselbe wie in der Grundform); falsch: Es geht hier nicht */
 function poseOeffnen(): boolean {
   if (werk.grund) return true;
   if (!werk.poseBetreten()) {
@@ -9065,38 +9145,76 @@ function poseOeffnen(): boolean {
   werk.anzeige.allesZeigen();
   return true;
 }
-/** zur Grundform (0) oder in die Pose (1) fahren */
-function poseFahren(nach: 0 | 1): void {
-  if (werk.zug || werk.maulLauf) return;
+/** eine Fahrt beginnen (die Uhr läuft ab dem ersten Bild: Der Eintritt in eine Pose kostet ein langes Bild, sie begänne sonst mit einem Sprung) */
+function poseFahrtLos(was: 'anteil' | 'ziel', ziel: number, von: number, nach: 0 | 1): void {
+  poseFahrt = { was, ziel, von, nach, ms: Math.max(120, POSE_FAHRT_MS * Math.abs(nach - von)), zeit: 0, zuletzt: -1 };
+  werkNeu = true;
+  anstossen();
+}
+/** zu einer Lage fahren: 0 die Grundform, sonst die Pose z − 1 des Werks */
+function poseFahren(z: number): void {
+  if (werk.zug || werk.maulLauf || !(z >= 0 && z <= werk.posen.length)) return;
+  const cur = lageJetzt();
   if (!werk.maulIstGeformt()) {
-    // (das Maul aus der schmalen Form von vor dem 14.11.: ohne Fahrt, wie bisher)
-    if ((nach === 1) === (werk.grund !== null)) return;
-    if (werk.grund) werk.poseVerlassen();
+    // (das Maul aus der schmalen Form von vor dem 14.11.: ohne Fahrt, wie bisher; es hat nur die eine Pose)
+    if (z > 1) return;
+    if (z === cur) {
+      if (z === 0) return;
+      werk.poseVerlassen();
+    } else if (werk.grund) werk.poseVerlassen();
     else werk.poseBetreten();
     werk.anzeige.allesZeigen();
     werkNeu = true;
     anstossen();
     return;
   }
-  if (!werk.grund && (nach === 0 || !poseOeffnen())) return;
-  const von = werk.poseAnteil;
-  // (die Uhr läuft ab dem ersten Bild: Der Eintritt in die Pose kostet ein langes Bild, die Fahrt begänne sonst mit einem Sprung)
-  poseFahrt = { von, nach, ms: Math.max(120, POSE_FAHRT_MS * Math.abs(nach - von)), zeit: 0, zuletzt: -1 };
-  werkNeu = true;
-  anstossen();
+  const ziel = werk.poseZiel;
+  if (ziel) {
+    // unterwegs zwischen zwei Posen: nur zu einem der zwei Enden
+    const nr = werk.posen.indexOf(ziel.p);
+    if (z === nr + 1) poseFahrtLos('ziel', nr, ziel.t, 1);
+    else if (z === cur) poseFahrtLos('ziel', nr, ziel.t, 0);
+    return;
+  }
+  if (werk.grund && werk.poseAnteil < 1) {
+    // unterwegs zwischen Grundform und Pose: ebenso
+    if (z === cur) poseFahrtLos('anteil', -1, werk.poseAnteil, 1);
+    else if (z === 0) poseFahrtLos('anteil', -1, werk.poseAnteil, 0);
+    return;
+  }
+  // (ein Tipp auf die gewählte Pose führt zurück in die Grundform, wie der Knopf bis zum 21.11.)
+  if (z === 0 || z === cur) {
+    if (cur > 0) poseFahrtLos('anteil', -1, 1, 0);
+    return;
+  }
+  if (cur === 0) {
+    if (!werk.poseWaehlen(z - 1) || !poseOeffnen()) return;
+    poseFahrtLos('anteil', -1, werk.poseAnteil, 1);
+    return;
+  }
+  // von Pose zu Pose, ohne Umweg über die Grundform
+  werk.poseZielSetzen(z - 1, 0);
+  if (werk.poseZiel) poseFahrtLos('ziel', z - 1, 0, 1);
 }
-/** Die Fahrt zwischen Grundform und Pose, je Bild. Zurück: ob es weitere Bilder braucht. */
+/** Die Fahrt zwischen zwei Lagen, je Bild. Zurück: ob es weitere Bilder braucht. */
 function poseFahrtSchritt(): boolean {
   if (!werk.grund) {
     // (die Pose ist inzwischen verlassen: ⌘Z, eine andere Form)
     poseFahrt = null;
-    if (poseHand?.bewegt) poseHand = null;
+    if (poseHand?.bewegt && poseHand.faden > 0) poseHand = null;
     return false;
   }
   const f = poseFahrt;
   if (!f) {
     // (am Faden gehalten: je Bild neu gemischt, falls der Hintergrund inzwischen die Haut gesetzt hat)
-    if (werk.poseWandert()) werk.poseAnteilSetzen(werk.poseAnteil);
+    const z = werk.poseZiel;
+    if (z) werk.poseZielSetzen(werk.posen.indexOf(z.p), z.t);
+    else if (werk.poseWandert()) werk.poseAnteilSetzen(werk.poseAnteil);
+    return false;
+  }
+  // (ein Schritt für ⌘Z hat das Ziel inzwischen genommen: Die Fahrt ist vorbei)
+  if (f.was === 'ziel' && f.zeit > 0 && !werk.poseZiel) {
+    poseFahrt = null;
     return false;
   }
   const jetzt = performance.now();
@@ -9105,66 +9223,205 @@ function poseFahrtSchritt(): boolean {
   const t = Math.min(1, f.zeit / f.ms);
   if (t >= 1) {
     poseFahrt = null;
-    if (f.nach === 0) werk.poseVerlassen();
+    if (f.was === 'ziel') {
+      if (f.nach === 1) werk.poseWechseln(f.ziel);
+      else werk.poseZielSetzen(null);
+    } else if (f.nach === 0) werk.poseVerlassen();
     else werk.poseAnteilSetzen(1);
     werk.anzeige.allesZeigen();
     return true;
   }
   // (weich an beiden Enden)
-  werk.poseAnteilSetzen(f.von + (f.nach - f.von) * t * t * (3 - 2 * t));
+  const w = f.von + (f.nach - f.von) * t * t * (3 - 2 * t);
+  if (f.was === 'ziel') werk.poseZielSetzen(f.ziel, w);
+  else werk.poseAnteilSetzen(w);
   werkNeu = true;
   return true;
 }
 
-fressenKnopf.addEventListener('click', () => {
-  if (performance.now() - poseLosgelassen < 350) return;
-  // (in der Pose führt der Tipp zurück in die Grundform, wie der Knopf bis zum 21.11.)
-  poseFahren(werk.grund && !poseFahrt && !werk.poseWandert() ? 0 : 1);
+/** der Anteil an der Stelle x des Fadens `nr` (0 an seinem linken Tropfen, 1 am rechten) */
+function fadenAnteil(nr: number, x: number): number {
+  const f = posenFaeden()[nr - 1];
+  if (!f) return 0;
+  const r = f.getBoundingClientRect();
+  return Math.max(0, Math.min(1, (x - r.left) / Math.max(1, r.width)));
+}
+/**
+ * Das Wandern am Faden `nr` beginnen. Faden 1 liegt zwischen der Grundform und der ersten Pose: Das Werk tritt in sie. Jeder weitere
+ * liegt zwischen zwei Posen: Das Werk steht danach in der linken, die rechte ist das Ziel. Falsch: Es geht hier nicht.
+ */
+function fadenBeginnen(nr: number): boolean {
+  if (werk.zug || werk.maulLauf || !werk.maulIstGeformt() || nr < 1 || nr > werk.posen.length) return false;
+  poseFahrt = null;
+  const links = Math.max(0, nr - 2);
+  if (!werk.grund) {
+    if (!werk.poseWaehlen(links)) return false;
+    if (nr === 1) return poseOeffnen();
+    // (aus der Grundform an einen Faden zwischen zwei Posen: Die Anzeige springt in ihre linke)
+    if (!werk.poseBetreten()) return false;
+    werk.poseAnteilSetzen(1);
+  } else {
+    werk.poseZielSetzen(null);
+    if (werk.posen.indexOf(werk.pose) !== links && !werk.poseWechseln(links)) return false;
+    if (nr > 1) werk.poseAnteilSetzen(1);
+  }
+  werk.anzeige.allesZeigen();
+  return true;
+}
+function fadenZiehen(nr: number, x: number): void {
+  const t = fadenAnteil(nr, x);
+  if (nr === 1) werk.poseAnteilSetzen(t);
+  else werk.poseZielSetzen(nr - 1, t);
+  werkNeu = true;
+  anstossen();
+}
+function fadenLoslassen(nr: number): void {
+  if (!werk.grund) return;
+  const z = werk.poseZiel;
+  if (nr === 1) poseFahren(werk.poseAnteil >= 0.5 ? 1 : 0);
+  else if (z) poseFahren(z.t >= 0.5 ? nr : nr - 1);
+}
+
+/** Plus: eine Pose anlegen (eine Kopie dessen, was zu sehen ist); sie ist gleich gewählt */
+function poseNeu(): void {
+  if (werk.zug || werk.maulLauf || werk.poseWandert() || poseFahrt) return;
+  const nr = werk.poseAnlegen();
+  werk.anzeige.statusZeigen();
+  if (nr < 0) {
+    anstossen();
+    return;
+  }
+  werk.anzeige.allesZeigen();
+  werkNeu = true;
+  anstossen();
+}
+/** eine Pose löschen (ihr Tropfen lag auf dem Mülleimer) */
+function poseWeg(nr: number): void {
+  if (werk.zug || werk.maulLauf || werk.poseWandert() || poseFahrt) return;
+  werk.poseLoeschen(nr);
+  werk.anzeige.statusZeigen();
+  werk.anzeige.allesZeigen();
+  werkNeu = true;
+  anstossen();
+}
+/** den Namen einer Pose zum Schreiben öffnen: Das Feld liegt über ihrem Tropfen */
+function poseNameOeffnen(lage: number): void {
+  const b = lageKnoepfe()[lage];
+  if (!b || lage < 1 || werk.zug || werk.maulLauf) return;
+  poseOhneKlick = true;
+  posenName.dataset.nr = String(lage);
+  posenName.value = werk.poseName(lage - 1);
+  posenName.style.left = `${b.offsetLeft}px`;
+  posenName.style.top = `${b.offsetTop}px`;
+  posenName.style.width = `${Math.max(72, b.offsetWidth + 16)}px`;
+  posenName.style.height = `${b.offsetHeight}px`;
+  posenName.hidden = false;
+  posenName.focus();
+  posenName.select();
+}
+function poseNameSchliessen(uebernehmen: boolean): void {
+  if (posenName.hidden) return;
+  const lage = Number(posenName.dataset.nr);
+  posenName.hidden = true;
+  if (uebernehmen && lage >= 1 && werk.poseBenennen(lage - 1, posenName.value)) {
+    posenGebaut = '';
+    anstossen();
+  }
+}
+posenName.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    poseNameSchliessen(true);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    poseNameSchliessen(false);
+  }
 });
-poseGrundform.addEventListener('click', () => {
+posenName.addEventListener('blur', () => poseNameSchliessen(true));
+posenName.addEventListener('pointerdown', (e) => e.stopPropagation());
+posenName.addEventListener('click', (e) => e.stopPropagation());
+
+posenEl.addEventListener('click', (e) => {
+  if (poseOhneKlick) {
+    poseOhneKlick = false;
+    return;
+  }
   if (performance.now() - poseLosgelassen < 350) return;
-  poseFahren(0);
-});
-posenFaden.addEventListener('click', (e) => {
-  if (performance.now() - poseLosgelassen < 350) return;
-  poseFahren(fadenAnteil(e.clientX) >= 0.5 ? 1 : 0);
+  const ziel = e.target as HTMLElement;
+  if (ziel.closest('#pose-plus')) {
+    poseNeu();
+    return;
+  }
+  const knopf = ziel.closest<HTMLButtonElement>('#pose-grundform, button.pose');
+  if (knopf) {
+    poseFahren(knopf === poseGrundform ? 0 : Number(knopf.dataset.nr));
+    return;
+  }
+  // ein Tipp auf einen Faden: zum näheren seiner zwei Tropfen
+  const faden = ziel.closest<HTMLElement>('.posen-faden');
+  if (faden) {
+    const nr = Number(faden.dataset.nr);
+    poseFahren(fadenAnteil(nr, e.clientX) >= 0.5 ? nr : nr - 1);
+  }
 });
 posenEl.addEventListener('pointerdown', (e) => {
-  if (e.button !== 0 || poseHand || werk.zug || werk.maulLauf) return;
-  poseHand = { id: e.pointerId, x0: e.clientX, bewegt: false };
+  poseOhneKlick = false;
+  if (e.button !== 0 || poseHand || werk.zug || werk.maulLauf || !posenName.hidden) return;
+  const ziel = e.target as HTMLElement;
+  const faden = ziel.closest<HTMLElement>('.posen-faden');
+  const knopf = ziel.closest<HTMLButtonElement>('button.pose');
+  if (!faden && !knopf) return;
+  const lage = knopf ? Number(knopf.dataset.nr) : 0;
+  poseHand = { id: e.pointerId, x0: e.clientX, y0: e.clientY, bewegt: false, faden: faden ? Number(faden.dataset.nr) : 0, lage, halten: knopf ? window.setTimeout(() => poseNameOeffnen(lage), POSE_HALTEN_MS) : 0 };
 });
 posenEl.addEventListener('pointermove', (e) => {
   const h = poseHand;
   if (!h || e.pointerId !== h.id) return;
+  const dx = e.clientX - h.x0;
+  const dy = e.clientY - h.y0;
   if (!h.bewegt) {
-    // erst nach ein paar Bildpunkten Weg ist es ein Ziehen (sonst ein Tipp)
-    if (Math.abs(e.clientX - h.x0) < 4) return;
-    if (werk.zug || werk.maulLauf || !werk.maulIstGeformt() || !poseOeffnen()) {
+    // erst nach ein paar Bildpunkten Weg ist es ein Ziehen (sonst ein Tipp oder ein Halten)
+    if (Math.hypot(dx, dy) < (h.faden ? 4 : 6)) return;
+    window.clearTimeout(h.halten);
+    if (!posenName.hidden || (h.faden ? !fadenBeginnen(h.faden) : werk.poseWandert() || !!poseFahrt)) {
       poseHand = null;
       return;
     }
     h.bewegt = true;
-    poseFahrt = null;
-    posenEl.classList.add('zieht');
+    if (h.faden) posenEl.classList.add('zieht');
+    else lageKnoepfe()[h.lage]?.classList.add('unterwegs');
     try {
       posenEl.setPointerCapture(e.pointerId);
     } catch {
       // nachgestellte Ereignisse haben keinen echten Zeiger
     }
   }
-  werk.poseAnteilSetzen(fadenAnteil(e.clientX));
-  werkNeu = true;
-  anstossen();
+  if (h.faden) fadenZiehen(h.faden, e.clientX);
+  else {
+    // der Tropfen einer Pose folgt dem Zeiger (auf dem Mülleimer losgelassen ist sie weg, sonst kehrt er zurück)
+    const b = lageKnoepfe()[h.lage];
+    if (b) b.style.transform = `translate(${dx.toFixed(0)}px, ${dy.toFixed(0)}px)`;
+  }
 });
 for (const art of ['pointerup', 'pointercancel'] as const)
   posenEl.addEventListener(art, (e) => {
     const h = poseHand;
     if (!h || e.pointerId !== h.id) return;
     poseHand = null;
+    window.clearTimeout(h.halten);
     posenEl.classList.remove('zieht');
     if (!h.bewegt) return;
     poseLosgelassen = performance.now();
-    if (werk.grund) poseFahren(werk.poseAnteil >= 0.5 ? 1 : 0);
+    if (h.faden) {
+      fadenLoslassen(h.faden);
+      return;
+    }
+    const b = lageKnoepfe()[h.lage];
+    if (b) {
+      b.classList.remove('unterwegs');
+      b.style.transform = '';
+    }
+    if (art === 'pointerup' && document.elementFromPoint(e.clientX, e.clientY)?.closest('button') === leiste.muellKnopf) poseWeg(h.lage - 1);
   });
 /** Stand vor dem Ziehen eines Reglers: ein Schritt für ⌘Z je Loslassen (wie im Prüffenster) */
 let vorRegler: werk.Schnappschuss | null = null;
@@ -9444,7 +9701,7 @@ function zaehneRechnen(): void {
   }
   const k = werk.kieferKnochen();
   // (wird in der Grundform an der Form gezogen, steht die Anzeige zu, auch wenn der Blick ins Maul noch ausklingt: Dann stecken die Zähne im Maul)
-  const auf = k && werk.anzeigeDreht() ? ((k.oben.grad + k.unten.grad) * k.gezeigt * Math.PI) / 180 : 0;
+  const auf = k ? (werk.maulOffenGrad() * Math.PI) / 180 : 0;
   const t = zahnWuchs ? (performance.now() - zahnWuchs.t0) / ZAHN_WUCHS_MS : 2;
   // der weiche Wechsel der Vorlage (Formenring): je Bild ein Netz zwischen der alten und der neuen
   const m = zahnMorph;
@@ -9458,7 +9715,7 @@ function zaehneRechnen(): void {
   // die Lagen der Haut, wie sie gezeigt wird (mit den Knochen gedreht): nur neu, wenn Haut oder Knochen sich geändert haben. Ändern
   // sich nur Werte oder die Form der Zähne (am Drehregler, an den Linien eines Zahns), bleiben sie (das Drehen der ganzen Haut und
   // aller Linien kostete sonst je Bild knapp 2 ms).
-  const lagenSchl = `${werkHaut.version}|${werk.zurueck.length}|${k ? `${k.oben.grad}|${k.unten.grad}|${k.gezeigt}` : ''}|${werk.anzeigeDreht()}`;
+  const lagenSchl = `${werkHaut.version}|${werk.zurueck.length}|${k ? `${k.oben.grad}|${k.unten.grad}|${k.gezeigt}` : ''}|${werk.poseZeile()}`;
   let P: ArrayLike<number>;
   if (zaehneLagen && zaehneLagen.haut === werk.haut && zaehneLagen.schl === lagenSchl && !werk.zug) P = zaehneLagen.P;
   else {
@@ -10343,7 +10600,7 @@ function zungeSchritt(dt: number): boolean {
   const jetzt = performance.now();
   const wuchs = zungeWuchs ? Math.max(0, Math.min(1, (jetzt - zungeWuchs.t0) / ZUNGE_WUCHS_MS)) : 1;
   if (zungeWuchs && wuchs >= 1) zungeWuchs = null;
-  const stand = `${zungePlan?.schl}|${werkHaut.version}|${zaehneVersion}|${werk.anzeigeDreht() ? `${werk.grund ? werk.poseAnteil.toFixed(4) : werk.maulBlick.toFixed(4)}|${werk.pose.kiefer}|${werk.pose.schaedel}` : 'zu'}`;
+  const stand = `${zungePlan?.schl}|${werkHaut.version}|${zaehneVersion}|${werk.poseZeile()}`;
   const neu = !zungenKette || zungenKette.platz !== platz;
   if (!neu && stand === zungeStand && zungeNetzJetzt && !zungenKette!.bewegt && !zungenKette!.greift && wuchs >= 1) return false;
   zungeStand = stand;
@@ -11355,6 +11612,11 @@ const haken = {
     anteil: werk.grund ? werk.poseAnteil : 0,
     faehrt: poseFahrt !== null,
     offen: werk.maulOffenGrad(),
+    /** Scheibe 3: die gewählte Pose (Nummer im Werk), die Namen aller Posen, das Ziel beim Wandern zwischen zwei Posen */
+    nr: werk.posen.indexOf(werk.pose),
+    namen: werk.posen.map((_, i) => werk.poseName(i)),
+    winkel: werk.posen.map((x) => [x.kiefer, x.schaedel]),
+    ziel: werk.poseZiel ? { nr: werk.posen.indexOf(werk.poseZiel.p), t: werk.poseZiel.t } : null,
     kiefer: werk.pose.kiefer,
     schaedel: werk.pose.schaedel,
     lauf: werk.maulLauf !== null,

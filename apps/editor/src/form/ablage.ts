@@ -64,6 +64,20 @@ export type WesenStand = {
     /** in der Pose gesichert: `haut` und `loops` sind ihre Ruhe (fehlt: ein Stand von vor dem 14.11., dort die gedrehte Lage) */
     inRuhe?: boolean;
   };
+  /**
+   * Seit dem 21.11. (Etappe 8, Scheibe 3): alle Posen der Form in der Reihenfolge ihrer Tropfen, `poseNr` die gewählte (sie
+   * steht auch in `pose`: So liest ein älteres Fenster weiter). Fehlt bei Formen mit nur der einen, unbenannten Pose. `zunge`:
+   * die Lage der Zunge in einer Pose, die nicht gewählt ist (die der gewählten steht am Maul).
+   */
+  posen?: {
+    kiefer: number;
+    schaedel: number;
+    delta: Float64Array | null;
+    linien?: { id: number; laenge?: number; punkte: { s?: number; d: V3; ein: V3 | null; aus: V3 | null }[] }[] | null;
+    name?: string;
+    zunge?: number[] | null;
+  }[];
+  poseNr?: number;
   /** in der Pose: die Grundform dazu (`haut` und `loops` sind dann die Pose) */
   grund: { haut: FlacheHaut; loops: Loop[] } | null;
   /**
@@ -249,6 +263,13 @@ export function pruefen(st: WesenStand): string | null {
   if (!Array.isArray(st.ids) || st.ids.length !== 2 || !st.ids.every((x) => Number.isInteger(x) && x >= 1)) return 'Kennungen fehlen';
   if (!st.pose || typeof st.pose.kiefer !== 'number' || typeof st.pose.schaedel !== 'number') return 'Pose fehlt';
   if (st.pose.delta && !(st.pose.delta instanceof Float64Array)) return 'Pose: Blendshape ist kein Feld';
+  if (st.posen !== undefined) {
+    if (!Array.isArray(st.posen) || st.posen.length === 0) return 'Posen: keine Liste';
+    for (const q of st.posen) {
+      if (!q || typeof q.kiefer !== 'number' || typeof q.schaedel !== 'number') return 'Posen: eine Pose ohne Winkel';
+      if (q.delta && !(q.delta instanceof Float64Array)) return 'Posen: ein Blendshape ist kein Feld';
+    }
+  }
   if (st.grund) {
     const gf = hautFehler(st.grund.haut, 'Grundform') ?? loopsFehler(st.grund.loops, st.grund.haut, 'Grundform');
     if (gf) return gf;

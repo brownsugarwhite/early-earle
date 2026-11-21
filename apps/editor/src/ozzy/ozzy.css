@@ -445,19 +445,24 @@ body.wende-an #hinweis {
   color: var(--leise);
   font-variant-numeric: tabular-nums;
 }
-#fressen-knopf[aria-pressed='true'],
-#pose-grundform[aria-pressed='true'] {
+.posen button[aria-pressed='true'] {
   background: var(--tinte);
   color: var(--papier);
   border-color: var(--tinte);
 }
-/* Maul, Etappe 8: die Posen als Tropfen in einer Reihe. Zwischen zwei Tropfen hängt ein Faden mit dem Stand (ein kleiner Tropfen
-   wie an den Reglern): Tippen fährt hin, am Faden ziehen lässt die Form von der einen Lage in die andere wandern. */
+/* Maul, Etappe 8: die Posen als Tropfen in einer Reihe. Zwischen zwei Tropfen hängt ein Faden, am Ende ein kleines Plus. Ein
+   kleiner Tropfen (wie an den Reglern) zeigt den Stand: Tippen fährt hin, am Faden ziehen lässt die Form von der einen Lage in
+   die andere wandern. Viele Posen brechen in eine zweite Zeile um. */
+.fressen {
+  max-width: min(560px, 72vw);
+}
 .posen {
+  position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   align-self: stretch;
-  gap: 0;
+  row-gap: 6px;
   margin-bottom: 2px;
   touch-action: none;
   -webkit-user-select: none;
@@ -465,11 +470,18 @@ body.wende-an #hinweis {
 }
 .posen button {
   flex: none;
+  white-space: nowrap;
+}
+.posen button.unterwegs {
+  position: relative;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0.85;
 }
 .posen-faden {
   position: relative;
-  flex: 1 1 auto;
-  min-width: 40px;
+  flex: 1 1 44px;
+  min-width: 44px;
   height: 22px;
   cursor: ew-resize;
 }
@@ -482,12 +494,27 @@ body.wende-an #hinweis {
   height: 0.5px;
   background: var(--tinte);
 }
-/* (der Stand ist so breit wie der Faden und wird um seinen Anteil verschoben; der Tropfen sitzt an seinem linken Ende) */
+.pose-plus {
+  margin-left: 8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 1;
+  color: var(--leise);
+}
+.pose-plus:hover {
+  color: var(--tinte);
+  border-color: var(--tinte);
+}
+.pose-plus[hidden] {
+  display: none;
+}
+/* (der Stand liegt in der Ecke der Reihe und wird an seinen Ort verschoben) */
 .posen-stand {
   position: absolute;
-  top: 50%;
   left: 0;
-  right: 0;
+  top: 0;
+  width: 0;
   height: 0;
   pointer-events: none;
 }
@@ -502,9 +529,24 @@ body.wende-an #hinweis {
   background: var(--tinte);
   transition: transform 260ms var(--feder);
 }
-.posen-faden:hover .posen-stand::before,
+.posen:hover .posen-stand::before,
 .posen.zieht .posen-stand::before {
   transform: scale(1.7);
+}
+.pose-name {
+  position: absolute;
+  z-index: 7;
+  box-sizing: border-box;
+  font: inherit;
+  color: var(--tinte);
+  background: var(--papier);
+  border: 0.5px solid var(--tinte);
+  border-radius: 999px;
+  padding: 2px 9px;
+  outline: none;
+}
+.pose-name[hidden] {
+  display: none;
 }
 
 @keyframes tropfen-auf {
