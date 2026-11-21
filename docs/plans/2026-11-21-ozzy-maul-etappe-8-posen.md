@@ -166,3 +166,70 @@ Lappen ab, und am Ende seiner Reichweite steht in der Seite eine Stufe. Das ents
 
 **Offen:** Liste, Punkte 153 bis 166.
 
+## 7. Scheibe 3: mehrere Posen (Plan, 21.11.)
+
+Sein Wort vom 21.11.: „erstmal mehrere posen. … Kiefer richten und feinschliff kommen dann zum schluss.“ Konzept 4.10: „Die Posen
+stehen als Tropfen in einer Reihe (Grundform, Fressen, Plus); zwischen zwei Tropfen gezogen, wandern Punkte und Griffe von der
+einen Lage zur anderen.“ Gespeichert wird je Pose, was heute die eine Pose trägt: die Winkel der zwei Kiefer und der Versatz
+jedes Punkts und Griffs gegen die Grundform; dazu ihr Name und die Lage der Zunge (Liste, 112).
+
+### 7.1 Was er danach kann
+
+1. **Plus:** Am Ende der Reihe hängt ein kleiner Tropfen „+“. Ein Tipp legt eine Pose an: eine Kopie dessen, was er gerade sieht
+   (in einer Pose: diese Pose mit Winkeln und Form; in der Grundform: die Grundform, das Maul zu). Sie ist gleich gewählt und
+   heißt „Pose 2“, „Pose 3“ …
+2. **Wählen:** Ein Tipp auf einen Tropfen fährt dorthin, von der Grundform aus oder direkt von einer anderen Pose (ohne Umweg
+   über die Grundform). Ein Tipp auf die gewählte Pose führt wie bisher zurück in die Grundform.
+3. **Wandern:** Zwischen je zwei benachbarten Tropfen hängt ein Faden. Am Faden gezogen wandert die Form zwischen diesen zwei
+   Lagen: Haut, Punkte, Griffe und die Winkel der Kiefer. Losgelassen fährt sie zum näheren Tropfen.
+4. **Benennen:** Einen Tropfen gedrückt halten (ohne zu ziehen): Sein Name wird ein Feld zum Schreiben; ↩ übernimmt, Esc
+   verwirft. „Grundform“ heißt immer so.
+5. **Löschen:** Den Tropfen einer Pose auf den Mülleimer der Leiste ziehen (wie eine Farbe). Eine Pose bleibt immer.
+6. **⌘Z** nimmt Anlegen, Löschen und Benennen zurück (je ein Schritt). Wählen und Wandern sind keine Schritte.
+7. **Sichern und Laden** tragen alle Posen und welche gewählt ist. Eine Datei von vorher hat eine Pose („Fressen“).
+8. Die zwei Regler, die Tropfen der Kiefer und der Blick ins Maul gelten der gewählten Pose; die Zunge bleibt je Pose liegen,
+   wohin sie dort gezogen wurde.
+
+### 7.2 Der Weg
+
+- **Werk (`form/werk.ts`):** `posen` (alle Posen der Form in der Reihenfolge der Reihe); `pose` bleibt „die gewählte“ und ist
+  eine von ihnen. `PoseStand` bekommt `name` und `zunge`. Handgriffe: `poseAnlegen`, `poseWaehlen`, `poseWechseln` (von der
+  betretenen Pose in eine andere), `poseLoeschen`, `poseBenennen`. Der Schritt für ⌘Z und der Stand für die Datei tragen alle
+  Posen (`Schnappschuss.posen`, `WesenStand.posen`, `poseNr`; `pose` bleibt darin die gewählte, damit ältere Stände und das
+  Prüffenster weiter lesen).
+- **Alle Posen gehen mit dem Netz mit:** `netzGewachsen` führt den Versatz jeder Pose nach, nicht nur den der gewählten; neue
+  Punkte liegen in jeder Lage auf deren runder Fläche (`zweiteLage.ts`, wie in Scheibe 1).
+- **Die Anzeige zwischen zwei Posen:** Neben dem Anteil zwischen Grundform und Pose (`poseAnteil`) gibt es ein Ziel
+  (`poseZiel`: eine andere Pose und wie weit die Anzeige schon dort ist). `alsAnzeige` mischt dann die Ruhe der betretenen Pose
+  mit der Lage der anderen (Grundform plus deren Versatz; ihre Linien wie beim Betreten), die Winkel der Kiefer anteilig. Am
+  Ziel angekommen wechselt das Werk die Pose (`poseWechseln`). Unterwegs wird nicht gegriffen.
+- **Die Reihe (`ozzy/main.ts`, `ozzy.html`, `ozzy.css`):** aus den Posen des Werks gebaut (der erste Tropfen behält die Kennung
+  `#fressen-knopf`); ein Faden je Nachbarpaar, ein Tropfen für den Stand, der längs der Reihe läuft; Plus; Halten zum
+  Benennen; Ziehen eines Tropfens zum Mülleimer.
+- Am Rechenkern (`packages/shape`) ändert sich nichts.
+
+### 7.3 Proben (vorab festgelegt)
+
+Neue Fensterprobe `ozzy-maul-posen-reihe-fenster.mjs` an „teat firefish“ (Maul geschnitten, eingerastete Seite):
+
+| Nr. | Was | Kriterium |
+| --- | --- | --- |
+| R1 | In „Fressen“ auf Plus | eine zweite Pose „Pose 2“ ist gewählt; gezeigte Haut und Winkel wie in „Fressen“ (Haut höchstens 0,01 anders); ein Schritt, ⌘Z nimmt sie, die Reihe zeigt wieder zwei Tropfen |
+| R2 | In Pose 2 einen Punkt der Lippe ziehen und den Unterkiefer weiter öffnen; dann „Fressen“, dann Grundform | „Fressen“ hat seine Linien (höchstens 0,01) und seine Winkel behalten; die Grundform ihre Linien (höchstens 0,01) |
+| R3 | Aus „Fressen“ ein Tipp auf Pose 2 | die Fahrt geht direkt: Der Winkel des Mauls läuft stetig vom einen zum anderen Wert und verlässt den Bereich dazwischen nie (kein Umweg über „zu“); danach ist Pose 2 gewählt, ihre Linien wie verlassen (höchstens 0,01) |
+| R4 | Am Faden zwischen „Fressen“ und Pose 2 auf die Hälfte | der Winkel des Mauls ist das Mittel beider Posen (höchstens 0,5°), ein in Pose 2 gezogener Punkt fern vom Maul steht in der Mitte seiner zwei Lagen (höchstens 5 % des Wegs); unter der Hälfte losgelassen „Fressen“, darüber Pose 2 |
+| R5 | In Pose 2 das Maul weit formen (das Netz wächst), zurück | „Fressen“ und die Grundform: Linien höchstens 0,01; die gezeigte Haut beider höchstens 1 neben vorher, höchstens 1 % der Proben über 0,05 |
+| R6 | Pose 2 halten, „Gähnen“ schreiben, ↩ | der Tropfen heißt so; ein Schritt, ⌘Z gibt „Pose 2“ zurück |
+| R7 | Sichern, neu laden | zwei Posen mit ihren Namen, Winkeln und Linien (höchstens 0,01); die gewählte ist gewählt |
+| R8 | Den Tropfen der zweiten Pose auf den Mülleimer ziehen | eine Pose bleibt, die Form steht in der Grundform; ⌘Z bringt die Pose wieder (Linien höchstens 0,01); die letzte Pose lässt sich nicht löschen |
+| R9 | Tempo: die Fahrt zwischen zwei Posen | Ozzy rechnet unterwegs je Bild im Mittel höchstens 16,7 ms |
+
+Bestehende Proben, die danach laufen müssen: `ozzy-maul-posen-fenster` (P1 bis P8, Q1 bis Q4), `ozzy-maul-fenster`,
+`-sichern-`, `-zunge-`, `-zaehne-`, `-pose-fenster`; Tests `src/form/`, `src/ozzy/`; Typen.
+
+### 7.4 Was bewusst nicht dazugehört
+
+- **Zähne je Pose** (ihre Werte gelten für alle Lagen), Posen umordnen, drei Posen zugleich mischen.
+- **Die Kiefer** (Liste 20 bis 22) und der Feinschliff: nach seinem Wort zum Schluss, zusammen mit seinem Feedback.
+- Das Maul aus der schmalen Form (vor dem 14.11.) behält seine eine Pose.
+
