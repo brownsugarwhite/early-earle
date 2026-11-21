@@ -18,8 +18,17 @@
 //   P7 In der Pose gesichert und neu geladen: Die Pose ist an, ihre Linien und die der Grundform sind wie vorher (höchstens 0,01).
 //   P8 Tempo: Der Zug aus P1 rechnet je Bild im Mittel nicht mehr als derselbe Zug in der Grundform (höchstens ein Fünftel und
 //      2 ms darüber).
+// Scheibe 2 (die Posen als Tropfen in einer Reihe; zwischen Grundform und „Fressen“ wandern):
+//   Q1 Ein Tipp auf „Fressen“, dann auf „Grundform“: Das Maul geht stetig auf und zu (der Anteil der Pose wächst von Bild zu Bild,
+//      kein Sprung über ein Viertel); danach ist die Pose an beziehungsweise aus.
+//   Q2 Am Faden auf die Hälfte gezogen: Der Anteil steht bei der Hälfte (höchstens 0,03 daneben), die Kiefer beim halben Winkel; ein
+//      Punkt der Form fern vom Maul, der in der Pose gezogen wurde, steht gezeigt in der Mitte zwischen seinen zwei Lagen (höchstens
+//      5 % seines Wegs daneben). Unter der Hälfte losgelassen fährt es zur Grundform, darüber in die Pose.
+//   Q3 Nach allem Wandern: Die Grundform ist dieselbe (Haut höchstens 1e-9 bewegt), kein Schritt für ⌘Z mehr als vorher.
+//   Q4 Tempo beim Wandern: Ozzy rechnet je Bild im Mittel höchstens 16,7 ms (die Bilder unterwegs; das Bild des Eintritts in die
+//      Pose wird für sich genannt).
 //   K  Keine Fehler in der Konsole.
-// Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;…'] [BIS=P3|P4|P6] node scripts/pruefen/ozzy-maul-posen-fenster.mjs [ordner]
+// Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;…'] [BIS=P3|P4|P6|P8] [NUR=Q] node scripts/pruefen/ozzy-maul-posen-fenster.mjs [ordner]
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -29,6 +38,8 @@ const ordner = process.argv[2] ?? '';
 const NAME = process.env.NAME ?? 'teat firefish';
 const LINIE = (process.env.LINIE ?? '-860,172;-735,156;-700,152;-665,156;-640,165').split(';').map((t) => t.split(',').map(Number));
 const BIS = process.env.BIS ?? '';
+/** NUR=Q: nach P3 gleich die Proben der zweiten Scheibe (ohne das große Maul, Zähne, Sichern) */
+const NUR_Q = process.env.NUR === 'Q';
 const basis = process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html';
 const PROBE = 'ozzy-probe-posen';
 const datei = `${fileURLToPath(new URL('../../../../wesen/', import.meta.url))}${PROBE}.eewesen`;
@@ -111,7 +122,16 @@ const seite = async (form) => {
   const bild = async (name) => {
     if (ordner) await s.screenshot({ path: `${ordner}/ozzy-maul-posen-${name}.png` });
   };
-  return { s, O, ruhig, klick, ziehen, heran, fressen, linien, meldung, imBild, bild };
+  /** die Auswahl aufheben: Esc nur, wenn etwas gewählt ist (ohne Auswahl verließe es die Seitenansicht) */
+  const abwaehlen = async () => {
+    const b = await O('bearbeiten');
+    if (!(b.auswahl?.length || b.werkAuswahl?.length)) return;
+    await s.keyboard.press('Escape');
+    await s.waitForTimeout(300);
+  };
+  /** in welchen Flächen bedient wird (eingerastet in der Seite: nur „seite“) */
+  const ansicht = async () => (await O('bearbeiten')).flaechen.join(',');
+  return { s, O, ruhig, klick, ziehen, heran, fressen, linien, meldung, imBild, bild, abwaehlen, ansicht };
 };
 /** wie weit sich Linien bewegt haben (Punkt für Punkt); Infinity: andere Punktzahl oder eine Linie fehlt */
 const weit = (A, B) => {
@@ -186,7 +206,7 @@ const nebenFlaeche = (P, Q, tri) => {
 
 try {
   const A = await seite(NAME);
-  const { s, O, ruhig, klick, ziehen, heran, fressen, linien, meldung, imBild, bild } = A;
+  const { s, O, ruhig, klick, ziehen, heran, fressen, linien, meldung, imBild, bild, abwaehlen, ansicht } = A;
   await ruhig();
   await O('material', 'wachs');
   await s.keyboard.press('1');
@@ -356,6 +376,7 @@ try {
   ok('P3 „Fressen“ wieder an: die Linien der Pose wie verlassen', weit(poseVor, P3) < 0.01, `höchstens ${z2(weit(poseVor, P3))} neben vorher`);
   if (BIS === 'P3') throw new Error('BIS');
 
+  if (!NUR_Q) {
   // ---------- P4: das große Maul ----------
   const zahlenVor = zahlen(await linien());
   for (let k = 0; k < 6; k++) {
@@ -397,7 +418,7 @@ try {
     if (b) zahnWeg = Math.max(zahnWeg, Math.hypot(a.x - b.x, a.y - b.y));
   }
   const z5b = await O('zaehne');
-  ok('P5 Zähne in der Pose (Linse zu): ein Punkt der Unterlippe lässt sich greifen, die Zähne gehen mit; ihr Netz ist endlich', !!z5.netz && z5.netz.endlich && !!z5b.netz && z5b.netz.endlich && !z5.linse.offen && lippe5 > 2 && zahnWeg > 2, `${z5.plaetze.length} Zähne, Linse ${z5.linse.offen ? 'OFFEN' : 'zu'}; Punkt ${p5.i} der Lippe ging ${z2(lippe5)}; der weiteste Fuß eines Zahns ging ${zahnWeg.toFixed(1)} Bildpunkte`);
+  ok('P5 Zähne in der Pose (Linse zu): ein Punkt der Unterlippe lässt sich greifen, die Zähne gehen mit; ihr Netz ist endlich', !!z5.netz && z5.netz.endlich && !!z5b.netz && z5b.netz.endlich && !z5.linse.offen && lippe5 > 2 && zahnWeg > 2, `${z5.plaetze.length} Zähne, Linse ${z5.linse.offen ? 'OFFEN' : 'zu'}; Punkt ${p5.i} der Lippe ging ${z2(lippe5)}; der weiteste Fuß eines Zahns ging ${zahnWeg.toFixed(1)} Bildpunkte; Ansicht ${await ansicht()}`);
   await bild('5-zaehne');
 
   // ---------- P6: in der Pose keine neuen Punkte, kein Löschen, kein „Lippen trennen“ ----------
@@ -409,8 +430,7 @@ try {
   const b6 = L.unten[1] ?? L.unten[0];
   await klick((a6.x + b6.x) / 2, (a6.y + b6.y) / 2);
   const m6a = await meldung();
-  await s.keyboard.press('Escape');
-  await s.waitForTimeout(300);
+  // (kein Esc: Ohne Auswahl und ohne Entwurf verließe es die Seitenansicht; A legt den Stift weg)
   await s.keyboard.press('a');
   await s.waitForTimeout(300);
   L = await lippenImBild();
@@ -421,12 +441,11 @@ try {
   const m6b = await meldung();
   await ruhig();
   const nach6 = await linien();
-  await s.keyboard.press('Escape');
-  await s.waitForTimeout(300);
+  await abwaehlen();
   ok(
     'P6 in der Pose: P auf eine Linie und ⌫ auf einen gewählten Punkt ändern nichts (Meldung); „Lippen trennen“ hängt nicht',
     zahlen(vor6) === zahlen(nach6) && weit(vor6, nach6) < 0.01 && /Grundform/.test(m6b) && !/Lippen/.test(tropfen6 ?? ''),
-    `Linien ${zahlen(vor6) === zahlen(nach6) ? 'gleich viele Punkte' : 'ANDERS'}, ${z2(weit(vor6, nach6))} bewegt; nach P: „${m6a.slice(0, 50)}“; nach ⌫: „${m6b.slice(0, 50)}“; Tropfen ${tropfen6 ?? 'keiner'}`,
+    `Linien ${zahlen(vor6) === zahlen(nach6) ? 'gleich viele Punkte' : 'ANDERS'}, ${z2(weit(vor6, nach6))} bewegt; nach P: „${m6a.slice(0, 50)}“; nach ⌫: „${m6b.slice(0, 50)}“; Tropfen ${tropfen6 ?? 'keiner'}; Ansicht ${await ansicht()}`,
   );
   if (BIS === 'P6') throw new Error('BIS');
 
@@ -446,12 +465,184 @@ try {
   ok(
     'P7 in der Pose gesichert und neu geladen: die Pose ist an, ihre Linien und die der Grundform sind wie vorher',
     fs.existsSync(datei) && an7 && weit(pose7, pose7b) < 0.01 && weit(grund7, grund7b) < 0.01 && !pose7b.find((l) => l.echt)?.maulLinie && !!grund7b.find((l) => l.echt)?.maulLinie,
-    `Meldung „${String(text7).slice(0, 50)}“; Pose an: ${an7}; Linien der Pose ${z2(weit(pose7, pose7b))}, der Grundform ${z2(weit(grund7, grund7b))} neben vorher`,
+    `Meldung „${String(text7).slice(0, 50)}“; Pose an: ${an7}; Linien der Pose ${z2(weit(pose7, pose7b))}, der Grundform ${z2(weit(grund7, grund7b))} neben vorher; Ansicht ${await ansicht()}`,
   );
   await B.s.close();
 
   // ---------- P8: Tempo ----------
   ok('P8 Tempo: Der Zug an der Lippe rechnet in der Pose je Bild nicht mehr als in der Grundform (höchstens ein Fünftel und 2 ms darüber)', tempoPose > 0 && tempoPose <= 1.2 * tempoGrund + 2, `Grundform ${tempoGrund.toFixed(1)} ms, Pose ${tempoPose.toFixed(1)} ms je Bild`);
+  if (BIS === 'P8') throw new Error('BIS');
+  }
+
+  // ---------- Scheibe 2: zwischen Grundform und „Fressen“ wandern ----------
+  // (vorab, in der Pose: ein Punkt der Form fern vom Maul, 30 Bildpunkte gezogen; er dreht mit keinem Kiefer. Kein Esc ohne Auswahl:
+  // Es verließe die Seitenansicht)
+  const ansichtQ = await ansicht();
+  ok('  (vor Scheibe 2: Die Probe steht noch in der eingerasteten Seite)', ansichtQ === 'seite', `Flächen ${ansichtQ}`);
+  let fern = null;
+  {
+    const alle = await linien();
+    const kand = [];
+    for (const l of alle) {
+      if (l.echt) continue;
+      const P = await imBild(l.id, l.p.length);
+      for (const q of P) if (l.p[q.i][0] > -420 && q.sichtbar !== false && !q.verdeckt && q.x > 300 && q.x < 1300 && q.y > 200 && q.y < 760) kand.push({ id: l.id, ...q });
+    }
+    // (frei im Bild: kein anderer Punkt näher als 16 Bildpunkte)
+    fern = kand.find((q) => kand.every((r) => r === q || Math.hypot(r.x - q.x, r.y - q.y) > 16)) ?? null;
+    if (!fern) {
+      const l0 = alle.find((l) => !l.echt);
+      console.log(`     (kein Punkt fern vom Maul: ${alle.length} Linien, ${kand.length} Kandidaten; Pose ${(await O('pose')).an ? 'an' : 'aus'}; Bearbeiten ${JSON.stringify(await O('bearbeiten')).slice(0, 160)}; Linie ${l0?.id} Punkt 0: ${JSON.stringify(await O('ankerImBild', l0?.id, 0, 'seite')).slice(0, 200)}; Blick ${JSON.stringify(await O('blickSetzen', {})).slice(0, 200)})`);
+    }
+  }
+  const ort = async () => (fern ? (await imBild(fern.id, fern.i + 1)).find((q) => q.i === fern.i) : null);
+  let weg = 0;
+  if (fern) {
+    const vorher = await linien();
+    await ziehen(fern.x, fern.y, 0, -30);
+    await ruhig();
+    await abwaehlen();
+    const nachher = await linien();
+    const a = vorher.find((l) => l.id === fern.id).p[fern.i];
+    const b = nachher.find((l) => l.id === fern.id).p[fern.i];
+    weg = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  }
+  const ortPose = await ort();
+  await fressen();
+  const ortGrund = await ort();
+  const Rvor = await O('werkRoh');
+  const schritteVor = (await O('kiefer')).schritte;
+  /** den Anteil der Pose Bild für Bild mitschreiben, während `tun` läuft */
+  const spur = async (tun, ms = 900) => {
+    await s.evaluate(() => {
+      window.__spur = [];
+      const f = () => {
+        const p = window.__ozzy.pose();
+        window.__spur.push([p.anteil, p.offen, p.an ? 1 : 0]);
+        if (window.__spur.length < 240 && !window.__spurEnde) requestAnimationFrame(f);
+      };
+      window.__spurEnde = false;
+      requestAnimationFrame(f);
+    });
+    await tun();
+    await s.waitForTimeout(ms);
+    return s.evaluate(() => {
+      window.__spurEnde = true;
+      return window.__spur;
+    });
+  };
+  /** steigt (oder fällt) der Anteil stetig von einem Ende zum anderen? */
+  const stetig = (S, auf) => {
+    const A = S.map((q) => q[0]);
+    let sprung = 0;
+    let verkehrt = 0;
+    for (let i = 1; i < A.length; i++) {
+      const d = (A[i] - A[i - 1]) * (auf ? 1 : -1);
+      if (d < -1e-9) verkehrt++;
+      sprung = Math.max(sprung, Math.abs(A[i] - A[i - 1]));
+    }
+    const mitten = new Set(A.filter((x) => x > 0.02 && x < 0.98).map((x) => x.toFixed(3))).size;
+    return { gut: verkehrt === 0 && sprung <= 0.25 && mitten >= 6, sprung, mitten, verkehrt };
+  };
+  const S1 = await spur(() => s.click('#fressen-knopf'));
+  await ruhig();
+  const nach1 = await O('pose');
+  await O('messen', true);
+  const S2 = await spur(() => s.click('#pose-grundform'));
+  const b2 = await O('messen', false);
+  await ruhig();
+  const nach2 = await O('pose');
+  // (das langsamste Bild der Rückfahrt, mit seinen Teilen: Werk, Haut, Linien, Seifenhaut, Zeichnen, Wände)
+  const lang2 = [...b2].sort((x, y) => y.abstand - x.abstand)[0];
+  const langText = lang2 ? `; längster Abstand zweier Bilder auf dem Rückweg ${lang2.abstand.toFixed(0)} ms (gerechnet ${lang2.ms.toFixed(0)} ms: ${lang2.teile.map((x) => x.toFixed(0)).join('/')})` : '';
+  const st1 = stetig(S1, true);
+  const st2 = stetig(S2, false);
+  const sollOffen = nach1.kiefer + nach1.schaedel;
+  ok(
+    'Q1 ein Tipp auf „Fressen“, dann auf „Grundform“: das Maul geht stetig auf und zu; danach ist die Pose an beziehungsweise aus',
+    st1.gut && st2.gut && nach1.an && nach1.anteil === 1 && !nach1.faehrt && !nach2.an && Math.max(...S1.map((q) => q[1])) > 0.95 * sollOffen && S2[S2.length - 1][1] === 0,
+    `auf: ${st1.mitten} Bilder unterwegs, größter Schritt ${z2(st1.sprung)}${st1.verkehrt ? `, ${st1.verkehrt}-mal rückwärts` : ''}; zu: ${st2.mitten} Bilder unterwegs, größter Schritt ${z2(st2.sprung)}${st2.verkehrt ? `, ${st2.verkehrt}-mal rückwärts` : ''}; danach Pose ${nach1.an ? 'an' : 'AUS'} (Anteil ${nach1.anteil}), dann ${nach2.an ? 'AN' : 'aus'}; offen bis ${Math.max(...S1.map((q) => q[1])).toFixed(1)}° von ${sollOffen.toFixed(1)}°${langText}`,
+  );
+
+  // ---------- Q2: am Faden ziehen ----------
+  const faden = await s.evaluate(() => {
+    const r = document.getElementById('posen-faden').getBoundingClientRect();
+    return { x: r.left, y: r.top + r.height / 2, w: r.width };
+  });
+  const amFaden = async (von, nach, halten = 500) => {
+    await s.mouse.move(faden.x + von * faden.w, faden.y);
+    await s.waitForTimeout(150);
+    await s.mouse.down();
+    for (let i = 1; i <= 14; i++) {
+      await s.mouse.move(faden.x + (von + ((nach - von) * i) / 14) * faden.w, faden.y);
+      await s.waitForTimeout(25);
+    }
+    await s.waitForTimeout(halten);
+  };
+  await amFaden(0.04, 0.5);
+  const halb = await O('pose');
+  const ortHalb = await ort();
+  await bild('q-halb');
+  await s.mouse.move(faden.x + 0.3 * faden.w, faden.y);
+  await s.waitForTimeout(200);
+  const beiDrei = (await O('pose')).anteil;
+  await s.mouse.up();
+  await s.waitForTimeout(900);
+  await ruhig();
+  const los1 = await O('pose');
+  await amFaden(0.04, 0.72, 200);
+  await s.mouse.up();
+  await s.waitForTimeout(900);
+  await ruhig();
+  const los2 = await O('pose');
+  await s.click('#pose-grundform');
+  await s.waitForTimeout(900);
+  await ruhig();
+  let mitteNeben = Infinity;
+  let ortWeg = 0;
+  if (ortPose && ortGrund && ortHalb) {
+    ortWeg = Math.hypot(ortPose.x - ortGrund.x, ortPose.y - ortGrund.y);
+    mitteNeben = Math.hypot(ortHalb.x - (ortPose.x + ortGrund.x) / 2, ortHalb.y - (ortPose.y + ortGrund.y) / 2) / Math.max(1e-9, ortWeg);
+  }
+  ok(
+    'Q2 am Faden auf die Hälfte gezogen: der Anteil steht bei der Hälfte, die Kiefer beim halben Winkel, ein gezogener Punkt fern vom Maul in der Mitte seiner zwei Lagen; losgelassen fährt es zum näheren Tropfen',
+    halb.an && Math.abs(halb.anteil - 0.5) <= 0.03 && Math.abs(halb.offen - halb.anteil * (halb.kiefer + halb.schaedel)) < 0.01 && weg > 5 && ortWeg > 5 && mitteNeben <= 0.05 && Math.abs(beiDrei - 0.3) <= 0.03 && !los1.an && los2.an && los2.anteil === 1,
+    `Anteil ${z2(halb.anteil)}, Maul ${halb.offen.toFixed(1)}° von ${(halb.kiefer + halb.schaedel).toFixed(1)}° offen; der Punkt ${fern ? `${fern.id}.${fern.i}` : 'FEHLT'} (in der Pose ${z2(weg)} gezogen, ${ortWeg.toFixed(1)} Bildpunkte) steht ${(100 * mitteNeben).toFixed(1)} % seines Wegs neben der Mitte; bei ${z2(beiDrei)} losgelassen: Pose ${los1.an ? 'AN' : 'aus'}; bei 0,72 losgelassen: Pose ${los2.an ? 'an' : 'AUS'} (Anteil ${los2.anteil})`,
+  );
+
+  // ---------- Q3: die Grundform danach ----------
+  const Rnach = await O('werkRoh');
+  let bewegt = Rnach.pos.length === Rvor.pos.length ? 0 : Infinity;
+  if (bewegt === 0) for (let i = 0; i < Rvor.pos.length; i++) bewegt = Math.max(bewegt, Math.abs(Rvor.pos[i] - Rnach.pos[i]));
+  const schritteNach = (await O('kiefer')).schritte;
+  ok('Q3 nach allem Wandern: die Grundform ist dieselbe, kein Schritt für ⌘Z mehr als vorher', bewegt <= 1e-9 && schritteNach === schritteVor, `Haut höchstens ${bewegt === 0 ? '0 (bitgleich)' : bewegt.toExponential(1)} bewegt; Schritte ${schritteVor} → ${schritteNach}`);
+
+  // ---------- Q4: Tempo beim Wandern ----------
+  await s.waitForTimeout(2500);
+  await ruhig();
+  await O('messen', true);
+  await s.click('#fressen-knopf');
+  await s.waitForTimeout(500);
+  await s.mouse.move(faden.x + 0.96 * faden.w, faden.y);
+  await s.waitForTimeout(100);
+  await s.mouse.down();
+  for (let i = 0; i < 40; i++) {
+    await s.mouse.move(faden.x + (0.5 + 0.46 * Math.cos(i / 6)) * faden.w, faden.y);
+    await s.waitForTimeout(12);
+  }
+  const b4 = await O('messen', false);
+  await s.mouse.up();
+  await s.waitForTimeout(900);
+  await ruhig();
+  // (gewertet werden die Bilder, in denen die Haut neu gezeigt wurde: die Bilder der Fahrt; das erste, der Eintritt in die Pose, für sich)
+  const fahrt4 = b4.filter((q) => q.teile[1] > 1);
+  const ms4 = fahrt4.slice(1).map((q) => q.ms).sort((x, y) => x - y);
+  const mittel4 = ms4.reduce((x, y) => x + y, 0) / Math.max(1, ms4.length);
+  ok(
+    'Q4 Tempo beim Wandern: Ozzy rechnet je Bild im Mittel höchstens 16,7 ms',
+    ms4.length > 10 && mittel4 <= 16.7,
+    `${ms4.length} Bilder unterwegs: im Mittel ${mittel4.toFixed(1)} ms, Median ${(ms4[Math.floor(ms4.length / 2)] ?? 0).toFixed(1)} ms, das langsamste ${(ms4[ms4.length - 1] ?? 0).toFixed(1)} ms; das Bild des Eintritts in die Pose ${(fahrt4[0]?.ms ?? 0).toFixed(1)} ms; je Bild unterwegs im Mittel: ${['Werk', 'Haut', 'Linien', 'Seifenhaut', 'Zeichnen', 'Wände'].map((n, k) => `${n} ${(fahrt4.slice(1).reduce((x, q) => x + q.teile[k], 0) / Math.max(1, fahrt4.length - 1)).toFixed(1)}`).join(', ')}, übriges ${(fahrt4.slice(1).reduce((x, q) => x + q.ms - q.teile.reduce((u, v) => u + v, 0), 0) / Math.max(1, fahrt4.length - 1)).toFixed(1)}`,
+  );
 } catch (e) {
   if (String(e?.message) !== 'BIS') {
     schlecht++;

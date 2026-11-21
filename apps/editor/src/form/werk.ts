@@ -699,6 +699,9 @@ export function wiederherstellen(s: Schnappschuss): void {
     grund = { haut: s.grund.haut, loops: s.grund.loops };
   } else grund = null;
   pose = s.pose;
+  // (ein Stand, der zurückkommt, zeigt seine Pose ganz: Die Fahrt zwischen Grundform und Pose gehört keinem Schritt)
+  poseAnteil = 1;
+  gemischtGemerkt = null;
   ruheOffen = s.ruhe ? { ...s.ruhe } : null;
   MK = s.mk;
   TOL = 0.25 * MK;
@@ -1314,6 +1317,14 @@ export function teilungNeu(): void {
       if (l.art !== 'mitte' && ws >= 0 && ws !== w) teilen(ws, haut.spiegel[vor]!, haut.spiegel[nach]!, h);
     }
   }
+  // Dieselbe Teilung wie bisher (beim Betreten und Verlassen der Pose: Die Haut ist ein anderes Ding, ihre Dreiecke und harten Linien
+  // sind dieselben): Die Felder bleiben, wie sie sind. Wer seinen Plan an ihnen festmacht (die glatte Anzeige), legt dann nichts neu an.
+  const gleich = (A: ArrayLike<number>, B: ArrayLike<number>): boolean => {
+    if (A.length !== B.length) return false;
+    for (let i = 0; i < A.length; i++) if (A[i] !== B[i]) return false;
+    return true;
+  };
+  if (gleich(anzeigeIndex, index) && gleich(anzeigeQuelle, quelle) && gleich(anzeigeKante, kante)) return;
   anzeigeQuelle = Int32Array.from(quelle);
   anzeigeKante = Float32Array.from(kante);
   anzeigeIndex = index;
@@ -1477,15 +1488,29 @@ export let maulBlick = 0;
 export function maulBlickSetzen(x: number): void {
   maulBlick = Math.max(0, Math.min(1, x));
 }
+/**
+ * Der Anteil der Pose, den die Anzeige zeigt (Etappe 8, 21.11.): 1 = die Pose, wie sie ist; 0 = die Grundform. Dazwischen wandern
+ * Haut, Punkte, Griffe und die Winkel der Knochen von der einen Lage zur anderen (Florian: „Die Punkte und Handles wandern in der
+ * Editor-Pose von einem Punkt zum anderen“): Man sieht die Bewegung, die das Spiel später spielt. Nur Anzeige: Gerechnet und
+ * gegriffen wird in der Pose bei 1. Beim Verlassen der Pose steht er wieder auf 1.
+ */
+export let poseAnteil = 1;
+export function poseAnteilSetzen(x: number): void {
+  poseAnteil = Math.max(0, Math.min(1, x));
+  // (je Aufruf neu gemischt: Wer den Anteil je Bild setzt, sieht auch, was der Hintergrund inzwischen an der Haut gesetzt hat)
+  gemischtGemerkt = null;
+}
+/** Die Anzeige steht zwischen Grundform und Pose: So lange wird nicht gegriffen */
+export const poseWandert = (): boolean => grund !== null && poseAnteil < 1;
 /** Die Anzeige dreht mit den Knochen: in der Pose immer, in der Grundform beim Blick ins Maul */
 export const anzeigeDreht = (): boolean => grund !== null || (maulBlick > 0 && G.maul !== null && zug === null);
 /** So weit zeigt die Anzeige das Maul gerade offen (Grad, beide Kiefer zusammen; 0: zu) */
-export const maulOffenGrad = (): number => (anzeigeDreht() ? (grund ? 1 : maulBlick) * (pose.kiefer + pose.schaedel) : 0);
+export const maulOffenGrad = (): number => (anzeigeDreht() ? (grund ? poseAnteil : maulBlick) * (pose.kiefer + pose.schaedel) : 0);
 /** Drehwinkel je Punkt für den Stand der Regler (beim Maul aus einer Linie gegen die gerechnete Lage: Regler minus ihre Öffnung) */
 export function knochenJetzt(m: MaulAmLoop): Float64Array {
   const zu = maulZu();
-  // (in der Grundform dreht nur der Blick ins Maul, um seinen Anteil)
-  const f = grund ? 1 : maulBlick;
+  // (in der Grundform dreht nur der Blick ins Maul, um seinen Anteil; in der Pose um den Anteil, den die Anzeige von ihr zeigt)
+  const f = grund ? poseAnteil : maulBlick;
   const k = { kiefer: pose.kiefer * f - zu, schaedel: pose.schaedel * f };
   // (am Maul als echte Form laufen die Drehungen mit dem Winkel breiter aus: `kieferWinkel`)
   return kieferWinkel(m, k, zu) ?? knochenWinkel(m, k, zu);
@@ -1520,7 +1545,7 @@ export function kieferKnochen(mindVor = 0, mindSeit = 0): { C: V2; lang: number;
   return {
     C: L.C,
     lang: Math.max(L.oben.lang, L.unten.lang),
-    gezeigt: grund ? 1 : maulBlick,
+    gezeigt: grund ? poseAnteil : maulBlick,
     oben: { ruhe: kieferTropfenRuhe(L.oben, mindVor, mindSeit), grad: pose.schaedel, sinn: L.oben.links ? 1 : -1 },
     unten: { ruhe: kieferTropfenRuhe(L.unten, mindVor, mindSeit), grad: pose.kiefer, sinn: L.unten.links ? 1 : -1 },
   };
@@ -1773,6 +1798,38 @@ export function loopGedreht(l: Loop, theta: Float64Array, G: V2): Loop {
 }
 
 /**
+ * Die Ruhe zwischen Grundform und Pose (Etappe 8): Haut, Punkte, Griffe und Proben der Linien beim Anteil `poseAnteil` der Pose.
+ * Null: Die zwei Lagen passen nicht Punkt für Punkt zusammen (dann zeigt die Anzeige die Pose). Gemerkt, bis der Anteil neu gesetzt
+ * wird oder Haut und Linien andere sind.
+ */
+let gemischtGemerkt: { haut: Haut; grundHaut: Haut; eigen: Loop[]; grundLoops: Loop[]; pos: Float64Array; loops: Loop[] } | null = null;
+function ruheGemischt(): { pos: Float64Array; loops: Loop[] } | null {
+  const g = grund;
+  if (!g || g.haut.pos.length !== haut.pos.length) return null;
+  const m = gemischtGemerkt;
+  if (m && m.haut === haut && m.grundHaut === g.haut && m.eigen === loops && m.grundLoops === g.loops) return m;
+  const t = poseAnteil;
+  const B = g.haut.pos;
+  const P = haut.pos;
+  const pos = new Float64Array(P.length);
+  for (let i = 0; i < P.length; i++) pos[i] = B[i]! + t * (P[i]! - B[i]!);
+  const mitte = (a: V3, b: V3): V3 => ({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y), z: a.z + t * (b.z - a.z) });
+  const gemischt = loops.map((l) => {
+    const b = g.loops.find((x) => x.id === l.id);
+    if (!b || b.punkte.length !== l.punkte.length || b.ruhe.length !== l.ruhe.length) return l;
+    const r = new Float64Array(l.ruhe.length);
+    for (let j = 0; j < r.length; j++) r[j] = b.ruhe[j]! + t * (l.ruhe[j]! - b.ruhe[j]!);
+    const punkte = l.punkte.map((q, i) => {
+      const p = b.punkte[i]!;
+      return { ...q, ref: mitte(p.ref, q.ref), cur: mitte(p.cur, q.cur), ...(q.ein && p.ein ? { ein: mitte(p.ein, q.ein) } : {}), ...(q.aus && p.aus ? { aus: mitte(p.aus, q.aus) } : {}) };
+    });
+    return { ...l, ruhe: r, punkte };
+  });
+  gemischtGemerkt = { haut, grundHaut: g.haut, eigen: loops, grundLoops: g.loops, pos, loops: gemischt };
+  return gemischtGemerkt;
+}
+
+/**
  * In der Pose `f` so ausführen, dass `haut` und `loops` die gezeigte (gedrehte) Pose sind; danach stehen wieder die der Ruhe da.
  * Auch was ein laufender Zug zum Zeichnen bereithält (Lagen und Griffe der Linien an ihrem Ziel), ist währenddessen gedreht. In der
  * Grundform und geschachtelt: einfach `f`. Beim Blick ins Maul (`maulBlick`) dreht die Anzeige auch in der Grundform.
@@ -1780,9 +1837,16 @@ export function loopGedreht(l: Loop, theta: Float64Array, G: V2): Loop {
 export function alsAnzeige<T>(f: () => T): T {
   const k = anzeigeDreht() && !inAnzeige ? poseKnochen() : null;
   if (!k) return f();
+  // Etappe 8: Zwischen Grundform und Pose (`poseAnteil` unter 1) wird die gemischte Lage gedreht, um das Scharnier, wo es dann liegt
+  const misch = poseWandert() && !altePose() ? ruheGemischt() : null;
+  if (misch) {
+    const v = k.l.proben[k.ecke]!.ecken[0];
+    k.G = { x: misch.pos[3 * v]!, y: misch.pos[3 * v + 1]! };
+  }
   if (!anzeigeHaut || anzeigeHaut.von !== haut) anzeigeHaut = { von: haut, haut: { ...haut, pos: new Float64Array(haut.pos.length) } };
-  anzeigeHaut.haut.pos.set(knochenDrehen(haut.pos, k.theta, k.G));
-  const ruhe = { haut, loops };
+  anzeigeHaut.haut.pos.set(knochenDrehen(misch ? misch.pos : haut.pos, k.theta, k.G));
+  const ruhe = { haut, loops: misch ? misch.loops : loops };
+  const eigen = loops;
   const z = zug;
   const zr = z ? { lagen: z.lagen, griffeNeu: z.griffeNeu } : null;
   if (z) {
@@ -1817,7 +1881,7 @@ export function alsAnzeige<T>(f: () => T): T {
     return f();
   } finally {
     haut = ruhe.haut;
-    loops = ruhe.loops;
+    loops = eigen;
     inAnzeige = false;
     anzeigeVon = null;
     if (z && zr) {
@@ -1874,6 +1938,8 @@ export function poseVerlassen(): void {
   loops = grundLoopsAus(basis, grund.loops);
   haut = basis;
   grund = null;
+  poseAnteil = 1;
+  gemischtGemerkt = null;
   anzeige.geometrieNeu();
   // was in der Pose an Punkten oder Loops dazukam, liest seine Griffe an der Linie der Grundform ab: auch diese Linien genau auf ihren Pfad
   if (linienAufPfad() && pose.delta && ruhe.length === haut.pos.length) {
@@ -3178,7 +3244,7 @@ export let anMitteGehalten = false;
 export function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li: number, i: number, seite: 'ein' | 'aus'): boolean {
   const p = loops[li]?.punkte[i];
   if (!p) return false;
-  if (maulLinieInPose(li)) return false;
+  if (maulLinieInPose(li) || poseWandert()) return false;
   const loeser = stueckLoeser(li, i);
   zug = {
     modal: null,
@@ -3315,7 +3381,7 @@ export function maulLinieInPose(li: number): boolean {
 }
 
 export function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spiegel: boolean, rMin = 0): boolean {
-  if (G.auswahl.length === 0) return false;
+  if (G.auswahl.length === 0 || poseWandert()) return false;
   if (G.auswahl.some((w) => maulLinieInPose(loopNr(w.l)))) return false;
   const ganze = new Set<number>();
   const punktW = new Map<string, number>();

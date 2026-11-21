@@ -236,7 +236,9 @@ function langeKante(L: Float64Array, I: Uint32Array): number {
 
 /** Schlüssel einer Linienkante: Loop, Probe, Spiegelhälfte (wie `glattOrt` im Prüffenster) */
 const ort = (li: number, j: number, sp: boolean): number => (li * 1_000_000 + j) * 2 + (sp ? 1 : 0);
-const kennJetzt = (): string => `${werk.grund ? 'p' : 'g'}|${werk.loops.map((l) => `${l.id}.${l.proben.length}.${werk.exakt(l) ? 1 : 0}`).join(',')}`;
+// (ohne „Pose oder Grundform“, seit dem 21.11.: Der Plan hängt am Netz und daran, welche Linien genau auf ihrem Pfad liegen; beides
+// steht hier und in den Feldern der Teilung. So bleibt er beim Betreten und Verlassen der Pose derselbe.)
+const kennJetzt = (): string => werk.loops.map((l) => `${l.id}.${l.proben.length}.${werk.exakt(l) ? 1 : 0}`).join(',');
 
 export class WerkHaut {
   private static zaehler = 0;

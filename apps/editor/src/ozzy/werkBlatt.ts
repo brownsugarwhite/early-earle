@@ -270,7 +270,7 @@ export class WerkBlatt implements Raum {
   private signatur(flaechen: Flaeche[]): string | null {
     if (werk.zug || werk.maulLauf !== null || this.fliesst) return null;
     const teile: (string | number)[] = [werk.standZahl(), werk.spiegelStand(), Object.values(this.breiten()).join(',')];
-    if (werk.anzeigeDreht()) teile.push(`dreht:${werk.grund ? 1 : 0}:${werk.maulBlick}:${werk.pose.kiefer}:${werk.pose.schaedel}`);
+    if (werk.anzeigeDreht()) teile.push(`dreht:${werk.grund ? 1 : 0}:${werk.maulBlick}:${werk.pose.kiefer}:${werk.pose.schaedel}:${werk.poseAnteil}`);
     for (const F of flaechen) {
       teile.push(F.a, F.staerke, F.breite, F.vorn ?? 0, F.bereich ?? 0, F.raeumlich ? 1 : 0, ...F.hin(0, 0), ...F.hin(100, 0), ...F.hin(0, 100), ...F.hin(70, -40, 60));
       if (F.tiefe) teile.push(F.tiefe({ x: 0, y: 0, z: 0 }), F.tiefe({ x: 50, y: 30, z: 20 }));
