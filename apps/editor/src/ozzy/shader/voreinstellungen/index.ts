@@ -42,6 +42,7 @@ import { STAUB } from './staub';
 import { TINTE } from './tinte';
 import { TREX } from './trex';
 import { SCHLEIMGEIST, TROPFSCHLEIM } from './schleim';
+import { BRUCHSTEIN, FELS_SHADER } from './fels';
 import { MATRIX } from './matrix';
 import { ORNAMENT } from './ornament';
 import { BATLLO_DACH, SAGRADA, TRENCADIS } from './gaudi';
@@ -95,6 +96,8 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   PAVE,
   DISKOKUGEL,
   // Stein
+  FELS_SHADER,
+  BRUCHSTEIN,
   MARMOR,
   GRANIT,
   SANDSTEIN,
