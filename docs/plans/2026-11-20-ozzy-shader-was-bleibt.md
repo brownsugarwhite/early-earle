@@ -140,3 +140,12 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     senkrecht zu waagerecht 1,73 / 1,46; Kanten 0,089 / 0,115; Streuung 0,46 / 0,59. Es bleibt: Die Vorlage ist kleinteiliger
     bucklig (viele kleine Wülste überall, auch im Umriss), ihre Tropfen sind gleichmäßiger über die Kugel verteilt und leuchten
     heller; bei uns liegen größere glatte Flächen dazwischen. Nah an der Hochachse (Pole, Spitze der Flosse) gibt es keine Tropfen.
+63. **Tropfschleim, nächster Schritt** (pausiert am 21.11. abends: Florian „ja gerne weiter feilen“, dann Pause fürs Wochenlimit):
+    (1) Die Vorlage besteht aus vielen dünnen, übereinanderliegenden Schleimfilmen mit weichen, hell grün durchscheinenden Rändern,
+    die in alle Richtungen laufen (wie Höhenlinien von Rauschen in mehreren Maßstäben): daher das kleinteilig Bucklige, auch im
+    Umriss. Bauen: zwei bis drei Lagen solcher Filme (Rauschen mit Schwelle, Rand als weicher Wulst, hell durchscheinend) über den
+    Lippen und Tropfen. (2) Tropfen gleichmäßiger und heller. (3) **Ringe auf glatten Flächen:** Die Lage im G-Puffer (`daten.ts`,
+    Ziel `gemein:daten`) steht in 16 Bit, bei Werten um 300 nur auf rund 0,25 Einheiten genau. Mit der Lage in 32 Bit (nur die
+    zweite Textur des Ziels auf `FloatType` setzen, ohne `OES_texture_float_linear` mit `NearestFilter`, nur mit
+    `EXT_color_buffer_float`) waren Ringe und körnige Lichter weg; Fels, Panot, Schlange, Comicdruck, Diskokugel und LEGO sahen
+    unverändert aus, Konsole ohne Fehler. Nicht übernommen, weil das Tempo nicht gemessen ist (alle Shader lesen den Puffer).
