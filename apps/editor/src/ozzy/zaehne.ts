@@ -22,8 +22,13 @@
 // (an der Linie dicht hinter der Lippe), sein Fuß ist aber längs der Wand über die Lippe hinaus versetzt (`ZahnPlatz.vor`): Er
 // steht außen neben der Lippe, zeigt wie alle zum anderen Kiefer und behält seine Länge, auch wenn das Maul zu ist
 // (`ZahnPlatz.aussen`, `zaehneNetz`).
+//
+// Etappe 7 (ein Zahn als kleine Form): Eine Reihe oder ein einzelner Zahn kann statt einer Vorlage eine eigene Form aus drei
+// Linien tragen (`gestalt`, `zahnGestalt.ts`; sie gilt mit `form` = `EIGENE`). `zahnPlaetze` gibt sie jedem Platz mit,
+// `platzNetz` nimmt ihr Netz (so viele Punkte und Dreiecke wie eine Vorlage: Greifen und Wechsel bleiben, wie sie sind).
 // Ohne DOM.
 import type { MaulZaehne, ZahnEigen, ZahnReihe } from '../form/werk';
+import { EIGENE, type ZahnGestalt, gestaltGueltig, gestaltNetz } from './zahnGestalt';
 import { ZAHN_FORMEN, type ZahnForm, mischen, zahnNetz } from '../maulstudie/zahn';
 import type { HautNetz } from '../anfang/haut';
 import { type MaulTasche, hoehenlinie, taschenFeld, zahnfleischBreit } from './farbe/maulEbene';
@@ -113,6 +118,8 @@ export type ZahnPlatz = {
   i: number;
   /** seine Vorlage: die eigene oder die der Reihe */
   form: number;
+  /** seine eigene Form aus Linien (Etappe 7), wenn sie gilt: die des Zahns oder die seiner Reihe; sonst null (dann die Vorlage) */
+  gestalt: ZahnGestalt | null;
   /** wie weit er gegen seinen Platz in der Reihe gerückt steht (im Maul festgehalten): längs nach hinten (Anteil der Reichweite) und zur Tiefe (Breiten des Zahnfleischs) */
   ds: number;
   dz: number;
@@ -245,6 +252,7 @@ export function zahnPlaetze(
         vorn,
         i,
         form: vorlageNr(eigen?.form ?? reihe.form),
+        gestalt: (eigen?.form ?? reihe.form) === EIGENE ? gestaltVon(reihe, i) : null,
         ds: (vonSpitze - regel) / lang,
         dz: sitz - sitzReihe,
         lang,
@@ -317,11 +325,21 @@ function netzAus(f: ZahnForm): FormNetz {
   geo.dispose();
   return g;
 }
-/** die Vorlage mit dieser Nummer (festgehalten im Bereich der Vorlagen) */
+/** die Vorlage mit dieser Nummer (festgehalten im Bereich der Vorlagen; `EIGENE` ohne Gestalt: die erste) */
 export const vorlageNr = (nr: number): number => Math.max(0, Math.min(ZAHN_FORMEN.length - 1, Math.round(nr)));
+/**
+ * Die eigene Form (Etappe 7), die ein Zahn tragen kann: seine eigene, sonst die seiner Reihe (ohne `i`: die der Reihe). Null:
+ * keine, oder eine, mit der sich nicht rechnen lässt. Ob sie gilt, sagt `form` (`EIGENE`).
+ */
+export function gestaltVon(reihe: ZahnReihe, i?: number): ZahnGestalt | null {
+  const g = (i !== undefined ? reihe.eigen?.[i]?.gestalt : undefined) ?? reihe.gestalt;
+  return gestaltGueltig(g) ? g : null;
+}
+/** das Netz, das ein Platz ohne laufenden Wechsel zeigt: das seiner eigenen Form oder das seiner Vorlage */
+export const platzNetz = (q: Pick<ZahnPlatz, 'form' | 'gestalt'>): FormNetz => (q.gestalt ? gestaltNetz(q.gestalt) : formNetz(q.form));
 /** das Netz einer Vorlage, einmal gebaut */
 const formNetze = new Map<number, FormNetz>();
-function formNetz(nr: number): FormNetz {
+export function formNetz(nr: number): FormNetz {
   const i = vorlageNr(nr);
   let g = formNetze.get(i);
   if (!g) {
@@ -343,7 +361,7 @@ export type ZahnKapsel = { a: [number, number, number]; b: [number, number, numb
  */
 export function zahnKapseln(plaetze: readonly ZahnPlatz[], P: ArrayLike<number>, spalt: (r: number) => number, wuchs: (vorn: number) => number, formVon?: (q: ZahnPlatz) => FormNetz | null): ZahnKapsel[] {
   return plaetze.map((q) => {
-    const g = formVon?.(q) ?? formNetz(q.form);
+    const g = formVon?.(q) ?? platzNetz(q);
     const { ort, n, zl } = rahmenRoh(q, P);
     const c = Math.cos(q.reihe.neigung);
     const s = Math.sin(q.reihe.neigung);
@@ -387,7 +405,7 @@ export function zaehneNetz(
   formVon?: (q: ZahnPlatz) => FormNetz | null,
 ): HautNetz | null {
   if (!plaetze.length) return null;
-  const netze = plaetze.map((q) => formVon?.(q) ?? formNetz(q.form));
+  const netze = plaetze.map((q) => formVon?.(q) ?? platzNetz(q));
   let N = 0;
   let I = 0;
   for (const g of netze) {

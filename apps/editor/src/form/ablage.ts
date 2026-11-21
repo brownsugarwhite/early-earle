@@ -9,6 +9,7 @@
 import type { Loop, V3 } from '@ee/shape/dicht';
 import type { FlacheHaut } from './verfeinern';
 import type { BemalungDatei } from '../ozzy/farbe/bemalung';
+import type { ZahnGestalt } from '../ozzy/zahnGestalt';
 
 /** eine Zahnreihe in der Datei (wie `ZahnReihe` im Werk; `eigen`: einzelne Zähne, wie `ZahnEigen`) */
 export type ZahnReiheDatei = {
@@ -19,7 +20,9 @@ export type ZahnReiheDatei = {
   bis: number;
   sitz: number;
   form: number;
-  eigen?: Record<number, { ds?: number; dz?: number; form?: number; faktor?: number; weg?: true }>;
+  /** die eigene Form der Reihe (Etappe 7; `ZahnGestalt`) */
+  gestalt?: ZahnGestalt;
+  eigen?: Record<number, { ds?: number; dz?: number; form?: number; gestalt?: ZahnGestalt; faktor?: number; weg?: true }>;
 };
 export type WesenStand = {
   /** mittlere Kante des Startnetzes: das Maß für Verdichten, Kreuzungen und die Genauigkeit der Linien */

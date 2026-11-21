@@ -38,6 +38,36 @@ export type GestaltLinie = 'vorn' | 'seite' | 'quer';
 /** `form` einer Reihe oder eines Zahns, wenn seine eigene Form gilt (keine Nummer einer Vorlage) */
 export const EIGENE = -1;
 
+const geprueft = new WeakMap<object, boolean>();
+/**
+ * Trägt dieses Ding eine Gestalt, mit der sich rechnen lässt (aus einer Datei kann alles kommen)? Linien mit endlichen Zahlen,
+ * von vorn und von der Seite je Zahnfleisch, Spitze, Zahnfleisch, quer mit den vier geteilten Ankern in ihrem Umlauf.
+ */
+export function gestaltGueltig(g: unknown): g is ZahnGestalt {
+  if (!g || typeof g !== 'object') return false;
+  const da = geprueft.get(g);
+  if (da !== undefined) return da;
+  const x = g as Partial<ZahnGestalt>;
+  const zahl = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v);
+  const griff = (v: unknown): boolean => v === null || (!!v && typeof v === 'object' && zahl((v as { x: unknown }).x) && zahl((v as { y: unknown }).y));
+  const linie = (a: unknown, min: number): a is Anker[] => Array.isArray(a) && a.length >= min && a.length <= 64 && a.every((q) => !!q && zahl(q.x) && zahl(q.y) && griff(q.ein) && griff(q.aus));
+  const nr = (v: unknown, n: number): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) < n;
+  let ok = linie(x.vorn, 3) && linie(x.seite, 3) && linie(x.quer, 4);
+  ok &&= nr(x.spitzeV, x.vorn!.length) && x.spitzeV > 0 && x.spitzeV < x.vorn!.length - 1;
+  ok &&= nr(x.spitzeS, x.seite!.length) && x.spitzeS! > 0 && x.spitzeS! < x.seite!.length - 1;
+  ok &&= Array.isArray(x.ecken) && x.ecken.length === 4 && x.ecken.every((e) => nr(e, x.quer!.length)) && new Set(x.ecken).size === 4;
+  // (im Umlauf: rechts, vorn, links, hinten folgen einander, einmal um den Ring)
+  if (ok) {
+    const e = x.ecken!;
+    const n = x.quer!.length;
+    const weg = [0, 1, 2, 3].map((q) => (e[(q + 1) % 4]! - e[q]! + n) % n);
+    ok = weg.every((w) => w > 0) && weg.reduce((a2, b2) => a2 + b2, 0) === n;
+  }
+  ok &&= zahl(x.hoecker) && zahl(x.wurzelLaenge) && typeof x.wurzel === 'string';
+  geprueft.set(g, ok);
+  return ok;
+}
+
 /** wie die Vorlagen (`zahn.ts`): so viele Ringe und Punkte je Ring hat das Netz eines Zahns im Maul */
 const RINGE = 16;
 const SEG = 20;

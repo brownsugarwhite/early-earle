@@ -32,6 +32,8 @@ import { kettenAller } from '../ozzy/farbe/ketten';
 import { MAUL_EBENE, maulEbeneBauen } from '../ozzy/farbe/maulEbene';
 import { karteVon, ortGespiegelt } from '../ozzy/farbe/ort';
 import { ZAEHNE_ANFANG, eigenSetzen, formNetzGemischt, mitAnzahl, partner, sitzGrenzen, zaehneNetz, zaehnePaar, zahnKapseln, zahnPlaetze, zahnRahmen } from '../ozzy/zaehne';
+import { EIGENE, gestaltAusForm } from '../ozzy/zahnGestalt';
+import { ZAHN_FORMEN } from '../maulstudie/zahn';
 import { type Hindernis, ZUNGEN_FORMEN, ZUNGE_ANFANG, ZUNGE_KNOTEN, ZUNGE_RING, ZungenKette, klebeOrt, klebenAn, klebenSuchen, lippenHindernisse, zungeGerade, zungeNetz, zungePlatz, zungePlatzAuf, zungenBoden, zungenProfil, zungenUmriss } from '../ozzy/zunge';
 import { manifoldLaden } from './naht';
 
@@ -871,6 +873,37 @@ describe('das Maul als echte Form', () => {
     const B = je(offen, zw);
     expect(Math.abs(A.min[2]! + B.max[2]!)).toBeLessThan(1e-4);
     expect(Math.abs(A.max[0]! - B.max[0]!)).toBeLessThan(1e-4);
+    // Etappe 7, die eigene Form: Ohne sie trägt kein Platz eine Gestalt (das Netz ist das der Vorlagen wie bisher)
+    expect(plaetze.every((q) => q.gestalt === null)).toBe(true);
+    // eine Reihe mit eigener Form: Jeder ihrer Zähne trägt sie; das Netz hat dieselben Punkte und Dreiecke, aber eine andere Form
+    const sabel = gestaltAusForm(ZAHN_FORMEN[2]!.form);
+    const eigenOben = zahnPlaetze(k, tasche, L.C, { ...ZAEHNE_ANFANG, oben: { ...ZAEHNE_ANFANG.oben, form: EIGENE, gestalt: sabel } });
+    expect(eigenOben.filter((q) => !q.unten).every((q) => q.gestalt === sabel)).toBe(true);
+    expect(eigenOben.filter((q) => q.unten).every((q) => q.gestalt === null)).toBe(true);
+    const eigenNetz = zaehneNetz(eigenOben, h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1)!;
+    expect(eigenNetz.pos.length).toBe(offen.pos.length);
+    expect(eigenNetz.index.length).toBe(offen.index.length);
+    expect(eigenNetz.pos.every((x) => Number.isFinite(x))).toBe(true);
+    // (der Säbel als Linien ist so lang wie die Vorlage Säbel: Die oberen Zähne reichen fast so weit wie mit ihr, viel weiter als der Tropfen)
+    const mitVorlage = zaehneNetz(zahnPlaetze(k, tasche, L.C, { ...ZAEHNE_ANFANG, oben: { ...ZAEHNE_ANFANG.oben, form: 2 } }), h.pos, 1, { x: 0, y: 0 }, () => 1e6, () => 1)!;
+    const hoch = (n: { pos: Float32Array }, nr2: number): number => je(n, nr2).max[1]! - je(n, nr2).min[1]!;
+    const ob = eigenOben.findIndex((q) => !q.unten && q.vorn > 0.9);
+    expect(hoch(eigenNetz, ob)).toBeGreaterThan(1.5 * hoch(offen, ob));
+    expect(Math.abs(hoch(eigenNetz, ob) - hoch(mitVorlage, ob))).toBeLessThan(0.12 * hoch(mitVorlage, ob));
+    // die eigene Form bleibt stehen, wenn eine Vorlage gilt (dann zeigt kein Platz sie); ein einzelner Zahn erbt die seiner Reihe
+    // oder trägt seine eigene; `EIGENE` ohne Gestalt fällt auf die erste Vorlage
+    const ruht = zahnPlaetze(k, tasche, L.C, { ...ZAEHNE_ANFANG, oben: { ...ZAEHNE_ANFANG.oben, form: 1, gestalt: sabel } });
+    expect(ruht.every((q) => q.gestalt === null)).toBe(true);
+    const nadel = gestaltAusForm(ZAHN_FORMEN[3]!.form);
+    const einer = zahnPlaetze(k, tasche, L.C, { ...ZAEHNE_ANFANG, oben: eigenSetzen({ ...ZAEHNE_ANFANG.oben, gestalt: sabel }, [3, 8], (e) => ({ ...e, form: EIGENE })) });
+    expect(einer.filter((q) => q.gestalt === sabel).map((q) => q.i)).toEqual([3, 8]);
+    const eigener = zahnPlaetze(k, tasche, L.C, { ...ZAEHNE_ANFANG, oben: eigenSetzen({ ...ZAEHNE_ANFANG.oben, gestalt: sabel }, [3], (e) => ({ ...e, form: EIGENE, gestalt: nadel })) });
+    expect(eigener.find((q) => !q.unten && q.i === 3)!.gestalt).toBe(nadel);
+    const ohneGestalt = zahnPlaetze(k, tasche, L.C, { ...ZAEHNE_ANFANG, oben: { ...ZAEHNE_ANFANG.oben, form: EIGENE } });
+    expect(ohneGestalt.every((q) => q.gestalt === null && (q.unten || q.form === 0))).toBe(true);
+    // eine Gestalt, mit der sich nicht rechnen lässt (aus einer Datei), gilt nicht
+    const kaputt = { ...sabel, spitzeV: 99 };
+    expect(zahnPlaetze(k, tasche, L.C, { ...ZAEHNE_ANFANG, oben: { ...ZAEHNE_ANFANG.oben, form: EIGENE, gestalt: kaputt } }).every((q) => q.gestalt === null)).toBe(true);
   });
 
   /** eine Kugel mit einem Maul aus einer Linie, und seine Tasche, wie die Zunge sie braucht */

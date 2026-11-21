@@ -139,6 +139,7 @@ import {
   pruefen,
 } from './ablage';
 import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMit } from './naht';
+import type { ZahnGestalt } from '../ozzy/zahnGestalt';
 import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, type MaulStueck, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
 import {
   type AufraeumAuftrag,
@@ -385,13 +386,16 @@ export type ZungenKleben = { k: number; art: 'zahn' | 'lippe'; unten: boolean; g
  * `eigen`: was einzelne Zähne anders haben als ihre Reihe, je Nummer des Zahns (0 … anzahl − 1, von einem hinteren Ende der Reihe
  * um die Spitze zum anderen; das Spiegelbild von i ist anzahl − 1 − i). Wer die Anzahl ändert, lässt `eigen` fallen. `eigen` wird
  * nie am Ort geändert (jede Änderung ist ein neues Objekt: Die Schritte für ⌘Z teilen es sich).
+ * Seit Etappe 7: `gestalt` ist die eigene Form der Reihe aus drei Linien (`ozzy/zahnGestalt.ts`); sie gilt, wenn `form` `EIGENE`
+ * ist, und bleibt stehen, wenn eine Vorlage gilt (zurückdrehen holt sie wieder). Auch sie wird nie am Ort geändert.
  */
-export type ZahnReihe = { anzahl: number; groesse: number; neigung: number; verlauf: number; bis: number; sitz: number; form: number; eigen?: Record<number, ZahnEigen> };
+export type ZahnReihe = { anzahl: number; groesse: number; neigung: number; verlauf: number; bis: number; sitz: number; form: number; gestalt?: ZahnGestalt; eigen?: Record<number, ZahnEigen> };
 /**
  * Ein einzelner Zahn gegen seine Reihe: gerückt längs der Reihe nach hinten (`ds`, Anteil der Reichweite) und zur Tiefe des Mauls
  * (`dz`, Breiten des Zahnfleischs), mit eigener Vorlage, eigenem Faktor der Größe, oder gezogen (`weg`: Dort ist eine Lücke).
+ * `gestalt`: seine eigene Form (Etappe 7); mit `form` `EIGENE` und ohne sie gilt die eigene Form seiner Reihe.
  */
-export type ZahnEigen = { ds?: number; dz?: number; form?: number; faktor?: number; weg?: true };
+export type ZahnEigen = { ds?: number; dz?: number; form?: number; gestalt?: ZahnGestalt; faktor?: number; weg?: true };
 /** die zwei Reihen und, wenn sie eine eigene trägt, die Farbe der Zähne (`#rrggbb`; fehlt: Elfenbein) */
 export type MaulZaehne = { oben: ZahnReihe; unten: ZahnReihe; farbe?: string };
 /* in G: maul */
