@@ -100,6 +100,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
       <button class="seq" data-seq="T4">4 Figur und Grund</button>
       <button class="seq" data-seq="T5">5 Punkte mit Physik</button>
       <button class="seq" data-seq="T6">6 Platte, Rand, Schatten</button>
+      <button class="seq" data-seq="T7">7 Auseinandergezogen (neu)</button>
       <button class="seq" data-seq="END">Endbild</button>
     </div>
     <div class="row">
@@ -276,9 +277,10 @@ const twist = (top, bot, y0, y1) => (x, y) => { const s = smooth((y - y0) / (y1 
 const S = {};
 const bI1 = floorA(...P.i1BF), aI1 = floorB(...P.i1BF), zI1 = liftA(P.i1TF[0], P.i1TF[1], bI1)[2];
 S['i1.left'] = { body: 'i1', lift: (x, y) => liftA(x, y, bI1) }; S['i1.right'] = { body: 'i1', lift: (x, y) => liftB(x, y, aI1) }; S['i1.top'] = { body: 'i1', lift: (x, y) => liftH(x, y, zI1) };
-S['ll.barA'] = { body: 'll', lift: twist((x, y) => liftA(x, y, floorA(...P.barA_BL)), (x, y) => liftB(x, y, floorB(...P.barA_BL)), P.barA_TL[1], P.barA_BL[1]), twisted: true };
-S['ll.sliver'] = { body: 'll', lift: twist((x, y) => liftB(x, y, floorB(...P.sl_BL)), (x, y) => liftA(x, y, floorA(...P.sl_BL)), P.sl_TL[1], P.sl_BL[1]), twisted: true };
-S['ll.barB'] = { body: 'll', lift: twist((x, y) => liftA(x, y, floorA(...P.barB_BL)), (x, y) => liftB(x, y, floorB(...P.barB_BL)), P.barB_TL[1], P.barB_BL[1]), twisted: true };
+const mkTw = (id, top, bot, y0, y1) => { S[id] = { body: 'll', lift: twist(top, bot, y0, y1), twisted: true, top, bot, y0, y1 }; };
+mkTw('ll.barA', (x, y) => liftA(x, y, floorA(...P.barA_BL)), (x, y) => liftB(x, y, floorB(...P.barA_BL)), P.barA_TL[1], P.barA_BL[1]);
+mkTw('ll.sliver', (x, y) => liftB(x, y, floorB(...P.sl_BL)), (x, y) => liftA(x, y, floorA(...P.sl_BL)), P.sl_TL[1], P.sl_BL[1]);
+mkTw('ll.barB', (x, y) => liftA(x, y, floorA(...P.barB_BL)), (x, y) => liftB(x, y, floorB(...P.barB_BL)), P.barB_TL[1], P.barB_BL[1]);
 S['ll.foot'] = { body: 'll', lift: (x, y) => liftA(x, y, floorA(...P.foot_BL)) };
 S['ll.floor1'] = { body: 'll', lift: (x, y) => liftH(x, y, 0), hinge: [liftH(...P.foot_BL, 0), liftH(...P.f1R, 0)] };
 S['ll.floor2'] = { body: 'll', lift: (x, y) => liftH(x, y, 0), hinge: [liftH(...P.barB_BL, 0), liftH(...P.barB_BR, 0)] };
@@ -309,6 +311,12 @@ for (const f of M.faces) {
   if (f.fill === 'url(dFront)') { const gg = M.gradients.dFront; g.d = [[gg.x1, gg.y1], [gg.x2, gg.y2]]; }
   let clip3 = null; if (f.clip === 'dBottom') clip3 = M.clips.dBottom.cmds.map(k => k[0] === 'Z' ? ['Z'] : [k[0], ...k.slice(1).map(p => sp.lift(p[0], p[1]))]);
   LET.push({ f, sp, c3, box, g, clip3 });
+  if (sp.twisted) { const ym = (sp.y0 + sp.y1) / 2, cx = (box[0] + box[2]) / 2;
+    for (const half of ['top', 'bot']) { const lift = half === 'top' ? sp.top : sp.bot; const sp2 = { body: sp.body, lift };
+      const c3h = f.cmds.map(k => k[0] === 'Z' ? ['Z'] : [k[0], ...k.slice(1).map(p => lift(p[0], p[1]))]);
+      const ya = half === 'top' ? box[1] - 30 : ym - 0.7, yb = half === 'top' ? ym + 0.7 : box[3] + 30, xa = box[0] - 30, xb = box[2] + 30;
+      const clip = [['M', lift(xa, ya)], ['L', lift(xb, ya)], ['L', lift(xb, yb)], ['L', lift(xa, yb)], ['Z']];
+      LET.push({ f, sp: sp2, c3: c3h, box, g: { white: [404, 622].map(yy => lift(cx, yy)) }, clip3: clip, half }); } }
   (BODIES[sp.body] ||= []).push(...samplePath(f.cmds).map(p => sp.lift(p[0], p[1])));
 }
 const centroid3 = pts => pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length, s[2] + p[2] / pts.length], [0, 0, 0]);
@@ -363,11 +371,14 @@ function drawScene(ctx, st) {
   const passes = [{ swap: false, clip: null }]; if (st.wave) passes.push({ swap: true, clip: st.wave });
   for (const pass of passes) {
     ctx.save(); if (pass.clip) { ctx.clip(pass.clip); }
-    for (const L of LET) drawLetterFace(ctx, L, cam, xf, st, pass.swap);
+    for (const L of LET) { if (L.half && !st.split) continue; if (L.sp && L.sp.twisted && st.split) continue; drawLetterFace(ctx, L, cam, xf, st, pass.swap); }
     ctx.restore();
   }
   if (st.reg > 0) { const s = st.reg, [cx, cy] = P.reg; ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); ctx.fillStyle = C.reg; ctx.fill(REG, 'evenodd'); ctx.restore(); }
 }
+const C0 = [Math.cos(30 * D2R) * Math.cos(45 * D2R), -Math.cos(30 * D2R) * Math.sin(45 * D2R), Math.sin(30 * D2R)];
+const OFF = { 'll.barA.top': 230, 'll.barA.bot': -130, 'll.sliver.top': 40, 'll.sliver.bot': -230, 'll.barB.top': -190, 'll.barB.bot': 150, 'll.floor2': 150, 'll.foot': 210, 'll.floor1': 210,
+  'u.backTop': -280, 'u.backSide': -280, 'u.side': 260, 'i2.left': 210, 'i2.stem': 210, 'i2.right': -230, 'i2.dot': -10 };
 const KIND = { 'i1.left': 'A', 'i1.right': 'B', 'i1.top': 'H', 'll.barA': 'AB', 'll.sliver': 'BA', 'll.barB': 'AB', 'll.foot': 'A', 'll.floor1': 'H', 'll.floor2': 'H', 'u.front': 'B', 'u.backTop': 'H', 'u.backSide': 'A', 'u.side': 'A',
   'D.front': 'B', 'D.bottom': 'B', 'D.left': 'A', 'D.top': 'H', 'i2.left': 'B', 'i2.stem': 'A', 'i2.right': 'B', 'y.front': 'A', 'y.right': 'B' };
 const KC = { A: '#58a6ff', B: '#ffad4a', H: '#62d987' };
@@ -387,10 +398,11 @@ function fillFor(ctx, L, cam, xf, st, swap) {
 }
 function tracePath(ctx, c3, pr) { ctx.beginPath(); for (const k of c3) { if (k[0] === 'M') ctx.moveTo(...pr(k[1])); else if (k[0] === 'L') ctx.lineTo(...pr(k[1])); else if (k[0] === 'C') { const a = pr(k[1]), b = pr(k[2]), c = pr(k[3]); ctx.bezierCurveTo(a[0], a[1], b[0], b[1], c[0], c[1]); } else ctx.closePath(); } }
 function drawLetterFace(ctx, L, cam, xf, st, swap) {
-  if (L.dot) { const d = st.dots?.[L.dot.body]; if (!d || d.hide) return; const W = [L.dot.C[0], L.dot.C[1], L.dot.C[2] + (d.z || 0)]; const p = cam(W); const s = cam.scaleAt(W); const r = L.dot.r * s;
+  if (L.dot) { const d = st.dots?.[L.dot.body]; if (!d || d.hide) return; const od = (st.explode || 0) * (OFF[L.f.id] || 0); const W = [L.dot.C[0] + C0[0] * od, L.dot.C[1] + C0[1] * od, L.dot.C[2] + (d.z || 0) + C0[2] * od]; const p = cam(W); const s = cam.scaleAt(W); const r = L.dot.r * s;
     const sq = d.sq || 0, sy = 1 - sq, sx = 1 / Math.max(0.3, sy); ctx.fillStyle = st.analysis ? '#9a95a3' : swap ? (L.f.fill === C.pink ? C.white : C.pink) : L.f.fill;
     ctx.beginPath(); ctx.ellipse(p[0], p[1] + r * (1 - sy), r * sx, r * sy, 0, 0, Math.PI * 2); ctx.fill(); return; }
-  const tr0 = xf(L.sp.body); let tr = tr0; const hg = L.sp.hinge; const hh = st.rise[L.sp.body] ?? 1;
+  const key = L.half ? L.f.id + '.' + L.half : L.f.id; const od = (st.explode || 0) * (OFF[key] ?? (L.sp.twisted ? 0 : OFF[L.f.id] ?? 0));
+  const trb = xf(L.sp.body); const tr0 = od ? (W) => { const q = trb(W); return [q[0] + C0[0] * od, q[1] + C0[1] * od, q[2] + C0[2] * od]; } : trb; let tr = tr0; const hg = L.sp.hinge; const hh = st.rise[L.sp.body] ?? 1;
   if (hg && hh < 1) { const [A, B] = hg; const d = [B[0] - A[0], B[1] - A[1], B[2] - A[2]]; const dl = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
     tr = (W) => { const t = ((W[0] - A[0]) * d[0] + (W[1] - A[1]) * d[1] + (W[2] - A[2]) * d[2]) / dl; const Q = [A[0] + d[0] * t, A[1] + d[1] * t, A[2] + d[2] * t]; const k = Math.max(0, hh); return tr0([Q[0] + (W[0] - Q[0]) * k, Q[1] + (W[1] - Q[1]) * k, Q[2] + (W[2] - Q[2]) * k]); }; }
   const pr = (W) => cam(tr(W));
@@ -442,6 +454,11 @@ const SEQ = {
   T4: { name: 'Test 4 · Figur und Grund', dur: 2.6, fn: (t) => { const p = t < 1.3 ? (t > 0.35 ? Math.min(1, spring(t - 0.35, 0.85, 8)) : 0) : Math.max(0, 1 - ease((t - 1.9) / 0.5)); return { cam: FINAL, rise: {}, dots: { i1dot: {}, i2dot: {} }, frame: { plate: p, rim: 0, shadow: 0 } }; } },
   T5: { name: 'Test 5 · Punkte mit Physik', dur: 2.4, fn: (t) => ({ cam: FINAL, rise: {}, dots: { i1dot: dropDot(t, 0.05, 720, 0.42, 3), i2dot: dropDot(t, 0.3, 760, 0.38, 3) }, frame: { plate: 1, rim: 1, shadow: 1 }, reg: 1 }) },
   T6: { name: 'Test 6 · Platte, Rand, Schatten', dur: 2.4, fn: (t) => ({ cam: FINAL, rise: {}, dots: { i1dot: {}, i2dot: {} }, frame: { plate: t > 0.15 ? Math.min(1, spring(t - 0.15, 0.9, 7.2)) : 0, rim: t > 0.37 ? Math.min(1, spring(t - 0.37, 0.9, 6.6)) : 0, shadow: t > 0.65 ? ease((t - 0.65) / 0.8) : 0, pulse: 1 + 0.012 * Math.exp(-(t - 0.58) * 6) * Math.sin(Math.max(0, t - 0.58) * 15) * (t > 0.58 ? 1 : 0) }, reg: t > 1.4 ? Math.max(0, spring(t - 1.4, 0.5, 14)) : 0 }) },
+  T7: { name: 'Test 7 · Auseinandergezogen (neu)', dur: 6.2, fn: (t) => { // langsam ins Einrasten, halten, wieder heraus: die Teile schweben getrennt und fallen nur bei 45°/30° zusammen
+    let k; if (t < 3.2) k = 1 - ease(t / 3.2); else if (t < 4.5) k = 0; else k = 0.62 * ease((t - 4.5) / 1.5);
+    return { cam: { phi: 45 + 25 * k, el: 30 + 7 * k, persp: k / 2400, zoom: 1, roll: -2 * k, pan: [0, 0], frameW: 0, fit: 0.9 }, rise: {}, dots: { i1dot: {}, i2dot: {} }, split: true, explode: 1 }; } },
+  P: { name: 'Beweis', dur: 10, fn: (t) => { const i = Math.min(4, Math.floor(t / 2)), split = Math.floor(t) % 2 === 1; const phi = [70, 62, 55, 49, 45][i]; const k = (phi - 45) / 25;
+    return { cam: { phi, el: 30 + 6 * k, persp: k / 2600, zoom: 1, roll: 0, pan: [0, 0], frameW: 0, fit: 0.9 }, rise: {}, dots: { i1dot: {}, i2dot: {} }, split, explode: split ? 1 : 0 }; } },
   END: { name: 'Endbild', dur: 0.001, fn: () => ({ cam: FINAL, rise: {}, dots: { i1dot: {}, i2dot: {} }, frame: { plate: 1, rim: 1, shadow: 1 }, reg: 1 }) },
 };
 function render(ctx, W, H, seqKey, t, opt = {}) {
@@ -469,6 +486,7 @@ window.ILLUDIY = { SEQ, render, PIV, PIV2 };
     T4: '<b>Test 4 · Figur und Grund.</b> Ohne Platte sind Deckel des i und Stamm des zweiten i sichtbare Flächen. Mit der Platte verschwinden sie: Säule wird Schacht, Balken wird Schlitz.',
     T5: '<b>Test 5 · Punkte mit Physik.</b> Schwerkraft, zwei Sprünge, Stauchen. Der weiße Punkt versinkt halb hinter dem Stamm.',
     T6: '<b>Test 6 · Platte, Rand, Schatten.</b> Die Platte wächst in Iso-Rauten, der Rand folgt, der Schatten streicht entlang der Isometrie-Achse ein.',
+    T7: '<b>Test 7 · Auseinandergezogen (Vorschlag für Fassung 2).</b> Jedes Teil ist entlang der Blickrichtung der Endkamera verschoben: im Logo unsichtbar, aus jedem anderen Winkel schweben die Teile von ll, u und zweitem i getrennt im Raum. Erst bei 45°/30° fallen sie zum unmöglichen Logo zusammen, danach fährt die Kamera wieder heraus.',
     END: '<b>Endbild.</b> Identisch mit dem statischen Vektor.' };
   const cv = document.getElementById('cv'), ctx = cv.getContext('2d'), stage = document.getElementById('stage');
   const scrub = document.getElementById('scrub'), timeEl = document.getElementById('time'), playBtn = document.getElementById('play');
