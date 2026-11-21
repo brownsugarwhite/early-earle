@@ -5,8 +5,8 @@
 //      der zweiten Pose sind dieselben wie vorher; die Statuszeile nennt die Pose. Schritte für ⌘Z; zurückgenommen ist es wie vorher.
 //   Z2 In der Grundform die Neigung gestellt: Sie gilt in allen Posen; „Fressen“ behält dazu seinen Unterschied der Größe (1e-9).
 //   Z3 In der zweiten Pose die Anzahl gestellt: Sie gilt in der Grundform und in jeder Pose; die Statuszeile sagt es.
-//   Z4 In der zweiten Pose einen Zahn gerückt (über denselben Weg wie die Linse): nur dort; in „Fressen“ steht er an seinem Platz
-//      (Werte gleich, alle Punkte der Zähne höchstens 0,01 neben vorher).
+//   Z4 In der zweiten Pose einen Zahn im Bild gewählt (zwei Tipps: mit seinem Spiegelbild) und zum Nachbarn hin gezogen: Er rückt
+//      nur dort; in „Fressen“ steht er an seinem Platz (Werte gleich, alle Punkte der Zähne höchstens 0,01 neben vorher).
 //   Z5 Am Faden zwischen den zwei Posen auf der Hälfte: Die Spitze des gerückten Zahns (am Oberkiefer, der in beiden Posen gleich
 //      steht) liegt höchstens 5 % ihres Wegs neben der Mitte ihrer zwei Lagen. Am Anfang und am Ende des Fadens gehalten liegen die
 //      Zähne höchstens 0,05 neben dem Stand in der Pose dort (größter Abstand über alle Punkte der Zähne): Beim Ankommen springt
@@ -18,7 +18,8 @@
 //      offen: In keinem Bild steht es weiter zu als an den zwei Enden (höchstens 0,5° darunter). Beim Bau gefunden: Es klappte
 //      vorher bei jedem Wechsel von 42° auf 0° zu. Die Linse sagt beim Wechsel kurz, wessen Zähne sie zeigt.
 //   K  Keine Fehler in der Konsole.
-// Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;…'] [BIS=Z2|Z4|Z5] node scripts/pruefen/ozzy-maul-posen-zaehne-fenster.mjs [ordner]
+// Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;…'] [BIS=Z2|Z4|Z5] [ZOOM=5] node scripts/pruefen/ozzy-maul-posen-zaehne-fenster.mjs [ordner]
+// (ZOOM: wie nah am Maul; für Bilder näher, etwa 9)
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -28,6 +29,7 @@ const ordner = process.argv[2] ?? '';
 const NAME = process.env.NAME ?? 'teat firefish';
 const LINIE = (process.env.LINIE ?? '-860,172;-735,156;-700,152;-665,156;-640,165').split(';').map((t) => t.split(',').map(Number));
 const BIS = process.env.BIS ?? '';
+const ZOOM = Number(process.env.ZOOM ?? 5);
 const basis = process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html';
 const PROBE = 'ozzy-probe-posen-zaehne';
 const datei = `${fileURLToPath(new URL('../../../../wesen/', import.meta.url))}${PROBE}.eewesen`;
@@ -177,8 +179,8 @@ const abstand = (A, B) => {
   return m;
 };
 /** die Spitze eines Zahns (die letzten zwei Punkte eines Zahns sind die Mitte seines Fußes und seine Spitze) */
-const spitze = (Z, unten, i, gespiegelt = false) => {
-  const q = Z.zaehne.findIndex((z) => z.unten === unten && z.i === i && z.gespiegelt === gespiegelt);
+const spitze = (Z, unten, i) => {
+  const q = Z.zaehne.findIndex((z) => z.unten === unten && z.i === i);
   if (q < 0) return null;
   const v = 3 * (q * Z.jeZahn + Z.jeZahn - 1);
   return [Z.pos[v], Z.pos[v + 1], Z.pos[v + 2]];
@@ -213,7 +215,7 @@ try {
   await s.keyboard.press('1');
   await s.waitForTimeout(1500);
   await ruhig();
-  await heran(5);
+  await heran(ZOOM);
 
   // die Zähne sprießen in der Grundform
   await O('zaehne', 'anfang');
@@ -347,11 +349,47 @@ try {
   await lage(2);
   const p4a = await O('zaehne');
   const P4a = await O('zahnPunkte');
-  // (ein Zahn der oberen Reihe und sein Spiegelbild, längs nach hinten: derselbe Weg wie die Linse, `zaehneWert`)
-  const T = 3;
+  // ein Zahn der oberen Reihe, der zu sehen ist und dessen Nachbar nach hinten auch: zwei Tipps (seine Reihe, dann er mit seinem
+  // Spiegelbild), dann zum Nachbarn hin gezogen
+  const mitteReihe = (p4a.werte.oben.anzahl - 1) / 2;
+  const zImBild = () => O('zaehneImBild');
+  const sichtbar = (await zImBild()).filter((t) => !t.unten && t.trifft);
+  const Tz = sichtbar.find((t) => sichtbar.some((n) => Math.abs(n.i - t.i) === 1 && Math.abs(n.i - mitteReihe) > Math.abs(t.i - mitteReihe))) ?? sichtbar[0];
+  if (!Tz) throw new Error('Z4: kein Zahn der oberen Reihe ist zu sehen');
+  const T = Tz.i;
   const TP = p4a.werte.oben.anzahl - 1 - T;
-  await O('zaehne', { ...p4a.werte, oben: { ...p4a.werte.oben, eigen: { ...(p4a.werte.oben.eigen ?? {}), [T]: { ds: 0.1 }, [TP]: { ds: 0.1 } } } });
-  await s.waitForTimeout(500);
+  const tippAuf = async (i) => {
+    const q = (await zImBild()).find((t) => !t.unten && t.i === i);
+    await s.mouse.move(q.bild[0] + 60, q.bild[1] - 60);
+    await s.waitForTimeout(150);
+    await klick(q.bild[0], q.bild[1]);
+    await s.waitForTimeout(350);
+  };
+  await tippAuf(T);
+  await tippAuf(T);
+  const wahl4 = (await O('zaehne')).wahl;
+  const schritte4 = (await O('kiefer')).schritte;
+  {
+    const vor = await zImBild();
+    const ich = vor.find((t) => !t.unten && t.i === T);
+    const nachbar = vor.find((t) => !t.unten && t.i === (T < mitteReihe ? T - 1 : T + 1)) ?? vor.find((t) => !t.unten && Math.abs(t.i - T) === 1);
+    const weg = [nachbar.fuss[0] - ich.fuss[0], nachbar.fuss[1] - ich.fuss[1]];
+    await s.mouse.move(ich.bild[0], ich.bild[1]);
+    await s.waitForTimeout(250);
+    await s.mouse.down();
+    for (let k = 1; k <= 12; k++) {
+      await s.mouse.move(ich.bild[0] + (weg[0] * k) / 12, ich.bild[1] + (weg[1] * k) / 12);
+      await s.waitForTimeout(40);
+    }
+    // (noch drei Bewegungen am selben Ort: Jede holt den Rest der Annäherung)
+    for (let k = 0; k < 3; k++) {
+      await s.mouse.move(ich.bild[0] + weg[0] + (k % 2) * 0.5, ich.bild[1] + weg[1]);
+      await s.waitForTimeout(60);
+    }
+    await s.mouse.up();
+    await s.waitForTimeout(600);
+  }
+  const schritte4b = (await O('kiefer')).schritte;
   const p4 = await O('zaehne');
   const P4 = await O('zahnPunkte');
   await bild('4-pose-2-zahn-gerueckt');
@@ -363,8 +401,8 @@ try {
   const ruck = s4a && s4 ? Math.hypot(s4[0] - s4a[0], s4[1] - s4a[1], s4[2] - s4a[2]) : 0;
   ok(
     'Z4 in der zweiten Pose einen Zahn gerückt: nur dort; in „Fressen“ steht er an seinem Platz',
-    Math.abs((p4.versatz[1]?.oben?.eigen?.[T]?.ds ?? 0) - 0.1) < 1e-9 && p4.grund.oben.eigen === undefined && ruck > 1 && gleich(f4b.werte, f4.werte) && f4b.werte.oben.eigen === undefined && abstand(F4, F4b) <= 0.01,
-    `Versatz in Pose 2: Zahn ${T} längs ${z3(p4.versatz[1]?.oben?.eigen?.[T]?.ds ?? 0)}, seine Spitze rückt ${ruck.toFixed(2)}; Grundform ohne eigene Zähne: ${p4.grund.oben.eigen === undefined ? 'ja' : 'NEIN'}; „Fressen“: Werte ${gleich(f4b.werte, f4.werte) ? 'gleich' : 'ANDERS'}, Punkte der Zähne höchstens ${z3(abstand(F4, F4b))} neben vorher`,
+    !!wahl4 && wahl4.kiefer === 'oben' && wahl4.i === T && !wahl4.allein && Math.abs(p4.versatz[1]?.oben?.eigen?.[T]?.ds ?? 0) > 0.01 && (T === TP || p4.versatz[1]?.oben?.eigen?.[TP]?.ds === p4.versatz[1]?.oben?.eigen?.[T]?.ds) && schritte4b === schritte4 + 1 && p4.grund.oben.eigen === undefined && ruck > 1 && gleich(f4b.werte, f4.werte) && f4b.werte.oben.eigen === undefined && abstand(F4, F4b) <= 0.01,
+    `Zahn ${T} mit Spiegelbild ${TP} gewählt: ${wahl4 ? 'ja' : 'NEIN'}; Versatz in Pose 2: längs ${z3(p4.versatz[1]?.oben?.eigen?.[T]?.ds ?? 0)} (Spiegelbild ${z3(p4.versatz[1]?.oben?.eigen?.[TP]?.ds ?? 0)}), zur Tiefe ${z3(p4.versatz[1]?.oben?.eigen?.[T]?.dz ?? 0)}; seine Spitze rückt ${ruck.toFixed(2)}; Schritte +${schritte4b - schritte4}; Grundform ohne eigene Zähne: ${p4.grund.oben.eigen === undefined ? 'ja' : 'NEIN'}; „Fressen“: Werte ${gleich(f4b.werte, f4.werte) ? 'gleich' : 'ANDERS'}, Punkte der Zähne höchstens ${z3(abstand(F4, F4b))} neben vorher`,
   );
   if (BIS === 'Z4') throw new Error('BIS');
 

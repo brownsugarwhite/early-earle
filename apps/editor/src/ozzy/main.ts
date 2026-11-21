@@ -5738,8 +5738,11 @@ function lichtringZeichnen(): boolean {
 /** Werk → Welt (in der Pose: so, wie gezeigt) */
 const werkInWelt = (q: { x: number; y: number; z: number }): Vector3 => new Vector3(q.x / werkHaut.f + werkHaut.mitte.x, q.y / werkHaut.f + werkHaut.mitte.y, q.z / werkHaut.f);
 
-/** der Strahl unter dem Zeiger trifft die Haut des Werks (wie sie zu sehen ist): Ort in Welt und Werk, oder null */
-function werkHautTreffen(x: number, y: number, gespiegelt = false): { welt: Vector3; werk: { x: number; y: number; z: number } } | null {
+/**
+ * Der Strahl unter dem Zeiger trifft die Haut des Werks (wie sie zu sehen ist): Ort in Welt und Werk, oder null. `lagen`: die Lagen
+ * der gezeigten Haut, wenn sie schon gerechnet sind (sonst dreht `alsAnzeige` für diesen einen Strahl die ganze Haut: rund 2 ms).
+ */
+function werkHautTreffen(x: number, y: number, gespiegelt = false, lagen?: ArrayLike<number>): { welt: Vector3; werk: { x: number; y: number; z: number } } | null {
   const { o, d } = kam.strahl(x, y, W, H);
   // `gespiegelt`: gegen das Spiegelbild der Haut (der Strahl an der Ebene z = 0 gespiegelt; der Treffer liegt dann auf der Haut selbst)
   if (gespiegelt) {
@@ -5750,8 +5753,7 @@ function werkHautTreffen(x: number, y: number, gespiegelt = false): { welt: Vect
   const ox = (o.x - werkHaut.mitte.x) * f;
   const oy = (o.y - werkHaut.mitte.y) * f;
   const oz = o.z * f;
-  return werk.alsAnzeige(() => {
-    const P = werk.haut.pos;
+  const suchen = (P: ArrayLike<number>): { welt: Vector3; werk: { x: number; y: number; z: number } } | null => {
     const T = werk.haut.tri;
     let best = Infinity;
     for (let t = 0; t < T.length; t += 3) {
@@ -5786,7 +5788,8 @@ function werkHautTreffen(x: number, y: number, gespiegelt = false): { welt: Vect
     if (!Number.isFinite(best)) return null;
     const werkOrt = { x: ox + d.x * best, y: oy + d.y * best, z: oz + d.z * best };
     return { welt: werkInWelt(werkOrt), werk: werkOrt };
-  });
+  };
+  return lagen && lagen.length === werk.haut.pos.length ? suchen(lagen) : werk.alsAnzeige(() => suchen(werk.haut.pos));
 }
 
 /** der nächste sichtbare Punkt einer Linie (auch sein Spiegelbild) im Radius des Pinsels um einen Ort im Werk, wie gezeigt */
@@ -10425,8 +10428,10 @@ function zahnMarkenZeigen(): void {
     const [X, Y] = projizieren(ort, vp);
     el.hidden = false;
     el.classList.toggle('greift', !!zahnZug?.bewegt && zahnZug.greift);
-    // (steht die Form davor, ist die Marke blass und gepunktet wie eine verdeckte Linie; grob am Rechennetz gemessen, je Bild billig)
-    const davor = werkHautTreffen(X / D, Y / D);
+    // (steht die Form davor, ist die Marke blass und gepunktet wie eine verdeckte Linie; grob am Rechennetz gemessen. Je Bild billig,
+    // solange die Lagen der gezeigten Haut gelten, mit denen die Zähne gebaut sind: Mit ihnen muss die Haut nicht noch einmal gedreht
+    // werden, sonst kostete jede Marke in einer Pose je Bild rund 2 ms)
+    const davor = werkHautTreffen(X / D, Y / D, false, zaehneLagen && zaehneLagen.haut === werk.haut && !werk.zug ? zaehneLagen.P : undefined);
     const strahl = davor ? kam.strahl(X / D, Y / D, W, H) : null;
     const q = plaetze[platz]!;
     el.classList.toggle('verdeckt', !!davor && !!strahl && davor.welt.clone().sub(strahl.o).dot(strahl.d) < ort.clone().sub(strahl.o).dot(strahl.d) - (0.3 * q.mass) / werkHaut.f);
