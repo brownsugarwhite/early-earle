@@ -1,17 +1,19 @@
 /**
- * Diskokugel (Materialien; Florian: „einen realistischen diskokugelshader … in höchster qualität“). Die Form ist mit Spiegelkacheln
- * besetzt und dreht sich langsam:
- * - **Kacheln** in Breitenreihen um die Hochachse durch die Mitte der Form (wie bei einer echten Kugel: je Reihe so viele, dass sie
- *   quadratisch bleiben, Reihen gegeneinander versetzt), dunkle Fugen dazwischen. Jede Kachel ist ein ebener Spiegel: Ihre Normale wird
- *   an der Mitte der Kachel gelesen (über die Ableitungen der Kachellage im Bild zurückgerechnet), dazu eine kleine Verkippung je
- *   Kachel. So spiegelt jede Kachel einen einzigen Fleck des Raums und blitzt auf, wenn sie einen Strahler trifft.
+ * Diskokugel (Materialien; Florian: „einen realistischen diskokugelshader … in höchster qualität“; Runde 6: „wirkt noch nicht
+ * überzeugend“). Die Form ist mit Spiegelkacheln besetzt; die Lichter drehen sich um sie (gleichwertig zu einer Kugel, die sich dreht):
+ * - **Kacheln aus einem Raster im Raum** (Runde 6): Die Fugen sind die Linien, an denen die Fläche die Ebenen eines Würfelrasters
+ *   kreuzt (Abstand auf der Fläche: Abstand zur Ebene durch den Sinus des Winkels), so gibt es keinen Knick und keine Naht, auf
+ *   flachen Stellen sind die Kacheln quadratisch. Jede Kachel ist ein ebener Spiegel: Ihre Normale wird an ihrer Mitte gelesen (die
+ *   Mitte der Zelle auf die Fläche gelegt, ins Bild gerechnet), dazu eine kleine Verkippung je Kachel. Fast alle Kacheln spiegeln den
+ *   dunklen Raum, einzelne treffen eine Lampe und blitzen grell (mit Sternen).
  * - **Club:** dunkler Raum mit vier Strahlern (weiß, dazu Magenta, Cyan, Bernstein; „Farbig“ mischt sie zu Weiß).
  * - **Lichtflecken an Wand und Boden**, physikalisch: Für einen Punkt der Wand wird die Kachel gesucht, deren Normale das Licht eines
  *   Strahlers dorthin spiegeln könnte (Halbvektor), und deren tatsächliche Spiegelrichtung geprüft. So wirft jede Kachel genau einen
  *   Fleck, die Flecken laufen in Reihen über Wand und Boden, wenn sich die Kugel dreht, und werden auf dem Boden schräg gestreckt.
- * - **Sternfilter** auf den hellsten Kacheln, ein Hauch Dunst um die Kugel.
+ * - **Sternfilter** auf den hellsten Kacheln, **Lichtstrahlen** aus ihnen (im Bild vom Mittelpunkt der Kugel nach außen verwischt,
+ *   wie Licht im Dunst), ein Hauch Dunst um die Kugel.
  */
-import { type RawShaderMaterial, type Texture } from 'three';
+import { type RawShaderMaterial, type Texture, Vector2, Vector3 } from 'three';
 import { BILD_KOPF } from '../bildShader';
 import { GDaten } from '../daten';
 import type { ShaderKern, ShaderLauf, ShaderWerte, Voreinstellung } from '../kern';
@@ -97,23 +99,28 @@ float fleck(vec3 dW, int i, float breite) {
   vec3 o = dW - r * dot(dW, r);
   vec2 q = abs(vec2(dot(o, e1), dot(o, e2))) - breite;
   float dq = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - breite * 0.25;
-  return (1.0 - smoothstep(-breite * 0.15, breite * 0.15, dq)) * (0.55 + 0.45 * hash12(zell + float(i) * 7.0)) * step(0.25, hash12(zell + float(i) * 3.0 + 1.0));
+  return (1.0 - smoothstep(-breite * 0.3, breite * 0.3, dq)) * (0.55 + 0.45 * hash12(zell + float(i) * 7.0)) * step(i == 0 ? 0.55 : 0.85, hash12(zell + float(i) * 3.0 + 1.0));
 }
 out vec4 hdr;
+/**
+ * Kachel aus dem Würfelraster im Raum an einem Punkt der Fläche (p, n): Abstand auf der Fläche zur nächsten Fuge (Kantenlängen),
+ * Kennung der Zelle und ihre Mitte auf die Fläche gelegt
+ */
+float rasterKachel(vec3 p, vec3 n, float kante, out vec3 zelle, out vec3 mitte) {
+  vec3 x = (p - uMitte) / kante + 0.5;
+  zelle = floor(x);
+  vec3 f = fract(x);
+  vec3 dEbene = min(f, 1.0 - f);
+  vec3 sinW = sqrt(max(1.0 - n * n, 1e-3));
+  vec3 dFlaeche = dEbene / sinW;
+  vec3 c = (zelle + 0.5 - 0.5) * kante + uMitte;
+  mitte = c - n * dot(c - p, n);
+  return min(dFlaeche.x, min(dFlaeche.y, dFlaeche.z));
+}
 void main() {
   GPunkt g = gLesen(vUv);
   float maske = deckungBei(vUv);
   vec3 blick = blickDurch(vUv);
-  // Kachellage an der Form (für alle Bildpunkte, damit die Ableitungen gelten): in der Ebene, die der Fläche am nächsten liegt,
-  // Reihen je um einen eigenen Versatz verschoben; gleich groß überall
-  vec3 qk = (g.p - uMitte) / (uRadius * 0.06 / uKacheln);
-  vec3 an = abs(g.n);
-  float eb = an.y >= an.x && an.y >= an.z ? 1.0 : (an.x >= an.z ? 0.0 : 2.0);
-  vec2 st = eb > 0.5 && eb < 1.5 ? qk.xz : (eb < 0.5 ? qk.zy : qk.xy);
-  st.x += hash11(floor(st.y) * 1.37 + eb * 9.0);
-  vec2 f = fract(st);
-  vec2 zell = floor(st) + vec2(eb * 1013.0, eb * 331.0);
-  vec2 gx = vec2(dFdx(st.x), dFdx(st.y)), gy = vec2(dFdy(st.x), dFdy(st.y));
   // Raum: Wand hinter der Kugel und Boden darunter
   vec3 vorn = normalize((uViewInv * vec4(0.0, 0.0, -1.0, 0.0)).xyz);
   vec3 o = uOrtho > 0.5 ? lageAusTiefe(vUv, 1.0) : uKamPos;
@@ -129,64 +136,36 @@ void main() {
   vec3 nFlaeche = boden ? vec3(0.0, 1.0, 0.0) : -vorn;
   vec3 c = vec3(0.0);
   if (uBuehne > 0.5) {
-    vec3 raum = boden ? vec3(0.016, 0.014, 0.02) : vec3(0.012, 0.011, 0.018);
+    vec3 raum = boden ? vec3(0.012, 0.011, 0.016) : vec3(0.008, 0.008, 0.013);
     // die farbigen Strahler tauchen Wand und Boden in ihr Licht
     raum += uFarbig * (vec3(0.05, 0.004, 0.03) * smoothstep(-0.2, 0.8, dot(normalize(dW), lichtRichtung(1))) + vec3(0.004, 0.02, 0.05) * smoothstep(-0.2, 0.8, dot(normalize(dW), lichtRichtung(2))));
     float cosW = max(dot(nFlaeche, -normalize(dW)), 0.0);
     vec3 fl = vec3(0.0);
-    for (int i = 0; i < 3; i++) fl += lichtFarbe(i) * lichtStaerke(i) * fleck(normalize(dW), i, 0.0075);
-    c = raum + fl * cosW * 6.0 / (abst * abst) * uFlecken;
-  }
-  // Strahlen im Dunst: längs des Blicks, wo der Strahl einer Kachel (vom Punktstrahler) durch den Raum läuft
-  float tForm = g.a > 0.5 ? g.z / max(dot(blick, vorn), 1e-3) : tEnde;
-  vec3 oc = o - uMitte;
-  float bq = dot(oc, blick);
-  float cq = dot(oc, oc) - pow(uRadius * 5.0, 2.0);
-  float dq = bq * bq - cq;
-  vec3 dunst = vec3(0.0);
-  if (uBuehne > 0.5 && uDunst > 0.0 && dq > 0.0) {
-    float t0 = max(-bq - sqrt(dq), 0.0), t1 = min(-bq + sqrt(dq), min(tForm, tEnde));
-    float schritte = 56.0;
-    float dt = (t1 - t0) / schritte;
-    float j = hash12(gl_FragCoord.xy + fract(uZeit) * 17.0);
-    for (int k = 0; k < 56; k++) {
-      float t = t0 + (float(k) + j) * dt;
-      if (t > t1) break;
-      vec3 pp = o + blick * t - uMitte;
-      float l = length(pp) / uRadius;
-      if (l < 1.05) continue;
-      float st0 = fleck(pp / (l * uRadius), 0, 0.006);
-      dunst += vec3(1.0, 0.97, 0.92) * st0 / (0.6 + l * l);
-    }
-    dunst *= dt / uRadius * 0.55 * uDunst;
-    // ein Hauch Dunst überall um die Kugel
+    for (int i = 0; i < 3; i++) fl += lichtFarbe(i) * lichtStaerke(i) * fleck(normalize(dW), i, 0.007);
+    c = raum + fl * cosW * 5.0 / (abst * abst) * uFlecken;
+    // ein Hauch Dunst um die Kugel
     vec2 c0 = insBild(uMitte);
     float rr = length((vUv - c0) * vec2(uAufl.x / uAufl.y, 1.0));
-    dunst += vec3(0.06, 0.05, 0.075) * exp(-rr * rr / 0.06) * uDunst;
+    c += vec3(0.05, 0.045, 0.065) * exp(-rr * rr / 0.06) * uDunst;
   }
-  c += dunst;
   float a = uBuehne > 0.5 ? 1.0 : 0.0;
   if (g.a > 0.5) {
-    // Normale an der Mitte der Kachel (über die Ableitungen zurückgerechnet), dazu eine kleine Verkippung je Kachel
-    mat2 J = mat2(gx, gy);
-    vec2 dpix = abs(determinant(J)) > 1e-10 ? inverse(J) * (vec2(0.5) - f) : vec2(0.0);
-    if (length(dpix) > 60.0) dpix = vec2(0.0);
-    vec4 nM = texture(tNormal, (gl_FragCoord.xy + dpix) / uAufl);
-    vec3 nT = nM.a > 0.5 ? normalize(nM.xyz) : g.n;
-    vec3 nK = normalize(nT + 0.075 * (hash33(vec3(zell, 2.0)) - 0.5));
+    float kante = uRadius * 0.055 / uKacheln;
+    vec3 zelle, mitte;
+    float rand = rasterKachel(g.p, g.n, kante, zelle, mitte);
+    // die Normale an der Mitte der Kachel (ins Bild gerechnet und dort gelesen), dazu eine kleine Verkippung je Kachel
+    vec2 uvc = insBild(mitte);
+    vec4 nM = texture(tNormal, uvc);
+    vec3 nT = nM.a > 0.5 && dot(normalize(nM.xyz), g.n) > 0.6 ? normalize(nM.xyz) : g.n;
+    vec3 nK = normalize(nT + 0.06 * (hash33(zelle + 2.0) - 0.5));
     vec3 V = -blick;
     vec3 sp = club(reflect(-V, nK));
-    float rand = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
-    float aaF = (length(gx) + length(gy)) * 0.7 + 1e-4;
-    float fuge = 1.0 - smoothstep(0.022 - aaF, 0.04 + aaF, rand);
-    // Spiegelglas: leicht getönt, je Kachel ein wenig anders hell, am Rand eine feine Kante aus Glas
-    vec3 kc = sp * vec3(0.84, 0.86, 0.9) * (0.8 + 0.35 * hash12(zell + 9.0));
-    kc += vec3(0.03, 0.03, 0.035);
-    float glasKante = smoothstep(0.1, 0.05, rand) * (1.0 - fuge);
-    kc += glasKante * 0.12 * max(dot(nK, lichtRichtung(0)), 0.0);
-    kc = mix(kc, vec3(0.05, 0.05, 0.055), fuge);
-    // Dunst vor der Kugel
-    c = mix(c, kc + dunst * 0.5, maske);
+    float aaF = fwidth(rand) + 1e-3;
+    float fuge = 1.0 - smoothstep(0.018 - aaF, 0.038 + aaF, rand);
+    // Spiegel: fast der ganze Raum, je Kachel ein wenig anders hell, leicht kühl; die Fugen dunkel
+    vec3 kc = sp * vec3(0.86, 0.88, 0.92) * (0.82 + 0.3 * hash13(zelle + 9.0)) + vec3(0.004, 0.004, 0.006);
+    kc = mix(kc, vec3(0.006, 0.006, 0.008), fuge);
+    c = mix(c, kc, maske);
     a = max(a, maske);
   }
   hdr = vec4(c, a);
@@ -205,6 +184,8 @@ void main() {
 const STERN = /* glsl */ `
 uniform sampler2D tHell;
 uniform float uStern;
+uniform float uStrahlen;
+uniform vec2 uZentrum;
 out vec4 farbe;
 void main() {
   vec2 px = 1.0 / vec2(textureSize(tHell, 0));
@@ -223,7 +204,18 @@ void main() {
     float w = float(i) * 0.5236;
     gl += texture(tHell, vUv + vec2(cos(w), sin(w)) * px * 5.0).rgb;
   }
-  farbe = vec4(s * 0.045 * uStern + gl / 12.0 * 0.5, 1.0);
+  // Lichtstrahlen: jede helle Kachel strahlt vom Mittelpunkt der Kugel weg (im Bild zum Mittelpunkt hin gesammelt)
+  vec2 dir = (vUv - uZentrum) * 0.011;
+  vec3 st = vec3(0.0);
+  float gew = 1.0;
+  float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+  vec2 pos = vUv - dir * ign;
+  for (int i = 0; i < 56; i++) {
+    pos -= dir;
+    st += texture(tHell, pos).rgb * gew;
+    gew *= 0.955;
+  }
+  farbe = vec4(s * 0.045 * uStern + gl / 12.0 * 0.5 + st * 0.012 * uStrahlen, 1.0);
 }`;
 
 const ENDE = /* glsl */ `
@@ -247,11 +239,12 @@ class Diskokugel implements ShaderLauf {
   private readonly hell: RawShaderMaterial;
   private readonly stern: RawShaderMaterial;
   private readonly ende: RawShaderMaterial;
+  private readonly mitte = new Vector3();
   constructor(k: ShaderKern) {
     this.daten = new GDaten(k);
     this.haupt = k.flaecheProgramm(HAUPT.replace('out vec4 farbe;', ''), { tNormal: { value: null }, tLage: { value: null }, tWeich: { value: null }, tHinten: { value: null }, uKacheln: { value: 1 }, uTempo: { value: 1 }, uFarbig: { value: 1 }, uFlecken: { value: 1 }, uDunst: { value: 1 } });
     this.hell = k.flaecheProgramm(HELL, { tBild: { value: null } });
-    this.stern = k.flaecheProgramm(STERN, { tHell: { value: null }, uStern: { value: 1 } });
+    this.stern = k.flaecheProgramm(STERN, { tHell: { value: null }, uStern: { value: 1 }, uStrahlen: { value: 1 }, uZentrum: { value: new Vector2(0.5, 0.5) } });
     this.ende = k.flaecheProgramm(ENDE, { tBild: { value: null }, tStern: { value: null } });
   }
   bild(k: ShaderKern, w: ShaderWerte): Texture {
@@ -272,6 +265,10 @@ class Diskokugel implements ShaderLauf {
     const stern = k.ziel('disko:stern', { skala: 0.5, art: 'half' });
     this.stern.uniforms.tHell!.value = hell.texture;
     this.stern.uniforms.uStern!.value = w.regler.funkeln ?? 1;
+    this.stern.uniforms.uStrahlen!.value = (w.regler.dunst ?? 1) * (w.buehne ? 1 : 0.4);
+    // der Mittelpunkt der Kugel im Bild
+    const m = this.mitte.copy(k.u.uMitte.value).project(k.kamera);
+    (this.stern.uniforms.uZentrum!.value as Vector2).set(m.x * 0.5 + 0.5, m.y * 0.5 + 0.5);
     k.flaeche(this.stern, stern);
     this.ende.uniforms.tBild!.value = hdr.texture;
     this.ende.uniforms.tStern!.value = stern.texture;
@@ -292,13 +289,13 @@ export const DISKOKUGEL: Voreinstellung = {
   id: 'diskokugel',
   name: 'Diskokugel',
   gruppe: 'Materialien',
-  zeile: 'Spiegelkacheln in Breitenreihen, jede ein ebener Spiegel; die Kugel dreht sich, jede Kachel wirft ihren Lichtfleck an Wand und Boden',
+  zeile: 'Spiegelkacheln aus einem Raster im Raum (ohne Knick), jede ein ebener Spiegel; die Lichter drehen sich, einzelne Kacheln blitzen grell mit Sternen und Strahlen, Lichtflecken an Wand und Boden',
   regler: [
     { k: 'kacheln', name: 'Kacheln', min: 0.4, max: 2.5, schritt: 0.05, grund: 1 },
     { k: 'tempo', name: 'Drehen', min: 0, max: 3, schritt: 0.05, grund: 1 },
     { k: 'farbig', name: 'Farbig', min: 0, max: 1, schritt: 0.05, grund: 1 },
     { k: 'flecken', name: 'Lichtflecken', min: 0, max: 3, schritt: 0.05, grund: 1 },
-    { k: 'dunst', name: 'Dunst (Strahlen)', min: 0, max: 3, schritt: 0.05, grund: 1 },
+    { k: 'dunst', name: 'Strahlen', min: 0, max: 3, schritt: 0.05, grund: 1 },
     { k: 'funkeln', name: 'Funkeln', min: 0, max: 3, schritt: 0.05, grund: 1 },
   ],
   bauen: (k) => new Diskokugel(k),
