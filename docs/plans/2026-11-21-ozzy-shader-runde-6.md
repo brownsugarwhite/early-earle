@@ -1,4 +1,4 @@
-# Ozzy, Shader Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel (21.11.2026)
+# Ozzy, Shader Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel (21.11.2026, gebaut)
 
 Florian (wörtlich): „gerne noch nachschärfen. Diskokugel wirkt noch nicht überzeugend und auch Die Tiermuster können mit den rex
 nicht mithalten. Außerdem hätte ich gerne noch mehr Hautshader im manga, anime und spider-verse look. Und wir brauchen eine richtig
@@ -54,3 +54,21 @@ Bisher war Fell nur ein Muster auf der Haut, dazu ein Haarsaum im Bild. Neu ist 
 Je Etappe Bilder an „strange bird“ (Übersicht und nah, `GIER=-30 NEIGUNG=8`, `ZOOM=2.4` und `7`), Konsole ohne Fehler, Typen und
 Lint. Tempo: je neuem Motor einmal die Zeit eines Bilds auf dem Mac messen (Grafikkarte, nicht nur Prozessor); am iPhone nicht.
 Sein Auge entscheidet; Offenes sammle ich in `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`.
+
+## Stand (21.11.2026)
+
+Gebaut: Etappe 1 bis 5 und 7; Etappe 6 zur Hälfte (T-Rex in Anime und Manga ja, die lebende Kino-Bühne nein). 62 Shader in sechs
+Gruppen. Bilder `docs/progress/ozzy/shader/2026-11-21-runde-6-*.png`; Offenes: `…-shader-was-bleibt.md`, Punkte 26 bis 40.
+
+Anders als geplant:
+
+- **Fell:** Ghibli malt dicke Haare in großen Büscheln (Kegel sahen aus wie Blätter oder Federn); Anime, Spider-Verse und Manga
+  nehmen Büschel als Flammen (mit dünnen Haaren wurde ihre Kontur fleckig); Tusche nur an den Kanten der Büschel. 20 Muster (dazu
+  Wolle). Schaf und Plüschtier sind Voreinstellungen des Fells, keine eigenen Motoren.
+- **Tempo** (nicht im Plan, nach der ersten Messung: 96 bis 300 ms je Bild): Muster einmal je Ecke in einer Textur, acht statt
+  27 Nachbarzellen, in Bewegung 45 % der Schalen in 70 % der Auflösung, danach ein Bild in voller Güte. Jetzt 25 bis 48 ms in
+  Bewegung im Testbrowser.
+- **Flausch:** Fell und Flausch teilen den Lauf der Schalen (`schalen.ts`); die Wolke hat Echt, Ghibli, Anime (kein Spider-Verse).
+- **Häute:** Earle als fünfter Stil für alle Häute; die Schuppentiere laufen auf demselben Motor (`haeute.ts`).
+- **Diskokugel:** Kacheln aus einem Würfelraster im Raum statt in Breitenkreisen (Kreise um eine Achse laufen an den Polen und in
+  Mulden der Form zusammen); die Strahlen entstehen im Bild (radial verwischt) statt als Linien im Raum.

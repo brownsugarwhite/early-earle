@@ -1,7 +1,7 @@
-# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 5, 20.11.2026)
+# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 6, 21.11.2026)
 
-Alle 52 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/2026-11-20-runde-2-*.png`, Runde 4:
-`2026-11-20-runde-4-*.png`). Was mir beim Ansehen aufgefallen ist, für einen Feinschlifflauf (Florians Auge entscheidet):
+Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/2026-11-20-runde-2-*.png`, Runde 4:
+`2026-11-20-runde-4-*.png`, Runde 6: `2026-11-21-runde-6-*.png`). Was mir beim Ansehen aufgefallen ist, für einen Feinschlifflauf (Florians Auge entscheidet):
 
 1. **Die sechs freien aus Runde 1** sind nachgeschärft (Feuer, Rauch, Tinte, Flüssigglas, Aquarell, Tintenfleck). Es bleibt: Im
    Feuer zeigen sich am Rand des Rauchs runde Ballen; im Rauch liegt am Ohr eine dunkle Sichel (dort ist der Körper dünn); die Tinte
@@ -24,7 +24,8 @@ Alle 52 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
 **Nach Runde 3 (Tiermuster, Ukiyo-e, Diamant, Diskokugel):**
 
 13. **Schlange und Krokodil:** Wo die Fläche die Richtung wechselt, wechseln auch die Schuppenreihen (eine Naht, wie bei echten
-    Tieren an Übergängen, aber an Florians Formen manchmal mitten auf einer Wölbung).
+    Tieren an Übergängen, aber an Florians Formen manchmal mitten auf einer Wölbung). **Runde 6:** Schlangen und Drache sind
+    Schindeln im Raum (keine Naht); Krokodil, Salamander und Elefant laufen auf den neuen Häuten.
 14. **Diskokugel:** in Runde 4 neu (siehe unten).
 15. **Diamant:** in Runde 4 neu (siehe unten).
 16. **Ukiyo-e:** Die Pinselzeichen im Titelfeld sind Striche ohne Bedeutung; der Berg ist klein.
@@ -33,15 +34,14 @@ Alle 52 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
 
 17. **Tiere:** Ringe und Rauten (Korallennatter, Klapperschlange) laufen quer zur längsten Achse der Form; an verschlungenen Formen
     wirken sie wie Flecken. Der Python schimmert am Umriss violett (gewollter Schimmer, vielleicht zu stark). Im Comic glänzt eine
-    stark gewölbte Form an vielen Stellen.
+    stark gewölbte Form an vielen Stellen. **Runde 6:** Die Tiere laufen auf den Häuten (`haeute.ts`, Licht wie beim T-Rex, fünf
+    Stile); Ringe und Rauten laufen weiter quer zur längsten Achse der Form.
 18. **LEGO:** Dünne Teile, schmaler als ein Stein, fallen weg (wie beim echten Bauen); die Steine schauen nur nach oben (Noppen oben,
     keine Seitenbauweise). Das Licht hängt an der Sicht: Beim Drehen wandern die Schatten mit.
 19. **Diamant:** Die Facetten folgen der Normale (keine ebenen Flächen im Raum); am Umriss blüht das Licht stark auf.
     **Diamantbesatz:** sehr viel Funkeln, im Ganzen unruhig; wo Zellen im Raum die Haut nur streifen, entstehen kleine, angeschnittene
     Steine.
-20. **Diskokugel:** Wo die Kacheln die Ebene wechseln (drei Ebenen), knicken die Reihen; das Licht ist an der Sicht, die Flecken an
-    Wand und Boden gehören zu einer gedachten Kugel (sie passen in der Bewegung, nicht Kachel für Kachel). Der Dunst ist körnig
-    (56 Schritte je Bildpunkt).
+20. **Diskokugel:** in Runde 6 neu (siehe unten).
 21. **Gouache:** Striche der Form reichen ein wenig über den Umriss (gewollt); die Wolken bestehen aus kurzen Strichen, Ghibli malt sie
     weicher.
 
@@ -56,3 +56,27 @@ Alle 52 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     schwebt vor der Landschaft). Spielzeug „Erde“ ist braun; das grüne Spielzeug ist die Färbung Wald.
 25. **T-Rex, Tempo:** je Bildpunkt zwei Zellsuchen im Raum (Fossil drei) mit je 54 Zellen, dazu die Bühne; nicht gemessen, weder auf dem
     Mac noch am iPhone.
+
+**Nach Runde 6 (Fell, Flausch, Häute im Zeichenstil, Diskokugel; Bilder `2026-11-21-runde-6-*.png`):**
+
+26. **Fell, Tempo:** In Bewegung im Testbrowser 25 bis 48 ms je Bild (je nach Zoom, nah teurer; vorher 96 bis 300), danach ein Bild
+    in voller Güte. In Florians Chrome und am iPhone nicht gemessen.
+27. **Übersetzen:** Der Wechsel zu einem Fell- oder Hautshader hält das Bild 0,4 bis 0,7 s an (das Programm wird übersetzt).
+28. **Fell Ghibli:** Die Ränder der Büschel sind etwas kratzig; nah liegt im weißen Fell ein Gitter aus kurzen Strichen.
+29. **Fell, Muster:** Leopard, Gepard und Jaguar sind in der Übersicht schwer zu unterscheiden (erst nah: Rosetten, volle Punkte,
+    Rosetten mit Kern). Die Muster kennen keine Körperteile: Siam und Waschbär sind an den Enden der Form dunkel (weit außen im
+    Kasten der Form), nicht an Gesicht, Ohren und Pfoten; der Waschbär hat keine Maske.
+30. **Schaf:** In der Übersicht Vlies; nah liegen die Locken wie ein Netz aus Ringen.
+31. **Wolke:** Ghibli und Anime haben eckige Schattenstufen (die Kanten der Ballen zeigen sich in der Stufe); die Fransen am Rand
+    sehen aus wie Fell. Eine Wolke im Spider-Verse-Stil (im Plan) ist nicht gebaut.
+32. **Zuckerwatte:** innen sehr glatt, die Fasern sieht man fast nur am Rand.
+33. **Pusteblume** (Versuch): wirkt eher wie Distel oder Schneeflocken.
+34. **Plüschtier:** Plüsch ohne Nähte und Knopfaugen (der Shader kennt die Teile der Form nicht).
+35. **Drache:** Nah wirken die Schindeln wie spitze Blätter (eher Tannenzapfen); flacher und breiter wäre vielleicht drachiger.
+36. **Häute im Anime-Stil:** Nasse Häute (Frosch, Krake) glänzen mit großen weißen Formen; gewollt, vielleicht zu viel.
+37. **Diskokugel:** An schrägen Stellen werden die Kacheln Parallelogramme (der Schnitt des Rasters mit der Fläche), über einer
+    scharfen Kante der Form knicken sie mit. Die Strahlen entstehen im Bild (vom Mittelpunkt der Kugel aus verwischt), nicht im Raum.
+38. **T-Rex:** Die Kino-Bühne lebt noch nicht (Rauch, Flugsaurier, Glut; Plan Runde 6, Etappe 6, zweiter Teil).
+39. **Gemerkte Regler:** Bei den Tieren aus Runde 4 hat der Stil die Reihenfolge gewechselt (1 war Spider-Verse, ist jetzt Anime;
+    2 war Earle, ist jetzt Manga; Earle ist 4).
+40. **Spiel:** Die Probe „Ghibli-Fell“ im Spiel ist nicht gebaut (Florian: „später reicht“).
