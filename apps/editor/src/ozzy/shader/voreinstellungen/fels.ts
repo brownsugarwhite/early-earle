@@ -10,7 +10,8 @@
  */
 import { bildVoreinstellung } from '../bildShader';
 
-const GEMEIN = /* glsl */ `
+/** draußen: Zellen, Grate, Normale aus einer Höhe, Licht unter leicht bedecktem Himmel (auch für Barcelona) */
+export const DRAUSSEN = /* glsl */ `
 /** nächste Zelle im Raum: (F1, F2, Kennung), mitte: ihre Mitte */
 vec3 felsZelle(vec3 x, out vec3 mitte) {
   vec3 p = floor(x), f = fract(x);
@@ -60,7 +61,7 @@ vec3 himmel(vec2 qb) {
 `;
 
 const FELS = /* glsl */ `
-${GEMEIN}
+${DRAUSSEN}
 void main() {
   GPunkt g = gLesen(vUv);
   float maske = deckungBei(vUv);
@@ -124,7 +125,7 @@ void main() {
 `;
 
 const MAUER = /* glsl */ `
-${GEMEIN}
+${DRAUSSEN}
 void main() {
   GPunkt g = gLesen(vUv);
   float maske = deckungBei(vUv);
