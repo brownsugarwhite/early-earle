@@ -13,7 +13,8 @@ import { DAVINCI } from './davinci';
 import { EARLE_HAUT, EARLE_SCHUPPEN } from './earle';
 import { EINE_LINIE } from './eineLinie';
 import { ERDE42 } from './erde42';
-import { FELL, GIRAFFE, LEOPARD, TIGER } from './fell';
+import { FELL, GIRAFFE, LEOPARD, PLUESCHTIER, SCHAF, TIGER } from './fell';
+import { PUSTEBLUME, WOLKE, ZUCKERWATTE } from './flausch';
 import { FEUER } from './feuer';
 import { FLAMMENWESEN } from './flammenwesen';
 import { DIAMANT, PAVE } from './diamant';
@@ -99,6 +100,11 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   TURING,
   // Fell & Flausch
   FELL,
+  SCHAF,
+  PLUESCHTIER,
+  WOLKE,
+  ZUCKERWATTE,
+  PUSTEBLUME,
   // Effekte
   EINE_LINIE,
   FEUER,

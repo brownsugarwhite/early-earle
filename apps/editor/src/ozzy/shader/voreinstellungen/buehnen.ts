@@ -321,4 +321,35 @@ vec3 mangaGrund(vec2 css, vec2 qb) {
   g = mix(g, 0.04, punkt(css, smoothstep(0.3, 0.0, qb.y) * 0.35, radians(45.0), 5.0));
   return srgbZuLin(vec3(g));
 }
+/** blauer Himmel am Tag: tiefes Blau oben, hell am Horizont, Sonne oben links mit Hof, ein Hauch Dunst unten */
+vec3 himmelBlau(vec2 css, vec2 qb) {
+  float asp = uAufl.x / uAufl.y;
+  vec2 u = vec2(qb.x * asp, qb.y);
+  vec3 c = mix(vec3(0.62, 0.78, 0.92), vec3(0.13, 0.36, 0.72), smoothstep(0.1, 1.0, qb.y));
+  float ds = length(u - vec2(0.18 * asp, 0.86));
+  c += vec3(1.0, 0.94, 0.8) * (exp(-ds * 7.0) * 0.6 + exp(-ds * 40.0) * 1.2);
+  c = mix(c, vec3(0.86, 0.9, 0.94), smoothstep(0.25, 0.0, qb.y) * 0.7);
+  return srgbZuLin(c);
+}
+/** Jahrmarkt am Abend: Dämmerblau, unscharfe bunte Lichterketten, warmer Schein unten */
+vec3 jahrmarktGrund(vec2 css, vec2 qb) {
+  vec3 c = mix(vec3(0.32, 0.14, 0.3), vec3(0.05, 0.06, 0.18), smoothstep(0.0, 0.9, qb.y));
+  c += vec3(0.9, 0.45, 0.2) * smoothstep(0.45, 0.0, qb.y) * 0.25;
+  for (int i = 0; i < 2; i++) {
+    float g = i == 0 ? 90.0 : 46.0;
+    vec2 z = floor(css / g);
+    for (int j = -1; j <= 1; j++)
+      for (int k = -1; k <= 1; k++) {
+        vec2 zz = z + vec2(float(j), float(k));
+        if (hash12(zz + float(i) * 5.0) < 0.5) continue;
+        vec2 m = (zz + 0.2 + 0.6 * hash22(zz + 1.0)) * g;
+        float r = g * (0.16 + 0.22 * hash12(zz + 2.0));
+        float d = length(css - m);
+        float kreis = (1.0 - smoothstep(r - 1.5, r + 1.5, d)) * (0.6 + 0.4 * smoothstep(r * 0.3, r, d));
+        vec3 kf = hsv(vec3(hash12(zz + 4.0), 0.55, 1.0));
+        c += kf * kreis * (0.12 + 0.12 * float(i)) * smoothstep(0.05, 0.6, qb.y);
+      }
+  }
+  return srgbZuLin(c);
+}
 `;
