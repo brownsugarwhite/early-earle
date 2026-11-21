@@ -170,6 +170,13 @@ export interface Raum extends Dreher, StiftWerk {
   roentgen?(): boolean;
   /** Ozzy (S17): der Bereich der Anzeige, an dessen Rand eine Linie oder ein Punkt des Netzes abgeschnitten wird (0 = keiner) */
   bereich?(art: 'linie' | 'punkt', i: number): number;
+  /**
+   * Ozzy (21.11.): die Farbe eines Punkts oder des Stücks `si` einer Linie des Netzes: die Nummer in `Szene.farben` (0 = Tinte; die
+   * Farben selbst gibt mit, wer die Szene zeichnet). Fehlt: alles in Tinte.
+   */
+  farbe?(art: 'linie' | 'punkt', i: number, si?: number): number;
+  /** Ozzy (21.11.): die Farben einer Linie des Netzes je Stück auf einmal (null: ganz in Tinte); für das Zeichnen jedes Bilds */
+  linienFarben?(li: number): ArrayLike<number> | null;
 }
 
 /**
@@ -859,7 +866,9 @@ export class Verhalten {
     const e = this.stift ? this.werk.entwurf() : null;
     if (this.stiftZug || this.griff) return false;
     if (taste === 'enter') {
-      if (!e || e.anzahl < 2) return false;
+      // (eine Linie, die an Vorhandenem hängt, hat ihren Anfang dort: Mit einem gesetzten Punkt sind es zwei; Ozzy, 21.11.: so
+      // wird eine Linie vom Umriss mit einem Klick in die Form und ↩ der Strich eines Mauls)
+      if (!e || e.anzahl + (e.haengt ? 1 : 0) < 2) return false;
       this.dornAusblenden(e.letzter, e.aus);
       this.werk.schliessen();
       this.linieFertig(0);
@@ -1172,13 +1181,18 @@ export class Verhalten {
       for (const li of [e.li, e.zwilling]) for (const p of li >= 0 ? (this.netz.linien[li]?.punkte ?? []) : []) ohne.add(p);
     }
     const proben = this.suchProben();
+    // Ozzy (21.11.): Von zwei Punkten am selben Ort gilt der, der vorn gezeichnet ist (die höhere Farbnummer; ohne Farben wie vorher
+    // der erste). So trägt der Tropfen am Zeiger die Farbe, die man dort sieht (getrennte Lippen, die noch aufeinanderliegen).
+    const fz = this.raum?.farbe ? (i: number): number => this.raum!.farbe!('punkt', i) : null;
+    const gleichNah = 0.25 * this.g;
     const suche = (schicht: 0 | 1): { ziel: Ziel; x: number; y: number; d: number; verdeckt: boolean } | null => {
       let bp = -1;
       let bd = Infinity;
       this.netz.punkte.forEach((p, i) => {
         if (!p.sichtbar || (p.verdeckt ? 1 : 0) !== schicht || ohne.has(i)) return;
         const d = Math.hypot(p.x - x, p.y - y);
-        if (d < bd) {
+        const amSelbenOrt = fz !== null && bp >= 0 && Math.abs(d - bd) < gleichNah && fz(i) !== fz(bp);
+        if (amSelbenOrt ? fz!(i) > fz!(bp) : d < bd) {
           bd = d;
           bp = i;
         }
@@ -2014,7 +2028,7 @@ export class Verhalten {
     const R = (r: number): number => r * s * D;
     let n = 0;
     /** art 0: Linie (harte Vereinigung), 1: Punkt, Tropfen, Hals (weich); schicht 2: nach Tiefe (z0, z1) */
-    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0 = 0, z1 = 0, bereich = 0, f0 = 0, f1 = 0): void => {
+    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0 = 0, z1 = 0, bereich = 0, f0 = 0, f1 = 0, farbe = 0): void => {
       if ((n + 1) * PRIM_FELDER > this.puffer.length) {
         const neu = new Float32Array(this.puffer.length * 2);
         neu.set(this.puffer);
@@ -2029,7 +2043,7 @@ export class Verhalten {
       b[o + 4] = r0;
       b[o + 5] = r1;
       b[o + 6] = gruppe;
-      b[o + 7] = schicht + 4 * art + 8 * bereich;
+      b[o + 7] = schicht + 4 * art + 8 * bereich + 256 * farbe;
       b[o + 8] = z0;
       b[o + 9] = z1;
       b[o + 10] = f0;
@@ -2048,6 +2062,7 @@ export class Verhalten {
       const vy = new Float32Array(P.n);
       this.neigung(li, P, vx, vy);
       const bl = this.raum?.bereich?.('linie', li) ?? 0;
+      const lf = this.raum?.linienFarben?.(li) ?? null;
       for (const sch of raum ? [2] : [0, 1]) {
         let etwas = false;
         for (let k = 0; k + 1 < P.n; k++) {
@@ -2067,6 +2082,7 @@ export class Verhalten {
             bl,
             P.fein ? R(P.fein[k]!) : 0,
             P.fein ? R(P.fein[k + 1]!) : 0,
+            lf ? (lf[P.si[k + 1]!] ?? 0) : 0,
           );
           etwas = true;
         }
@@ -2080,7 +2096,7 @@ export class Verhalten {
       if (!p.sichtbar || alsTropfen.has(pi)) return;
       // gewählt: ein Tropfen, ein wenig größer
       const r = w.punktRadius * (1 + 0.6 * (this.auswahlF.get(pi)?.x ?? 0));
-      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(r), R(r), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0, this.raum?.bereich?.('punkt', pi) ?? 0);
+      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(r), R(r), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0, this.raum?.bereich?.('punkt', pi) ?? 0, 0, 0, this.raum?.farbe?.('punkt', pi) ?? 0);
     });
     // Tropfen mit Hals
     const felder: number[] = [];
@@ -2101,9 +2117,11 @@ export class Verhalten {
       const ay = t.ay + oy;
       const L = Math.hypot(t.pos.x - ax, t.pos.y - ay);
       const fang = this.fang(t.ziel) * w.halten;
+      // Ozzy (21.11.): Tropfen und Hals tragen die Farbe ihres Ziels
+      const tf = !this.raum?.farbe ? 0 : t.ziel.art === 'punkt' ? this.raum.farbe('punkt', t.ziel.pi) : t.ziel.art === 'linie' ? this.raum.farbe('linie', t.ziel.li, t.ziel.si) : 0;
       if (L > 0.05 * this.g && t.hals.x > 0.01) {
         const dick = 0.5 * w.hals * t.hals.x * Math.min(1, Math.max(0.25, 1 - L / (fang * 1.4)));
-        push(X(ax), Y(ay), X(t.pos.x), Y(t.pos.y), R(dick * 1.15), R(dick * 0.85), gruppe++, sch, 1);
+        push(X(ax), Y(ay), X(t.pos.x), Y(t.pos.y), R(dick * 1.15), R(dick * 0.85), gruppe++, sch, 1, 0, 0, 0, 0, 0, tf);
       }
       if (r > 0.01) {
         // Dehnung nach Tempo: der Tropfen zieht einen Schweif hinter sich her, die Fläche bleibt ungefähr gleich
@@ -2117,7 +2135,7 @@ export class Verhalten {
         }
         const e = Math.min(el, emax) / this.g;
         const rr = r / Math.sqrt(1 + e / (4 * r));
-        push(X(t.pos.x), Y(t.pos.y), X(t.pos.x + ex), Y(t.pos.y + ey), R(rr), R(rr * 0.5), gruppe++, sch, 1);
+        push(X(t.pos.x), Y(t.pos.y), X(t.pos.x + ex), Y(t.pos.y + ey), R(rr), R(rr * 0.5), gruppe++, sch, 1, 0, 0, 0, 0, 0, tf);
       }
       if (felder.length < MAX_FELDER * 4) felder.push(X((t.pos.x + ax) / 2), Y((t.pos.y + ay) / 2), R(L / 2 / this.g + 4 * w.punktRadius), Math.max(t.r.x, t.hals.x));
     }

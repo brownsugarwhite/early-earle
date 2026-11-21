@@ -18,6 +18,7 @@ import { Feder1 } from '../linien/feder';
 import { type DrehBild, Dreher2D, type RichtungZiel } from '../linien/richtung';
 import type { EntwurfInfo, FadenEnde, FadenProben, StiftOrt, V2 } from '../linien/stift';
 import type { Raum, Ziel } from '../linien/verhalten';
+import { LIPPEN_NR } from './maulFarben';
 import type { Pfad } from '@ee/shape/zeichnen';
 
 type V3 = { x: number; y: number; z: number };
@@ -61,6 +62,10 @@ export interface Flaeche {
 type Karte = { a: number; u: number; v: number; vorn: number; u0: number; v0: number; zelle: number; n: number; d: Float32Array; toleranz: number; stand: string; zeit: number };
 /** so weit (Tiefe) muss eine Probe hinter der Haut liegen, um als verdeckt zu gelten: Anteil der Ausdehnung; Raster der Karte */
 const VERDECKT_TOLERANZ = 0.03;
+/** näher als so (Bildschirmpunkte) liegen zwei Punkte im Bild „am selben Ort“ … */
+const DECKT_NAH = 0.75;
+/** … und der hintere gilt als verdeckt, wenn der andere mehr als so viel (Einheiten des Werks) näher am Betrachter liegt */
+const DECKT_TIEF = 0.5;
 const KARTE_N = 128;
 /** verdeckt im Shader der Anzeige: weit hinter jeder Tiefe (ohne Körper ist sie 1e9, die Duldung 1e6) */
 const HINTEN_Z = 4e9;
@@ -70,7 +75,18 @@ const HINTEN_Z = 4e9;
  * sie auf die Haut, `stiftFertig`) oder eine Abzweigung (auf einem Punkt oder einer Linie begonnen; sie endet an einem Punkt oder einer
  * Linie, `abzweigungErstellen`). Anker im Blatt, Griffe gleich lang nach beiden Seiten (so nimmt das Werk sie).
  */
-type Entwurf = { fl: number; a: Ansicht; anker: werk.StiftAnker[]; abzweig: boolean; nach: werk.AbzweigOrt | null; zu?: boolean };
+type Entwurf = {
+  fl: number;
+  a: Ansicht;
+  anker: werk.StiftAnker[];
+  abzweig: boolean;
+  nach: werk.AbzweigOrt | null;
+  zu?: boolean;
+  /** Block D (21.11.): Die Abzweigung beginnt in der Seite auf dem Umriss der Form (dann kann sie die Linie eines Mauls werden) */
+  umrissAnfang?: boolean;
+  /** Block D: Der Klick für den Anker `nr` hat in der Seite den Umriss gefangen; dort liegt er (Blatt) */
+  umrissEnde?: { nr: number; X: number; Y: number };
+};
 /** S15: ein Lichtring (Lage im Werk, 3 je Probe; geschlossen; mit Spiegelbild zu zeigen) */
 export type Lichtring = { pos: Float64Array; zu: boolean; spiegeln: boolean };
 
@@ -290,6 +306,12 @@ export class WerkBlatt implements Raum {
     const infos: LinienInfo[] = [];
     const tiefenJeLinie: (number[][] | undefined)[] = [];
     const roh: RoheLinie[] = [];
+    /** je Punkt: wie nah er am Betrachter liegt (längs der Achse seiner Fläche) */
+    const pNah: number[] = [];
+    /** die Farben der Lippen (Block D, 21.11.): je Punkt und je Stück einer Linie die Nummer in `Szene.farben` (0: Tinte) */
+    const pFarbe: number[] = [];
+    const lFarbe: (Uint8Array | null)[] = [];
+    const maul = werk.G.maul?.echt ? werk.G.maul : null;
     const br = this.breiten();
     werk.alsAnzeige(() => {
       const L = werk.loops;
@@ -348,6 +370,8 @@ export class WerkBlatt implements Raum {
                 const q3 = zeigen(q);
                 const hin = this.hinten(karte, q3);
                 punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: hin, z: F.tiefe ? F.tiefe(q3) : hin ? HINTEN_Z : 0 });
+                pNah.push((F.vorn ?? 1) * tief(q3));
+                pFarbe.push(0);
                 pSchl.push(`${fl}|${k}`);
                 anker.push({ fl, m: sm, werk: [], zuSehen: istSichtbar(p) });
                 schluessel.set(k, pi);
@@ -387,6 +411,17 @@ export class WerkBlatt implements Raum {
               tiefen?.push(c3.map(tief));
             }
             linien.push({ zu, punkte: idx, stuecke, knick: P.map((_, i) => werk.eckeGezeigt(li, i)) });
+            // Die Lippe des Mauls in Florians Farben: Ihre zwei Hälften (vor und nach dem Mundwinkel) sind Unterlippe und Oberlippe;
+            // der Mundwinkel selbst bleibt in Tinte. Welche Hälfte die untere ist, merkt sich das Maul.
+            const iW = maul && maul.id === l.id ? P.findIndex((p) => p.mundwinkel) : -1;
+            if (iW > 0 && maul) {
+              const untenZuerst = maul.ersteUnten ?? true;
+              const unten = (erste: boolean): boolean => erste === untenZuerst;
+              lFarbe.push(Uint8Array.from(stuecke, (_, i) => (unten(i < iW) ? LIPPEN_NR.linieUnten : LIPPEN_NR.linieOben)));
+              idx.forEach((pi, i) => {
+                if (i !== iW) pFarbe[pi] = unten(i < iW) ? LIPPEN_NR.punktUnten : LIPPEN_NR.punktOben;
+              });
+            } else lFarbe.push(null);
             lSchl.push(`${fl}|${l.id}|${m ? 1 : 0}`);
             infos.push({ fl, id: l.id, m });
             tiefenJeLinie.push(tiefen);
@@ -415,6 +450,38 @@ export class WerkBlatt implements Raum {
         });
       });
     });
+    // Von zwei Punkten am selben Ort im Bild gilt der vordere (Block D, 21.11.): Der hintere ist verdeckt wie alles hinter der Haut
+    // (nicht zu greifen, außer im Röntgen). Bis dahin nahm der Griff den mit der kleineren Nummer. Seit die Linie im Maul dieselben
+    // Anker trägt wie die Lippe, liegen ihre Punkte in der Seite genau hinter denen der Lippe (die Tiefenkarte hält sie an einer
+    // schmalen Schnauze für sichtbar: Ihre Toleranz ist dort größer als die halbe Breite der Form). Gleich tief (die Zwillinge der
+    // zwei Lippen) bleiben beide.
+    {
+      const zellen = new Map<string, number[]>();
+      punkte.forEach((q, pi) => {
+        if (!q.sichtbar || q.verdeckt) return;
+        const fl = anker[pi]!.fl;
+        // (zwei Raster, um einen halben Bildpunkt versetzt: Zwei Punkte dichter als ein halber teilen in einem davon die Zelle)
+        for (const k of [`${fl}|${Math.round(q.x)}|${Math.round(q.y)}`, `${fl}|h|${Math.round(q.x + 0.5)}|${Math.round(q.y + 0.5)}`]) {
+          const z = zellen.get(k);
+          if (z) z.push(pi);
+          else zellen.set(k, [pi]);
+        }
+      });
+      for (const z of zellen.values()) {
+        if (z.length < 2) continue;
+        for (const i of z) {
+          const a = punkte[i]!;
+          if (a.verdeckt) continue;
+          for (const j of z) {
+            const b = punkte[j]!;
+            if (i === j || Math.hypot(a.x - b.x, a.y - b.y) >= DECKT_NAH || pNah[j]! <= pNah[i]! + DECKT_TIEF) continue;
+            a.verdeckt = true;
+            if (!flaechen[anker[i]!.fl]?.tiefe) a.z = HINTEN_Z;
+            break;
+          }
+        }
+      }
+    }
     this.entNetz = { li: -1, erster: -1, letzter: -1 };
     const E: Entwurf | null = this.ent ?? (this.maulEnt ? { fl: this.maulEnt.fl, a: this.maulEnt.a, anker: this.maulEnt.anker, abzweig: false, nach: null } : null);
     const FE = E ? flaechen[E.fl] : undefined;
@@ -439,6 +506,7 @@ export class WerkBlatt implements Raum {
         const [x, y] = FE.hin(k.X, k.Y);
         idx.push(punkte.length);
         punkte.push({ x, y, sichtbar: true, verdeckt: false, z: 0 });
+        pFarbe.push(0);
         pSchl.push('');
         anker.push({ fl: E.fl, m: false, werk: [], zuSehen: true });
         blattAnker.push(k);
@@ -459,6 +527,7 @@ export class WerkBlatt implements Raum {
         }
         this.entNetz.li = linien.length;
         linien.push({ zu: false, punkte: idx, stuecke });
+        lFarbe.push(null);
         lSchl.push('');
         infos.push({ fl: E.fl, id: -1, m: false });
         proben.push(this.abtasten(FE, kontroll, stuecke, br));
@@ -475,6 +544,8 @@ export class WerkBlatt implements Raum {
     this.proben = proben;
     this.anker = anker;
     this.linien = infos;
+    this.punktFarbe = pFarbe;
+    this.linienFarbe = lFarbe;
     this.tiefenJeLinie = tiefenJeLinie;
     this.roh = roh;
     this.flaechen = flaechen;
@@ -861,6 +932,20 @@ export class WerkBlatt implements Raum {
   roentgenWert = 0;
   roentgen(): boolean {
     return this.roentgenWert > 0.5;
+  }
+
+  private punktFarbe: number[] = [];
+  private linienFarbe: (Uint8Array | null)[] = [];
+  /**
+   * Die Farbe eines Punkts oder des Stücks `si` einer Linie des Netzes (Block D, 21.11.): die Nummer in `Szene.farben` (`LIPPEN_NR`;
+   * 0: Tinte). Farbig sind die Lippen des Mauls; die Farben selbst gibt Ozzy je Bild mit (`lippenPalette`).
+   */
+  farbe(art: 'linie' | 'punkt', i: number, si = 0): number {
+    return art === 'punkt' ? (this.punktFarbe[i] ?? 0) : (this.linienFarbe[i]?.[si] ?? 0);
+  }
+  /** die Farben einer Linie je Stück (null: ganz in Tinte) */
+  linienFarben(li: number): Uint8Array | null {
+    return this.linienFarbe[li] ?? null;
   }
 
   /** S17: der Bereich der Anzeige je Linie oder Punkt des Netzes: der ihrer Fläche (Feld der Vier Ansichten), sonst keiner */
@@ -1565,6 +1650,34 @@ export class WerkBlatt implements Raum {
     }
     return null;
   }
+  /**
+   * Block D (21.11.): Der Ort, den P gefangen hat (ein Punkt oder eine Linie), liegt in der Seite auf dem Umriss der Form (der
+   * Linie der Mitte): seine Stelle im Blatt, sonst null.
+   */
+  private umrissOrt(o: StiftOrt): [number, number] | null {
+    const istMitte = (id: number): boolean => werk.loops[werk.loopNr(id)]?.art === 'mitte';
+    let fl = -1;
+    let ort: [number, number] | null = null;
+    if (o.art === 'punkt') {
+      const A = this.anker[o.pi];
+      const p = this.netz.punkte[o.pi];
+      if (A && p && A.werk.some((w) => istMitte(w.id))) {
+        fl = A.fl;
+        ort = [p.x, p.y];
+      }
+    } else if (o.art === 'linie') {
+      const I = this.linien[o.li];
+      if (I && I.id >= 0 && istMitte(I.id)) {
+        fl = I.fl;
+        ort = this.stelle({ art: 'linie', li: o.li, si: o.si, t: o.t, s: 0 });
+      }
+    }
+    const F = this.flaechen[fl];
+    if (!F || F.a !== 'seite' || !ort) return null;
+    const XY = F.her(ort[0], ort[1]);
+    return XY && Number.isFinite(XY[0]) ? [XY[0], XY[1]] : null;
+  }
+
   /** Anker eines Punkts des Werks auf einer Fläche im neu gebauten Netz */
   private ankerVon(fl: number, id: number, i: number, m: boolean): number | null {
     this.bauen(this.flaechen);
@@ -1669,6 +1782,8 @@ export class WerkBlatt implements Raum {
     const F = this.flaechen[fl];
     const von = this.abzweigOrt(o, fl);
     if (!F || !von) return null;
+    // (vor dem ersten Schritt gelesen: `abzweigBeginnen` setzt einen Punkt, das Netz zählt danach neu)
+    const amUmriss = this.umrissOrt(o) !== null;
     werk.G.abzweig = { a: F.a, von, zieht: false, start: null, vorher: null, anker: [], ankerZieht: false };
     werk.abzweigBeginnen();
     const st = werk.G.abzweig?.start;
@@ -1676,7 +1791,7 @@ export class WerkBlatt implements Raum {
       werk.G.abzweig = null;
       return null;
     }
-    this.ent = { fl, a: F.a, anker: [], abzweig: true, nach: null };
+    this.ent = { fl, a: F.a, anker: [], abzweig: true, nach: null, ...(amUmriss ? { umrissAnfang: true } : {}) };
     werk.anzeige.allesZeigen();
     this.bauen(this.flaechen);
     this.geaendert();
@@ -1707,6 +1822,9 @@ export class WerkBlatt implements Raum {
     const xy = o.art === 'frei' ? ([o.x, o.y] as const) : this.zeiger();
     const XY = F.her(xy[0], xy[1]);
     if (!XY || !Number.isFinite(XY[0])) return null;
+    // (fängt der Klick in der Seite den Umriss, merkt sich der Strich die Stelle: Endet er dort, kann er die Linie eines Mauls sein)
+    const U = E.abzweig ? null : this.umrissOrt(o);
+    if (U) E.umrissEnde = { nr: E.anker.length, X: U[0], Y: U[1] };
     E.anker.push({ X: XY[0], Y: XY[1], aus: null });
     this.bauen(this.flaechen);
     this.geaendert();
@@ -1755,8 +1873,28 @@ export class WerkBlatt implements Raum {
     this.ent = null;
     if (!E) return -1;
     const vorher = werk.loops.length;
+    /** die Form kann ein Maul bekommen: gespiegelt, in der Grundform, noch ohne Maul */
+    const maulMoeglich = !werk.grund && !werk.istFrei() && !werk.G.maul && !werk.loops.some(werk.istMaulEcht);
+    const alsMaul = (anker: werk.StiftAnker[], innenAmEnde: boolean): number => {
+      this.maulEnt = { fl: E.fl, a: E.a, anker, innenAmEnde };
+      werk.G.meldung = 'Eine Linie von vorn in die Form: Der Tropfen „Maul“ an ihrem Ende macht daraus das Maul · Esc verwirft sie';
+      werk.anzeige.statusZeigen();
+      this.bauen(this.flaechen);
+      this.geaendert();
+      return -1;
+    };
     if (E.abzweig) {
       const ab = werk.G.abzweig;
+      // Das Maul vom Umriss aus (Block D, 21.11.; Liste, Punkt 5): Beginnt P in der Seite auf dem Umriss, fängt es die Linie der
+      // Mitte, und es beginnt eine Abzweigung. Endet sie mit ↩ frei in der Form, kann sie die Form nicht tragen: Sie wartet als
+      // Strich des Mauls, statt mit einer Meldung zu verschwinden. Der Punkt, der am Umriss für sie gesetzt wurde, ist wieder weg.
+      const innen = E.anker[E.anker.length - 1];
+      if (ab?.start && !E.nach && E.umrissAnfang && E.a === 'seite' && innen && maulMoeglich && !this.aussen(E.a, innen.X, innen.Y)) {
+        const [X, Y] = werk.abzweigAnfangImBlatt(E.a);
+        werk.abzweigAbbrechen();
+        werk.anzeige.allesZeigen();
+        return alsMaul([{ X, Y, aus: null }, ...E.anker], true);
+      }
       werk.G.abzweig = null;
       if (!ab?.start) return -1;
       werk.abzweigungErstellen(E.a, ab.von, E.nach, ab.start, ab.vorher, E.anker, this.flaechen[E.fl]?.vorn);
@@ -1775,17 +1913,12 @@ export class WerkBlatt implements Raum {
       // Das Maul (Etappe 1, 20.11.): in der Seite, ein Ende im Leeren, das andere in der Form, mit ↩ beendet. Der Strich bleibt
       // stehen und bekommt an seinem Ende in der Form den Tropfen „Maul“ (die Bestätigung). Nur an der gespiegelten Form in der
       // Grundform, die noch kein Maul hat; sonst gilt der Strich wie bisher.
-      if (!E.zu && E.a === 'seite' && E.anker.length >= 2 && A0 && A1 && !werk.grund && !werk.istFrei() && !werk.G.maul && !werk.loops.some(werk.istMaulEcht)) {
+      if (!E.zu && E.a === 'seite' && E.anker.length >= 2 && A0 && A1 && maulMoeglich) {
+        // (Block D: Hat der letzte Klick den Umriss gefangen, endet der Strich dort; er gilt wie einer, der im Leeren endet)
+        const ende = E.umrissEnde?.nr === E.anker.length - 1 ? E.umrissEnde : null;
         const aussen0 = this.aussen(E.a, A0.X, A0.Y);
-        const aussen1 = this.aussen(E.a, A1.X, A1.Y);
-        if (aussen0 !== aussen1) {
-          this.maulEnt = { fl: E.fl, a: E.a, anker: E.anker, innenAmEnde: aussen0 };
-          werk.G.meldung = 'Eine Linie von vorn in die Form: Der Tropfen „Maul“ an ihrem Ende macht daraus das Maul · Esc verwirft sie';
-          werk.anzeige.statusZeigen();
-          this.bauen(this.flaechen);
-          this.geaendert();
-          return -1;
-        }
+        const aussen1 = !!ende || this.aussen(E.a, A1.X, A1.Y);
+        if (aussen0 !== aussen1) return alsMaul(ende ? [...E.anker.slice(0, -1), { ...A1, X: ende.X, Y: ende.Y }] : E.anker, aussen0);
       }
       if (!E.zu && E.anker.length >= 2 && A0 && A1 && this.aussen(E.a, A0.X, A0.Y) && this.aussen(E.a, A1.X, A1.Y)) {
         werk.vorhangSchneiden(E.a, E.anker);
@@ -1832,6 +1965,7 @@ export class WerkBlatt implements Raum {
       return false;
     }
     E.anker.pop();
+    if (E.umrissEnde && E.umrissEnde.nr >= E.anker.length) delete E.umrissEnde;
     this.bauen(this.flaechen);
     this.geaendert();
     return true;

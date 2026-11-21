@@ -75,6 +75,7 @@ import { naechsterAuf } from './farbe/naechster';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
+import { MAUL_FARBEN, lippenPalette } from './maulFarben';
 import { AnsichtsTropfen } from './ansichtsTropfen';
 import { Leiste, type LeistenWerkzeug, type NahtKnopf, type SpiegelZustand } from './leiste';
 import { Verbund, type VerbundBild, type VerbundGlied, type VerbundSoll } from './verbund';
@@ -4355,6 +4356,8 @@ function bild(dt: number): boolean {
       felder: K.felder,
       tinte: TINTE,
       gruen: roentgen > 0 ? (GRUEN.map((g, i) => g + (GRUEN_ROENTGEN[i]! - g) * roentgen) as [number, number, number]) : GRUEN,
+      // die Lippen des Mauls in Florians Farben (ohne Maul fehlt die Angabe: Dann zeichnet die Anzeige wie vorher)
+      ...(werk.G.maul?.echt ? { farben: lippenPalette(lippenOffen(), TINTE) } : {}),
       dunkel: hintenJetzt,
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
       // zwei Zeiger: dunkel für Objekte (V), weiß für Punkte (A, P); keiner tauscht auf der Rückseite seine Farbe
@@ -4479,6 +4482,17 @@ function bild(dt: number): boolean {
 }
 
 const TINTE: [number, number, number] = [0x1f / 255, 0x1a / 255, 0x17 / 255];
+/** so weit (Grad, beide Kiefer zusammen) muss das Maul offen stehen, bis die Lippen ganz rosa und blau sind */
+const LIPPEN_FARBE_AB = 6;
+/**
+ * Wie weit die Lippen ihre eigenen Farben tragen (0 … 1; Block D, 21.11.): getrennt ganz; sonst mit dem Winkel, um den die Anzeige
+ * das Maul gerade öffnet (zu sind ihre Punkte türkis und die Linie in Tinte).
+ */
+function lippenOffen(): number {
+  if (werk.lippenGetrennt()) return 1;
+  const t = Math.max(0, Math.min(1, werk.maulOffenGrad() / LIPPEN_FARBE_AB));
+  return t * t * (3 - 2 * t);
+}
 const GRUEN: [number, number, number] = [0xb9 / 255, 0xd1 / 255, 0xb4 / 255];
 /** S14: das Grün des Verdeckten im Röntgen (kräftiger, es ist jetzt greifbar) */
 const GRUEN_ROENTGEN: [number, number, number] = [0x5e / 255, 0x8f / 255, 0x57 / 255];
@@ -5609,16 +5623,24 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
  */
 function werkLinienStill(flaechen: readonly Flaeche[], punkte: boolean, staerke = 1): void {
   if (staerke <= 0.02) return;
-  for (const P of werkBlatt.proben) {
+  werkBlatt.proben.forEach((P, li) => {
     const g = K.neueGruppe();
-    for (let j = 0; j + 1 < P.n; j++) K.push(P.x[j]! * D, P.y[j]! * D, P.x[j + 1]! * D, P.y[j + 1]! * D, P.halb[j]! * D * staerke, P.halb[j + 1]! * D * staerke, g, 0, false);
-  }
+    const lf = werkBlatt.linienFarben(li);
+    for (let j = 0; j + 1 < P.n; j++) {
+      if (lf) K.farbe = lf[P.si[j + 1]!] ?? 0;
+      K.push(P.x[j]! * D, P.y[j]! * D, P.x[j + 1]! * D, P.y[j + 1]! * D, P.halb[j]! * D * staerke, P.halb[j + 1]! * D * staerke, g, 0, false);
+    }
+  });
+  K.farbe = 0;
   if (!punkte) return;
   werkBlatt.netz.punkte.forEach((p, pi) => {
     const A = werkBlatt.anker[pi]!;
     const F = flaechen[A.fl]!;
-    if (A.zuSehen) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
+    if (!A.zuSehen) return;
+    K.farbe = werkBlatt.farbe('punkt', pi);
+    K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
   });
+  K.farbe = 0;
 }
 
 /** das Modell, das das Verhalten der Linien bedient: die Linien der Form oder (im Paint-Modus) die Farblinien */
@@ -9529,8 +9551,8 @@ const zahnZiele = (): LinsenZiele => ({
   // die Farbe der Zähne (alle tragen dieselbe): eine Perle am Rad öffnet den Farbwähler des Systems
   farbe: { name: 'Farbe der Zähne', wert: () => werk.G.maul?.zaehne?.farbe ?? ZAHN_FARBE, setzen: (hex) => zaehneStellen('farbe', (z) => ({ ...z, farbe: hex })) },
   reihen: [
-    { name: 'Obere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: '#e8306a', an: () => linseReihen.oben, tippen: () => linseReiheTippen('oben') },
-    { name: 'Untere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: '#1f3cf0', an: () => linseReihen.unten, tippen: () => linseReiheTippen('unten') },
+    { name: 'Obere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: MAUL_FARBEN.oben, an: () => linseReihen.oben, tippen: () => linseReiheTippen('oben') },
+    { name: 'Untere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: MAUL_FARBEN.unten, an: () => linseReihen.unten, tippen: () => linseReiheTippen('unten') },
   ],
   form: (i) => {
     const zz = werk.G.maul?.zaehne;
@@ -10749,12 +10771,17 @@ const haken = {
     mitte: werk.formMitte(),
   }),
   /** wo ein Punkt des Werks (Loop-Kennung, Nummer) auf den Flächen mit diesem Blatt liegt (CSS-Pixel), ohne und mit Spiegelbild */
-  ankerImBild: (id: number, i: number, a?: Flaeche['a']): { x: number; y: number; fl: number; a: Flaeche['a']; m: boolean; sichtbar: boolean }[] =>
+  ankerImBild: (id: number, i: number, a?: Flaeche['a']): { x: number; y: number; fl: number; a: Flaeche['a']; m: boolean; sichtbar: boolean; verdeckt: boolean }[] =>
     werkBlatt.anker.flatMap((A, pi) => {
       const F = werkBlatt.flaechen[A.fl]!;
       const p = werkBlatt.netz.punkte[pi]!;
-      return A.werk.some((w) => w.id === id && w.i === i) && (!a || F.a === a) ? [{ x: p.x, y: p.y, fl: A.fl, a: F.a, m: A.m, sichtbar: p.sichtbar }] : [];
+      return A.werk.some((w) => w.id === id && w.i === i) && (!a || F.a === a) ? [{ x: p.x, y: p.y, fl: A.fl, a: F.a, m: A.m, sichtbar: p.sichtbar, verdeckt: p.verdeckt }] : [];
     }),
+  /** Probe: die Punkte des Netzes im Umkreis eines Orts im Bild (CSS-Pixel), mit den Punkten des Werks, für die sie stehen */
+  punkteBei: (x: number, y: number, r = 6) =>
+    werkBlatt.netz.punkte.flatMap((p, pi) =>
+      Math.hypot(p.x - x, p.y - y) <= r ? [{ pi, x: p.x, y: p.y, sichtbar: p.sichtbar, verdeckt: p.verdeckt, werk: werkBlatt.anker[pi]!.werk.map((w) => `${w.id}.${w.i}`).join('+'), farbe: werkBlatt.farbe('punkt', pi) }] : [],
+    ),
   /** wo ein Ort im Blatt `a` (Einheiten des Werks, wie `werk.imBlatt`) auf der Fläche dieses Blatts liegt (CSS-Pixel); eingerastet oder Feld */
   flaecheHin: (a: Flaeche['a'], X: number, Y: number): { x: number; y: number } | null => {
     // in den Vier Ansichten das Feld (beim Einrasten aus ihnen heraus gibt es daneben die Wand, die im Feld des Raums zum Blatt wird)
@@ -10986,9 +11013,14 @@ const haken = {
       maulEcht: werk.istMaulEcht(l),
     })),
   /** Etappe 1 Maul: der Strich, der auf den Tropfen „Maul“ wartet (Zahl seiner Anker, wo der Tropfen hängt); null: keiner */
-  maulStrich: (): { anker: number; innenAmEnde: boolean; ort: { x: number; y: number } | null } | null => {
+  maulStrich: (): { anker: number; innenAmEnde: boolean; ort: { x: number; y: number } | null; gezeichnet: { x: number; y: number }[] } | null => {
     const m = werkBlatt.maulStrich;
-    return m ? { anker: m.anker.length, innenAmEnde: m.innenAmEnde, ort: werkBlatt.maulStrichOrt() } : null;
+    // (`gezeichnet`: die Anker, wie sie gesetzt wurden, in Einheiten des Werks: Ein geklickter Punkt sitzt, wo der Zeiger gezeichnet ist)
+    const gezeichnet = (m?.anker ?? []).map((k) => {
+      const [x, y] = werk.uvAus(m!.a, k.X, k.Y);
+      return { x, y };
+    });
+    return m ? { anker: m.anker.length, innenAmEnde: m.innenAmEnde, ort: werkBlatt.maulStrichOrt(), gezeichnet } : null;
   },
   /** C2: die Richtung des letzten Punkts eines Entwurfs mit P, im Bild (CSS-Pixel vom Punkt aus); null ohne Entwurf */
   entwurfGriff: (): [number, number] | null => werkBlatt.entwurf()?.aus ?? null,
@@ -11312,6 +11344,12 @@ const haken = {
   zahnUnter: (x: number, y: number): boolean => !!zahnUnterZeiger(x, y),
   /** liegt an einem Ort im Bild (CSS-Pixel) die Form (grob, am Rechennetz, beide Hälften)? Sonst ist dort „das Leere“ */
   formUnter: (x: number, y: number): boolean => !!werkHautTreffen(x, y) || !!werkHautTreffen(x, y, true),
+  /** Probe: wie weit (CSS-Pixel) die nächste Linie des Werks von einem Ort im Bild entfernt liegt (P fängt Linien im Umkreis) */
+  linienAbstand: (x: number, y: number): number => {
+    let d = Infinity;
+    for (const P of werkBlatt.proben) for (let j = 0; j < P.n; j++) d = Math.min(d, Math.hypot(P.x[j]! - x, P.y[j]! - y));
+    return d;
+  },
   /** die Linse jetzt zeichnen (für Proben, die ihr Bild lesen) */
   linseZeichnen: () => zahnLinse?.zeichnen(),
   /**

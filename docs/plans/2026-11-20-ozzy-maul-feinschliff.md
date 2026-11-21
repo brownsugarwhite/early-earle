@@ -159,9 +159,45 @@ Aus seinem Blatt 05 gemessen: Türkis `#00d3c5`, Rosa `#ff336c`, Blau `#0600f9`.
 Die Linie von vorn und von oben, Freihand (Punkt 6), ein Maul, das den Umriss nicht erreicht, ein Zeichen am Zeiger (31), der
 Rechenkern.
 
+### Ergebnis (21.11.)
+
+Bild: `docs/progress/ozzy/2026-11-21-maul-lippe-als-linie.jpg`. Probe: `ozzy-maul-lippe-fenster.mjs` (P1 bis P4, F1 bis F4, U1
+bis U3; besteht an „teat firefish“, am frischen Oval und an „strange bird“), Test „die Lippe als die gezeichnete Linie“ in
+`maulEcht.test.ts`.
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Punkte der Lippe, frisches Oval (3 gezeichnet) | 17 | 5 |
+| Punkte der Lippe, „teat firefish“ (5 gezeichnet) | 11 | 9 |
+| Punkte der Linie im Maul, frisches Oval / „teat firefish“ | 11 / 7 | 5 / 9 |
+| Anker der Lippe neben dem gezeichneten Anker | bis 15 | 0,00 |
+| Pfad der Lippe neben der Zeichnung, von der Seite | nicht gemessen | 0,07 (Oval), 0,08 („strange bird“), 0,64 bis 0,78 („teat firefish“) |
+| Bild der Linien ohne Maul | | Bildpunkt für Bildpunkt gleich (0 von 5,2 Millionen anders, Raum und Seite) |
+| Zeit je Bild mit offenem Maul, der Zeiger wandert über die Lippe | 16,7 ms (Takt des Bildschirms), Ozzy 2,0 bis 2,3 ms | 16,7 ms, Ozzy 2,3 bis 2,4 ms |
+
+- **D1.** Gebaut wie geplant in `form/maulEcht.ts` (`ankerSetzen`, `griffeAusMaulZeichnung`; das Werk gibt die Zeichnung mit).
+  An „teat firefish“ steht für den dritten Anker eine Kreuzung (2 Einheiten daneben): Dort liegt die Lippe bis 0,8 Einheiten
+  neben der Zeichnung; das Kriterium (0,5) gilt ohne solche Kreuzung, mit ihr 1 (Liste, 132). Dazu kam eine Regel im Blatt des
+  Werks, die der Plan nicht nannte: **Von zwei Punkten am selben Ort im Bild gilt der vordere.** Ohne sie nahm der Griff in der
+  Seite den Punkt der Linie im Maul, der jetzt genau hinter dem Anker der Lippe liegt (Liste, 134).
+- **D2.** Gebaut wie geplant. Die Farben an Bildpunkten gemessen: `#00d3c5`, `#ff336c`, `#0600f9`, der Mundwinkel `#1f1a17`.
+  Wo getrennte Lippen aufeinanderliegen, liegt die Oberlippe vorn; der Zeiger nimmt dort den Punkt, der vorn gezeichnet ist.
+- **D3.** Gebaut: am Umriss begonnen oder dort geendet. Dafür beendet ↩ jetzt auch eine Linie, die an Vorhandenem hängt und
+  erst einen gesetzten Punkt hat. Die Regel „drei Netzkanten vom Umriss“ für freie Striche ist nicht gebaut: Sie hätte Striche
+  mit drei und mehr Punkten, die heute eine Form auf der Haut werden, zu Maullinien gemacht.
+- **Was dabei aufgefallen ist und nicht behoben wurde** (Liste, 130 und 131): Die Zahnfleischlinie der Ebene „Maul“ kann ihren
+  Weg verlieren, wenn ein Punkt der Lippe vorn weit gezogen wird. Das ist älter als Block D (mit der Lippe von vorher an einer
+  anderen Stelle genauso), die Probe `ozzy-maul-farbe-fenster.mjs` trifft es aber erst jetzt: F4b fällt in zwei von drei
+  Läufen. Und die Linie im Maul geht nicht mit, wenn ein Anker der Lippe gezogen wird: Am frischen Oval traf nach einer langen
+  Folge an den Lippen ein Strahl von 8911 von außen Farbe (`ozzy-maul-fenster.mjs` mit `FRISCH=1`, Kriterium 17).
+- **Geprüft am Ende:** Typen, Lint, 109 Tests; im Fenster die Proben der Lippe (drei Formen), des Mauls („teat firefish“ alle
+  Kriterien; frisches Oval bis auf 17), der Farbe (bis auf F4b), des Sicherns, der Materialien, der Zähne, der Zunge, des Werks,
+  des Bearbeitens und des Schnitts mit P.
+
 ## Was offen bleibt
 
-- **Block D, die Lippe als seine Linie** (4, 5, 30, 31): siehe oben (in Arbeit seit dem 21.11.).
+- **Aus Block D:** die Zahnfleischlinie nach einem weiten Zug an der Lippe (130); ob die Linie im Maul der Lippe folgen soll
+  (131); ein Zeichen am Zeiger für die Lippe (31).
 - **Gruppe E, sein Auge.** Die Fragen, an denen der nächste Schritt nicht hängt, bleiben in der Liste. Die drei, die er beim
   Testen als Erstes sieht: Hohe Zähne heben eine lange Zunge weit (107); in der Pose bleibt die Form, nicht die Dehnung (111);
   die Werte der vier Vorlagen (93).

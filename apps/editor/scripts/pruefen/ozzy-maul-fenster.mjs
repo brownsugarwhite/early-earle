@@ -438,6 +438,12 @@ else {
           // 14 die Seite des Zeigers nimmt die Lippe
           const u14 = (await O('werk')).umgeschlagen;
           const zA = await paarZiehen(iA, 3, { x: 0, y: -10 });
+          // (seit Block D trägt die Lippe nur die gezeichneten Anker: Hat sie je Lippe nur einen, liegen die Lippen für den zweiten
+          // Zug erst wieder aufeinander, wenn der erste zurückgenommen ist)
+          if (iB === iA) {
+            await s.keyboard.press('Meta+z');
+            await ruhig();
+          }
           const zB = await paarZiehen(iB, -3, { x: 0, y: 6 });
           const w14 = await O('werk');
           // unten: genau einer der zwei ging (nach unten), oben: genau der andere der Hälfte ging (nach oben)
@@ -568,17 +574,22 @@ else {
           const r17 = await s.evaluate(() => {
             let farbig = 0;
             let gesamt = 0;
+            const wo = [];
             for (let y = 120; y <= 780; y += 10)
               for (let x = 60; x <= 1380; x += 10) {
                 gesamt++;
-                if (window.__ozzy.farbUnter(x, y)) farbig++;
+                if (window.__ozzy.farbUnter(x, y)) {
+                  farbig++;
+                  if (wo.length < 6) wo.push(`${x}/${y}`);
+                }
               }
-            return { farbig, gesamt };
+            return { farbig, gesamt, wo };
           });
+          if (r17.farbig) await bild('17-farbe-von-aussen');
           ok(
             '17 nach dem Ziehen an den Lippen: jede Farblinie der Ebene „Maul“ hat ihren Weg, von außen trifft kein Strahl Farbe',
             !!m17 && m17.linien === 1 && m17.fuellungen === 2 && fehl17 === 0 && r17.farbig === 0,
-            `Ebene ${m17 ? `${m17.linien} Linien, ${m17.fuellungen} Füllungen` : 'fehlt'}; ohne Weg ${fehl17}; ${r17.farbig} von ${r17.gesamt} Strahlen treffen Farbe; Netzwechsel der Bemalung ${f17.wechsel.zahl} (gehalten ${f17.wechsel.gehalten}, gesucht ${f17.wechsel.gesucht}, weitester ${f17.wechsel.groesst.toFixed(2)})`,
+            `Ebene ${m17 ? `${m17.linien} Linien, ${m17.fuellungen} Füllungen` : 'fehlt'}; ohne Weg ${fehl17}; ${r17.farbig} von ${r17.gesamt} Strahlen treffen Farbe${r17.wo.length ? ` (bei ${r17.wo.join(', ')})` : ''}; Netzwechsel der Bemalung ${f17.wechsel.zahl} (gehalten ${f17.wechsel.gehalten}, gesucht ${f17.wechsel.gesucht}, weitester ${f17.wechsel.groesst.toFixed(2)})`,
           );
         }
       }

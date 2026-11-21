@@ -1,4 +1,4 @@
-# Übergabe: Maul, Zähne, Zunge (Stand 20.11.2026)
+# Übergabe: Maul, Zähne, Zunge (Stand 21.11.2026)
 
 **Wo:** Zweig `claude/ozzy-maul` (vom Paint-Zweig `claude/reverent-feynman-1efdd3`, Stand `49f1557c`; er enthält `claude/ozzy`, die
 Objekte und den Paint-Modus). Arbeitsbaum `.claude/worktrees/ozzy`, Fenster 5205 (Eintrag `ozzy`). `claude/ozzy` selbst steht
@@ -10,8 +10,10 @@ in Ozzy“ und „Etappe 2 in Ozzy“. **Seit dem 20.11. auch Etappe 3 (Lippen t
 Etappe 4 (die Ebene „Maul“ im Paint-Modus; die Probe P4 hält) und Etappe 5 in vier Scheiben (Zähne sprießen und gehen mit den
 Kiefern mit; die Linse stellt sie; einzelne Zähne wählen, rücken, ziehen; Zähne außen und ihre Farbe) und Etappe 6 in drei
 Scheiben (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und Farbe; sie stößt an Zähne, bleibt in der Pose
-liegen und klebt, wo sie abgelegt wird). Danach der Feinschlifflauf, Block A bis C (geprüft, schneller, kleine Bedienung; unten
-„Der Feinschlifflauf“). Als Nächstes, auf Florians Wort: Block D (die Lippe als seine Linie), Etappe 7 oder der Rechenkern.**
+liegen und klebt, wo sie abgelegt wird). Danach der Feinschlifflauf, Block A bis C (geprüft, schneller, kleine Bedienung) und
+am 21.11. Block D (die Lippe als seine Linie: ihre Punkte sind seine Anker, seine Farben, Anfang am Umriss; unten „Der
+Feinschlifflauf“). Als Nächstes, auf Florians Wort: die Zahnfleischlinie nach einem weiten Zug an der Lippe (Liste, 130), ob die
+Linie im Maul der Lippe folgt (131), Etappe 7 oder der Rechenkern.**
 Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
@@ -411,6 +413,34 @@ Plan, Gruppen und Ergebnis: [`docs/plans/2026-11-20-ozzy-maul-feinschliff.md`](.
   gehören zur Zeile).
 - **Bedienung (C):** der Tipp ins Leere (`buehnenTipp`, `werkHautTreffen`), das Drehen am nicht gewählten Zahn
   (`zahnZug.dreht`), `linsePerle`, `GANG_WEITET`. Haken: `__ozzy.formUnter(x, y)`, `__ozzy.zahnUnter(x, y)`.
+
+## Der Feinschlifflauf, Block D: die Lippe als seine Linie (21.11.)
+
+Plan und Ergebnis im selben Dokument (Abschnitt „Block D“), Bild `docs/progress/ozzy/2026-11-21-maul-lippe-als-linie.jpg`.
+
+- **Punkte (D1):** `werk.maulSchneiden` gibt dem Baustein die Zeichnung mit (`MaulStueck[]`, vom Mundwinkel nach vorn).
+  `maulEcht.ts`: `ankerSetzen` setzt die Anker als Punkte auf die Hälfte der Lippe, die genau auf der Maullinie liegt (sie
+  führt), `griffeAusMaulZeichnung` gibt ihr im Blatt die Griffe der Zeichnung (an Kreuzungen geteilt) und passt nur die Tiefe
+  an; die andere Hälfte wird ihr Abbild (`paaren`). Die Mitte der Tasche bekommt dasselbe. Ohne Zeichnung (Tests, Proben im
+  Kern) läuft der Weg von vorher. Am Rechenkern ist nichts geändert.
+- **Der vordere Punkt gilt:** `werkBlatt.bauen` macht von zwei Punkten am selben Ort im Bild den hinteren verdeckt
+  (`DECKT_NAH`, `DECKT_TIEF`). Sonst griffe man in der Seite den Punkt der Linie im Maul hinter dem Anker der Lippe.
+- **Farben (D2):** `maulFarben.ts` (die drei Farben, die Nummern, die Palette). `fluessig.ts`: je Kapsel eine Farbnummer in der
+  Art (+ 256 · Farbe), `Szene.farben`; ohne Palette läuft der alte Zweig. `verhalten.ts` fragt den Raum (`farbe`,
+  `linienFarben`), `werkBlatt` antwortet für die Lippe, `main.ts` gibt je Bild die Palette mit (`lippenOffen`). Die Tropfen der
+  Kiefer nehmen `--maul-oben` und `--maul-unten` aus `ozzy.css`.
+- **Umriss (D3):** `werkBlatt.fertig` macht aus einer Abzweigung, die in der Seite auf dem Umriss beginnt und frei in der Form
+  endet, den wartenden Strich des Mauls (`umrissAnfang`), ebenso aus einem freien Strich, dessen letzter Klick den Umriss fing
+  (`umrissEnde`). `verhalten.eingabe('enter')` zählt den Anfang einer hängenden Linie mit.
+- **Proben:** `ozzy-maul-lippe-fenster.mjs` (`FRISCH=1`, `NAME`, `LINIE`). Sie fährt mit dem Rad ans Maul heran (bei kleinem
+  Maßstab wäre ein Zug um 6 Einheiten nur ein Klick) und liest die Anker, wie sie gesetzt wurden (`maulStrich().gezeichnet`).
+  Neue Haken: `linienAbstand(x, y)`, `punkteBei(x, y, r)`; `ankerImBild` nennt auch `verdeckt`.
+- **Fallen der Proben:** Esc ohne Auswahl verlässt die Seitenansicht (die Probe drückt Esc nur mit Auswahl, `abwaehlen`). Eine
+  Form, die ins Fenster passt, bleibt beim Vergrößern in der Mitte (die Probe fährt Raste um Raste heran, solange alle Anker im
+  Fenster bleiben). `ozzy-maul-fenster.mjs`: Hat die Lippe je Lippe nur einen Anker, nimmt Kriterium 14 den ersten Zug zurück.
+- **Offen und nicht behoben:** `ozzy-maul-farbe-fenster.mjs` F4b fällt in zwei von drei Läufen (Liste, 130: älter als Block D,
+  hängt an der Stelle des gezogenen Punkts; `PUNKT=<n>` wählt ihn); `ozzy-maul-fenster.mjs` mit `FRISCH=1` fällt an 17 (Liste,
+  131).
 
 ## Die Studie in einem Absatz
 

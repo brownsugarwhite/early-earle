@@ -139,7 +139,7 @@ import {
   pruefen,
 } from './ablage';
 import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMit } from './naht';
-import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
+import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, type MaulStueck, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -937,6 +937,14 @@ export async function maulSchneiden(a: Ansicht, anker: readonly StiftAnker[], in
   if (strich.length < 2) return sagen('Maul: Die Linie ist zu kurz');
   // vom Mundwinkel nach vorn
   const linie = (innenAmEnde ? [...strich].reverse() : strich).map(([x, y]) => ({ x, y }));
+  // dieselbe Linie Stück für Stück, wie sie gezeichnet ist (Block D, 21.11.): Die Lippe trägt ihre Anker und in der Seite ihre Griffe
+  const stuecke = anker.slice(0, -1).map((p, i) =>
+    stiftStueck(p, anker[i + 1]!).map(([X, Y]) => {
+      const [x, y] = uvAus(a, X!, Y!);
+      return { x, y };
+    }),
+  );
+  const zeichnung = (innenAmEnde ? stuecke.reverse().map((c) => [...c].reverse()) : stuecke) as unknown as MaulStueck[];
   const hautDavor = haut;
   let wasm: Awaited<ReturnType<typeof manifoldLaden>>;
   try {
@@ -948,7 +956,7 @@ export async function maulSchneiden(a: Ansicht, anker: readonly StiftAnker[], in
   if (haut !== hautDavor) return false;
   if (bereit()) return sagen(bereit());
   const t0 = performance.now();
-  const r = maulSchneidenMit(wasm, { haut, loops }, linie, { naechsteId, naechsteKreuzung, mk: MK });
+  const r = maulSchneidenMit(wasm, { haut, loops }, linie, { naechsteId, naechsteKreuzung, mk: MK, zeichnung });
   if ('fehler' in r) return sagen(`Maul geht hier nicht: ${r.fehler}`);
   zurueck.push(schnappschuss());
   // was für die Form von eben bereitlag oder noch rechnete, gilt nicht mehr (ein anderes Netz)
@@ -1459,6 +1467,8 @@ export function maulBlickSetzen(x: number): void {
 }
 /** Die Anzeige dreht mit den Knochen: in der Pose immer, in der Grundform beim Blick ins Maul */
 export const anzeigeDreht = (): boolean => grund !== null || (maulBlick > 0 && G.maul !== null && zug === null);
+/** So weit zeigt die Anzeige das Maul gerade offen (Grad, beide Kiefer zusammen; 0: zu) */
+export const maulOffenGrad = (): number => (anzeigeDreht() ? (grund ? 1 : maulBlick) * (pose.kiefer + pose.schaedel) : 0);
 /** Drehwinkel je Punkt für den Stand der Regler (beim Maul aus einer Linie gegen die gerechnete Lage: Regler minus ihre Öffnung) */
 export function knochenJetzt(m: MaulAmLoop): Float64Array {
   const zu = maulZu();

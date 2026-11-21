@@ -65,6 +65,12 @@ Zunge; alle Materialien; die zweite Form „strange bird“. Schneller: Ein Wert
 Netz der Linien gilt bei still offenem Maul weiter. Bedienung: Ein Tipp ins Leere schließt die Linse, an einem nicht gewählten
 Zahn ziehen dreht die Ansicht, die Linse merkt sich je Teil ihre Perle. Erledigte Punkte sind unten gestrichen; neu: 125 bis 129.
 
+**Feinschlifflauf, Block D (21.11.), „die Lippe als deine Linie“:** Die Lippe trägt deine gezeichneten Anker (am frischen Oval
+5 Punkte statt 17, an „teat firefish“ 9 statt 11) und liegt von der Seite genau auf deiner Zeichnung; die Linie im Maul trägt
+dieselben Anker. Zu sind die Punkte der Lippe türkis, offen oder getrennt ist die Oberlippe rosa und die Unterlippe blau, der
+Mundwinkel bleibt schwarz (deine Farben aus Blatt 05, auch an den Tropfen der Kiefer). Die Linie darf mit P auf dem Umriss
+beginnen oder dort enden. Bild: `docs/progress/ozzy/2026-11-21-maul-lippe-als-linie.jpg`. Erledigt: 4, 5, 30; neu: 130 bis 137.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -80,10 +86,12 @@ Zahn ziehen dreht die Ansicht, die Linse merkt sich je Teil ihre Perle. Erledigt
 
 ### An der Bedienung
 
-4. **Die Lippe trägt mehr Punkte, als gezeichnet wurden** (an einer frischen Form 17 statt 3): Ihr Pfad wird aus dem Netz
-   angelegt. Die gezeichneten Anker sollten ihre Punkte werden.
-5. **Die Linie muss ein Stück vor der Form beginnen.** Dicht am Umriss fängt P die Linie der Mitte, und es beginnt eine
-   Abzweigung statt der Maullinie.
+4. ~~Die Lippe trägt mehr Punkte, als gezeichnet wurden~~ gebaut (Block D, 21.11.): Sie trägt ihre zwei Enden am Umriss, den
+   Mundwinkel, die Kreuzungen mit Linien der Form und deine Anker, die in der Form liegen; von der Seite liegt sie auf deiner
+   Zeichnung (gemessen höchstens 0,08 Einheiten daneben). Was daran offen ist: 132, 134, 135, 137.
+5. ~~Die Linie muss ein Stück vor der Form beginnen~~ gebaut (Block D): Beginnt P in der Seite auf dem Umriss (oder endet der
+   letzte Klick dort) und liegt das andere Ende frei in der Form, wartet die Linie nach ↩ als Strich des Mauls mit dem Tropfen.
+   Die Grenze dabei: 133.
 6. **Nur von der Seite, nur mit P.** Freihand fehlt; Front und Top fehlen; die Linie muss von außen in die Form laufen (ein Maul,
    das die Form vorn nicht erreicht, geht nicht).
 7. **Der Tropfen „Maul“** hängt unter dem Ende der Linie und kann die Form verdecken. Die Vorschau als Schnitt (wie in der Studie),
@@ -132,11 +140,15 @@ Zahn ziehen dreht die Ansicht, die Linse merkt sich je Teil ihre Perle. Erledigt
 
 ### An den Lippen (Etappe 3)
 
-30. **Die Farben der Lippen fehlen** (zu türkis, oben rosa, unten blau, Mundwinkel schwarz, dein Blatt 05): Die Anzeige der Linien
-    kennt nur eine Tinte (`src/linien/fluessig.ts`). Welche Lippe welche ist, zeigen bisher nur die zwei Tropfen.
-31. **Welche Lippe du greifst, wo beide noch aufeinanderliegen,** sagt die Seite des Zeigers (über der Linie die obere). Am Zeiger
-    ist das nicht zu sehen; und er „klebt“ am zuletzt gegriffenen Punkt, wenn der dicht daneben liegt (so ist das Verhalten der
-    Linien gebaut).
+30. ~~Die Farben der Lippen fehlen~~ gebaut (Block D, 21.11.), nach deinem Blatt 05 (dort gemessen: Türkis `#00d3c5`, Rosa
+    `#ff336c`, Blau `#0600f9`): Zu sind die Punkte der Lippe türkis, die Linie bleibt in Tinte, der Mundwinkel schwarz. Offen
+    (Pose, Blick ins Maul) oder mit getrennten Lippen ist die Oberlippe rosa und die Unterlippe blau, Linie und Punkte. Was
+    daran offen ist: 136.
+31. **Welche Lippe du greifst, wo beide noch aufeinanderliegen,** entscheidet die Richtung, in die du ziehst (nach oben die
+    obere). Seit Block D sieht man es an der Farbe, sobald sich die Lippen trennen (der gezogene Punkt ist rosa oder blau). Wo
+    sie noch aufeinanderliegen, liegt die Oberlippe vorn (rosa), und der Tropfen am Zeiger trägt ihre Farbe, auch wenn der Zug
+    dann die untere nimmt. Ein Zeichen am Zeiger, das die Lippe vor dem Ziehen nennt, fehlt weiter; und der Zeiger „klebt“ am
+    zuletzt gegriffenen Punkt, wenn der dicht daneben liegt (so ist das Verhalten der Linien gebaut).
 32. **Einen Kiefer als Ganzes rücken** (sein Knochen lässt sich schieben) fehlt. Alle Punkte einer Lippe wählen und mit G oder S
     ziehen: nicht ausprobiert.
 33. **„Lippen verbinden“ nimmt die Oberlippe als Vorlage;** die eigene Form der Unterlippe geht verloren (⌘Z holt sie zurück). Die
@@ -348,6 +360,43 @@ Zahn ziehen dreht die Ansicht, die Linse merkt sich je Teil ihre Perle. Erledigt
      Zeichnung an der Wand zählen als leer.
 129. **Sichern und Laden** ist an einem Fall geprüft („teat firefish“ mit allem). Alte Dateien ohne die neuen Werte und
      Formen mit mehreren Objekten: nicht geprüft.
+
+### Aus Block D (die Lippe als deine Linie, 21.11.)
+
+130. **Die Zahnfleischlinie kann ihren Weg verlieren, wenn du einen Punkt der Lippe vorn weit ziehst** (gefunden in Block D,
+     aber älter): an „teat firefish“ in der Seite einen Punkt der Lippe im vorderen Drittel um 8 Einheiten nach unten, dann
+     „Fressen“: Das Maul ist innen nur noch dunkelrot, das hellere Zahnfleisch fehlt (die Farblinie der Ebene „Maul“ findet
+     nach dem Netzwechsel zwischen zwei ihrer Orte keinen Weg; einmal traf dabei auch ein Strahl von außen Farbe). Das hängt
+     an der Stelle: Mit der Lippe von vorher fiel es am Punkt bei −715 genauso, am Punkt bei −686 nicht; dort zog die Probe
+     bisher zufällig (`ozzy-maul-farbe-fenster.mjs`, F4b; `PUNKT=<n>` wählt den Punkt). Seit Block D zieht sie am Anker bei
+     −700 und fällt in zwei von drei Läufen. Nicht behoben.
+131. **Die Linie im Maul geht nicht mit, wenn du einen Anker der Lippe ziehst.** Sie trägt dieselben Anker, bleibt aber, wo
+     du sie gezeichnet hast: Gaumen und Boden wölben sich dann zwischen Lippe und Mitte. Am frischen Oval traf nach der Folge
+     „Lippen trennen, Oberlippe 6 hoch, Überbiss, Lippen verbinden“ ein Strahl von 8911 von außen Farbe der Ebene „Maul“
+     (knapp über der Lippe an der Spitze; Probe `ozzy-maul-fenster.mjs` mit `FRISCH=1`, Kriterium 17; mit der Lippe von
+     vorher keiner). Ob die Linie im Maul der Lippe folgen soll (dann bleibt die Tasche ein glattes Blatt hinter der Lippe)
+     oder für sich bleibt (ein Gaumen, den du eigens formst), ist deine Entscheidung; es wäre eine neue Regel beim Ziehen.
+132. **Steht eine Kreuzung für einen Anker** (eine Linie der Form kreuzt die Lippe dichter als 0,6 Netzkanten an ihm), sitzt
+     die Ecke der Lippe an der Kreuzung statt an deinem Anker: an „teat firefish“ 2 Einheiten daneben, die Lippe liegt dort bis
+     0,8 Einheiten neben der Zeichnung (0,15 Bildpunkte).
+133. **Am Umriss begonnen, fängt P unterwegs andere Linien:** Klickst du dabei näher als 5,5 Bildpunkte an eine andere Linie
+     (9 an einen Punkt), endet die Abzweigung dort, und es entsteht kein Maul. Dann die Linie wie bisher im Leeren beginnen
+     (ein freier Strich fängt nichts). An „teat firefish“ läuft so eine Linie dicht an der gezeichneten Maullinie.
+134. **In der Seite liegen die Punkte der Linie im Maul genau hinter denen der Lippe.** Gegriffen wird dort der vordere, die
+     Lippe (neue Regel im Blatt: von zwei Punkten am selben Ort gilt der vordere). Die Punkte der Linie im Maul greifst du
+     von vorn, im Raum oder bei offenem Maul. Mit ⌥ (Röntgen) kommt man in der Seite nach dem Code nicht an sie heran (nicht
+     ausprobiert).
+135. **Formen, die schon ein Maul haben,** behalten ihre Lippe mit den Punkten von vorher. Nur ein neu geschnittenes Maul
+     trägt die Anker.
+136. **Farben, ungeprüft oder geschätzt:** Verdeckte Stücke der Lippe bleiben grün wie alles Verdeckte. Auf der dunklen
+     Rückseite hellen Rosa und Blau um ein Drittel auf (sonst wäre Blau auf Dunkel kaum zu sehen): geschätzt. Der Übergang von
+     Türkis zu Rosa und Blau läuft über die ersten 6° der Öffnung: geschätzt. Die zwei Tropfen der Kiefer und die Perlen der
+     Reihen in der Linse tragen jetzt genau Rosa und Blau aus deinem Blatt (vorher zwei geschätzte Töne); die Studie
+     `maul.html` hat noch die alten. Auf dem iPad nicht angesehen.
+137. **Ein geklickter Anker ist eine Ecke der Lippe, ein gezogener glatt** (wie bei jeder Form mit P). Wer drei Punkte nur
+     klickt, bekommt eine Lippe aus geraden Stücken. Das Stück vom Umriss zum ersten Anker behält am Umriss den Griff quer zur
+     Mittelebene (dort läuft die Lippe rund in ihre andere Hälfte); an einer gebogenen Zeichnung liegt es darum nicht exakt,
+     gemessen höchstens 0,07 Einheiten daneben.
 
 ### Kleines
 

@@ -21,6 +21,8 @@ import {
   type Loop,
   type LoopPunkt,
   type MaulAmLoop,
+  type V3,
+  bernstein,
   festlegen,
   griffeAnlegen,
   hautAus,
@@ -30,6 +32,10 @@ import {
   nadelnZusammenlegen,
   pfadParameter,
   punktEinfuegen,
+  stueckNaechstes,
+  stueckPunkt,
+  stueckTeilen,
+  zwillinge,
   zwillingeAngleichen,
   zwillingeFestlegen,
 } from '@ee/shape/dicht';
@@ -295,27 +301,340 @@ function keilBauen(P: readonly V2[], profil: Profil, mk: number, zMax: number): 
   return { haut, loops: [mitte, rachen] };
 }
 
+// ---------- die Lippe als die gezeichnete Linie (Feinschlifflauf, Block D, 21.11.2026) ----------
+//
+// Florian: „Lippe als Linie“ (Liste, Punkt 4: „Die gezeichneten Anker sollten ihre Punkte werden“). Bis dahin legte der Baustein
+// den Pfad der Lippe mit „Punkte, wo nötig“ an: an einer frischen Form 17 Punkte bei 3 gezeichneten, keiner an einem Anker (auf
+// dem groben Netz ist die Kette der Lippe in der Tiefe eckig; kein glatter Pfad folgt ihr auf 0,3 genau). Jetzt tragen die Lippe
+// und die Mitte der Tasche seine Anker, und von der Seite sind beide genau seine Zeichnung: Jedes Stück ihres Pfads ist dort das
+// Stück der Zeichnung zwischen seinen zwei Punkten (an einer Kreuzung geteilt wie in Illustrator, de Casteljau). Nur in der Tiefe
+// wird angepasst (kleinste Quadrate an die Kette auf der Haut), wie es der Kern für eine mit dem Stift gezeichnete Form tut
+// (`griffeAusZeichnung`; die Lippe ist ein zusammengeklappter Ring, dafür ist jene Rechnung nicht gebaut).
+//
+// Gesetzt wird die Hälfte der Linie, die genau auf der Maullinie liegt (sie führt); die andere wird ihr Abbild (`paaren`).
+
+/** Ein gezeichnetes Stück der Maullinie in der Seitenebene (x, y des Werks): Anfang, die zwei inneren Kontrollpunkte, Ende */
+export type MaulStueck = readonly [V2, V2, V2, V2];
+
+/** so nah (in Netzkanten, von der Seite gesehen) muss ein Anker an der Kette liegen, damit er ein Punkt der Linie wird */
+const ANKER_NAH = 0.3;
+/** dichter als so (in Netzkanten, längs der Linie) an einem Punkt, den die Linie schon hat, steht dieser Punkt für den Anker */
+const ANKER_EINS = 0.6;
+/** so nah (in Netzkanten, von der Seite gesehen) muss ein Punkt an der Zeichnung liegen, damit sein Stück aus ihr kommt */
+const ZEICHNUNG_NAH = 0.1;
+
+const NULL3: V3 = { x: 0, y: 0, z: 0 };
+/** ein Bézier-Stück in der Seitenebene, in der Schreibweise des Kerns: Anfang, Griff am Anfang, Griff am Ende, Ende */
+type Kurve = { A: V3; a: V3; b: V3; B: V3 };
+const lang2 = (v: V3): number => Math.hypot(v.x, v.y);
+
+/**
+ * Ein Stück der Zeichnung als Kurve. Ein gerade gezeichnetes Stück (zwei Ecken, oder Griffe längs der Sehne) läuft gleichmäßig
+ * (Griffe ein Drittel der Sehne): Es bleibt gerade, kann aber der Wölbung der Haut in der Tiefe folgen (wie `eckenTiefe` im Kern).
+ */
+function kurveVon(c: MaulStueck): Kurve {
+  const A = { x: c[0].x, y: c[0].y, z: 0 };
+  const B = { x: c[3].x, y: c[3].y, z: 0 };
+  const sx = B.x - A.x;
+  const sy = B.y - A.y;
+  const s2 = sx * sx + sy * sy;
+  const quer = (q: V2): number => Math.abs((q.x - A.x) * sy - (q.y - A.y) * sx);
+  if (s2 > 1e-18 && quer(c[1]) <= 1e-6 * s2 && quer(c[2]) <= 1e-6 * s2) return { A, a: { x: sx / 3, y: sy / 3, z: 0 }, b: { x: -sx / 3, y: -sy / 3, z: 0 }, B };
+  return { A, a: { x: c[1].x - A.x, y: c[1].y - A.y, z: 0 }, b: { x: c[2].x - B.x, y: c[2].y - B.y, z: 0 }, B };
+}
+/** das Stück der Kurve zwischen u0 und u1 (zusammen sind die Teile genau die Kurve) */
+function kurveTeil(c: Kurve, u0: number, u1: number): Kurve {
+  let { A, a, b, B } = c;
+  if (u1 < 1 - 1e-12) {
+    const t = stueckTeilen(A, a, b, B, u1);
+    a = t.a1;
+    b = t.ein;
+    B = t.F;
+  }
+  if (u0 > 1e-12) {
+    const t = stueckTeilen(A, a, b, B, u1 > 1e-12 ? u0 / u1 : 0);
+    A = t.F;
+    a = t.aus;
+    b = t.b2;
+  }
+  return { A, a, b, B };
+}
+/** die nächste Stelle der Zeichnung zu (x, y), nicht vor `ab`: g = Nummer des Stücks + Parameter, und der Abstand */
+function zeichnungNaechste(K: readonly Kurve[], x: number, y: number, ab = 0): { g: number; d: number } {
+  const q = { x, y, z: 0 };
+  let best = { g: ab, d: Infinity };
+  const k0 = Math.min(K.length - 1, Math.max(0, Math.floor(ab + 1e-9)));
+  for (let k = k0; k < K.length; k++) {
+    const c = K[k]!;
+    const lo = k === k0 ? Math.min(1, Math.max(0, ab - k)) : 0;
+    let t0 = lo;
+    let d0 = Infinity;
+    for (let i = 0; i <= 24; i++) {
+      const t = lo + ((1 - lo) * i) / 24;
+      const o = stueckPunkt(c.A, c.a, c.b, c.B, t);
+      const d = Math.hypot(o.x - x, o.y - y);
+      if (d < d0) {
+        d0 = d;
+        t0 = t;
+      }
+    }
+    const t = Math.max(lo, stueckNaechstes(c.A, c.a, c.b, c.B, q, t0));
+    const o = stueckPunkt(c.A, c.a, c.b, c.B, t);
+    const d = Math.min(d0, Math.hypot(o.x - x, o.y - y));
+    if (d < best.d) best = { g: k + (d < d0 ? t : t0), d };
+  }
+  return best;
+}
+/** Anker k der Zeichnung (das Ende von Stück k − 1) ist eine Ecke: geklickt (ohne Griff), oder seine Griffe liegen nicht gegenüber */
+function ankerEcke(Z: readonly MaulStueck[], k: number): boolean {
+  const vor = Z[k - 1];
+  const nach = Z[k];
+  if (!vor || !nach) return true;
+  const e = { x: vor[2].x - vor[3].x, y: vor[2].y - vor[3].y };
+  const a = { x: nach[1].x - nach[0].x, y: nach[1].y - nach[0].y };
+  const le = Math.hypot(e.x, e.y);
+  const la = Math.hypot(a.x, a.y);
+  return le < 1e-9 || la < 1e-9 || Math.abs(e.x * a.y - e.y * a.x) > 1e-3 * le * la || e.x * a.x + e.y * a.y >= 0;
+}
+
+/**
+ * Die Anker der Zeichnung als Punkte auf eine Hälfte einer Linie des Mauls setzen: auf ihre Kette zwischen den Proben `von` und
+ * `bis` (in Ruhe, `l.ruhe`), dort, wo sie von der Seite gesehen am Anker vorbeiläuft; in der Seite genau am Anker. Ein Anker, der
+ * nicht an der Kette liegt (vor der Form), wird keiner. Liegt schon ein Punkt dicht daneben (eine Kreuzung, ein Ende), steht er
+ * für den Anker: Zwei Punkte dicht nebeneinander greifen sich schlecht. Die Linie hat danach keine gültigen Griffe mehr
+ * (`griffeAnlegen` folgt). Zurück: je Punkt, der für einen Anker steht, dessen Nummer.
+ */
+function ankerSetzen(l: Loop, von: number, bis: number, Z: readonly MaulStueck[], mk: number, wende: LoopPunkt): Map<LoopPunkt, number> {
+  const fest = new Map<LoopPunkt, number>();
+  const R = l.ruhe;
+  for (let k = 1; k <= Z.length; k++) {
+    const A = Z[k - 1]![3];
+    let nah = Infinity;
+    let sA = 0;
+    let zA = 0;
+    for (let j = Math.max(0, von); j < Math.min(bis, l.proben.length - 1); j++) {
+      const ax = R[3 * j]!;
+      const ay = R[3 * j + 1]!;
+      const ex = R[3 * j + 3]! - ax;
+      const ey = R[3 * j + 4]! - ay;
+      const l2 = ex * ex + ey * ey;
+      const f = l2 > 1e-18 ? Math.max(0, Math.min(1, ((A.x - ax) * ex + (A.y - ay) * ey) / l2)) : 0;
+      const d = Math.hypot(A.x - ax - f * ex, A.y - ay - f * ey);
+      if (d < nah) {
+        nah = d;
+        sA = l.s[j]! + f * (l.s[j + 1]! - l.s[j]!);
+        zA = R[3 * j + 2]! + f * (R[3 * j + 5]! - R[3 * j + 2]!);
+      }
+    }
+    if (nah > ANKER_NAH * mk) continue;
+    const da = l.punkte.reduce<LoopPunkt | null>((b, q) => (Math.abs(q.s - sA) < ANKER_EINS * mk && (!b || Math.abs(q.s - sA) < Math.abs(b.s - sA)) ? q : b), null);
+    if (da) {
+      if (da !== wende && !fest.has(da)) fest.set(da, k);
+      continue;
+    }
+    const ort = { x: A.x, y: A.y, z: zA };
+    const p: LoopPunkt = { s: sA, ref: ort, cur: { ...ort }, ...(ankerEcke(Z, k) ? { ecke: true } : {}) };
+    l.punkte.push(p);
+    l.punkte.sort((a, b) => a.s - b.s);
+    fest.set(p, k);
+  }
+  return fest;
+}
+
+/** ein kleines lineares System lösen (Gauß mit Zeilentausch); null, wenn es entartet ist */
+function loesen(M: number[][], r: number[]): number[] | null {
+  const n = r.length;
+  const A = M.map((z, i) => [...z, r[i]!]);
+  for (let s = 0; s < n; s++) {
+    let p = s;
+    for (let z = s + 1; z < n; z++) if (Math.abs(A[z]![s]!) > Math.abs(A[p]![s]!)) p = z;
+    if (!(Math.abs(A[p]![s]!) > 1e-14)) return null;
+    [A[s], A[p]] = [A[p]!, A[s]!];
+    for (let z = s + 1; z < n; z++) {
+      const f = A[z]![s]! / A[s]![s]!;
+      if (f === 0) continue;
+      for (let k = s; k <= n; k++) A[z]![k] = A[z]![k]! - f * A[s]![k]!;
+    }
+  }
+  const x = new Array<number>(n).fill(0);
+  for (let s = n - 1; s >= 0; s--) {
+    let v = A[s]![n]!;
+    for (let k = s + 1; k < n; k++) v -= A[s]![k]! * x[k]!;
+    x[s] = v / A[s]![s]!;
+  }
+  return x.every(Number.isFinite) ? x : null;
+}
+
+/**
+ * Die Griffe einer Hälfte einer Linie des Mauls genau aus der Zeichnung (die Linie hat ihre Griffe schon aus ihrem Verlauf,
+ * `griffeAnlegen`). `wende`: der Punkt, an dem die Hälfte beginnt (der Mundwinkel der Lippe, die Wende der Mitte der Tasche; in
+ * der Zeichnung ihr Anfang); `erste`: Die Hälfte sind die Punkte vor ihm (sonst die nach ihm). `fest`: Punkte, die für einen Anker
+ * stehen (`ankerSetzen`).
+ *
+ * Ein Stück zwischen zwei Punkten, die beide auf demselben Stück der Zeichnung liegen, bekommt im Blatt genau dessen Teil
+ * dazwischen. In der Tiefe eine Unbekannte je Griff, an einem glatten Anker eine für beide Seiten (die Griffe bleiben gegenüber);
+ * an Kreuzungen und Ecken je Seite eine. Das Stück am Umriss (zum Ende eines Rings auf der Mittelebene) behält seine Griffe aus
+ * dem Verlauf: Dort steht der Griff quer zur Mittelebene, die Lippe läuft rund in ihre andere Hälfte; der Punkt davor bleibt glatt.
+ */
+function griffeAusMaulZeichnung(l: Loop, wende: LoopPunkt, erste: boolean, Z: readonly MaulStueck[], fest: ReadonlyMap<LoopPunkt, number>, mk: number): void {
+  const iW = l.punkte.indexOf(wende);
+  if (iW < 0 || !Z.length || !l.punkte.every((p) => p.ein && p.aus)) return;
+  // die Punkte der Hälfte, von der Wende nach außen; `aussen`: der Griff eines Punkts von der Wende weg
+  const reihe = erste ? l.punkte.slice(0, iW + 1).reverse() : l.punkte.slice(iW);
+  const m = reihe.length;
+  if (m < 2) return;
+  const aussen = erste ? 'ein' : 'aus';
+  const innen = erste ? 'aus' : 'ein';
+  const K = Z.map(kurveVon);
+  const g: number[] = [0];
+  const drauf: boolean[] = [true];
+  for (let i = 1; i < m; i++) {
+    const p = reihe[i]!;
+    const f = fest.get(p);
+    if (f !== undefined && f >= g[i - 1]!) {
+      g.push(f);
+      drauf.push(true);
+      continue;
+    }
+    const r = zeichnungNaechste(K, p.ref.x, p.ref.y, g[i - 1]!);
+    g.push(r.g);
+    drauf.push(r.d < ZEICHNUNG_NAH * mk);
+  }
+  const letzter = reihe[m - 1]!;
+  const aufMitte = l.art === 'ring' && !l.haengt?.[erste ? 0 : 1] && (erste ? letzter.s <= 1e-6 : letzter.s >= l.laenge - 1e-6);
+  type Spanne = { a: number; b: number; k: Kurve };
+  const spannen: Spanne[] = [];
+  for (let i = 0; i + 1 < m; i++) {
+    const ga = g[i]!;
+    const gb = g[i + 1]!;
+    const k = Math.floor(ga + 1e-6);
+    if (!drauf[i] || !drauf[i + 1] || gb - ga < 1e-6 || k >= K.length || gb > k + 1 + 1e-6) continue;
+    if (i + 1 === m - 1 && aufMitte) continue;
+    spannen.push({ a: i, b: i + 1, k: kurveTeil(K[k]!, Math.max(0, ga - k), Math.min(1, gb - k)) });
+  }
+  if (!spannen.length) return;
+  // die Griffe im Blatt, je Punkt und Seite ('a' nach außen, 'i' nach innen)
+  const blatt = new Map<string, V3>();
+  for (const sp of spannen) {
+    blatt.set(`${sp.a}:a`, sp.k.a);
+    blatt.set(`${sp.b}:i`, sp.k.b);
+  }
+  const eckig = (p: LoopPunkt): boolean => (p.ecke ?? p.autoEcke ?? false) || p.kreuzung !== undefined;
+  // die Tiefe eines Griffs, wie der Verlauf sie zeigt: die Steigung des abgelesenen Griffs mal die Länge des gezeichneten
+  const tiefeAb = (i: number, seite: 'a' | 'i', v: V3): number => {
+    const h = reihe[i]![seite === 'a' ? aussen : innen] ?? NULL3;
+    const lh = lang2(h);
+    return lh > 1e-9 && lang2(v) > 1e-9 ? (h.z / lh) * lang2(v) : h.z;
+  };
+  const nr = new Map<string, { u: number; f: number }>();
+  const start: number[] = [];
+  for (let i = 0; i < m; i++) {
+    const va = blatt.get(`${i}:a`);
+    const vi = blatt.get(`${i}:i`);
+    const gegenueber = !!va && !!vi && lang2(va) > 1e-9 && lang2(vi) > 1e-9 && Math.abs(va.x * vi.y - va.y * vi.x) <= 1e-3 * lang2(va) * lang2(vi) && va.x * vi.x + va.y * vi.y < 0;
+    if (va && vi && gegenueber && !eckig(reihe[i]!)) {
+      nr.set(`${i}:a`, { u: start.length, f: 1 });
+      nr.set(`${i}:i`, { u: start.length, f: -lang2(vi) / lang2(va) });
+      start.push(0.5 * (tiefeAb(i, 'a', va) - (tiefeAb(i, 'i', vi) * lang2(va)) / lang2(vi)));
+      continue;
+    }
+    if (va) {
+      nr.set(`${i}:a`, { u: start.length, f: 1 });
+      start.push(tiefeAb(i, 'a', va));
+    }
+    if (vi) {
+      nr.set(`${i}:i`, { u: start.length, f: 1 });
+      start.push(tiefeAb(i, 'i', vi));
+    }
+  }
+  const N = start.length;
+  // (ein Hauch zieht jede Unbekannte zu ihrem Wert aus dem Verlauf: So bleibt das System bestimmt, auch wo ein Stück keine Probe hat)
+  const HAUCH = 1e-3;
+  const M: number[][] = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_x, j) => (i === j ? HAUCH : 0)));
+  const r = start.map((v) => HAUCH * v);
+  const grenze = new Array<number>(N).fill(0);
+  for (const sp of spannen) {
+    const A = reihe[sp.a]!;
+    const B = reihe[sp.b]!;
+    const ua = nr.get(`${sp.a}:a`)!;
+    const ub = nr.get(`${sp.b}:i`)!;
+    const sehne = Math.hypot(B.ref.x - A.ref.x, B.ref.y - A.ref.y, B.ref.z - A.ref.z);
+    grenze[ua.u] = Math.max(grenze[ua.u]!, sehne);
+    grenze[ub.u] = Math.max(grenze[ub.u]!, sehne);
+    const s0 = Math.min(A.s, B.s);
+    const s1 = Math.max(A.s, B.s);
+    if (!(s1 - s0 > 1e-9)) continue;
+    // die Proben der Kette zwischen den zwei Punkten, von A nach B; ihre Stelle im Stück kommt aus dem Blatt
+    const proben: number[] = [];
+    for (let j = 0; j < l.s.length; j++) if (l.s[j]! > s0 + 1e-9 && l.s[j]! < s1 - 1e-9) proben.push(j);
+    if (erste) proben.reverse();
+    let tVor = 0;
+    proben.forEach((j, n) => {
+      const q = { x: l.ruhe[3 * j]!, y: l.ruhe[3 * j + 1]!, z: 0 };
+      let t = stueckNaechstes(sp.k.A, sp.k.a, sp.k.b, sp.k.B, q, Math.abs(l.s[j]! - A.s) / (s1 - s0));
+      t = Math.min(1 - 1e-6 * (proben.length - n), Math.max(t, tVor + 1e-6));
+      tVor = t;
+      const [b0, b1, b2, b3] = bernstein(t);
+      const rest = l.ruhe[3 * j + 2]! - (b0 + b1) * A.ref.z - (b2 + b3) * B.ref.z;
+      const ca = b1 * ua.f;
+      const cb = b2 * ub.f;
+      M[ua.u]![ua.u] = M[ua.u]![ua.u]! + ca * ca;
+      M[ub.u]![ub.u] = M[ub.u]![ub.u]! + cb * cb;
+      M[ua.u]![ub.u] = M[ua.u]![ub.u]! + ca * cb;
+      M[ub.u]![ua.u] = M[ub.u]![ua.u]! + ca * cb;
+      r[ua.u] = r[ua.u]! + ca * rest;
+      r[ub.u] = r[ub.u]! + cb * rest;
+    });
+  }
+  const u = loesen(M, r) ?? start;
+  for (const [key, e] of nr) {
+    const [iS, seite] = key.split(':') as [string, 'a' | 'i'];
+    const v = blatt.get(key)!;
+    // (ein Griff tiefer als zwei Sehnen seines Stücks wäre ein Ausreißer der Anpassung: dann gilt der Wert aus dem Verlauf)
+    const tiefe = e.f * (Math.abs(u[e.u]!) <= 2 * grenze[e.u]! ? u[e.u]! : start[e.u]!);
+    reihe[Number(iS)]![seite === 'a' ? aussen : innen] = { x: v.x, y: v.y, z: tiefe };
+  }
+  // das Stück am Umriss: Der Punkt davor bleibt glatt (sein Griff nach außen liegt dem neuen nach innen gegenüber, so lang wie abgelesen)
+  if (aufMitte && m >= 3) {
+    const p = reihe[m - 2]!;
+    const hi = p[innen];
+    const ha = p[aussen];
+    if (nr.has(`${m - 2}:i`) && !eckig(p) && hi && ha) {
+      const li = Math.hypot(hi.x, hi.y, hi.z);
+      const la = Math.hypot(ha.x, ha.y, ha.z);
+      if (li > 1e-9 && la > 1e-9) p[aussen] = { x: (-hi.x * la) / li, y: (-hi.y * la) / li, z: (-hi.z * la) / li };
+    }
+  }
+}
+
 /**
  * Aus einer Linie das Maul schneiden. `linie`: in der Seitenebene (x, y des Werks), vom Mundwinkel (in der Form) nach vorn, ihr
- * letzter Punkt vor der Form im Leeren. `mk`: die mittlere Netzkante. Die Form muss gespiegelt sein. Zurück: die neue Haut und
- * alle Linien (die Lippe zuletzt), oder warum es hier nicht geht (dann ist nichts geändert).
+ * letzter Punkt vor der Form im Leeren (oder auf ihrem Umriss: Nach vorn wird sie ein Stück gerade verlängert). `mk`: die mittlere
+ * Netzkante. `zeichnung`: dieselbe Linie Stück für Stück, wie sie gezeichnet ist, vom Mundwinkel nach vorn: Dann tragen die Lippe
+ * und die Mitte der Tasche ihre Anker und liegen von der Seite genau auf ihr (Block D, 21.11.); ohne sie bekommt der Pfad wie
+ * vorher Punkte, wo er der Kette sonst nicht folgt. Die Form muss gespiegelt sein. Zurück: die neue Haut und alle Linien (die
+ * Lippe zuletzt), oder warum es hier nicht geht (dann ist nichts geändert).
  */
 export function maulSchneidenMit(
   wasm: Wasm,
   form: { haut: Haut; loops: readonly Loop[] },
   linie: readonly V2[],
-  opt: { naechsteId: number; naechsteKreuzung: number; mk: number },
+  opt: { naechsteId: number; naechsteKreuzung: number; mk: number; zeichnung?: readonly MaulStueck[] },
 ): MaulErgebnis | { fehler: string } {
   const mk = opt.mk;
   if (hautFrei(form.haut)) return { fehler: 'Ein Maul braucht die gespiegelte Form (Spiegel an)' };
   if (linie.length < 2) return { fehler: 'die Linie ist zu kurz' };
   // das Profil dicht abtasten und vorn ein Stück über das Ende hinaus verlängern (der Keil muss vorn aus der Form herausschauen)
   const roh = linie.map((q) => ({ x: q.x, y: q.y }));
+  /** die Zeichnung samt der Verlängerung nach vorn (ein gerades Stück); null: ohne Zeichnung, wie vor dem 21.11. */
+  let Z: MaulStueck[] | null = null;
   {
     const a = roh[roh.length - 2]!;
     const b = roh[roh.length - 1]!;
     const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-    roh.push({ x: b.x + ((b.x - a.x) / l) * 3 * mk, y: b.y + ((b.y - a.y) / l) * 3 * mk });
+    const vorn = { x: b.x + ((b.x - a.x) / l) * 3 * mk, y: b.y + ((b.y - a.y) / l) * 3 * mk };
+    roh.push(vorn);
+    if (opt.zeichnung?.length) Z = [...opt.zeichnung, [{ ...b }, { ...b }, { ...vorn }, { ...vorn }]];
   }
   const grob = new Profil(roh);
   if (grob.laenge < 4 * mk) return { fehler: 'die Linie ist zu kurz (das Maul wäre kleiner als das Netz)' };
@@ -519,8 +838,48 @@ export function maulSchneidenMit(
     w.ecke = true;
     w.mundwinkel = true;
   }
-  griffeAnlegen(lippe, lippe.ruhe, true, PFAD_GENAU);
-  for (const l of taschenMitte) griffeAnlegen(l, l.ruhe, true, PFAD_GENAU);
+  // Mit der Zeichnung (Block D, 21.11.): Die Hälfte der Lippe, die genau auf der Maullinie liegt (die rechte, sie führt), bekommt
+  // seine Anker als Punkte und im Blatt genau seine Griffe. Die Mitte der Tasche ebenso: Sie ist seine Linie in der Mittelebene
+  // (was der Keil ihr an Punkten mitgab, „wo nötig“, fällt weg).
+  /** je Linie der Tasche: ihre Wende (der Punkt am Mundwinkel) und ob ihre erste Hälfte auf der rechten Wand liegt */
+  const taschenWende = new Map<Loop, { wende: LoopPunkt; ersteRechts: boolean }>();
+  for (const l of taschenMitte) {
+    if (!l.punkte.length) continue;
+    const wende: LoopPunkt = l.punkte.reduce((a, b) => (Math.hypot(b.ref.x - C.x, b.ref.y - C.y) < Math.hypot(a.ref.x - C.x, a.ref.y - C.y) ? b : a));
+    // welche Hälfte auf der rechten Wand liegt: ein Punkt der Kette aus der ersten Hälfte
+    const erste = l.proben.filter((_, j) => l.s[j]! < wende.s - 1e-6 && j > 0);
+    const mitteV = erste.length ? erste[erste.length >> 1]!.ecken[0] : -1;
+    taschenWende.set(l, { wende, ersteRechts: mitteV >= 0 ? sk.seite[mitteV]! < 0 : true });
+  }
+  /** die Proben einer Hälfte: vor der Wende (`erste`) oder nach ihr */
+  const haelfte = (l: Loop, wende: LoopPunkt, erste: boolean): [number, number] => {
+    let jW = 0;
+    for (let j = 1; j < l.s.length; j++) if (Math.abs(l.s[j]! - wende.s) < Math.abs(l.s[jW]! - wende.s)) jW = j;
+    return erste ? [0, jW] : [jW, l.s.length - 1];
+  };
+  const lippeW = lippe.punkte.find((q) => q.mundwinkel)!;
+  const lippeErste = sk.ersteSeite < 0;
+  if (Z) {
+    // (die Naht kommt mit Punkten, „wo nötig“, aus ihrem Baustein: Es bleiben ihre Enden, die Kreuzungen und der Mundwinkel)
+    lippe.punkte = lippe.punkte.filter((p) => p === lippeW || p.kreuzung !== undefined || p.s <= 1e-6 || p.s >= lippe.laenge - 1e-6);
+    const fest = ankerSetzen(lippe, ...haelfte(lippe, lippeW, lippeErste), Z, mk, lippeW);
+    griffeAnlegen(lippe, lippe.ruhe, true);
+    griffeAusMaulZeichnung(lippe, lippeW, lippeErste, Z, fest, mk);
+    for (const l of taschenMitte) {
+      const tw = taschenWende.get(l);
+      if (!tw) {
+        griffeAnlegen(l, l.ruhe, true, PFAD_GENAU);
+        continue;
+      }
+      l.punkte = l.punkte.filter((p) => p === tw.wende || p.kreuzung !== undefined || p.s <= 1e-6 || p.s >= l.laenge - 1e-6);
+      const festL = ankerSetzen(l, ...haelfte(l, tw.wende, tw.ersteRechts), Z, mk, tw.wende);
+      griffeAnlegen(l, l.ruhe, true);
+      griffeAusMaulZeichnung(l, tw.wende, tw.ersteRechts, Z, festL, mk);
+    }
+  } else {
+    griffeAnlegen(lippe, lippe.ruhe, true, PFAD_GENAU);
+    for (const l of taschenMitte) griffeAnlegen(l, l.ruhe, true, PFAD_GENAU);
+  }
 
   /** Punkte anderer Linien an denselben Kreuzungen gehen mit (eine Kreuzung ist ein Ort) */
   const geaendert = new Set<Loop>();
@@ -553,21 +912,26 @@ export function maulSchneidenMit(
     const n = l.punkte.length;
     if (l.haengt?.[0] && n && l.punkte[0]!.s <= 1e-6) l.punkte[0]!.ein = { x: 0, y: 0, z: 0 };
     if (l.haengt?.[1] && n && l.punkte[n - 1]!.s >= l.laenge - 1e-6) l.punkte[n - 1]!.aus = { x: 0, y: 0, z: 0 };
+    // der Zwilling einer Ecke ist eine Ecke (ein geklickter Anker; `zwillingeAngleichen` legt Zwillinge glatt an)
+    const zw = zwillinge(l);
+    if (zw)
+      for (const [i, j] of zw.paare) {
+        const [f, g] = ersteRechts ? [l.punkte[i]!, l.punkte[j]!] : [l.punkte[j]!, l.punkte[i]!];
+        if (f.ecke === true && g.ecke === undefined) g.ecke = true;
+      }
     mitnehmen(l, bewegt);
     geaendert.add(l);
     return true;
   };
-  if (!paaren(lippe, sk.ersteSeite < 0)) return { fehler: 'die zwei Lippen ließen sich nicht paaren (bitte die Linie etwas anders ziehen)' };
+  if (!paaren(lippe, lippeErste)) return { fehler: 'die zwei Lippen ließen sich nicht paaren (bitte die Linie etwas anders ziehen)' };
   for (const l of taschenMitte) {
     // die Mitte der Tasche kehrt an der Rachenlinie um; für die Paarung trägt ihr Wendepunkt kurz die Marke des Mundwinkels
-    const wende: LoopPunkt = l.punkte.reduce((a, b) => (Math.hypot(b.ref.x - C.x, b.ref.y - C.y) < Math.hypot(a.ref.x - C.x, a.ref.y - C.y) ? b : a));
+    const tw = taschenWende.get(l);
+    if (!tw) continue;
+    const { wende, ersteRechts } = tw;
     const iW = l.punkte.indexOf(wende);
     wende.mundwinkel = true;
     wende.ecke = true;
-    // welche Hälfte auf der rechten Wand liegt: ein Punkt der Kette aus der ersten Hälfte
-    const erste = l.proben.filter((_, j) => l.s[j]! < wende.s - 1e-6 && j > 0);
-    const mitteV = erste.length ? erste[erste.length >> 1]!.ecken[0] : -1;
-    const ersteRechts = mitteV >= 0 ? sk.seite[mitteV]! < 0 : true;
     const gut = iW > 0 && iW < l.punkte.length - 1 && paaren(l, ersteRechts);
     delete l.maulLinie;
     delete wende.mundwinkel;

@@ -166,7 +166,8 @@ if (maul) {
     await s.keyboard.press('1');
     await s.waitForTimeout(1800);
     const Lv = (await O('werkLinienDaten')).find((l) => l.maulEcht);
-    const i = Math.max(1, Math.round((Lv.punkte.length - 1) / 4));
+    // (PUNKT=<n>: ein anderer Punkt der Lippe; ob die Zahnfleischlinie ihren Weg behält, hängt an der Stelle)
+    const i = process.env.PUNKT ? Number(process.env.PUNKT) : Math.max(1, Math.round((Lv.punkte.length - 1) / 4));
     const vor = Lv.punkte[i];
     const q = await O('werkImBild', { x: vor.x, y: vor.y, z: vor.z });
     const z = await O('werkImBild', { x: vor.x, y: vor.y - 8, z: vor.z });

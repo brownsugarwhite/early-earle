@@ -24,7 +24,7 @@ import {
   zwillingsFehler,
 } from '@ee/shape/dicht';
 import { describe, expect, it } from 'vitest';
-import { KIEFER_MAX, MAUL_HAAR, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
+import { KIEFER_MAX, MAUL_HAAR, type MaulStueck, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
 import { Profil } from '../maulstudie/schnitt';
 import { leereBemalung } from '../ozzy/farbe/bemalung';
 import { type Saat, flaechenRechnen } from '../ozzy/farbe/flaechen';
@@ -227,6 +227,118 @@ describe('das Maul als echte Form', () => {
     expect(weit).toBeLessThan(4);
     // die Lippen sind nach dem Rechnen noch Zwillinge
     expect(zwillingsFehler(lippe, 'erste')!).toBeLessThan(1e-9);
+  });
+
+  it('die Lippe als die gezeichnete Linie: ihre Punkte sind die Anker, von der Seite liegt sie genau auf der Zeichnung (auch die Mitte der Tasche)', async () => {
+    const wasm = await manifoldLaden();
+    const d = kugel();
+    const mk = mittlereKante(d.h);
+    // die Zeichnung, vom Mundwinkel nach vorn: ein gezogener Anker (glatt), ein geklickter (Ecke), das Ende vor der Kugel
+    const C = { x: -40, y: 30 };
+    const A1 = { x: -85, y: 14 };
+    const A2 = { x: -125, y: -12 };
+    const A3 = { x: -200, y: -34 };
+    const g1 = { x: -16, y: -9 };
+    const zeichnung: MaulStueck[] = [
+      [C, { x: C.x - 14, y: C.y - 2 }, { x: A1.x - g1.x, y: A1.y - g1.y }, A1],
+      [A1, { x: A1.x + g1.x, y: A1.y + g1.y }, A2, A2],
+      [A2, A2, A3, A3],
+    ];
+    const bez = (c: MaulStueck, t: number): { x: number; y: number } => {
+      const u = 1 - t;
+      const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      return { x: b[0]! * c[0].x + b[1]! * c[1].x + b[2]! * c[2].x + b[3]! * c[3].x, y: b[0]! * c[0].y + b[1]! * c[1].y + b[2]! * c[2].y + b[3]! * c[3].y };
+    };
+    const dicht = (n: number): { x: number; y: number }[] => zeichnung.flatMap((c, k) => Array.from({ length: n + (k === zeichnung.length - 1 ? 1 : 0) }, (_, i) => bez(c, i / n)));
+    const linie = dicht(14);
+    const fein = dicht(400);
+    /** Abstand eines Orts von der Zeichnung, von der Seite gesehen */
+    const neben = (x: number, y: number): number => {
+      let m = Infinity;
+      for (let i = 0; i + 1 < fein.length; i++) {
+        const a = fein[i]!;
+        const b = fein[i + 1]!;
+        const ex = b.x - a.x;
+        const ey = b.y - a.y;
+        const f = Math.max(0, Math.min(1, ((x - a.x) * ex + (y - a.y) * ey) / (ex * ex + ey * ey || 1)));
+        m = Math.min(m, Math.hypot(x - a.x - f * ex, y - a.y - f * ey));
+      }
+      return m;
+    };
+    const r = maulSchneidenMit(wasm, { haut: d.h, loops: d.loops }, linie, { ...IDS, mk, zeichnung });
+    if ('fehler' in r) throw new Error(r.fehler);
+    expect(kantenFehler(r.haut)).toBe(0);
+    expect(paarFehler(r.haut)).toBe(0);
+    expect(amSelbenOrt(r.haut)).toBe(0);
+    const lippe = r.loops[r.loops.length - 1]!;
+    const zw = zwillinge(lippe);
+    expect(zw).not.toBeNull();
+    expect(zwillingsFehler(lippe, 'erste')!).toBeLessThan(1e-9);
+    // die Punkte der Lippe: ihre zwei Enden, der Mundwinkel, die Kreuzungen mit Linien der Form und je Lippe die zwei Anker
+    const iW = zw!.iW;
+    const eigene = lippe.punkte.filter((p, i) => p.kreuzung === undefined && i !== iW && i !== 0 && i !== lippe.punkte.length - 1);
+    expect(eigene.length).toBe(4);
+    expect(lippe.punkte.length).toBe(9);
+    // der Pfad liegt auch im Raum dicht an der Kette der Naht (die Haut folgt ihm: unter einer Zehntel Netzkante)
+    expect(pfadAbweichung(lippe)).toBeLessThan(0.1 * mk);
+    for (const A of [A1, A2]) {
+      const nah = eigene.filter((p) => Math.hypot(p.ref.x - A.x, p.ref.y - A.y) < 0.1);
+      expect(nah.length).toBe(2);
+    }
+    // ein geklickter Anker ist auf beiden Lippen eine Ecke, ein gezogener glatt
+    for (const p of eigene) expect(p.ecke === true).toBe(Math.hypot(p.ref.x - A2.x, p.ref.y - A2.y) < 0.1);
+    /** wie weit der Pfad einer Linie von der Seite gesehen neben der Zeichnung liegt: je Stück der größte Abstand */
+    const pfadNeben = (l: Loop): { innen: number; amEnde: number } => {
+      let innen = 0;
+      let amEnde = 0;
+      for (let i = 0; i + 1 < l.punkte.length; i++) {
+        const a = l.punkte[i]!;
+        const b = l.punkte[i + 1]!;
+        let m = 0;
+        for (let k = 0; k <= 24; k++) {
+          const t = k / 24;
+          const u = 1 - t;
+          const x = u * u * u * a.ref.x + 3 * u * u * t * (a.ref.x + a.aus!.x) + 3 * u * t * t * (b.ref.x + b.ein!.x) + t * t * t * b.ref.x;
+          const y = u * u * u * a.ref.y + 3 * u * u * t * (a.ref.y + a.aus!.y) + 3 * u * t * t * (b.ref.y + b.ein!.y) + t * t * t * b.ref.y;
+          m = Math.max(m, neben(x, y));
+        }
+        const rand = (i === 0 || i + 1 === l.punkte.length - 1) && !l.haengt;
+        if (rand) amEnde = Math.max(amEnde, m);
+        else innen = Math.max(innen, m);
+      }
+      return { innen, amEnde };
+    };
+    const nl = pfadNeben(lippe);
+    expect(nl.innen).toBeLessThan(0.15);
+    expect(nl.amEnde).toBeLessThan(0.5);
+    // die Mitte der Tasche (die Linie in der Spiegelebene, die an den Enden der Lippe hängt): dieselben Anker, genau die Zeichnung
+    const mitte = r.loops.filter((l) => l !== lippe && !l.kante && l.haengt?.[0] && l.haengt[1] && l.punkte.every((p) => Math.abs(p.ref.z) < 1e-9) && l.punkte.every((p) => neben(p.ref.x, p.ref.y) < 1));
+    expect(mitte.length).toBe(1);
+    const tm = mitte[0]!;
+    expect(tm.punkte.length).toBe(7);
+    for (const A of [A1, A2]) expect(tm.punkte.filter((p) => Math.hypot(p.ref.x - A.x, p.ref.y - A.y) < 0.1).length).toBe(2);
+    const nm = pfadNeben(tm);
+    expect(Math.max(nm.innen, nm.amEnde)).toBeLessThan(0.15);
+    // jede Linie hat ihren Pfad; die Rechnung kommt zur Ruhe, die Kugel bleibt eine Kugel
+    for (const l of r.loops) expect(hatPfad(l)).toBe(true);
+    const n = nadelnZusammenlegen(r.haut, r.loops, mk);
+    const h = n ? n.haut : r.haut;
+    const loops = n ? n.loops : r.loops;
+    const e = rechnen(h, loops);
+    expect(e.steht).toBe(true);
+    expect(paarFehler(h)).toBe(0);
+    // außen bleibt die Kugel (wie ohne Zeichnung: kein Punkt weiter als 4 vom Radius)
+    const lippeDanach = loops.find((l) => istMaulLinie(l))!;
+    const sk = kieferSeiten(h, loops, lippeDanach.id, { profil: new Profil(linie), C });
+    let weit = 0;
+    for (let v = 0; v < h.n; v++) {
+      if (!sk.aussen[v]) continue;
+      weit = Math.max(weit, Math.abs(Math.hypot(h.pos[3 * v]!, h.pos[3 * v + 1]!, h.pos[3 * v + 2]!) - R));
+    }
+    expect(weit).toBeLessThan(4);
+    expect(zwillingsFehler(lippeDanach, 'erste')!).toBeLessThan(1e-9);
+    // nach dem Rechnen liegt die Lippe von der Seite weiter auf der Zeichnung
+    expect(pfadNeben(lippeDanach).innen).toBeLessThan(0.15);
   });
 
   it('die Kiefer: Lippen und Tasche drehen starr mit ihrem Kiefer, nichts faltet, die Drehung ist spiegelgleich', async () => {

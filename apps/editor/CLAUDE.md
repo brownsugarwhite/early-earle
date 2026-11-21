@@ -815,6 +815,19 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (`werkBlatt.signatur`). (63) Tempo beweist man an der Zahl der Bilder, die Ozzy rechnet, und daran, wie oft die Haut neu
   gerechnet wird (Haken `messen`), nicht nur am längsten Bild. (64) Proben, die sichern, schreiben nach `wesen/` nur unter
   `ozzy-probe-…` und löschen die Datei am Ende. Proben: `ozzy-maul-sichern-fenster.mjs`, `ozzy-maul-material-fenster.mjs`.
+  **Feinschlifflauf, Block D: die Lippe als seine Linie (21.11.):** `maulEcht.ts` (`ankerSetzen`, `griffeAusMaulZeichnung`),
+  `ozzy/maulFarben.ts`, `Szene.farben` in `fluessig.ts`. Merke: (65) Die Naht kommt aus ihrem Baustein mit Punkten „wo nötig“
+  (`naht.ts`, 0,25 Netzkanten): Wer einer Naht eigene Punkte gibt, nimmt die erst heraus. (66) Von zwei Punkten am selben Ort
+  im Bild gilt der vordere (`werkBlatt.bauen`, `DECKT_NAH`); gleich tiefe bleiben beide (die Zwillinge der Lippen). Wer zwei
+  Linien dieselben Anker gibt, braucht das. (67) Ein geklickter Punkt sitzt, wo der Zeiger gezeichnet ist, nicht wo die Maus
+  steht (nach einem Fang läuft er der Hand nach): Proben lesen die gesetzten Anker (`maulStrich().gezeichnet`), statt ihr Soll
+  zu vergleichen. (68) Eine Farbe in der Anzeige der Linien ist eine Nummer je Kapsel und eine Palette je Bild; die höhere
+  Nummer liegt vorn. Ohne Palette muss das Bild Bildpunkt für Bildpunkt gleich bleiben (gemessen an `#linien`, zweimal geladen
+  und einmal mit Palette ohne farbige Kapseln). (69) Je Kapsel eine Rückfrage an den Raum kostete 0,2 ms je Bild: die Farben
+  einer Linie auf einmal holen (`linienFarben`). (70) Esc ohne Auswahl verlässt die Seitenansicht: Proben drücken es nur mit
+  Auswahl. (71) Eine Form, die ins Fenster passt, bleibt beim Vergrößern in der Mitte; eine größere wächst um den Zeiger.
+  (72) Ob die Zahnfleischlinie nach einem Zug an der Lippe ihren Weg behält, hängt an der Stelle des Zugs (Liste, 130): Eine
+  Probe, die an einer Stelle besteht, beweist es nicht. Probe: `ozzy-maul-lippe-fenster.mjs` (P1 bis P4, F1 bis F4, U1 bis U3).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

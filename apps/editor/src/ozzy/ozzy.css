@@ -9,6 +9,10 @@
 }
 :root {
   --tinte: #1f1a17;
+  /* Florians Farben fürs Maul (sein Blatt 05; dieselben Werte stehen in `maulFarben.ts`) */
+  --maul-oben: #ff336c;
+  --maul-unten: #0600f9;
+  --maul-beide: #00d3c5;
   --leise: rgba(31, 26, 23, 0.46);
   --haar: rgba(31, 26, 23, 0.16);
   --papier: #ffffff;
@@ -351,10 +355,10 @@ body.wende-an #hinweis {
   animation: kiefer-quellen 420ms var(--feder);
 }
 .kiefer-tropfen.oben {
-  --kiefer: #e8306a;
+  --kiefer: var(--maul-oben);
 }
 .kiefer-tropfen.unten {
-  --kiefer: #1f3cf0;
+  --kiefer: var(--maul-unten);
 }
 .kiefer-tropfen:hover {
   transform: scale(1.18);

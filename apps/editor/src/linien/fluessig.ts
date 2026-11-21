@@ -20,9 +20,12 @@ const LISTE_BREITE = 2048;
  * Floats je Kapsel (drei Texel): x0, y0, x1, y1 | r0, r1, Gruppe, Art | z0, z1, f0, f1 (Gerätepunkte; z = Tiefe zum Betrachter; f = halbe
  * Breite hinter der Haut, Ozzy S20: ist sie da, wechselt die Schicht „nach Tiefe“ weich, die Tinte verjüngt sich ins Grün).
  * Art = Schicht (0 Tinte, 1 verdeckt, 2 nach Tiefe) + 4 · Form (0 Linie, hart; 1 Punkt, Tropfen, Hals, weich) + 8 · Bereich (Ozzy, S17:
- * 0 = überall, sonst die Nummer des Bereichs in `Szene.bereiche`, an dessen Rand die Kapsel abgeschnitten wird).
+ * 0 = überall, sonst die Nummer des Bereichs in `Szene.bereiche`, an dessen Rand die Kapsel abgeschnitten wird) + 256 · Farbe (Ozzy,
+ * 21.11.: 0 = Tinte, sonst die Nummer der Farbe in `Szene.farben`).
  */
 export const PRIM_FELDER = 12;
+/** Ozzy (21.11.): so viele Farben kennt die Anzeige neben der Tinte höchstens (Nummern 1 … `MAX_FARBEN` − 1) */
+export const MAX_FARBEN = 8;
 /** so viele Felder der Weichheit nimmt die Anzeige (je vier Werte) */
 export const MAX_FELDER = 16;
 /** Ozzy (S17): so viele Bereiche, an deren Rand Kapseln abgeschnitten werden (je vier Kanten) */
@@ -118,6 +121,13 @@ export interface Szene {
   bereiche?: number[];
   /** Ozzy (S17b): die Rückseite (`dunkel`) selbst füllen, mit der Farbe der Tinte (sonst malt sie die Haut darunter) */
   dunkelFuellen?: boolean;
+  /**
+   * Ozzy (21.11., die Lippen in Florians Farben): Farben für einzelne Kapseln, je drei Werte (rot, grün, blau, 0 … 1), die erste für
+   * die Nummer 1 (0 ist die Tinte; die Nummer steht in der Art der Kapsel, siehe `PRIM_FELDER`). Wo zwei Farben gleich nah liegen
+   * (zwei Linien aufeinander, ein Punkt am Rand seiner Linie), liegt die höhere Nummer vorn. Verdecktes bleibt grün. Fehlt die
+   * Angabe, läuft der Zweig von vorher: Das Bild bleibt Bildpunkt für Bildpunkt gleich.
+   */
+  farben?: number[];
 }
 
 /** so viele Punkte hat der Umriss des Zeigers höchstens (wie `uZP` im Shader) */
@@ -154,6 +164,8 @@ uniform vec3 uBereich[${4 * 8}];
 uniform int uBereichZahl;
 uniform int uDunkelFuellen;
 uniform vec3 uPapier;
+uniform vec3 uFarbe[${MAX_FARBEN}];
+uniform int uBunt;
 uniform int uZeigerDa;
 uniform vec2 uZA;
 uniform vec2 uZB;
@@ -295,6 +307,9 @@ void main() {
   int form = 0;
   vec2 gd = vec2(1e6);
   vec2 gw = vec2(0.0);
+  // Ozzy (21.11.): die Farbe der nächsten Kapsel in Tinte (bei gleichem Abstand die höhere Nummer)
+  float fd = 1e6;
+  int fnr = 0;
   for (uint i = 0u; i < se.y; i++) {
     int j = int(se.x + i);
     int idx = int(texelFetch(uListe, ivec2(j % LB, j / LB), 0).r);
@@ -313,11 +328,12 @@ void main() {
       gd = vec2(1e6);
     }
     float d = kapsel(p, A.xy, A.zw, B.x, B.y);
-    int bereich = int(B.w + 0.5) / 8;
+    int bereich = (int(B.w + 0.5) / 8) % 32;
     if (bereich > 0 && bereich <= uBereichZahl) d = max(d, bereichAbstand(p, bereich - 1));
     if (d < 2.0 + k) {
       int art = int(B.w + 0.5);
       int schicht = art - 4 * (art / 4);
+      float dt = 1e6;
       vec2 ba = A.zw - A.xy;
       float f = clamp(dot(p - A.xy, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
       bool weich = false;
@@ -333,13 +349,19 @@ void main() {
           float rg = mix(C.z, C.w, f) * h;
           if (dA - rt < gd.x) { gd.x = dA - rt; gw.x = rt; }
           if (dA - rg < gd.y) { gd.y = dA - rg; gw.y = rg; }
+          dt = dA - rt;
           weich = true;
         } else schicht = z > tiefe + uBias ? 1 : 0;
       }
       if (!weich) {
         float w = mix(B.x, B.y, f);
-        if (schicht == 0) { if (d < gd.x) { gd.x = d; gw.x = w; } }
+        if (schicht == 0) { if (d < gd.x) { gd.x = d; gw.x = w; } dt = d; }
         else { if (d < gd.y) { gd.y = d; gw.y = w; } }
+      }
+      if (uBunt == 1 && dt < 1e5) {
+        int fi = art / 256;
+        if (dt < fd - 0.25 || (dt < fd + 0.25 && fi > fnr)) fnr = fi;
+        fd = min(fd, dt);
       }
     }
   }
@@ -370,7 +392,9 @@ void main() {
   a = grundA + a * (1.0 - grundA);
   c = uGruen * aG + c * (1.0 - aG);
   a = aG + a * (1.0 - aG);
-  c = tinte * aI + c * (1.0 - aI);
+  // (auf der Rückseite, wo die Tinte hell wird, hellt auch eine Farbe ein wenig auf: Blau auf Dunkel wäre sonst kaum zu sehen)
+  vec3 farbI = fnr > 0 ? mix(uFarbe[fnr], uPapier, 0.35 * hinten) : tinte;
+  c = farbI * aI + c * (1.0 - aI);
   a = aI + a * (1.0 - aI);
   if (uZeigerDa == 1) {
     bool umriss = uZPN > 0;
@@ -483,6 +507,8 @@ export class FluessigeAnzeige {
   private texKachel: WebGLTexture;
   private texListe: WebGLTexture;
   private uni: Record<string, WebGLUniformLocation | null> = {};
+  /** Ozzy (21.11.): Das letzte Bild hatte Farben (`Szene.farben`); ohne sie bleibt der Schalter im Programm aus */
+  private bunt = false;
   private uniK: Record<string, WebGLUniformLocation | null> = {};
   private breite = 1;
   private hoehe = 1;
@@ -521,7 +547,7 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uKoerperDeckung', 'uBand', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox', 'uZFarbe'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uKoerperDeckung', 'uBand', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uFarbe', 'uBunt', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox', 'uZFarbe'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
     for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte', 'uTiefeMax', 'uHuelleTiefe', 'uRand', 'uRandAn', 'uToenung']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
@@ -837,6 +863,14 @@ export class FluessigeAnzeige {
     gl.uniform1i(this.uni.uBereichZahl!, nb);
     gl.uniform1i(this.uni.uDunkelFuellen!, sz.dunkelFuellen ? 1 : 0);
     gl.uniform3fv(this.uni.uPapier!, sz.papier ?? [1, 1, 1]);
+    const nFarben = Math.min(MAX_FARBEN - 1, Math.floor((sz.farben?.length ?? 0) / 3));
+    if (nFarben > 0 || this.bunt) {
+      const fb = new Float32Array(MAX_FARBEN * 3);
+      if (sz.farben && nFarben > 0) fb.set(sz.farben.slice(0, nFarben * 3), 3);
+      gl.uniform3fv(this.uni.uFarbe!, fb);
+      gl.uniform1i(this.uni.uBunt!, nFarben > 0 ? 1 : 0);
+      this.bunt = nFarben > 0;
+    }
     const zg = sz.zeiger;
     gl.uniform1i(this.uni.uZeigerDa!, zg ? 1 : 0);
     if (zg) {
