@@ -1,6 +1,6 @@
 // Backen fürs Spiel (Etappe 9, Scheibe 1): die Rechnung des Spielnetzes.
 import { describe, expect, it } from 'vitest';
-import { type GezeigteLage, abstaendeZumNetz, lippenGleichTeilen, normalenAngleichen, spielLage, spielformAus } from './spielform';
+import { type GezeigteLage, type LippenStelle, abstaendeZumNetz, lippenGleichTeilen, normalenAngleichen, spielLage, spielformAus } from './spielform';
 
 /** eine Lage, wie der Editor sie zeigt: die Ruhe je Punkt um das Scharnier gedreht um seinen Winkel (wie `knochenDrehen`) */
 function gezeigt(name: string, ruhe: number[], normalen: number[], winkel: number[], scharnierPunkt: number): GezeigteLage {
@@ -160,41 +160,74 @@ describe('wie nah ein Netz an einer Wolke von Punkten liegt', () => {
 });
 
 describe('die zwei Lippen gleich teilen', () => {
-  // die Lippe als Kette 0 … 4: obere Lippe 0, 1, der Mundwinkel 2, untere Lippe 3, 4; Zwillinge 0 und 4, 1 und 3
-  const KETTE = [0, 1, 2, 3, 4];
-  const selbst = Array.from({ length: 20 }, (_, i) => i);
+  // Punkte 0 … 9 stehen auf der einen Lippe an der Stelle Nummer / 10, Punkte 10 … 19 auf der anderen ((Nummer − 10) / 10);
+  // Punkt 100 ist der Mundwinkel (Stelle 0, auf beiden); 50 und 51 sind Haut darüber und darunter; 200 und mehr sind neu
+  const wo = (extra: Map<number, LippenStelle>) => (d: number): LippenStelle | null => {
+    if (d === 100) return { welche: 2, s: 0 };
+    if (d < 10) return { welche: 0, s: d / 10 };
+    if (d < 20) return { welche: 1, s: (d - 10) / 10 };
+    return extra.get(d) ?? null;
+  };
+  const anlegen = (extra: Map<number, LippenStelle>) => (welche: 0 | 1, s: number): number => {
+    const d = 200 + extra.size;
+    extra.set(d, { welche, s });
+    return d;
+  };
 
-  it('steht ein Punkt und sein Zwilling nicht, wird die Kante der anderen Lippe an ihm geteilt (im selben Umlaufsinn)', () => {
-    // oben stehen 0, 1, 2 (mit dem Punkt 10 der Haut darüber); unten nur 2 und 4 (mit 11 darunter): Der Zwilling 3 von 1 fehlt
-    const r = lippenGleichTeilen([0, 1, 10, 1, 2, 10, 4, 2, 11], selbst, KETTE, (q) => q);
+  it('steht eine Stelle nur auf einer Lippe, wird die Kante der anderen dort geteilt (im selben Umlaufsinn)', () => {
+    // die eine Lippe: Mundwinkel, 0,4, 1,0 (Punkte 100, 4, 9 … hier 9 = 0,9; das Ende ist 0,9); die andere: Mundwinkel und 0,9
+    const extra = new Map<number, LippenStelle>();
+    const r = lippenGleichTeilen([100, 4, 50, 4, 9, 50, 19, 100, 51], wo(extra), anlegen(extra), 0.01);
     expect(r.eingesetzt).toBe(1);
-    expect(Array.from(r.index)).toEqual([0, 1, 10, 1, 2, 10, 4, 3, 11, 3, 2, 11]);
+    expect(Array.from(r.index)).toEqual([100, 4, 50, 4, 9, 50, 19, 200, 51, 200, 100, 51]);
+    expect(extra.get(200)).toEqual({ welche: 1, s: 0.4 });
+    // an zwei Stellen stehen jetzt beide Lippen: bei 0,4 und am Ende
+    expect(r.paare).toEqual([
+      { a: [4], b: [200] },
+      { a: [9], b: [19] },
+    ]);
   });
 
-  it('außen und in der Tasche: Jedes Dreieck an der Kante bekommt den Punkt seiner Seite', () => {
-    // jeder Punkt der Lippe steht doppelt: außen q, in der Tasche q + 5; die Wand der Tasche hängt an 12
-    const quelle = [0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 10, 11, 12];
-    const r = lippenGleichTeilen([0, 1, 10, 1, 2, 10, 4, 2, 11, 7, 9, 12], quelle, KETTE, (q, wie) => (wie >= 5 ? q + 5 : q));
-    expect(r.eingesetzt).toBe(1);
-    expect(Array.from(r.index)).toEqual([0, 1, 10, 1, 2, 10, 4, 3, 11, 3, 2, 11, 7, 8, 12, 8, 9, 12]);
-  });
-
-  it('stehen beide Lippen schon gleich, bleibt alles; fehlt ein Ende der Lippe im Netz, wird dort nichts geteilt', () => {
-    const gleich = [0, 1, 10, 1, 2, 10, 4, 3, 11, 3, 2, 11];
-    const r = lippenGleichTeilen(gleich, selbst, KETTE, (q) => q);
+  it('nah beieinander ist dieselbe Stelle: ein Paar, nichts wird eingesetzt', () => {
+    const extra = new Map<number, LippenStelle>([[300, { welche: 1, s: 0.405 }]]);
+    const netz = [100, 4, 50, 4, 9, 50, 19, 300, 51, 300, 100, 51];
+    const r = lippenGleichTeilen(netz, wo(extra), anlegen(extra), 0.01);
     expect(r.eingesetzt).toBe(0);
-    expect(Array.from(r.index)).toEqual(gleich);
-    // unten steht nur der Mundwinkel: Der Zwilling 3 von 1 hat keine Kante, die über ihn hinweggeht
-    const ohne = lippenGleichTeilen([0, 1, 10, 1, 2, 10, 2, 11, 12], selbst, KETTE, (q) => q);
-    expect(ohne.eingesetzt).toBe(0);
+    expect(Array.from(r.index)).toEqual(netz);
+    expect(r.paare).toEqual([
+      { a: [4], b: [300] },
+      { a: [9], b: [19] },
+    ]);
   });
 
-  it('mehrere fehlende Zwillinge in derselben Kante: einer nach dem anderen, in der Reihenfolge der Lippe', () => {
-    // Kette 0 … 6, Mundwinkel 3; oben stehen alle, unten nur der Mundwinkel und das Ende
-    const kette = [0, 1, 2, 3, 4, 5, 6];
-    const r = lippenGleichTeilen([0, 1, 10, 1, 2, 10, 2, 3, 10, 6, 3, 11], selbst, kette, (q) => q);
+  it('beide Lippen haben eigene Stellen: Jede bekommt die der anderen; außen und in der Tasche je ein eigener Punkt', () => {
+    // die eine Lippe steht bei 0,3 (Punkt 3), die andere bei 0,6 (Punkt 16); beide Enden bei 0,9. Jede Lippe hat außen ein Dreieck
+    // zur Haut (50, 51) und innen eines zur Wand der Tasche (60, 61): Dort stehen ihre Punkte doppelt (Nummer + 1000)
+    const extra = new Map<number, LippenStelle>();
+    const wo2 = (d: number): LippenStelle | null => (d >= 1000 && d < 2000 ? wo(extra)(d - 1000) : wo(extra)(d));
+    const neu2 = (welche: 0 | 1, s: number, wie: number): number => {
+      const innen = wie >= 1000 && wie < 2000;
+      const d = 2000 + extra.size;
+      extra.set(d, { welche, s });
+      void innen;
+      return d;
+    };
+    const netz = [100, 3, 50, 3, 9, 50, 19, 16, 51, 16, 100, 51, 1100, 1003, 60, 1003, 1009, 60];
+    const r = lippenGleichTeilen(netz, wo2, neu2, 0.01);
     expect(r.eingesetzt).toBe(2);
-    expect(Array.from(r.index)).toEqual([0, 1, 10, 1, 2, 10, 2, 3, 10, 6, 5, 11, 5, 4, 11, 4, 3, 11]);
+    // die andere Lippe bekommt 0,3 (zwischen Mundwinkel und 0,6); die eine bekommt 0,6 (zwischen 0,3 und 0,9), außen und innen
+    const stellen = [...extra.values()].map((x) => `${x.welche}:${x.s}`).sort();
+    expect(stellen).toEqual(['0:0.6', '0:0.6', '1:0.3']);
+    expect(r.index.length).toBe(netz.length + 3 * 3);
+    expect(r.paare.length).toBe(3);
+  });
+
+  it('fehlt einer Lippe der Punkt hinter der Stelle, wird dort nichts geteilt', () => {
+    // die andere Lippe hat nur den Mundwinkel: Über 0,4 geht bei ihr keine Kante hinweg
+    const extra = new Map<number, LippenStelle>();
+    const netz = [100, 4, 50, 100, 51, 52];
+    const r = lippenGleichTeilen(netz, wo(extra), anlegen(extra), 0.01);
+    expect(r.eingesetzt).toBe(0);
+    expect(Array.from(r.index)).toEqual(netz);
   });
 });
-

@@ -4,15 +4,19 @@
 // im Raum (dort zeichnen die Materialien), nah am Maul, der Schalter „Wie im Spiel“.
 //   B1 Das Spielnetz hat höchstens 8 000 Dreiecke (Haut, Tasche und Zähne zusammen).
 //   B2 In jeder Pose liegt jeder Punkt des Spielnetzes dort, wo Ozzy ihn zeigt (höchstens 0,01; Haut und Zähne), seine Normale
-//      weicht höchstens 0,5° ab. In der Grundform schließt das Spielnetz den Haarspalt der Rechnung (0,03° am Mundwinkel): Dort
-//      höchstens 0,1, und die Normalen der Lippen von außen sind mit Absicht anders (B4).
+//      weicht höchstens 0,5° ab. In der Grundform schließt das Spielnetz den Haarspalt der Rechnung (0,03° am Mundwinkel): Die Haut
+//      außen liegt dort höchstens 0,1 daneben, ihre Normalen höchstens 0,5°. Die Lippen selbst liegen in der Grundlage mit Absicht
+//      anders (B4: Die Punkte der einen Lippe liegen auf denen der anderen); wie weit, wird berichtet.
 //   B3 Nah an der Form: Neun Zehntel der Punkte der glatten Anzeige liegen höchstens 1 Einheit neben der gebackenen Haut, keiner
 //      mehr als 5. In der Grundform und in „Fressen“.
-//   B4 Zu keine Kante im Licht: Die Lippen von außen liegen in der Grundlage paarweise am selben Ort (höchstens 0,001) und tragen
-//      dort dieselbe Normale (höchstens 0,01°).
+//   B4 Zu keine Kante im Licht: Beide Lippen haben an denselben Stellen einen Punkt; die Lippen von außen liegen in der Grundlage
+//      paarweise am selben Ort (höchstens 0,001) und tragen dort dieselbe Normale (höchstens 0,05°: die Genauigkeit der Zahlen).
 //   B5 Am Faden auf der Hälfte zwischen Grundform und „Fressen“ zeigt Ozzy das Spielnetz mit den Anteilen der Reihe (0,5). Wie weit
 //      die Rechnung des Spiels dort von der Fahrt des Editors abweicht, wird gemessen und berichtet (ohne Schwelle).
-//   B6 Tempo: Backen dauert höchstens 0,5 s; die Rechnung des Spiels je Bild höchstens 4 ms.
+//   B6 Tempo: Backen dauert höchstens 0,5 s; die Ansicht selbst kostet je Bild höchstens 4 ms (ihr Schlüssel, die Rechnung des
+//      Spiels, die Netze beschreiben). Eine Fahrt zwischen den Lagen backt nicht neu und zeigt in jedem Bild das Spielnetz. Wie
+//      lange ein Bild der Fahrt mit und ohne Ansicht rechnet, wird berichtet (im Raum kosten Linien und Wände je Bild der Fahrt
+//      schon rund 15 ms: Liste, Punkt 157).
 //   B7 „Wie im Spiel“ aus: Die gezeigte Haut ist die von vorher (höchstens 0,001). Mit dem grünen Material zeichnet das Spielnetz.
 //   K  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] [LINIE='x,y;…'] [BIS=B4] [ZOOM=5] node scripts/pruefen/ozzy-backen-fenster.mjs [ordner]
@@ -208,8 +212,8 @@ try {
   await bild('3-pose-2-spiel');
   ok(
     'B2 in jeder Pose liegt jeder Punkt des Spielnetzes dort, wo Ozzy ihn zeigt, mit derselben Normale; in der Grundform schließt es nur den Haarspalt',
-    !!pG && !!pF && !!pP && pF.gleich.haut <= 0.01 && pF.gleich.zaehne >= 0 && pF.gleich.zaehne <= 0.01 && pF.gleich.grad <= 0.5 && pP.gleich.haut <= 0.01 && pP.gleich.zaehne <= 0.01 && pP.gleich.grad <= 0.5 && pG.gleich.haut <= 0.1 && pG.gleich.zaehne <= 0.1 && pG.gleich.gradAussen <= 0.5,
-    `„Fressen“: Haut ${z3(pF?.gleich.haut)}, Zähne ${z3(pF?.gleich.zaehne)}, Normalen ${z2(pF?.gleich.grad)}°; Pose 2: Haut ${z3(pP?.gleich.haut)}, Zähne ${z3(pP?.gleich.zaehne)}, Normalen ${z2(pP?.gleich.grad)}°; Grundform: Haut ${z3(pG?.gleich.haut)}, Zähne ${z3(pG?.gleich.zaehne)}, Normalen der Haut außen ${z2(pG?.gleich.gradAussen)}° (in der Tasche bis ${z2(pG?.gleich.gradOhne)}°, an den Lippen bis ${z2(pG?.gleich.grad)}°)`,
+    !!pG && !!pF && !!pP && pF.gleich.haut <= 0.01 && pF.gleich.zaehne >= 0 && pF.gleich.zaehne <= 0.01 && pF.gleich.grad <= 0.5 && pP.gleich.haut <= 0.01 && pP.gleich.zaehne <= 0.01 && pP.gleich.grad <= 0.5 && pG.gleich.hautAussen <= 0.1 && pG.gleich.zaehne <= 0.1 && pG.gleich.gradAussen <= 0.5,
+    `„Fressen“: Haut ${z3(pF?.gleich.haut)}, Zähne ${z3(pF?.gleich.zaehne)}, Normalen ${z2(pF?.gleich.grad)}°; Pose 2: Haut ${z3(pP?.gleich.haut)}, Zähne ${z3(pP?.gleich.zaehne)}, Normalen ${z2(pP?.gleich.grad)}°; Grundform: Haut außen ${z3(pG?.gleich.hautAussen)}, Zähne ${z3(pG?.gleich.zaehne)}, Normalen der Haut außen ${z2(pG?.gleich.gradAussen)}°; mit Absicht anders: die Lippen bis ${z2(pG?.gleich.haut)} längs der Lippe verschoben, ihre Normalen bis ${z2(pG?.gleich.grad)}°, in der Tasche bis ${z2(pG?.gleich.gradOhne)}°`,
   );
   ok(
     'B3 nah an der Form: neun Zehntel der Punkte der glatten Anzeige höchstens 1 neben der gebackenen Haut, keiner mehr als 5',
@@ -218,8 +222,8 @@ try {
   );
   ok(
     'B4 zu keine Kante im Licht: die Lippen von außen liegen in der Grundlage paarweise am selben Ort und tragen dort dieselbe Normale',
-    !!pG && pG.lippe.paare >= 4 && pG.lippe.lageWeit <= 0.001 && pG.lippe.normaleGrad <= 0.01 && g.gebacken.lippe.punkte >= 8,
-    `${pG?.lippe.aussen} Punkte der Lippen von außen, ${pG?.lippe.paare} Paare am selben Ort (höchstens ${pG?.lippe.lageWeit.toExponential(1)} auseinander), Normalen dort höchstens ${z3(pG?.lippe.normaleGrad)}° verschieden; angeglichen ${g.gebacken?.lippe.punkte} Punkte um höchstens ${z2(g.gebacken?.lippe.grad)}°; ${g.gebacken?.lippe.eingesetzt} Zwillinge eingesetzt${g.gebacken?.lippe.ungleich ? `; NICHT GLEICH GETEILT: ${g.gebacken.lippe.ungleich}` : ''}`,
+    !!pG && pG.lippe.paare >= 4 && 2 * pG.lippe.paare >= pG.lippe.aussen - 4 && pG.lippe.lageWeit <= 0.001 && pG.lippe.normaleGrad <= 0.05 && g.gebacken.lippe.punkte >= 8 && !g.gebacken.lippe.ungleich,
+    `${pG?.lippe.aussen} Punkte der Lippen von außen, ${pG?.lippe.paare} Paare am selben Ort (höchstens ${pG?.lippe.lageWeit.toExponential(1)} auseinander), Normalen dort höchstens ${z3(pG?.lippe.normaleGrad)}° verschieden; beide Lippen stehen an ${g.gebacken?.lippe.paare} Stellen, ${g.gebacken?.lippe.eingesetzt} davon eingesetzt; vor dem Zusammenlegen lag ein Paar höchstens ${z3(g.gebacken?.lippe.weit)} auseinander; Normalen angeglichen an ${g.gebacken?.lippe.punkte} Punkten um höchstens ${z2(g.gebacken?.lippe.grad)}°${g.gebacken?.lippe.ungleich ? `; NICHT GLEICH GETEILT: ${g.gebacken.lippe.ungleich}` : ''}`,
   );
   if (BIS === 'B4') throw new Error('BIS');
 
@@ -251,22 +255,57 @@ try {
     `Anteile ${halb.gebacken?.anteile} (die Reihe: ${z3(poseHalb.anteil)}); die Rechnung des Spiels liegt dort höchstens ${z2(pH?.gleich.haut)} neben der Fahrt des Editors (Haut), ${z2(pH?.gleich.zaehne)} an den Zähnen, Normalen bis ${z2(pH?.gleich.grad)}°`,
   );
 
-  // ---------- B6: Tempo ----------
-  await O('messen', true);
-  await s.click('#pose-grundform');
-  await s.waitForTimeout(800);
-  await s.click('#fressen-knopf');
-  await s.waitForTimeout(800);
-  const b6 = await O('messen', false);
+  // ---------- B6: Tempo; eine Fahrt backt nicht neu ----------
+  /** vier Fahrten (Grundform, „Fressen“, Pose 2, „Fressen“): die Bilder unterwegs */
+  const vierFahrten = async () => {
+    await O('messen', true);
+    await s.click('#pose-grundform');
+    await s.waitForTimeout(800);
+    await s.click('#fressen-knopf');
+    await s.waitForTimeout(800);
+    await s.click('#posen button.pose[data-nr="2"]');
+    await s.waitForTimeout(800);
+    await s.click('#fressen-knopf');
+    await s.waitForTimeout(800);
+    const b = (await O('messen', false)).filter((q) => q.teile[1] > 1);
+    const ms = b.map((q) => q.ms).sort((x, y) => x - y);
+    return { b, ms, mittel: ms.reduce((x, y) => x + y, 0) / Math.max(1, ms.length) };
+  };
+  await s.waitForTimeout(1500);
+  const mal0 = (await O('spiel')).mal;
+  await s.evaluate(() => {
+    window.__spur = [];
+    window.__spurEnde = false;
+    const f = () => {
+      window.__spur.push(window.__ozzy.spiel().zeigt ? 1 : 0);
+      if (window.__spur.length < 400 && !window.__spurEnde) requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  });
+  await O('spiel', null, true);
+  const mit6 = await vierFahrten();
+  const kosten6 = (await O('spiel')).kosten;
+  const spur6 = await s.evaluate(() => {
+    window.__spurEnde = true;
+    return window.__spur;
+  });
   await ruhig();
   const g6 = await O('spiel');
-  const ms6 = b6.map((q) => q.ms).sort((x, y) => x - y);
-  const mittel6 = ms6.reduce((x, y) => x + y, 0) / Math.max(1, ms6.length);
+  const ohne6 = spur6.filter((x) => x === 0).length;
+  // dieselben Fahrten ohne die Ansicht
+  await O('spiel', false);
+  await s.waitForTimeout(800);
+  const ohneAnsicht = await vierFahrten();
+  await ruhig();
+  await O('spiel', true);
+  await gebacken();
+  const teile = (b) => ['Werk', 'Haut', 'Linien', 'Seifenhaut', 'Zeichnen', 'Wände'].map((nm, k) => `${nm} ${(b.reduce((x, q) => x + q.teile[k], 0) / Math.max(1, b.length)).toFixed(1)}`).join(', ');
   ok(
-    'B6 Tempo: Backen dauert höchstens 0,5 s; die Rechnung des Spiels je Bild höchstens 4 ms',
-    g.gebacken.ms <= 500 && g6.gebacken.rechnen <= 4,
-    `gebacken in ${Math.round(g.gebacken.ms)} ms; die Rechnung des Spiels im letzten Bild ${z2(g6.gebacken.rechnen)} ms; zwei Fahrten mit der Ansicht: ${ms6.length} Bilder, im Mittel ${mittel6.toFixed(1)} ms, das langsamste ${(ms6[ms6.length - 1] ?? 0).toFixed(1)} ms`,
+    'B6 Tempo: Backen dauert höchstens 0,5 s; die Ansicht selbst kostet je Bild höchstens 4 ms; eine Fahrt backt nicht neu und zeigt immer das Spielnetz',
+    g.gebacken.ms <= 500 && kosten6 > 0 && kosten6 <= 4 && g6.mal === mal0 && ohne6 === 0 && spur6.length > 60 && mit6.ms.length > 10 && ohneAnsicht.ms.length > 10,
+    `gebacken in ${Math.round(g.gebacken.ms)} ms; die Ansicht selbst im teuersten Bild der Fahrten ${z2(kosten6)} ms; vier Fahrten mit der Ansicht (Grundform, „Fressen“, Pose 2, „Fressen“): neu gebacken ${g6.mal - mal0}-mal, ${spur6.length} Bilder, davon ${ohne6} ohne Spielnetz; unterwegs mit der Ansicht ${mit6.ms.length} Bilder im Mittel ${mit6.mittel.toFixed(1)} ms (das langsamste ${(mit6.ms[mit6.ms.length - 1] ?? 0).toFixed(1)}), ohne ${ohneAnsicht.ms.length} Bilder im Mittel ${ohneAnsicht.mittel.toFixed(1)} ms (${(ohneAnsicht.ms[ohneAnsicht.ms.length - 1] ?? 0).toFixed(1)}); je Bild mit: ${teile(mit6.b)}; ohne: ${teile(ohneAnsicht.b)}`,
   );
+  if (BIS === 'B6') throw new Error('BIS');
 
   // ---------- B7: aus ist wie vorher; das grüne Material ----------
   await O('material', 'grün');

@@ -338,64 +338,114 @@ export function abstaendeZumNetz(punkte: ArrayLike<number>, pos: ArrayLike<numbe
   return aus;
 }
 
+/** wo ein Punkt des Netzes auf den Lippen steht: auf welcher (0, 1; 2: auf beiden, ein Mundwinkel) und an welcher Stelle längs der Lippe */
+export type LippenStelle = { welche: 0 | 1 | 2; s: number };
+
 /**
- * Die zwei Lippen gleich teilen, damit das Maul zu wirklich zu ist. `kette`: die Punkte einer Lippe der Reihe nach, als
- * Quellpunkte, von einem Ende über den Mundwinkel (in der Mitte der Kette) zum anderen; der Zwilling von `kette[j]` ist
- * `kette[m − 1 − j]`, zu liegen beide am selben Ort. Im ausgedünnten Netz stehen von jeder Lippe nur einige ihrer Punkte, und nicht
- * dieselben: Zu lägen zwei verschiedene Streckenzüge aufeinander, mit Spalten dazwischen. Steht ein Punkt im Netz und sein Zwilling
- * nicht, wird der Zwilling eingesetzt: Die Kante, die auf seiner Lippe über ihn hinweggeht, wird an ihm geteilt, jedes Dreieck an
- * ihr in zwei. `quelle`: je Punkt des Netzes sein Quellpunkt. `kopie(q, wie)`: der Punkt des Netzes für den Quellpunkt `q` auf
- * derselben Seite der Lippe wie der Punkt `wie` (außen oder in der Tasche; −1: keiner). Zurück: die Dreiecke danach und wie viele
- * Punkte eingesetzt wurden.
+ * Die zwei Lippen gleich teilen, damit das Maul zu wirklich zu ist. Zu liegen beide Lippen auf derselben Kurve; im ausgedünnten
+ * Netz stehen von jeder aber nur einige Punkte, und nicht an denselben Stellen: Zu lägen zwei verschiedene Streckenzüge
+ * aufeinander, mit Spalten dazwischen. Hier bekommt jede Lippe an jeder Stelle, an der die andere einen Punkt hat, auch einen: Die
+ * Kante, die dort über die Stelle hinweggeht, wird geteilt, jedes Dreieck an ihr in zwei.
+ *
+ * `lippe(d)`: wo der Punkt d auf den Lippen steht (null: auf keiner). Gleiche Stellen beider Lippen liegen zu am selben Ort.
+ * `neu(welche, s, wie)`: der Punkt der Lippe `welche` an der Stelle s, auf derselben Seite der Lippe (außen oder in der Tasche)
+ * wie der Punkt `wie`; −1: Es gibt keinen. Wer ihn anlegt, kennt danach seine Stelle (`lippe`). `nah`: Stellen der zwei Lippen,
+ * die höchstens so weit auseinander liegen, gelten als dieselbe.
+ * Zurück: die Dreiecke danach, wie viele Stellen eingesetzt wurden, und je Stelle, an der jetzt beide Lippen stehen, die Punkte
+ * der einen und der anderen (ohne die Mundwinkel: Die gehören beiden).
  */
-export function lippenGleichTeilen(index: ArrayLike<number>, quelle: ArrayLike<number>, kette: readonly number[], kopie: (q: number, wie: number) => number): { index: Uint32Array; eingesetzt: number } {
-  const m = kette.length;
-  const stelle = new Map<number, number>();
-  kette.forEach((q, j) => stelle.set(q, j));
+export function lippenGleichTeilen(
+  index: ArrayLike<number>,
+  lippe: (d: number) => LippenStelle | null,
+  neu: (welche: 0 | 1, s: number, wie: number) => number,
+  nah: number,
+): { index: Uint32Array; eingesetzt: number; paare: { a: number[]; b: number[] }[] } {
+  const GENAU = 1e-9;
   let I = Array.from(index);
-  // welche Stellen der Kette im Netz stehen
-  const da = new Uint8Array(m);
-  for (const d of I) {
-    const j = stelle.get(quelle[d]!);
-    if (j !== undefined) da[j] = 1;
+  const gemerkt = new Map<number, LippenStelle | null>();
+  const wo = (d: number): LippenStelle | null => {
+    let l = gemerkt.get(d);
+    if (l === undefined) {
+      l = lippe(d);
+      gemerkt.set(d, l);
+    }
+    return l;
+  };
+  /** die Stellen einer Lippe, an denen das Netz einen Punkt hat (aufsteigend, jede einmal) */
+  const stellen = (welche: 0 | 1): number[] => {
+    const S: number[] = [];
+    for (const d of new Set(I)) {
+      const l = wo(d);
+      if (l && (l.welche === welche || l.welche === 2)) S.push(l.s);
+    }
+    S.sort((x, y) => x - y);
+    return S.filter((x, k) => k === 0 || x - S[k - 1]! > GENAU);
+  };
+  const S = [stellen(0), stellen(1)] as const;
+  // die Stellen beider Lippen der Reihe nach: Was nah beieinander liegt, ist ein Paar; was allein steht, braucht ein Gegenüber
+  const ziel: { a: number | null; b: number | null }[] = [];
+  for (let i = 0, j = 0; i < S[0].length || j < S[1].length; ) {
+    const a = S[0][i];
+    const b = S[1][j];
+    if (a !== undefined && b !== undefined && Math.abs(a - b) <= nah) {
+      ziel.push({ a, b });
+      i++;
+      j++;
+    } else if (b === undefined || (a !== undefined && a < b)) {
+      ziel.push({ a: a!, b: null });
+      i++;
+    } else {
+      ziel.push({ a: null, b });
+      j++;
+    }
   }
-  const fehlt: number[] = [];
-  for (let j = 0; j < m; j++) if (!da[j] && da[m - 1 - j]) fehlt.push(j);
-  const mitte = (m - 1) / 2;
+  const auf = (d: number, welche: 0 | 1, s: number): boolean => {
+    const l = wo(d);
+    return !!l && (l.welche === welche || l.welche === 2) && Math.abs(l.s - s) <= GENAU;
+  };
   let eingesetzt = 0;
-  for (const j of fehlt) {
-    // die Nachbarn, die auf derselben Lippe stehen (der Mundwinkel in der Mitte gehört zu beiden Lippen)
-    const [von, bis] = j < mitte ? [0, Math.floor(mitte)] : [Math.ceil(mitte), m - 1];
-    let a = j - 1;
-    while (a >= von && !da[a]) a--;
-    let b = j + 1;
-    while (b <= bis && !da[b]) b++;
-    if (a < von || b > bis) continue;
-    const A = kette[a]!;
-    const B = kette[b]!;
-    const q = kette[j]!;
-    const neu: number[] = [];
+  const einsetzen = (welche: 0 | 1, s: number): boolean => {
+    const da = S[welche];
+    let k = 0;
+    while (k < da.length && da[k]! < s) k++;
+    const s1 = da[k - 1];
+    const s2 = da[k];
+    if (s1 === undefined || s2 === undefined) return false;
+    const danach: number[] = [];
     let geteilt = false;
     for (let t = 0; t < I.length; t += 3) {
       const ecken = [I[t]!, I[t + 1]!, I[t + 2]!];
-      const ia = ecken.findIndex((d) => quelle[d] === A);
-      const ib = ecken.findIndex((d) => quelle[d] === B);
-      const n = ia >= 0 && ib >= 0 ? kopie(q, ecken[ia]!) : -1;
+      const ia = ecken.findIndex((d) => auf(d, welche, s1));
+      const ib = ecken.findIndex((d) => auf(d, welche, s2));
+      const n = ia >= 0 && ib >= 0 && ia !== ib ? neu(welche, s, ecken[ia]!) : -1;
       if (n < 0) {
-        neu.push(ecken[0]!, ecken[1]!, ecken[2]!);
+        danach.push(ecken[0]!, ecken[1]!, ecken[2]!);
         continue;
       }
       const c = ecken[3 - ia - ib]!;
-      // (die Kante von a nach b im Umlaufsinn des Dreiecks, oder von b nach a: Beide Hälften laufen wie das Ganze)
+      // (die Kante im Umlaufsinn des Dreiecks: Beide Hälften laufen wie das Ganze)
       const [x, y] = (ia + 1) % 3 === ib ? [ecken[ia]!, ecken[ib]!] : [ecken[ib]!, ecken[ia]!];
-      neu.push(x, n, c, n, y, c);
+      danach.push(x, n, c, n, y, c);
       geteilt = true;
     }
-    if (!geteilt) continue;
-    I = neu;
-    da[j] = 1;
+    if (!geteilt) return false;
+    I = danach;
+    da.splice(k, 0, s);
     eingesetzt++;
+    return true;
+  };
+  const paare: { a: number[]; b: number[] }[] = [];
+  const stehen: { a: number; b: number }[] = [];
+  for (const z of ziel) {
+    if (z.a !== null && z.b !== null) stehen.push({ a: z.a, b: z.b });
+    else if (z.a !== null && einsetzen(1, z.a)) stehen.push({ a: z.a, b: z.a });
+    else if (z.b !== null && einsetzen(0, z.b)) stehen.push({ a: z.b, b: z.b });
   }
-  return { index: Uint32Array.from(I), eingesetzt };
+  const alle = [...new Set(I)];
+  for (const st of stehen) {
+    const a = alle.filter((d) => wo(d)?.welche === 0 && Math.abs(wo(d)!.s - st.a) <= GENAU);
+    const b = alle.filter((d) => wo(d)?.welche === 1 && Math.abs(wo(d)!.s - st.b) <= GENAU);
+    if (a.length && b.length) paare.push({ a, b });
+  }
+  return { index: Uint32Array.from(I), eingesetzt, paare };
 }
-
