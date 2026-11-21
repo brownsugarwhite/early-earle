@@ -23,7 +23,7 @@ function ball(t, h0, g, e, hops = 3) {
   let T = t1; const impacts = [[t1, v]];
   for (let k = 0; k < hops; k++) { v *= e; const d = 2 * v / g; if (t < T + d) { const tau = t - T; impacts.push(null); return { z: v * tau - 0.5 * g * tau * tau, v: v - g * tau, sq: squash(t, impacts.filter(Boolean)) }; } T += d; impacts.push([T, v]); }
   return { z: 0, v: 0, sq: squash(t, impacts.filter(Boolean)) };
-  function squash(t, imps) { let s = 0; for (const [ti, vi] of imps) { const d = t - ti; if (d >= 0) s += clamp(vi / 2600, 0, 0.34) * Math.exp(-d * 13) * Math.cos(d * 34); } return s; }
+  function squash(t, imps) { let s = 0; for (const [ti, vi] of imps) { const d = t - ti; if (d >= 0) s += clamp(vi / 2600, 0, 0.34) * 1.35 * Math.exp(-d * 13) * Math.sin(d * 34); } return s; }
 }
 // ---------- Projektion der Endkamera (Azimut 45°, Höhe 30°) und Heben auf Ebenen
 const proj0 = P => [K * (P[0] + P[1]), K / 2 * (P[0] - P[1]) - SZ * P[2]];
@@ -85,6 +85,7 @@ for (const f of M.faces) {
 }
 const centroid3 = pts => pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length, s[2] + p[2] / pts.length], [0, 0, 0]);
 const ALL = Object.values(BODIES).flat(); const PIV = centroid3(ALL); const PIV2 = proj0(PIV);
+const BC = {}; for (const [k, pts] of Object.entries(BODIES)) { const c = centroid3(pts); BC[k] = [c[0], c[1], 0]; }
 const BODY2D = {}; for (const [k, pts] of Object.entries(BODIES)) { const c = centroid3(pts); BODY2D[k] = proj0([c[0], c[1], 0]); BODY2D[k][1] = proj0(c)[1]; }
 // ---------- Rahmen (2D)
 const P2 = d => new Path2D(d);
@@ -129,7 +130,13 @@ const C = M.colors, G = M.gradients;
 function gradLin(ctx, p0, p1, stops) { const g = ctx.createLinearGradient(p0[0], p0[1], p1[0], p1[1]); for (const [o, c] of stops) g.addColorStop(o, c); return g; }
 function drawScene(ctx, st) {
   const cam = framed(st.cam);
-  const xf = (b) => { const h = st.rise[b] ?? 1; const off = st.off?.[b]; return (W) => [W[0] + (off ? off[0] : 0), W[1] + (off ? off[1] : 0), W[2] * h + (off ? off[2] : 0)]; };
+  const xf = (b) => { const h = st.rise?.[b] ?? 1; const Bd = st.body?.[b]; const off = st.off?.[b];
+    if (!Bd && h === 1 && !off) return (W) => W;
+    const c = BC[b] || [0, 0, 0], sz = Bd?.sz ?? 1, sxy = 1 / Math.sqrt(Math.max(0.2, sz)), yw = (Bd?.yaw || 0) * D2R, cyw = Math.cos(yw), syw = Math.sin(yw), dz = (Bd?.fall || 0) + (off ? off[2] : 0);
+    return (W) => { let x = W[0], y = W[1], z = W[2] * h;
+      if (sz !== 1) { x = c[0] + (x - c[0]) * sxy; y = c[1] + (y - c[1]) * sxy; z *= sz; }
+      if (yw) { const dx = x - c[0], dy = y - c[1]; x = c[0] + dx * cyw - dy * syw; y = c[1] + dx * syw + dy * cyw; }
+      return [x + (off ? off[0] : 0), y + (off ? off[1] : 0), z + dz]; }; };
   ctx.fillStyle = C.bg; ctx.fillRect(-4000, -4000, 10000, 10000);
   drawFrame(ctx, st);
   const passes = [{ swap: false, clip: null }]; if (st.wave) passes.push({ swap: true, clip: st.wave });
@@ -162,28 +169,32 @@ function fillFor(ctx, L, cam, xf, st, swap) {
 }
 function tracePath(ctx, c3, pr) { ctx.beginPath(); for (const k of c3) { if (k[0] === 'M') ctx.moveTo(...pr(k[1])); else if (k[0] === 'L') ctx.lineTo(...pr(k[1])); else if (k[0] === 'C') { const a = pr(k[1]), b = pr(k[2]), c = pr(k[3]); ctx.bezierCurveTo(a[0], a[1], b[0], b[1], c[0], c[1]); } else ctx.closePath(); } }
 function drawLetterFace(ctx, L, cam, xf, st, swap) {
-  if (L.dot) { const d = st.dots?.[L.dot.body]; if (!d || d.hide) return; const od = (st.explode || 0) * (OFF[L.f.id] || 0); const W = [L.dot.C[0] + C0[0] * od, L.dot.C[1] + C0[1] * od, L.dot.C[2] + (d.z || 0) + C0[2] * od]; const p = cam(W); const s = cam.scaleAt(W); const r = L.dot.r * s;
+  if (L.dot) { const d = st.dots?.[L.dot.body]; if (!d || d.hide) return; const od = (st.explode || 0) * (OFF[L.f.id] || 0); const o = d.off || [0, 0, 0];
+    let W = [L.dot.C[0] + C0[0] * od + o[0], L.dot.C[1] + C0[1] * od + o[1], L.dot.C[2] + (d.z || 0) + C0[2] * od + o[2]]; if (d.attach) W = xf(d.attach)(W);
+    const p = cam(W); const s = cam.scaleAt(W); const r = L.dot.r * s;
     const sq = d.sq || 0, sy = 1 - sq, sx = 1 / Math.max(0.3, sy); ctx.fillStyle = st.analysis ? '#9a95a3' : swap ? (L.f.fill === C.pink ? C.white : C.pink) : L.f.fill;
     ctx.beginPath(); ctx.ellipse(p[0], p[1] + r * (1 - sy), r * sx, r * sy, 0, 0, Math.PI * 2); ctx.fill(); return; }
   const key = L.half ? L.f.id + '.' + L.half : L.f.id; const od = (st.explode || 0) * (OFF[key] ?? (L.sp.twisted ? 0 : OFF[L.f.id] ?? 0));
-  const trb = xf(L.sp.body); const tr0 = od ? (W) => { const q = trb(W); return [q[0] + C0[0] * od, q[1] + C0[1] * od, q[2] + C0[2] * od]; } : trb; let tr = tr0; const hg = L.sp.hinge; const hh = st.rise[L.sp.body] ?? 1;
+  const trb = xf(L.sp.body); const bob = od && st.bob ? st.bob * Math.sin((st.t || 0) * 4.4 + (key.length * 1.7 + key.charCodeAt(key.length - 1) * 0.37)) : 0;
+  const tr0 = (od || bob) ? (W) => trb([W[0] + C0[0] * od, W[1] + C0[1] * od, W[2] + C0[2] * od + bob]) : trb; let tr = tr0; const hg = L.sp.hinge; const hh = st.rise?.[L.sp.body] ?? 1;
   if (hg && hh < 1) { const [A, B] = hg; const d = [B[0] - A[0], B[1] - A[1], B[2] - A[2]]; const dl = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
     tr = (W) => { const t = ((W[0] - A[0]) * d[0] + (W[1] - A[1]) * d[1] + (W[2] - A[2]) * d[2]) / dl; const Q = [A[0] + d[0] * t, A[1] + d[1] * t, A[2] + d[2] * t]; const k = Math.max(0, hh); return tr0([Q[0] + (W[0] - Q[0]) * k, Q[1] + (W[1] - Q[1]) * k, Q[2] + (W[2] - Q[2]) * k]); }; }
   const pr = (W) => cam(tr(W));
-  if ((st.rise[L.sp.body] ?? 1) <= 0.0005) return;
+  if ((st.rise?.[L.sp.body] ?? 1) <= 0.0005) return;
   ctx.save();
   if (L.clip3) { tracePath(ctx, L.clip3, pr); ctx.clip(); }
   tracePath(ctx, L.c3, pr); ctx.fillStyle = fillFor(ctx, L, cam, xf, st, swap); ctx.fill(L.f.evenodd ? 'evenodd' : 'nonzero');
   ctx.restore();
 }
 function drawFrame(ctx, st) {
-  const fr = st.frame; if (!fr) return; const { plate = 0, rim = 0, shadow = 0, pulse = 1 } = fr; if (plate <= 0 && rim <= 0) return;
+  const fr = st.frame; if (!fr) return; const { plate = 0, rim = 0, shadow = 0, pulse = 1 } = fr; if (plate <= 0 && rim <= 0 && (fr.flood === undefined || fr.flood >= 2300)) return;
   ctx.save(); const [cx, cy] = PIV2; ctx.translate(cx, cy); ctx.scale(pulse, pulse); ctx.translate(-cx, -cy);
   const full = 1e4;
   if (rim > 0) { ctx.save(); ctx.clip(diamonds(SEEDS, rim >= 0.999 ? full : rim * 700)); ctx.save(); ctx.clip(LIGHTCLIP, 'evenodd'); ctx.fillStyle = gradLin(ctx, [G.rimLight.x1, 0], [G.rimLight.x2, 0], G.rimLight.stops); ctx.fill(RIM); ctx.restore();
     if (shadow > 0) { ctx.save(); ctx.clip(DARKCLIP); if (shadow < 0.999) ctx.clip(sweepPath(shadow * 230)); ctx.fillStyle = gradLin(ctx, [G.rimDark.x1, 0], [G.rimDark.x2, 0], G.rimDark.stops); ctx.fill(RIM); ctx.restore(); }
     ctx.restore(); }
-  if (plate > 0) { ctx.save(); ctx.clip(diamonds(SEEDS, plate >= 0.999 ? full : plate * 560)); ctx.fillStyle = C.teal; ctx.fill(PLATE); ctx.restore(); }
+  if (fr.flood !== undefined && fr.flood < 2300) { const X = fr.flood; const q = new Path2D(); q.moveTo(X, -400); q.lineTo(X - 170, 452); q.lineTo(X, 1300); q.lineTo(2600, 1300); q.lineTo(2600, -400); q.closePath(); ctx.save(); ctx.clip(q); ctx.fillStyle = C.teal; ctx.fill(PLATE); ctx.restore(); }
+  else if (fr.flood === undefined && plate > 0) { ctx.save(); ctx.clip(diamonds(SEEDS, plate >= 0.999 ? full : plate * 560)); ctx.fillStyle = C.teal; ctx.fill(PLATE); ctx.restore(); }
   ctx.restore();
 }
 // ---------- Abläufe
@@ -198,6 +209,51 @@ function camOrbit(t, o) { // Kamerafahrt mit Dolly-Zoom und Einrasten bei 45°/3
   const u = t - (o.t0 || 0);
   return { phi: mix(o.phi0, 45, settle(u, o.t1 ?? 1.45, o.t2 ?? 2.05, o.over ?? 0.035)), el: mix(o.el0, 30, settle(u, (o.t1 ?? 1.45) - 0.1, (o.t2 ?? 2.05) - 0.1, o.overE ?? 0.015)),
     persp: o.p0 * (1 - ease(u / (o.flat ?? 1.9))), zoom: 1, roll: o.r0 * (1 - ease(u / 1.8)), pan: [0, 0], frameW: ease((u - (o.fw0 ?? 0.9)) / (o.fw1 ?? 1.0)), fit: o.fit ?? 0.92 };
+}
+// ---------- Fassung 2: jede Täuschung mit eigenem Auftritt
+const ORDER = ['i1', 'll', 'u', 'D', 'i2', 'y'], IMPOSSIBLE = ['ll', 'u', 'i2'];
+function damp(tau, v, zeta, omega) { if (tau <= 0) return 0; const wd = omega * Math.sqrt(1 - zeta * zeta); return v / wd * Math.exp(-zeta * omega * tau) * Math.sin(wd * tau); }
+function drop(t, t0, H, g, e, A) { // Körper fällt aus Höhe H, schlägt auf (Stauchen), hüpft einmal klein
+  const tau = t - t0; if (tau <= 0) return { fall: H, sz: 1 }; const t1 = Math.sqrt(2 * H / g); if (tau < t1) return { fall: H - 0.5 * g * tau * tau, sz: 1 };
+  const v2 = g * t1 * e, t2 = 2 * v2 / g, d1 = tau - t1; let fall = 0; if (d1 < t2) fall = v2 * d1 - 0.5 * g * d1 * d1;
+  let sq = A * Math.exp(-11 * d1) * Math.sin(30 * d1); if (d1 >= t2) { const d2 = d1 - t2; sq += A * e * 1.6 * Math.exp(-12 * d2) * Math.sin(32 * d2); } return { fall, sz: 1 - sq }; }
+function camF2(t) {
+  let phi, el, persp;
+  if (t < 2.3) { const k = smooth(t / 2.3); phi = 68 - 13 * k; el = 18 + 7 * k; persp = mix(1 / 1500, 1 / 2400, k); }
+  else if (t < 2.5) { const k = smooth((t - 2.3) / 0.2); phi = 55 + 2.5 * k; el = 25 - 0.5 * k; persp = 1 / 2400; }
+  else { const k = ease((t - 2.5) / 0.45); phi = 57.5 - 12.5 * k; el = 24.5 + 5.5 * k; persp = (1 / 2400) * (1 - k); }
+  return { phi, el, persp, zoom: 1, roll: -2.5 * (1 - smooth(t / 2.5)), pan: [0, 0], frameW: ease((t - 2.45) / 0.5), fit: 0.97 };
+}
+const F2 = { lag: 0.06, glide: 0.45, floodT0: 3.45, floodDur: 1.3 };
+function fassung2(t) {
+  const cam = camF2(t); const st = { t, cam, split: true, explode: 1, body: {}, dots: {}, frame: {} };
+  // Aufschlag: Buchstaben fallen versetzt von oben ins Bild und stauchen beim Aufprall
+  ORDER.forEach((b, i) => { const d = drop(t, 0.02 + 0.075 * i, 1100, 4200, 0.2, 0.16); st.body[b] = { fall: d.fall, sz: d.sz, yaw: 0 }; });
+  // Rätsel: Bruchstücke schweben leicht
+  st.bob = 6 * smooth((t - 0.9) / 0.4) * (1 - smooth((t - 2.05) / 0.35));
+  // Einrasten: jeder Buchstabe hängt der Kamera nach und rastet mit eigenem Klick ein
+  ORDER.forEach((b, i) => { if (t <= 2.5) return; const ts = 2.5 + F2.lag * i, te = ts + F2.glide; let phiL;
+    if (t < ts) phiL = 57.5; else if (t < te) { const u = (t - ts) / F2.glide; phiL = 57.5 - 12.5 * u * u * u; } else phiL = 45 + damp(t - te, -12.5 * 3 / F2.glide, 0.45, 30);
+    st.body[b].yaw = phiL - cam.phi; const tau = t - te; if (tau > 0) st.body[b].sz *= 1 - 0.05 * Math.exp(-10 * tau) * Math.sin(30 * tau); });
+  // Zwinkern: nur die unmöglichen Buchstaben drehen kurz aus dem Winkel, die Fugen gehen auf und schließen sich
+  IMPOSSIBLE.forEach((b, k) => { const tau = t - (5.62 + 0.06 * k); if (tau > 0) st.body[b].yaw += 4.2 * Math.exp(-7.5 * tau) * Math.sin(15 * tau); });
+  // Platte flutet von rechts nach links; Säule wird Schlitz, Deckel verschwindet
+  const fu = (t - F2.floodT0) / F2.floodDur; st.frame.flood = t < F2.floodT0 ? 9999 : 1880 - 1990 * ease(fu);
+  const tDrop = F2.floodT0 + 0.4065 * F2.floodDur + 0.02;
+  { const rest = 27.4; let z = rest, sq = 0; if (t > tDrop) { const b = ball(t - tDrop, rest, 2600, 0.3, 2); z = b.z; sq = b.sq * 0.7; } st.dots.i2dot = { z, sq, attach: 'i2' }; }
+  // Pinker Punkt springt von links auf den Deckel des ersten i
+  { const tl = 3.52, Tf = 0.5, g = 2600; const S0 = [-K * 650, -K * 650, 150];
+    if (t < tl) st.dots.i1dot = { hide: true };
+    else if (t < tl + Tf) { const tau = t - tl; const V = [-S0[0] / Tf, -S0[1] / Tf, -S0[2] / Tf + g * Tf / 2]; st.dots.i1dot = { off: [S0[0] + V[0] * tau, S0[1] + V[1] * tau, S0[2] + V[2] * tau - 0.5 * g * tau * tau], sq: -0.06 }; }
+    else { const vz = g * Tf / 2 + S0[2] / Tf; const b = ball(t - tl - Tf, 0.0001, g, 0.32, 2); const v1 = vz; const hop = (() => { const d = t - tl - Tf; const v2 = v1 * 0.32; const t2 = 2 * v2 / g; if (d < t2) return v2 * d - 0.5 * g * d * d; const v3 = v2 * 0.32, t3 = 2 * v3 / g; if (d < t2 + t3) { const e = d - t2; return v3 * e - 0.5 * g * e * e; } return 0; })();
+      const d = t - tl - Tf; const sq = 0.3 * Math.exp(-12 * d) * Math.sin(32 * d) + 0.1 * Math.exp(-12 * Math.max(0, d - 0.23)) * Math.sin(32 * Math.max(0, d - 0.23)); st.dots.i1dot = { off: [0, 0, hop], sq }; } }
+  // Rand, Schatten, Atem
+  st.frame.rim = t > 4.6 ? Math.min(1, spring(t - 4.6, 0.85, 7.5)) : 0; st.frame.shadow = t > 4.9 ? ease((t - 4.9) / 0.7) : 0;
+  st.frame.pulse = t > 5.1 ? 1 + 0.014 * Math.exp(-(t - 5.1) * 6) * Math.sin((t - 5.1) * 15) : 1;
+  st.reg = t > 5.95 ? Math.max(0, spring(t - 5.95, 0.5, 14)) : 0;
+  // Ausklang: Restschwingungen weich auf exakt 0, damit das Endbild das Logo ist
+  const calm = 1 - smooth((t - 6.1) / 0.25); if (calm < 1) { ORDER.forEach(b => { st.body[b].yaw *= calm; st.body[b].sz = 1 + (st.body[b].sz - 1) * calm; }); st.frame.pulse = 1 + (st.frame.pulse - 1) * calm; st.reg = 1 + (st.reg - 1) * calm; if (st.dots.i1dot.sq) st.dots.i1dot.sq *= calm; }
+  return st;
 }
 const SEQ = {
   A: { name: 'Intro A · Einrasten', dur: 4.7, fn: (t, extra) => {
@@ -218,6 +274,7 @@ const SEQ = {
   T4: { name: 'Test 4 · Figur und Grund', dur: 2.6, fn: (t) => { const p = t < 1.3 ? (t > 0.35 ? Math.min(1, spring(t - 0.35, 0.85, 8)) : 0) : Math.max(0, 1 - ease((t - 1.9) / 0.5)); return { cam: FINAL, rise: {}, dots: { i1dot: {}, i2dot: {} }, frame: { plate: p, rim: 0, shadow: 0 } }; } },
   T5: { name: 'Test 5 · Punkte mit Physik', dur: 2.4, fn: (t) => ({ cam: FINAL, rise: {}, dots: { i1dot: dropDot(t, 0.05, 720, 0.42, 3), i2dot: dropDot(t, 0.3, 760, 0.38, 3) }, frame: { plate: 1, rim: 1, shadow: 1 }, reg: 1 }) },
   T6: { name: 'Test 6 · Platte, Rand, Schatten', dur: 2.4, fn: (t) => ({ cam: FINAL, rise: {}, dots: { i1dot: {}, i2dot: {} }, frame: { plate: t > 0.15 ? Math.min(1, spring(t - 0.15, 0.9, 7.2)) : 0, rim: t > 0.37 ? Math.min(1, spring(t - 0.37, 0.9, 6.6)) : 0, shadow: t > 0.65 ? ease((t - 0.65) / 0.8) : 0, pulse: 1 + 0.012 * Math.exp(-(t - 0.58) * 6) * Math.sin(Math.max(0, t - 0.58) * 15) * (t > 0.58 ? 1 : 0) }, reg: t > 1.4 ? Math.max(0, spring(t - 1.4, 0.5, 14)) : 0 }) },
+  F2: { name: 'Fassung 2 · Der Moment, in dem es passt', dur: 6.4, fn: (t) => fassung2(t) },
   T7: { name: 'Test 7 · Auseinandergezogen (neu)', dur: 6.2, fn: (t) => { // langsam ins Einrasten, halten, wieder heraus: die Teile schweben getrennt und fallen nur bei 45°/30° zusammen
     let k; if (t < 3.2) k = 1 - ease(t / 3.2); else if (t < 4.5) k = 0; else k = 0.62 * ease((t - 4.5) / 1.5);
     return { cam: { phi: 45 + 25 * k, el: 30 + 7 * k, persp: k / 2400, zoom: 1, roll: -2 * k, pan: [0, 0], frameW: 0, fit: 0.9 }, rise: {}, dots: { i1dot: {}, i2dot: {} }, split: true, explode: 1 }; } },

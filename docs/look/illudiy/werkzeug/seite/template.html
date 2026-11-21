@@ -81,7 +81,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
 <div class="wrap">
 <header>
   <h1><span>illudiy</span> · Intro-Studie</h1>
-  <p class="lead">Exakter Vektor-Nachbau des Logos, Analyse seiner Täuschungen, Recherche und ein Intro, das aus dem Nichts kommt und ohne Schnitt in den einzigen Blickwinkel einrastet, in dem das Unmögliche stimmt.</p>
+  <p class="lead">Exakter Vektor-Nachbau des Logos, Analyse seiner Täuschungen, Recherche und ein Intro, in dem jede Täuschung ihren eigenen Auftritt hat: Bruchstücke, die nur aus einem einzigen Blickwinkel zum unmöglichen Logo werden.</p>
   <nav class="toc"><a href="#buehne">Bühne</a><a href="#nachbau">Nachbau</a><a href="#taeuschungen">Täuschungen</a><a href="#konzept">Konzept</a><a href="#recherche">Recherche</a><a href="#offen">Offen</a></nav>
 </header>
 
@@ -89,9 +89,10 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   <div class="stage" id="stage"><canvas id="cv"></canvas><div class="badge" id="badge"></div></div>
   <div class="controls">
     <div class="row"><span class="group-label">Intro</span>
-      <button class="seq main" data-seq="A">Intro A · Einrasten</button>
-      <button class="seq main" data-seq="B">Intro B · mit Kippwelle</button>
-      <button class="seq main" data-seq="K">Kurzfassung</button>
+      <button class="seq main" data-seq="F2">Fassung 2 · Der Moment</button>
+      <button class="seq" data-seq="A">Fassung 1 · A</button>
+      <button class="seq" data-seq="B">Fassung 1 · B (Kippwelle)</button>
+      <button class="seq" data-seq="K">Kurzfassung</button>
     </div>
     <div class="row"><span class="group-label">Tests</span>
       <button class="seq" data-seq="T1">1 Magischer Blickwinkel</button>
@@ -165,30 +166,32 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
 <section id="konzept">
   <h2>Konzept: „Der Moment, in dem es passt“</h2>
   <p>Das Logo ist eine Parallelprojektion. Unmögliches gibt es darin nur aus genau einem Blickwinkel. Das Intro zeigt die Buchstaben deshalb zuerst als glaubhafte Körper in einem echten Raum und lässt sie dann ohne Schnitt in diesen Blickwinkel einrasten. Erst dort schließen sich die Fugen zu den unmöglichen Formen. Danach kommt die Platte und kehrt Figur und Grund um, der Schatten fällt, und das Licht setzt sich.</p>
-  <h3>Ablauf Intro A (4,7 s)</h3>
+  <h3>Fassung 2 (6,4 s): jede Täuschung mit eigenem Auftritt</h3>
+  <p class="muted">Fassung 1 zeigte die Täuschungen nicht: Die Kamera rastete ein, während die Buchstaben noch wuchsen, und die Teile hingen fast zusammen. Neu liegt jedes Teil entlang der Blickrichtung der Endkamera versetzt. Im Logo sieht man das nicht, aus jedem anderen Winkel schweben die Teile getrennt.</p>
   <div class="timeline" id="timeline"></div>
   <div class="tablewrap"><table>
-    <tr><th>Zeit</th><th>Akt</th><th>Was passiert</th><th>Welche Täuschung</th></tr>
-    <tr><td>0,00–1,0</td><td>Aus dem Nichts</td><td>Kamera auf Bodenhöhe, alles liegt flach: nichts ist zu sehen, ganz ohne Ausblendung. Die Buchstaben steigen als Welle von links nach rechts aus dem Boden, jeder mit eigener Feder.</td><td>Kantenansicht, Kinetic Depth</td></tr>
-    <tr><td>0,0–2,05</td><td>Kamerafahrt</td><td>Die Kamera hebt sich, kreist von 74° auf 45° und fährt per Dolly-Zoom aus der Perspektive in die Parallelprojektion. Ein Grad Überschwingen öffnet die Fugen noch einmal, dann rastet sie bei 45°/30° ein.</td><td>Magischer Blickwinkel, Vertigo-Effekt</td></tr>
-    <tr><td>1,45–3,0</td><td>Punkte</td><td>Der pinke Punkt fällt mit echter Schwerkraft auf den unsichtbaren Deckel des ersten i, staucht sich und springt zweimal. Der weiße Punkt fällt in das negative i und versinkt halb hinter dem Stamm.</td><td>Tunnel-Effekt, unmögliche Verdeckung</td></tr>
-    <tr><td>2,35–2,9</td><td>Platte</td><td>Die Petrol-Platte wächst in Iso-Rauten hinter den Buchstaben hervor. Der Deckel des i und der Stamm des zweiten i verschwinden in ihr: aus der Säule wird ein Schacht, aus dem Balken ein Schlitz.</td><td>Figur-Grund-Umkehr</td></tr>
-    <tr><td>2,55–3,5</td><td>Rand und Schatten</td><td>Der Verlaufsrand wächst nach, dann streicht der Schatten entlang der Isometrie-Achse unter die Platte, genau so, wie das Logo ihn konstruiert. Die ganze Marke atmet einmal kurz.</td><td>Schlagschatten als Tiefenhinweis</td></tr>
-    <tr><td>3,0–4,15</td><td>Licht</td><td>Die weichen Weißverläufe und das schräge Licht des D gleiten in ihre Lage. Zuletzt springt das ® mit einer kleinen Feder auf.</td><td>Licht von oben</td></tr>
+    <tr><th>Zeit (s)</th><th>Auftritt</th><th>Was passiert</th><th>Täuschung</th></tr>
+    <tr><td>0,0–1,1</td><td>Aufschlag</td><td>Die Buchstaben fallen von oben ins schwarze Bild, versetzt von links nach rechts, und stauchen beim Aufprall. Nichts wird eingeblendet.</td><td>Aus dem Nichts, ohne Alpha</td></tr>
+    <tr><td>1,1–2,3</td><td>Das Rätsel</td><td>Langsames Kreisen mit Perspektive. i, D und y sind feste Körper, ll, u und das zweite i schweben in Bruchstücken. Der weiße Punkt balanciert auf der Spitze der Petrol-Säule.</td><td>Kinetic Depth: Bewegung beweist den Körper</td></tr>
+    <tr><td>2,3–3,4</td><td>Einrasten</td><td>Die Kamera holt aus und gleitet per Dolly-Zoom in 45°/30°. Jeder Buchstabe hängt kurz nach und rastet mit eigenem Klick ein, von links nach rechts; die Bruchstücke werden zum unmöglichen Buchstaben.</td><td>Magischer Blickwinkel</td></tr>
+    <tr><td>3,45–4,3</td><td>Säule wird Schlitz</td><td>Die Platte flutet von rechts heran. Sobald sie den Stamm des zweiten i erreicht, liest er sich als Schlitz, und der weiße Punkt fällt hinein und versinkt halb hinter der Vorderkante.</td><td>Figur-Grund-Umkehr, Tunnel-Effekt</td></tr>
+    <tr><td>3,5–4,3</td><td>Schwebender Punkt</td><td>Der pinke Punkt springt von links auf den Petrol-Deckel des ersten i. Die Flut erreicht ihn, der Deckel verschwindet in der Platte, der Punkt schwebt.</td><td>Figur-Grund-Umkehr</td></tr>
+    <tr><td>4,6–5,6</td><td>Rand und Schatten</td><td>Der Verlaufsrand wächst, der Schatten streicht entlang der Isometrie-Achse ein, die Marke atmet einmal.</td><td>Schlagschatten</td></tr>
+    <tr><td>5,6–6,4</td><td>Zwinkern, ®</td><td>Nur die unmöglichen Buchstaben drehen kurz aus dem Winkel: Die Fugen gehen auf und schließen sich wieder. Dann springt das ® auf.</td><td>Beweis der Täuschung</td></tr>
   </table></div>
   <h3>Physik</h3>
   <div class="tablewrap"><table>
     <tr><th>Element</th><th>Bewegung</th><th>Werte</th></tr>
-    <tr><td>Buchstaben steigen</td><td>gedämpfte Feder, je Buchstabe 75 ms versetzt</td><td>ζ 0,58, ω 8,2 → 9 % Überschwingen</td></tr>
-    <tr><td>Kamera</td><td>Schwung mit Abbremsen, ein kleines Überschwingen, weiches Zurück</td><td>1° Azimut, 0,45° Höhe, steht bei 2,05 s exakt</td></tr>
-    <tr><td>Dolly-Zoom</td><td>Perspektive 1/1300 → 0 (Parallelprojektion)</td><td>bis 1,9 s</td></tr>
-    <tr><td>Punkte</td><td>Fall mit Schwerkraft, zwei Sprünge, Stauchen beim Aufprall, Strecken im Flug</td><td>g 2600 px/s², Stoßzahl 0,42 und 0,38</td></tr>
-    <tr><td>Platte, Rand</td><td>fast kritisch gedämpfte Federn, Rand 0,2 s später</td><td>ζ 0,9</td></tr>
-    <tr><td>Atmen</td><td>einmalige Schwingung der ganzen Marke</td><td>1,2 %, abklingend</td></tr>
-    <tr><td>®</td><td>Feder mit Überschwingen</td><td>ζ 0,5</td></tr>
+    <tr><td>Aufschlag</td><td>freier Fall aus 1100 Einheiten, Aufprall mit Stauchen (Volumen bleibt), ein kleiner Hüpfer</td><td>g 4200, Stoßzahl 0,2, Stauchen 16 %, 75 ms versetzt</td></tr>
+    <tr><td>Kamera</td><td>langsames Kreisen 68° → 55°, Ausholen auf 57,5°, Gleiten in 45°/30°, Dolly-Zoom in die Parallelprojektion</td><td>steht bei 2,95 s exakt</td></tr>
+    <tr><td>Einrasten je Buchstabe</td><td>hängt 60 ms je Buchstabe nach, kommt mit Schwung an und schwingt aus; kurzer Stauch-Impuls</td><td>ζ 0,45, ω 30, Stauchen 5 %</td></tr>
+    <tr><td>Weißer Punkt</td><td>balanciert auf der Säulenspitze, fällt 27 Einheiten in den Schlitz</td><td>g 2600, Stoßzahl 0,3</td></tr>
+    <tr><td>Pinker Punkt</td><td>Wurfparabel von links, Landung mit Stauchen, zwei kleine Hüpfer</td><td>Flugzeit 0,5 s, Stoßzahl 0,32</td></tr>
+    <tr><td>Platte</td><td>Flutfront als Iso-Pfeil von rechts nach links</td><td>1,3 s, weich beschleunigt</td></tr>
+    <tr><td>Rand, Atem, ®</td><td>fast kritisch gedämpfte Feder, einmalige Schwingung, Feder mit Überschwingen</td><td>ζ 0,85; 1,4 %; ζ 0,5</td></tr>
   </table></div>
   <h3>Technik</h3>
-  <p>Jede Fläche ist ein exakter Vektor. Für die Kamerafahrt liegt jede Fläche auf ihrer eigenen Ebene im Raum: sie wird entlang der Blickrichtung der Endkamera gehoben, das verändert das Endbild nicht, aus jedem anderen Winkel aber fallen die Teile auseinander. Verwundene Flächen werden zu Regelflächen. Das letzte Bild ist pixelgleich mit dem statischen Logo (gleiche Abweichung zum Original wie das SVG).</p>
+  <p>Jede Fläche ist ein exakter Vektor. Für die Kamerafahrt liegt jede Fläche auf ihrer eigenen Ebene im Raum und ist zusätzlich entlang der Blickrichtung der Endkamera versetzt; die verwundenen Balken des ll sind in eine obere und eine untere Platte zerlegt. Das verändert das Endbild nicht, aus jedem anderen Winkel aber fallen die Teile auseinander. Jeder Buchstabe dreht beim Einrasten um seine eigene Hochachse, so rastet einer nach dem anderen ein. Das letzte Bild ist pixelgleich mit dem statischen Logo (gleiche Abweichung zum Original wie das SVG).</p>
   <h3>Bewusst weggelassen</h3>
   <p class="muted">Ames-Raum, Reverspektive und Hohlmaske brauchen Perspektive oder Schattierung, die das Logo nicht hat. Op-Art ist laut und flimmert. Partikel, Lichtreflexe und Einblendungen wirken billig. Alphablenden werden nirgends gebraucht: alles entsteht aus Kantenansicht, Wachsen oder Verdecken.</p>
 </section>
@@ -221,7 +224,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   <h2>Offen</h2>
   <div class="grid2">
     <div class="card"><h3>Für dein Auge</h3><ul>
-      <li>Intro A oder B als Hauptfassung? B hängt die Kippwelle an, sie ist kräftiger, aber länger.</li>
+      <li>Fassung 2: Stimmen Reihenfolge und Tempo der Auftritte? Soll das Zwinkern am Ende bleiben?</li>
       <li>Kamera aus 74° (von rechts) oder lieber von links kommend?</li>
       <li>Soll der Stamm des zweiten i vor der Platte als Petrol-Säule sichtbar sein (jetzt so) oder erst mit der Platte entstehen?</li></ul></div>
     <div class="card"><h3>Nächste Schritte</h3><ul>
@@ -240,8 +243,9 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   const ORIG = '/*ORIG*/';
   const E = window.ILLUDIY, SEQ = E.SEQ;
   const CAP = {
-    A: '<b>Intro A · Einrasten.</b> Aus dem Nichts: Kamera auf Bodenhöhe, die Buchstaben steigen als Welle auf. Die Kamera kreist per Dolly-Zoom in die Parallelprojektion und rastet bei 45°/30° ein. Dann fallen die Punkte, die Platte kehrt Figur und Grund um, Rand und Schatten folgen, das Licht setzt sich.',
-    B: '<b>Intro B · mit Kippwelle.</b> Wie A, danach läuft eine scharfe Lichtwelle über das Wort und tauscht Pink und Weiß: Für einen Moment kippen die Körper vom Relief zur Gravur.',
+    F2: '<b>Fassung 2 · Der Moment, in dem es passt.</b> Die Buchstaben fallen aus dem Nichts ins Bild und stauchen beim Aufprall. Beim langsamen Kreisen sieht man das Rätsel: i, D und y sind feste Körper, ll, u und das zweite i schweben in Bruchstücken. Die Kamera holt aus, gleitet in 45°/30°, und jeder Buchstabe rastet mit eigenem Klick ein. Dann flutet die Platte von rechts: Die Säule des zweiten i wird zum Schlitz, der weiße Punkt fällt hinein. Der pinke Punkt springt auf den Deckel des ersten i, der Deckel verschwindet, der Punkt schwebt. Rand und Schatten, ein Zwinkern der unmöglichen Buchstaben, das ®.',
+    A: '<b>Fassung 1 · A.</b> Aus dem Nichts: Kamera auf Bodenhöhe, die Buchstaben steigen als Welle auf. Die Kamera kreist per Dolly-Zoom in die Parallelprojektion und rastet bei 45°/30° ein. Dann fallen die Punkte, die Platte kehrt Figur und Grund um, Rand und Schatten folgen, das Licht setzt sich.',
+    B: '<b>Fassung 1 · B.</b> Wie A, danach läuft eine scharfe Lichtwelle über das Wort und tauscht Pink und Weiß: Für einen Moment kippen die Körper vom Relief zur Gravur.',
     K: '<b>Kurzfassung (2 s).</b> Ohne Kamerafahrt, für den App-Start: Aufsteigen, Platte, Punkte, Schatten.',
     T1: '<b>Test 1 · Magischer Blickwinkel.</b> Nur die Kamerafahrt mit Dolly-Zoom. Achte auf das ll und das zweite i: Die Flächen hängen nicht zusammen, erst bei 45°/30° schließen sich die Fugen.',
     T2: '<b>Test 2 · Aus dem Boden.</b> Feste Endkamera, die Körper steigen mit Federn auf (2,5D ohne Fahrt). Zum Vergleich mit Test 1.',
@@ -267,7 +271,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   document.getElementById('loop').addEventListener('change', e => loop = e.target.checked);
   document.getElementById('analysis').addEventListener('change', e => { analysis = e.target.checked; draw(); });
   document.getElementById('overlay').addEventListener('change', e => { overlay = e.target.checked; draw(); });
-  window.addEventListener('resize', fit); setSeq('A'); fit(); requestAnimationFrame(tick);
+  window.addEventListener('resize', fit); setSeq('F2'); fit(); requestAnimationFrame(tick);
   // Vergleich
   const vc = document.getElementById('vecCv'), vctx = vc.getContext('2d'), cmp = document.getElementById('compare'), wipe = document.getElementById('wipe'), cut = document.getElementById('cut');
   function drawCmp() { const r = cmp.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2); vc.width = Math.round(r.width * d); vc.height = Math.round(r.height * d); vctx.clearRect(0, 0, vc.width, vc.height);
@@ -277,10 +281,10 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   document.getElementById('blink').addEventListener('click', e => { if (blinkT) { clearInterval(blinkT); blinkT = null; e.target.textContent = 'Blinken'; applyWipe(); return; } e.target.textContent = 'Blinken aus'; let on = false; blinkT = setInterval(() => { on = !on; vc.style.clipPath = on ? 'inset(0 0 0 0)' : 'inset(0 0 0 100%)'; }, 600); });
   window.addEventListener('resize', drawCmp); drawCmp();
   // Ablaufgrafik
-  const bars = [['Kamera einrasten', 0, 2.05, '#c9b8fb'], ['Aufsteigen', 0.05, 1.0, '#ff73a9'], ['Dolly-Zoom', 0, 1.9, '#946ff9'], ['Punkte', 1.45, 3.0, '#ffffff'], ['Platte', 2.35, 2.9, '#3c8aa0'], ['Rand', 2.56, 3.2, '#ffa5dd'], ['Schatten', 2.86, 3.61, '#df508d'], ['Licht setzt sich', 3.0, 4.15, '#efe8f2'], ['®', 3.85, 4.3, '#cbbdfb']];
-  const tl = document.getElementById('timeline'); const D = 4.7;
+  const bars = [['Aufschlag', 0.02, 1.15, '#ff73a9'], ['Rätsel (Kreisen)', 0.9, 2.3, '#946ff9'], ['Einrasten', 2.3, 3.45, '#c9b8fb'], ['Platte flutet', 3.45, 4.75, '#3c8aa0'], ['weißer Punkt fällt', 3.97, 4.3, '#ffffff'], ['pinker Punkt springt', 3.52, 4.3, '#ff9ec4'], ['Rand', 4.6, 5.2, '#ffa5dd'], ['Schatten', 4.9, 5.6, '#df508d'], ['Zwinkern', 5.62, 6.1, '#e9abe9'], ['®', 5.95, 6.4, '#cbbdfb']];
+  const tl = document.getElementById('timeline'); const D = 6.4;
   tl.innerHTML = bars.map(([n, a, b, c]) => `<div class="tl-row"><span>${n}</span><div class="tl-track"><div class="tl-bar" style="left:${a / D * 100}%;width:${(b - a) / D * 100}%;background:${c}"></div></div></div>`).join('') +
-    `<div class="tl-axis"><span></span><div class="tl-ticks">${[0, 1, 2, 3, 4].map(s => `<span style="left:${s / D * 100}%">${s} s</span>`).join('')}</div></div>`;
+    `<div class="tl-axis"><span></span><div class="tl-ticks">${[0, 1, 2, 3, 4, 5, 6].map(s => `<span style="left:${s / D * 100}%">${s} s</span>`).join('')}</div></div>`;
 })();
 </script>
 </body>

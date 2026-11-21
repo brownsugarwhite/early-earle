@@ -7,11 +7,12 @@ kommt, ohne Schnitt und ohne unnötige Alphablenden auskommt, mit Physik, Bounce
 
 ## Einstieg
 
-- **`illudiy-intro.html`** öffnen (Doppelklick, läuft ohne Server und offline). Oben die Bühne mit **Intro A · Einrasten**,
-  **Intro B · mit Kippwelle**, **Kurzfassung** und sechs Tests, darunter Zeitlupe (bis ⅒×), Zeitschieber, die Ansicht
+- **`illudiy-intro.html`** öffnen (Doppelklick, läuft ohne Server und offline). Oben die Bühne mit **Fassung 2 · Der Moment**
+  (Hauptfassung, Plan `docs/plans/2026-11-21-illudiy-intro-fassung-2.md`), zum Vergleich **Fassung 1 · A/B**, **Kurzfassung** und sieben Tests, darunter Zeitlupe (bis ⅒×), Zeitschieber, die Ansicht
   **„Flächen nach Richtung“** und **„Original darüber“**. Weiter unten: Vorher-Nachher-Schieber, Analyse der Täuschungen,
   Konzept mit Ablaufgrafik, Recherche-Tabelle, offene Fragen.
-- Videos (1920 × 1080, 60 fps) in `video/`: `intro-a-einrasten.mp4`, `intro-b-kippwelle.mp4`, `kurzfassung.mp4`.
+- Videos (1920 × 1080, 60 fps) in `video/`: **`fassung-2.mp4`**, dazu Fassung 1 (`intro-a-einrasten.mp4`, `intro-b-kippwelle.mp4`),
+  `kurzfassung.mp4` und `test7-auseinandergezogen.mp4`.
 - Konzept: [`docs/plans/2026-11-21-illudiy-intro.md`](../../plans/2026-11-21-illudiy-intro.md). Recherche mit Quellen:
   [`RECHERCHE.md`](RECHERCHE.md).
 
@@ -48,9 +49,14 @@ kommt, ohne Schnitt und ohne unnötige Alphablenden auskommt, mit Physik, Bounce
    Parallelprojektion; Federn als geschlossene Formeln, Bälle mit Schwerkraft und Stoßzahl. Jedes Bild ist eine reine
    Funktion der Zeit (spulbar, exakt wiederholbar, als Video renderbar).
 
+## Verlauf
+
+- Fassung 1: Florian sah die Täuschungen nicht („Ich verstehe es nicht ehrlich gesagt“). Ursache: Kamera rastete ein,
+  während die Buchstaben noch wuchsen; Teile kaum getrennt.
+- Fassung 2 (freigegeben und gebaut): Teile entlang der Blickrichtung der Endkamera versetzt, ll-Balken zerlegt, jede
+  Täuschung mit eigenem Auftritt.
+
 ## Offen (Florians Entscheidung)
 
-- Hauptfassung: Intro A oder B (B mit Kippwelle, kräftiger, 0,6 s länger)?
-- Kamera aus 74° (von rechts kommend) oder von links?
-- Petrol-Stamm des zweiten i vor der Platte sichtbar (jetzt) oder erst mit der Platte?
+- Fassung 2: Reihenfolge und Tempo der Auftritte, Zwinkern am Ende ja oder nein.
 - Danach: Ton (Shepard-Glissando, das beim Einrasten aufgeht), Export für App-Start, optional Sugihara-Geometrie.
