@@ -14,43 +14,12 @@
  */
 import { bildVoreinstellung } from '../bildShader';
 
-const FRAGMENT = /* glsl */ `
-vec3 saugung() {
-  int art = int(uR_art + 0.5);
-  if (art == 1) return vec3(0.75, 1.8, 3.6);
-  if (art == 2) return vec3(0.3, 3.2, 2.4);
-  return vec3(0.28, 0.95, 2.9);
-}
-bool istChrom() { return int(uR_art + 0.5) == 3; }
-vec3 chrom(vec3 n, vec3 V) {
-  vec3 F0 = vec3(0.93, 0.94, 0.96);
-  float nv = clamp(dot(n, V), 0.0, 1.0);
-  return studio(reflect(-V, n)) * (F0 + (1.0 - F0) * pow(1.0 - nv, 5.0));
-}
-/** der Überzug auf der Form: Licht durch die Schicht (Dicke d) zum hellen Grund und zurück */
-vec3 ueberzug(vec3 n, vec3 V, float d) {
-  if (istChrom()) return chrom(n, V);
-  vec3 sigma = saugung();
-  float nv = clamp(dot(n, V), 0.0, 1.0);
-  float F = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
-  float diff = clamp((dot(n, uLichtWelt) + 0.35) / 1.35, 0.0, 1.0);
-  vec3 c = vec3(0.92, 0.72, 0.44) * exp(-sigma * d * (1.0 + 1.0 / max(nv, 0.3))) * (0.1 + 1.55 * diff);
-  c += exp(-sigma * d * 0.8) * 0.06;
-  return c * (1.0 - F) + studio(reflect(-V, n)) * F * 0.85;
-}
-/** ein freier Tropfen: Licht geht hindurch */
-vec3 tropfenLicht(vec3 n, vec3 V, float dicke) {
-  if (istChrom()) return chrom(n, V);
-  vec3 sigma = saugung();
-  float nv = clamp(dot(n, V), 0.0, 1.0);
-  float F = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
-  float wrap = clamp((dot(n, uLichtWelt) + 0.7) / 1.7, 0.0, 1.0);
-  float weg = dicke * (1.7 - nv);
-  vec3 innen = exp(-sigma * weg) * (0.08 + 1.15 * pow(nv, 1.3)) * (0.35 + 0.75 * wrap);
-  innen += exp(-sigma * weg * 0.6) * 0.3 * smoothstep(0.1, -0.7, n.y) * nv;
-  return innen * (1.0 - F) * vec3(1.2, 1.0, 0.82) + studio(reflect(-V, n)) * F;
-}
-/** Halbmesser der Form im Bild (CSS-Bildpunkte) */
+/**
+ * Die Form der Tropfen im Bild (Runde 8 herausgelöst, auch für den Schleim): Größe der Form im Bild, je Spalte ein Tropfen an der
+ * Unterkante der Form direkt über ihm (Faden, Kopf, Abschnüren, Fallen), Abstandsfelder, weich vereinigt, mit Meniskus an der Form.
+ * Braucht die Regler uR_tropfen (wie viele, wie lang) und uR_zaeh (wie schnell).
+ */
+export const TROPFEN_FORM = /* glsl */ `
 float formPx() {
   vec4 a = uProj * uView * vec4(uMitte, 1.0);
   vec3 rechts = (uViewInv * vec4(1.0, 0.0, 0.0, 0.0)).xyz;
@@ -174,6 +143,46 @@ float alleTropfen(vec2 p, vec4 a0, vec4 b0, bool f0, vec4 a1, vec4 b1, bool f1, 
   }
   return d;
 }
+`;
+
+const FRAGMENT = /* glsl */ `
+vec3 saugung() {
+  int art = int(uR_art + 0.5);
+  if (art == 1) return vec3(0.75, 1.8, 3.6);
+  if (art == 2) return vec3(0.3, 3.2, 2.4);
+  return vec3(0.28, 0.95, 2.9);
+}
+bool istChrom() { return int(uR_art + 0.5) == 3; }
+vec3 chrom(vec3 n, vec3 V) {
+  vec3 F0 = vec3(0.93, 0.94, 0.96);
+  float nv = clamp(dot(n, V), 0.0, 1.0);
+  return studio(reflect(-V, n)) * (F0 + (1.0 - F0) * pow(1.0 - nv, 5.0));
+}
+/** der Überzug auf der Form: Licht durch die Schicht (Dicke d) zum hellen Grund und zurück */
+vec3 ueberzug(vec3 n, vec3 V, float d) {
+  if (istChrom()) return chrom(n, V);
+  vec3 sigma = saugung();
+  float nv = clamp(dot(n, V), 0.0, 1.0);
+  float F = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
+  float diff = clamp((dot(n, uLichtWelt) + 0.35) / 1.35, 0.0, 1.0);
+  vec3 c = vec3(0.92, 0.72, 0.44) * exp(-sigma * d * (1.0 + 1.0 / max(nv, 0.3))) * (0.1 + 1.55 * diff);
+  c += exp(-sigma * d * 0.8) * 0.06;
+  return c * (1.0 - F) + studio(reflect(-V, n)) * F * 0.85;
+}
+/** ein freier Tropfen: Licht geht hindurch */
+vec3 tropfenLicht(vec3 n, vec3 V, float dicke) {
+  if (istChrom()) return chrom(n, V);
+  vec3 sigma = saugung();
+  float nv = clamp(dot(n, V), 0.0, 1.0);
+  float F = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
+  float wrap = clamp((dot(n, uLichtWelt) + 0.7) / 1.7, 0.0, 1.0);
+  float weg = dicke * (1.7 - nv);
+  vec3 innen = exp(-sigma * weg) * (0.08 + 1.15 * pow(nv, 1.3)) * (0.35 + 0.75 * wrap);
+  innen += exp(-sigma * weg * 0.6) * 0.3 * smoothstep(0.1, -0.7, n.y) * nv;
+  return innen * (1.0 - F) * vec3(1.2, 1.0, 0.82) + studio(reflect(-V, n)) * F;
+}
+/** Halbmesser der Form im Bild (CSS-Bildpunkte) */
+${TROPFEN_FORM}
 /** der Überzug an einem Punkt der Form */
 vec3 formFarbe(GPunkt g) {
   vec3 V = zumAuge(g.p);

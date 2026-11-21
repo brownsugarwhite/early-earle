@@ -41,6 +41,7 @@ import { SIENKIEWICZ } from './sienkiewicz';
 import { STAUB } from './staub';
 import { TINTE } from './tinte';
 import { TREX } from './trex';
+import { SCHLEIM } from './schleim';
 import { CHAMAELEON_HAUT, DRACHE_HAUT, ELEFANT, FROSCH_HAUT, KLAPPERSCHLANGE, KORALLENNATTER, KRAKE_HAUT, KROKODIL, SALAMANDER, SCHLANGE } from './haeute';
 import { TINTENFLECK } from './tintenfleck';
 import { TROPFEN } from './tropfen';
@@ -82,6 +83,7 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   EARLE_HAUT,
   EARLE_SCHUPPEN,
   GLAS,
+  SCHLEIM,
   OPAL,
   DIAMANT,
   PAVE,
