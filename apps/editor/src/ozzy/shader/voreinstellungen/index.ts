@@ -41,7 +41,7 @@ import { SIENKIEWICZ } from './sienkiewicz';
 import { STAUB } from './staub';
 import { TINTE } from './tinte';
 import { TREX } from './trex';
-import { SCHLEIM } from './schleim';
+import { SCHLEIMGEIST, TROPFSCHLEIM } from './schleim';
 import { MATRIX } from './matrix';
 import { ORNAMENT } from './ornament';
 import { BATLLO_DACH, SAGRADA, TRENCADIS } from './gaudi';
@@ -88,7 +88,8 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   EARLE_HAUT,
   EARLE_SCHUPPEN,
   GLAS,
-  SCHLEIM,
+  SCHLEIMGEIST,
+  TROPFSCHLEIM,
   OPAL,
   DIAMANT,
   PAVE,
