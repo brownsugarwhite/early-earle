@@ -30,8 +30,15 @@ vec3 ornZelle(vec3 x, out vec3 mitte) {
   return vec3(sqrt(d1), sqrt(d2), id);
 }
 /** Höhe des geschnitzten Reliefs (0 Grund … 1 erhaben) an q (Maß der Form), Normale n; kennung: Zelle */
+float reliefLage(vec3 q, vec3 n, float S, out float kennung);
 float relief(vec3 q, vec3 n, out float kennung) {
-  float S = 3.6 * uR_ornament;
+  float k2;
+  float gross = reliefLage(q, n, 3.6 * uR_ornament, kennung);
+  float klein = reliefLage(q + 7.3, n, 8.5 * uR_ornament, k2);
+  // die kleinen Spiralen füllen den Grund zwischen den großen
+  return max(gross, klein * 0.8 * (1.0 - smoothstep(0.05, 0.4, gross)));
+}
+float reliefLage(vec3 q, vec3 n, float S, out float kennung) {
   vec3 m;
   vec3 z = ornZelle(q * S, m);
   kennung = z.z;
@@ -70,7 +77,7 @@ void palette(out vec3 tief, out vec3 hoch, out vec3 neben) {
 }
 /** Papier mit dem Ring aus grauen Flecken (wie in der Vorlage) */
 vec3 papierGrund(vec2 css, vec2 qb) {
-  vec3 c = vec3(0.83, 0.85, 0.83);
+  vec3 c = vec3(0.757, 0.784, 0.792);
   float asp = uAufl.x / uAufl.y;
   vec2 u = vec2(qb.x * asp, qb.y);
   vec2 m = vec2(0.78 * asp, 0.62);
@@ -81,7 +88,7 @@ vec3 papierGrund(vec2 css, vec2 qb) {
   float bogen = w * (1.0 + ringNr) * 1.3;
   float flecken = smoothstep(0.1, 0.3, snoise(vec3(bogen, ring * 1.6, ringNr * 3.1)) + 0.2 * snoise(vec3(css * 0.025, 1.0)));
   float band = smoothstep(0.1, 0.28, ring) * smoothstep(0.9, 0.7, ring);
-  c = mix(c, vec3(0.67, 0.69, 0.66), flecken * band * smoothstep(1.7, 0.5, r) * smoothstep(0.12, 0.3, r) * 0.9);
+  c = mix(c, vec3(0.675, 0.686, 0.671), flecken * band * smoothstep(1.7, 0.5, r) * smoothstep(0.12, 0.3, r) * 0.95);
   c *= 0.97 + 0.03 * snoise(vec3(css * 0.35, 3.0)) + 0.02 * snoise(vec3(css * 1.7, 7.0));
   return c;
 }
@@ -92,7 +99,7 @@ void main() {
   vec2 qb = gl_FragCoord.xy / uAufl;
   vec3 bild = uBuehne > 0.5 ? papierGrund(css, qb) : vec3(0.0);
   float a = uBuehne > 0.5 ? 1.0 : 0.0;
-  vec3 tinte = vec3(0.17, 0.13, 0.11);
+  vec3 tinte = vec3(0.14, 0.09, 0.05);
   if (g.a > 0.5) {
     vec3 V = zumAuge(g.p);
     vec3 n0 = g.n;
@@ -107,17 +114,22 @@ void main() {
     // Licht in weichen Stufen (hell, mittel, Schatten), die Vertiefungen etwas dunkler
     vec3 L = ausSicht(normalize(vec3(-0.55, 0.62, 0.55)));
     float v = dot(n, L);
-    float stufe = mix(0.5, 1.0, smoothstep(-0.08, 0.16, v)) * mix(0.86, 1.04, smoothstep(0.45, 0.8, v));
+    // vier Tonstufen; an jeder Grenze ein schmaler, etwas dunklerer Rand wie bei einer Lasur
+    float aaV = fwidth(v) + 1e-3;
+    float st1 = smoothstep(-0.25 - aaV, -0.25 + aaV, v), st2 = smoothstep(0.1 - aaV, 0.1 + aaV, v), st3 = smoothstep(0.55 - aaV, 0.55 + aaV, v);
+    float stufe = 0.42 + 0.2 * st1 + 0.22 * st2 + 0.16 * st3;
+    float lasur = (1.0 - smoothstep(0.0, 0.05, abs(v + 0.25))) + (1.0 - smoothstep(0.0, 0.05, abs(v - 0.1))) + (1.0 - smoothstep(0.0, 0.05, abs(v - 0.55)));
+    stufe *= 1.0 - 0.08 * clamp(lasur, 0.0, 1.0);
     stufe *= mix(0.72, 1.0, smoothstep(0.0, 0.45, h));
     vec3 c = alb * stufe;
     c = mix(c, c * vec3(0.78, 0.8, 0.9), smoothstep(0.15, -0.35, v) * 0.7);
     // Schraffur im Schatten: eine Lage, im tiefen Schatten gekreuzt; leicht zittrig
     float schatten = smoothstep(0.3, -0.25, v) + (1.0 - smoothstep(0.0, 0.35, h)) * 0.35;
     float zitter = 0.6 * snoise(vec3(css * 0.08, 2.0));
-    float s1 = abs(fract((css.x + css.y + zitter * 6.0) / 5.0) - 0.5) * 2.0;
-    float s2 = abs(fract((css.x - css.y + zitter * 6.0) / 6.0) - 0.5) * 2.0;
-    float hatch = (1.0 - smoothstep(0.0, 0.32, s1)) * smoothstep(0.25, 0.55, schatten);
-    hatch = max(hatch, (1.0 - smoothstep(0.0, 0.3, s2)) * smoothstep(0.6, 0.9, schatten));
+    float s1 = abs(fract((css.x + css.y + zitter * 4.0) / 3.5) - 0.5) * 3.5;
+    float s2 = abs(fract((css.x - css.y + zitter * 4.0) / 3.8) - 0.5) * 3.8;
+    float hatch = (1.0 - smoothstep(0.25, 0.75, s1)) * smoothstep(0.25, 0.55, schatten);
+    hatch = max(hatch, (1.0 - smoothstep(0.25, 0.75, s2)) * smoothstep(0.6, 0.9, schatten));
     c = mix(c, tinte, hatch * 0.55 * uR_schraffur);
     // feine Linien: Ränder der Schnitzerei (Höhenlinie) und Kanten der Tiefe
     float fw = fwidth(h) + 1e-3;
