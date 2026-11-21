@@ -81,7 +81,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
 <div class="wrap">
 <header>
   <h1><span>illudiy</span> · Intro-Studie</h1>
-  <p class="lead">Exakter Vektor-Nachbau des Logos, Analyse seiner Täuschungen, Recherche und ein Intro, in dem jede Täuschung ihren eigenen Auftritt hat: Bruchstücke, die nur aus einem einzigen Blickwinkel zum unmöglichen Logo werden.</p>
+  <p class="lead">Exakter Vektor-Nachbau des Logos, Analyse seiner Täuschungen, Recherche und ein Intro aus wachsenden Kanten und gekonnter Drehung: Der Bauplan zeichnet sich, die Flächen drehen sich auf, und erst die letzte Drehung macht die Buchstaben unmöglich.</p>
   <nav class="toc"><a href="#buehne">Bühne</a><a href="#nachbau">Nachbau</a><a href="#taeuschungen">Täuschungen</a><a href="#konzept">Konzept</a><a href="#recherche">Recherche</a><a href="#offen">Offen</a></nav>
 </header>
 
@@ -89,7 +89,8 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   <div class="stage" id="stage"><canvas id="cv"></canvas><div class="badge" id="badge"></div></div>
   <div class="controls">
     <div class="row"><span class="group-label">Intro</span>
-      <button class="seq main" data-seq="F2">Fassung 2 · Der Moment</button>
+      <button class="seq main" data-seq="F3">Fassung 3 · Kanten und Drehung</button>
+      <button class="seq" data-seq="F2">Fassung 2</button>
       <button class="seq" data-seq="A">Fassung 1 · A</button>
       <button class="seq" data-seq="B">Fassung 1 · B (Kippwelle)</button>
       <button class="seq" data-seq="K">Kurzfassung</button>
@@ -166,32 +167,31 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
 <section id="konzept">
   <h2>Konzept: „Der Moment, in dem es passt“</h2>
   <p>Das Logo ist eine Parallelprojektion. Unmögliches gibt es darin nur aus genau einem Blickwinkel. Das Intro zeigt die Buchstaben deshalb zuerst als glaubhafte Körper in einem echten Raum und lässt sie dann ohne Schnitt in diesen Blickwinkel einrasten. Erst dort schließen sich die Fugen zu den unmöglichen Formen. Danach kommt die Platte und kehrt Figur und Grund um, der Schatten fällt, und das Licht setzt sich.</p>
-  <h3>Fassung 2 (6,4 s): jede Täuschung mit eigenem Auftritt</h3>
-  <p class="muted">Fassung 1 zeigte die Täuschungen nicht: Die Kamera rastete ein, während die Buchstaben noch wuchsen, und die Teile hingen fast zusammen. Neu liegt jedes Teil entlang der Blickrichtung der Endkamera versetzt. Im Logo sieht man das nicht, aus jedem anderen Winkel schweben die Teile getrennt.</p>
+  <h3>Fassung 3 (4,2 s): Kanten wachsen, Flächen drehen sich auf</h3>
+  <p class="muted">Verlauf: Fassung 1 zeigte die Täuschungen nicht. Fassung 2 machte sie sichtbar, wirkte aber plump und zerschnitten (fallende Blöcke, schwebende Bruchstücke). Fassung 3 folgt Florians Idee: gekonnte Drehung und das Wachstum der Kanten. Die Kamera steht still in der Logo-Ansicht, alle Bewegung entsteht aus Kanten und Scharnieren.</p>
   <div class="timeline" id="timeline"></div>
   <div class="tablewrap"><table>
     <tr><th>Zeit (s)</th><th>Auftritt</th><th>Was passiert</th><th>Täuschung</th></tr>
-    <tr><td>0,0–1,1</td><td>Aufschlag</td><td>Die Buchstaben fallen von oben ins schwarze Bild, versetzt von links nach rechts, und stauchen beim Aufprall. Nichts wird eingeblendet.</td><td>Aus dem Nichts, ohne Alpha</td></tr>
-    <tr><td>1,1–2,3</td><td>Das Rätsel</td><td>Langsames Kreisen mit Perspektive. i, D und y sind feste Körper, ll, u und das zweite i schweben in Bruchstücken. Der weiße Punkt balanciert auf der Spitze der Petrol-Säule.</td><td>Kinetic Depth: Bewegung beweist den Körper</td></tr>
-    <tr><td>2,3–3,4</td><td>Einrasten</td><td>Die Kamera holt aus und gleitet per Dolly-Zoom in 45°/30°. Jeder Buchstabe hängt kurz nach und rastet mit eigenem Klick ein, von links nach rechts; die Bruchstücke werden zum unmöglichen Buchstaben.</td><td>Magischer Blickwinkel</td></tr>
-    <tr><td>3,45–4,3</td><td>Säule wird Schlitz</td><td>Die Platte flutet von rechts heran. Sobald sie den Stamm des zweiten i erreicht, liest er sich als Schlitz, und der weiße Punkt fällt hinein und versinkt halb hinter der Vorderkante.</td><td>Figur-Grund-Umkehr, Tunnel-Effekt</td></tr>
-    <tr><td>3,5–4,3</td><td>Schwebender Punkt</td><td>Der pinke Punkt springt von links auf den Petrol-Deckel des ersten i. Die Flut erreicht ihn, der Deckel verschwindet in der Platte, der Punkt schwebt.</td><td>Figur-Grund-Umkehr</td></tr>
-    <tr><td>4,6–5,6</td><td>Rand und Schatten</td><td>Der Verlaufsrand wächst, der Schatten streicht entlang der Isometrie-Achse ein, die Marke atmet einmal.</td><td>Schlagschatten</td></tr>
-    <tr><td>5,6–6,4</td><td>Zwinkern, ®</td><td>Nur die unmöglichen Buchstaben drehen kurz aus dem Winkel: Die Fugen gehen auf und schließen sich wieder. Dann springt das ® auf.</td><td>Beweis der Täuschung</td></tr>
+    <tr><td>0,0–0,9</td><td>Bauplan</td><td>Aus dem Schwarz wachsen feine Kanten von unten nach oben, Buchstabe für Buchstabe: das Logo als Linienzeichnung. Nichts wird eingeblendet.</td><td>Aus dem Nichts</td></tr>
+    <tr><td>0,35–1,4</td><td>Aufdrehen</td><td>Jede Fläche wächst aus ihrer Kante und dreht sich um sie als Scharnier in ihre Lage, mit leichtem Nachschwingen; Deckel und Böden klappen danach herunter. Die Farbe füllt den Bauplan.</td><td>Kinetic Depth: die Drehung beweist den Körper</td></tr>
+    <tr><td>0,6–1,1</td><td>Paravent und doppelte Extrusion</td><td>Das ll klappt auf wie ein Paravent (Balken, Zwischenstück, Balken hängen aneinander). Das u dreht seine pinke Seite nach hinten und zugleich eine nach vorn.</td><td>Unmögliche Extrusion</td></tr>
+    <tr><td>1,2–1,9</td><td>Verwindung</td><td>Erst jetzt drehen sich die unteren Hälften der ll-Balken um 90° weiter: aus stimmigen Wänden werden die verwundenen, unmöglichen Flächen.</td><td>Unmögliche Figur durch Drehung</td></tr>
+    <tr><td>1,45–2,6</td><td>Linien verklingen</td><td>Die Kanten werden dünner, bis nur die Flächen bleiben.</td><td>–</td></tr>
+    <tr><td>1,85–2,3</td><td>Punkte</td><td>Pinker und weißer Punkt drehen sich als Münze auf; der weiße liegt hinter dem Stamm des Negativ-i.</td><td>Unmögliche Verdeckung</td></tr>
+    <tr><td>2,3–3,05</td><td>Platte</td><td>Die Petrol-Platte wächst aus den Kanten der Buchstaben nach außen, ihre Front hält die Iso-Winkel. Deckel des i und Stamm des zweiten i verschwinden in ihr.</td><td>Figur-Grund-Umkehr</td></tr>
+    <tr><td>2,75–3,7</td><td>Rand und Schatten</td><td>Der Verlaufsrand wächst aus der Plattenkante, der Schatten streicht entlang der Isometrie-Achse ein; zuletzt dreht sich das ® auf.</td><td>Schlagschatten</td></tr>
   </table></div>
-  <h3>Physik</h3>
+  <h3>Bewegung</h3>
   <div class="tablewrap"><table>
     <tr><th>Element</th><th>Bewegung</th><th>Werte</th></tr>
-    <tr><td>Aufschlag</td><td>freier Fall aus 1100 Einheiten, Aufprall mit Stauchen (Volumen bleibt), ein kleiner Hüpfer</td><td>g 4200, Stoßzahl 0,2, Stauchen 16 %, 75 ms versetzt</td></tr>
-    <tr><td>Kamera</td><td>langsames Kreisen 68° → 55°, Ausholen auf 57,5°, Gleiten in 45°/30°, Dolly-Zoom in die Parallelprojektion</td><td>steht bei 2,95 s exakt</td></tr>
-    <tr><td>Einrasten je Buchstabe</td><td>hängt 60 ms je Buchstabe nach, kommt mit Schwung an und schwingt aus; kurzer Stauch-Impuls</td><td>ζ 0,45, ω 30, Stauchen 5 %</td></tr>
-    <tr><td>Weißer Punkt</td><td>balanciert auf der Säulenspitze, fällt 27 Einheiten in den Schlitz</td><td>g 2600, Stoßzahl 0,3</td></tr>
-    <tr><td>Pinker Punkt</td><td>Wurfparabel von links, Landung mit Stauchen, zwei kleine Hüpfer</td><td>Flugzeit 0,5 s, Stoßzahl 0,32</td></tr>
-    <tr><td>Platte</td><td>Flutfront als Iso-Pfeil von rechts nach links</td><td>1,3 s, weich beschleunigt</td></tr>
-    <tr><td>Rand, Atem, ®</td><td>fast kritisch gedämpfte Feder, einmalige Schwingung, Feder mit Überschwingen</td><td>ζ 0,85; 1,4 %; ζ 0,5</td></tr>
+    <tr><td>Kanten</td><td>wachsen von unten nach oben, je Buchstabe 85 ms versetzt, verklingen über die Linienstärke</td><td>0,62 s, weich beschleunigt und gebremst</td></tr>
+    <tr><td>Flächen</td><td>wachsen aus der Scharnierkante und drehen aus der Kantenansicht in ihre Ebene; Kinder drehen mit ihren Eltern (Paravent)</td><td>Feder ζ 0,7, ω 8,5 (5 % Nachschwingen)</td></tr>
+    <tr><td>Verwindung ll</td><td>untere Hälften drehen 90° weiter, linear über die Höhe verteilt</td><td>Feder ζ 0,68, 100 ms versetzt</td></tr>
+    <tr><td>Punkte, ®</td><td>Münzdrehung um die Hochachse mit kleinem Taumeln</td><td>Feder ζ 0,5</td></tr>
+    <tr><td>Platte, Rand</td><td>wachsen als Gehrungs-Versatz aus den Kanten (Iso-Winkel bleiben)</td><td>0,75 s und 0,55 s, sanft auslaufend</td></tr>
   </table></div>
   <h3>Technik</h3>
-  <p>Jede Fläche ist ein exakter Vektor. Für die Kamerafahrt liegt jede Fläche auf ihrer eigenen Ebene im Raum und ist zusätzlich entlang der Blickrichtung der Endkamera versetzt; die verwundenen Balken des ll sind in eine obere und eine untere Platte zerlegt. Das verändert das Endbild nicht, aus jedem anderen Winkel aber fallen die Teile auseinander. Jeder Buchstabe dreht beim Einrasten um seine eigene Hochachse, so rastet einer nach dem anderen ein. Das letzte Bild ist pixelgleich mit dem statischen Logo (gleiche Abweichung zum Original wie das SVG).</p>
+  <p>Jede Fläche ist ein exakter Vektor und liegt auf ihrer eigenen Ebene im Raum. In Fassung 3 hat jede Fläche ein Scharnier (eine ihrer Kanten), um das sie aus der Kantenansicht aufdreht; Flächen hängen in Ketten aneinander. Für Fassung 2 sind die Teile zusätzlich entlang der Blickrichtung der Endkamera versetzt. Das verändert das Endbild nicht, aus jedem anderen Winkel aber fallen die Teile auseinander. Jeder Buchstabe dreht beim Einrasten um seine eigene Hochachse, so rastet einer nach dem anderen ein. Das letzte Bild ist pixelgleich mit dem statischen Logo (gleiche Abweichung zum Original wie das SVG).</p>
   <h3>Bewusst weggelassen</h3>
   <p class="muted">Ames-Raum, Reverspektive und Hohlmaske brauchen Perspektive oder Schattierung, die das Logo nicht hat. Op-Art ist laut und flimmert. Partikel, Lichtreflexe und Einblendungen wirken billig. Alphablenden werden nirgends gebraucht: alles entsteht aus Kantenansicht, Wachsen oder Verdecken.</p>
 </section>
@@ -224,7 +224,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   <h2>Offen</h2>
   <div class="grid2">
     <div class="card"><h3>Für dein Auge</h3><ul>
-      <li>Fassung 2: Stimmen Reihenfolge und Tempo der Auftritte? Soll das Zwinkern am Ende bleiben?</li>
+      <li>Fassung 3: Stimmen Tempo und Reihenfolge? Sollen die Kanten weiß bleiben oder in Markenfarben wachsen?</li>
       <li>Kamera aus 74° (von rechts) oder lieber von links kommend?</li>
       <li>Soll der Stamm des zweiten i vor der Platte als Petrol-Säule sichtbar sein (jetzt so) oder erst mit der Platte entstehen?</li></ul></div>
     <div class="card"><h3>Nächste Schritte</h3><ul>
@@ -243,6 +243,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   const ORIG = '/*ORIG*/';
   const E = window.ILLUDIY, SEQ = E.SEQ;
   const CAP = {
+    F3: '<b>Fassung 3 · Kanten und Drehung.</b> Aus dem Nichts wachsen feine Kanten von unten nach oben: der Bauplan des Logos. Die Flächen wachsen aus ihren Kanten und drehen sich auf wie bei einem Pop-up-Buch, links nach rechts. Das ll klappt auf wie ein Paravent und verwindet sich erst dann ins Unmögliche; das u extrudiert nach hinten und zugleich nach vorn. Die Linien verklingen, die Punkte drehen sich als Münze auf, die Platte wächst aus den Buchstabenkanten, der Rand aus der Plattenkante, der Schatten streicht ein.',
     F2: '<b>Fassung 2 · Der Moment, in dem es passt.</b> Die Buchstaben fallen aus dem Nichts ins Bild und stauchen beim Aufprall. Beim langsamen Kreisen sieht man das Rätsel: i, D und y sind feste Körper, ll, u und das zweite i schweben in Bruchstücken. Die Kamera holt aus, gleitet in 45°/30°, und jeder Buchstabe rastet mit eigenem Klick ein. Dann flutet die Platte von rechts: Die Säule des zweiten i wird zum Schlitz, der weiße Punkt fällt hinein. Der pinke Punkt springt auf den Deckel des ersten i, der Deckel verschwindet, der Punkt schwebt. Rand und Schatten, ein Zwinkern der unmöglichen Buchstaben, das ®.',
     A: '<b>Fassung 1 · A.</b> Aus dem Nichts: Kamera auf Bodenhöhe, die Buchstaben steigen als Welle auf. Die Kamera kreist per Dolly-Zoom in die Parallelprojektion und rastet bei 45°/30° ein. Dann fallen die Punkte, die Platte kehrt Figur und Grund um, Rand und Schatten folgen, das Licht setzt sich.',
     B: '<b>Fassung 1 · B.</b> Wie A, danach läuft eine scharfe Lichtwelle über das Wort und tauscht Pink und Weiß: Für einen Moment kippen die Körper vom Relief zur Gravur.',
@@ -271,7 +272,7 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   document.getElementById('loop').addEventListener('change', e => loop = e.target.checked);
   document.getElementById('analysis').addEventListener('change', e => { analysis = e.target.checked; draw(); });
   document.getElementById('overlay').addEventListener('change', e => { overlay = e.target.checked; draw(); });
-  window.addEventListener('resize', fit); setSeq('F2'); fit(); requestAnimationFrame(tick);
+  window.addEventListener('resize', fit); setSeq('F3'); fit(); requestAnimationFrame(tick);
   // Vergleich
   const vc = document.getElementById('vecCv'), vctx = vc.getContext('2d'), cmp = document.getElementById('compare'), wipe = document.getElementById('wipe'), cut = document.getElementById('cut');
   function drawCmp() { const r = cmp.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2); vc.width = Math.round(r.width * d); vc.height = Math.round(r.height * d); vctx.clearRect(0, 0, vc.width, vc.height);
@@ -281,10 +282,10 @@ footer { color: var(--dim); font-size: 13px; padding: 40px 0 60px; }
   document.getElementById('blink').addEventListener('click', e => { if (blinkT) { clearInterval(blinkT); blinkT = null; e.target.textContent = 'Blinken'; applyWipe(); return; } e.target.textContent = 'Blinken aus'; let on = false; blinkT = setInterval(() => { on = !on; vc.style.clipPath = on ? 'inset(0 0 0 0)' : 'inset(0 0 0 100%)'; }, 600); });
   window.addEventListener('resize', drawCmp); drawCmp();
   // Ablaufgrafik
-  const bars = [['Aufschlag', 0.02, 1.15, '#ff73a9'], ['Rätsel (Kreisen)', 0.9, 2.3, '#946ff9'], ['Einrasten', 2.3, 3.45, '#c9b8fb'], ['Platte flutet', 3.45, 4.75, '#3c8aa0'], ['weißer Punkt fällt', 3.97, 4.3, '#ffffff'], ['pinker Punkt springt', 3.52, 4.3, '#ff9ec4'], ['Rand', 4.6, 5.2, '#ffa5dd'], ['Schatten', 4.9, 5.6, '#df508d'], ['Zwinkern', 5.62, 6.1, '#e9abe9'], ['®', 5.95, 6.4, '#cbbdfb']];
-  const tl = document.getElementById('timeline'); const D = 6.4;
+  const bars = [['Kanten wachsen', 0.04, 1.1, '#ffffff'], ['Flächen drehen auf', 0.36, 1.45, '#ff73a9'], ['Deckel, Böden', 0.62, 1.6, '#62d987'], ['Verwindung ll', 1.2, 1.95, '#c9b8fb'], ['Linien verklingen', 1.45, 2.65, '#8a7f96'], ['Punkte (Münze)', 1.85, 2.35, '#ffffff'], ['Platte wächst', 2.3, 3.05, '#3c8aa0'], ['Rand wächst', 2.75, 3.3, '#ffa5dd'], ['Schatten', 3.05, 3.7, '#df508d'], ['®', 3.6, 4.0, '#cbbdfb']];
+  const tl = document.getElementById('timeline'); const D = 4.2;
   tl.innerHTML = bars.map(([n, a, b, c]) => `<div class="tl-row"><span>${n}</span><div class="tl-track"><div class="tl-bar" style="left:${a / D * 100}%;width:${(b - a) / D * 100}%;background:${c}"></div></div></div>`).join('') +
-    `<div class="tl-axis"><span></span><div class="tl-ticks">${[0, 1, 2, 3, 4, 5, 6].map(s => `<span style="left:${s / D * 100}%">${s} s</span>`).join('')}</div></div>`;
+    `<div class="tl-axis"><span></span><div class="tl-ticks">${[0, 1, 2, 3, 4].map(s => `<span style="left:${s / D * 100}%">${s} s</span>`).join('')}</div></div>`;
 })();
 </script>
 </body>

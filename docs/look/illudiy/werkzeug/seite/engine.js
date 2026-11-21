@@ -26,6 +26,7 @@ function ball(t, h0, g, e, hops = 3) {
   function squash(t, imps) { let s = 0; for (const [ti, vi] of imps) { const d = t - ti; if (d >= 0) s += clamp(vi / 2600, 0, 0.34) * 1.35 * Math.exp(-d * 13) * Math.sin(d * 34); } return s; }
 }
 // ---------- Projektion der Endkamera (Azimut 45°, Höhe 30°) und Heben auf Ebenen
+const C0 = [Math.cos(30 * D2R) * Math.cos(45 * D2R), -Math.cos(30 * D2R) * Math.sin(45 * D2R), Math.sin(30 * D2R)];
 const proj0 = P => [K * (P[0] + P[1]), K / 2 * (P[0] - P[1]) - SZ * P[2]];
 const liftA = (x, y, b0) => { const a = x / K - b0; return [a, b0, (K / 2 * (a - b0) - y) / SZ]; };
 const liftB = (x, y, a0) => { const b = x / K - a0; return [a0, b, (K / 2 * (a0 - b) - y) / SZ]; };
@@ -73,8 +74,8 @@ for (const f of M.faces) {
   const box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   const g = {}; if (f.fill === 'url(white)') { const cx = (box[0] + box[2]) / 2; g.white = [404, 622].map(yy => sp.lift(cx, yy)); g.cx = cx; }
   if (f.fill === 'url(dFront)') { const gg = M.gradients.dFront; g.d = [[gg.x1, gg.y1], [gg.x2, gg.y2]]; }
-  let clip3 = null; if (f.clip === 'dBottom') clip3 = M.clips.dBottom.cmds.map(k => k[0] === 'Z' ? ['Z'] : [k[0], ...k.slice(1).map(p => sp.lift(p[0], p[1]))]);
-  LET.push({ f, sp, c3, box, g, clip3 });
+  let clip3 = null, clip2 = null; if (f.clip === 'dBottom') { clip2 = M.clips.dBottom.cmds; clip3 = clip2.map(k => k[0] === 'Z' ? ['Z'] : [k[0], ...k.slice(1).map(p => sp.lift(p[0], p[1]))]); }
+  LET.push({ f, sp, c3, box, g, clip3, clip2 });
   if (sp.twisted) { const ym = (sp.y0 + sp.y1) / 2, cx = (box[0] + box[2]) / 2;
     for (const half of ['top', 'bot']) { const lift = half === 'top' ? sp.top : sp.bot; const sp2 = { body: sp.body, lift };
       const c3h = f.cmds.map(k => k[0] === 'Z' ? ['Z'] : [k[0], ...k.slice(1).map(p => lift(p[0], p[1]))]);
@@ -83,8 +84,37 @@ for (const f of M.faces) {
       LET.push({ f, sp: sp2, c3: c3h, box, g: { white: [404, 622].map(yy => lift(cx, yy)) }, clip3: clip, half }); } }
   (BODIES[sp.body] ||= []).push(...samplePath(f.cmds).map(p => sp.lift(p[0], p[1])));
 }
+// ---------- Fassung 3: Flächen wachsen aus ihren Kanten und drehen sich auf (Scharniere, Ketten, Verwindung)
+const v3 = { sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k], dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], nrm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; } };
+function rot3(P, H, u, th) { const v = v3.sub(P, H), c = Math.cos(th), s = Math.sin(th); return v3.add(H, v3.add(v3.add(v3.mul(v, c), v3.mul(v3.cross(u, v), s)), v3.mul(u, v3.dot(u, v) * (1 - c)))); }
+const HINGE2 = { 'i1.left': [P.i1TF, P.i1BF], 'i1.right': [P.i1TF, P.i1BF], 'i1.top': [[235.67, 387.04], P.i1TF],
+  'll.barA': [P.barA_TL, P.barA_BL], 'll.sliver': [P.sl_TL, P.sl_BL], 'll.barB': [P.barB_TL, P.barB_BL], 'll.foot': [[P.foot_BL[0], 451.4], P.foot_BL], 'll.floor1': [P.foot_BL, P.f1R], 'll.floor2': [P.barB_BL, P.barB_BR],
+  'u.front': [P.uLT, [P.uLx, 572.5]], 'u.backSide': [P.uLT, [P.uLx, 572.5]], 'u.backTop': [P.uLT, [846.9, 353.4]], 'u.side': [[P.uRx, 300.5], [P.uRx, 485.5]],
+  'D.front': [[P.Dfx, 318.4], [P.Dfx, 600]], 'D.bottom': [[P.Dfx, 318.4], [P.Dfx, 600]], 'D.left': [[P.Dfx, 318.4], [P.Dfx, 600]], 'D.top': [P.DTL, [1052.5, 318.4]],
+  'i2.left': [[1307.82, 361], [1307.82, 577.4]], 'i2.stem': [[1307.82, 361], [1307.82, 577.4]], 'i2.right': [[1380, 395.3], [1380, 624.25]],
+  'y.front': [[P.yRx, 368.1], [P.yRx, 507.5]], 'y.right': [[P.yRx, 368.1], [P.yRx, 507.5]] };
+const PARENT = { 'll.sliver': 'll.barA', 'll.barB': 'll.sliver', 'u.backTop': 'u.front', 'u.side': 'u.front', 'D.top': 'D.left', 'i1.top': 'i1.left', 'i2.right': 'i2.stem' };
+const HINGED = {};
+function buildHinges() {
+  for (const L of LET) { if (L.dot || L.half) continue; const id = L.f.id, sp = L.sp, h2 = HINGE2[id]; if (!h2) continue;
+    const lift = sp.twisted ? sp.top : sp.lift; const H0 = lift(h2[0][0], h2[0][1]), H1 = lift(h2[1][0], h2[1][1]); const u = v3.nrm(v3.sub(H1, H0));
+    const bx = L.box, q0 = lift(bx[0], bx[1]), q1 = lift(bx[2], bx[1]), q2 = lift(bx[0], bx[3]); let n0 = v3.nrm(v3.cross(v3.sub(q1, q0), v3.sub(q2, q0)));
+    n0 = v3.nrm(v3.sub(n0, v3.mul(u, v3.dot(n0, u))));
+    let th0 = Math.atan2(-v3.dot(n0, C0), v3.dot(v3.cross(u, n0), C0)); if (th0 > Math.PI / 2) th0 -= Math.PI; if (th0 < -Math.PI / 2) th0 += Math.PI;
+    const H = { H0, u, th0, parent: PARENT[id] };
+    if (sp.twisted) { const hx = h2[0][0], yA = sp.y0 + 0.2 * (sp.y1 - sp.y0), yB = sp.y0 + 0.85 * (sp.y1 - sp.y0);
+      const dir = (lf, y) => { const a = v3.sub(lf(bx[2], y), lf(hx, y)); a[2] = 0; return v3.nrm(a); }; const dT = dir(sp.top, yA), dB = dir(sp.bot, yB);
+      H.tau0 = Math.atan2(v3.dot(v3.cross(dB, dT), u), v3.dot(dB, dT)); H.y0 = sp.y0; H.y1 = sp.y1; }
+    HINGED[id] = H; }
+}
+function hingeT(id, Pt, p2, st, asParent) { const h = HINGED[id]; if (!h) return Pt; const open = st.open[id] ?? 1, grow = asParent ? 1 : (st.grow?.[id] ?? 1), tw = asParent ? 1 : (st.twist?.[id] ?? 1); let Q = Pt;
+  if (grow < 1) { const v = v3.sub(Q, h.H0); const along = v3.mul(h.u, v3.dot(v, h.u)); Q = v3.add(h.H0, v3.add(along, v3.mul(v3.sub(v, along), Math.max(0, grow)))); }
+  let th = h.th0 * (1 - open); if (h.tau0 && tw !== 1) { const sY = clamp((p2[1] - h.y0) / (h.y1 - h.y0)); th += sY * h.tau0 * (1 - tw); }
+  if (th) Q = rot3(Q, h.H0, h.u, th); if (h.parent) Q = hingeT(h.parent, Q, p2, st, true); return Q; }
 const centroid3 = pts => pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length, s[2] + p[2] / pts.length], [0, 0, 0]);
 const ALL = Object.values(BODIES).flat(); const PIV = centroid3(ALL); const PIV2 = proj0(PIV);
+buildHinges();
 const BC = {}; for (const [k, pts] of Object.entries(BODIES)) { const c = centroid3(pts); BC[k] = [c[0], c[1], 0]; }
 const BODY2D = {}; for (const [k, pts] of Object.entries(BODIES)) { const c = centroid3(pts); BODY2D[k] = proj0([c[0], c[1], 0]); BODY2D[k][1] = proj0(c)[1]; }
 // ---------- Rahmen (2D)
@@ -103,6 +133,13 @@ function sweepPath(d) { // Platte, verschoben entlang SWEEP um 0..d (Minkowski-S
   return p; }
 function diamonds(seeds, r) { const p = new Path2D(); for (const [cx, cy, k] of seeds) { const rr = Math.max(0, r * (k || 1)); if (rr <= 0) continue; p.moveTo(cx - 2 * rr, cy); p.lineTo(cx, cy - rr); p.lineTo(cx + 2 * rr, cy); p.lineTo(cx, cy + rr); p.closePath(); } return p; }
 const SEEDS = ['i1', 'll', 'u', 'D', 'i2', 'y'].map(k => [...BODY2D[k], 1]);
+// ---------- Kanten als Linien (Bauplan) und Füllpfade der Buchstaben
+const LINEP = {}, LBOX = {}, LFILL = [];
+for (const L of LET) { if (L.half) continue; if (L.dot) { const d = L.f.id === 'i1.dot' ? M.dots.pink : M.dots.white; const q = new Path2D(); q.arc(d.cx, d.cy, d.r, 0, Math.PI * 2); LFILL.push(q); continue; }
+  const b = L.sp.body, path = new Path2D(svgD(L.f.cmds)); (LINEP[b] ||= new Path2D()).addPath(path); LFILL.push(path);
+  const bx = LBOX[b] || [1e9, -1e9]; LBOX[b] = [Math.min(bx[0], L.box[1]), Math.max(bx[1], L.box[3])]; }
+let OFFA = null, OFFB = null;
+function offCanvas(ctx, which) { const c = ctx.canvas; let o = which === 'A' ? OFFA : OFFB; if (!o) { o = document.createElement('canvas'); if (which === 'A') OFFA = o; else OFFB = o; } if (o.width !== c.width || o.height !== c.height) { o.width = c.width; o.height = c.height; } const x = o.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, o.width, o.height); x.setTransform(ctx.getTransform()); return [o, x]; }
 // ---------- Kamera
 function camera(st) {
   const ph = st.phi * D2R, el = st.el * D2R;
@@ -139,15 +176,16 @@ function drawScene(ctx, st) {
       return [x + (off ? off[0] : 0), y + (off ? off[1] : 0), z + dz]; }; };
   ctx.fillStyle = C.bg; ctx.fillRect(-4000, -4000, 10000, 10000);
   drawFrame(ctx, st);
+  if (st.lines) for (const [b, ln] of Object.entries(st.lines)) { if (!ln || ln.g <= 0 || ln.w <= 0.01 || !LINEP[b]) continue; const [y0, y1] = LBOX[b]; const Y = y1 + 4 - ln.g * (y1 - y0 + 12);
+    ctx.save(); ctx.beginPath(); ctx.rect(-500, Y, 3000, 2000); ctx.clip(); ctx.lineWidth = ln.w; ctx.lineJoin = 'miter'; ctx.miterLimit = 3; ctx.strokeStyle = ln.c || '#ffffff'; ctx.stroke(LINEP[b]); ctx.restore(); }
   const passes = [{ swap: false, clip: null }]; if (st.wave) passes.push({ swap: true, clip: st.wave });
   for (const pass of passes) {
     ctx.save(); if (pass.clip) { ctx.clip(pass.clip); }
     for (const L of LET) { if (L.half && !st.split) continue; if (L.sp && L.sp.twisted && st.split) continue; drawLetterFace(ctx, L, cam, xf, st, pass.swap); }
     ctx.restore();
   }
-  if (st.reg > 0) { const s = st.reg, [cx, cy] = P.reg; ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); ctx.fillStyle = C.reg; ctx.fill(REG, 'evenodd'); ctx.restore(); }
+  if (st.reg > 0) { const s = st.reg, fx = st.regFx ?? 1, [cx, cy] = P.reg; ctx.save(); ctx.translate(cx, cy); ctx.scale(s * fx, s); ctx.translate(-cx, -cy); ctx.fillStyle = C.reg; ctx.fill(REG, 'evenodd'); ctx.restore(); }
 }
-const C0 = [Math.cos(30 * D2R) * Math.cos(45 * D2R), -Math.cos(30 * D2R) * Math.sin(45 * D2R), Math.sin(30 * D2R)];
 const OFF = { 'll.barA.top': 230, 'll.barA.bot': -130, 'll.sliver.top': 40, 'll.sliver.bot': -230, 'll.barB.top': -190, 'll.barB.bot': 150, 'll.floor2': 150, 'll.foot': 210, 'll.floor1': 210,
   'u.backTop': -280, 'u.backSide': -280, 'u.side': 260, 'i2.left': 210, 'i2.stem': 210, 'i2.right': -230, 'i2.dot': -10 };
 const KIND = { 'i1.left': 'A', 'i1.right': 'B', 'i1.top': 'H', 'll.barA': 'AB', 'll.sliver': 'BA', 'll.barB': 'AB', 'll.foot': 'A', 'll.floor1': 'H', 'll.floor2': 'H', 'u.front': 'B', 'u.backTop': 'H', 'u.backSide': 'A', 'u.side': 'A',
@@ -167,32 +205,42 @@ function fillFor(ctx, L, cam, xf, st, swap) {
     const o = [d[0] / l * s, d[1] / l * s]; return gradLin(ctx, pr([G.dFront.x1 + o[0], G.dFront.y1 + o[1]]), pr([G.dFront.x2 + o[0], G.dFront.y2 + o[1]]), G.dFront.stops); }
   return fill;
 }
-function tracePath(ctx, c3, pr) { ctx.beginPath(); for (const k of c3) { if (k[0] === 'M') ctx.moveTo(...pr(k[1])); else if (k[0] === 'L') ctx.lineTo(...pr(k[1])); else if (k[0] === 'C') { const a = pr(k[1]), b = pr(k[2]), c = pr(k[3]); ctx.bezierCurveTo(a[0], a[1], b[0], b[1], c[0], c[1]); } else ctx.closePath(); } }
+function tracePath(ctx, c3, pr, c2) { ctx.beginPath(); c3.forEach((k, j) => { const q = c2 ? c2[j] : k; if (k[0] === 'M') ctx.moveTo(...pr(k[1], q[1])); else if (k[0] === 'L') ctx.lineTo(...pr(k[1], q[1])); else if (k[0] === 'C') { const a = pr(k[1], q[1]), b = pr(k[2], q[2]), c = pr(k[3], q[3]); ctx.bezierCurveTo(a[0], a[1], b[0], b[1], c[0], c[1]); } else ctx.closePath(); }); }
 function drawLetterFace(ctx, L, cam, xf, st, swap) {
   if (L.dot) { const d = st.dots?.[L.dot.body]; if (!d || d.hide) return; const od = (st.explode || 0) * (OFF[L.f.id] || 0); const o = d.off || [0, 0, 0];
     let W = [L.dot.C[0] + C0[0] * od + o[0], L.dot.C[1] + C0[1] * od + o[1], L.dot.C[2] + (d.z || 0) + C0[2] * od + o[2]]; if (d.attach) W = xf(d.attach)(W);
     const p = cam(W); const s = cam.scaleAt(W); const r = L.dot.r * s;
     const sq = d.sq || 0, sy = 1 - sq, sx = 1 / Math.max(0.3, sy); ctx.fillStyle = st.analysis ? '#9a95a3' : swap ? (L.f.fill === C.pink ? C.white : C.pink) : L.f.fill;
-    ctx.beginPath(); ctx.ellipse(p[0], p[1] + r * (1 - sy), r * sx, r * sy, 0, 0, Math.PI * 2); ctx.fill(); return; }
+    const fx = d.fx ?? 1; if (fx <= 0.0005) return; ctx.beginPath(); ctx.ellipse(p[0], p[1] + r * (1 - sy), r * sx * fx, r * sy, 0, 0, Math.PI * 2); ctx.fill(); return; }
   const key = L.half ? L.f.id + '.' + L.half : L.f.id; const od = (st.explode || 0) * (OFF[key] ?? (L.sp.twisted ? 0 : OFF[L.f.id] ?? 0));
   const trb = xf(L.sp.body); const bob = od && st.bob ? st.bob * Math.sin((st.t || 0) * 4.4 + (key.length * 1.7 + key.charCodeAt(key.length - 1) * 0.37)) : 0;
   const tr0 = (od || bob) ? (W) => trb([W[0] + C0[0] * od, W[1] + C0[1] * od, W[2] + C0[2] * od + bob]) : trb; let tr = tr0; const hg = L.sp.hinge; const hh = st.rise?.[L.sp.body] ?? 1;
   if (hg && hh < 1) { const [A, B] = hg; const d = [B[0] - A[0], B[1] - A[1], B[2] - A[2]]; const dl = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
     tr = (W) => { const t = ((W[0] - A[0]) * d[0] + (W[1] - A[1]) * d[1] + (W[2] - A[2]) * d[2]) / dl; const Q = [A[0] + d[0] * t, A[1] + d[1] * t, A[2] + d[2] * t]; const k = Math.max(0, hh); return tr0([Q[0] + (W[0] - Q[0]) * k, Q[1] + (W[1] - Q[1]) * k, Q[2] + (W[2] - Q[2]) * k]); }; }
-  const pr = (W) => cam(tr(W));
+  const hid = L.f.id; const useH = st.open && HINGED[hid]; if (useH && (st.grow?.[hid] ?? 1) <= 0.0005) return;
+  const pr = useH ? (W, p2) => cam(tr(hingeT(hid, W, p2, st))) : (W) => cam(tr(W));
   if ((st.rise?.[L.sp.body] ?? 1) <= 0.0005) return;
   ctx.save();
-  if (L.clip3) { tracePath(ctx, L.clip3, pr); ctx.clip(); }
-  tracePath(ctx, L.c3, pr); ctx.fillStyle = fillFor(ctx, L, cam, xf, st, swap); ctx.fill(L.f.evenodd ? 'evenodd' : 'nonzero');
+  if (L.clip3) { tracePath(ctx, L.clip3, pr, L.clip2); ctx.clip(); }
+  tracePath(ctx, L.c3, pr, L.half ? null : L.f.cmds); ctx.fillStyle = fillFor(ctx, L, useH ? ((W) => cam(tr(hingeT(hid, W, [0, (L.box[1] + L.box[3]) / 2], st)))) : cam, xf, st, swap); ctx.fill(L.f.evenodd ? 'evenodd' : 'nonzero');
   ctx.restore();
 }
 function drawFrame(ctx, st) {
-  const fr = st.frame; if (!fr) return; const { plate = 0, rim = 0, shadow = 0, pulse = 1 } = fr; if (plate <= 0 && rim <= 0 && (fr.flood === undefined || fr.flood >= 2300)) return;
+  const fr = st.frame; if (!fr) return; const { plate = 0, rim = 0, shadow = 0, pulse = 1 } = fr; if (plate <= 0 && rim <= 0 && (fr.flood === undefined || fr.flood >= 2300) && !(fr.dil > 0)) return;
   ctx.save(); const [cx, cy] = PIV2; ctx.translate(cx, cy); ctx.scale(pulse, pulse); ctx.translate(-cx, -cy);
   const full = 1e4;
   if (rim > 0) { ctx.save(); ctx.clip(diamonds(SEEDS, rim >= 0.999 ? full : rim * 700)); ctx.save(); ctx.clip(LIGHTCLIP, 'evenodd'); ctx.fillStyle = gradLin(ctx, [G.rimLight.x1, 0], [G.rimLight.x2, 0], G.rimLight.stops); ctx.fill(RIM); ctx.restore();
     if (shadow > 0) { ctx.save(); ctx.clip(DARKCLIP); if (shadow < 0.999) ctx.clip(sweepPath(shadow * 230)); ctx.fillStyle = gradLin(ctx, [G.rimDark.x1, 0], [G.rimDark.x2, 0], G.rimDark.stops); ctx.fill(RIM); ctx.restore(); }
     ctx.restore(); }
+  if (fr.dil !== undefined) { // Rand: wächst aus der Plattenkante
+    const drawRim = (c) => { c.save(); c.clip(LIGHTCLIP, 'evenodd'); c.fillStyle = gradLin(c, [G.rimLight.x1, 0], [G.rimLight.x2, 0], G.rimLight.stops); c.fill(RIM); c.restore();
+      if (shadow > 0) { c.save(); c.clip(DARKCLIP); if (shadow < 0.999) c.clip(sweepPath(shadow * 230)); c.fillStyle = gradLin(c, [G.rimDark.x1, 0], [G.rimDark.x2, 0], G.rimDark.stops); c.fill(RIM); c.restore(); } };
+    if (fr.rimDil >= 60) drawRim(ctx); else if (fr.rimDil > 0) { const [oa, xa] = offCanvas(ctx, 'A'), [ob, xb] = offCanvas(ctx, 'B'); drawRim(xa);
+      xb.fillStyle = '#000'; xb.fill(PLATE); xb.lineWidth = 2 * fr.rimDil; xb.lineJoin = 'miter'; xb.miterLimit = 4; xb.strokeStyle = '#000'; xb.stroke(PLATE);
+      xa.setTransform(1, 0, 0, 1, 0, 0); xa.globalCompositeOperation = 'destination-in'; xa.drawImage(ob, 0, 0); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(oa, 0, 0); ctx.restore(); }
+    if (fr.dil >= 150) { ctx.fillStyle = C.teal; ctx.fill(PLATE); } else if (fr.dil > 0) { const [ob, xb] = offCanvas(ctx, 'B'); xb.fillStyle = '#000'; xb.strokeStyle = '#000'; xb.lineWidth = 2 * fr.dil; xb.lineJoin = 'miter'; xb.miterLimit = 4;
+      for (const q of LFILL) { xb.fill(q); xb.stroke(q); } xb.globalCompositeOperation = 'source-in'; xb.fillStyle = C.teal; xb.fill(PLATE); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(ob, 0, 0); ctx.restore(); }
+    ctx.restore(); return; }
   if (fr.flood !== undefined && fr.flood < 2300) { const X = fr.flood; const q = new Path2D(); q.moveTo(X, -400); q.lineTo(X - 170, 452); q.lineTo(X, 1300); q.lineTo(2600, 1300); q.lineTo(2600, -400); q.closePath(); ctx.save(); ctx.clip(q); ctx.fillStyle = C.teal; ctx.fill(PLATE); ctx.restore(); }
   else if (fr.flood === undefined && plate > 0) { ctx.save(); ctx.clip(diamonds(SEEDS, plate >= 0.999 ? full : plate * 560)); ctx.fillStyle = C.teal; ctx.fill(PLATE); ctx.restore(); }
   ctx.restore();
@@ -255,6 +303,26 @@ function fassung2(t) {
   const calm = 1 - smooth((t - 6.1) / 0.25); if (calm < 1) { ORDER.forEach(b => { st.body[b].yaw *= calm; st.body[b].sz = 1 + (st.body[b].sz - 1) * calm; }); st.frame.pulse = 1 + (st.frame.pulse - 1) * calm; st.reg = 1 + (st.reg - 1) * calm; if (st.dots.i1dot.sq) st.dots.i1dot.sq *= calm; }
   return st;
 }
+// ---------- Fassung 3: Kanten wachsen, Flächen drehen sich auf
+const VF = { i1: ['i1.left', 'i1.right'], ll: ['ll.barA', 'll.foot', 'll.sliver', 'll.barB'], u: ['u.front', 'u.backSide', 'u.side'], D: ['D.left', 'D.front'], i2: ['i2.left', 'i2.stem', 'i2.right'], y: ['y.front', 'y.right'] };
+const HF = { i1: ['i1.top'], ll: ['ll.floor1', 'll.floor2'], u: ['u.backTop'], D: ['D.top'], i2: [], y: [] };
+const DEL3 = { 'll.foot': 0.1, 'll.sliver': 0.14, 'll.barB': 0.26, 'u.backSide': 0.08, 'u.side': 0.2, 'i2.stem': 0.06, 'i2.right': 0.14, 'D.front': 0.04, 'y.right': 0.06, 'i1.right': 0.05, 'll.floor1': 0.12, 'll.floor2': 0.3 };
+function fassung3(t) {
+  const st = { t, cam: FINAL, open: {}, grow: {}, twist: {}, lines: {}, dots: {}, frame: {} };
+  ORDER.forEach((b, i) => {
+    const L0 = 0.04 + 0.085 * i, thin = (b === 'll' ? 2.05 : 1.45) + 0.085 * i;
+    st.lines[b] = { g: ease((t - L0) / 0.62), w: 2.4 * (1 - smooth((t - thin) / 0.5)) };
+    VF[b].forEach(id => { const u = t - (0.36 + 0.085 * i + (DEL3[id] || 0)); st.grow[id] = u <= 0 ? 0 : easeOut(u / 0.45); st.open[id] = u <= 0 ? 0 : spring(u, 0.7, 8.5); });
+    HF[b].forEach((id, k) => { const u = t - (0.62 + 0.085 * i + 0.06 * k + (DEL3[id] || 0)); st.grow[id] = u <= 0 ? 0 : easeOut(u / 0.4); st.open[id] = u <= 0 ? 0 : spring(u, 0.72, 9); });
+  });
+  st.grow['D.bottom'] = st.grow['D.front']; st.open['D.bottom'] = st.open['D.front'];
+  ['ll.barA', 'll.sliver', 'll.barB'].forEach((id, k) => { const ts = 1.2 + 0.1 * k; st.twist[id] = t < ts ? 0 : spring(t - ts, 0.68, 7.2); });
+  const coin = (t0) => (t < t0 ? { fx: 0 } : { fx: Math.abs(Math.sin(90 * spring(t - t0, 0.5, 11) * D2R)) });
+  st.dots.i1dot = coin(1.85); st.dots.i2dot = coin(2.0);
+  st.frame.dil = t < 2.3 ? 0 : 150 * easeOut((t - 2.3) / 0.75); st.frame.rimDil = t < 2.75 ? 0 : 60 * easeOut((t - 2.75) / 0.55); st.frame.shadow = t < 3.05 ? 0 : ease((t - 3.05) / 0.65);
+  st.reg = t > 3.6 ? 1 : 0; st.regFx = t > 3.6 ? Math.abs(Math.sin(90 * spring(t - 3.6, 0.5, 11) * D2R)) : 0;
+  return st;
+}
 const SEQ = {
   A: { name: 'Intro A · Einrasten', dur: 4.7, fn: (t, extra) => {
     const st = { cam: camOrbit(t, { phi0: 74, el0: 0, p0: 1 / 1300, r0: -3.5, fit: 0.96 }), rise: riseAll(t, 0.05, 0.075, 0.58, 8.2) };
@@ -274,6 +342,7 @@ const SEQ = {
   T4: { name: 'Test 4 · Figur und Grund', dur: 2.6, fn: (t) => { const p = t < 1.3 ? (t > 0.35 ? Math.min(1, spring(t - 0.35, 0.85, 8)) : 0) : Math.max(0, 1 - ease((t - 1.9) / 0.5)); return { cam: FINAL, rise: {}, dots: { i1dot: {}, i2dot: {} }, frame: { plate: p, rim: 0, shadow: 0 } }; } },
   T5: { name: 'Test 5 · Punkte mit Physik', dur: 2.4, fn: (t) => ({ cam: FINAL, rise: {}, dots: { i1dot: dropDot(t, 0.05, 720, 0.42, 3), i2dot: dropDot(t, 0.3, 760, 0.38, 3) }, frame: { plate: 1, rim: 1, shadow: 1 }, reg: 1 }) },
   T6: { name: 'Test 6 · Platte, Rand, Schatten', dur: 2.4, fn: (t) => ({ cam: FINAL, rise: {}, dots: { i1dot: {}, i2dot: {} }, frame: { plate: t > 0.15 ? Math.min(1, spring(t - 0.15, 0.9, 7.2)) : 0, rim: t > 0.37 ? Math.min(1, spring(t - 0.37, 0.9, 6.6)) : 0, shadow: t > 0.65 ? ease((t - 0.65) / 0.8) : 0, pulse: 1 + 0.012 * Math.exp(-(t - 0.58) * 6) * Math.sin(Math.max(0, t - 0.58) * 15) * (t > 0.58 ? 1 : 0) }, reg: t > 1.4 ? Math.max(0, spring(t - 1.4, 0.5, 14)) : 0 }) },
+  F3: { name: 'Fassung 3 · Kanten und Drehung', dur: 4.2, fn: (t) => fassung3(t) },
   F2: { name: 'Fassung 2 · Der Moment, in dem es passt', dur: 6.4, fn: (t) => fassung2(t) },
   T7: { name: 'Test 7 · Auseinandergezogen (neu)', dur: 6.2, fn: (t) => { // langsam ins Einrasten, halten, wieder heraus: die Teile schweben getrennt und fallen nur bei 45°/30° zusammen
     let k; if (t < 3.2) k = 1 - ease(t / 3.2); else if (t < 4.5) k = 0; else k = 0.62 * ease((t - 4.5) / 1.5);

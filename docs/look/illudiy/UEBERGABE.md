@@ -7,11 +7,11 @@ kommt, ohne Schnitt und ohne unnötige Alphablenden auskommt, mit Physik, Bounce
 
 ## Einstieg
 
-- **`illudiy-intro.html`** öffnen (Doppelklick, läuft ohne Server und offline). Oben die Bühne mit **Fassung 2 · Der Moment**
-  (Hauptfassung, Plan `docs/plans/2026-11-21-illudiy-intro-fassung-2.md`), zum Vergleich **Fassung 1 · A/B**, **Kurzfassung** und sieben Tests, darunter Zeitlupe (bis ⅒×), Zeitschieber, die Ansicht
+- **`illudiy-intro.html`** öffnen (Doppelklick, läuft ohne Server und offline). Oben die Bühne mit **Fassung 3 · Kanten und Drehung**
+  (Hauptfassung, Plan `docs/plans/2026-11-21-illudiy-intro-fassung-3.md`), zum Vergleich **Fassung 2** und **Fassung 1 · A/B**, **Kurzfassung** und sieben Tests, darunter Zeitlupe (bis ⅒×), Zeitschieber, die Ansicht
   **„Flächen nach Richtung“** und **„Original darüber“**. Weiter unten: Vorher-Nachher-Schieber, Analyse der Täuschungen,
   Konzept mit Ablaufgrafik, Recherche-Tabelle, offene Fragen.
-- Videos (1920 × 1080, 60 fps) in `video/`: **`fassung-2.mp4`**, dazu Fassung 1 (`intro-a-einrasten.mp4`, `intro-b-kippwelle.mp4`),
+- Videos (1920 × 1080, 60 fps) in `video/`: **`fassung-3.mp4`**, dazu `fassung-2.mp4`, Fassung 1 (`intro-a-einrasten.mp4`, `intro-b-kippwelle.mp4`),
   `kurzfassung.mp4` und `test7-auseinandergezogen.mp4`.
 - Konzept: [`docs/plans/2026-11-21-illudiy-intro.md`](../../plans/2026-11-21-illudiy-intro.md). Recherche mit Quellen:
   [`RECHERCHE.md`](RECHERCHE.md).
@@ -54,9 +54,12 @@ kommt, ohne Schnitt und ohne unnötige Alphablenden auskommt, mit Physik, Bounce
 - Fassung 1: Florian sah die Täuschungen nicht („Ich verstehe es nicht ehrlich gesagt“). Ursache: Kamera rastete ein,
   während die Buchstaben noch wuchsen; Teile kaum getrennt.
 - Fassung 2 (freigegeben und gebaut): Teile entlang der Blickrichtung der Endkamera versetzt, ll-Balken zerlegt, jede
-  Täuschung mit eigenem Auftritt.
+  Täuschung mit eigenem Auftritt. Florian: „plump und zerschnitten. Nicht elegant at all“; gewünscht: gekonnte Drehung und
+  Wachstum der Kanten.
+- Fassung 3 (gebaut): Bauplan aus wachsenden Kanten, Flächen drehen um Scharniere auf, ll als Paravent mit Verwindung,
+  Platte und Rand wachsen aus den Kanten.
 
 ## Offen (Florians Entscheidung)
 
-- Fassung 2: Reihenfolge und Tempo der Auftritte, Zwinkern am Ende ja oder nein.
+- Fassung 3: Tempo und Reihenfolge, Kanten weiß oder in Markenfarben.
 - Danach: Ton (Shepard-Glissando, das beim Einrasten aufgeht), Export für App-Start, optional Sugihara-Geometrie.
