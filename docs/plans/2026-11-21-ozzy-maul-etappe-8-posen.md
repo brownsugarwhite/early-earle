@@ -270,3 +270,58 @@ Benennen durch Halten, Löschen über den Mülleimer der Leiste. Höchstens acht
 
 **Offen:** Liste, Punkte 167 bis 176.
 
+## 8. Scheibe 4: Zähne je Pose (21.11., auf sein „Zähne je Pose“)
+
+Konzept 4.10: „Gespeichert wird je Pose: die Winkel der Knochen und der Versatz jedes Punkts und Griffs gegen die Grundform. Neu
+ist nur, was dazukommt: die Punkte der Lippenlinie, die Lage jedes Zahns, die Kette der Zunge.“ Die Lippe und die Zunge sind
+gebaut; die Zähne gelten bisher für alle Lagen gleich (Liste, 162).
+
+### 8.1 Was er danach kann
+
+- **In einer Pose stellt die Linse die Zähne dieser Pose:** Größe, Neigung, Verlauf und Sitz der Reihen, dazu einzelne Zähne
+  rücken und ihre Größe. Die Grundform und die anderen Posen behalten ihre.
+- **In der Grundform gestellt gilt es für alle Posen.** Jede Pose behält, was sie anders hat (ein Versatz, wie bei den Punkten
+  der Form: Wird die Reihe in der Grundform größer, wird sie es in jeder Pose um dasselbe).
+- **Was die Zähne sind, gilt für alle Posen,** auch wenn es in einer Pose gestellt wird: Anzahl, Lücken (⌫), Form (Vorlage und
+  eigene Form) und Farbe. Das ist die Regel der Posen („dieselbe Form in einer anderen Lage, mit denselben Punkten und
+  Linien“); gesperrt wird dabei nichts, die Statuszeile sagt, wofür der Griff gilt.
+- **Zwischen zwei Lagen wandern die Zähne:** von dort, wo sie in der einen stehen, dorthin, wo sie in der anderen stehen. Beim
+  Ankommen springt nichts.
+- Plus nimmt die Zähne der gezeigten Pose mit; ⌘Z, Sichern und Laden tragen sie.
+
+### 8.2 Struktur
+
+- **Modell:** `PoseStand.zaehne` ist der Versatz der Pose gegen die Zähne der Grundform (`G.maul.zaehne`): je Reihe vier
+  Zahlen (Größe, Neigung, Verlauf, Sitz), je Zahn drei (längs, zur Tiefe, Faktor der Größe). Drei reine Handgriffe in
+  `form/zahnVersatz.ts`: Grundform plus Versatz; das, was die Linse in einer Pose stellt, teilen in „für alle“ und „nur
+  hier“; den Versatz passend halten, wenn eine Reihe andere Zähne bekommt (mit der Anzahl fällt, was einzelne Zähne anders
+  hatten, in jeder Pose).
+- **Werk:** `zaehneJetzt()` (was die Linse zeigt und stellt: in der betretenen Pose ihre Zähne, sonst die der Grundform);
+  `zaehneSetzen` teilt in der Pose; `zaehneGezeigt()` nennt der Anzeige eine Lage oder zwei mit dem Anteil.
+- **Anzeige:** Die Plätze der Zähne werden je Lage in ihrer Ruhe gelesen (wie bisher für die betretene). Beim Wandern stehen
+  beide Sätze an der gezeigten Haut, und jeder Punkt jedes Zahns liegt anteilig dazwischen. Das gilt auch für Lagen mit
+  denselben Werten: Die Plätze hängen an der Lippe der Lage, bisher wechselten sie erst beim Ankommen.
+- Am Rechenkern ändert sich nichts.
+
+### 8.3 Proben (vorher festgelegt; `ozzy-maul-posen-zaehne-fenster.mjs`, an „teat firefish“)
+
+| Nr. | Kriterium |
+| --- | --- |
+| Z1 | In „Fressen“ die Größe der Zähne gestellt: Die Zähne dort sind länger; die Werte der Grundform und einer zweiten Pose sind dieselben wie vorher. Ein Schritt, ⌘Z nimmt ihn. |
+| Z2 | In der Grundform die Neigung gestellt: Sie gilt in allen Posen; „Fressen“ behält dazu seinen Unterschied der Größe (auf 1e-9). |
+| Z3 | In einer Pose die Anzahl gestellt: Sie gilt in der Grundform und in jeder Pose; die Statuszeile sagt es. |
+| Z4 | In der zweiten Pose einen Zahn gerückt: nur dort; in „Fressen“ steht er an seinem Platz (Werte gleich, Spitze höchstens 0,01 daneben). |
+| Z5 | Am Faden zwischen zwei Posen mit verschiedenen Zähnen auf der Hälfte: Die Spitze eines Zahns liegt höchstens 5 % ihres Wegs neben der Mitte ihrer zwei Lagen. Beim Ankommen: letztes Bild der Fahrt und Stand danach höchstens 0,05 auseinander (größter Abstand über alle Punkte der Zähne). |
+| Z6 | Plus in einer Pose mit eigenen Zähnen: Die neue Pose hat dieselben Werte. |
+| Z7 | Gesichert und geladen: jede Pose mit ihren Zähnen (Werte gleich). |
+| Z8 | Tempo: die Fahrt zwischen zwei Posen mit verschiedenen Zähnen im Mittel höchstens 16,7 ms je Bild. |
+| K | keine Fehler in der Konsole |
+
+Dazu Tests für `zahnVersatz.ts` (hin und zurück ohne Rest; für alle und nur hier; die Anzahl lässt den Versatz einzelner
+Zähne fallen), und die Proben der Zähne, der Zahnform, der Zunge und der Posen laufen weiter.
+
+### 8.4 Nicht in dieser Scheibe
+
+Eine andere Form oder Farbe der Zähne je Pose; Zähne, die es nur in einer Pose gibt; ein Handgriff „Zähne dieser Pose wie in
+der Grundform“. Kommt auf die Liste.
+
