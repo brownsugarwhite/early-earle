@@ -13,7 +13,7 @@
 // Ohne DOM und ohne three: Die Linse, das Maul und die Tests rechnen mit denselben Zahlen.
 import { type Anker, type Pfad, anpassen, punktAufStueck, stueckZwischen } from '@ee/shape/zeichnen';
 import type { Linie, Netz } from '../linien/netz';
-import { type Wurzel, type ZahnForm, kronenProfil } from '../maulstudie/zahn';
+import type { Wurzel, ZahnForm } from '../maulstudie/zahn';
 
 export type { Anker };
 
@@ -225,12 +225,16 @@ function ringStellen(H: { L: Lauf; R: Lauf; H: Lauf; V: Lauf }, ringe: number): 
  * liegt in ihr), dann die Mitte des Bodens und die Spitze als Mitten der zwei Deckel. Punkte und Dreiecke in derselben Folge wie
  * bei den Vorlagen (`stapel` in `zahn.ts`). `lam`: der Fortschritt jedes Rings.
  */
-export function gestaltBau(g: ZahnGestalt, ringe = RINGE, seg = SEG): { pos: Float32Array; idx: Uint32Array; lam: number[]; ringe: number; seg: number } {
+export function gestaltBau(g: ZahnGestalt, ringe = RINGE, seg = SEG): { pos: Float32Array; idx: Uint32Array; lam: number[]; ringe: number; seg: number; wand: number } {
   const H = haelften(g);
   const Q = querStellen(g, seg);
   const lam = ringStellen(H, ringe);
   const pos = new Float32Array(3 * (ringe * seg + 2));
   const hoch = bei(H.L, 1)[1];
+  // (für die Höcker: wie weit ein Ring ist, gemessen am weitesten)
+  let weit = 1e-9;
+  if (g.hoecker > 0)
+    for (let i = 0; i < ringe; i++) weit = Math.max(weit, Math.abs(bei(H.R, lam[i]!)[0] - bei(H.L, lam[i]!)[0]), Math.abs(bei(H.V, lam[i]!)[0] - bei(H.H, lam[i]!)[0]));
   for (let i = 0; i < ringe; i++) {
     const [xl, yl] = bei(H.L, lam[i]!);
     const [xr, yr] = bei(H.R, lam[i]!);
@@ -240,8 +244,10 @@ export function gestaltBau(g: ZahnGestalt, ringe = RINGE, seg = SEG): { pos: Flo
     const hx = 0.5 * (xr - xl);
     const mz = 0.5 * (zv + zh);
     const hz = 0.5 * (zv - zh);
-    // Höcker (von der Vorlage): Oben wölbt sich die Fläche zwischen den vier Hälften und weitet sich ein wenig
-    const kh = g.hoecker > 0 && hoch > 1e-9 ? Math.pow(klemmen((0.25 * (yl + yr + yv + yh)) / hoch, 0, 1), 5) : 0;
+    // Höcker (von der Vorlage): Oben wölbt sich die Fläche zwischen den vier Hälften und weitet sich ein wenig. Zur Mitte der
+    // Kaufläche klingen sie ab (dort senkt sie sich; ohne das stünde in der Spitze, wo alle Ringe zusammenlaufen, eine Nadel)
+    const eng = klemmen(Math.max(Math.abs(xr - xl), Math.abs(zv - zh)) / weit / 0.3, 0, 1);
+    const kh = g.hoecker > 0 && hoch > 1e-9 ? Math.pow(klemmen((0.25 * (yl + yr + yv + yh)) / hoch, 0, 1), 5) * eng * eng * (3 - 2 * eng) : 0;
     for (let k = 0; k < seg; k++) {
       const q = Q[k]!;
       // die Höhe: durch die vier Stellen gelegt (bei gleicher mittlerer Höhe ein ebener, gekippter Ring)
@@ -288,7 +294,8 @@ export function gestaltBau(g: ZahnGestalt, ringe = RINGE, seg = SEG): { pos: Flo
     idx[o++] = boden + 1;
     idx[o++] = (ringe - 1) * seg + ((k + 1) % seg);
   }
-  return { pos, idx, lam, ringe, seg };
+  // (`wand`: so viele Einträge von `idx` gehören der Wand; danach kommen der Boden und der Deckel an der Spitze)
+  return { pos, idx, lam, ringe, seg, wand: 6 * (ringe - 1) * seg };
 }
 
 /** Normalen je Punkt aus den Dreiecken (nach Fläche gewichtet, wie `computeVertexNormals`) */
@@ -370,7 +377,8 @@ const TREUE = 0.012;
 const SCHRITT = 0.02;
 /** eine abgetastete Hälfte als Anker (die wenigsten, die sie bis auf `TREUE` treffen); die Enden liegen genau auf ihr */
 function ankerAus(spur: { x: number; y: number }[]): Anker[] {
-  const p: Pfad = anpassen(spur, { treue: TREUE, schritt: SCHRITT, geschlossen: false }).pfad;
+  // (ohne Ecken: Der Knick im Profil der Vorlage am Zahnhals ist eine Eigenheit ihrer Formel, keine Kante; als Linie ist er rund)
+  const p: Pfad = anpassen(spur, { treue: TREUE, schritt: SCHRITT, geschlossen: false, eckWinkel: 175 }).pfad;
   const a = p.anker.map((q) => ({ ...q }));
   if (a.length >= 2) {
     const e = spur[spur.length - 1]!;
@@ -398,8 +406,23 @@ export function gestaltAusForm(f: ZahnForm): ZahnGestalt {
       const u = 1 - Math.pow(1 - i / N, 2);
       return ort(u);
     });
+  /**
+   * Das Profil der Vorlage (`kronenProfil` in `zahn.ts`) ohne ihre zwei Knicke: Ihre Formel weitet den Zahnhals als Gerade bis zu
+   * einem Sechstel der Höhe, und ihr Bauch endet bei knapp sechs Zehnteln mit einem Knick. Im Netz der Vorlage verschleifen das
+   * die wenigen Ringe; als Linie stünde dort je eine Kante. Hier laufen Hals und Bauch in einem Bogen aus (höchstens ein
+   * Hundertstel der Breite neben der Formel; der Test hält beide beieinander).
+   */
+  const profil = (u: number): number => {
+    const p = 4.6 + (1.05 - 4.6) * f.spitze;
+    const q = 0.42 + (1.0 - 0.42) * f.spitze;
+    const x = Math.min(1.1, u * 1.7);
+    const bogen = x <= 0.5 ? Math.sin(Math.PI * x) : 0.5 * (1 + Math.cos((Math.PI * (x - 0.5)) / 0.6));
+    const bauch = 1 + 0.1 * bogen * (1 - f.spitze * 0.5);
+    const h = Math.min(1, u * 4.5);
+    return Math.max(0, 1 - Math.pow(Math.min(1, u), p)) ** q * bauch * (0.86 + 0.14 * (1 - (1 - h) * (1 - h)));
+  };
   // von vorn: links vom Zahnfleisch zur Spitze, rechts sein Spiegelbild
-  const links = ankerAus(spur((u) => ({ x: -hx * kronenProfil(f, u), y: achse(u).y })));
+  const links = ankerAus(spur((u) => ({ x: -hx * profil(u), y: achse(u).y })));
   const spitze = links[links.length - 1]!;
   const aus0 = spiegelX(spitze.ein);
   const rund = inFlucht(spitze.ein, aus0, 25);
@@ -410,14 +433,14 @@ export function gestaltAusForm(f: ZahnForm): ZahnGestalt {
   const hinten = ankerAus(
     spur((u) => {
       const a = achse(u);
-      const r = hz * kronenProfil(f, u);
+      const r = hz * profil(u);
       return { x: a.z - r * Math.cos(a.w), y: a.y - r * Math.sin(a.w) };
     }),
   );
   const vorne = ankerAus(
     spur((u) => {
       const a = achse(u);
-      const r = hz * kronenProfil(f, u);
+      const r = hz * profil(u);
       return { x: a.z + r * Math.cos(a.w), y: a.y + r * Math.sin(a.w) };
     }),
   );
@@ -426,7 +449,7 @@ export function gestaltAusForm(f: ZahnForm): ZahnGestalt {
   const seiteSpitze: Anker = { x: sh.x, y: sh.y, ein: sh.ein, aus: sv.ein, ecke: !inFlucht(sh.ein, sv.ein, 25) };
   const seite: Anker[] = [...hinten.slice(0, -1), seiteSpitze, ...umgekehrt(vorne.slice(0, -1))];
   // quer am Zahnfleisch: vier Viertel des Querschnitts (rechts, vorn, links, hinten)
-  const r0 = kronenProfil(f, 0);
+  const r0 = profil(0);
   const hochN = (x: number): number => Math.sign(x) * Math.pow(Math.abs(x), 2 / f.kasten);
   const viertel = (q: number): Anker[] => ankerAus(Array.from({ length: 61 }, (_, i) => ((w) => ({ x: hochN(Math.cos(w)) * hx * r0, y: hochN(Math.sin(w)) * hz * r0 }))(((q + i / 60) * Math.PI) / 2)));
   const quer: Anker[] = [];
@@ -451,12 +474,28 @@ export function gestaltAusForm(f: ZahnForm): ZahnGestalt {
 const klemmen = (x: number, a: number, b: number): number => Math.max(a, Math.min(b, x));
 
 /**
+ * Eine Linie (von vorn oder von der Seite) in der Höhe mitnehmen, nachdem die Spitze in der anderen Linie von `altY` auf `neuY`
+ * gewandert ist: Alle ihre Anker und Griffe werden um dasselbe Maß höher oder niedriger (das Zahnfleisch bleibt, die Spitze steht
+ * auf der neuen Höhe). So bleibt ihre Form, und was man in der Ansicht der geänderten Linie sieht, stimmt: Senkt er dort die Spitze
+ * zu einer Kerbe, läuft die Kerbe durch den Zahn; bliebe diese Linie stehen, stünden ihre Schultern als Rand um einen Krater.
+ */
+function hoeheFolgen(anker: Anker[], altY: number, neuY: number): void {
+  if (!(altY > 1e-9) || Math.abs(neuY - altY) < 1e-12) return;
+  const f = neuY / altY;
+  for (let i = 0; i < anker.length; i++) {
+    const a = anker[i]!;
+    anker[i] = { ...a, y: a.y * f, ein: a.ein ? { x: a.ein.x, y: a.ein.y * f } : null, aus: a.aus ? { x: a.aus.x, y: a.aus.y * f } : null };
+  }
+}
+
+/**
  * Die Gestalt ordnen, nachdem `von` geändert wurde: Die Punkte am Zahnfleisch liegen auf seiner Höhe (y = 0), die Spitze hat in
  * `vorn` und `seite` dieselbe Höhe, und die vier geteilten Anker haben in `quer` dasselbe x beziehungsweise z wie in ihrer Linie.
  * Die geänderte Linie gibt vor; die zwei anderen folgen an den geteilten Punkten. Dazu die Grenzen (Feld, kleinste Breite, Tiefe
- * und Höhe). Eine neue Gestalt; die alte bleibt.
+ * und Höhe). Eine neue Gestalt; die alte bleibt. `alt`: die Gestalt vor der Änderung; mit ihr geht die Linie, die nicht geändert
+ * wurde, in der Höhe als Ganzes mit, wenn die Spitze ihre Höhe ändert (`hoeheFolgen`).
  */
-export function gestaltAngleichen(g: ZahnGestalt, von: GestaltLinie): ZahnGestalt {
+export function gestaltAngleichen(g: ZahnGestalt, von: GestaltLinie, alt?: ZahnGestalt): ZahnGestalt {
   const kopie = (a: readonly Anker[]): Anker[] => a.map((q) => ({ ...q }));
   const vorn = kopie(g.vorn);
   const seite = kopie(g.seite);
@@ -480,7 +519,6 @@ export function gestaltAngleichen(g: ZahnGestalt, von: GestaltLinie): ZahnGestal
     seite[0]!.x = quer[h]!.y;
     seite[ns]!.x = quer[v]!.y;
   }
-  if (von === 'seite') vorn[g.spitzeV]!.y = seite[g.spitzeS]!.y;
   // die kleinsten Maße: Breite und Tiefe am Zahnfleisch, Höhe der Spitze
   if (vorn[nv]!.x - vorn[0]!.x < WEIT_MIN) {
     const m = 0.5 * (vorn[nv]!.x + vorn[0]!.x);
@@ -492,12 +530,17 @@ export function gestaltAngleichen(g: ZahnGestalt, von: GestaltLinie): ZahnGestal
     seite[0]!.x = m - 0.5 * WEIT_MIN;
     seite[ns]!.x = m + 0.5 * WEIT_MIN;
   }
-  vorn[g.spitzeV]!.y = Math.max(HOCH_MIN, vorn[g.spitzeV]!.y);
+  // die Höhe der Spitze gibt die geänderte Linie vor; ist sie gewandert, geht die andere in der Höhe als Ganzes mit (sie steht
+  // noch, wie sie vor der Änderung stand)
+  const hoch = Math.max(HOCH_MIN, (von === 'seite' ? seite[g.spitzeS]! : vorn[g.spitzeV]!).y);
+  if (alt && von === 'vorn') hoeheFolgen(seite, seite[g.spitzeS]!.y, hoch);
+  if (alt && von === 'seite') hoeheFolgen(vorn, vorn[g.spitzeV]!.y, hoch);
+  vorn[g.spitzeV]!.y = hoch;
+  seite[g.spitzeS]!.y = hoch;
   vorn[0]!.y = 0;
   vorn[nv]!.y = 0;
   seite[0]!.y = 0;
   seite[ns]!.y = 0;
-  seite[g.spitzeS]!.y = vorn[g.spitzeV]!.y;
   quer[l]!.x = vorn[0]!.x;
   quer[r]!.x = vorn[nv]!.x;
   quer[h]!.y = seite[0]!.x;
@@ -600,7 +643,7 @@ export function gestaltAusNetz(g: ZahnGestalt, linie: GestaltLinie, netz: Netz, 
     if (stelle[0] !== 0 || stelle[2] !== n - 1) return null;
     neu = { ...g, seite: anker, spitzeS: stelle[1]! };
   } else neu = { ...g, quer: anker, ecken: stelle as [number, number, number, number] };
-  return gestaltAngleichen(neu, linie);
+  return gestaltAngleichen(neu, linie, g);
 }
 
 /**

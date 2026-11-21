@@ -73,13 +73,16 @@ describe('ein Zahn als kleine Form (Etappe 7)', () => {
       expect(n.idx.length).toBe(v.idx.length);
       expect(Array.from(n.pos).every(Number.isFinite)).toBe(true);
       expect(nebenFlaeche(n.pos, v.pos, v.idx), `${ZAHN_FORMEN[nr]!.name}: Gestalt neben der Vorlage`).toBeLessThan(0.03);
-      expect(nebenFlaeche(v.pos, n.pos, n.idx), `${ZAHN_FORMEN[nr]!.name}: Vorlage neben der Gestalt`).toBeLessThan(0.03);
+      // (die Backe: In der Spitze der Vorlage, wo alle Ringe zusammenlaufen, stehen ihre Höcker als Nadel übereinander. Die
+      // Gestalt lässt sie zur Mitte der Kaufläche abklingen; der letzte Ring und die Mitte des Deckels der Vorlage zählen dort nicht)
+      const ohneNadel = ZAHN_FORMEN[nr]!.form.hoecker > 0 ? v.pos.filter((_, i) => Math.floor(i / 3) < 15 * 20 || Math.floor(i / 3) === 320) : v.pos;
+      expect(nebenFlaeche(ohneNadel, n.pos, n.idx), `${ZAHN_FORMEN[nr]!.name}: Vorlage neben der Gestalt`).toBeLessThan(0.03);
       // wenige Anker (er will die allernötigsten): von vorn und von der Seite höchstens sieben, quer höchstens acht
       expect(g.vorn.length, `${ZAHN_FORMEN[nr]!.name}: Anker von vorn`).toBeLessThanOrEqual(7);
       expect(g.seite.length).toBeLessThanOrEqual(7);
       expect(g.quer.length).toBeLessThanOrEqual(8);
       // die Länge der Krone und ihre Tiefe wie bei der Vorlage (danach richten sich Spalt und Körper)
-      expect(Math.abs(n.laenge - Math.max(...Array.from(v.pos).filter((_, i) => i % 3 === 1)))).toBeLessThan(0.03);
+      expect(Math.abs(n.laenge - Math.max(...Array.from(ohneNadel).filter((_, q) => q % 3 === 1)))).toBeLessThan(0.03);
     }
   });
 
@@ -204,6 +207,46 @@ describe('ein Zahn als kleine Form (Etappe 7)', () => {
       // (durch den neuen Anker geht ein Ring: Die Ringe rücken auf der Haut, die Haut bleibt bis auf die Abtastung)
       const c = gestaltNetz(p);
       expect(nebenFlaeche(c.pos, a, gestaltNetz(g).idx), `${linie} mit Punkt`).toBeLessThan(0.02);
+    }
+  });
+
+  it('die Spitze von vorn gesenkt (über das Netz, wie in der Linse): Die Linie von der Seite geht in der Höhe als Ganzes mit, nichts ragt über die Spitze', () => {
+    for (const nr of [1, 5, 7]) {
+      const g = gestaltAusForm(ZAHN_FORMEN[nr]!.form);
+      const A: Abbildung = { ax: 50, ay: 0, bx: 0, by: -50, ox: 100, oy: 300 };
+      const { netz, fest } = gestaltAlsNetz(g, 'vorn', A);
+      // die Spitze im Netz um vier Zehntel der Höhe nach unten (in vielen kleinen Schritten, wie beim Ziehen), dann wieder zurück
+      const p = netz.punkte[fest[1]!]!;
+      const hoch0 = g.vorn[g.spitzeV]!.y;
+      let jetzt = g;
+      for (let i = 1; i <= 20; i++) {
+        p.y = A.oy + A.by * hoch0 * (1 - 0.02 * i);
+        jetzt = gestaltAusNetz(jetzt, 'vorn', netz, fest, A)!;
+      }
+      const hoch = jetzt.vorn[jetzt.spitzeV]!.y;
+      expect(hoch).toBeCloseTo(0.6 * hoch0, 6);
+      expect(jetzt.seite[jetzt.spitzeS]!.y).toBeCloseTo(hoch, 9);
+      // die Linie von der Seite ragt nirgends mehr als ein Zwanzigstel der Höhe über die Spitze (bliebe sie stehen: bei der
+      // Schaufel um vier Zehntel, ihre Schultern stünden als Rand um einen Krater)
+      let ueber = 0;
+      for (let i = 0; i + 1 < jetzt.seite.length; i++) {
+        const st = stueckZwischen(jetzt.seite[i]!, jetzt.seite[i + 1]!);
+        for (let k = 0; k <= 60; k++) ueber = Math.max(ueber, punktAufStueck(st, k / 60).y - hoch);
+      }
+      expect(ueber, ZAHN_FORMEN[nr]!.name).toBeLessThan(0.05 * hoch0);
+      // und das Netz des Zahns: kein Punkt über der Spitze (bis auf dasselbe Maß)
+      const n = gestaltNetz(jetzt);
+      expect(n.laenge - hoch).toBeLessThan(0.05 * hoch0);
+      // zurück auf die alte Höhe: Die Linie von der Seite ist wieder die alte
+      for (let i = 19; i >= 0; i--) {
+        p.y = A.oy + A.by * hoch0 * (1 - 0.02 * i);
+        jetzt = gestaltAusNetz(jetzt, 'vorn', netz, fest, A)!;
+      }
+      const a = gestaltNetz(g).pos;
+      const b = gestaltNetz(jetzt).pos;
+      let max = 0;
+      for (let i = 0; i < a.length; i++) max = Math.max(max, Math.abs(a[i]! - b[i]!));
+      expect(max, `${ZAHN_FORMEN[nr]!.name} zurück`).toBeLessThan(1e-6);
     }
   });
 

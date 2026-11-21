@@ -34,7 +34,7 @@ import type { StiftWerk } from '../linien/stift';
 import { type Ansicht as LinienAnsicht, GRUNDWERTE, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
 import { Kapseln } from '../ozzy/kapseln';
 import { type Abbildung, type GestaltLinie, type ZahnGestalt, gestaltAlsNetz, gestaltAusNetz, gestaltBauFein, gestaltLinieGleich, gestaltOhneAnker, netzLagen, normalen } from '../ozzy/zahnGestalt';
-import { ZAHN_FORMEN, wurzelBau, zahnNetz, zahnUmriss, type ZahnForm } from './zahn';
+import { ZAHN_FORMEN, wurzelBau, wurzelProfil, zahnNetz, zahnUmriss, type ZahnForm } from './zahn';
 
 export type Perle = {
   kurz: string;
@@ -439,18 +439,41 @@ export class Linse {
     const xr = g.vorn[g.vorn.length - 1]!.x;
     const zh = g.seite[0]!.x;
     const zv = g.seite[g.seite.length - 1]!.x;
-    const w = wurzelBau(g.wurzel, (0.5 * (xr - xl)) / 0.86, (0.5 * (zv - zh)) / 0.86, g.wurzelLaenge);
+    const mx = 0.5 * (xl + xr);
+    const mz = 0.5 * (zh + zv);
+    let w: { pos: number[]; idx: number[] };
+    if (g.wurzel === 'kegel' || g.wurzel === 'knolle') {
+      // eine Zinke: Sie beginnt genau am ersten Ring der Krone (der Linie quer) und behält seine Form (kein Spalt am Zahnfleisch)
+      w = { pos: [], idx: [] };
+      const R = 9;
+      for (let i = 0; i < R; i++) {
+        const v = i / (R - 1);
+        const r = wurzelProfil(g.wurzel === 'knolle', v);
+        for (let k = 0; k < b.seg; k++) w.pos.push((b.pos[3 * k]! - mx) * r, -g.wurzelLaenge * v, (b.pos[3 * k + 2]! - mz) * r);
+      }
+      for (let i = 0; i + 1 < R; i++)
+        for (let k = 0; k < b.seg; k++) {
+          const a = i * b.seg + k;
+          const c = i * b.seg + ((k + 1) % b.seg);
+          w.idx.push(a, c, a + b.seg, c, c + b.seg, a + b.seg);
+        }
+      w.pos.push(0, -g.wurzelLaenge, 0);
+      for (let k = 0; k < b.seg; k++) w.idx.push((R - 1) * b.seg + k, (R - 1) * b.seg + ((k + 1) % b.seg), R * b.seg);
+    } else w = wurzelBau(g.wurzel, (0.5 * (xr - xl)) / 0.86, (0.5 * (zv - zh)) / 0.86, g.wurzelLaenge);
     const nk = b.pos.length / 3;
     const pos = new Float32Array(b.pos.length + w.pos.length);
     pos.set(b.pos);
     for (let i = 0; i < w.pos.length; i += 3) {
-      pos[b.pos.length + i] = w.pos[i]! + 0.5 * (xl + xr);
+      pos[b.pos.length + i] = w.pos[i]! + mx;
       pos[b.pos.length + i + 1] = w.pos[i + 1]!;
-      pos[b.pos.length + i + 2] = w.pos[i + 2]! + 0.5 * (zh + zv);
+      pos[b.pos.length + i + 2] = w.pos[i + 2]! + mz;
     }
-    const idx = new Uint32Array(b.idx.length + w.idx.length);
-    idx.set(b.idx);
-    for (let i = 0; i < w.idx.length; i++) idx[b.idx.length + i] = nk + w.idx[i]!;
+    // (mit Wurzel ohne den Boden der Krone, wie bei den Vorlagen: Er zöge am Zahnfleisch die Normalen nach unten, und der Zahn
+    // hätte dort einen dunklen Rand; die Wurzel schließt ihn)
+    const krone = g.wurzel === 'keine' ? b.idx : new Uint32Array([...b.idx.subarray(0, b.wand), ...b.idx.subarray(b.wand + 3 * b.seg)]);
+    const idx = new Uint32Array(krone.length + w.idx.length);
+    idx.set(krone);
+    for (let i = 0; i < w.idx.length; i++) idx[krone.length + i] = nk + w.idx[i]!;
     const geo = new BufferGeometry();
     geo.setAttribute('position', new BufferAttribute(pos, 3));
     geo.setIndex(new BufferAttribute(idx, 1));
@@ -462,14 +485,20 @@ export class Linse {
       breit = Math.max(breit, Math.abs(b.pos[i]!), Math.abs(b.pos[i + 2]!));
     }
     this.gestalt = g;
-    this.fein = { pos: b.pos, nor: normalen(b.pos, b.idx), ringe: b.ringe, seg: b.seg };
-    // (eine Gestalt von außen, etwa nach ⌘Z: Das Netz der Linie wird neu gelesen; die eigene nach einem Griff ist schon eingetragen)
-    if (this.netzStand && this.netzStand.gestalt !== g) this.netzStand = null;
-    this.zahnStellen(geo, hoch, g.wurzel === 'keine' ? 0 : g.wurzelLaenge, breit);
+    // (die Normalen für die ruhenden Linien: nur aus der Wand; der Boden zählt nicht mit)
+    this.fein = { pos: b.pos, nor: normalen(b.pos, b.idx.subarray(0, b.wand)), ringe: b.ringe, seg: b.seg };
+    // (eine Gestalt von außen, etwa nach ⌘Z oder mit einer anderen Vorlage: Das Netz der Linie wird neu gelesen, und der Zahn füllt
+    // wieder die Linse; die eigene nach einem Griff ist schon eingetragen, dann bleibt er stehen, wie er steht)
+    const eigen = !!this.netzStand && this.netzStand.gestalt === g;
+    if (!eigen) this.netzStand = null;
+    this.zahnStellen(geo, hoch, g.wurzel === 'keine' ? 0 : g.wurzelLaenge, breit, eigen);
   }
 
-  /** der Zahn (sein Netz) in der Linse; `breit`: sein größtes Maß quer (für die Ansicht von oben; 0: keine) */
-  private zahnStellen(geo: BufferGeometry, laenge: number, wurzel: number, breit: number): void {
+  /**
+   * Der Zahn (sein Netz) in der Linse; `breit`: sein größtes Maß quer (für die Ansicht von oben; 0: keine). `halten`: Eingerastet
+   * bleibt er stehen, wie er steht (er kommt aus einem Griff an seiner Linie, und die liegt in Bildpunkten fest).
+   */
+  private zahnStellen(geo: BufferGeometry, laenge: number, wurzel: number, breit: number, halten = false): void {
     if (this.zahn) {
       this.zahn.removeFromParent();
       this.zahn.geometry.dispose();
@@ -487,9 +516,10 @@ export class Linse {
     this.zahn = new Mesh(geo, this.material);
     // so groß, dass er die Linse füllt
     const k = 3.6 / Math.max(laenge + wurzel, 1.6);
-    this.lageZiel = { k, fussY: 0.5 - 0.5 * (laenge - wurzel) * k, oben: breit > 1e-9 ? Math.max(1, Math.min(3.4, (0.6 * 9.5 * TAN_FREI) / (breit * k))) : 1 };
-    // eingerastet bleibt er stehen, wie er steht (seine Linie liegt in Bildpunkten fest); frei gedreht füllt er die Linse
-    if (neu || !this.rast || !this.lage) {
+    // (von oben steht er größer; ohne Maß quer, während die Vorlage wechselt, bleibt eingerastet das von eben)
+    const oben = breit > 1e-9 ? Math.max(1, Math.min(3.4, (0.6 * 9.5 * TAN_FREI) / (breit * k))) : this.rast && this.lageZiel ? this.lageZiel.oben : 1;
+    this.lageZiel = { k, fussY: 0.5 - 0.5 * (laenge - wurzel) * k, oben };
+    if (neu || !this.rast || !this.lage || !halten) {
       this.lage = { ...this.lageZiel };
       this.lageNach = false;
     }

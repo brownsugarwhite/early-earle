@@ -103,6 +103,12 @@ function stapel(b: Bau, ringe: number, ort: (i: number, w: number) => [number, n
 
 const hoch = (x: number, n: number): number => Math.sign(x) * Math.pow(Math.abs(x), 2 / n);
 
+/** wie dick eine Zinke der Wurzel an der Stelle v ist (0 am Zahnfleisch, 1 an ihrer Spitze), 1 = so dick wie oben; `knolle`: bauchig */
+export function wurzelProfil(knolle: boolean, v: number): number {
+  const r = knolle ? Math.sqrt(Math.max(0, 1 - Math.pow(2 * v - 0.9, 2) * 0.83)) * (1 - 0.2 * v) : Math.pow(1 - v, 0.7) * (1 - 0.12 * Math.sin(Math.PI * v));
+  return Math.max(0.03, r);
+}
+
 /**
  * Die Wurzel für sich (der Teil unter dem Zahnfleisch): an `b` angehängt (oder ein neuer Bau). `hx`, `hz`: halbe Breite und Tiefe
  * der Krone, `L`: Länge der Wurzel. Die Linse hängt sie auch unter einen Zahn aus Linien (`ozzy/zahnGestalt.ts`).
@@ -115,8 +121,8 @@ export function wurzelBau(wurzel: Wurzel, hx: number, hz: number, L: number, b: 
       9,
       (i, w) => {
         const v = i / 8;
-        const r = knolle ? Math.sqrt(Math.max(0, 1 - Math.pow(2 * v - 0.9, 2) * 0.83)) * (1 - 0.2 * v) : Math.pow(1 - v, 0.7) * (1 - 0.12 * Math.sin(Math.PI * v));
-        return [cx * (1 + neig * v) + Math.cos(w) * rx * Math.max(0.03, r), -laenge * v, cz + Math.sin(w) * rz * Math.max(0.03, r)];
+        const r = wurzelProfil(knolle, v);
+        return [cx * (1 + neig * v) + Math.cos(w) * rx * r, -laenge * v, cz + Math.sin(w) * rz * r];
       },
       false,
       true,
