@@ -42,6 +42,7 @@ import { STAUB } from './staub';
 import { TINTE } from './tinte';
 import { TREX } from './trex';
 import { SCHLEIM } from './schleim';
+import { ACHAT, GRANIT, JADE, LAPIS, MALACHIT, MARMOR, OBSIDIAN, SANDSTEIN } from './steine';
 import { CHAMAELEON_HAUT, DRACHE_HAUT, ELEFANT, FROSCH_HAUT, KLAPPERSCHLANGE, KORALLENNATTER, KRAKE_HAUT, KROKODIL, SALAMANDER, SCHLANGE } from './haeute';
 import { TINTENFLECK } from './tintenfleck';
 import { TROPFEN } from './tropfen';
@@ -88,6 +89,15 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   DIAMANT,
   PAVE,
   DISKOKUGEL,
+  // Stein
+  MARMOR,
+  GRANIT,
+  SANDSTEIN,
+  OBSIDIAN,
+  JADE,
+  LAPIS,
+  MALACHIT,
+  ACHAT,
   // Tiermuster
   LEOPARD,
   TIGER,
