@@ -107,3 +107,62 @@ Bestehende Proben, die danach laufen müssen: `ozzy-maul-fenster`, `ozzy-maul-za
 - **Beide Seiten frei in der Pose** (Plan vom 12.11., Schritt 5, Etappe 4): Die Pose bleibt gespiegelt.
 - **Backen** fürs Spiel (Etappe 9).
 - Der Rechenkern (`packages/shape`) bleibt unberührt.
+
+## 6. Ergebnis (21.11.)
+
+Gebaut sind Scheibe 1 und Scheibe 2 (Commits `1aaa91ff`, `645acb6e`). Scheibe 3 (mehrere Posen) wartet auf sein Wort.
+Bild: [`docs/progress/ozzy/2026-11-21-maul-etappe8-posen.jpg`](../progress/ozzy/2026-11-21-maul-etappe8-posen.jpg).
+
+**Was er jetzt kann**
+
+- In „Fressen“ zieht er jeden Punkt und jede Richtung der Ober- und der Unterlippe für sich, auch wenn die Lippen in der
+  Grundform verbunden sind. Die Grundform behält dabei ihre Linien genau (0,000) und ihre zusammengeklappte Lippe.
+- Oben rechts stehen „Grundform“ und „Fressen“ als zwei Tropfen an einem Faden. Ein Tipp fährt hin (rund eine Drittelsekunde),
+  am Faden gezogen wandern Haut, Punkte, Griffe, Kiefer, Zähne und das getönte Papier mit dem Zeiger; losgelassen fährt es zum
+  näheren Tropfen. Ein Tipp auf „Fressen“ in der Pose führt wie bisher zurück.
+
+**Beim Bauen dazugekommen**
+
+- `form/zweiteLage.ts`: Neue Punkte des Netzes nehmen ihren Platz in die andere Lage mit (Abschnitt 3, Scheibe 1). Gegenprobe
+  mit der Regel von vorher: Nach dem großen Maul lag die gezeigte Haut der Grundform 2,9 bis 3,7 neben der von vorher (1,4 % der
+  Proben über 0,05), jetzt 0,6 (0,4 %).
+- Die Anzeige behält beim Betreten und Verlassen der Pose ihren Plan: das lange Bild beim Eintritt 48 statt 81 ms. Geprüft im
+  Bild: Pose und Grundform sind Bildpunkt für Bildpunkt gleich, ob der Plan bleibt oder neu angelegt wird.
+
+**Proben** (`ozzy-maul-posen-fenster.mjs`, an „teat firefish“, alle erfüllt)
+
+| Nr. | Gemessen |
+| --- | --- |
+| P1 | Punkt 2 der Unterlippe ging 21,9, sein Zwilling 0,000; ein Schritt, ⌘Z nimmt ihn genau |
+| P2 | Linien 0,000; Paare 0,050; zusammengeklappt; gezeigte Haut höchstens 0,27 neben vorher (0,06 % der Proben über 0,05) |
+| P3 | Linien der Pose 0,000 neben dem Stand beim Verlassen |
+| P4 | keine Linie hat einen Punkt mehr; Linien 0,000; gezeigte Haut höchstens 0,59 (0,4 %); in der freien Haut nichts umgeschlagen (zwischen Linien 6, siehe Liste 155) |
+| P5 | 23 Zähne; ein Lippenpunkt lässt sich bei geschlossener Linse greifen (17,5), der weiteste Zahnfuß geht 13,6 Bildpunkte mit |
+| P6 | P und ⌫ ändern nichts und melden es; „Lippen trennen“ hängt nicht |
+| P7 | gesichert und geladen: Pose an, Linien beider Lagen 0,000 |
+| P8 | Zug an der Lippe: Grundform 13,9 bis 16,9 ms, Pose 18,0 bis 21,8 ms je Bild (das Kriterium hält knapp; Liste 156) |
+| Q1 | auf und zu je 15 bis 17 Bilder unterwegs, größter Schritt 0,07 bis 0,12 |
+| Q2 | am Faden: Anteil 0,500, Maul 21,0° von 42,0°; ein gezogener Punkt fern vom Maul steht 0,0 % neben der Mitte; bei 0,3 losgelassen Grundform, bei 0,72 Pose |
+| Q3 | Grundform nach allem Wandern bitgleich; kein Schritt mehr |
+| Q4 | unterwegs im Mittel 9,4 bis 12,0 ms je Bild; das Bild des Eintritts 24 bis 45 ms |
+
+Dazu laufen weiter: die neun Proben am Maul (`ozzy-maul-fenster`, `-pose-`, `-sichern-`, `-zaehne-`, `-zunge-`, `-farbe-`,
+`-lippe-`, `-material-`, `-zahnform-`: 120 Kriterien), `ozzy-zurueck-haut-`, `-bearbeiten-`, `-p-schnitt-`, `-zeiger-`, `-zuege-`,
+`-felder-fenster` und 123 Tests (`src/form/`, `src/ozzy/`). `ozzy-farbe-fenster` hält zwei Kriterien nicht, mit und ohne die
+Änderungen dieser Etappe gleich (Liste 166).
+
+**Was an den Kriterien berichtigt wurde**
+
+- P2 und P4: „Haut höchstens 0,05“ ist durch das Maß an der gezeigten Haut ersetzt (oben in der Tabelle begründet).
+- Q2: Der Punkt, der „in der Mitte seiner zwei Lagen“ stehen soll, ist einer fern vom Maul. Ein Punkt der Lippe dreht mit dem
+  Kiefer; er steht beim halben Winkel, nicht in der Mitte der Geraden.
+- Q4 wertet die Bilder unterwegs; das Bild des Eintritts in die Pose steht für sich daneben.
+
+**Was nicht gezeigt ist**
+
+Ob ein kleines Maul damit „groß und rund“ wird. Meine Züge in Probe und Bild sind grob (einzelne Punkte 20 bis 40 Bildpunkte),
+und was dem Bild am meisten im Weg steht, sind die Kiefer aus Etappe 2 (Liste 20 bis 22): Der Unterkiefer klappt als dünner
+Lappen ab, und am Ende seiner Reichweite steht in der Seite eine Stufe. Das entscheidet sein Versuch an seiner Form.
+
+**Offen:** Liste, Punkte 153 bis 166.
+

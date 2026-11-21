@@ -563,7 +563,10 @@ echten Tasche die schmale Rundung des Verbunds, nicht die weiche Linie.
 | 7 bis 9 | ein Zahn als kleine Form; Posen; Backen | |
 
 Stand 21.11.: Etappe 7 („ein Zahn als kleine Form“) ist gebaut, Plan und Ergebnis in
-[`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md).
+[`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md). Etappe 8 („Posen“) ist in
+zwei Scheiben gebaut (in „Fressen“ ist jede Lippe frei, die Grundform bleibt; Grundform und Fressen als Tropfen an einem Faden,
+dazwischen wandert die Form), Plan und Ergebnis in
+[`2026-11-21-ozzy-maul-etappe-8-posen.md`](2026-11-21-ozzy-maul-etappe-8-posen.md); mehrere Posen warten auf sein Wort.
 
 Nach P1 (12.6): In Etappe 1 gehört der Schnitt ohne Spalt, in Etappe 2 ist „zu“ keine Stellung der Knochen mehr, sondern die Ruhe
 der Form.

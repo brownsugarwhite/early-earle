@@ -13,8 +13,11 @@ Scheiben (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und F
 liegen und klebt, wo sie abgelegt wird). Danach der Feinschlifflauf, Block A bis C (geprüft, schneller, kleine Bedienung) und
 am 21.11. Block D (die Lippe als seine Linie: ihre Punkte sind seine Anker, seine Farben, Anfang am Umriss; unten „Der
 Feinschlifflauf“), danach Punkt 130 behoben (die Zahnfleischlinie behält ihren Weg), dann Etappe 7 (ein Zahn als kleine Form:
-Der Zahn in der Linse trägt drei Linien und lässt sich eingerastet an ihnen formen; unten „Etappe 7“). Als Nächstes, auf
-Florians Wort: ob die Linie im Maul der Lippe folgt (Liste, 131), Posen, Backen oder der Rechenkern.**
+Der Zahn in der Linse trägt drei Linien und lässt sich eingerastet an ihnen formen; unten „Etappe 7“), dann Etappe 8 in zwei
+Scheiben (Posen: in „Fressen“ ist jede Lippe frei, die Grundform bleibt; „Grundform“ und „Fressen“ als Tropfen an einem Faden,
+dazwischen wandert die Form; unten „Etappe 8“). Als Nächstes, auf Florians Wort: mehrere Posen (Scheibe 3), die Kiefer (Liste,
+20 bis 22: Lappen und Stufe stehen dem runden Maul im Weg), ob die Linie im Maul der Lippe folgt (131), Backen oder der
+Rechenkern (153: ein Netz für alle Lagen).**
 Offenes steht
 nummeriert in
 [`docs/plans/2026-11-20-ozzy-maul-was-bleibt.md`](../../../plans/2026-11-20-ozzy-maul-was-bleibt.md): Florian will am Ende einen
@@ -481,6 +484,40 @@ Bild: `docs/progress/ozzy/2026-11-21-maul-etappe7-zahn-als-form.jpg`. Offenes: L
   nicht Ozzy (gemessen wird die Rechenzeit: Haken `messen`, für die Linse `zahnform().ms`). Esc ohne Auswahl schließt die Linse.
   `zahnform().formt` gilt erst, wenn das Netz der Ansicht steht (vorher las die Probe nach einem Wechsel die Punkte der alten).
 
+## Etappe 8 in Ozzy: Posen (21.11.)
+
+Plan und Ergebnis: [`docs/plans/2026-11-21-ozzy-maul-etappe-8-posen.md`](../../../plans/2026-11-21-ozzy-maul-etappe-8-posen.md).
+Bild: `docs/progress/ozzy/2026-11-21-maul-etappe8-posen.jpg`. Offenes: Liste, 153 bis 166.
+
+- **Was er kann:** In „Fressen“ zieht er die Punkte von Ober- und Unterlippe einzeln, auch wenn die Lippen in der Grundform
+  verbunden sind; die Grundform behält ihre Linien. In der Tafel oben rechts stehen „Grundform“ und „Fressen“ als zwei Tropfen an
+  einem Faden: Tippen fährt hin, am Faden ziehen lässt die Form von der einen Lage in die andere wandern.
+- **Scheibe 1 (`form/werk.ts`):** `poseBetreten` nimmt der Kopie der Lippe ihr `maulLinie` (die Pose rechnet wie nach „Lippen
+  trennen“), `grundLoopsAus` gibt es der Grundform zurück, `lippenGetrennt` fragt in der Pose die Grundform, `kreuzungenSuchen`
+  tut in der Pose nichts (am Maul aus der schmalen Form wie bisher), beim Laden einer in der Pose gesicherten Form ebenso.
+- **Neue Punkte des Netzes (`form/zweiteLage.ts`, Tests `zweiteLage.test.ts`):** `netzGewachsen(nAlt, alt, vorher, davor)`
+  bekommt Haut und Linien von vor dem Wechsel. `neuePunkteLegen`: Jeder neue Punkt sucht in der Lage, in der das Netz wuchs,
+  seinen Platz auf dem alten Netz (nächstes Dreieck um seine alten Nachbarn, auf seiner Seite der Haut; `altMitgegangen`
+  führt das alte Netz mit, wenn der Wechsel die Haut auch bewegt hat) und liegt in der anderen Lage an derselben Stelle auf
+  dem gewölbten Dreieck (wie `verdichten` einen Punkt rund legt; an harten Punkten zählt die Fläche selbst). Haben die drei
+  Ecken denselben Versatz, teilt er ihn genau. In beide Richtungen (Pose → Grundform und, mit `pose.delta`, Grundform → Pose).
+  Ohne `davor` (zwei Aufrufer ohne Pose) gilt die Regel von vorher (`ergaenzen`).
+- **Scheibe 2, das Werk:** `poseAnteil` (0 … 1, nur Anzeige), `poseAnteilSetzen`, `poseWandert`. `alsAnzeige` dreht unter 1
+  die gemischte Ruhe (`ruheGemischt`: Haut, Punkte, Griffe, Proben; das Scharnier, wo es dann liegt), `knochenJetzt`,
+  `maulOffenGrad` und `kieferKnochen().gezeigt` zählen den Anteil; `zugStarten` und `griffZugStarten` greifen unterwegs nicht;
+  `poseVerlassen` und `wiederherstellen` stellen den Anteil auf 1.
+- **Scheibe 2, Ozzy (`main.ts`, „Die Posen als Tropfen in einer Reihe“; `ozzy.html` `#posen`, `ozzy.css` `.posen…`):**
+  `poseFahren(0 | 1)`, `poseOeffnen`, `poseFahrtSchritt` (je Bild, zählt höchstens 40 ms je Bild und beginnt mit dem ersten
+  Bild), Zeiger am Faden (`poseHand`). `#fressen-knopf` behält seine Kennung und schaltet in der Pose zurück. Der Haken `pose()`
+  meldet `anteil`, `faehrt`, `offen`; `werkRoh(true)` gibt in der Pose die Haut der Grundform.
+- **Die Anzeige behält ihren Plan** (`geometrieNeu` in `main.ts`, `kettenZahl`; `teilungNeu` lässt gleiche Felder stehen;
+  `kennJetzt` ohne „Pose oder Grundform“): beim Betreten und Verlassen der Pose kein neues Netz der Anzeige.
+- **Probe:** `ozzy-maul-posen-fenster.mjs` (P1 bis P8, Q1 bis Q4; `BIS=P3|P4|P6|P8`, `NUR=Q`). Sie sichert unter
+  `ozzy-probe-posen` und räumt die Datei weg.
+- **Fallen der Probe:** Esc nur mit Auswahl (`abwaehlen`); die Ansicht nach Werkzeugschritten prüfen (`ansicht()`: Die Probe
+  lief einmal unbemerkt im Raum weiter). Zähne über den Haken `zaehne('anfang')` einschalten (der Tropfen öffnet die Linse).
+  Die Haut zweier Stände an der gezeigten Haut vergleichen (`hautStand(true)`, `hautAbstand`), nicht am Rechennetz.
+
 ## Die Studie in einem Absatz
 
 Sie lädt eine gesicherte Form (`/__wesen/<Name>`: Haut des Rechennetzes und Linien), verfeinert sie ein- oder zweimal (Loop) und
@@ -592,3 +629,10 @@ Etappe 7 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest run src/form
 `ozzy-maul-zunge-fenster`, `ozzy-maul-fenster`, `ozzy-bearbeiten-fenster` und `ozzy-zeiger-fenster` (alle erfüllt). Nicht
 gelaufen: die Proben des Paint-Modus und `ozzy-alle.mjs`. Angesehen von Nahem: die Linse frei, von vorn, von der Seite, von
 oben, Säbel und Backe, Zeiger mit A und P; Haken und Zacken in der Linse und im Maul. Nicht angesehen: iPad.
+
+Etappe 8 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest run src/form/ src/ozzy/` (123 Tests), im Fenster
+`ozzy-maul-posen-fenster.mjs` (P1 bis P8, Q1 bis Q4 erfüllt), die neun Proben am Maul (alle erfüllt), dazu
+`ozzy-zurueck-haut-`, `-bearbeiten-`, `-p-schnitt-`, `-zeiger-`, `-zuege-` und `-felder-fenster` (erfüllt). `ozzy-farbe-fenster`
+hält zwei Kriterien nicht, mit und ohne die Änderungen der Etappe gleich (Liste 166). Gegenproben mit Flicken: die Regel von
+vorher für neue Punkte (P4 fällt), der Plan der Anzeige neu angelegt (Bilder gleich). Angesehen: Grundform und Pose auf Wachs
+von Nahem, die Tafel in drei Ständen. Nicht angesehen: iPad; das Maul „groß und rund“ ist nicht gezeigt (Liste 154).

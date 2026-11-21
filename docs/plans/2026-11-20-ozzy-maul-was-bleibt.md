@@ -83,6 +83,14 @@ eigene Form steht als neuntes Zeichen am Formenring und bleibt stehen, wenn eine
 Plan und Ergebnis: [`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md), Bild
 `docs/progress/ozzy/2026-11-21-maul-etappe7-zahn-als-form.jpg`. Neu: 138 bis 152.
 
+**Etappe 8 (21.11.), „Posen“, zwei Scheiben:** In „Fressen“ ziehst du jeden Punkt der Ober- und der Unterlippe für sich, auch
+wenn die Lippen in der Grundform verbunden sind; die Grundform behält ihre Linien genau. In der Pose entstehen keine Punkte,
+auch keine Kreuzungen von selbst. Oben rechts stehen „Grundform“ und „Fressen“ als zwei Tropfen an einem Faden: Ein Tipp fährt
+hin, am Faden gezogen wandern Haut, Punkte, Griffe, Kiefer und Zähne von der einen Lage in die andere, losgelassen fährt es zum
+näheren Tropfen. Wächst das Netz in einer Lage, liegen seine neuen Punkte in der anderen auf deren runder Fläche. Plan und
+Ergebnis: [`2026-11-21-ozzy-maul-etappe-8-posen.md`](2026-11-21-ozzy-maul-etappe-8-posen.md), Bild
+`docs/progress/ozzy/2026-11-21-maul-etappe8-posen.jpg`. Neu: 153 bis 166.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -116,7 +124,8 @@ Plan und Ergebnis: [`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21
 10. ~~„Lippen trennen“ (Etappe 3)~~ gebaut; was daran offen ist, steht unter „An den Lippen“.
 11. ~~Die Ebene „Maul“ (Etappe 4)~~ gebaut; was daran offen ist, steht unter „An der Ebene Maul“. Die Zähne (5) gibt es in
     einer ersten Scheibe (siehe „An den Zähnen“). Die Zunge (6) gibt es in zwei Scheiben (siehe „An der Zunge“). Der Zahn als
-    kleine Form (7) ist gebaut (siehe „An der Zahnform“). Es fehlen Posen und Backen.
+    kleine Form (7) ist gebaut (siehe „An der Zahnform“). Die Posen (8) gibt es in zwei Scheiben (siehe „An den Posen“). Es
+    fehlen mehrere Posen und Backen.
 
 ### Nicht geprüft
 
@@ -138,8 +147,8 @@ Plan und Ergebnis: [`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21
     der Auslauf bis zum 3,4-Fachen der Reichweite, hinter dem Mundwinkel beginnt er schon 55° vor der Geraden nach hinten). Ob das
     so aussehen soll oder der Kiefer lieber enger bleibt und die Pose den Rest formt, zeigt sich an deinen Formen.
 22. **Hinter dem Mundwinkel wird die Haut nur gestaucht** (bis auf 30 %); eine Backe, die sich wölbt, gibt es nicht.
-23. **Die Tafel „Fressen“ mit ihren zwei Reglern** steht noch neben den Tropfen (dieselben zwei Winkel). Die Posen als Tropfen in
-    einer Reihe (Grundform, Fressen, Plus) fehlen.
+23. **Die Tafel „Fressen“ mit ihren zwei Reglern** steht noch neben den Tropfen (dieselben zwei Winkel). ~~Die Posen als Tropfen
+    in einer Reihe fehlen~~: Seit Etappe 8 stehen Grundform und Fressen als Tropfen über den Reglern; „Plus“ fehlt (162).
 24. **Von oben liegen die zwei Tropfen übereinander** (dann zählt der Weg des Zeigers nach oben und unten); in den Vier Ansichten
     gibt es sie nicht; mit P, Freihand und im Paint-Modus sind sie aus.
 25. **Innen ist das Maul Wachs wie außen;** die Haarlinien der Knochen liegen über der Form (sie laufen in der Mitte des Kopfs).
@@ -455,6 +464,48 @@ Plan und Ergebnis: [`2026-11-21-ozzy-maul-etappe-7-zahn-als-form.md`](2026-11-21
 152. **Nicht geprüft:** iPad und Stift (der gezeichnete Zeiger in der Linse bleibt nach dem Loslassen des Fingers wohl
      stehen); die zweite Form; Zähne außen mit eigener Form; die Pose „Fressen“ mit eigener Form (gesehen nur das offene Maul
      bei offener Linse); ein Zahn mit sehr vielen Punkten.
+
+### An den Posen (Etappe 8, 21.11.)
+
+153. **Die Grundform ändert sich in der Pose um die Feinheit des Netzes.** Ihre Linien bleiben genau (0,000). Ihre gezeigte
+     Haut lag nach einem Zug an der Lippe höchstens 0,27, nach dem großen Maul 0,59 Einheiten neben der von vorher (an 0,06 und
+     0,4 % der Proben mehr als 0,05; auf Wachs von Nahem ist nichts zu sehen). Das Netz ist beiden Lagen gemeinsam und richtet
+     sich nach der, in der gearbeitet wird: Legt es in der Pose Punkte zusammen, fehlen sie auch der Grundform. Mit mehreren
+     Posen müsste das Verdichten alle Lagen sehen (teilen, wo eine es braucht; zusammenlegen nur, wo es allen recht ist). Das
+     ist der Kern: nur auf dein Wort.
+154. **Ob ein Maul damit „groß und rund“ wird, ist nicht gezeigt.** Meine Züge in Probe und Bild sind grob (einzelne Punkte
+     der Lippe 20 bis 40 Bildpunkte). Punkte, die beim Zeichnen der Maullinie nur geklickt wurden, sind Ecken: Einzeln weit
+     gezogen wird die Lippe zackig; gezogen gesetzte geben Bögen. Am meisten im Weg stehen die Kiefer (20 bis 22): Der
+     Unterkiefer klappt als dünner Lappen ab, und am Ende seiner Reichweite steht in der Seite eine Stufe.
+155. **Dreiecke zwischen Linien zählen nach der Arbeit in der Pose als umgeschlagen:** an „teat firefish“ nach dem großen Maul
+     sechs (alle Ecken auf Linien: am Mundwinkel zwischen Lippe, Mitte und Rachenlinie, und drei Punkte derselben Linie als ein
+     Dreieck; Flächen 0,002 bis 0,19 der mittleren). Mit der Regel von vorher genauso; in der freien Haut keines; zu sehen ist
+     davon nichts.
+156. **Ein Zug an der Lippe rechnet in der Pose länger als in der Grundform:** 18,0 bis 21,8 ms je Bild gegen 13,9 bis 16,9
+     (Seite, nah, 11 700 Punkte). In der Pose dreht die Anzeige je Bild mehrmals die ganze Haut und alle Linien, und die Winkel
+     der Kiefer werden bei jedem Aufruf neu gerechnet.
+157. **Die Fahrt im Raum mit drei Wänden** rechnet 21 bis 26 ms je Bild (in der Seite 10): Die Linien stehen dort dreimal
+     und werden je Bild neu abgetastet (10 ms), dazu die Tiefenkarten der Wände (4 ms). Ein Zug im Raum kostet dasselbe.
+158. **Der Eintritt in die Pose kostet ein langes Bild** (24 bis 64 ms, davor rund 90 ms ohne Bild); erst danach beginnt die
+     Fahrt. Die Anzeige behält jetzt ihren Plan (81 → 48 ms an derselben Messung). Der Rest: der Wechsel ihrer Stufen (23 ms auf
+     der Grafikkarte) und was an der Haut als Ding hängt (Maulschnitt, Bemalung).
+159. **Mit offener Linse gehen die Zähne den Punkten der Lippe vor** (so gebaut in Etappe 5). In „Fressen“ stehen die Zähne
+     auf der Lippe: Bei offener Linse greifst du dort keinen Lippenpunkt. Ist die Linse zu, gehen Punkte und Linien vor.
+160. **Unterwegs** (am Faden gehalten) wird nichts gezogen, die Tropfen der Kiefer und die zwei Regler ruhen. Zähne und Zunge
+     sind dabei nicht gesperrt (nicht geprüft). Tasten für die Fahrt gibt es nicht.
+161. **Ein Tipp auf „Fressen“ in der Pose führt zurück in die Grundform** (wie der Knopf bisher). Mit mehreren Posen müsste
+     er die Pose nur wählen.
+162. **Mehrere Posen („Plus“), Zähne und Zunge je Pose** fehlen (Scheibe 3, auf dein Wort). Die Pose bleibt gespiegelt.
+163. **Die Gegenrichtung** (das Netz wächst in der Grundform, die neuen Punkte der Pose liegen auf deren Fläche) ist gebaut
+     und an einem Fall gezählt (14 neue Punkte, bis 2,6 anders als mit der Regel von vorher). Im Bild verglichen ist nur die
+     Richtung von der Pose zur Grundform.
+164. **Am Maul aus der schmalen Form** (vor dem 14.11.) gibt es keine Fahrt: Dort schaltet der Tropfen wie bisher um.
+165. **Nicht geprüft:** iPad und Stift am Faden; die Fahrt mit Zunge, im Paint-Modus, in den Vier Ansichten; eine zweite Form;
+     „maul handgemacht test“ (dort läuft nur die Probe von vorher, `ozzy-maul-pose-fenster`).
+166. **`ozzy-farbe-fenster` hält zwei Kriterien nicht** (2: fern vom Zug bewegt sich die Bemalung 3,08, die Haut dort 2,91;
+     nach dem Zug zurück liegt die ferne Farblinie 0,35 neben vorher; 4: beim Drehen fällt ein Bild aus). Mit und ohne die
+     Änderungen von Etappe 8 gleich (Gegenprobe mit Flicken); seit wann, ist nicht geprüft (die Proben des Paint-Modus liefen
+     seit dem 20.11. nicht mehr).
 
 ### Kleines
 

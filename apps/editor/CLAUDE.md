@@ -855,6 +855,26 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Bildabstände beim Ziehen messen die Probe, nicht Ozzy. Tempo misst man an der Rechenzeit je Bild (`messen`; die Linse:
   `zahnform().ms`). (84) `werk.alsAnzeige` dreht jedes Mal die ganze Haut und alle Linien: Wer nur die Lagen braucht und weiß,
   dass Haut und Knochen stehen, merkt sie (`zaehneLagen`, 2 ms je Bild). Probe: `ozzy-maul-zahnform-fenster.mjs` (G1 bis G12).
+  **Etappe 8: Posen (21.11.; `docs/plans/2026-11-21-ozzy-maul-etappe-8-posen.md`):** `form/zweiteLage.ts`, `werk.poseAnteil`,
+  in `main.ts` „Die Posen als Tropfen in einer Reihe“. Merke: (85) In der Pose ist die Kopie der Lippe die getrennte Lippe;
+  ob die Lippen verbunden sind, weiß die Grundform (`grundLoopsAus`, `lippenGetrennt`). In der Pose sucht das Werk keine
+  Kreuzungen. (86) Ein Wert je Punkt, der für neue Punkte des Netzes aus den Nachbarn gemittelt wird, stimmt nur, wo er sich
+  kaum ändert (am weit geöffneten Maul lag er bis 11,6 daneben): Neue Punkte nehmen ihren Platz im alten Dreieck mit und liegen
+  in der anderen Lage auf deren gewölbter Fläche. Wer `netzGewachsen` ruft, gibt Haut und Linien von vorher mit (`davor`).
+  (87) Ob zwei Lagen an einer Stelle deckungsgleich sind, prüft man am Dreieck des Platzes, nie an den Nachbarn, die gerade
+  fertig sind (mit einem einzigen war die Streuung null, der Punkt lag 20 daneben). (88) „Die Haut ist dieselbe“ misst man an
+  der gezeigten Haut (`hautStand(true)`, `hautAbstand`): Das Rechennetz löst sie nur auf 1/16 Startkante auf, neue Punkte liegen
+  rund, und in der Pose legt es Punkte zusammen, die der Grundform fehlen (Liste 153). (89) `alsAnzeige` mischt unter
+  `poseAnteil` 1 Grundform und Pose; wer einen Schlüssel an den Winkeln der Pose festmacht, nimmt den Anteil dazu
+  (`werkBlatt.signatur`, die Zunge; `kieferKnochen().gezeigt` trägt ihn). (90) Die Anzeige behält ihren Plan, wenn
+  `geometrieNeu` dasselbe Netz mit denselben Ketten meldet (`teilungNeu` lässt gleiche Felder stehen, `kettenZahl` in
+  `main.ts`): Wer `werkHaut.anlegen` etwas Neues lesen lässt, trägt es in `kennJetzt` oder `kettenZahl` ein. (91) Eine Fahrt
+  zählt ihre Zeit je Bild (höchstens 40 ms) und beginnt mit dem ersten Bild; nach der Uhr gerechnet übersprang sie ein langes
+  Bild ganz. (92) Ein Ort in Prozent an einem Element, das je Bild wandert, ließ die Seite je Bild neu anordnen (28 ms in
+  einer Fahrt): als `transform` verschieben, Attribute nur bei Wechsel setzen. (93) Proben: Esc nur mit Auswahl; nach
+  Schritten mit Werkzeugen die Ansicht prüfen (`bearbeiten().flaechen`: Die Probe lief unbemerkt im Raum weiter, zwei Kriterien
+  bestanden dort zufällig). (94) Eine Gegenprobe mit einem Flicken, der die neue Regel abschaltet, zeigt, ob ein Kriterium
+  überhaupt unterscheidet. Probe: `ozzy-maul-posen-fenster.mjs` (P1 bis P8, Q1 bis Q4; `BIS=`, `NUR=Q`).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`
