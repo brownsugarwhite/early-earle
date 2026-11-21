@@ -49,6 +49,13 @@ Grundform), gerechnet wird in ihrer Ruhe, die Knochen drehen nur die Anzeige. Am
   Punkten. Kreuzen sich dort zwei Linien, liegt die Haut dort übereinander; das sieht er und zieht zurück.
 - **Was „getrennt“ heißt, liest die Grundform:** `lippenGetrennt` fragt in der Pose die Linie der Grundform; der Tropfen „Lippen
   trennen“ hängt in der Pose nicht.
+- **Neue Punkte des Netzes nehmen ihren Platz in die andere Lage mit** (beim Bauen dazugekommen, `form/zweiteLage.ts`): Pose und
+  Grundform teilen ihr Netz. Wuchs es in der Pose, bekam ein neuer Punkt in der Grundform bisher den Ort der Pose minus den
+  gemittelten Versatz seiner Nachbarn. An den Lippen eines weit geöffneten Mauls ändert sich der Versatz von Punkt zu Punkt
+  stark: Gemessen lagen neue Punkte nach dem großen Maul bis 11,6 neben ihrer Stelle, die gezeigte Haut der Grundform bis 3,7
+  neben der von vorher. Jetzt nimmt ein neuer Punkt seinen Platz im alten Dreieck mit und liegt in der anderen Lage auf deren
+  runder Fläche (so genau, wie das Verdichten selbst seine Punkte legt); wo beide Lagen deckungsgleich sind, teilt er den Versatz
+  genau. Dasselbe gilt in der Gegenrichtung (das Netz wächst in der Grundform, die Pose bleibt).
 - An der Rechnung (Löser, Kern) ändert sich nichts.
 
 ### Scheibe 2: Zwischen Grundform und „Fressen“ ziehen (`form/werk.ts`, `ozzy/main.ts`, `ozzy.html`, `ozzy.css`)
@@ -76,7 +83,7 @@ Neue Fensterprobe `ozzy-maul-posen-fenster.mjs` an „teat firefish“ (Maul ges
 | Nr. | Was | Kriterium |
 | --- | --- | --- |
 | P1 | In „Fressen“ einen inneren Punkt der Unterlippe 20 Bildpunkte nach unten ziehen | er geht (keine Meldung), sein Zwilling an der Oberlippe bleibt (höchstens 0,05); das Werk kommt zur Ruhe; ein Schritt, ⌘Z nimmt ihn |
-| P2 | „Fressen“ aus | die Linien der Grundform höchstens 0,01 bewegt, ihre Lippen liegen aufeinander (höchstens der Haarspalt, 0,06), die Lippe ist wieder zusammengeklappt; die Haut höchstens 0,05 neben der von vorher (gemessen als Abstand zur Fläche, das Netz darf Punkte bekommen haben) |
+| P2 | „Fressen“ aus | die Linien der Grundform höchstens 0,01 bewegt, ihre Lippen liegen aufeinander (höchstens der Haarspalt, 0,06), die Lippe ist wieder zusammengeklappt; die gezeigte Haut höchstens 1 neben der von vorher und an höchstens 1 % ihrer Proben mehr als 0,05; in der freien Haut kein Dreieck mehr umgeschlagen. **Berichtigt am 21.11.:** Zuerst stand hier „die Haut höchstens 0,05 neben der von vorher“. Das hält kein gemeinsames Netz: Es richtet sich nach der Lage, in der gearbeitet wird; legt es in der Pose Punkte zusammen, fehlen sie auch der Grundform, und ihre Fläche weicht dort um die Feinheit ab, die das Netz ohnehin hat (ein Sechzehntel der Startkante, rund 0,9). Gemessen wird darum an dem, was er sieht |
 | P3 | „Fressen“ wieder an | die Linien der Pose wie verlassen (höchstens 0,01) |
 | P4 | Das große Maul: alle inneren Punkte der Unterlippe 40 nach unten, der Oberlippe 30 nach oben (dabei kreuzen sich Linien) | keine Linie hat einen Punkt mehr; nach „Fressen“ aus gilt P2 |
 | P5 | Zähne an, in der Pose | ihr Netz ist endlich; ein Zahn am gezogenen Punkt steht woanders als vorher |

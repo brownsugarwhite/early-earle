@@ -53,6 +53,7 @@ import {
   einfluss,
   ergaenzen,
   festlegen,
+  hartePunkte,
   formAusZeichnung,
   griffeAbbilden,
   griffeAnlegen,
@@ -141,6 +142,7 @@ import {
 import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMit } from './naht';
 import type { ZahnGestalt } from '../ozzy/zahnGestalt';
 import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, type MaulStueck, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
+import { altMitgegangen, neuePunkteLegen } from './zweiteLage';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -1008,7 +1010,9 @@ export function maulLippe(): Loop | null {
 /** Die Lippen des Mauls sind getrennt: Jede hat ihre eigenen Punkte (null: kein Maul als echte Form) */
 export function lippenGetrennt(): boolean | null {
   const l = maulLippe();
-  return l ? !istMaulLinie(l) : null;
+  // (in der Pose ist die Lippe immer frei: Gefragt ist die der Grundform)
+  const g = l && grund ? grund.loops.find((x) => x.id === l.id) : l;
+  return g ? !istMaulLinie(g) : null;
 }
 
 /**
@@ -1212,6 +1216,10 @@ function ueberDasMaul(A: Loop, B: Loop, ort: V3): boolean {
  * einen, die Mitte; sonst kreuzten sich die zwei Pfade nicht genau, und die Haut an der Kreuzung hätte zwei Ziele).
  */
 export function kreuzungenSuchen(nur?: Loop): number {
+  // Etappe 8 (21.11.): In der Pose (am geformten Maul) entstehen keine Punkte, auch keine Kreuzungen von selbst. Sie ist dieselbe
+  // Form in einer anderen Lage: Kreuzen sich dort zwei Linien, die es in der Grundform nicht tun, bekäme die Grundform beim
+  // Verlassen einen Punkt an zwei Orten (gemessen an „teat firefish“: Ihre Lippen standen danach bis 20,6 auseinander).
+  if (grund && !altePose()) return 0;
   let zahl = 0;
   for (let i = 0; i < loops.length; i++) {
     for (let j = i + 1; j < loops.length; j++) {
@@ -1556,6 +1564,10 @@ export function poseBetreten(): boolean {
   const abgelesen = new Set<Loop>();
   loops = g.loops.map((x) => {
     const c = kopieLoop(x);
+    // Etappe 8 (21.11.): In der Pose ist jede Lippe frei (das Maul steht dort offen, oben und unten sind zwei Orte). Die Kopie der
+    // Lippe ist darum die getrennte Lippe, wie nach „Lippen trennen“; ob die Lippen in der Grundform verbunden sind, weiß die
+    // Grundform (`grundLoopsAus` gibt es ihr beim Verlassen zurück)
+    if (!alt && G.maul?.echt && x.id === G.maul.id) delete c.maulLinie;
     if (alt) {
       festlegen(haut, c);
       // die Griffe der Linien der Pose (ohne neue Ecken: was in der Pose knickt, gehört der Pose)
@@ -1822,9 +1834,12 @@ export function alsAnzeige<T>(f: () => T): T {
 export function grundLoopsAus(h: Haut, alt: readonly Loop[]): Loop[] {
   return loops.map((l) => {
     const c = kopieLoop(l);
+    const vorher = alt.find((x) => x.id === c.id);
+    // (die Lippe ist in der Pose frei; ob sie in der Grundform zusammengeklappt ist, sagt die Grundform)
+    if (vorher?.maulLinie !== undefined) c.maulLinie = vorher.maulLinie;
+    else if (vorher) delete c.maulLinie;
     festlegen(h, c);
     if (!hatGriffe(c)) return c;
-    const vorher = alt.find((x) => x.id === c.id);
     const eps = 1e-6 * Math.max(1, c.laenge);
     const neu = new Set<number>();
     c.punkte.forEach((p, i) => {
@@ -1915,10 +1930,12 @@ export const nurGewachsen = (n: number, nAlt: number): Int32Array => Int32Array.
 /**
  * Das Netz hat sich geändert (verdichtet, zu kurze Kanten zusammengelegt, Loop eingesetzt). `alt`: je neuer Punkt seine Nummer im
  * alten Netz (−1: neu); die gebliebenen alten stehen vorn in ihrer Reihenfolge. In der Pose bekommt die Grundform dieselben Punkte —
- * die alten bleiben, wo sie sind, die neuen liegen dort, wo sie in der Pose liegen, zurückgedreht und um den Blendshape ihrer
- * Nachbarn verschoben. In der Grundform bekommt der Blendshape Werte für die neuen Punkte. `vorher`: Knochen vor der Änderung.
+ * die alten bleiben, wo sie sind, die neuen liegen auf der runden Fläche der Grundform von vorher (am Maul aus der schmalen Form wie
+ * bis zum 21.11.: wo sie in der Pose liegen, um den Blendshape ihrer Nachbarn verschoben). In der Grundform bekommt der Blendshape
+ * Werte für die neuen Punkte; mit `davor` (Haut und Linien vor der Änderung) liegen die neuen Punkte dabei auf der runden Fläche der
+ * Pose von vorher. `vorher`: Knochen vor der Änderung.
  */
-export function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Array; G: V2 } | null): void {
+export function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Array; G: V2 } | null, davor: { haut: Haut; loops: readonly Loop[] } | null = null): void {
   let m = 0;
   while (m < alt.length && alt[m]! >= 0) m++;
   /** Werte je alter Punkt (k je Punkt) in der neuen Reihenfolge der gebliebenen */
@@ -1936,11 +1953,36 @@ export function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Fl
     for (let i = 0; i < dAlt.length; i++) dAlt[i] = ruhe[i]! - dAlt[i]!;
     const d = ergaenzen(haut, dAlt, m, 3, true);
     const basis = Float64Array.from(ruhe, (x, i) => x - d[i]!);
+    // (die gebliebenen Punkte genau, wo sie waren)
+    for (let i = 0; i < m; i++) for (let c = 0; c < 3; c++) basis[3 * i + c] = g.haut.pos[3 * alt[i]! + c]!;
+    // Etappe 8 (21.11.): Ein neuer Punkt nimmt seinen Platz im alten Dreieck aus der Pose mit und liegt in der Grundform auf deren
+    // runder Fläche von vorher (`zweiteLage.ts`). Der Ort der Pose minus der gemittelte Versatz der Nachbarn bleibt nur, wo beide
+    // Lagen deckungsgleich sind (dort stimmt er genau). Wo sich der Versatz von Punkt zu Punkt stark ändert (an den Lippen eines
+    // Mauls, das in der Pose weit offen geformt ist), lag er bis 5 längs und 1,5 quer neben der Grundform: Sie bekam Dellen, obwohl
+    // in ihr niemand etwas angefasst hatte.
+    if (davor && haut.n > m && g.haut.n === nAlt && davor.haut.n === nAlt && !altePose()) {
+      neuePunkteLegen({ alt: g.haut, altVon: altMitgegangen(davor.haut, ruhe, alt), altNach: g.haut.pos, neu: haut, altNr: alt, hart: hartePunkte(g.haut, g.loops) }, basis);
+      for (let i = 3 * m; i < d.length; i++) d[i] = ruhe[i]! - basis[i]!;
+    }
     const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
     grund = { haut: gh, loops: grundLoopsAus(gh, g.loops) };
     pose.delta = d;
     grundAufPfad(m);
-  } else if (pose.delta && pose.delta.length === 3 * nAlt) pose.delta = ergaenzen(haut, umordnen(pose.delta, 3), m, 3, true);
+  } else if (pose.delta && pose.delta.length === 3 * nAlt) {
+    const dAlt = pose.delta;
+    const d = ergaenzen(haut, umordnen(dAlt, 3), m, 3, true);
+    // Etappe 8 (21.11.), dasselbe in der anderen Richtung: Wächst das Netz in der Grundform, liegen die neuen Punkte in der Pose auf
+    // deren runder Fläche von vorher (wo der Blendshape sich von Punkt zu Punkt ändert; sonst teilen sie den ihrer Nachbarn genau).
+    // Die Fläche der Pose von vorher geht dabei mit, wo sich die Grundform bei dieser Änderung bewegt hat (gesetzt).
+    const a = davor?.haut;
+    if (a && haut.n > m && a.n === nAlt && maulIstGeformt()) {
+      const altVon = altMitgegangen(a, haut.pos, alt);
+      const ruhe = Float64Array.from(haut.pos, (x, i) => x + d[i]!);
+      neuePunkteLegen({ alt: a, altVon, altNach: Float64Array.from(altVon, (x, i) => x + dAlt[i]!), neu: haut, altNr: alt, hart: hartePunkte(a, davor.loops) }, ruhe);
+      for (let i = 3 * m; i < d.length; i++) d[i] = ruhe[i]! - haut.pos[i]!;
+    }
+    pose.delta = d;
+  }
 }
 
 /** Knochen setzen (Grad); in die Pose, falls nötig. Die Ruhe der Pose bleibt, gerechnet wird nichts: Nur die Anzeige dreht anders. */
@@ -3992,9 +4034,10 @@ export function einwechseln(f: Verfeinert, daten: ZerlegungsDaten[]): void {
     const jetzt = loops[li]!;
     return { ...jetzt, proben: l.proben, s: l.s, ruhe: l.ruhe, punkte: jetzt.punkte.map((p) => ({ ...p })) };
   });
+  const davor = { haut, loops };
   haut = neu;
   loops = neueLoops;
-  netzGewachsen(nAlt, f.alt, null);
+  netzGewachsen(nAlt, f.alt, null, davor);
   anzeige.geometrieNeu();
   festlegenAlle();
   const t3 = performance.now();
@@ -4609,11 +4652,12 @@ export function aufgeraeumtAnwenden(): void {
       const fertig = d.loops;
       if (d.alt) {
         const nAlt = haut.n;
+        const davor = { haut, loops };
         haut = hautAusFlach(d.haut);
         // die Linien des feineren Netzes (ihre Proben) mit den Punkten von jetzt
         loops = loops.map((jetzt, li) => ({ ...jetzt, proben: fertig[li]!.proben, s: fertig[li]!.s, ruhe: fertig[li]!.ruhe, punkte: jetzt.punkte.map((p) => ({ ...p })) }));
         // (in der Pose bekommt die Grundform dieselben Punkte)
-        netzGewachsen(nAlt, d.alt, grund ? poseKnochen() : null);
+        netzGewachsen(nAlt, d.alt, grund ? poseKnochen() : null, davor);
         anzeige.geometrieNeu();
         letzteVerdichtung = { neu: d.neu, gelegt: d.gelegt, ms: Math.round(d.ms[0]!) };
       } else haut.pos.set(d.haut.pos); // dasselbe Netz, gesetzt
@@ -4814,9 +4858,10 @@ export function nachVerdichten(nurTeilen = false): void {
   const nAlt = haut.n;
   const v = verdichtetesNetz(nurTeilen);
   if (!v) return;
+  const davor = { haut, loops };
   haut = v.haut;
   loops = v.loops;
-  netzGewachsen(nAlt, v.alt, vorher);
+  netzGewachsen(nAlt, v.alt, vorher, davor);
   anzeige.geometrieNeu();
   letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: Math.round(performance.now() - t0) };
 }
@@ -4844,9 +4889,10 @@ export function netzVergroebern(): { vorher: number; nachher: number; ms: number
     const nAlt = haut.n;
     const v = verdichten(haut, loops, 1.75 * MK, { ...verdichtenOptionen(), kurz: GROB_KURZ * MK });
     if (!v) break;
+    const davor = { haut, loops };
     haut = v.haut;
     loops = v.loops;
-    netzGewachsen(nAlt, v.alt, null);
+    netzGewachsen(nAlt, v.alt, null, davor);
     if (v.gelegt === 0 && v.neu === 0) break;
   }
   anzeige.geometrieNeu();
@@ -5022,9 +5068,10 @@ export function aufrichtenJetzt(): void {
   const nAlt = haut.n;
   const v = verdichten(haut, loops, Infinity, { verborgen: verdichtenOptionen().verborgen ?? null, drehen: false, entspannen: false });
   if (!v) return;
+  const davor = { haut, loops };
   haut = v.haut;
   loops = v.loops;
-  netzGewachsen(nAlt, v.alt, vorher);
+  netzGewachsen(nAlt, v.alt, vorher, davor);
   anzeige.geometrieNeu();
 }
 
@@ -5058,9 +5105,10 @@ export function einsetzenLetzten(punkteNoetig = false): void {
   const nAlt = haut.n;
   const r = loopEinsetzen(haut, loops, loops.length - 1);
   if (r) {
+    const davor = { haut, loops };
     haut = r.haut;
     loops = r.loops;
-    netzGewachsen(nAlt, nurGewachsen(haut.n, nAlt), vorher);
+    netzGewachsen(nAlt, nurGewachsen(haut.n, nAlt), vorher, davor);
     G.meldung = '';
   } else G.meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): eine Kante wirkt dort kaum';
   // erst die Kreuzungen (in den anderen Loops teilen sie ein Stück), dann liest der neue Loop alle seine Griffe aus der Linie (wo
@@ -5140,9 +5188,10 @@ export function nadelnWeg(): void {
   const v = nadelnZusammenlegen(haut, loops, MK, verdichtenOptionen().verborgen ?? null);
   letzteNadeln = { gelegt: v ? v.gelegt : 0, ms: Math.round((performance.now() - t0) * 10) / 10 };
   if (!v) return;
+  const davor = { haut, loops };
   haut = v.haut;
   loops = v.loops;
-  netzGewachsen(nAlt, v.alt, vorher);
+  netzGewachsen(nAlt, v.alt, vorher, davor);
 }
 
 /**
@@ -6158,6 +6207,8 @@ export function standAnwenden(st: WesenStand): string {
       if (!pose.delta) pose = { kiefer: FRESSEN_ANFANG.unten, schaedel: FRESSEN_ANFANG.oben, delta: null };
     } else if (lippe && G.maul?.id === lippe.id) G.maul = { ...G.maul, echt: true };
     maulSeitenMerken();
+    // (in der Pose ist die Lippe frei, seit Etappe 8; ein älterer Stand trägt sie dort noch zusammengeklappt)
+    if (grund && G.maul?.echt && maulIstGeformt()) delete loops[loopNr(G.maul.id)]?.maulLinie;
   }
   // Ein Stand, der vor dem 14.11. in der Pose gesichert wurde, enthält ihre gedrehte Lage: einmal in ihre Ruhe zurückgedreht, die
   // Linien dort neu abgelesen

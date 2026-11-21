@@ -11866,8 +11866,11 @@ const haken = {
   },
   /** Die Linie der Seite in der Welt (Pfad und Punkte), wie sie gerade gezeigt wird */
   seitenLinie: () => seitenLinie(1),
-  /** Die Haut des Werks, wie sie ist (Einheiten des Werks): Lagen und Dreiecke */
-  werkRoh: () => ({ pos: Array.from(werk.haut.pos), tri: Array.from(werk.haut.tri) }),
+  /** Die Haut des Werks, wie sie ist (Einheiten des Werks): Lagen und Dreiecke. `grund`: in der Pose die der Grundform */
+  werkRoh: (grund = false) => {
+    const h = (grund && werk.grund?.haut) || werk.haut;
+    return { pos: Array.from(h.pos), tri: Array.from(h.tri) };
+  },
   /** Größte Koordinate und nicht endliche Werte: der Haut des Werks (Einheiten des Werks) und ihrer Anzeige (Welt) */
   /** S9: die Haut des Werks merken und wie weit sie sich seitdem bewegt hat (Einheiten des Werks; −1: anderes Netz) */
   hautMerken: () => {
