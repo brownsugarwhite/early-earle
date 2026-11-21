@@ -487,6 +487,8 @@ ${HAUT_STILE}
 /** die Haut des T-Rex für die gemeinsamen Stile (Anime, Manga) */
 Haut rexZuHaut(RexHaut r) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   h.farbe = r.farbe;
   h.n = r.n;
   h.hoehe = r.hoehe;

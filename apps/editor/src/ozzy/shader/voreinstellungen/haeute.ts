@@ -94,47 +94,71 @@ float bauchPlatte(vec3 q, float f, out float nr, out float lage) {
 `;
 
 const DRACHE = /* glsl */ `
+/** Farben je Art: Schuppe, abgenutzte Kante, Bauch, Glut in den Fugen (linear, HDR; schwarz: keine), Schiller */
+void dracheArt(int art, out vec3 schuppe, out vec3 kante, out vec3 bauch, out vec3 glut, out float schil) {
+  if (art == 0) { schuppe = vec3(0.05, 0.045, 0.05); kante = vec3(0.24, 0.17, 0.13); bauch = vec3(0.26, 0.18, 0.13); glut = vec3(3.4, 1.0, 0.16); schil = 0.55; }
+  else if (art == 1) { schuppe = vec3(0.03, 0.27, 0.18); kante = vec3(0.74, 0.56, 0.22); bauch = vec3(0.84, 0.74, 0.46); glut = vec3(0.0); schil = 0.4; }
+  else if (art == 2) { schuppe = vec3(0.5, 0.66, 0.8); kante = vec3(0.93, 0.97, 1.0); bauch = vec3(0.86, 0.9, 0.95); glut = vec3(0.1, 0.5, 1.5); schil = 0.3; }
+  else { schuppe = vec3(0.02, 0.025, 0.05); kante = vec3(0.14, 0.13, 0.22); bauch = vec3(0.1, 0.07, 0.14); glut = vec3(0.0); schil = 1.0; }
+}
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   vec3 S, Q;
   strichFeld(n0, S, Q);
   float t = hautT(n0);
-  float f = 15.0 / uR_groesse * (stil == 0 ? 1.0 : 0.8);
+  int art = int(uR_art + 0.5);
+  vec3 cS, cK, cB, cG;
+  float schil;
+  dracheArt(art, cS, cK, cB, cG, schil);
+  // Rangordnung: oben große gekielte Platten, an den Flanken kleinere Schuppen, unten Bauchplatten
+  float oben = step(t + 0.05 * snoise(q * 4.0), 0.4);
+  float f = (oben > 0.5 ? 8.0 : 17.0) / uR_groesse * (stil == 0 ? 1.0 : 0.85);
+  vec4 form = oben > 0.5 ? vec4(0.55, 1.3, 0.8, 0.9) : vec4(0.5, 1.0, 0.62, 0.55);
   h.lod = smoothstep(2.0, 6.0, uMass * uRadius / f);
   vec2 uv;
   float id, schatten;
   vec3 mz;
-  float innen = schindel(q * f, n0, S, Q, vec4(0.5, 1.08, 0.66, 0.8), uv, id, schatten, mz);
-  // Bauchplatten: breite Querplatten an der Unterseite
+  float innen = schindel(q * f, n0, S, Q, form, uv, id, schatten, mz);
   vec3 A, B, C;
   achsen(A, B, C);
-  float lp = dot(q, A) * f * 0.55;
-  float bauch = smoothstep(0.66, 0.74, t);
+  float lp = dot(q, A) * f * 0.5;
+  float bauchM = smoothstep(0.68, 0.76, t);
   float platte = min(fract(lp), 1.0 - fract(lp));
-  // Relief: die Schuppe steigt zur freien Kante an, ist quer gewölbt und hat einen Grat
-  float uN = clamp(uv.x / 1.08, -0.5, 1.0);
-  float grat = exp(-pow(uv.y / 0.12, 2.0)) * smoothstep(-0.3, 0.6, uN);
-  vec3 g = S * 0.55 - Q * uv.y * 1.4 * 0.6 - Q * sign(uv.y) * grat * 1.2;
-  float unter = 1.0 - smoothstep(0.0, 0.22, schatten);
-  float fuge = innen < 0.0 ? 1.0 : 1.0 - smoothstep(0.0, 0.12, innen);
-  vec3 gn = g * (1.0 - fuge) * 0.45 * h.lod;
-  vec3 gb = A * (fract(lp) - 0.5) * 0.6;
-  gn = mix(gn, gb, bauch);
+  float uN = clamp(uv.x / form.y, -0.5, 1.0);
+  // Relief: Anstieg zur freien Kante, Wölbung quer, Kiel (oben kräftig), Riefen längs, feine Poren
+  float kiel = exp(-pow(uv.y / (oben > 0.5 ? 0.1 : 0.15), 2.0)) * smoothstep(-0.3, 0.7, uN) * (oben > 0.5 ? 1.6 : 0.7);
+  float riefen = sin(uv.y * (oben > 0.5 ? 55.0 : 40.0) + 2.0 * snoise(mz * 3.0)) * smoothstep(0.0, 0.3, innen) * 0.15;
+  vec3 g = S * 0.6 - Q * uv.y * 0.85 - Q * sign(uv.y) * kiel + Q * riefen;
+  float unter = 1.0 - smoothstep(0.0, 0.2, schatten);
+  float fuge = innen < 0.0 ? 1.0 : 1.0 - smoothstep(0.0, 0.1, innen);
+  vec3 gn = g * (1.0 - fuge) * 0.5 * h.lod;
+  gn = mix(gn, A * (fract(lp) - 0.5) * 0.7, bauchM);
+  gn += vec3(snoise(q * 160.0), snoise(q * 160.0 + 4.0), snoise(q * 160.0 + 8.0)) * 0.06 * h.lod;
   gn -= n0 * dot(gn, n0);
   h.n = normalize(n0 + gn);
-  // Farbe: Smaragd, zur freien Kante golden, Schuppe für Schuppe anders; Bauch cremegelb mit dunklen Fugen
-  vec3 c = mix(vec3(0.05, 0.28, 0.22), vec3(0.1, 0.42, 0.34), id) * mix(0.8, 1.15, smoothstep(0.2, 0.8, t));
-  c = mix(c, vec3(0.75, 0.6, 0.22), smoothstep(0.35, 0.95, uN) * (1.0 - smoothstep(0.0, 0.35, innen)) * 0.75);
-  c = mix(c, vec3(0.02, 0.08, 0.07), smoothstep(0.1, 0.35, snoise(q * 2.0)) * smoothstep(0.45, 0.2, t) * 0.5);
-  c *= 1.0 - 0.55 * unter;
-  vec3 cb = vec3(0.86, 0.76, 0.46) * (0.92 + 0.1 * hash11(floor(lp))) * (1.0 - 0.6 * (1.0 - smoothstep(0.0, 0.07, platte)));
-  h.farbe = mix(c, cb, bauch);
-  h.hoehe = mix(smoothstep(-0.5, 1.0, uN), 1.0 - (1.0 - smoothstep(0.0, 0.1, platte)), bauch);
-  h.fuge = mix(max(fuge, unter * 0.6), 1.0 - smoothstep(0.0, 0.07, platte), bauch);
-  h.rand = mix(max(innen, 0.0) * 0.45, platte, bauch);
-  h.glanz = 1.1;
-  h.rauh = 0.28;
+  // Farbe: Schuppe für Schuppe ein wenig anders, zur freien Kante und am Kiel abgenutzt (heller, matter), Schmutz darunter
+  float abnutz = clamp(smoothstep(0.55, 1.0, uN) * (1.0 - smoothstep(0.0, 0.3, innen)) + smoothstep(0.6, 1.0, kiel) * 0.5, 0.0, 1.0);
+  vec3 c = cS * (0.82 + 0.36 * id);
+  c = mix(c, cK, abnutz * 0.7);
+  c *= 1.0 - 0.6 * unter;
+  vec3 cb = cB * (0.9 + 0.12 * hash11(floor(lp))) * (1.0 - 0.6 * (1.0 - smoothstep(0.0, 0.07, platte)));
+  h.farbe = mix(c, cb, bauchM);
+  h.hoehe = mix(smoothstep(-0.5, 1.0, uN), 1.0 - (1.0 - smoothstep(0.0, 0.1, platte)), bauchM);
+  h.fuge = mix(max(fuge, unter * 0.7), 1.0 - smoothstep(0.0, 0.07, platte), bauchM);
+  h.rand = mix(max(innen, 0.0) * 0.45, platte, bauchM);
+  h.glanz = mix(1.35, 0.6, abnutz);
+  h.rauh = mix(0.16, 0.45, abnutz);
+  h.schiller = schil * (1.0 - bauchM * 0.7) * (1.0 - abnutz * 0.6) * uR_schiller;
+  // Glut (Glut, Frost): in den Fugen und unter den Kanten, ungleich hell; die Schuppen nahe der Fuge glühen mit
+  if (dot(cG, cG) > 0.0) {
+    // nur in der schmalen Fuge und im tiefsten Schatten unter der Kante, ungleich hell (Magma kühlt in Flecken)
+    float hell = clamp(0.55 + 0.45 * snoise(q * 2.3) + 0.25 * snoise(q * 7.0), 0.05, 1.0);
+    float riss = (innen < 0.0 ? 1.0 : 1.0 - smoothstep(0.0, 0.035, innen)) + (1.0 - smoothstep(0.0, 0.06, schatten)) * 0.5;
+    h.leucht = cG * clamp(riss, 0.0, 1.0) * hell * hell * (1.0 - bauchM * 0.8) * uR_glut * 0.7;
+  }
   return h;
 }
 `;
@@ -142,6 +166,8 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 const FROSCH = /* glsl */ `
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   float t = hautT(n0);
   int fb = int(uR_faerbung + 0.5);
@@ -194,6 +220,8 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 const CHAMAELEON = /* glsl */ `
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   float t = hautT(n0);
   vec3 A, B, C;
@@ -239,6 +267,8 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 const KRAKE = /* glsl */ `
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   float t = hautT(n0);
   h.lod = 1.0;
@@ -287,6 +317,8 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 /** gemeinsamer Anfang der Schlangen: Schindeln, Relief, Schatten, Bauchplatten; Muster an der Mitte jeder Schuppe (qm) */
 const SCHLANGE_KOPF = /* glsl */ `
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   vec3 S, Q;
   strichFeld(n0, S, Q);
@@ -394,6 +426,8 @@ const KORALLE = schlange(
 const KROKODIL_GLSL = /* glsl */ `
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   vec3 S, Q;
   strichFeld(n0, S, Q);
@@ -449,6 +483,8 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 const SALAMANDER_GLSL = /* glsl */ `
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   vec3 A, B, C;
   achsen(A, B, C);
@@ -479,6 +515,8 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 const ELEFANT_GLSL = /* glsl */ `
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
+  h.leucht = vec3(0.0);
+  h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
   vec3 A, B, C;
   achsen(A, B, C);
@@ -562,9 +600,15 @@ function haut(id: string, name: string, zeile: string, glsl: string, echtGrund: 
 export const DRACHE_HAUT = haut(
   'drache',
   'Drache',
-  'Drachenhaut: große Schuppen, die sich wie Schindeln überlappen (vorn rund, zur freien Kante spitz, mit Grat und Schatten), Bauchplatten, Smaragd mit Gold; Stile Echt, Anime, Manga, Spider-Verse',
+  'Drachenhaut: oben große gekielte Platten, an den Flanken kleinere Schuppen, abgenutzte Kanten, Riefen und Poren, Schiller einer dünnen Schicht; Arten Glut (Magma in den Fugen), Smaragd, Frost, Nacht; Stile Echt, Anime, Manga, Spider-Verse, Earle',
   DRACHE,
   'urzeitGrund',
+  [
+    { k: 'art', name: 'Art', min: 0, max: 3, schritt: 1, grund: 0, stufen: ['Glut', 'Smaragd', 'Frost', 'Nacht'] },
+    { k: 'schiller', name: 'Schiller', min: 0, max: 2, schritt: 0.05, grund: 1 },
+    { k: 'glut', name: 'Glut', min: 0, max: 3, schritt: 0.05, grund: 1 },
+  ],
+  0,
 );
 export const FROSCH_HAUT = haut(
   'frosch',
