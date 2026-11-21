@@ -80,6 +80,22 @@ vec3 hautManga(Haut h, vec3 n0, vec3 V, vec2 css) {
   g = mix(g, 1.0, glanz);
   return vec3(g);
 }
+/** Earle: vier harte Stufen im Streiflicht, Schatten in Petrol, tiefe Schatten fast schwarz, ein Lichtpunkt je Schuppe (sRGB) */
+vec3 hautEarle(Haut h, vec3 n0, vec3 V) {
+  vec3 L = ausSicht(normalize(vec3(-0.85, 0.32, 0.42)));
+  float v = dot(normalize(mix(n0, h.n, 0.15)), L);
+  vec3 alb = clamp(mix(vec3(dot(h.farbe, vec3(0.299, 0.587, 0.114))), h.farbe, 1.45) * 1.12, 0.0, 1.0);
+  vec3 c;
+  if (v > 0.55) c = alb * vec3(1.08, 1.03, 0.9) + vec3(0.04, 0.03, 0.0);
+  else if (v > 0.18) c = alb * 0.84;
+  else if (v > -0.18) c = mix(alb, vec3(0.06, 0.24, 0.27), 0.62) * 0.62;
+  else c = vec3(0.03, 0.07, 0.09);
+  float aaR = fwidth(h.rand) + 1e-3;
+  float lp = smoothstep(0.26 - aaR, 0.26 + aaR, h.rand) * step(h.rand, 0.95) * smoothstep(0.15, 0.35, v) * h.lod;
+  c = mix(c, min(alb * 1.35 + 0.12, vec3(1.0)), lp * 0.7);
+  float linie = (1.0 - smoothstep(0.03 - aaR, 0.03 + aaR, h.rand)) * h.lod;
+  return mix(c, c * 0.55, linie * 0.6);
+}
 /** Spider-Verse: zwei kräftige Töne, Raster, Schraffur, Tuschebögen, Glanz, farbiges Randlicht (sRGB) */
 vec3 hautComic(Haut h, vec3 n0, vec3 V, vec2 css) {
   vec3 L = hautLicht();

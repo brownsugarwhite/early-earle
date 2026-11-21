@@ -378,4 +378,58 @@ vec3 unterWasser(vec2 css, vec2 qb) {
   c += vec3(0.7, 0.9, 1.0) * blase * 0.5;
   return srgbZuLin(c);
 }
+/** Wüste am Abend: Glut am Horizont, Dünen in drei Reihen mit Licht und Schatten, Kakteen als Schatten, Hitzeflimmern */
+vec3 wuesteGrund(vec2 css, vec2 qb) {
+  float asp = uAufl.x / uAufl.y;
+  vec2 u = vec2(qb.x * asp, qb.y);
+  vec3 c = mix(vec3(1.0, 0.7, 0.4), vec3(0.35, 0.42, 0.7), smoothstep(0.3, 1.0, qb.y));
+  c += vec3(1.0, 0.6, 0.3) * exp(-length(u - vec2(0.8 * asp, 0.36)) * 5.0) * 0.6;
+  for (int i = 0; i < 3; i++) {
+    float fi = float(i);
+    float hoehe = 0.34 - fi * 0.08 + 0.05 * sin(u.x * (3.0 + fi * 1.7) + fi * 2.0) + 0.02 * sin(u.x * 11.0 + fi);
+    if (qb.y < hoehe) {
+      float hang = cos(u.x * (3.0 + fi * 1.7) + fi * 2.0);
+      vec3 sand = mix(vec3(0.85, 0.55, 0.3), vec3(0.98, 0.72, 0.42), smoothstep(-0.2, 0.6, hang));
+      c = mix(sand, vec3(0.9, 0.6, 0.45), 0.35 * (1.0 - fi / 3.0)) * (0.75 + 0.1 * fi);
+    }
+  }
+  // Kakteen
+  float zx = floor(css.x / 260.0);
+  float kx = (zx + 0.3 + 0.4 * hash11(zx * 3.1)) * 260.0;
+  if (hash11(zx * 7.7) > 0.45) {
+    float H = uAufl.y / uDpr;
+    float fuss = (0.18 + 0.03 * hash11(zx)) * H;
+    float hk = (0.12 + 0.08 * hash11(zx * 5.3)) * H;
+    vec2 d = css - vec2(kx, fuss);
+    float stamm = step(abs(d.x), 7.0) * step(0.0, d.y) * step(d.y, hk);
+    float arm = step(abs(d.y - hk * 0.55), 5.0) * step(0.0, d.x) * step(d.x, 22.0) + step(abs(d.x - 20.0), 5.0) * step(hk * 0.55, d.y) * step(d.y, hk * 0.8);
+    c = mix(c, vec3(0.25, 0.15, 0.12), clamp(stamm + arm, 0.0, 1.0) * 0.85);
+  }
+  return srgbZuLin(c);
+}
+/** Savanne am Abend: Goldhimmel, Schirmakazien als Schatten, hohes Gras */
+vec3 savanneGrund(vec2 css, vec2 qb) {
+  float asp = uAufl.x / uAufl.y;
+  vec2 u = vec2(qb.x * asp, qb.y);
+  vec3 c = mix(vec3(1.0, 0.78, 0.45), vec3(0.62, 0.5, 0.6), smoothstep(0.3, 1.0, qb.y));
+  c += vec3(1.0, 0.7, 0.35) * exp(-length(u - vec2(0.3 * asp, 0.32)) * 4.0) * 0.7;
+  float H = uAufl.y / uDpr;
+  float boden = 0.24 + 0.015 * sin(u.x * 5.0);
+  float zx = floor(css.x / 330.0);
+  for (int i = -1; i <= 1; i++) {
+    float z = zx + float(i);
+    if (hash11(z * 2.3) < 0.4) continue;
+    float mx = (z + 0.5 + 0.4 * (hash11(z * 9.1) - 0.5)) * 330.0;
+    float kh = (0.16 + 0.06 * hash11(z * 4.4)) * H;
+    vec2 d = css - vec2(mx, boden * H);
+    float stamm = step(abs(d.x - d.y * 0.15), 3.5) * step(0.0, d.y) * step(d.y, kh);
+    vec2 k = (d - vec2(kh * 0.15, kh)) / vec2(kh * 1.1, kh * 0.18);
+    float krone = 1.0 - smoothstep(0.9, 1.0, length(k) + 0.15 * noise2(css * 0.05));
+    c = mix(c, vec3(0.16, 0.1, 0.08), clamp(stamm + krone * step(-0.2, k.y), 0.0, 1.0) * 0.9);
+  }
+  if (qb.y < boden) c = mix(vec3(0.55, 0.38, 0.2), vec3(0.8, 0.6, 0.32), smoothstep(0.0, boden, qb.y)) * (0.85 + 0.2 * noise2(vec2(css.x * 0.4, css.y * 0.05)));
+  float gras = step(fract(css.x / 4.0 + noise2(css * 0.03) * 3.0), 0.35) * step(qb.y, boden + 0.02 * noise2(css * 0.08)) * step(boden - 0.05, qb.y);
+  c = mix(c, vec3(0.5, 0.34, 0.16), gras * 0.6);
+  return srgbZuLin(c);
+}
 `;
