@@ -40,7 +40,7 @@ import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND, wachsKugel } from './wachs';
 import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
 import { istMaulEbene, taschenFeld } from './farbe/maulEbene';
-import { FAKTOR_MAX, FAKTOR_MIN, type FormNetz, ZAEHNE_ANFANG, type ZahnPlatz, eigenSetzen, formGemischt, formNetz, formNetzGemischt, gestaltVon, mitAnzahl, partner, platzNetz, sitzGrenzen, vorlageNr, zaehneNetz, type ZahnKapsel, zahnKapseln, zaehnePaar, zahnPlaetze, zahnRahmen } from './zaehne';
+import { FAKTOR_MAX, FAKTOR_MIN, type FormNetz, ZAEHNE_ANFANG, type ZahnPlatz, eigenSetzen, formGemischt, formNetz, formNetzGemischt, gestaltVon, kapselnZwischen, mitAnzahl, netzZwischen, partner, platzNetz, sitzGrenzen, vorlageNr, zaehneNetz, type ZahnKapsel, zahnKapseln, zaehnePaar, zahnPlaetze, zahnRahmen } from './zaehne';
 import { EIGENE, type GestaltLinie, type ZahnGestalt, gestaltAusForm, gestaltNetz, gestaltUmriss, netzGemischt } from './zahnGestalt';
 import { ZEIGER_WINKEL, type ZeigerArt, umfangVerteilen, zeigerUmrissVon } from './zeigerForm';
 import { strahlAufNetz } from './farbe/treffer';
@@ -9532,7 +9532,7 @@ function kieferUiZeigen(): boolean {
   const k = zustand === 'ruhe' && werkGezeigt ? kieferJetzt() : null;
   // ---- der Blick ins Maul ----
   let braucht = false;
-  if (!k || werk.grund) {
+  if (!k) {
     kieferSchau = null;
     if (werk.maulBlick > 0) {
       werk.maulBlickSetzen(0);
@@ -9542,7 +9542,10 @@ function kieferUiZeigen(): boolean {
   } else {
     // (offen, solange ein Tropfen gehalten wird, im Paint-Modus, solange die Ebene „Maul“ gewählt ist, und solange die Linse der
     // Zähne offen ist: Sonst sähe man nicht, was man stellt. Wird an der Form gezogen, ist es so lange zu.)
-    let ziel = kieferZug || (maulEbeneAktiv() && farbeMoeglich()) || (linseDa() && !werk.zug) ? 1 : 0;
+    // In einer Pose (Scheibe 4) gilt der Blick dem, was die Grundform zeigen wird: Zwischen Grundform und Pose bleibt das Maul so
+    // weit offen (`werk.offenAnteil`), statt bei offener Linse erst zuzuklappen. In der Pose dreht ein Tropfen den Kiefer selbst.
+    let ziel = (kieferZug && !werk.grund) || (maulEbeneAktiv() && farbeMoeglich()) || (linseDa() && !werk.zug) ? 1 : 0;
+    if (werk.grund) kieferSchau = null;
     if (kieferSchau && !kieferZug) {
       const t = (jetzt - kieferSchau.t0) / (kieferSchau.ms ?? KIEFER_SCHAU_MS);
       if (t >= 1 || werk.zug) kieferSchau = null;
@@ -9550,11 +9553,15 @@ function kieferUiZeigen(): boolean {
     }
     const b = werk.maulBlick;
     if (b !== ziel) {
-      // auf in rund einer Fünftelsekunde, zu etwas ruhiger
-      const neu = b + (ziel - b) * (1 - Math.exp(-dt / (ziel > b ? 0.07 : 0.11)));
-      werk.maulBlickSetzen(Math.abs(ziel - neu) < 0.004 ? ziel : neu);
-      werkNeu = true;
-      braucht = true;
+      // (steht die Form in der Pose, ist der Blick nicht zu sehen: gleich am Ziel, ohne neue Bilder)
+      if (werk.grund && !werk.poseWandert()) werk.maulBlickSetzen(ziel);
+      else {
+        // auf in rund einer Fünftelsekunde, zu etwas ruhiger
+        const neu = b + (ziel - b) * (1 - Math.exp(-dt / (ziel > b ? 0.07 : 0.11)));
+        werk.maulBlickSetzen(Math.abs(ziel - neu) < 0.004 ? ziel : neu);
+        werkNeu = true;
+        braucht = true;
+      }
     } else if (kieferSchau) braucht = true;
   }
   // ---- die Zähne sprießen; der Tropfen „Zähne“ unter der Leiste, solange es ein Maul gibt (er öffnet und schließt die Linse) ----
@@ -9649,9 +9656,18 @@ function zungeWert(z: werk.MaulZunge | null, schritt = true): boolean {
 //
 // Die Zähne sind Werte am Maul (`werk.G.maul.zaehne`). Wo sie sitzen, wird aus der Tasche gelesen (`zaehne.ts`), neu nach jedem
 // Schritt und jedem Netzwechsel; gezeigt werden sie als eigenes Netz an der gezeigten Haut (bei den ruhenden Netzen: `ruheZeigen`).
+// Etappe 8, Scheibe 4: Eine Pose kann ihre Zähne anders haben (`werk.zaehneJetzt`: die der Lage, an der gearbeitet wird). Die
+// Plätze werden je Lage in ihrer Ruhe gelesen; steht die Anzeige zwischen zwei Lagen, werden beide Sätze an der gezeigten Haut
+// gebaut und gemischt (`werk.zaehneGezeigt`, `netzZwischen`): Die Zähne wandern von der einen Lage in die andere.
 const zaehneTropfen = $<HTMLButtonElement>('zaehne-tropfen');
 const leisteEl = $<HTMLElement>('leiste');
-let zaehnePlan: { haut: object; schl: string; plaetze: ZahnPlatz[] } | null = null;
+type ZahnPlan = { haut: object; ruhe: Float64Array; schl: string; plaetze: ZahnPlatz[] };
+/** die Plätze der Lage, an der gearbeitet wird (die Grundform, oder die betretene Pose) */
+let zaehnePlan: ZahnPlan | null = null;
+/** die Plätze der anderen Lage, solange die Anzeige zwischen zwei Lagen steht */
+let zaehnePlanFern: ZahnPlan | null = null;
+/** das zweite Netz beim Wandern (sein Speicher bleibt über die Bilder einer Fahrt) */
+let zaehneNetzFern: HautNetz | null = null;
 /** die Plätze, aus denen das gezeigte Netz der Zähne gebaut ist (Zahn für Zahn in dieser Reihenfolge, jeder mit gleich vielen Punkten und Dreiecken) */
 let zaehneNetzVon: ZahnPlatz[] = [];
 /** das Feld der Tasche (der Abstand von der Lippe) und die Grenzen des Sitzes: Sie hängen an Netz und Tasche, nicht an den Werten der Zähne */
@@ -9671,24 +9687,58 @@ let zaehneLagen: { haut: object; schl: string; P: ArrayLike<number> } | null = n
 let zahnWuchs: { t0: number } | null = null;
 const ZAHN_WUCHS_MS = 1100;
 let zaehneStand = '';
+/** woraus das gezeigte Netz gebaut ist (Plätze und Werte beider Lagen, der Anteil) und ob es zu und fertig gesprossen gebaut wurde */
+let zaehneStandKopf = '';
+let zaehneStandZu = false;
 
-/** die Plätze der Zähne für den Stand des Werks (neu gelesen nach jedem Schritt, jedem Netzwechsel und wenn sich ihre Werte ändern) */
+/**
+ * Die Plätze der Zähne einer Lage, in ihrer Ruhe gelesen (neu nach jedem Schritt, jedem Netzwechsel und wenn sich ihre Werte
+ * ändern). Die Lage, an der gearbeitet wird, liest an der Karte des Werks; eine andere (beim Wandern) an derselben Karte mit ihren
+ * Lagen: Das Netz ist dasselbe.
+ */
+function zaehnePlanFuer(lage: Pick<werk.ZahnLage, 'zaehne' | 'ruhe'>): ZahnPlan {
+  const schl = `${werk.zurueck.length}|${JSON.stringify(lage.zaehne)}`;
+  if (lage.ruhe === werk.haut.pos) {
+    if (zaehnePlan && zaehnePlan.haut === werk.haut && (zaehnePlan.schl === schl || werk.zug)) return zaehnePlan;
+    const fz = zaehneFeldJetzt();
+    const plaetze = fz ? zahnPlaetze(farbWerk.karteFuer(hautJetzt()), fz.tasche, fz.tasche.C, lage.zaehne, fz.feld) : [];
+    zaehnePlan = { haut: werk.haut, ruhe: lage.ruhe, schl, plaetze };
+    return zaehnePlan;
+  }
+  const f = zaehnePlanFern;
+  if (f && f.haut === werk.haut && f.ruhe === lage.ruhe && f.schl === schl) return f;
+  const tasche = werk.maulTasche();
+  let plaetze: ZahnPlatz[] = [];
+  if (tasche) {
+    const k = farbWerk.karteFuer(hautJetzt());
+    const karte = { ...k, netz: { ...k.netz, pos: lage.ruhe } };
+    plaetze = zahnPlaetze(karte, tasche, tasche.C, lage.zaehne, taschenFeld(karte, tasche));
+  }
+  zaehnePlanFern = { haut: werk.haut, ruhe: lage.ruhe, schl, plaetze };
+  return zaehnePlanFern;
+}
+/** die Plätze der Zähne der Lage, an der gearbeitet wird (was die Linse stellt, was sich greifen lässt) */
 function zaehnePlaetzeJetzt(): ZahnPlatz[] {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!z) {
     zaehnePlan = null;
     return [];
   }
-  const schl = `${werk.zurueck.length}|${JSON.stringify(z)}`;
-  if (zaehnePlan && zaehnePlan.haut === werk.haut && (zaehnePlan.schl === schl || werk.zug)) return zaehnePlan.plaetze;
-  const fz = zaehneFeldJetzt();
-  const plaetze = fz ? zahnPlaetze(farbWerk.karteFuer(hautJetzt()), fz.tasche, fz.tasche.C, z, fz.feld) : [];
-  zaehnePlan = { haut: werk.haut, schl, plaetze };
-  return plaetze;
+  return zaehnePlanFuer({ zaehne: z, ruhe: werk.haut.pos }).plaetze;
 }
 /** das Netz der Zähne an der Haut, wie sie eben gezeigt wird (nach `werkHaut.rechnen`) */
 function zaehneRechnen(): void {
-  const plaetze = zustand === 'ruhe' && werkGezeigt ? zaehnePlaetzeJetzt() : [];
+  const g = zustand === 'ruhe' && werkGezeigt ? werk.zaehneGezeigt() : null;
+  if (!werk.zaehneJetzt()) zaehnePlan = null;
+  const planA = g ? zaehnePlanFuer(g.von) : null;
+  const planB = g?.nach && g.t > 0 ? zaehnePlanFuer(g.nach) : null;
+  // Die zweite Lage mischt nur mit, wenn sie Zahn für Zahn zur ersten passt (dieselben Zähne: die Regel der Posen); sonst gilt die
+  // nähere
+  const passt = !!planA && !!planB && planA.plaetze.length > 0 && planB.plaetze.length === planA.plaetze.length && planB.plaetze.every((q, i) => q.i === planA.plaetze[i]!.i && q.unten === planA.plaetze[i]!.unten);
+  const plan = planB && !passt && g && g.t >= 0.5 ? planB : planA;
+  const fern = passt ? planB : null;
+  const tLage = fern && g ? g.t : 0;
+  const plaetze = plan?.plaetze ?? [];
   if (!plaetze.length) {
     if (zaehneNetzJetzt) {
       zaehneNetzJetzt = null;
@@ -9706,12 +9756,16 @@ function zaehneRechnen(): void {
   // der weiche Wechsel der Vorlage (Formenring): je Bild ein Netz zwischen der alten und der neuen
   const m = zahnMorph;
   const mt = m ? Math.max(0, Math.min(1, (performance.now() - m.t0) / ZAHN_MORPH_MS)) : 1;
-  // (zu und fertig gesprossen ändert sich an den Zähnen nichts: Sie stecken im Maul)
-  const stand = `${zaehnePlan?.schl}|${werkHaut.version}|${mt.toFixed(3)}|${auf.toFixed(5)}|${Math.min(2, t).toFixed(3)}`;
+  const kopf = `${plan?.schl}\n${fern ? `${fern.schl}\n${tLage}` : ''}`;
+  const stand = `${kopf}|${werkHaut.version}|${mt.toFixed(3)}|${auf.toFixed(5)}|${Math.min(2, t).toFixed(3)}`;
   if (stand === zaehneStand && zaehneNetzJetzt) return;
-  // (das gilt nicht, wenn ein Zahn außen vor der Lippe steht: Der ist auch zu zu sehen und geht mit der Haut mit)
-  if (auf === 0 && t >= 2 && mt >= 1 && zaehneNetzJetzt && zaehneStand.endsWith('|0.00000|2.000') && zaehnePlan && zaehneStand.startsWith(`${zaehnePlan.schl}|`) && !plaetze.some((q) => q.aussen > 0)) return;
+  // (zu und fertig gesprossen ändert sich an den Zähnen nichts: Sie stecken im Maul. Das gilt nicht, wenn ein Zahn außen vor der
+  // Lippe steht: Der ist auch zu zu sehen und geht mit der Haut mit)
+  const zu = auf === 0 && t >= 2 && mt >= 1;
+  if (zu && zaehneNetzJetzt && zaehneStandZu && zaehneStandKopf === kopf && !plaetze.some((q) => q.aussen > 0) && !fern?.plaetze.some((q) => q.aussen > 0)) return;
   zaehneStand = stand;
+  zaehneStandKopf = kopf;
+  zaehneStandZu = zu;
   // die Lagen der Haut, wie sie gezeigt wird (mit den Knochen gedreht): nur neu, wenn Haut oder Knochen sich geändert haben. Ändern
   // sich nur Werte oder die Form der Zähne (am Drehregler, an den Linien eines Zahns), bleiben sie (das Drehen der ganzen Haut und
   // aller Linien kostete sonst je Bild knapp 2 ms).
@@ -9743,9 +9797,19 @@ function zaehneRechnen(): void {
   // (ein neues Netz je Stand: Wer die Netze zusammensetzt, erkennt den Wechsel am Netz selbst)
   const spalt = (r: number): number => 2 * r * Math.sin(auf / 2);
   zaehneNetzJetzt = zaehneNetz(plaetze, P, werkHaut.f, werkHaut.mitte, spalt, wuchs, null, formVon);
-  zaehneNetzVon = zaehneNetzJetzt ? plaetze : [];
   // (dieselben Zähne als Körper: An ihnen stößt die Zunge an)
   zahnKoerperJetzt = zaehneNetzJetzt ? zahnKapseln(plaetze, P, spalt, wuchs, formVon) : [];
+  // zwischen zwei Lagen: dieselben Zähne mit den Plätzen und Werten der anderen Lage, an derselben gezeigten Haut; jeder Punkt
+  // liegt anteilig dazwischen
+  if (fern && zaehneNetzJetzt) {
+    zaehneNetzFern = zaehneNetz(fern.plaetze, P, werkHaut.f, werkHaut.mitte, spalt, wuchs, zaehneNetzFern, formVon);
+    if (zaehneNetzFern) {
+      netzZwischen(zaehneNetzJetzt, zaehneNetzFern, tLage);
+      zahnKoerperJetzt = kapselnZwischen(zahnKoerperJetzt, zahnKapseln(fern.plaetze, P, spalt, wuchs, formVon), tLage);
+    }
+  } else zaehneNetzFern = null;
+  // (was sich greifen lässt und wo die Marken stehen: die Zähne der näheren Lage)
+  zaehneNetzVon = zaehneNetzJetzt ? (fern && tLage >= 0.5 ? fern.plaetze : plaetze) : [];
   zaehneVersion++;
 }
 zaehneTropfen.addEventListener('click', () => {
@@ -9782,6 +9846,8 @@ let zahnMorph: { oben: number | null; unten: number | null; t0: number; nur?: { 
 const ZAHN_MORPH_MS = 320;
 /** was die Linse zuletzt gezeigt hat (Werte und Reihen): Ändert es sich von außen (⌘Z), zeigt sie es neu */
 let linseStand = '';
+/** wessen Zähne die Linse zuletzt zeigte (die Grundform oder der Name einer Pose; Scheibe 4): Wechselt es, sagt sie es kurz */
+let linseWessen = '';
 /** woran ihre Lage hängt (Höhe des Fensters, ihre Größe, die Tafel „Fressen“) */
 let linseLage = '';
 const LINSE_GROESSE = 200;
@@ -9860,7 +9926,7 @@ let linseZeichen = '';
  * (`griff`: der wievielte Griff an den Linien; je Griff ein Schritt für ⌘Z). Zurück: ob es geschehen ist.
  */
 function gestaltStellen(g: ZahnGestalt, griff: number): boolean {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!z || werk.zug || werk.maulLauf) return false;
   const letzter = linseGriff;
   const schritt = !letzter || letzter.was !== 'gestalt' || letzter.griff !== griff || letzter.tiefe !== werk.zurueck.length;
@@ -9878,7 +9944,7 @@ const reihenStellen = (z: werk.MaulZaehne, f: (r: werk.ZahnReihe) => werk.ZahnRe
 
 /** die Werte der Zähne von der Linse aus ändern (`was`: welcher Griff es ist, für die Schritte von ⌘Z) */
 function zaehneStellen(was: string, neu: (z: werk.MaulZaehne) => werk.MaulZaehne): void {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!z || werk.zug || werk.maulLauf) return;
   const g = linseGriff;
   const griff = zahnLinse?.griffNr ?? -1;
@@ -9896,7 +9962,7 @@ const perleReihe = (name: 'groesse' | 'neigung' | 'verlauf' | 'sitz', min: numbe
   max,
   schritt: 0.1,
   rastet: false,
-  wert: () => werk.G.maul?.zaehne?.[linseFuehrt()][name] ?? 0,
+  wert: () => werk.zaehneJetzt()?.[linseFuehrt()][name] ?? 0,
   setzen: (w) => zaehneStellen(kurz, (z) => reihenStellen(z, (r) => ({ ...r, [name]: w }))),
   zeigen,
 });
@@ -9907,7 +9973,7 @@ const perleAnzahl: Perle = {
   max: 40,
   schritt: 1,
   rastet: true,
-  wert: () => werk.G.maul?.zaehne?.[linseFuehrt()].anzahl ?? 0,
+  wert: () => werk.zaehneJetzt()?.[linseFuehrt()].anzahl ?? 0,
   // beide Reihen zusammen: dieselbe Teilung, unten ein Zahn weniger (die unteren stehen in den Lücken der oberen); eine Reihe allein:
   // nur ihre Anzahl (null: Diese Reihe hat keine Zähne). Mit der Anzahl fällt, was einzelne Zähne eigen hatten, und die Wahl am Zahn.
   setzen: (w) => {
@@ -9926,7 +9992,7 @@ const perleGroesse: Perle = {
   schritt: 0.1,
   rastet: false,
   wert: () => {
-    const z = werk.G.maul?.zaehne;
+    const z = werk.zaehneJetzt();
     if (!z) return 1;
     return zahnWahl ? (z[zahnWahl.kiefer].eigen?.[zahnWahl.i]?.faktor ?? 1) : z[linseFuehrt()].groesse;
   },
@@ -9959,7 +10025,7 @@ function linseReiheTippen(welche: 'oben' | 'unten'): void {
 
 /** die Linse zeigt, was gilt: die Vorlage und den Zahn der führenden Reihe, die Grenzen der Perlen */
 function linseAuffrischen(): void {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!zahnLinse || !z) return;
   perleAnzahl.min = linseBeide() ? 1 : 0;
   perleGroesse.min = zahnWahl ? FAKTOR_MIN : 0.3;
@@ -10002,7 +10068,7 @@ function linseLegen(): void {
 /** was die Linse an den Zähnen stellt: Formenring (die Vorlagen der Zähne und die eigene Form), Perlen, die zwei Reihen, die Farbe, die Linien */
 const zahnZiele = (): LinsenZiele => ({
   perlen: zahnPerlen,
-  vorlagen: ((eigene) => (eigene ? [...ZAHN_VORLAGEN, { name: 'Eigene Form', zeichen: gestaltUmriss(eigene, 17) }] : ZAHN_VORLAGEN.map((v) => ({ ...v }))))(werk.G.maul?.zaehne ? linseEigene(werk.G.maul.zaehne) : null),
+  vorlagen: ((eigene) => (eigene ? [...ZAHN_VORLAGEN, { name: 'Eigene Form', zeichen: gestaltUmriss(eigene, 17) }] : ZAHN_VORLAGEN.map((v) => ({ ...v }))))(((zz) => (zz ? linseEigene(zz) : null))(werk.zaehneJetzt())),
   // Etappe 7: Der Zahn lässt sich an seinen Linien formen (mit dem Verhalten und den Werten der Linien an der Form)
   gestalt: {
     setzen: gestaltStellen,
@@ -10019,13 +10085,13 @@ const zahnZiele = (): LinsenZiele => ({
     },
   },
   // die Farbe der Zähne (alle tragen dieselbe): eine Perle am Rad öffnet den Farbwähler des Systems
-  farbe: { name: 'Farbe der Zähne', wert: () => werk.G.maul?.zaehne?.farbe ?? ZAHN_FARBE, setzen: (hex) => zaehneStellen('farbe', (z) => ({ ...z, farbe: hex })) },
+  farbe: { name: 'Farbe der Zähne', wert: () => werk.zaehneJetzt()?.farbe ?? ZAHN_FARBE, setzen: (hex) => zaehneStellen('farbe', (z) => ({ ...z, farbe: hex })) },
   reihen: [
     { name: 'Obere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: MAUL_FARBEN.oben, an: () => linseReihen.oben, tippen: () => linseReiheTippen('oben') },
     { name: 'Untere Reihe (antippen: nur sie stellen; noch einmal: beide)', farbe: MAUL_FARBEN.unten, an: () => linseReihen.unten, tippen: () => linseReiheTippen('unten') },
   ],
   form: (i) => {
-    const zz = werk.G.maul?.zaehne;
+    const zz = werk.zaehneJetzt();
     if (!zz) return;
     // (das neunte Zeichen: Die eigene Form gilt wieder; sie selbst steht noch da)
     const eigene = i === RING_EIGENE ? linseEigene(zz) : null;
@@ -10073,7 +10139,7 @@ function linseHolen(fuer: 'zaehne' | 'zunge', vorlage: number): Linse {
 const linsePerle: Record<'zaehne' | 'zunge', number> = { zaehne: 0, zunge: 0 };
 
 function linseOeffnen(): void {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!z) return;
   linseReihen = { oben: true, unten: true };
   zahnWahl = null;
@@ -10089,6 +10155,7 @@ function linseOeffnen(): void {
   linse.oeffnen(null, f);
   linse.gestaltZeigen(linseGestalt(z));
   linseStand = '';
+  linseWessen = '';
   anstossen();
 }
 function linseSchliessen(): void {
@@ -10123,10 +10190,17 @@ function linseSchritt(darf: boolean): boolean {
     zungeLinseZeigen();
     return false;
   }
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!darf || !z) {
     linseSchliessen();
     return true;
+  }
+  // wessen Zähne die Linse zeigt und stellt (Scheibe 4): Wechselt die Lage, an der gearbeitet wird, sagt sie es kurz; geöffnet in
+  // einer Pose nennt sie die Pose
+  const wessen = werk.grund ? werk.poseName(werk.posen.indexOf(werk.pose)) : 'Grundform';
+  if (wessen !== linseWessen) {
+    if (linseWessen !== '' || werk.grund) zahnLinse.melden(wessen);
+    linseWessen = wessen;
   }
   // die Wahl am Zahn gilt nur, solange es ihn gibt und an der Form nichts gewählt ist (es ist immer nur eines gewählt)
   if (zahnWahl) {
@@ -10232,7 +10306,7 @@ function werkOrtImBild(p: readonly number[], vp: Matrix4): [number, number] {
 
 /** ein Zahn ist angetippt: Die Wahl wird enger (Reihe, der Zahn mit seinem Spiegelbild, der Zahn allein) und beginnt dann wieder bei der Reihe */
 function zahnTippen(kiefer: 'oben' | 'unten', i: number): void {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!z) return;
   if (!linseOffen()) linseOeffnen();
   const r = z[kiefer];
@@ -10277,7 +10351,7 @@ function zahnTippen(kiefer: 'oben' | 'unten', i: number): void {
  * die längere. Je Bewegung ein Schritt dieser Annäherung; den Rest holt die nächste. `zahnPlaetze` hält ihn im Maul.
  */
 function zahnRuecken(zg: NonNullable<typeof zahnZug>, x: number, y: number): void {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   if (!z || werk.zug || werk.maulLauf) return;
   const q = zaehnePlaetzeJetzt().find((p) => (p.unten ? 'unten' : 'oben') === zg.kiefer && p.i === zg.i);
   if (!q) return;
@@ -10315,7 +10389,7 @@ function zahnRuecken(zg: NonNullable<typeof zahnZug>, x: number, y: number): voi
 
 /** ⌫: die gewählten Zähne ziehen (dort bleibt eine Lücke; ⌘Z bringt sie zurück) */
 function zahnZiehen(): void {
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   const w = zahnWahl;
   if (!z || !w || werk.zug || werk.maulLauf) return;
   if (!zaehneWert({ ...z, [w.kiefer]: eigenSetzen(z[w.kiefer], wahlZaehne(z), () => ({ weg: true })) })) return;
@@ -10329,7 +10403,7 @@ function zahnMarkenZeigen(): void {
   const n = zaehneNetzJetzt;
   const plaetze = zaehneNetzVon;
   const w = zahnWahl;
-  const z = werk.G.maul?.zaehne;
+  const z = werk.zaehneJetzt();
   const zaehne = w && z && n && plaetze.length && linseOffen() ? wahlZaehne(z) : [];
   const k = n && plaetze.length ? n.pos.length / 3 / plaetze.length : 0;
   const vp = zaehne.length ? vpJetzt() : null;
@@ -10401,7 +10475,7 @@ buehne.addEventListener(
       // nachgestellte Ereignisse haben keinen echten Zeiger
     }
     const kiefer = q.unten ? 'unten' : 'oben';
-    const z = werk.G.maul?.zaehne;
+    const z = werk.zaehneJetzt();
     const w = zahnWahl;
     const greift = !!z && !!w && w.kiefer === kiefer && (w.i === q.i || (!w.allein && partner(z[kiefer], w.i) === q.i));
     const fuss = werkOrtImBild(zahnRahmen(q, werk.alsAnzeige(() => werk.haut.pos)).ort, vpJetzt());
@@ -11742,7 +11816,11 @@ const haken = {
       }
     }
     return {
-      werte: werk.G.maul?.zaehne ?? null,
+      werte: werk.zaehneJetzt() ?? null,
+      // Scheibe 4: die Zähne der Grundform, je Pose ihr Versatz und ihre Zähne
+      grund: werk.G.maul?.zaehne ?? null,
+      versatz: werk.posen.map((p) => p.zaehne ?? null),
+      jePose: werk.posen.map((p) => werk.zaehneVon(p)),
       tropfen: !zaehneTropfen.hidden,
       plaetze: plaetze.map((q) => ({ unten: q.unten, gespiegelt: q.gespiegelt, mass: q.mass, vorn: q.vorn, r: q.r, i: q.i, form: q.form, ds: q.ds, dz: q.dz, aussen: q.aussen })),
       // die Wahl am Zahn (dritte Scheibe) und wie viele Marken stehen
@@ -11767,6 +11845,24 @@ const haken = {
     };
   },
   /**
+   * Zähne je Pose (Etappe 8, Scheibe 4): alle Punkte des gezeigten Netzes der Zähne in Einheiten des Werks (Zahn für Zahn
+   * hintereinander, `jeZahn` Punkte; die letzten zwei eines Zahns sind die Mitte seines Fußes und seine Spitze), welche Zähne es
+   * sind, und zwischen welchen Lagen die Anzeige steht.
+   */
+  zahnPunkte: () => {
+    const n = zaehneNetzJetzt;
+    const zahl = zaehneNetzVon.length;
+    const f = werkHaut.f;
+    return {
+      zahl,
+      jeZahn: n && zahl ? n.pos.length / 3 / zahl : 0,
+      pos: n ? Array.from(n.pos, (x) => x * f) : [],
+      zaehne: zaehneNetzVon.map((q) => ({ unten: q.unten, i: q.i, gespiegelt: q.gespiegelt })),
+      anteil: werk.poseAnteil,
+      ziel: werk.poseZiel ? werk.poseZiel.t : null,
+    };
+  },
+  /**
    * Maul, Etappe 7: der Zahn in der Linse als kleine Form. `blick`: ihn in die Ansicht einer Linie drehen (wie ein Tipp auf sie)
    * oder frei stellen (`gier`, `neig`). Zurück: wie er steht, was seine Linie trägt (Punkte im Fenster), die ruhenden Linien zum
    * Antippen, ob das, dem die Linse gilt, eine eigene Form hat und gerade zeigt, und wie viele Zeichen am Formenring stehen.
@@ -11776,7 +11872,7 @@ const haken = {
       if (typeof blick === 'string') zahnLinse.blickAuf(blick);
       else if (blick) zahnLinse.blickFrei(blick.gier, blick.neig);
     }
-    const z = werk.G.maul?.zaehne;
+    const z = werk.zaehneJetzt();
     return {
       ...(zahnLinse && linseOffen() ? zahnLinse.linienStand() : { linie: null, eingerastet: false, formt: false, griff: 0, gewaehlt: 0, punkte: [], linien: [], ms: 0 }),
       eigene: !!z && !!linseEigene(z),

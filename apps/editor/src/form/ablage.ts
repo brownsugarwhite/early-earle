@@ -10,6 +10,7 @@ import type { Loop, V3 } from '@ee/shape/dicht';
 import type { FlacheHaut } from './verfeinern';
 import type { BemalungDatei } from '../ozzy/farbe/bemalung';
 import type { ZahnGestalt } from '../ozzy/zahnGestalt';
+import type { PoseZaehne } from './zahnVersatz';
 
 /** eine Zahnreihe in der Datei (wie `ZahnReihe` im Werk; `eigen`: einzelne Zähne, wie `ZahnEigen`) */
 export type ZahnReiheDatei = {
@@ -76,6 +77,8 @@ export type WesenStand = {
     linien?: { id: number; laenge?: number; punkte: { s?: number; d: V3; ein: V3 | null; aus: V3 | null }[] }[] | null;
     name?: string;
     zunge?: number[] | null;
+    /** was die Zähne in dieser Pose anders haben als in der Grundform (`zahnVersatz.ts`, seit Scheibe 4) */
+    zaehne?: PoseZaehne | null;
   }[];
   poseNr?: number;
   /** in der Pose: die Grundform dazu (`haut` und `loops` sind dann die Pose) */

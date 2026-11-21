@@ -143,6 +143,7 @@ import { type NahtArt, hautImMass, loopImMass, manifoldLaden, objekteVerbindenMi
 import type { ZahnGestalt } from '../ozzy/zahnGestalt';
 import { FRESSEN_ANFANG, KIEFER_MAX, MAUL_HAAR, type MaulStueck, kieferSeiten, kieferTropfenRuhe, kieferWinkel, maulEchtAmLoop, maulLage, maulSchneidenMit } from './maulEcht';
 import { altMitgegangen, neuePunkteLegen } from './zweiteLage';
+import { type PoseZaehne, versatzAusDatei, versatzGleich, versatzPassend, zaehneMitVersatz, zaehneTeilen } from './zahnVersatz';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -412,8 +413,10 @@ export type PoseLinie = { id: number; laenge?: number; punkte: (PoseVersatz & { 
 /**
  * `name`: wie die Pose in der Reihe heißt (fehlt: „Fressen“ für die erste, sonst „Pose n“). `zunge`: die Lage der Zunge in dieser
  * Pose, solange sie nicht die gewählte ist (die der gewählten steht am Maul, `MaulZunge.lage`: dort liest und schreibt Ozzy).
+ * `zaehne` (Scheibe 4): was die Zähne in dieser Pose anders haben als in der Grundform (`zahnVersatz.ts`; fehlt: nichts). Er
+ * steht immer an der Pose, auch an der gewählten, und wird nie am Ort geändert (ein neues Ding an seine Stelle).
  */
-export type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: PoseLinie[] | null; name?: string; zunge?: number[] | null };
+export type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: PoseLinie[] | null; name?: string; zunge?: number[] | null; zaehne?: PoseZaehne | null };
 export let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null };
 /**
  * Alle Posen der Form in der Reihenfolge ihrer Tropfen (Etappe 8, Scheibe 3); `pose` ist die gewählte und immer eine von ihnen.
@@ -1086,14 +1089,78 @@ export function maulTasche(): { innen: Uint8Array; lippe: number[]; lang: number
  */
 export function zaehneSetzen(z: MaulZaehne | null, schritt = true): boolean {
   const m = G.maul;
-  if (!m?.echt || zug) return false;
+  // (zwischen zwei Lagen wird nichts gestellt: Es wäre nicht klar, wessen Zähne es sind)
+  if (!m?.echt || zug || poseWandert()) return false;
   if (schritt) zurueck.push(schnappschuss());
-  const { zaehne: _alt, ...rest } = m;
-  void _alt;
-  G.maul = z ? { ...rest, zaehne: { ...z, oben: { ...z.oben }, unten: { ...z.unten } } } : rest;
+  const alt = m.zaehne ?? null;
+  let neu: MaulZaehne | null = z ? { ...z, oben: { ...z.oben }, unten: { ...z.unten } } : null;
+  // In einer Pose (Scheibe 4): Was die Zähne sind, gilt für alle Posen; wie sie stehen und wie groß sie sind, ist der Versatz
+  // dieser Pose gegen die Grundform
+  if (neu && alt && grund && !altePose()) {
+    const t = zaehneTeilen(alt, neu);
+    const hier = !versatzGleich(pose.zaehne, t.versatz);
+    if (hier) pose.zaehne = t.versatz;
+    neu = t.grund;
+    if (neu !== alt) G.meldung = 'Zähne: Anzahl, Lücken, Form und Farbe gelten für alle Posen';
+    else if (hier) G.meldung = `Zähne: gilt in „${poseName(posen.indexOf(pose))}“ · in der Grundform gestellt gilt es für alle Posen`;
+  }
+  if (neu !== alt) {
+    // was einzelne Zähne in einer Pose anders hatten, gilt nur, solange ihre Reihe dieselben Zähne hat (ohne Zähne: nichts mehr)
+    let anders = false;
+    const liste = posen.map((p) => {
+      const v = versatzPassend(p.zaehne, alt, neu);
+      if (v === (p.zaehne ?? null)) return p;
+      anders = true;
+      if (p !== pose) return { ...p, zaehne: v };
+      p.zaehne = v;
+      return p;
+    });
+    if (anders) posen = liste;
+    const { zaehne: _alt, ...rest } = m;
+    void _alt;
+    G.maul = neu ? { ...rest, zaehne: neu } : rest;
+  }
   // (nur ein Bild, wie bei der Zunge: Linien und Haut der Form ändern sich mit den Zähnen nicht; siehe `zungeSetzen`)
   anzeige.rendern();
   return true;
+}
+
+/**
+ * Die Zähne einer Lage (Scheibe 4): die der Grundform (`p` null) oder die einer Pose, also Grundform plus ihr Versatz. Dasselbe
+ * Ding, solange Grundform und Versatz dieselben sind (wer sie liest, darf sie daran wiedererkennen). Null: keine Zähne.
+ */
+let zaehneGemerkt: { g: MaulZaehne; v: PoseZaehne; z: MaulZaehne }[] = [];
+export function zaehneVon(p: PoseStand | null): MaulZaehne | null {
+  const g = G.maul?.zaehne ?? null;
+  const v = p?.zaehne;
+  if (!g || !v) return g;
+  let m = zaehneGemerkt.find((x) => x.g === g && x.v === v);
+  if (!m) {
+    m = { g, v, z: zaehneMitVersatz(g, v) };
+    zaehneGemerkt = [m, ...zaehneGemerkt.slice(0, POSEN_HOECHSTENS)];
+  }
+  return m.z;
+}
+/** Die Zähne, die die Linse zeigt und stellt: in der betretenen Pose ihre, sonst die der Grundform */
+export const zaehneJetzt = (): MaulZaehne | null => zaehneVon(grund && !altePose() ? pose : null);
+/** eine Lage der Zähne: wessen (null: die Grundform), ihre Werte und die Ruhe der Haut, in der ihre Plätze gelesen werden */
+export type ZahnLage = { wer: PoseStand | null; zaehne: MaulZaehne; ruhe: Float64Array };
+/**
+ * Die Zähne, wie die Anzeige sie zeigt: an einer Lage (`nach` null), oder zwischen zweien beim Anteil `t` der zweiten (zwischen
+ * Grundform und betretener Pose, oder zwischen der betretenen Pose und ihrem Ziel). Null: keine Zähne.
+ */
+export function zaehneGezeigt(): { von: ZahnLage; nach: ZahnLage | null; t: number } | null {
+  const g = G.maul?.zaehne;
+  if (!g) return null;
+  if (!grund || altePose()) return { von: { wer: null, zaehne: g, ruhe: haut.pos }, nach: null, t: 0 };
+  const hier: ZahnLage = { wer: pose, zaehne: zaehneVon(pose) ?? g, ruhe: haut.pos };
+  const z = poseZiel;
+  if (z) {
+    const fern = lageVon(z.p);
+    return fern && fern.pos.length === haut.pos.length ? { von: hier, nach: { wer: z.p, zaehne: zaehneVon(z.p) ?? g, ruhe: fern.pos }, t: z.t } : { von: hier, nach: null, t: 0 };
+  }
+  if (poseAnteil < 1 && grund.haut.pos.length === haut.pos.length) return { von: { wer: null, zaehne: g, ruhe: grund.haut.pos }, nach: hier, t: poseAnteil };
+  return { von: hier, nach: null, t: 0 };
 }
 
 /** Die Zunge des Mauls setzen oder nehmen (Etappe 6), wie `zaehneSetzen`. Zurück: ob es geschehen ist. */
@@ -1546,12 +1613,18 @@ export function poseZielSetzen(nr: number | null, t = 0): void {
 export const poseWandert = (): boolean => grund !== null && (poseAnteil < 1 || poseZiel !== null);
 /** Die Anzeige dreht mit den Knochen: in der Pose immer, in der Grundform beim Blick ins Maul */
 export const anzeigeDreht = (): boolean => grund !== null || (maulBlick > 0 && G.maul !== null && zug === null);
+/**
+ * Der Anteil, um den die Anzeige die Kiefer öffnet (0 zu, 1 wie in der Pose): in der Grundform der Blick ins Maul, in der Pose
+ * ihr Anteil, und zwar vom Blick aus gezählt. Hält etwas das Maul der Grundform offen (die Linse der Zähne), bleibt es zwischen
+ * Grundform und Pose so weit offen und klappt nicht erst zu (Scheibe 4): Dann wandern nur Form und Zähne.
+ */
+export const offenAnteil = (): number => (grund ? maulBlick + (1 - maulBlick) * poseAnteil : maulBlick);
 /** Die Winkel der Kiefer, wie die Anzeige sie gerade zeigt (Grad, von „zu“): die der Pose, anteilig beim Wandern und beim Blick ins Maul */
 export function winkelGezeigt(): { kiefer: number; schaedel: number } {
-  if (!grund) return { kiefer: pose.kiefer * maulBlick, schaedel: pose.schaedel * maulBlick };
-  const z = poseZiel;
+  const z = grund ? poseZiel : null;
   if (z) return { kiefer: pose.kiefer + (z.p.kiefer - pose.kiefer) * z.t, schaedel: pose.schaedel + (z.p.schaedel - pose.schaedel) * z.t };
-  return { kiefer: pose.kiefer * poseAnteil, schaedel: pose.schaedel * poseAnteil };
+  const f = offenAnteil();
+  return { kiefer: pose.kiefer * f, schaedel: pose.schaedel * f };
 }
 /** So weit zeigt die Anzeige das Maul gerade offen (Grad, beide Kiefer zusammen; 0: zu) */
 export const maulOffenGrad = (): number => {
@@ -1605,7 +1678,7 @@ export function kieferKnochen(mindVor = 0, mindSeit = 0): { C: V2; lang: number;
   return {
     C: L.C,
     lang: Math.max(L.oben.lang, L.unten.lang),
-    gezeigt: grund ? poseAnteil : maulBlick,
+    gezeigt: offenAnteil(),
     oben: { ruhe: kieferTropfenRuhe(L.oben, mindVor, mindSeit), grad: pose.schaedel, sinn: L.oben.links ? 1 : -1 },
     unten: { ruhe: kieferTropfenRuhe(L.unten, mindVor, mindSeit), grad: pose.kiefer, sinn: L.unten.links ? 1 : -1 },
   };
@@ -1855,7 +1928,7 @@ export function poseAnlegen(): number {
   if (inPose) poseSichern();
   const lage = G.maul.zunge?.lage;
   const neu: PoseStand = inPose
-    ? { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta ? Float64Array.from(pose.delta) : null, linien: pose.linien ?? null, name, zunge: lage ? [...lage] : null }
+    ? { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta ? Float64Array.from(pose.delta) : null, linien: pose.linien ?? null, name, zunge: lage ? [...lage] : null, ...(pose.zaehne ? { zaehne: pose.zaehne } : {}) }
     : { kiefer: 0, schaedel: 0, delta: null, linien: null, name };
   posen = [...posen, neu];
   const nr = posen.length - 1;
@@ -6422,10 +6495,11 @@ const poseFuerDatei = (x: PoseStand, gewaehlt: boolean): NonNullable<WesenStand[
   linien: x.linien ?? null,
   ...(x.name !== undefined ? { name: x.name } : {}),
   ...(!gewaehlt && x.zunge ? { zunge: x.zunge } : {}),
+  ...(x.zaehne ? { zaehne: x.zaehne } : {}),
 });
-/** alle Posen für die Datei; nichts, solange es nur die eine unbenannte gibt (dann sieht die Datei aus wie vor dem 21.11.) */
+/** alle Posen für die Datei; nichts, solange es nur die eine unbenannte ohne eigene Zähne gibt (dann sieht die Datei aus wie vor dem 21.11.) */
 const posenFuerDatei = (alle: readonly PoseStand[], gewaehlt: PoseStand): Pick<WesenStand, 'posen' | 'poseNr'> =>
-  alle.length > 1 || gewaehlt.name !== undefined ? { posen: alle.map((x) => poseFuerDatei(x, x === gewaehlt)), poseNr: Math.max(0, alle.indexOf(gewaehlt)) } : {};
+  alle.length > 1 || gewaehlt.name !== undefined || gewaehlt.zaehne ? { posen: alle.map((x) => poseFuerDatei(x, x === gewaehlt)), poseNr: Math.max(0, alle.indexOf(gewaehlt)) } : {};
 
 /** Der Stand von jetzt als Wesen (die Lagen als Kopie, die Loops, wie sie sind: gleich packen) */
 export function standJetzt(): WesenStand {
@@ -6489,6 +6563,7 @@ export function standAnwenden(st: WesenStand): string {
     linien: q.linien ?? null,
     ...(typeof q.name === 'string' ? { name: q.name } : {}),
     ...(Array.isArray(q.zunge) ? { zunge: [...q.zunge] } : {}),
+    ...((v) => (v ? { zaehne: v } : {}))(st.maul?.zaehne ? versatzAusDatei(q.zaehne) : null),
   });
   const allePosen = st.posen?.length ? st.posen.map(ausDatei) : [ausDatei(st.pose)];
   const gewaehlt = allePosen[Math.max(0, Math.min(allePosen.length - 1, st.posen?.length ? (st.poseNr ?? 0) : 0))]!;

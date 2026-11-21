@@ -470,3 +470,36 @@ export function zaehneNetz(
   }
   return netz;
 }
+
+/**
+ * Zwischen zwei Lagen (Etappe 8, Scheibe 4): `a` und `b` sind die Netze derselben Zähne an derselben gezeigten Haut, einmal mit
+ * den Plätzen und Werten der einen Lage, einmal mit denen der anderen (Zahn für Zahn gleich gebaut). `a` wird am Ort das Netz beim
+ * Anteil `t` von `b`: Jeder Punkt jedes Zahns liegt anteilig dazwischen. Passen die Netze nicht zusammen, bleibt `a`.
+ */
+export function netzZwischen(a: HautNetz, b: HautNetz, t: number): HautNetz {
+  if (a.pos.length !== b.pos.length || a.index.length !== b.index.length || !(t > 0)) return a;
+  const u = Math.min(1, t);
+  const s = 1 - u;
+  const n = a.pos.length / 3;
+  for (let v = 0; v < n; v++) {
+    for (let c = 0; c < 3; c++) a.pos[3 * v + c] = s * a.pos[3 * v + c]! + u * b.pos[3 * v + c]!;
+    const nx = s * a.normal[3 * v]! + u * b.normal[3 * v]!;
+    const ny = s * a.normal[3 * v + 1]! + u * b.normal[3 * v + 1]!;
+    const nz = s * a.normal[3 * v + 2]! + u * b.normal[3 * v + 2]!;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    a.normal[3 * v] = nx / l;
+    a.normal[3 * v + 1] = ny / l;
+    a.normal[3 * v + 2] = nz / l;
+    a.blatt[2 * v] = a.pos[3 * v]!;
+    a.blatt[2 * v + 1] = a.pos[3 * v + 1]!;
+  }
+  return a;
+}
+/** dieselben Zähne als Körper zwischen zwei Lagen (wie `netzZwischen`; passen sie nicht zusammen: die von `a`) */
+export function kapselnZwischen(a: readonly ZahnKapsel[], b: readonly ZahnKapsel[], t: number): ZahnKapsel[] {
+  if (a.length !== b.length || !(t > 0)) return [...a];
+  const u = Math.min(1, t);
+  const m = (p: readonly number[], q: readonly number[]): [number, number, number] => [p[0]! + u * (q[0]! - p[0]!), p[1]! + u * (q[1]! - p[1]!), p[2]! + u * (q[2]! - p[2]!)];
+  return a.map((k, i) => ({ ...k, a: m(k.a, b[i]!.a), b: m(k.b, b[i]!.b), r: k.r + u * (b[i]!.r - k.r) }));
+}
+
