@@ -37,3 +37,18 @@ Fell, Wolken und Plüsch ruhen bis später (sein Urteil: „erreichen noch nicht
 
 Je Etappe Bilder an „strange bird“ (Übersicht `ZOOM=2.4`, nah `ZOOM=6`), Konsole ohne Fehler, Typen und Lint; vor und nach dem
 Umbau dieselbe Ansicht. Tempo der neuen Motoren einmal messen (in Bewegung und im Stand). Sein Auge entscheidet.
+
+## Stand (21.11.2026): gebaut
+
+Alle Etappen in einem ersten Stand, 78 Shader in acht Gruppen (neu: Stein, Barcelona). Bilder:
+`docs/progress/ozzy/shader/2026-11-21-runde-8-schlangen.png`, `-drache-echsen.png`, `-schleim-steine.png`,
+`-barcelona-tusche-matrix.png`. Recherche: `docs/research/2026-11-21-runde-8-recherche.md`. Offenes: `…-shader-was-bleibt.md`,
+Punkte 45 bis 53.
+
+- **Schlangen:** Schuppenfeld auf dem Netz (`schuppenFeld.ts`), Python, Klapperschlange, Korallennatter, neu Regenbogenboa und Grüner
+  Baumpython; regelmäßige schräge Reihen, Überlappung, Schatten unter der freien Kante, Muster je Schuppe.
+- **Drache:** Rangordnung der Schuppen, Riefen, Poren, abgenutzte Kanten; Arten Glut (Magma in schmalen Fugen), Smaragd, Frost, Nacht
+  (Schiller an den Rändern); Haut kann leuchten und schillern.
+- **Krokodil** auf dem Schuppenfeld (Knochenschilde in Querreihen), **Chamäleon** mit Körnchen und Stimmung.
+- **Schleim** (Brechung, Farbe nach Weg, Trübe, Blasen, Glitzer, zähe Tropfen), **Steine** (acht Gesteine), **Barcelona** (Trencadís,
+  Casa Batlló, Sagrada Família), **Ornament in Tusche** (Zeichenstil der Vorlage), **Matrix 2.0** (Formzeichen, Katakana-Regen).

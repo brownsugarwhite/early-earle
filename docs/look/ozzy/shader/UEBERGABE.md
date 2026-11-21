@@ -1,11 +1,14 @@
-# Übergabe: 62 Shader für Ozzy (21.11.2026, Runde 7)
+# Übergabe: 78 Shader für Ozzy (21.11.2026, Runde 8)
 
 Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 5),
 `docs/plans/2026-11-21-ozzy-shader-runde-6.md` (Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel),
-`docs/plans/2026-11-21-ozzy-shader-runde-7-fell.md` (Runde 7: Fell schneller, Ghibli-Ränder, Schaf als Stapel; Messungen). Recherche:
+`docs/plans/2026-11-21-ozzy-shader-runde-7-fell.md` (Runde 7: Fell schneller, Ghibli-Ränder, Schaf als Stapel; Messungen),
+`docs/plans/2026-11-21-ozzy-shader-runde-8.md` (Runde 8: Schlangen, Drache, Echsen, Schleim, Steine, Barcelona, Zeichenstil,
+Matrix 2.0; Vorlagen in `docs/look/ozzy/shader/vorlagen/`). Recherche: `docs/research/2026-11-21-runde-8-recherche.md` (Runde 8),
 `docs/research/2026-11-20-shader-recherche.md`, für die Tiere `docs/research/2026-11-20-tiermuster-recherche.md`, für den T-Rex
 `docs/research/2026-11-20-t-rex-haut-recherche.md`, für Fell und Flausch `docs/research/2026-11-21-fell-flausch-recherche.md`.
-Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 7, vorher | nachher:
+Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 8:
+`2026-11-21-runde-8-schlangen.png`, `-drache-echsen.png`, `-schleim-steine.png`, `-barcelona-tusche-matrix.png`; Runde 7, vorher | nachher:
 `2026-11-21-runde-7-fell.png`, `-fell-andere.png`; Runde 6:
 `2026-11-21-runde-6-fell.png`, `-muster.png`, `-flausch.png`, `-haeute.png`, `-tiere.png`, `-nah.png`; Runde 5:
 `2026-11-20-runde-5-trex-stile.png`, `-farben.png`, `-nah.png`; Runde 4: `2026-11-20-runde-4-*.png`; Runde 3:
@@ -25,19 +28,23 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
   Blatt aus Bildern: `node scripts/ozzy/bildblatt.mjs <ziel.png> <spalten> <breite je Bild> <bilder…>` (die Breite gilt **je Bild**).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
-## Die 62, in sechs Gruppen
+## Die 78, in acht Gruppen
 
 - **Spider-Verse (17):** Comicdruck, Aquarell, Indrajal, Punk-Collage, Marker 2099, Tintenfleck, Da Vinci, Glitch, Earth-42,
   Multiplane, Noir, Cartoon, Neunziger, Sienkiewicz, Venom-Blitz, Pixel, LEGO.
-- **Anime & Manga (7):** Anime, Manga, Flammenwesen, Dampfwesen, Shinkai, Ukiyo-e, Gouache (Ghibli).
-- **Materialien (10):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Opal, Diamant, Diamantbesatz, Diskokugel.
-- **Tiermuster (15):** Leopard, Tiger, Giraffe (seit Runde 6 auf dem Fell), Elefant, Python (`schlange`), Klapperschlange,
-  Korallennatter, Krokodil, Feuersalamander, T-Rex (`trex`), Drache, Pfeilgiftfrosch (`frosch`), Chamäleon (`chamaeleon`), Krake,
-  Turing-Haut. Die Häute haben den Regler **Stil** (Echt, Anime, Manga, Spider-Verse, Earle); der T-Rex sieben Stile (Kino,
+- **Anime & Manga (8):** Anime, Manga, Flammenwesen, Dampfwesen, Shinkai, Ukiyo-e, Gouache (Ghibli), Ornament in Tusche (nach
+  der Oni-Vorlage).
+- **Materialien (11):** Autolack, Haut, Knete, Earle-Haut, Earle-Schuppen, Flüssigglas, Schleim, Opal, Diamant, Diamantbesatz,
+  Diskokugel.
+- **Stein (8):** Marmor, Granit, Sandstein, Obsidian, Jade, Lapislazuli, Malachit, Achat (ein Motor, `steine.ts`).
+- **Barcelona (3):** Trencadís, Casa Batlló, Sagrada Família (`gaudi.ts`).
+- **Tiermuster (17):** Leopard, Tiger, Giraffe (seit Runde 6 auf dem Fell), Elefant, Python (`schlange`), Klapperschlange,
+  Korallennatter, Regenbogenboa, Grüner Baumpython, Krokodil, Feuersalamander, T-Rex (`trex`), Drache (Arten Glut, Smaragd, Frost,
+  Nacht), Pfeilgiftfrosch (`frosch`), Chamäleon (`chamaeleon`, Regler Stimmung), Krake, Turing-Haut. Die Häute haben den Regler **Stil** (Echt, Anime, Manga, Spider-Verse, Earle); der T-Rex sieben Stile (Kino,
   Spider-Verse, Earle, Fossil, Spielzeug, Anime, Manga) und vier Färbungen (Erde, Wald, Asche, Glut).
 - **Fell & Flausch (6):** Fell (Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch; 20 Muster; sechs Felltypen), Schaf,
   Plüschtier, Wolke (Echt, Ghibli, Anime), Zuckerwatte, Pusteblume (Versuch).
-- **Effekte (7):** Eine Linie, Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
+- **Effekte (8):** Eine Linie, Matrix 2.0 (`matrix`), Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
 
 Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
 
@@ -152,3 +159,19 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
     kostet, zeigt ein Lauf mit abgeschaltetem Teil (`FLICKEN` wie in `ozzy-teile.mjs`; Muster in GLSL-Text, nicht in JS-Code, den
     Vite umformt). Am iPhone nicht gemessen (Adresse mit `info=1` zeigt Bilder je Sekunde). Das Übersetzen eines Fell- oder
     Hautshaders kostet beim Wechsel 0,4 bis 0,7 s.
+24. **Schuppenfeld** (`schuppenFeld.ts`, Runde 8; Schlangen und Krokodil): Regelmäßige schräge Reihen gibt es nur über Phasen auf
+    dem Netz (Zellen im Raum geben Kiesel, Zylinderkoordinaten entarten auf Flossen). Auf dem Prozessor, je Netzstand: U längs (Startwert
+    aus der Körperachse, dann Poisson mit konjugierten Gradienten), W quer = N·θ + Ausgleich (ganzzahlige Windung um die Achse, Naht im
+    Bauch). Je Ecke (cos, sin) in einer Textur, ein Durchgang zeichnet das Netz damit (`tPhasen`), die Haut liest a = (U+W)/2π,
+    b = (U−W)/2π; Ableitungen ohne Sprung aus cos und sin; vier Kandidaten, die vorderste deckende Schuppe gewinnt. Die Anzeige hat an
+    der Spiegelebene doppelte Ecken: nach Lage verschweißen. Rechnet rund 0,6 s im Hauptfaden (nicht im Worker). Eingebaut über
+    `haut(…, feld)` und den Haken `vorher` des Bild-Shaders. Die Zeilen wiederholen sich (U springt je Reihe): Werte je Schuppe aus
+    dem Raum (Rauschen an der Mitte der Schuppe), nie aus den Gitterzahlen.
+25. **Haut mit Leuchten und Schiller** (Runde 8, `hautStile.ts`): `Haut.leucht` (linear, HDR) und `Haut.schiller` (dünne Schicht);
+    jede Haut setzt beide (auch `rexZuHaut`). Schiller nur an flachen Winkeln, sonst wird es Regenbogenfolie.
+26. **Matrix 2.0** (`matrix.ts`): Atlas aus der Schrift des Systems (Canvas), Formvektoren je ASCII-Zeichen aus sechs versetzten Kreisen
+    (die Mitte der Zelle zählt nicht, sonst wird gleichmäßiges Grau zu senkrechten Strichen); erster Durchgang je Zelle ein Bildpunkt
+    (Zeichen, Helligkeit, Deckung, Kante), zweiter zeichnet, Regen, Glühen aus den Zellen.
+27. **Tropfen als Baustein:** `TROPFEN_FORM` (aus `tropfen.ts`) braucht die Regler `tropfen` und `zaeh`; der Schleim nutzt ihn.
+28. **Steine:** Durchscheinende Steine lesen ihr Muster längs des gebrochenen Blicks in drei Tiefen. Die Bühne `studio()` ist für
+    Spiegelungen gemacht, nicht als sichtbarer Grund (ein beiger Lichtstreifen stand im Bild).

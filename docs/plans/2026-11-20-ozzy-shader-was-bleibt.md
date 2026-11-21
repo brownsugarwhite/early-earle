@@ -1,4 +1,4 @@
-# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 7, 21.11.2026)
+# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 8, 21.11.2026)
 
 Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/2026-11-20-runde-2-*.png`, Runde 4:
 `2026-11-20-runde-4-*.png`, Runde 6: `2026-11-21-runde-6-*.png`). Was mir beim Ansehen aufgefallen ist, für einen Feinschlifflauf (Florians Auge entscheidet):
@@ -94,3 +94,22 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     ein Zwischenspeicher spart einige Millisekunden.
 44. **Flammen** (Anime, Spider-Verse, Manga) suchen nur noch vier Kandidaten: Selten schneidet eine Grenze des Rasters eine Flamme
     gerade ab (in den Bildern nicht gesehen).
+
+**Nach Runde 8 (Schlangen, Drache, Echsen, Schleim, Steine, Barcelona, Zeichenstil, Matrix 2.0; Bilder `2026-11-21-runde-8-*.png`):**
+
+45. **Fell, Wolken, Plüsch** erreichen laut Florian „noch nicht den standard“; ruhen bis später.
+46. **Schuppenfeld:** Auf Flossen und Ohren verzerrt sich das Gitter (größere, gestreckte Schuppen), an der Vorderkante der Oberflosse
+    laufen die Reihen sternförmig zusammen. Die Recherche schlägt vor: Strichrichtung aus dem Abstand längs des Körpers (Dijkstra durch
+    das Innere), Phasen nach Knöppel 2015 oder mehrstufig, im Worker, vom letzten Stand aus. Rechnet heute 0,6 s im Hauptfaden.
+47. **Schlangen:** Rauten der Klapperschlange lesen sich von der Seite als Bänder; weiße Rückenschuppen des Baumpythons selten; die
+    Linien zwischen den Schuppen sind auf hellen Schlangen etwas zu dunkel. Gabunviper (Recherche) nicht gebaut.
+48. **Drache:** Kamm auf der Mittellinie nicht gebaut; die Schuppen sind flacher als in Runde 6, aber noch Schindeln aus Zellen im Raum
+    (die Recherche empfiehlt Platten aus dem Schuppenfeld, zwei mal zwei Flankenschuppen je Platte).
+49. **Krokodil:** Das Raster der Rückenschilde wirkt nah wie ein Korb; Kopfvielecke (Faltung) nicht gebaut. **Chamäleon:** wirkt noch
+    etwas wie ein Mosaik; Sechseckgitter aus dem Feld (Recherche) nicht gebaut.
+50. **Zeichenstil:** Stil und Palette wie die Vorlage, aber keine Oni-Maske (die Form ist glatt, das Ornament ist prozedural); Spiralen
+    wirken eher wie Ringe; Schraffur als Querkonturen (Recherche) nicht gebaut.
+51. **Matrix 2.0:** Zeiger als Lampe, Entschlüsseln-Welle, Nachleuchten der Röhre und ein MSDF-Atlas (Recherche) nicht gebaut.
+52. **Steine:** Calacatta, Nero Marquina, Labradorit (Recherche) nicht gebaut; Achat wirkt hell.
+53. **Barcelona:** Panot (Sechseckpflaster) und Kugeln auf dem Kamm der Batlló nicht gebaut. **Schleim:** Pfütze und Brennfleck auf
+    der Bühne nicht gebaut.
