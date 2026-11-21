@@ -53,5 +53,9 @@ Gebaut, alle an „strange bird“ geprüft (Konsole ohne Fehler, Typen und Lint
 5. **Straße und Natur** (39668918): Hall of Fame, Nietenleder, Neon Rot, Argon Blau, Platane.
 6. **Nachtschatten und Sin City** (053eccdb): Nachtschatten, Nachtschatten Alpha, Sin City Regen, Gelb, Rot.
 
+7. **Tropfschleim nach der Vorlage** (Florian, 21.11. nachmittags: „kannst du versuchen dieses material wirklich genauso
+   hinzubekommen?“): neu gebaut, an der Kugel neben der Vorlage geprüft, bucklig im Umriss, 16,6 ms je Bild (Blatt
+   `2026-11-21-runde-9-tropfschleim-vorlage.png`; Skript `scripts/ozzy/shader-kugel.mjs`).
+
 Jetzt 94 Shader in elf Gruppen. Offen (Punkte 54 bis 61 in `2026-11-20-ozzy-shader-was-bleibt.md`): Gòtic-Mauer, Studentenblumen,
 Walrippen, Sticker-Bomb, Tartan, Neonröhren, Moos, Tagschatten, Innenabstand, Reliefschatten für Fels und Mauer.

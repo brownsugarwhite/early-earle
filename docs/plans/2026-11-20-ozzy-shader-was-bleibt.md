@@ -118,8 +118,8 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
 `2026-11-21-runde-9-*.png`; Recherche `docs/research/2026-11-21-runde-9-recherche.md`):**
 
 54. **Schleimgeist:** Skelett, Kern und Blasen nach dem Innenabstand (64³-Abstandsfeld, Schädel in der größten Innenkugel, Knochen
-    auch in den Fortsätzen) nicht gebaut; heute sitzt das Skelett fest an der Mitte. **Tropfschleim:** Spuren starten nicht an
-    waagerechten Lippen, Farbe nicht aus der Dicke der Schicht, Tropfenköpfe ohne eigenes Glanzlicht.
+    auch in den Fortsätzen) nicht gebaut; heute sitzt das Skelett fest an der Mitte. **Tropfschleim:** am 21.11. nachmittags nach der
+    Vorlage neu gebaut (siehe 62).
 55. **Fels und Mauer:** Streiflicht und Reliefschatten (laut Recherche der größte Schritt) nur im Panot gebaut; die Mauer nicht in
     Lagen (Schichten in y), keine Zwickelsteine, kein Kalkfels mit Rillenkarren.
 56. **Schlangen:** Körnchen auf Flossen, Ohren und an den Enden der Achse; am Übergang liegen Körnchen über den Rauten; Muster an
@@ -134,3 +134,8 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     gebaut; die Platten liegen nach der Lage im Raum (an Formen ohne Rücken oben passen sie nicht).
 61. **Sin City:** Pinselspritzer, weiß leuchtende Tropfen (Regen), gelbe Tropfen (Gelb), Spielart Blaulicht (Rot) nicht gebaut; das
     Histogramm (nur zwei Werte plus Schmuckfarbe) ist nicht gezählt, die Glättung an den Kanten gibt etwas Grau.
+62. **Tropfschleim nach der Vorlage** (Blatt `2026-11-21-runde-9-tropfschleim-vorlage.png`): Lagen, Lippen, Tropfen, Farbe aus der
+    Dicke und der bucklige Umriss stehen. Abweichungen zur Vorlage: dort ist es weicher und gelber, die Tropfen sind gleichmäßiger
+    über die Kugel verteilt, die Lagen weniger waagerecht; wo zwei Tropfenköpfe nebeneinanderliegen, entsteht manchmal eine
+    Schleifenform. Teile nahe der Hochachse (die Flosse von „strange bird“) bekommen dichtere, feinere Spuren (die Säulen der
+    Tropfen sind Winkel um die Achse). Der Umriss ist nur am äußeren Rand bucklig, nicht an inneren Konturen.
