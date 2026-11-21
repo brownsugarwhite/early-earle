@@ -385,13 +385,40 @@ const SCHLANGE_KOPF = /* glsl */ `
   // Mitte der Schuppe im Raum: von hier um die Lage in der Zelle zurück; dort wird das Muster gelesen
   vec3 pm = p - pa * xyB.x - pb * xyB.y;
   // wo das Gitter verzerrt ist (Zellen viel größer als eine Schuppe, Wirbel), ist die geschätzte Mitte unsicher: dort der Punkt selbst
-  float guete = smoothstep(3.0, 1.4, (length(pa) + length(pb)) / uRadius * f);
+  float guete = smoothstep(4.2, 2.6, (length(pa) + length(pb)) / uRadius * f);
   vec3 qm = mix(q, (pm - uMitte) / uRadius, h.lod * guete);
   vec3 mz = qm * f;
   float id = clamp(0.5 + 0.55 * snoise(qm * f * 1.3), 0.0, 1.0);
   float uN = clamp(uv.x * 2.0 / (1.0 + FORM.x), -0.8, 1.0);
-  float unter = 1.0 - smoothstep(0.0, 0.18, schatten);
-  float fuge = innen < 0.0 ? 1.0 : 1.0 - smoothstep(0.0, 0.08, innen);
+  float unter = 1.0 - smoothstep(0.0, 0.12, schatten);
+  float fuge = innen < 0.0 ? 1.0 : 1.0 - smoothstep(0.0, 0.05, innen);
+  vec3 wolb = S * 0.45 - Q * uv.y * 0.9;
+  // Runde 9 (Florian: „Die verzogenen schuppen gefallen mir bei den schlangen nicht“): Wo das Gitter verzerrt ist (Güte je Ecke aus
+  // dem Schuppenfeld: Flossen, Ohren, die Enden der Achse), liegen kleine runde Körnchenschuppen wie am Kopf echter Schlangen. Die
+  // Güte wird an der Mitte des Körnchens gelesen: Jedes Körnchen liegt ganz oder gar nicht über den Schuppen (keine Splitter)
+  float gq = texture(tGuete, vUv).x;
+  float koern = 0.0;
+  if (gq < 0.98) {
+    float kGr = uSchuppe * 0.45;
+    vec3 km;
+    float kid;
+    float kr = zelleRand3(q / kGr, km, kid);
+    vec4 kc = uProj * uView * vec4(p + km * kGr * uRadius, 1.0);
+    float gk = texture(tGuete, kc.xy / kc.w * 0.5 + 0.5).x;
+    if (gk + 0.12 * (kid - 0.5) < 0.7) {
+      koern = 1.0;
+      innen = kr;
+      uv = vec2(0.0);
+      id = kid;
+      qm = q + km * kGr;
+      mz = qm * f;
+      uN = 0.25;
+      unter = 0.0;
+      fuge = 1.0 - smoothstep(0.0, 0.06, kr);
+      wolb = -km * 1.0;
+      h.lod = smoothstep(2.0, 6.0, kGr * uRadius / max(max(length(dpx), length(dpy)), 1e-6));
+    }
+  }
   float pn, pl;
   float platte = bauchPlatte(q, f, pn, pl);
   float bauch = smoothstep(0.66, 0.74, t);
@@ -399,17 +426,18 @@ const SCHLANGE_KOPF = /* glsl */ `
 `;
 /** gemeinsames Ende der Schlangen: Normale, Bauch, Werte (c: Farbe der Schuppe, KIEL: Grat, BAUCHFARBE) */
 const SCHLANGE_ENDE = /* glsl */ `
-  float kiel = KIEL * exp(-pow(uv.y / 0.1, 2.0)) * smoothstep(-0.4, 0.4, uN) * (1.0 - fuge);
-  vec3 g = S * 0.45 - Q * uv.y * 0.9 - Q * sign(uv.y) * kiel * 1.4;
+  float kiel = KIEL * exp(-pow(uv.y / 0.1, 2.0)) * smoothstep(-0.4, 0.4, uN) * (1.0 - fuge) * (1.0 - koern);
+  // jede Schuppe ein wenig anders gekippt: Der Glanz zerfällt in einzelne Lichter wie auf echter Schlangenhaut
+  vec3 g = wolb - Q * sign(uv.y) * kiel * 1.4 + (hash33(vec3(id * 17.0, id * 3.1, 7.0)) - 0.5) * 0.3;
   vec3 gn = mix(g * (1.0 - fuge) * 0.4 * h.lod, A * pl * 0.6, bauch);
   gn -= n0 * dot(gn, n0);
   h.n = normalize(n0 + gn);
-  c *= (0.84 + 0.16 * smoothstep(-0.4, 0.6, uN)) * (1.0 - 0.5 * unter);
+  c *= (0.86 + 0.14 * smoothstep(-0.4, 0.6, uN)) * (1.0 - 0.4 * unter);
   c = mix(c, c * 1.35 + 0.03, kiel * 0.4);
   vec3 cb = BAUCHFARBE * (0.92 + 0.1 * hash11(pn)) * (1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.07, platte)));
   h.farbe = mix(c, cb, bauch);
   h.hoehe = mix(smoothstep(-0.6, 1.0, uN), smoothstep(0.0, 0.1, platte), bauch);
-  h.fuge = mix(max(fuge, unter * 0.6), 1.0 - smoothstep(0.0, 0.07, platte), bauch);
+  h.fuge = mix(max(fuge * 0.75, unter * 0.45), 1.0 - smoothstep(0.0, 0.07, platte), bauch);
   h.rand = mix(max(innen, 0.0) * 0.45, platte, bauch);
 `;
 /**
@@ -418,6 +446,7 @@ const SCHLANGE_ENDE = /* glsl */ `
 function schlange(form: string, kiel: string, muster: string, bauchfarbe: string, glanz: string, rauh: string, schiller = '0.0'): string {
   return /* glsl */ `
 uniform sampler2D tPhasen;
+uniform sampler2D tGuete;
 uniform float uSchuppe;
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   const vec4 FORM = ${form};
@@ -426,7 +455,7 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
   const float KIEL = ${kiel};
   const vec3 BAUCHFARBE = ${bauchfarbe};
   ${SCHLANGE_ENDE}
-  h.glanz = ${glanz};
+  h.glanz = ${glanz} * (0.8 + 0.4 * hash11(id * 31.7));
   h.rauh = ${rauh};
   h.schiller = ${schiller} * (1.0 - bauch * 0.6);
   return h;
@@ -435,19 +464,19 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 }
 
 const PYTHON = schlange(
-  'vec4(0.3, 1.7, 0.98, 0.0)',
+  'vec4(0.24, 1.45, 0.95, 0.0)',
   '0.0',
-  `float m1 = snoise(vec3(dot(qm, A) * 1.9, dot(qm, B) * 2.5, dot(qm, C) * 2.5) + 3.0) + 0.15 * snoise(qm * 5.0);
+  `float m1 = snoise(vec3(dot(qm, A) * 1.9, dot(qm, B) * 2.5, dot(qm, C) * 2.5) + 3.0) + 0.15 * snoise(qm * 5.0) + (id - 0.5) * 0.12;
   float mm = snoise(qm * 5.0 + 11.0);
   vec3 c = vec3(0.64, 0.5, 0.29);
   if (m1 > 0.2) c = vec3(0.3, 0.19, 0.085);
-  if (abs(m1 - 0.2) < 0.1) c = vec3(0.055, 0.042, 0.03);
+  if (abs(m1 - 0.2) < 0.075) c = vec3(0.055, 0.042, 0.03);
   if (m1 > 0.55 && mm > 0.5) c = vec3(0.9, 0.82, 0.56);
   c *= 0.88 + 0.24 * id;`,
   'vec3(0.86, 0.8, 0.62)',
   '1.4',
   '0.2',
-  '0.7',
+  '0.25',
 );
 const KLAPPER = schlange(
   'vec4(0.42, 1.25, 0.9, 0.0)',
@@ -469,7 +498,7 @@ const KLAPPER = schlange(
   '0.55',
 );
 const KORALLE = schlange(
-  'vec4(0.25, 1.8, 1.0, 0.0)',
+  'vec4(0.22, 1.5, 0.98, 0.0)',
   '0.0',
   `// Ringe längs der Achse: Rot breit, Gelb schmal, Schwarz breit, Gelb schmal; echt Schuppe für Schuppe, gezeichnet glatt
   vec3 qr = stil == 0 ? qm : q;
@@ -484,7 +513,7 @@ const KORALLE = schlange(
 );
 
 const BOA = schlange(
-  'vec4(0.28, 1.8, 1.0, 0.0)',
+  'vec4(0.22, 1.5, 0.98, 0.0)',
   '0.0',
   `// Regenbogenboa: Orange bis Rotbraun, dunkle Ringe (Augenflecken) längs des Rückens, Flecken an den Flanken, starker Schiller
   vec3 c = mix(vec3(0.78, 0.42, 0.18), vec3(0.62, 0.3, 0.14), smoothstep(-0.4, 0.6, snoise(qm * 2.2)));
@@ -496,10 +525,10 @@ const BOA = schlange(
   'vec3(0.9, 0.78, 0.6)',
   '1.7',
   '0.12',
-  '1.0',
+  '0.6',
 );
 const BAUMPYTHON_GLSL = schlange(
-  'vec4(0.3, 1.7, 0.98, 0.0)',
+  'vec4(0.24, 1.5, 0.95, 0.0)',
   '0.0',
   `// Grüner Baumpython: leuchtendes Grün, längs der Rückenlinie weiße Schuppen in Gruppen, einzelne weiße auf den Flanken
   vec3 c = mix(vec3(0.1, 0.58, 0.16), vec3(0.24, 0.72, 0.2), smoothstep(-0.4, 0.6, snoise(qm * 1.7)));
@@ -511,7 +540,7 @@ const BAUMPYTHON_GLSL = schlange(
   'vec3(0.86, 0.9, 0.32)',
   '1.6',
   '0.14',
-  '0.3',
+  '0.15',
 );
 
 const KROKODIL_GLSL = /* glsl */ `
@@ -709,11 +738,13 @@ function haut(id: string, name: string, zeile: string, glsl: string, echtGrund: 
   return bildVoreinstellung({
     ...(feld
       ? {
-          uniforms: { tPhasen: { value: null }, uSchuppe: { value: feld.laenge } },
+          uniforms: { tPhasen: { value: null }, tGuete: { value: null }, uSchuppe: { value: feld.laenge } },
           vorher: (k: ShaderKern, w: ShaderWerte, u: Record<string, IUniform>) => {
             const g = w.regler.groesse ?? 1;
             const wunsch = { laenge: feld.laenge / g, breite: feld.breite / g };
-            u.tPhasen!.value = schuppenFeld(k).bild(k, wunsch);
+            const bild = schuppenFeld(k).bild(k, wunsch);
+            u.tPhasen!.value = bild?.phasen ?? null;
+            u.tGuete!.value = bild?.guete ?? null;
             u.uSchuppe!.value = wunsch.laenge;
           },
         }
@@ -777,7 +808,7 @@ export const SCHLANGE = haut(
   'waldBokeh',
   [],
   0,
-  { laenge: 0.055, breite: 0.048 },
+  { laenge: 0.04, breite: 0.035 },
 );
 export const KLAPPERSCHLANGE = haut(
   'klapperschlange',
@@ -787,7 +818,7 @@ export const KLAPPERSCHLANGE = haut(
   'wuesteGrund',
   [],
   0,
-  { laenge: 0.05, breite: 0.038 },
+  { laenge: 0.042, breite: 0.032 },
 );
 export const KORALLENNATTER = haut(
   'korallennatter',
@@ -797,7 +828,7 @@ export const KORALLENNATTER = haut(
   'waldBokeh',
   [{ k: 'ringe', name: 'Ringe', min: 0.4, max: 2.5, schritt: 0.05, grund: 1 }],
   0,
-  { laenge: 0.055, breite: 0.05 },
+  { laenge: 0.04, breite: 0.036 },
 );
 export const REGENBOGENBOA = haut(
   'regenbogenboa',
@@ -807,7 +838,7 @@ export const REGENBOGENBOA = haut(
   'waldBokeh',
   [],
   0,
-  { laenge: 0.05, breite: 0.045 },
+  { laenge: 0.037, breite: 0.033 },
 );
 export const BAUMPYTHON = haut(
   'baumpython',
@@ -817,7 +848,7 @@ export const BAUMPYTHON = haut(
   'waldBokeh',
   [],
   0,
-  { laenge: 0.05, breite: 0.045 },
+  { laenge: 0.037, breite: 0.033 },
 );
 export const KROKODIL = haut(
   'krokodil',

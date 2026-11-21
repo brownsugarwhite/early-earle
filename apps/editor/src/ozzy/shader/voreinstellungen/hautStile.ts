@@ -45,8 +45,9 @@ vec3 hautEcht(Haut h, vec3 n0, vec3 V) {
   float nv = clamp(dot(n0, V), 0.0, 1.0);
   c += vec3(0.9, 0.95, 1.0) * pow(1.0 - nv, 3.0) * smoothstep(-0.1, 0.4, dot(n0, Lr)) * (0.2 + alb);
   vec3 H = normalize(L + V);
-  c += vec3(1.0, 0.97, 0.92) * 2.1 * ggx(max(dot(h.n, H), 0.0), h.rauh) * fresnelS(max(dot(H, V), 0.0), 0.04) * max(nl, 0.0) * h.glanz;
   vec3 irid = mix(vec3(1.0), duennschicht(clamp(dot(h.n, V), 0.0, 1.0), h.hoehe * 0.35) * 1.7, h.schiller);
+  // Runde 9: der Schiller liegt auch im Glanz (Schlangenhaut), nicht nur am Rand
+  c += vec3(1.0, 0.97, 0.92) * 2.1 * ggx(max(dot(h.n, H), 0.0), h.rauh) * fresnelS(max(dot(H, V), 0.0), 0.04) * max(nl, 0.0) * h.glanz * irid;
   c += studio(reflect(-V, h.n)) * fresnelS(nv, 0.04) * h.glanz * 0.12 * (1.0 - h.rauh) * irid;
   c += (alb + 0.04) * irid * pow(1.0 - nv, 2.0) * h.schiller * 0.35 + irid * pow(1.0 - nv, 2.2) * 0.16 * h.schiller * h.schiller * h.glanz;
   c += h.leucht;
