@@ -887,6 +887,21 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   fremder Proben fallen bei hoher Last des Rechners (Load über 10): vor einem Urteil direkt gegen den Stand davor messen
   (`git checkout <stand> -- apps/editor/src apps/editor/ozzy.html`, Probe, zurück). Probe:
   `ozzy-maul-posen-reihe-fenster.mjs` (R1 bis R9).
+  **Scheibe 4, Zähne je Pose (21.11.):** `form/zahnVersatz.ts`, `werk.zaehneJetzt`, `zaehneGezeigt`, `offenAnteil`.
+  Merke: (101) Wer die Zähne zeigt oder stellt, liest `werk.zaehneJetzt()` (die Lage, an der gearbeitet wird), nie
+  `G.maul.zaehne` (das sind die der Grundform); geschrieben wird immer der ganze Satz über `zaehneSetzen`, das Werk teilt
+  ihn in „für alle“ und „nur hier“. (102) Ein Wert je Pose ist ein Versatz gegen die Grundform (drei reine Handgriffe:
+  anwenden, teilen, passend halten), keine zweite Kopie: Dann geht die Pose mit der Grundform mit, und was die Teile sind
+  (Anzahl), kann nicht auseinanderlaufen. (103) Was aus der Ruhe einer Lage gelesen wird (die Plätze der Zähne), wird beim
+  Wandern für beide Lagen gelesen und das Ergebnis gemischt, nicht erst am Ziel gewechselt: Sonst springt es beim Ankommen.
+  Eine zweite Lage desselben Netzes braucht keine zweite Karte (`{ ...karte, netz: { ...karte.netz, pos } }`). (104) Was das
+  Maul offen hält (Linse, Ebene „Maul“), muss über die Fahrt zwischen Grundform und Pose stetig bleiben
+  (`werk.offenAnteil`). Neue Zustände immer auch mit offener Linse ansehen: Die Proben der Posen liefen mit geschlossener,
+  und das Maul klappte bei jedem Wechsel zu, ohne dass eine es sah. (105) `werkHautTreffen` dreht in einer Pose für jeden
+  Strahl die ganze Haut (rund 2 ms): Wer je Bild fragt, gibt die schon gerechneten Lagen mit. Ein Tempo-Kriterium auch mit
+  gewähltem Teil messen. (106) Ein Schlüssel für „an den Zähnen hat sich etwas geändert“ braucht den Anteil der Fahrt selbst:
+  Zwei Posen können dieselbe Haut und dieselben Winkel haben und sich nur in den Zähnen unterscheiden. Probe:
+  `ozzy-maul-posen-zaehne-fenster.mjs` (Z1 bis Z9).
 - **Fenster der App (18.11.):** Am 18.11. mittags liefen 5205 und 5197 nicht mehr (die Sitzung, die sie gestartet hatte, war
   beendet); 5205 hat die Sitzung „Objekte“ neu gestartet (Eintrag `ozzy`), ihr eigenes Fenster ist 5211 (`ozzy-objekte`). Die App hält offenbar nur drei Vorschau-Server zugleich; ein vierter `preview_start` verdrängt den
   ältesten (so verschwanden nacheinander Ozzy 5205 und Florians 5197). Vor einem Start `lsof -nP -iTCP -sTCP:LISTEN | grep 51`

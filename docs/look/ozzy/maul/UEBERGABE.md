@@ -13,10 +13,10 @@ Scheiben (die Zunge liegt, lebt und dehnt sich; die Linse stellt ihre Form und F
 liegen und klebt, wo sie abgelegt wird). Danach der Feinschlifflauf, Block A bis C (geprüft, schneller, kleine Bedienung) und
 am 21.11. Block D (die Lippe als seine Linie: ihre Punkte sind seine Anker, seine Farben, Anfang am Umriss; unten „Der
 Feinschlifflauf“), danach Punkt 130 behoben (die Zahnfleischlinie behält ihren Weg), dann Etappe 7 (ein Zahn als kleine Form:
-Der Zahn in der Linse trägt drei Linien und lässt sich eingerastet an ihnen formen; unten „Etappe 7“), dann Etappe 8 in zwei
+Der Zahn in der Linse trägt drei Linien und lässt sich eingerastet an ihnen formen; unten „Etappe 7“), dann Etappe 8 in vier
 Scheiben (Posen: in „Fressen“ ist jede Lippe frei, die Grundform bleibt; „Grundform“ und „Fressen“ als Tropfen an einem Faden,
-dazwischen wandert die Form; mehrere Posen mit Plus, direkter Fahrt von Pose zu Pose, Benennen und Löschen; unten
-„Etappe 8“). Florian am 21.11.: „Kiefer richten und feinschliff kommen dann zum schluss“; ihm ist einiges aufgefallen, das
+dazwischen wandert die Form; mehrere Posen mit Plus, direkter Fahrt von Pose zu Pose, Benennen und Löschen; Zähne je Pose;
+unten „Etappe 8“). Florian am 21.11.: „Kiefer richten und feinschliff kommen dann zum schluss“; ihm ist einiges aufgefallen, das
 bringt er in einem eigenen großen Feedback-Durchgang. Als Nächstes also, auf sein Wort: sein Feedback, dann die Kiefer
 (Liste, 20 bis 22) und der Feinschliff; offen daneben: ob die Linie im Maul der Lippe folgt (131), Backen, der Rechenkern
 (153: ein Netz für alle Lagen).**
@@ -539,6 +539,26 @@ Bild: `docs/progress/ozzy/2026-11-21-maul-etappe8-posen.jpg`. Offenes: Liste, 15
     `#posen .posen-faden[data-nr="k"]`, `#pose-plus`. Der Haken `pose()` meldet `nr`, `namen`, `winkel`, `ziel`.
   - *Probe:* `ozzy-maul-posen-reihe-fenster.mjs` (R1 bis R9; `BIS=R2|R4|R5|R7`); sichert unter `ozzy-probe-posen-reihe`.
     Die Zunge greift man im Raum von vorn (`blickSetzen({ gier: -1.6, neigung: 0.05, zoom: 4 })`), nicht in der Seite.
+- **Scheibe 4, Zähne je Pose (Plan, Abschnitt 8; Bild `…-maul-etappe8-zaehne-je-pose.jpg`; Offenes: Liste, 177 bis 186):**
+  - *Regel:* Was die Zähne SIND (Anzahl, Reichweite, Lücken, Form, Farbe), gehört der Form und gilt für alle Posen. Wie sie
+    STEHEN und wie groß sie sind (je Reihe Größe, Neigung, Verlauf, Sitz; je Zahn längs, zur Tiefe, Faktor), kann eine Pose
+    anders haben: als Versatz gegen die Grundform, dazugezählt.
+  - *Modell (`form/zahnVersatz.ts`, rein, mit Tests):* `PoseZaehne`; `zaehneMitVersatz` (Grundform plus Versatz),
+    `zaehneTeilen` (was in einer Pose gestellt wurde, in „für alle“ und „nur hier“), `versatzPassend` (mit der Anzahl einer
+    Reihe fällt, was einzelne Zähne anders hatten), `versatzAusDatei`.
+  - *Werk:* `PoseStand.zaehne` steht immer an der Pose (auch an der gewählten; nie am Ort geändert). `G.maul.zaehne` sind die
+    Zähne der Grundform. `zaehneVon(p)`, `zaehneJetzt()` (die Lage, an der gearbeitet wird), `zaehneSetzen` (nimmt immer den
+    ganzen Satz und teilt in einer Pose; zwischen zwei Lagen geht nichts), `zaehneGezeigt()` (eine Lage oder zwei mit Anteil,
+    je Lage ihre Ruhe). `offenAnteil()`: Der Anteil der Pose zählt vom Blick ins Maul aus (das Maul bleibt bei offener Linse
+    auf der Fahrt offen); dafür hält Ozzy den Blick auch in der Pose (`kieferUiZeigen`).
+  - *Ozzy:* Die Linse liest `werk.zaehneJetzt()`, nie `G.maul.zaehne`. `zaehnePlanFuer(lage)` liest die Plätze einer Lage in
+    ihrer Ruhe (die andere Lage an derselben Karte mit ihren Lagen), `zaehneRechnen` baut beim Wandern zwei Netze an der
+    gezeigten Haut und mischt sie (`netzZwischen`, `kapselnZwischen` in `zaehne.ts`). `linseWessen`: Die Linse meldet beim
+    Wechsel der Lage ihren Namen. Die Marken am gewählten Zahn fragen `werkHautTreffen` mit den Lagen der Zähne
+    (`zaehneLagen.P`).
+  - *Probe:* `ozzy-maul-posen-zaehne-fenster.mjs` (Z1 bis Z9; `BIS=Z2|Z4|Z5`, `ZOOM=9` für Bilder). Der Haken `zaehne()` gibt
+    in `werte` die Zähne der Lage, an der gearbeitet wird, dazu `grund`, `versatz`, `jePose`; `zahnPunkte()` gibt alle Punkte
+    der gezeigten Zähne. Am Faden steht die Form in der LINKEN Pose und wandert zur rechten: Der Anteil ist rechts 1.
 
 ## Die Studie in einem Absatz
 
@@ -665,3 +685,11 @@ unter `src/`), im Fenster `ozzy-maul-posen-reihe-fenster.mjs` (R1 bis R9 erfüll
 `-lippe-` (12), `ozzy-zurueck-haut-`, `-bearbeiten-`, `-zuege-fenster` (erfüllt); `ozzy-maul-zahnform-fenster` bis auf sein
 Tempo G10 unter hoher Last (direkt verglichen gleich wie vor der Scheibe). Die Lage der Zunge je Pose von Hand im Skript.
 Nicht gelaufen: die Proben des Paint-Modus. Angesehen: die Reihe mit zwei Posen in drei Ständen. Nicht angesehen: iPad.
+
+Etappe 8, Scheibe 4 (21.11.): Typen, Lint der geänderten Dateien, `npx vitest run src/form/ src/ozzy/` (139 Tests), im Fenster
+`ozzy-maul-posen-zaehne-fenster.mjs` (Z1 bis Z9 erfüllt, fünf Läufe), `ozzy-maul-posen-fenster` (15),
+`ozzy-maul-posen-reihe-fenster` (R1 bis R9), `ozzy-maul-fenster` (19), `-zaehne-` (27), `-zahnform-` (12), `-zunge-` (28),
+`-pose-` (6), `-sichern-` (5), `-lippe-` (12), `-farbe-fenster` (8): alle erfüllt. Nicht gelaufen: die übrigen Proben des
+Paint-Modus, `ozzy-maul-material-fenster`. Angesehen: „Fressen“ mit größeren Zähnen, die Hälfte am Faden, „Pose 2“ mit
+gerücktem Zahn, nah am Maul. Nicht angesehen: iPad, der Raum, die Fahrt als Bewegung (nur Standbilder und Zahlen).
+

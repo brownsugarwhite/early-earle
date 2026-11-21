@@ -97,6 +97,14 @@ Posen gezogen wandert die Form zwischen ihnen. Einen Tropfen halten benennt die 
 (eine bleibt immer); ⌘Z nimmt Anlegen, Benennen und Löschen zurück. Jede Pose hat ihre Winkel, ihre Form und die Lage ihrer
 Zunge; Sichern und Laden tragen alle. Bild: `docs/progress/ozzy/2026-11-21-maul-etappe8-mehrere-posen.jpg`. Neu: 167 bis 176.
 
+**Etappe 8, Scheibe 4 (21.11.), „Zähne je Pose“:** In einer Pose stellt die Linse die Zähne dieser Pose: Größe, Neigung,
+Verlauf und Sitz der Reihen, dazu einzelne Zähne rücken und ihre Größe. Die Grundform und die anderen Posen behalten ihre. In
+der Grundform gestellt gilt es für alle Posen, und jede Pose behält, was sie anders hat. Anzahl, Lücken, Form und Farbe gelten
+immer für alle Posen. Zwischen zwei Lagen wandern die Zähne von dort, wo sie in der einen stehen, dorthin, wo sie in der
+anderen stehen. Die Linse sagt beim Wechsel kurz, wessen Zähne sie zeigt; die Statuszeile sagt, wofür ein Griff gilt. Und bei
+offener Linse bleibt das Maul beim Wechsel zwischen Grundform und Pose offen (vorher klappte es erst zu). Bild:
+`docs/progress/ozzy/2026-11-21-maul-etappe8-zaehne-je-pose.jpg`. Neu: 177 bis 186.
+
 ## Was offen ist
 
 ### Am geschlossenen Maul
@@ -500,8 +508,8 @@ Zunge; Sichern und Laden tragen alle. Bild: `docs/progress/ozzy/2026-11-21-maul-
 160. **Unterwegs** (am Faden gehalten) wird nichts gezogen, die Tropfen der Kiefer und die zwei Regler ruhen. Zähne und Zunge
      sind dabei nicht gesperrt (nicht geprüft). Tasten für die Fahrt gibt es nicht.
 161. **Ein Tipp auf die gewählte Pose führt zurück in die Grundform** (wie der Knopf bisher; so auch mit mehreren Posen).
-162. ~~Mehrere Posen („Plus“) und die Zunge je Pose fehlen~~ gebaut (Scheibe 3). **Zähne je Pose** fehlen: Ihre Werte gelten
-     für alle Lagen. Die Pose bleibt gespiegelt.
+162. ~~Mehrere Posen („Plus“) und die Zunge je Pose fehlen~~ gebaut (Scheibe 3). ~~Zähne je Pose fehlen~~ gebaut (Scheibe 4,
+     siehe 177). Die Pose bleibt gespiegelt.
 163. **Die Gegenrichtung** (das Netz wächst in der Grundform, die neuen Punkte der Pose liegen auf deren Fläche) ist gebaut
      und an einem Fall gezählt (14 neue Punkte, bis 2,6 anders als mit der Regel von vorher). Im Bild verglichen ist nur die
      Richtung von der Pose zur Grundform.
@@ -535,6 +543,34 @@ Zunge; Sichern und Laden tragen alle. Bild: `docs/progress/ozzy/2026-11-21-maul-
      der Reihe in eine zweite Zeile); Paint-Modus und Vier Ansichten mit mehreren Posen; mehrere Objekte; das Maul vom 13.11.
 176. **Das Tempo der Zahnform-Probe (G10)** fiel bei hoher Last des Rechners zweimal durch (16,2 und 12,3 statt 12 ms je
      Bild). Direkt gegen den Stand vor Scheibe 3 gemessen ist es gleich (9,0 und 8,5 ms).
+177. **Was eine Pose an den Zähnen anders haben kann** (für dich entschieden): wie sie stehen und wie groß sie sind, also
+     Größe, Neigung, Verlauf und Sitz der Reihen, gerückte Zähne und die Größe eines einzelnen Zahns. Was die Zähne sind, gilt
+     für alle Posen: Anzahl, Lücken, Form (Vorlage und eigene Form), Farbe. Eine andere Zahnform je Pose fehlt (alle Formen
+     haben gleich viele Punkte: Sie ließe sich mischen).
+178. **In einer Pose gestellt gilt „was die Zähne sind“ für alle Posen** (Anzahl, ⌫, Formenring, die Linien eines Zahns,
+     Farbe). Die Statuszeile sagt es, gesperrt ist nichts. Bei Punkten und Linien der Form sperrt die Pose stattdessen („in
+     der Grundform“): zwei Arten für dieselbe Regel.
+179. **Der Unterschied einer Pose wird dazugezählt** (wie der Versatz der Punkte): Stellst du die Reihe in der Grundform
+     größer, wird sie in jeder Pose um dasselbe größer. Die Perle zeigt in der Pose den Wert der Pose. Die Summe ist nicht
+     begrenzt, sie kann über den Bereich der Perle hinausgehen.
+180. **Es gibt keinen Handgriff „Zähne dieser Pose wie in der Grundform“,** und man sieht einer Pose nicht an, ob ihre Zähne
+     anders sind (nur die Statuszeile beim Stellen und das Wort in der Linse beim Wechsel der Lage).
+181. **Mit der Anzahl einer Reihe fällt in jeder Pose, was einzelne Zähne dort anders hatten** (wie in der Grundform: Die
+     Nummern meinen dann andere Zähne).
+182. **Zwischen zwei Lagen liegt jeder Punkt eines Zahns geradlinig zwischen seinen zwei Lagen.** Dreht sich ein Zahn zwischen
+     zwei Posen stark (Neigung), ist er auf halbem Weg etwas kürzer (gerechnet: bei 30° Unterschied rund 3 %). An so einem
+     Fall nicht angesehen.
+183. **Die Plätze der Zähne werden jetzt je Lage gelesen** und beim Wandern gemischt. Vorher galten bis zum Ankommen die Plätze
+     der verlassenen Pose (bei verschiedener Lippe ein Sprung; nie gemessen, jetzt 0,000). Das erste Bild einer Fahrt zwischen
+     zwei Posen kostet dafür mehr: das langsamste Bild 31 bis 38 ms mit Zähnen (ohne Zähne 25 bis 26 ms).
+184. **Bei offener Linse bleibt das Maul auf der Fahrt zwischen Grundform und Pose offen** (seit Scheibe 2 klappte es bei jedem
+     Wechsel von 42° auf 0° zu; beim Bau von Scheibe 4 gefunden). Dasselbe gilt, wenn die Ebene „Maul“ im Paint-Modus das Maul
+     offen hält: dort nicht geprüft.
+185. **Die Marken am gewählten Zahn** ließen je Bild die ganze Haut neu drehen (zwei Marken: rund 4 ms je Bild, sobald eine
+     Pose oder der Blick ins Maul im Spiel ist). Sie nutzen jetzt die Lagen, mit denen die Zähne gebaut sind. Ob andere Stellen
+     je Bild dasselbe tun, habe ich nicht gesucht.
+186. **Nicht geprüft:** der Sitz je Pose (Zähne, die in einer Pose vor die Lippe treten); Zähne außen auf der Fahrt aus der
+     Grundform; die Zunge an Zähnen, die wandern; Zähne je Pose im Paint-Modus und in den Vier Ansichten; „strange bird“; iPad.
 
 ### Kleines
 

@@ -325,3 +325,47 @@ Zähne fallen), und die Proben der Zähne, der Zahnform, der Zunge und der Posen
 Eine andere Form oder Farbe der Zähne je Pose; Zähne, die es nur in einer Pose gibt; ein Handgriff „Zähne dieser Pose wie in
 der Grundform“. Kommt auf die Liste.
 
+### 8.5 Ergebnis (21.11.)
+
+Gebaut (Commits `c53b706c`, `e01f6cba`, `43ee7a54`). Bild:
+[`docs/progress/ozzy/2026-11-21-maul-etappe8-zaehne-je-pose.jpg`](../progress/ozzy/2026-11-21-maul-etappe8-zaehne-je-pose.jpg).
+
+**Was er jetzt kann:** alles aus 8.1. Dazu sagt die Linse beim Wechsel der Lage kurz, wessen Zähne sie zeigt („Fressen“,
+„Grundform“), und die Statuszeile sagt bei jedem Griff, wofür er gilt.
+
+**Beim Bau gefunden und behoben:** Hält die Linse das Maul der Grundform offen, klappte es bei jedem Wechsel zwischen Grundform
+und Pose erst zu (von 42° auf 0°) und ging dann wieder auf, seit Scheibe 2. Das ist der Ablauf, mit dem man Zähne je Pose
+stellt. Jetzt zählt der Anteil der Pose vom Blick ins Maul aus (`werk.offenAnteil`): Das Maul bleibt offen, es wandern nur
+Form und Zähne. Dafür kam Z9 dazu (nicht vorher festgelegt).
+
+**Proben** (`ozzy-maul-posen-zaehne-fenster.mjs`, an „teat firefish“, alle erfüllt; die Werte des vierten von fünf Läufen)
+
+| Nr. | Gemessen |
+| --- | --- |
+| Z1 | Größe in „Fressen“ 0,920 → 1,090 (längster Zahn 30,3 → 35,9); Grundform 0,920, Pose 2 0,920; Statuszeile „Zähne: gilt in „Fressen“ …“; ein Schritt, nach ⌘Z 0,920 |
+| Z2 | Neigung 0,120 → 0,230 in der Grundform, in „Fressen“ und Pose 2 0,230; die Größe in „Fressen“ bleibt 0,170 über der Grundform |
+| Z3 | Anzahl oben 12 → 13 in Pose 2; Grundform 13/12, „Fressen“ 13/12; Statuszeile „Zähne: Anzahl, Lücken, Form und Farbe gelten für alle Posen“ |
+| Z4 | Zahn 1 mit Spiegelbild 11 im Bild gewählt und gezogen: Versatz in Pose 2 längs 0,154 (Spiegelbild gleich), seine Spitze rückt 16,0; ein Schritt; Grundform ohne eigene Zähne; „Fressen“: Werte gleich, Punkte der Zähne 0,000 neben vorher |
+| Z5 | am Faden: Anteile 1 / 0,500 / 0; die Spitze (16,25 zwischen den Posen) 0,0 % neben der Mitte; am Anfang gehalten 0,000 neben Pose 2, am Ende 0,000 neben „Fressen“, beim Ankommen 0,000 (die zwei Posen selbst liegen bis 46,9 auseinander) |
+| Z6 | Plus in „Fressen“: die neue Pose hat dieselben Werte (Größe 1,090; Grundform 0,920) |
+| Z7 | geladen: Grundform gleich, Zähne je Pose gleich (beide mit Versatz), die gewählte Pose gewählt |
+| Z8 | 104 Bilder unterwegs: im Mittel 11,9 ms, Median 12,5 ms, das langsamste 38,1 ms (die anderen Läufe: 11,8 · 10,6 · mit gewähltem Zahn vor dem Griff an den Marken 15,0 · danach 12,9 ms) |
+| Z9 | bei offener Linse: zur Grundform 79 Bilder, kleinster Wert 42,0°; wieder hinein 82 Bilder, kleinster Wert 42,0° („Fressen“ steht 42,0° offen); die Linse sagt „Grundform“, dann „Fressen“ |
+
+Z4 setzte den Versatz zuerst über den Haken der Probe; im letzten Stand wählt und zieht die Probe den Zahn mit dem Zeiger.
+Dabei fiel Z8 von 11 auf 15 ms: Die zwei Marken am gewählten Zahn ließen je Bild die ganze Haut neu drehen
+(`werkHautTreffen`). Sie nutzen jetzt die Lagen, mit denen die Zähne gebaut sind.
+
+Dazu laufen weiter (alle erfüllt): `ozzy-maul-posen-fenster` (15), `ozzy-maul-posen-reihe-fenster` (R1 bis R9),
+`ozzy-maul-fenster` (19), `-zaehne-` (27), `-zahnform-` (12), `-zunge-` (28), `-pose-` (6), `-sichern-` (5), `-lippe-` (12),
+`-farbe-fenster` (8); `npx vitest run src/form/ src/ozzy/` (139 Tests, davon 16 neu), Typen, Lint der geänderten Dateien.
+
+**Für ihn entschieden (sein Urteil steht aus):**
+
+- Eine Pose kann anders haben, wie die Zähne stehen und wie groß sie sind (Größe, Neigung, Verlauf, Sitz; gerückte Zähne, die
+  Größe eines Zahns). Was die Zähne sind (Anzahl, Lücken, Form, Farbe), gilt für alle Posen.
+- In einer Pose gestellt gilt „was die Zähne sind“ trotzdem, für alle Posen; gesperrt ist nichts.
+- Der Unterschied einer Pose wird dazugezählt (ein Versatz, wie bei den Punkten der Form), nicht festgehalten.
+
+**Offen:** Liste, Punkte 177 bis 186.
+
