@@ -49,6 +49,8 @@ import { PEDRERA, TRENCADIS, TRENCADIS_VERSE } from './gaudi';
 import { FLOR_POP, PANOT, PERSIANA } from './barcelona';
 import { ARGON_BLAU, HALL_OF_FAME, NEON_ROT, NIETENLEDER } from './strasse';
 import { PLATANE } from './natur';
+import { NACHTSCHATTEN, NACHTSCHATTEN_ALPHA } from './nachtschatten';
+import { SIN_CITY_GELB, SIN_CITY_REGEN, SIN_CITY_ROT } from './sincity';
 import { ACHAT, GRANIT, JADE, LAPIS, MALACHIT, MARMOR, OBSIDIAN, SANDSTEIN } from './steine';
 import { BAUMPYTHON, CHAMAELEON_HAUT, DRACHE_HAUT, ELEFANT, FROSCH_HAUT, KLAPPERSCHLANGE, KORALLENNATTER, KRAKE_HAUT, KROKODIL, REGENBOGENBOA, SALAMANDER, SCHLANGE } from './haeute';
 import { TINTENFLECK } from './tintenfleck';
@@ -85,6 +87,10 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   UKIYOE,
   GOUACHE,
   ORNAMENT,
+  // Sin City
+  SIN_CITY_REGEN,
+  SIN_CITY_GELB,
+  SIN_CITY_ROT,
   // Materialien
   AUTOLACK,
   HAUT,
@@ -137,6 +143,8 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   SALAMANDER,
   TREX,
   DRACHE_HAUT,
+  NACHTSCHATTEN,
+  NACHTSCHATTEN_ALPHA,
   FROSCH_HAUT,
   CHAMAELEON_HAUT,
   KRAKE_HAUT,
