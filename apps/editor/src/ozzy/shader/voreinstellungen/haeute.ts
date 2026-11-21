@@ -220,48 +220,62 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
 `;
 
 const CHAMAELEON = /* glsl */ `
+/**
+ * Chamäleon (Runde 8): runde Körnchen (Zellen im Raum), jedes mit einer Farbe, dazwischen größere Tuberkel; Bänder quer, ein heller
+ * Streifen an der Flanke, rote und orange Punkte; Stimmung (Regler) verschiebt die Farben wie die Guaninkristalle: ruhig Blaugrün,
+ * erregt Gelb und Orange, als Welle über den Körper. Ein Hauch Schiller auf den Körnchen.
+ */
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
   h.leucht = vec3(0.0);
   h.schiller = 0.0;
   vec3 q = (p - uMitte) / uRadius;
-  float t = hautT(n0);
   vec3 A, B, C;
   achsen(A, B, C);
-  float f = 34.0 / uR_groesse * (stil == 0 ? 1.0 : 0.75);
-  h.lod = smoothstep(1.8, 5.0, uMass * uRadius / f);
-  vec3 st, mi;
-  float id;
-  float md = pflaster(q * f, st, mi, id);
-  float l = max(length(mi), 1e-4);
-  float e = mix(md, 0.42 - l, 0.7);
-  float tt = clamp(e / 0.38, 0.0, 1.0);
-  vec3 ge = (0.3 * st + 0.7 * mi / l) * 2.0 * (1.0 - tt) / 0.38;
-  // größere Höcker dazwischen und ein Kamm auf der Rückenlinie
-  float hoeck = step(0.9, hash11(id * 17.0));
-  float kf = 9.0 / uR_groesse;
-  float sk = dot(q, A) * kf;
-  float dk = length(vec2((fract(sk) - 0.5) / 0.42, q.z * kf / 0.3));
-  float kamm = smoothstep(0.0, 0.35, n0.y) * (1.0 - smoothstep(0.7, 1.0, dk));
-  vec3 gn = ge * (0.14 + 0.1 * hoeck) * h.lod;
-  gn -= n0 * dot(gn, n0);
-  h.n = normalize(n0 - gn);
-  // Farbe: Grün, Bänder schräg in Gelbgrün und Türkis, rote Punkte, heller Flankenstreifen, Bauch hell
-  vec3 qs = mix(q, q + mi / f, h.lod);
-  float band = sin(dot(qs, A) * 11.0 + dot(qs, vec3(0.0, 1.0, 0.0)) * 5.0 + 1.5 * snoise(qs * 1.5));
-  vec3 c = mix(vec3(0.16, 0.6, 0.22), vec3(0.78, 0.86, 0.2), smoothstep(0.45, 0.75, band));
-  c = mix(c, vec3(0.1, 0.62, 0.6), smoothstep(-0.55, -0.85, band) * 0.8);
-  c = mix(c, vec3(0.92, 0.35, 0.12), step(0.93, hash11(id * 31.0)) * smoothstep(0.25, 0.4, t) * h.lod);
-  c = mix(c, vec3(0.9, 0.92, 0.72), (1.0 - smoothstep(0.008, 0.02, abs(t - 0.52 + 0.03 * snoise(qs * 3.0)))) * 0.75);
-  c = mix(c, vec3(0.88, 0.9, 0.62), smoothstep(0.7, 0.8, t));
-  c = mix(c, vec3(0.2, 0.5, 0.18), kamm * 0.7);
-  c *= 0.9 + 0.2 * mix(0.5, id, h.lod);
+  float t = hautT(n0);
+  float f = 66.0 / uR_groesse * (stil == 0 ? 1.0 : 0.7);
+  h.lod = smoothstep(1.6, 5.0, uMass * uRadius / f);
+  vec3 m;
+  vec4 vo = voronoiF3(q * f);
+  float rand = vo.y - vo.x;
+  float korn = smoothstep(0.0, 0.22, rand);
+  float idk = hash11(vo.w * 37.0);
+  // Tuberkel: größere Zellen, nur ein Teil
+  vec4 vt = voronoiF3(q * f * 0.32 + 9.0);
+  float tub = (1.0 - smoothstep(0.08, 0.28, vt.x)) * step(0.7, hash11(vt.w * 13.0));
+  // Farbe je Körnchen: Bänder quer, Flankenstreifen, Punkte; Stimmung als Welle längs
+  vec3 qk = q;
+  float laengs = dot(qk, A);
+  float stimmung = clamp(uR_stimmung + 0.35 * sin(laengs * 5.0 - 1.0) * uR_stimmung, 0.0, 1.0);
+  vec3 ruhig1 = vec3(0.12, 0.62, 0.42), ruhig2 = vec3(0.1, 0.48, 0.62);
+  vec3 erregt1 = vec3(0.95, 0.78, 0.15), erregt2 = vec3(0.95, 0.42, 0.12);
+  float band = smoothstep(-0.2, 0.25, sin(laengs * 13.0 + 1.5 * snoise(q * 2.0)));
+  vec3 c1 = mix(ruhig1, erregt1, stimmung), c2 = mix(ruhig2, erregt2, stimmung);
+  vec3 c = mix(c1, c2, band);
+  float streifen = (1.0 - smoothstep(0.03, 0.07, abs(t - 0.55 + 0.03 * snoise(q * 4.0)))) * step(0.3, idk);
+  c = mix(c, vec3(0.93, 0.95, 0.85), streifen);
+  float punkte = step(0.93, idk) * smoothstep(0.2, 0.5, snoise(q * 3.0 + 5.0));
+  c = mix(c, mix(vec3(0.85, 0.15, 0.1), vec3(0.98, 0.55, 0.1), stimmung), punkte);
+  c *= 0.86 + 0.24 * idk;
+  c = mix(c, c * 0.82, 1.0 - korn);
+  c = mix(c, mix(c, vec3(0.95, 0.9, 0.6), 0.25), tub);
+  // Relief: Körnchen gewölbt, Tuberkel höher
+  float hoehe = korn * 0.7 + tub * 0.6;
   h.farbe = c;
-  h.hoehe = tt;
-  h.fuge = (1.0 - smoothstep(0.0, 0.06, md)) * h.lod;
-  h.rand = md;
-  h.glanz = 0.5;
-  h.rauh = 0.45;
+  h.n = n0;
+  h.hoehe = hoehe;
+  h.fuge = (1.0 - korn) * 0.35;
+  h.rand = rand;
+  h.glanz = 0.9;
+  h.rauh = 0.35;
+  h.schiller = 0.25;
+  // Normale aus der Höhe (Oberflächengradient im Bild)
+  vec3 dpx = dFdx(p), dpy = dFdy(p);
+  float hw = hoehe * uRadius * 0.006 * h.lod;
+  float dhx = dFdx(hw), dhy = dFdy(hw);
+  vec3 r1 = cross(dpy, n0), r2 = cross(n0, dpx);
+  float det = dot(dpx, r1);
+  if (abs(det) > 1e-12) h.n = normalize(abs(det) * n0 - sign(det) * (r1 * dhx + r2 * dhy));
   return h;
 }
 `;
@@ -501,6 +515,13 @@ const BAUMPYTHON_GLSL = schlange(
 );
 
 const KROKODIL_GLSL = /* glsl */ `
+uniform sampler2D tPhasen;
+uniform float uSchuppe;
+/**
+ * Krokodil (Runde 8, auf dem Schuppenfeld, rechtwinklig gelesen): oben Knochenschilde in Querreihen (Zeilen der Längsphase U, Spalten
+ * der Querphase W), jeder mit einem Kiel längs, die Kiele bilden Längsgrate, Grübchen im Knochen; an den Flanken kleine runde Schuppen
+ * mit einzelnen Höckern; am Bauch Quadrate mit einem Sinnespunkt. Matt mit nassen Inseln, Schlamm in den Furchen.
+ */
 Haut hautBei(vec3 p, vec3 n0, int stil) {
   Haut h;
   h.leucht = vec3(0.0);
@@ -511,48 +532,74 @@ Haut hautBei(vec3 p, vec3 n0, int stil) {
   float t = hautT(n0);
   vec3 A, B, C;
   achsen(A, B, C);
-  float oben = smoothstep(0.42, 0.3, t);
-  float bauch = smoothstep(0.66, 0.74, t);
-  // oben Knochenplatten (große Zellen, flach mit steilem Rand und Grat), an den Flanken runde Schuppen
-  float f = mix(16.0, 8.5, oben) / uR_groesse;
-  h.lod = smoothstep(1.8, 5.0, uMass * uRadius / f);
-  vec3 st, mi;
-  float id;
-  float md = pflaster(q * f, st, mi, id);
-  float l = max(length(mi), 1e-4);
-  float e = mix(md, 0.42 - l, mix(0.6, 0.15, oben));
-  vec3 ge = mix(0.4 * st + 0.6 * mi / l, st, oben);
-  float tt = clamp(e / mix(0.32, 0.12, oben), 0.0, 1.0);
-  float dh = 2.0 * (1.0 - tt) / mix(0.32, 0.12, oben);
-  vec3 dd = -mi;
-  dd -= n0 * dot(dd, n0);
-  float kiel = oben * exp(-pow(dot(dd, Q) / 0.07, 2.0)) * step(0.06, md);
-  vec3 gn = ge * dh * 0.1 * h.lod - Q * sign(dot(dd, Q)) * kiel * 0.9;
-  // Grübchen auf den Platten
-  vec3 gv = voronoi3(q * 70.0);
-  float gruebchen = smoothstep(0.18, 0.05, gv.x) * oben * step(0.05, md);
-  gn += vec3(snoise(q * 70.0), snoise(q * 70.0 + 2.0), snoise(q * 70.0 + 4.0)) * gruebchen * 0.12;
-  float pn, pl;
-  float platte = bauchPlatte(q, 12.0 / uR_groesse, pn, pl);
-  gn = mix(gn, A * pl * 0.6, bauch);
-  gn -= n0 * dot(gn, n0);
-  h.n = normalize(n0 - gn);
-  // Farbe: Oliv mit dunklen Querbändern oben, Flanken heller mit Flecken, Bauch cremefarben; Grat abgerieben heller; nass in Flecken
-  vec3 qm = mix(q, q + mi / f, h.lod);
-  float band = smoothstep(-0.05, 0.2, snoise(vec3(dot(qm, A) * 4.0, 0.0, 3.0) + 0.5 * snoise(qm * 2.0)));
-  vec3 c = mix(mix(vec3(0.36, 0.36, 0.22), vec3(0.14, 0.15, 0.09), band), mix(vec3(0.38, 0.37, 0.23), vec3(0.14, 0.14, 0.09), step(0.35, snoise(qm * 6.0 + 2.0))), 1.0 - oben);
-  c *= 0.85 + 0.25 * id;
-  c = mix(c, c * 1.45 + 0.03, kiel * 0.6);
-  vec3 cb = vec3(0.8, 0.76, 0.58) * (0.92 + 0.1 * hash11(pn)) * (1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.07, platte)));
-  float nass = smoothstep(0.05, 0.4, snoise(q * 2.2 + 8.0));
-  c *= mix(1.0, 0.8, nass);
-  h.farbe = mix(c, cb, bauch);
-  float fuge = (1.0 - smoothstep(0.0, 0.05, md)) * h.lod;
-  h.fuge = mix(max(fuge, gruebchen * 0.4), 1.0 - smoothstep(0.0, 0.07, platte), bauch);
-  h.hoehe = mix(tt, smoothstep(0.0, 0.1, platte), bauch);
-  h.rand = mix(md, platte, bauch);
-  h.glanz = mix(0.5, 1.6, nass);
-  h.rauh = mix(0.5, 0.18, nass);
+  vec4 ph = texture(tPhasen, vUv);
+  float Uw = atan(ph.y, ph.x) / 6.2831853 + 0.5;
+  float Ww = atan(ph.w, ph.z) / 6.2831853 + 0.5;
+  vec2 dU = vec2(dFdx(Uw), dFdy(Uw));
+  vec2 dW = vec2(dFdx(Ww), dFdy(Ww));
+  h.lod = smoothstep(2.0, 6.0, uMass * uRadius * uSchuppe);
+  float oben = 1.0 - smoothstep(0.36, 0.44, t + 0.04 * snoise(q * 5.0));
+  float bauchM = smoothstep(0.66, 0.74, t);
+  // Zelle im Schuppenfeld: u längs (0 vorn … 1 hinten), w quer
+  vec2 f2 = vec2(Uw, Ww);
+  vec2 zf = fract(f2 * vec2(1.0, oben > 0.5 ? 1.0 : 2.0));
+  vec2 zid = floor(f2 * vec2(1.0, oben > 0.5 ? 1.0 : 2.0));
+  vec2 d = abs(zf - 0.5);
+  float rand = 0.5 - max(d.x, d.y * 1.05);
+  float aaR = (length(dU) + length(dW)) * 1.5 + 1e-3;
+  float fuge = 1.0 - smoothstep(0.0, 0.06 + aaR, rand);
+  // je Schild ein wenig anders (die Zeilen des Felds wiederholen sich, darum aus dem Raum)
+  float idz = clamp(0.5 + 0.55 * snoise(q / uSchuppe * 1.3), 0.0, 1.0);
+  vec3 farbe;
+  float hoehe;
+  if (bauchM > 0.5) {
+    // Bauch: glatte Quadrate in Reihen, je ein Sinnespunkt nahe der Hinterkante
+    vec2 fb = fract(f2 * vec2(1.0, 2.5));
+    vec2 db = abs(fb - 0.5);
+    float rb = 0.5 - max(db.x, db.y);
+    fuge = 1.0 - smoothstep(0.0, 0.05 + aaR, rb);
+    float punkt = 1.0 - smoothstep(0.02, 0.05, length((fb - vec2(0.72, 0.5)) * vec2(1.0, 1.4)));
+    farbe = vec3(0.74, 0.7, 0.54) * (0.92 + 0.12 * idz);
+    farbe = mix(farbe, farbe * 0.55, punkt * 0.8);
+    hoehe = smoothstep(0.0, 0.1, rb) * 0.6 - punkt * 0.2;
+  } else if (oben > 0.5) {
+    // Knochenschild: erhabener Block mit steilen Rändern, Kiel längs der Mitte, Grübchen im Knochen
+    float kiel = exp(-pow((zf.y - 0.5) / 0.1, 2.0)) * smoothstep(0.0, 0.45, zf.x) * smoothstep(1.0, 0.65, zf.x);
+    float gruebchen = smoothstep(0.3, 0.7, snoise(q / uSchuppe * 5.0));
+    hoehe = smoothstep(0.0, 0.1, rand) * 0.7 + kiel * 0.55 - gruebchen * 0.12 + 0.08 * snoise(q / uSchuppe * 2.0);
+    farbe = mix(vec3(0.17, 0.18, 0.11), vec3(0.27, 0.27, 0.16), idz);
+    farbe = mix(farbe, vec3(0.09, 0.09, 0.06), smoothstep(0.2, 0.6, sin(dot(q, A) * 9.0 + 1.5 * snoise(q * 1.5))) * 0.5);
+    farbe = mix(farbe, farbe * 1.3 + 0.03, kiel * 0.3);
+    farbe *= 1.0 - gruebchen * 0.25;
+  } else {
+    // Flanke: kleine Kiesel (Zellen im Raum), einzelne Höcker, dunkle Flecken
+    vec4 vk = voronoiF3(q / uSchuppe * 2.4);
+    float rk = vk.y - vk.x;
+    float hk = hash11(vk.w * 7.0);
+    hoehe = smoothstep(0.0, 0.25, rk) * (hk > 0.88 ? 1.2 : 0.55);
+    fuge = 1.0 - smoothstep(0.0, 0.12, rk);
+    rand = rk;
+    farbe = mix(vec3(0.26, 0.27, 0.16), vec3(0.4, 0.38, 0.24), smoothstep(0.35, 0.7, t)) * (0.85 + 0.25 * hk);
+    farbe = mix(farbe, vec3(0.09, 0.09, 0.06), smoothstep(0.45, 0.6, snoise(q * 4.0)) * 0.7);
+  }
+  // Normale aus der Höhe (Oberflächengradient im Bild)
+  vec3 dpx = dFdx(p), dpy = dFdy(p);
+  float hw = hoehe * uRadius * 0.012 * h.lod;
+  float dhx = dFdx(hw), dhy = dFdy(hw);
+  vec3 r1 = cross(dpy, n0), r2 = cross(n0, dpx);
+  float detB = dot(dpx, r1);
+  h.n = abs(detB) > 1e-12 ? normalize(abs(detB) * n0 - sign(detB) * (r1 * dhx + r2 * dhy)) : n0;
+  h.n = normalize(h.n + vec3(snoise(q * 140.0), snoise(q * 140.0 + 4.0), snoise(q * 140.0 + 8.0)) * 0.04 * h.lod);
+  // Schlamm in den Furchen, nasse Inseln
+  float schlamm = fuge * smoothstep(-0.2, 0.4, snoise(q * 3.0 + 7.0));
+  farbe = mix(farbe, vec3(0.2, 0.16, 0.1), schlamm * 0.6);
+  float nass = smoothstep(0.15, 0.4, snoise(q * 1.8 + 3.0));
+  h.farbe = farbe * mix(1.0, 0.72, nass);
+  h.hoehe = hoehe;
+  h.fuge = fuge;
+  h.rand = max(rand, 0.0);
+  h.glanz = mix(0.35, 1.5, nass);
+  h.rauh = mix(0.7, 0.14, nass);
   return h;
 }
 `;
@@ -709,9 +756,11 @@ export const FROSCH_HAUT = haut(
 export const CHAMAELEON_HAUT = haut(
   'chamaeleon',
   'Chamäleon',
-  'Chamäleon: runde Körnchen und Höcker, Kamm auf der Rückenlinie, Bänder in Gelbgrün und Türkis, rote Punkte, heller Flankenstreifen; Stile Echt, Anime, Manga, Spider-Verse',
+  'Chamäleon: runde Körnchen mit je einer Farbe, Tuberkel, Bänder, heller Flankenstreifen, rote Punkte; Stimmung verschiebt die Farben von Blaugrün nach Gelb und Orange; Stile Echt, Anime, Manga, Spider-Verse, Earle',
   CHAMAELEON,
   'waldBokeh',
+  [{ k: 'stimmung', name: 'Stimmung', min: 0, max: 1, schritt: 0.05, grund: 0.2 }],
+  0,
 );
 export const KRAKE_HAUT = haut(
   'krake',
@@ -773,11 +822,12 @@ export const BAUMPYTHON = haut(
 export const KROKODIL = haut(
   'krokodil',
   'Krokodil',
-  'Krokodil: oben Knochenplatten mit Grat und Grübchen, an den Flanken runde Schuppen mit Flecken, Bauchplatten, nass in Flecken; Stile Echt, Anime, Manga, Spider-Verse, Earle',
+  'Krokodil: oben Knochenschilde in Querreihen mit Kielen, die Längsgrate bilden (Schuppenfeld), an den Flanken kleine Schuppen und Höcker, Bauchquadrate mit Sinnespunkt, matt mit nassen Inseln und Schlamm; Stile Echt, Anime, Manga, Spider-Verse, Earle',
   KROKODIL_GLSL,
   'unterWasser',
   [],
   0,
+  { laenge: 0.09, breite: 0.085 },
 );
 export const SALAMANDER = haut(
   'salamander',
