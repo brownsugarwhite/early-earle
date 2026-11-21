@@ -162,6 +162,21 @@ vec4 zelleAcht(vec3 x, out float id) {
   best.w = sqrt(best.w);
   return best;
 }
+/**
+ * nächste Mitte in einem raumzentrierten Raster (Mitten und Ecken der Würfel, je um bis zu 0,15 gestreut): zwei Kandidaten statt
+ * acht Zellen (Runde 7: die Suche nach dem Büschel war der größte Posten des Fells). Dichte: zwei Mitten je Würfel. Vektor zur
+ * Mitte (xyz), Abstand (w), Kennung. Nahe einer Grenze kann ein gestreuter Nachbar näher sein; das verschiebt die Grenze nur wenig.
+ */
+vec4 zelleBcc(vec3 x, out float id) {
+  vec3 a = floor(x) + 0.5;
+  vec3 b = floor(x + 0.5);
+  vec3 ra = a + 0.3 * (hash33(a) - 0.5) - x;
+  vec3 rb = b + 0.3 * (hash33(b + 0.37) - 0.5) - x;
+  float da = dot(ra, ra), db = dot(rb, rb);
+  bool istA = da < db;
+  id = hash13(istA ? a + 0.37 : b + 0.71);
+  return vec4(istA ? ra : rb, sqrt(min(da, db)));
+}
 /** Spiegelschnitt und Einrasten wie die Haut (an der Wurzel) */
 bool schalenGeschnitten() {
   if (uSpiegel >= 0.0 && vSpiegel.x * vSpiegel.y < -uSpiegel * abs(vSpiegel.x)) return true;
@@ -249,6 +264,7 @@ export class SchalenLauf implements ShaderLauf {
   private stand = -1;
   private nachziehen = false;
   private lebend = false;
+  private skala = 1;
 
   constructor(k: ShaderKern, art: SchalenArt) {
     this.art = art;
@@ -355,10 +371,16 @@ export class SchalenLauf implements ShaderLauf {
       this.mu.tMuster!.value = mz.texture;
       this.musterSchluessel = schluessel;
     }
-    // in Bewegung in kleinerer Auflösung (die Kosten wachsen mit der Fläche), steht das Bild, voll
+    // in Bewegung in kleinerer Auflösung (die Kosten wachsen mit der Fläche), steht das Bild, voll. Deckt die Form mehr als ein
+    // Drittel des Bilds (nah), sinkt die Auflösung in Stufen bis 50 % (Runde 7)
     const name = `${this.art.name}:schalen`;
+    const rPx = k.u.uMass.value * k.u.uRadius.value;
+    const bildCss = (k.u.uAufl.value.x / k.u.uDpr.value) * (k.u.uAufl.value.y / k.u.uDpr.value);
+    const flaeche = Math.min(1, (Math.PI * rPx * rPx) / Math.max(1, bildCss));
+    const skala = flaeche > 0.6 ? 0.5 : flaeche > 0.35 ? 0.6 : 0.7;
+    this.skala = bewegt && !this.lebend ? skala : 1;
     const ziel = bewegt && !this.lebend
-      ? k.ziel(`${name}:bewegt`, { proben: 4, tiefe: true, art: 'byte', anzahl: 2, skala: 0.7 })
+      ? k.ziel(`${name}:bewegt${Math.round(skala * 100)}`, { proben: 4, tiefe: true, art: 'byte', anzahl: 2, skala })
       : k.ziel(name, { proben: 4, tiefe: true, art: 'byte', anzahl: 2 });
     k.szene(this.szene, k.kamera, ziel, [0, 0, 0, 0]);
     const zu = this.zusammen.uniforms;
@@ -375,7 +397,7 @@ export class SchalenLauf implements ShaderLauf {
   }
 
   info(): Record<string, number> {
-    return { schalen: this.n, ecken: this.punkte.getAttribute('position')?.count ?? 0, dreiecke: (this.geo.index?.count ?? 0) / 3 };
+    return { schalen: this.n, skala: this.skala, ecken: this.punkte.getAttribute('position')?.count ?? 0, dreiecke: (this.geo.index?.count ?? 0) / 3 };
   }
 
   freigeben(): void {

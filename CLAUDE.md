@@ -24,7 +24,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   [`…-20-ozzy-maul-zaehne-zunge.md`](docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md); Studie `maul.html`.
   Einstieg: [`docs/look/ozzy/maul/UEBERGABE.md`](docs/look/ozzy/maul/UEBERGABE.md).
 - **Sitzung „Shader“ (20./21.11.):** Zweig `claude/ozzy-shader`, Fenster 5219, 62 Shader in sechs Gruppen (Material „Shader“,
-  ⇧M; Runde 4: „wirklich sehr gute arbeit“; Runde 6: Fell, Flausch, Häute im Zeichenstil; später: „Ghibli-Fell“ im Spiel). Einstieg:
+  ⇧M; Runde 4: „wirklich sehr gute arbeit“; Runde 6/7: Fell, Flausch, Häute, Fell schneller; später: Fell im Spiel). Einstieg:
   [`docs/look/ozzy/shader/UEBERGABE.md`](docs/look/ozzy/shader/UEBERGABE.md).
 - **Sitzung „Objekte, Spiegel und Nähte“ (18./19.11., ruht):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211.
   Plan: [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0

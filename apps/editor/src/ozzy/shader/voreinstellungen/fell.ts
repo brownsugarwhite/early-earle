@@ -11,9 +11,13 @@
  * - **Haare** (Echt, Plüsch): eine Zelle im Raum je Haar, Länge je Haar verschieden, zur Spitze dünner; **Büschel**: die Spitzen
  *   laufen zur Mitte ihres Büschels (Silva u. a. 2010); **Locken**: der Ort der Wurzel wandert mit der Höhe auf einem Kreis.
  *   Werden die Haare im Bild zu fein, rücken sie auseinander und werden dicker (kein Flimmern).
- * - **Büschel als Kegel** (Ghibli, Anime, Spider-Verse, Manga): Zellen im Raum, je Zelle ein Kegel, der nächste nach Abstand durch
+ * - **Ghibli** (Runde 7): dicke Haare in großen Büscheln, die im Büschel die halbe Dicke behalten und zur Strähne verschmelzen,
+ *   Spitzen fast gleich lang, der Rand im Zusammensetzen gemalt weich (sonst Kratzer und ein Strichgitter).
+ * - **Büschel als Flammen** (Anime, Spider-Verse, Manga): Zellen im Raum, je Zelle ein Kegel, der nächste nach Abstand durch
  *   Radius gewinnt; an der Wurzel decken sie sich, zur Spitze trennen sie sich. Die Normale des Kegels gibt jedem Büschel Licht und
  *   Schatten (gemalt, nicht gefiltert: so bleibt das Bild bei Bewegung an der Form).
+ * - **Wolle** (Felltyp Locken im Stil Echt, Runde 7): Stapel als flache Kuppeln mit kleinen Kuppeln darauf, dichte gekräuselte Fasern.
+ * - **Tempo** (Runde 7): Büschel im raumzentrierten Raster (zwei Kandidaten, Flammen vier) statt acht Zellen.
  * - **Muster** an der Wurzel jedes Haars (Haar für Haar), Agouti-Bänder längs des Haars, Scheckung (weiß von unten und an den Enden),
  *   Farbton drehbar.
  * - **Licht** Echt: Kajiya-Kay mit zwei verschobenen Glanzlinien (Scheuermann 2004), Wurzeln dunkler, Gegenlicht am Rand.
@@ -221,8 +225,8 @@ vec3 fellMuster(int m, vec3 q, vec3 n0, out float agouti) {
     c = mix(c, vec3(0.7, 0.42, 0.2), smoothstep(0.6, 0.66, t) * (1.0 - bauch) * 0.8);
     c = mix(c, weiss, bauch * 0.9);
   } else {
-    // Wolle: cremeweiß, Locke für Locke ein wenig anders, die Spitzen grau und bräunlich (Wetter, Staub)
-    c = vec3(0.93, 0.89, 0.79) * (0.94 + 0.1 * snoise(q * 6.0));
+    // Wolle: cremeweiß, in Flecken ein wenig wärmer (Wetter, Staub); tief im Stapel gelblich macht das Licht der Wolle
+    c = mix(vec3(0.95, 0.92, 0.84), vec3(0.86, 0.8, 0.68), smoothstep(0.2, 0.8, snoise(q * 2.5) * 0.5 + 0.5)) * (0.96 + 0.06 * snoise(q * 9.0));
     agouti = 1.0;
   }
   return c;
@@ -256,15 +260,20 @@ Haar haarDuenn(vec3 q, vec3 n, float h, float s, float busch, float locke, float
   r.bid = 0.0;
   r.rand = 0.5;
   r.quer = vec3(0.0);
+  float zus = 1.0;
+  float lb = 1.0;
   if (busch > 0.001) {
+    // Büschel im raumzentrierten Raster (gleiche Dichte wie eine Zelle der Größe C: Würfel 1,26 C)
     float C = s * gross;
     float cid;
-    vec4 z = zelleAcht(q / C, cid);
-    vec3 c = q + z.xyz * C;
+    vec4 z = zelleBcc(q / (C * 1.26), cid);
+    vec3 c = q + z.xyz * C * 1.26;
     c -= n * dot(c - q, n);
     float k = busch * smoothstep(0.0, 1.0, h);
-    qr = c + (q - c) / max(1.0 - k, 0.08);
+    zus = max(1.0 - k, 0.08);
+    qr = c + (q - c) / zus;
     r.bid = cid;
+    lb = mix(1.0 - 0.2 * uZusammen, 1.0, hash11(cid * 17.3));
     r.quer = (qr - c) / C;
     r.rand = clamp(length(r.quer) * 1.6, 0.0, 1.0);
   }
@@ -280,8 +289,11 @@ Haar haarDuenn(vec3 q, vec3 n, float h, float s, float busch, float locke, float
   vec3 d = hq - seed;
   d -= n * dot(d, n);
   float dist = length(d);
-  float laenge = mix(0.5, 1.0, hash13(ci + 3.1));
-  float rr = dicke * pow(max(1.0 - h / laenge, 0.0), 0.6);
+  float laenge = lb * mix(1.0 - uStreu, 1.0, hash13(ci + 3.1));
+  // im Büschel rücken die Haare zur Mitte; mit uZusammen behalten sie dabei ihre Dicke und verschmelzen (höchstens 0,48 der Zelle,
+  // sonst schnitte der Rand der Zelle Ecken heraus: ein Raster aus Löchern)
+  float rr = min(dicke * pow(max(1.0 - h / laenge, 0.0), 0.6) / pow(zus, uZusammen), 0.48);
+  if (uZusammen > 0.0) rr = max(rr, 0.6 / max(s * uMass * uRadius, 1.0) * step(h, laenge * 0.96));
   float aa = min(fwidth(dist), 0.2) * 0.7 + 0.02;
   r.a = (1.0 - smoothstep(rr - aa, rr + aa, dist)) * step(h, laenge);
   r.id = hash13(ci + 0.71);
@@ -294,38 +306,93 @@ Haar haarDuenn(vec3 q, vec3 n, float h, float s, float busch, float locke, float
   return r;
 }
 /**
+ * Wolle (Runde 7; Felltyp Locken im Stil Echt): Stapel als Kuppeln (raumzentriertes Raster, Würfel 5 s), in jedem dichte feine
+ * Fasern, die leicht zur Mitte des Stapels laufen und sich kräuseln (Zickzack quer, je Stapel eine Richtung). Die Fasern sind in der
+ * Mitte des Stapels am längsten, zum Rand kürzer: so entstehen Kuppeln mit Spalten dazwischen. quer: Neigung der Kuppel.
+ */
+Haar wolle(vec3 q, vec3 n, float h, float s) {
+  Haar r;
+  float C = s * 7.0;
+  float sid;
+  vec4 z = zelleBcc(q / C, sid);
+  vec3 c = q + z.xyz * C;
+  vec3 dq = q - c;
+  dq -= n * dot(dq, n);
+  float d = length(dq) / C;
+  // dicht gepackt: die Spalten zwischen den Stapeln sind flach, darauf kleine Kuppeln (Blumenkohl)
+  float kid;
+  vec4 z2 = zelleBcc(q / (C * 0.42), kid);
+  float buckel = 1.0 - smoothstep(0.0, 0.55, z2.w);
+  float kuppel = mix(0.86, 1.0, hash11(sid * 7.1)) * (1.0 - 0.34 * min(d * d * 4.0, 1.0)) + 0.08 * (buckel - 0.5);
+  vec3 t1 = normalize(cross(n, hash33(vec3(sid * 13.0, sid * 7.0, sid * 3.0)) - 0.5) + vec3(1e-4));
+  vec3 qr = c + (q - c) / (1.0 - 0.3 * h);
+  qr += t1 * s * 0.45 * sin(h * 38.0 + sid * 40.0);
+  vec3 hq = qr / s;
+  vec3 ci = floor(hq);
+  vec3 seed = ci + 0.5 + 0.1 * (2.0 * hash33(ci) - 1.0);
+  vec3 dd = hq - seed;
+  dd -= n * dot(dd, n);
+  float dist = length(dd);
+  float laenge = max(kuppel * mix(0.88, 1.0, hash13(ci + 3.1)), 0.02);
+  float rr = 0.4 * pow(max(1.0 - h / laenge, 0.0), 0.3);
+  float aa = min(fwidth(dist), 0.2) * 0.7 + 0.02;
+  r.a = (1.0 - smoothstep(rr - aa, rr + aa, dist)) * step(h, laenge);
+  r.id = hash13(ci + 0.71);
+  r.bid = sid;
+  r.wurzel = seed * s;
+  r.rand = d * 2.0;
+  vec3 dk = z2.xyz;
+  dk -= n * dot(dk, n);
+  r.quer = normalize(dq + n * 1e-5) * smoothstep(0.08, 0.45, d) * 0.55 - normalize(dk + n * 1e-5) * smoothstep(0.1, 0.5, z2.w) * 0.35;
+  r.hoehe = clamp(h / laenge, 0.0, 1.0);
+  return r;
+}
+/**
  * Büschel als Flammen (Anime, Spider-Verse, Manga): Zellen im Raum, je Zelle ein Büschel, im Querschnitt längs des Strichs gestreckt
  * (S: Strichrichtung in der Fläche), zur Spitze spitz; der nächste nach Abstand durch Radius gewinnt (an der Wurzel decken sie sich,
  * zur Spitze trennen sie sich). Klare Formen, wie gezeichnet.
  */
 Haar bueschel(vec3 q, vec3 n, float h, float s, float spitz, vec3 S) {
   Haar r;
-  vec3 hq = q / s;
-  vec3 p = floor(hq);
-  vec3 o = step(0.5, fract(hq)) - 1.0;
+  // raumzentriertes Raster (Würfel 1,26 s: gleiche Dichte wie eine Zelle der Größe s), je Teilraster die zwei nächsten Mitten
+  // (Runde 7: vier Kandidaten statt acht Zellen); Abstände im Maß s
+  vec3 hq = q / (s * 1.26);
+  vec3 a = floor(hq) + 0.5;
+  vec3 fa = hq - a;
+  vec3 ga = abs(fa);
+  vec3 ea = ga.x > ga.y ? (ga.x > ga.z ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 0.0, 1.0)) : (ga.y > ga.z ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0));
+  vec3 b = floor(hq + 0.5);
+  vec3 fb = hq - b;
+  vec3 gb = abs(fb);
+  vec3 eb = gb.x > gb.y ? (gb.x > gb.z ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 0.0, 1.0)) : (gb.y > gb.z ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0));
+  vec3 kand[4];
+  kand[0] = a;
+  kand[1] = a + ea * sign(fa);
+  kand[2] = b;
+  kand[3] = b + eb * sign(fb);
   vec3 Sa = length(S) > 1e-3 ? normalize(S) : normalize(cross(n, vec3(0.31, 0.93, 0.17)));
   vec3 Sq = cross(n, Sa);
   float best = 9.0;
-  vec3 bestSeed = vec3(0.0), bestD = vec3(0.0);
-  float bestId = 0.0, bestL = 1.0;
-  for (int k = 0; k <= 1; k++)
-    for (int j = 0; j <= 1; j++)
-      for (int i = 0; i <= 1; i++) {
-        vec3 b = p + o + vec3(float(i), float(j), float(k));
-        vec3 seed = b + 0.15 + 0.7 * hash33(b);
-        vec3 d = hq - seed;
-        d -= n * dot(d, n);
-        vec2 dl = vec2(dot(d, Sa) / 1.45, dot(d, Sq));
-        float lg = mix(0.62, 1.0, hash13(b + 3.1));
-        float rr = (0.58 + 0.24 * hash13(b + 7.7)) * pow(max(1.0 - h / lg, 0.0), spitz);
-        float e = length(dl) / max(rr, 1e-4);
-        if (e < best) { best = e; bestSeed = seed; bestD = d; bestId = hash13(b + 0.71); bestL = lg; }
-      }
+  vec3 bestK = a, bestSeed = a, bestD = vec3(0.0);
+  float bestL = 1.0;
+  for (int i = 0; i < 4; i++) {
+    vec3 k = kand[i];
+    vec3 hv = hash33(k);
+    vec3 seed = k + 0.3 * (hv - 0.5);
+    vec3 d = (hq - seed) * 1.26;
+    d -= n * dot(d, n);
+    vec2 dl = vec2(dot(d, Sa) / 1.45, dot(d, Sq));
+    float lg = mix(0.62, 1.0, fract(hv.x * 7.13 + hv.y * 3.7));
+    float x = max(1.0 - h / lg, 0.0);
+    float rr = (0.58 + 0.24 * fract(hv.z * 5.71 + hv.x * 2.3)) * (spitz > 0.95 ? x : pow(x, spitz));
+    float e = length(dl) / max(rr, 1e-4);
+    if (e < best) { best = e; bestK = k; bestSeed = seed; bestD = d; bestL = lg; }
+  }
   float aa = min(fwidth(best), 0.3) * 0.7 + 0.02;
   r.a = 1.0 - smoothstep(1.0 - aa, 1.0 + aa, best);
-  r.id = bestId;
-  r.bid = bestId;
-  r.wurzel = bestSeed * s;
+  r.id = hash13(bestK + 0.71);
+  r.bid = r.id;
+  r.wurzel = bestSeed * s * 1.26;
   r.rand = best;
   r.quer = bestD;
   r.hoehe = clamp(h / bestL, 0.0, 1.0);
@@ -362,6 +429,21 @@ vec3 fellEcht(vec3 alb, vec3 n0, vec3 T, vec3 V, float h, float samt) {
   c += vec3(1.0, 0.84, 0.62) * rim * (0.35 + a * 1.5) * clamp(h, 0.0, 1.0) * 1.2;
   // Samt (Plüsch): am Rand heller, die Haare stehen dort quer zum Blick
   c += a * pow(1.0 - nv, 2.0) * samt * 1.4 * wrap;
+  return linZuSrgb(aces(c * 1.02));
+}
+/** Wolle: matt, die Kuppel eines Stapels gibt das Licht, tief im Stapel dunkel und gelblich (Wollfett), Fasern am Rand hell */
+vec3 fellWolle(vec3 alb, vec3 n0, Haar f, float h, vec3 V) {
+  vec3 L = lichtSicht(), Lr = randSicht();
+  vec3 a = srgbZuLin(alb);
+  vec3 nw = normalize(n0 + f.quer);
+  float wrap = clamp((dot(nw, L) + 0.4) / 1.4, 0.0, 1.0);
+  float ao = mix(0.2, 1.0, pow(clamp(h, 0.0, 1.0), 0.8));
+  a = mix(a * vec3(0.8, 0.66, 0.42), a, smoothstep(0.15, 0.7, h));
+  vec3 c = a * (vec3(1.0, 0.95, 0.88) * 2.1 * wrap + vec3(0.22, 0.25, 0.3) * (0.6 + 0.4 * nw.y)) * ao;
+  float nv = clamp(abs(dot(n0, V)), 0.0, 1.0);
+  c += a * pow(1.0 - nv, 2.0) * 0.5 * wrap;
+  c += vec3(1.0, 0.9, 0.75) * pow(1.0 - nv, 3.0) * clamp(dot(n0, Lr) + 0.3, 0.0, 1.0) * 0.5 * h;
+  c *= 0.92 + 0.16 * f.id;
   return linZuSrgb(aces(c * 1.02));
 }
 /** Ghibli: gemalte Büschel in drei Tönen (Licht warm, Mitte, Schatten kühl), sanft nach der Form, jedes Büschel etwas anders
@@ -436,6 +518,8 @@ uniform float uDicke;
 uniform float uSpitz;
 uniform float uGross;
 uniform float uMinPx;
+uniform float uZusammen;
+uniform float uStreu;
 `;
 
 const SCHALEN_MAIN = /* glsl */ `
@@ -449,9 +533,12 @@ void main() {
   vec3 V = zumAuge(vWelt);
   float pxq = max(uMass * uRadius, 1.0);
   bool duenn = stil == 0 || stil == 5;
+  bool wollig = stil == 0 && uLocke > 0.5;
   Haar f;
   if (h <= 0.0) {
     f.a = 1.0; f.id = 0.0; f.bid = 0.0; f.wurzel = q; f.rand = 1.0; f.quer = vec3(0.0); f.hoehe = 0.0;
+  } else if (wollig) {
+    f = wolle(q, n0, h, max(uDicht, uMinPx / pxq));
   } else if (stil >= 2 && stil <= 4) {
     f = bueschel(q, n0, h, max(uDicht, 7.0 / pxq), uSpitz, vStrich);
   } else {
@@ -467,7 +554,7 @@ void main() {
   float agouti = vMuster.a;
   vec3 alb = vMuster.rgb;
   // Agouti: Wurzel dunkel, ein helles Band, dunkle Spitze
-  if (agouti > 0.0 && h > 0.0 && duenn) {
+  if (agouti > 0.0 && h > 0.0 && duenn && !wollig) {
     float band = smoothstep(0.45, 0.6, f.hoehe) * (1.0 - smoothstep(0.78, 0.9, f.hoehe));
     vec3 ag = alb * mix(0.55, 1.0, smoothstep(0.0, 0.45, f.hoehe));
     ag = mix(ag, min(alb * 1.35 + vec3(0.08, 0.06, 0.02), vec3(1.0)), band);
@@ -481,7 +568,8 @@ void main() {
     if (duenn) col = fellEcht(alb * 0.5, n0, T, V, 0.0, 0.0);
     else if (stil == 4) col = vec3(0.04);
     else col = alb * vec3(0.55, 0.56, 0.74);
-  } else if (stil == 0) col = fellEcht(alb * (uBusch > 0.001 ? mix(1.0, 0.55, smoothstep(0.55, 1.0, f.rand)) : 1.0), n0, T, V, h, 0.0);
+  } else if (wollig) col = fellWolle(alb, n0, f, h, V);
+  else if (stil == 0) col = fellEcht(alb * (uBusch > 0.001 ? mix(1.0, 0.55, smoothstep(0.55, 1.0, f.rand)) : 1.0), n0, T, V, h, 0.0);
   else if (stil == 1) col = fellGhibli(alb, n0, f, h);
   else if (stil == 2) col = fellAnime(alb, n0, f, h, V);
   else if (stil == 3) col = fellSpider(alb, n0, f, h, V, css);
@@ -500,6 +588,22 @@ void main() {
   vec2 qb = gl_FragCoord.xy / uAufl;
   int stil = int(uR_stil + 0.5);
   vec4 f = texture(tSchalen, vUv);
+  if (stil == 1 && f.a < 0.97) {
+    // Ghibli: wo das Fell nicht voll deckt (Rand, Spitzen), gemalt weich: an der Silhouette zerfällt sonst jede Spitze in
+    // einzelne Punkte (die Schalen stehen dort auf der Kante). Nur der Rand, das Innere bleibt scharf.
+    // eine gefüllte Scheibe (Mitte, vier Proben innen, acht außen), sonst würde jeder Punkt ein Ring
+    vec2 px = uDpr / uAufl;
+    vec4 m = f * 2.0;
+    for (int i = 0; i < 4; i++) {
+      float w = float(i) * 1.5707963 + 0.785;
+      m += texture(tSchalen, vUv + vec2(cos(w), sin(w)) * px * 0.6) * 1.5;
+    }
+    for (int i = 0; i < 8; i++) {
+      float w = float(i) * 0.7853982 + 0.39;
+      m += texture(tSchalen, vUv + vec2(cos(w), sin(w)) * px * 1.25);
+    }
+    f = mix(f, m / 16.0, smoothstep(0.97, 0.5, f.a));
+  }
   float dk = sqrt(clamp(f.a, 0.0, 1.0));
   float a = uBuehne > 0.5 ? 1.0 : 0.0;
   vec3 grund = vec3(0.0);
@@ -525,8 +629,8 @@ void main() {
       vec4 k1 = texture(tKennung, vUv + vec2(cos(w), sin(w)) * px);
       tinte = max(tinte, step(0.012, abs(k1.x - k0.x)) * smoothstep(0.03, 0.12, k0.y - k1.y));
     }
-    vec3 strich = stil == 1 ? aus * vec3(0.5, 0.45, 0.48) : (stil == 2 ? aus * 0.32 : vec3(0.03, 0.02, 0.05) * dk);
-    aus = mix(aus, strich, tinte * (stil == 1 ? 0.55 : 0.95));
+    vec3 strich = stil == 1 ? aus * vec3(0.62, 0.56, 0.6) : (stil == 2 ? aus * 0.32 : vec3(0.03, 0.02, 0.05) * dk);
+    aus = mix(aus, strich, tinte * (stil == 1 ? 0.35 : 0.95));
   }
   aus += grund * (1.0 - dk);
   float al = max(a, dk);
@@ -562,7 +666,7 @@ function fellWerte(r: Record<string, number>, mass: number, radius: number) {
   const basis = duenn ? Math.round(t.n * (0.7 + 0.3 * Math.min(laenge, 2))) : 24;
   const z = ZEICHNUNG[stil]!;
   return {
-    voll: Math.max(basis, Math.min(40, Math.round(lPx / 1.8))),
+    voll: Math.max(basis, Math.min(32, Math.round(lPx / 1.8))),
     laenge: L,
     strich: (duenn ? t.strich : Math.max(0.5, typ.strich)) * (r.strich ?? 1),
     schwer: (duenn ? t.schwer : Math.max(0.25, typ.schwer * 0.8)) * (r.strich ?? 1),
@@ -576,6 +680,9 @@ function fellWerte(r: Record<string, number>, mass: number, radius: number) {
       uMinPx: duenn ? 2.2 : 3.4,
       uSpitz: stil === 2 ? 1.0 : 0.85,
       uScheckung: r.scheckung ?? 0,
+      // Ghibli: Haare verschmelzen im Büschel zur Strähne, die Spitzen eines Büschels fast gleich lang
+      uZusammen: stil === 1 ? 0.5 : 0,
+      uStreu: stil === 1 ? 0.3 : 0.5,
     },
   };
 }
@@ -594,7 +701,7 @@ export function fellVoreinstellung(a: FellArt): Voreinstellung {
   const art: SchalenArt = {
     name: 'fell',
     regler,
-    uniforms: { uDicht: 0.005, uBusch: 0.3, uLocke: 0, uDicke: 0.24, uSpitz: 0.85, uGross: 7, uMinPx: 2.2, uScheckung: 0 },
+    uniforms: { uDicht: 0.005, uBusch: 0.3, uLocke: 0, uDicke: 0.24, uSpitz: 0.85, uGross: 7, uMinPx: 2.2, uScheckung: 0, uZusammen: 0, uStreu: 0.5 },
     fragment: `${FELL_UNIFORMS}\n${HAARE}\n${STILE}\n${SCHALEN_MAIN}`,
     muster: MUSTER,
     musterSchluessel: (w) => `${w.regler.muster}|${w.regler.farbton}|${w.regler.scheckung}`,
@@ -609,7 +716,7 @@ export const FELL = fellVoreinstellung({
   name: 'Fell',
   gruppe: 'Fell & Flausch',
   zeile:
-    'Echtes Fell aus Schalen: Haare mit Büscheln, Strich und Locken, 19 Muster (Tiger bis Merle), sechs Felltypen, Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch',
+    'Echtes Fell aus Schalen: Haare mit Büscheln, Strich und Locken, 20 Muster (Tiger bis Wolle), sechs Felltypen, Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch',
   stil: 1,
   muster: 9,
   typ: 1,
@@ -618,7 +725,7 @@ export const SCHAF = fellVoreinstellung({
   id: 'schaf',
   name: 'Schaf',
   gruppe: 'Fell & Flausch',
-  zeile: 'Schafwolle: Locken als Wendeln, in Büscheln, cremeweiß mit grauen Spitzen; dieselben Regler wie Fell',
+  zeile: 'Schafwolle: Stapel als Kuppeln aus feinen gekräuselten Fasern, dunkle gelbliche Spalten dazwischen, cremeweiß; dieselben Regler wie Fell',
   stil: 0,
   muster: 19,
   typ: 5,

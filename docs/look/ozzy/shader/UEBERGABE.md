@@ -1,10 +1,12 @@
-# Übergabe: 62 Shader für Ozzy (21.11.2026, Runde 6)
+# Übergabe: 62 Shader für Ozzy (21.11.2026, Runde 7)
 
 Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 5),
-`docs/plans/2026-11-21-ozzy-shader-runde-6.md` (Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel). Recherche:
+`docs/plans/2026-11-21-ozzy-shader-runde-6.md` (Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel),
+`docs/plans/2026-11-21-ozzy-shader-runde-7-fell.md` (Runde 7: Fell schneller, Ghibli-Ränder, Schaf als Stapel; Messungen). Recherche:
 `docs/research/2026-11-20-shader-recherche.md`, für die Tiere `docs/research/2026-11-20-tiermuster-recherche.md`, für den T-Rex
 `docs/research/2026-11-20-t-rex-haut-recherche.md`, für Fell und Flausch `docs/research/2026-11-21-fell-flausch-recherche.md`.
-Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 6:
+Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 7, vorher | nachher:
+`2026-11-21-runde-7-fell.png`, `-fell-andere.png`; Runde 6:
 `2026-11-21-runde-6-fell.png`, `-muster.png`, `-flausch.png`, `-haeute.png`, `-tiere.png`, `-nah.png`; Runde 5:
 `2026-11-20-runde-5-trex-stile.png`, `-farben.png`, `-nah.png`; Runde 4: `2026-11-20-runde-4-*.png`; Runde 3:
 `2026-11-20-runde-3-neu.png`; je Gruppe nach Runde 2: `2026-11-20-runde-2-*.png`; Runde 1: `2026-11-20-alle-20.png` und einzelne).
@@ -114,17 +116,25 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
     alpha to coverage; im aufgelösten Ziel steht Deckung mal Alpha, darum setzt `deckungSchalen` die Wurzel ein) und **Durchsicht**
     (Wolke, Zuckerwatte: erst die Haut deckend, dann die Schalen vormultipliziert gemischt; die Deckung je Schale aus der Dicke einer
     Schicht, `1 - exp(-σ·36/N)`, so bleibt das Bild bei jeder Zahl der Schalen gleich dicht). Die Zahl der Schalen folgt der Länge des
-    Fells im Bild (höchstens 40), die Höhe jeder Schale wird je Bildpunkt verzittert (IGN), sonst sieht man Scheiben. **Muster je
-    Ecke** (`eckMuster`): einmal je Ecke in eine Textur gerechnet (ein Durchgang mit Punkten, `gl_VertexID`), nur wenn sich Netz
+    Fells im Bild (Fell höchstens 32), die Höhe jeder Schale wird je Bildpunkt verzittert (IGN), sonst sieht man Scheiben. **Muster
+    je Ecke** (`eckMuster`): einmal je Ecke in eine Textur gerechnet (ein Durchgang mit Punkten, `gl_VertexID`), nur wenn sich Netz
     oder Regler ändern; die Schalen lesen es mit `texelFetch`. **In Bewegung** (Blick, Form oder ein lebender Shader) 45 % der
-    Schalen in 70 % der Auflösung, danach ein Bild in voller Güte (`unruhig` hält es so lange am Laufen). Ein Bildpunkt ohne
-    Haar bekommt Deckung null statt `discard` (das hielt die frühe Tiefenprüfung aus).
+    Schalen in 70 % der Auflösung, nah weniger (60 % ab einem Drittel des Bilds, 50 % ab 60 %; je Stufe ein eigenes Ziel), danach
+    ein Bild in voller Güte (`unruhig` hält es so lange am Laufen). Ein Bildpunkt ohne Haar bekommt Deckung null statt `discard`
+    (das hielt die frühe Tiefenprüfung aus). **Zellsuchen kosten am meisten** (Runde 7, gemessen: die Suche nach dem Büschel war
+    bei Nahsicht 110 von 170 ms): `zelleBcc` sucht im raumzentrierten Raster unter zwei Kandidaten statt acht Zellen.
 19. **Fell** (`fell.ts`): Haare als Zellen im Raum (je Zelle eins; acht statt 27 Nachbarzellen, `zelleAcht`), Länge je Haar
     verschieden, zur Spitze dünner; Büschel ziehen die Spitzen zur Mitte (Silva u. a. 2010), Locken als Kreis um die Wurzel. Licht:
     Kajiya-Kay mit zwei verschobenen Glanzlinien. **Ghibli** sind dicke Haare in großen Büscheln (drei Töne, Pinselspur, Papier);
-    **Anime, Spider-Verse, Manga** brauchen Büschel als Flammen (Kegel längs des Strichs, `bueschel`): Mit dünnen Haaren wurde ihre
-    Kontur fleckig. Tusche nur, wo die Kennung des Büschels wechselt und das vordere höher liegt (vorher auf jeder Schale: Rauschen).
-    Muster an der Wurzel jedes Haars (`fellMuster`, 20 Muster), Scheckung weiß von unten (`uScheckung`).
+    **Anime, Spider-Verse, Manga** brauchen Büschel als Flammen (Kegel längs des Strichs, `bueschel`, vier Kandidaten im
+    raumzentrierten Raster): Mit dünnen Haaren wurde ihre Kontur fleckig. Tusche nur, wo die Kennung des Büschels wechselt und das
+    vordere höher liegt (vorher auf jeder Schale: Rauschen). Muster an der Wurzel jedes Haars (`fellMuster`, 20 Muster), Scheckung
+    weiß von unten (`uScheckung`). **Merke (Runde 7):** Wer Haare zur Mitte eines Büschels zieht, macht sie dabei dünner (der Ort
+    wird gestreckt): an den Spitzen Punkte unter einem Bildpunkt, also Kratzer am Rand und Strichgitter. Ghibli gleicht das halb aus
+    (`uZusammen`), mit Mindestdicke, Spitzen fast gleich lang (`uStreu`); ganz ausgeglichen werden die Büschel glatte Schuppen. Der
+    Rand im Ghibli-Stil wird im Zusammensetzen über eine gefüllte Scheibe gemittelt, nur wo das Fell nicht voll deckt (acht Proben
+    auf einem Ring machten aus jedem Punkt einen Ring). **Wolle** (Felltyp Locken im Stil Echt, `wolle`): Stapel als flache Kuppeln
+    mit kleinen Kuppeln darauf, dichte gekräuselte Fasern; schmale Stapel standen wie Stacheln.
 20. **Flausch** (`flausch.ts`): Die Wolke ist ein Höhenfeld aus Ballen (`kuppel`: Kuppeln aus `zelleAcht`, dazu feines Rauschen)
     auf den Schalen; Licht nach Nubis (Beer, Puder, Silberrand, Himmel), Ghibli und Anime in Stufen. Zuckerwatte: Fasern, wo sich die
     Nullstellen zweier Rauschfelder schneiden, Rosa und Hellblau je Ecke gemischt, Glitzer. Pusteblume: Same, Stiel, Schirm (Versuch).
@@ -137,6 +147,8 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
 22. **Bühnen** (`buehnen.ts`) geben lineare Farbe; wer im Bildschirmraum zeichnet (Anime, Manga, Spider-Verse), wandelt am Ende.
     Neu in Runde 6: blauer Himmel, Ghibli-Himmel, Anime-Himmel, Manga-Grund, Jahrmarkt, unter Wasser, Wüste, Savanne.
 23. **Tempo messen:** Zeiten je Bild mit der Grafikkarte (ein Bildpunkt zurücklesen, sonst misst man nur den Prozessor), im
-    Testbrowser mit `GPU=1`, Blick zwischen den Bildern ändern (sonst greift die volle Güte im Stand). Fell in Bewegung im Testbrowser
-    rund 25 bis 48 ms je Bild je nach Zoom (vorher 96 bis 300); in Florians Chrome und am iPhone nicht gemessen. Das Übersetzen
-    eines Fell- oder Hautshaders kostet beim Wechsel 0,4 bis 0,7 s.
+    Testbrowser mit `GPU=1`, Blick zwischen den Bildern ändern (sonst greift die volle Güte im Stand). Nach Runde 7 Fell in Bewegung
+    rund 26 bis 32 ms je Bild samt Ozzy (Grund 11 bis 13 ms), im Stand 45 bis 110 ms; Zahlen im Plan der Runde 7. Was ein Teil
+    kostet, zeigt ein Lauf mit abgeschaltetem Teil (`FLICKEN` wie in `ozzy-teile.mjs`; Muster in GLSL-Text, nicht in JS-Code, den
+    Vite umformt). Am iPhone nicht gemessen (Adresse mit `info=1` zeigt Bilder je Sekunde). Das Übersetzen eines Fell- oder
+    Hautshaders kostet beim Wechsel 0,4 bis 0,7 s.

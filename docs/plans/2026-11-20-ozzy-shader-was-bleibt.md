@@ -1,4 +1,4 @@
-# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 6, 21.11.2026)
+# Shader: was bleibt (Feinschliff, gesammelt; Stand nach Runde 7, 21.11.2026)
 
 Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/2026-11-20-runde-2-*.png`, Runde 4:
 `2026-11-20-runde-4-*.png`, Runde 6: `2026-11-21-runde-6-*.png`). Was mir beim Ansehen aufgefallen ist, für einen Feinschlifflauf (Florians Auge entscheidet):
@@ -60,13 +60,17 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
 **Nach Runde 6 (Fell, Flausch, Häute im Zeichenstil, Diskokugel; Bilder `2026-11-21-runde-6-*.png`):**
 
 26. **Fell, Tempo:** In Bewegung im Testbrowser 25 bis 48 ms je Bild (je nach Zoom, nah teurer; vorher 96 bis 300), danach ein Bild
-    in voller Güte. In Florians Chrome und am iPhone nicht gemessen.
+    in voller Güte. In Florians Chrome und am iPhone nicht gemessen. **Runde 7:** in Bewegung 26 bis 32 ms samt Ozzy (Grund 11 bis
+    13 ms), im Stand 45 bis 110 ms (Tabelle im Plan der Runde 7); am iPhone weiter nicht gemessen.
 27. **Übersetzen:** Der Wechsel zu einem Fell- oder Hautshader hält das Bild 0,4 bis 0,7 s an (das Programm wird übersetzt).
-28. **Fell Ghibli:** Die Ränder der Büschel sind etwas kratzig; nah liegt im weißen Fell ein Gitter aus kurzen Strichen.
+28. **Fell Ghibli:** Die Ränder der Büschel sind etwas kratzig; nah liegt im weißen Fell ein Gitter aus kurzen Strichen. **Runde 7:**
+    behoben (Haare behalten im Büschel die halbe Dicke, gemalter weicher Rand); ganz nah bleibt am Rand ein feines Korn.
 29. **Fell, Muster:** Leopard, Gepard und Jaguar sind in der Übersicht schwer zu unterscheiden (erst nah: Rosetten, volle Punkte,
     Rosetten mit Kern). Die Muster kennen keine Körperteile: Siam und Waschbär sind an den Enden der Form dunkel (weit außen im
     Kasten der Form), nicht an Gesicht, Ohren und Pfoten; der Waschbär hat keine Maske.
-30. **Schaf:** In der Übersicht Vlies; nah liegen die Locken wie ein Netz aus Ringen.
+30. **Schaf:** In der Übersicht Vlies; nah liegen die Locken wie ein Netz aus Ringen. **Runde 7:** Wolle als Stapel (Kuppeln wie
+    Blumenkohl, cremeweiß). Es bleibt: nah zeigen manche Kuppeln an der Seite ein feines Gewebe (die Fasern stehen in einem Raster);
+    die Kräuselung einzelner Fasern ist kaum zu sehen.
 31. **Wolke:** Ghibli und Anime haben eckige Schattenstufen (die Kanten der Ballen zeigen sich in der Stufe); die Fransen am Rand
     sehen aus wie Fell. Eine Wolke im Spider-Verse-Stil (im Plan) ist nicht gebaut.
 32. **Zuckerwatte:** innen sehr glatt, die Fasern sieht man fast nur am Rand.
@@ -80,3 +84,13 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
 39. **Gemerkte Regler:** Bei den Tieren aus Runde 4 hat der Stil die Reihenfolge gewechselt (1 war Spider-Verse, ist jetzt Anime;
     2 war Earle, ist jetzt Manga; Earle ist 4).
 40. **Spiel:** Die Probe „Ghibli-Fell“ im Spiel ist nicht gebaut (Florian: „später reicht“).
+
+**Nach Runde 7 (Fell schneller, Ghibli-Ränder, Schaf; Bilder `2026-11-21-runde-7-fell*.png`):**
+
+41. **iPhone:** Fenster 5219 läuft im WLAN; gemessen ist noch nichts (Florian: Adresse mit `info=1`, „B/s“ ablesen).
+42. **Nah in Bewegung** rechnet das Fell in halber Auflösung: weicher, bis die Form steht (dann ein Bild in voller Güte, nah rund
+    100 ms; das ist ein spürbares Stocken beim Loslassen).
+43. **Bühnen hinter dem Fell** werden jedes Bild neu gerechnet (Anime-Himmel: zwei Rauschfelder je Bildpunkt), obwohl sie stillstehen;
+    ein Zwischenspeicher spart einige Millisekunden.
+44. **Flammen** (Anime, Spider-Verse, Manga) suchen nur noch vier Kandidaten: Selten schneidet eine Grenze des Rasters eine Flamme
+    gerade ab (in den Bildern nicht gesehen).
