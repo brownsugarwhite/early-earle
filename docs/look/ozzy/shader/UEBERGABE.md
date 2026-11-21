@@ -11,7 +11,7 @@ Felsen, Schlangen ohne verzogene Schuppen, Barcelona neu, Straße, Natur, Nachts
 `docs/research/2026-11-20-t-rex-haut-recherche.md`, für Fell und Flausch `docs/research/2026-11-21-fell-flausch-recherche.md`.
 Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progress/ozzy/shader/` (Runde 9:
 `2026-11-21-runde-9-schleim-fels.png`, `-schlangen.png`, `-barcelona.png`, `-strasse-natur.png`, `-nachtschatten-sincity.png`,
-`-tropfschleim-vorlage.png` (Vorlage, jetzt, vorher, an „strange bird“); Runde 8:
+`-tropfschleim-vorlage.png` und `-tropfschleim-vorlage-2.png` (Vorlage, jetzt, vorher, an „strange bird“); Runde 8:
 `2026-11-21-runde-8-schlangen.png`, `-drache-echsen.png`, `-schleim-steine.png`, `-barcelona-tusche-matrix.png`; Runde 7, vorher | nachher:
 `2026-11-21-runde-7-fell.png`, `-fell-andere.png`; Runde 6:
 `2026-11-21-runde-6-fell.png`, `-muster.png`, `-flausch.png`, `-haeute.png`, `-tiere.png`, `-nah.png`; Runde 5:
@@ -32,7 +32,8 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
   Blatt aus Bildern: `node scripts/ozzy/bildblatt.mjs <ziel.png> <spalten> <breite je Bild> <bilder…>` (die Breite gilt **je Bild**;
   die Beschriftung ist der Dateiname).
 - Gegen eine Materialkugel als Vorlage: `node scripts/ozzy/shader-kugel.mjs <ziel.png> <id>` (frisch aufgeblasene Kugel, gerade von
-  vorn, `ZOOM=3.1` füllt das Bild wie die üblichen Kugelbilder).
+  vorn, `ZOOM=3.1` füllt das Bild wie die üblichen Kugelbilder). Messen gegen die Vorlage: `node scripts/ozzy/kugel-messen.mjs
+  <vorlage> <bild …>` (Farbe, Helligkeit, Rot zu Grün, senkrechte zu waagerechten Kanten, Kanten je Bildpunkt, Streuung; zählt Grün).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
 ## Die 94, in elf Gruppen
@@ -204,11 +205,17 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
     brauchen etwas Helles (Gasse gespiegelt, Lichter, Neon).
 34. **Leuchtgas:** Licht aus der Dicke (`rueckseite`), Schein und Spiegelbild aus `tWeich`; ACES am Ende macht den Kern weiß.
     Bewegte Shader (Flackern, Regen, Ladewelle) brauchen `unruhig: () => true`.
-35. **Tropfschleim nach der Vorlage** (21.11., `schleim.ts`): Lagen und Tropfen laufen um die Hochachse (Winkel und Höhe, ohne Naht),
-    Lippen mit Wulst und Schatten, die an ihren Enden abreißen; kurze Nasen und lange Tropfen hängen an den Lippen. **Der Umriss ist
+35. **Tropfschleim nach der Vorlage** (21.11., `schleim.ts`; zweiter Durchgang „weiter feilen“ abends): Lippen und Wellen sind
+    Rauschen im Raum (Muster aus Winkeln um die Hochachse wurden am Pol und auf einer Flosse dicht). Die Tropfen liegen in Spalten
+    um die Achse (so folgen sie der Fläche nach unten; Tropfen an Orten in Zellen wanderten auf der gewölbten Fläche von ihrer Säule
+    weg und wurden zerschnitten), Breite und Abstand in Bogenlänge, nah an der Achse trägt nur jede r-te Spalte einen, ein Tropfen
+    ist höchstens so breit wie der Abstand zweier Spalten (die Suche reicht 1,2 Spalten weit). Schwache Lippen weichen nach oben
+    zurück, in einer U-Form (linear gab spitze V-Zungen wie Flammen); Tropfen hängen an dieser sichtbaren Front, darum zählt auch die
+    Lippe der eigenen Lage (sonst waagerecht abgeschnitten). Überlappende Tropfen werden weich vereint (Norm mit p = 4, keine
+    Schleifen). Spiegelungen in neutralem Weiß (das Studio gab orange Punkte am Rand). **Der Umriss ist
     bucklig, ohne Geometrie:** Am Rand bleibt nur sichtbar, was höher liegt als 1 minus Abstand zum Umriss durch D (D = 6 % des
     Radius, im Bild höchstens 30 Punkte). Den Abstand liefert die Deckung ringsum (sechs Ringe zu acht Richtungen, je Ring
     r · cos(π n / 8)), gesucht nur, wo n·V < 0,55. Nicht `kanteBei` dafür nehmen (sieht auch innere Knicke) und keine weiche Maske
     (zu kurz). **Tempo:** Alles, was sich über die Breite eines Tropfens kaum ändert, je Bildpunkt einmal rechnen (Versatz der
-    Lippen, tiefer Anteil ihrer Stärke), nur den hohen Anteil je Tropfen an seiner Mitte (sonst sind Tropfen halb da): 24,8 → 16,6 ms
-    bei Zoom 4,5 (einfache Shader 13 bis 16 ms).
+    Lippen, Stärke der Lippen je Lage), ein Tropfen blendet mit ihr weich aus. Gemessen bei Zoom 4,5: 14 bis 24 ms je Bild (die
+    Messungen streuen stark; Autolack im selben Lauf 14 bis 17 ms).

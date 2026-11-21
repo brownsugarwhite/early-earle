@@ -151,36 +151,53 @@ void main() {
 
 const TROPF = /* glsl */ `
 /**
- * Tropfschleim nach Florians Vorlage (21.11., „kannst du versuchen dieses material wirklich genauso hinzubekommen?“): Der Schleim ist
- * in vielen dicht gestaffelten Lagen heruntergelaufen. Jede Lage endet unten in einer gerundeten Lippe (darunter Schatten); die Lippen
- * mäandern, reißen ab und setzen woanders wieder an. An ihnen hängen kurze Nasen und lange Tropfspuren (dünner Schwanz, dicker runder
- * Kopf). Lage um die Hochachse (Winkel und Höhe, ohne Naht); oben und unten, wo die Fläche flach liegt, nur Buckel. Darunter Buckel,
- * Mulden und Wachswellen. Farbe aus der Dicke: dünn gelbgrün und durchscheinend, dick sattgrün, an steilen Kanten und in Mulden dunkel;
- * viele kleine scharfe Lichter.
+ * Tropfschleim nach Florians Vorlage (21.11., „kannst du versuchen dieses material wirklich genauso hinzubekommen?“, dann „Ja,
+ * weiter feilen“): Der Schleim ist in vielen dicht gestaffelten Lagen heruntergelaufen. Jede Lage endet unten in einer gerundeten
+ * Lippe (darunter Schatten); die Lippen reißen ab, ihre Enden weichen in runden U-Zungen nach oben zurück. An der sichtbaren Front
+ * hängen kurze Nasen und lange Tropfen (dünner Schwanz, runder Kopf), weich vereint (keine Schleifen). Lippen und Wellen sind
+ * Rauschen im Raum; die Tropfen liegen in Spalten um die Hochachse (so folgen sie der Fläche nach unten), Breite und Abstand in
+ * Bogenlänge, nah an der Achse seltener (gleich dicht überall, auch auf einer Flosse). Farbe aus der Dicke: gelbgrüne Zonen, wo
+ * die Schicht dünn ist, sattgrüne Tropfen, an steilen Kanten dunkel; viele kleine scharfe Lichter in neutralem Weiß. Gemessen
+ * gegen die Vorlage mit Farbe, Helligkeit und Anteil senkrechter Kanten (Blatt
+ * docs/progress/ozzy/shader/2026-11-21-runde-9-tropfschleim-vorlage.png).
  */
 const float LAGE = 0.11;
-/** Versatz der Lippen (nahtlos um die Achse, in drei Maßstäben) */
-float lippenVersatz(float w, float y) {
-  return 0.55 * snoise(vec3(cos(w) * 1.6, sin(w) * 1.6, y * 1.8)) + 0.6 * snoise(vec3(cos(w) * 4.5, sin(w) * 4.5, y * 3.5 + 3.0)) + 0.22 * snoise(vec3(cos(w) * 11.0, sin(w) * 11.0, y * 6.0 + 9.0));
+/**
+ * Versatz der Lippen: Rauschen im Raum, waagerecht gemessen (keine Achse: am Pol und auf Teilen nah an der Hochachse, etwa einer
+ * Flosse, wurden Muster aus Winkeln dicht); in der Höhe langsam (steigt der Versatz fast so schnell wie die Lagen, schließen sich
+ * die Kanten zu Ringen)
+ */
+float lippenVersatz(vec3 q) {
+  return 0.55 * snoise(vec3(q.x * 1.6, q.y * 1.2, q.z * 1.6)) + 0.6 * snoise(vec3(q.x * 4.5, q.y * 2.0 + 3.0, q.z * 4.5)) + 0.22 * snoise(vec3(q.x * 11.0, q.y * 3.0 + 9.0, q.z * 11.0));
 }
 /**
- * wie kräftig die Lippe km am Winkel w ist (0: abgerissen): smoothstep(-0.35, 0.55, lippeHoch + lippeTief). Der tiefe Anteil ändert
- * sich langsam und wird je Bildpunkt einmal gerechnet, der hohe je Tropfen an seiner Mitte (sonst wären Tropfen halb da).
+ * wie kräftig die Lippe km am Ort ist (0: abgerissen); je Bildpunkt und Lage einmal gerechnet. Ein Tropfen blendet mit ihr weich aus
+ * (nicht hart abgeschnitten: sonst wären Tropfen halb da).
  */
-float lippeHoch(float w, float km) { return snoise(vec3(cos(w) * 6.0, sin(w) * 6.0, km * 1.31 + 5.0)); }
-float lippeTief(float w, float km) { return 0.35 * snoise(vec3(cos(w) * 1.5, sin(w) * 1.5, km * 0.7)); }
+float lippe(vec3 q, float km) {
+  return smoothstep(-0.3, 0.5, snoise(vec3(q.x * 9.0, km * 1.31 + 5.0, q.z * 9.0)) + 0.35 * snoise(vec3(q.x * 1.5, km * 0.7, q.z * 1.5)));
+}
+/**
+ * weiche Vereinigung zweier Höhen (Norm mit p = 4): Nebeneinanderliegende Tropfen verschmelzen, statt sich zu einer Schleife
+ * einzuschnüren; wo nur einer ist, bleibt er genau
+ */
+float vereinen(float a, float b) {
+  float a2 = a * a, b2 = b * b;
+  return sqrt(sqrt(a2 * a2 + b2 * b2));
+}
 /** ein Strom: Höhe (Maß der Form) an (du, dy), dy über der Unterkante des Kopfs; rh Kopf, rt Schwanz, L Länge, platt: weicher Deckel */
 float strom(float du, float dy, float rh, float rt, float L, float platt) {
   if (dy < -0.001 || dy > L || abs(du) > rh * 1.05) return 0.0;
   float kopf = 0.0;
-  if (dy < rh * 2.0) {
-    float dk = length(vec2(du, dy - rh)) / rh;
+  if (dy < rh * 2.5) {
+    float dk = length(vec2(du / rh, (dy - rh * 1.25) / (rh * 1.25)));
     kopf = rh * max(1.0 - dk * dk, 0.0);
   }
-  float r = mix(rh * 0.82, rt, smoothstep(rh, rh + 6.0 * rt + 0.02, dy));
+  // über dem Kopf rasch auf die Breite des Schwanzes (ein runder Kopf, kein langer Keil)
+  float r = mix(rh * 0.82, rt, smoothstep(rh * 1.2, rh * 2.7, dy));
   float xr = du / r;
-  // oben läuft die Spur weich in die Fläche aus
-  float schwanz = dy > rh ? r * max(1.0 - xr * xr, 0.0) * smoothstep(L, L - max(0.35 * L, 0.04), dy) : 0.0;
+  // oben geht der Strom in voller Breite in die Lippe über (nur das letzte Stück blendet, keine Flammenspitze)
+  float schwanz = dy > rh ? r * max(1.0 - xr * xr, 0.0) * smoothstep(L, L - max(0.1 * L, 0.012), dy) : 0.0;
   float hs = max(kopf, schwanz);
   return hs * platt / (hs + platt);
 }
@@ -194,75 +211,95 @@ void main() {
     vec3 V = zumAuge(g.p);
     vec3 n0 = g.n;
     vec3 q = (g.p - uMitte) / uRadius;
-    float w = atan(q.z, q.x + (abs(q.x) + abs(q.z) < 1e-5 ? 1e-5 : 0.0));
     float y = q.y;
-    float seite = smoothstep(0.86, 0.62, abs(n0.y));
+    float seite = smoothstep(0.95, 0.7, abs(n0.y));
     float sk = 1.0 / uR_tropfen;
     // Lagen: Lippe unten (t = 0), darüber dünner werdend; unter der nächsten Lippe Schatten
     float S = LAGE * sk;
     // der Versatz der Lippen ändert sich über die Breite eines Tropfens kaum: je Bildpunkt einmal (spart je Tropfen drei Rauschen)
-    float vers = lippenVersatz(w, y);
+    float vers = lippenVersatz(q);
     float yy = y / S + vers;
     float k = floor(yy);
     float t = fract(yy);
-    float lt0 = lippeTief(w, k), lt1 = lippeTief(w, k + 1.0), lt2 = lippeTief(w, k + 2.0), lt3 = lippeTief(w, k + 3.0);
-    float st0 = smoothstep(-0.35, 0.55, lippeHoch(w, k) + lt0);
-    float st1 = smoothstep(-0.35, 0.55, lippeHoch(w, k + 1.0) + lt1);
+    float st0 = lippe(q, k);
+    float st1 = lippe(q, k + 1.0);
+    float st2 = lippe(q, k + 2.0);
     float klumpen = 0.65 + 0.7 * (snoise(q * 7.0 + 2.0) * 0.5 + 0.5);
     // die Lage: Wulst über der Lippe, nach oben dünner und unter der nächsten Lippe auf null (stetig, sonst springt die Höhe)
-    float lage = (smoothstep(0.0, 0.26, t) * (0.3 + 0.45 * (1.0 - t)) * smoothstep(1.0, 0.78, t) + 0.55 * exp(-pow((t - 0.17) / 0.14, 2.0)) * smoothstep(0.0, 0.09, t)) * (0.15 + 0.85 * st0) * klumpen;
+    // wo die Lippe schwach wird, weicht ihre Front nach oben zurück: Die Enden sind runde Zungen, keine abgeschnittenen Kanten
+    // (rund wie ein U: unten flach, zu den Seiten erst langsam, dann steil; linear gäbe spitze V-Zungen wie Flammen)
+    float t0 = 0.6 * (1.0 - sqrt(max(1.0 - (1.0 - st0) * (1.0 - st0), 0.0)));
+    float tz = max(t - t0, 0.0) / (1.0 - t0);
+    float lage = (smoothstep(0.0, 0.32, tz) * (0.3 + 0.45 * (1.0 - tz)) * smoothstep(1.0, 0.78, t) + 0.55 * exp(-pow((tz - 0.19) / 0.15, 2.0)) * smoothstep(0.0, 0.11, tz)) * smoothstep(0.0, 0.35, st0) * (0.4 + 0.6 * st0) * klumpen;
     // Schatten unter der Lippe, stetig über ihre Unterkante (dort beginnt die Lage darüber im selben Schatten)
-    float unterLippe = max(smoothstep(0.66, 1.0, t) * st1, (1.0 - smoothstep(0.0, 0.08, t)) * st0);
-    // an den Lippen darüber: kurze Nasen (dicht) und lange Tropfspuren mit Kopf
+    float unterLippe = max(smoothstep(0.66, 1.0, t) * st1, (1.0 - smoothstep(0.0, 0.08, tz)) * st0 * step(t0, t));
+    // an den Lippen darüber: kurze Nasen (dicht) und lange Tropfspuren mit Kopf, in Spalten um die Hochachse (ein Tropfen folgt so
+    // der Fläche nach unten). Breite und Abstand in Bogenlänge (Winkel mal Abstand r zur Achse): Nah an der Achse liegen die Spalten
+    // dichter, dort trägt darum nur jede r-te einen Tropfen (gleich dicht überall, auch auf einer Flosse); an der Achse selbst keine.
+    float r = length(q.xz);
+    float w = atan(q.z, q.x + (r < 1e-5 ? 1e-5 : 0.0));
+    float rDa = smoothstep(0.22, 0.4, r);
     float spurH = 0.0;
     for (int f = 0; f < 2; f++) {
-      float N = floor((f == 0 ? 140.0 : 110.0) / sk);
+      float N = floor((f == 0 ? 100.0 : 115.0) / sk);
+      // ein Tropfen darf nicht breiter sein als der Abstand zweier Spalten (die Suche reicht 1,2 Spalten weit)
+      float rhMax = 6.2831853 * r / N * 1.1;
       float zi = floor(w / 6.2831853 * N);
-      for (int m = 1; m <= 3; m++) {
+      // Tropfen hängen an der sichtbaren Front ihrer Lippe (wo die Lippe schwach ist, liegt sie bis 0,6 Lagen höher): darum zählt
+      // auch die Lippe der eigenen Lage (m = 0), sonst wären Tropfen an der Lagengrenze waagerecht abgeschnitten
+      for (int m = 0; m <= 2; m++) {
         if (f == 0 && m >= 2) continue;
         float km = k + float(m);
+        float lp = m == 0 ? st0 : (m == 1 ? st1 : st2);
+        float yTop = (km + 0.6 * (1.0 - sqrt(max(1.0 - (1.0 - lp) * (1.0 - lp), 0.0))) - vers) * S;
         for (int j = -1; j <= 1; j++) {
           float ci = mod(zi + float(j), N);
           vec3 h = hash33(vec3(ci, km, 3.7 + float(f) * 11.0));
+          float schwelle = (f == 0 ? 0.95 * smoothstep(0.25, 0.75, lp) : 0.62 * smoothstep(0.05, 0.5, lp)) * min(r / 0.9, 1.0) * rDa;
+          float da = smoothstep(h.x - 0.06, h.x + 0.06, schwelle);
+          if (da <= 0.0) continue;
           float wc = (ci + 0.2 + 0.6 * h.y) / N * 6.2831853;
-          float lp = smoothstep(-0.35, 0.55, lippeHoch(wc, km) + (m == 1 ? lt1 : (m == 2 ? lt2 : lt3)));
-          if (h.x > (f == 0 ? 0.8 * smoothstep(0.35, 0.8, lp) : 0.6 * (0.45 + 0.55 * lp))) continue;
-          float du = mod(w - wc + 3.14159265, 6.2831853) - 3.14159265;
-          float yTop = (km - vers) * S;
-          float rt = (f == 0 ? 0.013 + 0.009 * fract(h.y * 7.1) : 0.011 + 0.008 * fract(h.y * 7.1)) * sk;
-          float rh = rt * (f == 0 ? 1.15 : 1.5);
-          float L = S * (f == 0 ? 0.25 + 0.5 * h.z : 0.5 + 1.5 * h.z * h.z);
-          spurH = max(spurH, strom(du, y - (yTop - L), rh, rt, L, 0.03 * sk));
+          float du = (mod(w - wc + 3.14159265, 6.2831853) - 3.14159265) * r;
+          float rt = (f == 0 ? 0.011 + 0.007 * fract(h.y * 7.1) : 0.0058 + 0.0028 * fract(h.y * 7.1)) * sk;
+          float rh = rt * (f == 0 ? 1.5 : 2.25);
+          float eng = min(1.0, rhMax / rh);
+          rh *= eng;
+          rt *= eng;
+          float L = S * (f == 0 ? 0.25 + 0.5 * h.z : 0.6 + 1.1 * h.z * h.z);
+          spurH = vereinen(spurH, strom(du, y - (yTop - L), rh, rt, L, 0.03 * sk) * da);
         }
       }
     }
     spurH = spurH / (0.02 * sk) * seite;
     // Buckel, Mulden und Wachswellen darunter
     float b1 = snoise(q * 3.2);
-    float buckel = b1 * 0.7 + snoise(q * 7.0) * 0.38 + snoise(q * 15.0) * 0.16;
-    // Wellen um die Achse nur an den Seiten (am Pol ändert sich der Winkel zu schnell), dazu Wellen im Raum
-    float welle = snoise(vec3(cos(w) * 7.0, sin(w) * 7.0, y * 20.0)) * 0.5 * seite + snoise(q * 16.0) * 0.3;
-    float H = lage * seite + spurH * 0.75;
+    float buckel = b1 * 0.7 + snoise(q * 7.0) * 0.38 + snoise(q * 14.0) * 0.1;
+    // waagerechte Wachswellen (Rauschen im Raum, quer gestreckt), dazu leise Wellen
+    float welle = snoise(vec3(q.x * 6.0, q.y * 22.0, q.z * 6.0)) * 0.5 + snoise(q * 14.0) * 0.15;
+    float H = lage * seite + spurH;
     float hoehe = H + buckel * mix(1.1, 0.85, seite) + welle * 0.12;
     float dicke = clamp(0.42 + 0.55 * H + 0.22 * buckel + (1.0 - seite) * 0.15, 0.0, 1.3);
     // Normale aus der Höhe (Oberflächengradient im Bild)
     vec3 dpx = dFdx(g.p), dpy = dFdy(g.p);
-    float hw = hoehe * uRadius * 0.026 * uR_relief;
+    float hw = hoehe * uRadius * 0.022 * uR_relief;
     float dhx = dFdx(hw), dhy = dFdy(hw);
     vec3 r1 = cross(dpy, n0), r2 = cross(n0, dpx);
     float det = dot(dpx, r1);
     vec3 n = abs(det) > 1e-12 ? normalize(abs(det) * n0 - sign(det) * (r1 * dhx + r2 * dhy)) : n0;
     float steil = 1.0 - max(dot(n, n0), 0.0);
     // Farbe aus der Dicke: dünn gelbgrün und durchscheinend, dick sattgrün, an steilen Kanten, in Mulden und unter Lippen dunkel
-    vec3 limette = srgbZuLin(vec3(0.76, 0.94, 0.2));
-    vec3 neon = srgbZuLin(vec3(0.2, 0.9, 0.1));
-    vec3 tief = srgbZuLin(vec3(0.02, 0.48, 0.04));
-    vec3 kante = srgbZuLin(vec3(0.0, 0.34, 0.02));
-    vec3 alb = mix(mix(neon, limette, 0.6), neon, smoothstep(0.12, 0.5, dicke));
+    vec3 limette = srgbZuLin(vec3(0.72, 0.9, 0.06));
+    vec3 neon = srgbZuLin(vec3(0.2, 0.83, 0.03));
+    vec3 tief = srgbZuLin(vec3(0.06, 0.44, 0.01));
+    vec3 kante = srgbZuLin(vec3(0.03, 0.31, 0.0));
+    vec3 alb = mix(mix(neon, limette, 0.45), neon, smoothstep(0.12, 0.5, dicke));
+    // Tropfen satt und leuchtend grün, auch im Schatten (durchscheinend)
+    float tropfF = smoothstep(0.15, 0.55, spurH);
+    alb = mix(alb, neon, tropfF * 0.7);
     // große Zonen, in denen der Schleim gelbgrün durchscheint
-    alb = mix(alb, limette, smoothstep(0.0, 0.7, snoise(q * 1.3 + 4.0)) * 0.5 * (1.0 - smoothstep(0.3, 0.9, H)));
+    alb = mix(alb, limette, smoothstep(-0.2, 0.6, snoise(q * 1.6 + 4.0)) * 0.5 * (1.0 - smoothstep(0.25, 0.8, H)));
     alb = mix(alb, tief, smoothstep(0.9, 1.3, dicke) * 0.4);
-    alb = mix(alb, kante, smoothstep(0.1, 0.7, steil) * 0.35);
+    alb = mix(alb, kante, smoothstep(0.1, 0.7, steil) * 0.35 * (1.0 - 0.7 * tropfF));
     float schatten = unterLippe * seite * (1.0 - 0.7 * smoothstep(0.2, 0.7, spurH));
     float mulde = smoothstep(0.1, -0.5, buckel) * (1.0 - smoothstep(0.1, 0.5, H));
     float ao = (1.0 - 0.6 * schatten) * (1.0 - 0.4 * mulde);
@@ -270,7 +307,8 @@ void main() {
     // Licht: von oben links, Glut von innen, heller Saum am Umriss
     vec3 L = ausSicht(normalize(vec3(-0.45, 0.75, 0.5)));
     float nl = dot(n, L);
-    vec3 c = alb * (0.18 + 1.35 * clamp((nl + 0.3) / 1.3, 0.0, 1.0)) * ao;
+    vec3 c = alb * (0.085 + 0.78 * clamp((nl + 0.3) / 1.3, 0.0, 1.0)) * ao;
+    c += neon * tropfF * 0.22;
     // die Kugel als Ganzes: nach unten rechts dunkler (Volumen)
     c *= mix(0.3, 1.15, smoothstep(-0.5, 0.85, dot(n0, L)));
     c += limette * 0.32 * (1.0 - smoothstep(0.25, 0.75, dicke)) * clamp(nl + 0.4, 0.0, 1.0) * ao;
@@ -278,12 +316,14 @@ void main() {
     // nass: viele kleine scharfe Lichter (Fenster der Umgebung), leicht kühl
     float nv = clamp(dot(n, V), 0.0, 1.0);
     float fr = fresnelS(nv, 0.04);
-    vec3 umg = studio(reflect(-V, n)) * vec3(0.85, 1.0, 1.08);
+    // (Helligkeit der Umgebung, ohne ihre Farbe: Die warmen Lichter des Studios standen als orange Punkte am Rand)
+    vec3 umg = vec3(luma(studio(reflect(-V, n)))) * vec3(0.92, 1.0, 0.92);
     float spiegelt = ao * (1.0 - smoothstep(0.15, 0.5, steil));
     c += umg * (fr * 0.35 + 0.006) * spiegelt + smoothstep(0.7, 1.5, umg) * (fr + 0.04) * 1.8 * spiegelt;
     vec3 Hh = normalize(L + V);
-    c += vec3(0.9, 1.0, 1.0) * pow(max(dot(n, Hh), 0.0), 520.0) * 6.0 * ao;
-    c += vec3(0.85, 1.0, 1.0) * pow(max(dot(n, normalize(ausSicht(normalize(vec3(0.5, 0.35, 0.8))) + V)), 0.0), 600.0) * 2.2 * ao;
+    c += vec3(0.9, 1.0, 1.0) * pow(max(dot(n, Hh), 0.0), 380.0) * 4.5 * ao;
+    c += vec3(0.85, 1.0, 1.0) * pow(max(dot(n, normalize(ausSicht(normalize(vec3(0.5, 0.35, 0.8))) + V)), 0.0), 380.0) * 2.0 * ao;
+    c += vec3(0.9, 1.0, 0.95) * pow(max(dot(n, normalize(ausSicht(normalize(vec3(-0.15, 0.95, 0.3))) + V)), 0.0), 500.0) * 1.8 * ao;
     // buckliger Umriss wie in der Vorlage: Das Relief hebt die Haut bis D über die Form, am Umriss sieht man darum nur, was hoch genug
     // liegt (sichtbar, wo die Höhe größer ist als 1 minus Abstand zum Umriss durch D). Der Abstand im Bild kommt aus der Deckung
     // ringsum: je Ring, wie viele der acht Richtungen draußen liegen (bei geradem Umriss im Abstand d: r · cos(π n / 8)).
@@ -302,9 +342,9 @@ void main() {
     }
     vec4 pv = uView * vec4(g.p, 1.0);
     float wpp = (uOrtho > 0.5 ? 1.0 : -pv.z) * 2.0 / (uProj[1][1] * uAufl.y);
-    float Dpx = min(uRadius * 0.06 * uR_relief / max(wpp, 1e-9), 30.0 * uDpr);
+    float Dpx = min(uRadius * 0.075 * uR_relief / max(wpp, 1e-9), 34.0 * uDpr);
     // nur die runden Formen zählen (Buckel und die dicken Lippen), nicht die schmalen Tropfen: am Umriss stehen Wülste, keine Spitzen
-    float hGrob = b1 * 0.4 + snoise(q * 12.0) * 0.6 + lage * seite * 0.5 + spurH * 0.25;
+    float hGrob = b1 * 0.35 + snoise(q * 12.0) * 0.55 + snoise(q * 26.0) * 0.25 + lage * seite * 0.6 + spurH * 0.25;
     float hn = clamp((hGrob + 1.0) / 2.4, 0.0, 1.0);
     maske *= smoothstep(-0.05, 0.05, hn - (1.0 - dRand / max(Dpx, 1e-3)));
     bild = mix(bild, c, maske);

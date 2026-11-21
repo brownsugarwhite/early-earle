@@ -134,8 +134,9 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     gebaut; die Platten liegen nach der Lage im Raum (an Formen ohne Rücken oben passen sie nicht).
 61. **Sin City:** Pinselspritzer, weiß leuchtende Tropfen (Regen), gelbe Tropfen (Gelb), Spielart Blaulicht (Rot) nicht gebaut; das
     Histogramm (nur zwei Werte plus Schmuckfarbe) ist nicht gezählt, die Glättung an den Kanten gibt etwas Grau.
-62. **Tropfschleim nach der Vorlage** (Blatt `2026-11-21-runde-9-tropfschleim-vorlage.png`): Lagen, Lippen, Tropfen, Farbe aus der
-    Dicke und der bucklige Umriss stehen. Abweichungen zur Vorlage: dort ist es weicher und gelber, die Tropfen sind gleichmäßiger
-    über die Kugel verteilt, die Lagen weniger waagerecht; wo zwei Tropfenköpfe nebeneinanderliegen, entsteht manchmal eine
-    Schleifenform. Teile nahe der Hochachse (die Flosse von „strange bird“) bekommen dichtere, feinere Spuren (die Säulen der
-    Tropfen sind Winkel um die Achse). Der Umriss ist nur am äußeren Rand bucklig, nicht an inneren Konturen.
+62. **Tropfschleim nach der Vorlage** (Blätter `2026-11-21-runde-9-tropfschleim-vorlage.png` und `-vorlage-2.png`): Nach „weiter
+    feilen“ weicher, weniger blau, dunkler, Lippen abgerissen mit runden Zungen, Tropfen ohne Schleifen, auf der Flosse gleich groß
+    und gleich dicht. Gemessen (`kugel-messen.mjs`, Vorlage / jetzt): Farbe 66,173,14 / 80,176,23; Helligkeit Mitte 0,54 / 0,60;
+    senkrecht zu waagerecht 1,73 / 1,46; Kanten 0,089 / 0,115; Streuung 0,46 / 0,59. Es bleibt: Die Vorlage ist kleinteiliger
+    bucklig (viele kleine Wülste überall, auch im Umriss), ihre Tropfen sind gleichmäßiger über die Kugel verteilt und leuchten
+    heller; bei uns liegen größere glatte Flächen dazwischen. Nah an der Hochachse (Pole, Spitze der Flosse) gibt es keine Tropfen.
