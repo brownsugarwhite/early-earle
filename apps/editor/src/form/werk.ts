@@ -1978,6 +1978,52 @@ export function poseBenennen(nr: number, name: string): boolean {
   return true;
 }
 
+// ---------- Backen fürs Spiel (Etappe 9) ----------
+
+/**
+ * Eine Lage der Rechenpunkte zum Backen: ihre Ruhe (3 je Rechenpunkt), der Drehwinkel je Rechenpunkt (Bogenmaß) und das Scharnier in
+ * ihrer Ruhe. Gezeigt wird sie mit `knochenDrehen(ruhe, theta, G)`.
+ */
+export type SpielLageDaten = { ruhe: Float64Array; theta: Float64Array; G: V2 };
+/**
+ * Was das Backen aus dem Werk liest (`ozzy/backen.ts`): die Grundform (Lagen der Rechenpunkte), der Rechenpunkt, um den die Kiefer
+ * drehen (der Mundwinkel; −1: kein Maul als echte Form), je Pose ihre Lage bei ihren ganzen Winkeln, die Grundform mit den Kiefern
+ * bei null (`zu`: Die Form ist mit einem Haarspalt gerechnet, `MAUL_HAAR`; bei null liegen die Lippen aufeinander) und eine offene
+ * Lage zum Ausdünnen (die Pose mit dem weitesten Maul; ist keine weit genug offen, die Grundform mit 30° am Unterkiefer).
+ * `lippe`: die Kette der Lippe (Rechenpunkte der Hälfte z ≥ 0, von einem Ende über den Mundwinkel zum anderen), solange die Lippen
+ * in der Grundform verbunden sind (dann ist der Zwilling von Stelle j die Stelle m − 1 − j); `spiegel`: je Rechenpunkt sein
+ * Spiegelbild.
+ */
+export type SpielDaten = { grund: Float64Array; scharnier: number; posen: (SpielLageDaten & { wer: PoseStand; name: string })[]; zu: SpielLageDaten | null; offen: SpielLageDaten | null; lippe: number[] | null; spiegel: ArrayLike<number> };
+/** so weit muss das Maul in der Lage zum Ausdünnen offen stehen (Grad): Die Lippen liegen dann sicher auseinander */
+const BACK_WINKEL = 30;
+export function spielDaten(): SpielDaten | null {
+  if (zug || maulLauf) return null;
+  const g = grund ? grund.haut : haut;
+  const aus: SpielDaten = { grund: g.pos, scharnier: -1, posen: [], zu: null, offen: null, lippe: null, spiegel: g.spiegel };
+  const m = G.maul?.echt && maulIstGeformt() ? maulAktuell() : null;
+  const l = G.maul ? (grund ? grund.loops : loops).find((x) => x.id === G.maul?.id) : undefined;
+  if (!m || !l) return aus;
+  const v = l.proben[mundwinkelVon(l)]!.ecken[0];
+  aus.scharnier = v;
+  if (istMaulLinie(l) && l.proben.every((q) => q.ecken[0] === q.ecken[1] && q.ecken[1] === q.ecken[2])) aus.lippe = l.proben.map((q) => q.ecken[0]);
+  const zu = maulZu();
+  const feld = (kiefer: number, schaedel: number): Float64Array => {
+    const k = { kiefer: kiefer - zu, schaedel };
+    return kieferWinkel(m, k, zu) ?? knochenWinkel(m, k, zu);
+  };
+  for (const p of posen) {
+    const d = p.delta && p.delta.length === g.pos.length ? p.delta : null;
+    // (die betretene Pose steht in `haut`; die anderen sind Grundform plus Blendshape)
+    const ruhe = grund && p === pose ? haut.pos : d ? Float64Array.from(g.pos, (x, i) => x + d[i]!) : g.pos;
+    aus.posen.push({ wer: p, name: poseName(posen.indexOf(p)), ruhe, theta: feld(p.kiefer, p.schaedel), G: { x: ruhe[3 * v]!, y: ruhe[3 * v + 1]! } });
+  }
+  aus.zu = { ruhe: g.pos, theta: feld(0, 0), G: { x: g.pos[3 * v]!, y: g.pos[3 * v + 1]! } };
+  const weit = aus.posen.reduce<(typeof aus.posen)[number] | null>((b, p) => (!b || p.wer.kiefer + p.wer.schaedel > b.wer.kiefer + b.wer.schaedel ? p : b), null);
+  aus.offen = weit && weit.wer.kiefer + weit.wer.schaedel >= BACK_WINKEL - 10 ? weit : { ruhe: g.pos, theta: feld(BACK_WINKEL, 0), G: { x: g.pos[3 * v]!, y: g.pos[3 * v + 1]! } };
+  return aus;
+}
+
 // ---------- Die Pose zeigen: Die Knochen drehen nur, was gezeigt wird ----------
 
 /** Punkt p um das Gelenk G um den Winkel t gedreht (in der Seite; die Tiefe bleibt), wie `knochenDrehen` je Punkt des Netzes */

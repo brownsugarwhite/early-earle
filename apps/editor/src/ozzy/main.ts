@@ -19,7 +19,7 @@
 
 // muss zuerst geladen werden: die Schalter des Werks in der Adresse
 import './adresse';
-import { MAUL_WINKEL_MAX, eckenAuto, istEcke } from '@ee/shape/dicht';
+import { MAUL_WINKEL_MAX, backenBereit, eckenAuto, istEcke } from '@ee/shape/dicht';
 import { KIEFER_MAX } from '../form/maulEcht';
 import { BufferAttribute, BufferGeometry, type Camera, Color, type DataTexture, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
@@ -40,6 +40,8 @@ import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { WACHS_FARBTON_GRUND, wachsKugel } from './wachs';
 import { EBENEN_HOECHSTENS, type Farbe, aktiveEbene, alsDatei as farbeAlsDatei, istLeer as farbeLeer } from './farbe/bemalung';
 import { istMaulEbene, taschenFeld } from './farbe/maulEbene';
+import { type Gebacken, type ZahnLage, lageGezeigt, spielformBacken } from './backen';
+import { abstaendeZumNetz, spielLage } from '../form/spielform';
 import { FAKTOR_MAX, FAKTOR_MIN, type FormNetz, ZAEHNE_ANFANG, type ZahnPlatz, eigenSetzen, formGemischt, formNetz, formNetzGemischt, gestaltVon, kapselnZwischen, mitAnzahl, netzZwischen, partner, platzNetz, sitzGrenzen, vorlageNr, zaehneNetz, type ZahnKapsel, zahnKapseln, zaehnePaar, zahnPlaetze, zahnRahmen } from './zaehne';
 import { EIGENE, type GestaltLinie, type ZahnGestalt, gestaltAusForm, gestaltNetz, gestaltUmriss, netzGemischt } from './zahnGestalt';
 import { ZEIGER_WINKEL, type ZeigerArt, umfangVerteilen, zeigerUmrissVon } from './zeigerForm';
@@ -325,9 +327,11 @@ const istMalgrund = (): boolean => material === 'Wachs' || material === 'Helles 
  * „Dreiecke zeigen“ und in der Pose noch nicht). `farbeMoeglich`: Sie wäre zu sehen, läge schon etwas auf der Form.
  */
 // (Maul, Etappe 4: Am Maul als echte Form steht die Bemalung auch in der Pose im Bild; das offene Maul zeigt dort sein Inneres)
-const farbeMoeglich = (): boolean => zustand === 'ruhe' && werkGezeigt && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && (!werk.grund || werk.maulLippe() !== null);
+const farbeMoeglich = (): boolean => zustand === 'ruhe' && werkGezeigt && istMalgrund() && !verbundVerdeckt(aktivId) && !dreieckeZeigen && !spielZeigt && (!werk.grund || werk.maulLippe() !== null);
 const farbeZeigen = (): boolean => farbeMoeglich() && !farbWerk.leer;
 let gastStand: { netz: unknown; version: number } | null = null;
+/** zeigt Ozzy in diesem Bild das gebackene Netz statt der Haut („Wie im Spiel“, Etappe 9)? */
+let spielZeigt = false;
 /**
  * Das grüne Material: Sein Renderer (three/webgpu und das Earle-Material aus `@ee/render`) wird erst geladen, wenn es gewählt ist;
  * bis dahin kostet es Ozzy nichts.
@@ -4203,10 +4207,18 @@ function bild(dt: number): boolean {
   maulEbenePflegen();
   if (zustand === 'ruhe' && werkGezeigt && !farbWerk.leer && farbWerk.schritt(hautJetzt())) farbBild++;
   if (farbWerk.fliesst) aktiv = true;
+  // Etappe 9: „Wie im Spiel“ zeigt das gebackene Netz statt der Haut (die Bemalung ist dann nicht zu sehen)
+  const spielGeht = material !== null && werkGezeigt && zustand === 'ruhe' && !w.leer;
+  const spielJetzt = spielGeht ? spielNetzJetzt() : null;
+  // (eingerastet zeichnet Ozzy das Blatt mit den Linien, kein Material: Die Ansicht gilt im Raum)
+  if (!spielGeht) spielGrund = spielAn ? 'nur im Raum, mit einem Material' : '';
+  const spielN = spielJetzt === 'warten' ? null : spielJetzt;
+  if (spielJetzt === 'warten') aktiv = true;
+  spielZeigt = spielN !== null;
   // (nicht `farbAn`: So heißt der Schalter, ob die Farblinien gerade bedient werden; er gilt weiter unten für Tintenlinie und Verdeckung)
   const farbeDa = farbeZeigen();
   farbKostenBild = performance.now() - tFarbe;
-  const zeigN = material !== null && werkGezeigt && zustand === 'ruhe' && !w.leer ? zeigeNetzAlle() : null;
+  const zeigN = material !== null && werkGezeigt && zustand === 'ruhe' && !w.leer ? (spielN ? spielN.alle : zeigeNetzAlle()) : null;
   if (material !== null && werkGezeigt && zustand === 'ruhe' && zeigN && !w.leer) {
     haut.zeichnen(kam.aktiv, { ...w, leer: true }, []);
     // beim Einrasten blenden die Materialien auf eigener Fläche aus, während sich das Blatt durch die Form schiebt (ihre Renderer
@@ -4261,17 +4273,20 @@ function bild(dt: number): boolean {
     } else {
       gast.aus();
       // „Dreiecke zeigen“: das Netz der Rechnung, flach schattiert, statt der glatten Anzeige
-      const facetten = dreieckeZeigen ? facettenNetz() : null;
+      const facetten = dreieckeZeigen && !spielN ? facettenNetz() : null;
       // Maul, Etappe 5: Die Zähne tragen ihre eigene Farbe. Sie stehen dann nicht im Netz des Körpers, sondern werden danach für
       // sich ins selbe Ziel gezeichnet (`zahnBild`). Nicht in der Ebenen-Ansicht (dort steht je Ebene eine Kopie des Körpers, die
       // Zähne bleiben Teil von ihm) und nicht, wenn das aktive Objekt im Verbund aufgeht.
-      const zaehneFuerSich = !facetten && !kopien && (!!zaehneNetzJetzt || !!zungeNetzJetzt) && !verbundVerdeckt(aktivId);
-      const festN = facetten ?? (zaehneFuerSich ? (zeigeNetzAlle(true) ?? zeigN) : zeigN);
-      const zb = zaehneFuerSich && zaehneNetzJetzt ? (zahnBild ??= new ZahnBild(zahnKugel())) : zahnBild;
-      zb?.setzen(zaehneFuerSich ? zaehneNetzJetzt : null);
+      // (Etappe 9: Wie im Spiel stehen die gebackenen Zähne für sich in ihrer Farbe; die Zunge ist noch nicht gebacken)
+      const zaehneZeigen = spielN ? spielN.zaehne : zaehneNetzJetzt;
+      const zungeZeigen = spielN ? null : zungeNetzJetzt;
+      const zaehneFuerSich = !facetten && !kopien && (!!zaehneZeigen || !!zungeZeigen) && !verbundVerdeckt(aktivId);
+      const festN = facetten ?? (spielN ? (zaehneFuerSich ? spielN.haut : spielN.alle) : zaehneFuerSich ? (zeigeNetzAlle(true) ?? zeigN) : zeigN);
+      const zb = zaehneFuerSich && zaehneZeigen ? (zahnBild ??= new ZahnBild(zahnKugel())) : zahnBild;
+      zb?.setzen(zaehneFuerSich ? zaehneZeigen : null);
       // (Etappe 6: die Zunge genauso, in ihrer Farbe)
-      const ub = zaehneFuerSich && zungeNetzJetzt ? (zungenBild ??= new ZahnBild(zahnKugel())) : zungenBild;
-      ub?.setzen(zaehneFuerSich ? zungeNetzJetzt : null);
+      const ub = zaehneFuerSich && zungeZeigen ? (zungenBild ??= new ZahnBild(zahnKugel())) : zungenBild;
+      ub?.setzen(zaehneFuerSich ? zungeZeigen : null);
       const zungenFarbe = werk.G.maul?.zunge?.farbe ?? ZUNGE_FARBE;
       const zahnFarbe = werk.G.maul?.zaehne?.farbe ?? ZAHN_FARBE;
       if (!festeStand || festeStand.netz !== festN || festeStand.version !== werkHaut.version) {
@@ -4283,7 +4298,7 @@ function bild(dt: number): boolean {
         schnitt: schnittJetzt,
         deckung: 1 - 0.7 * roentgen,
         spiegelSchnitt: spiegelSchnittJetzt(),
-        flach: !!facetten,
+        flach: !!facetten || (!!spielN && dreieckeZeigen),
         kopien,
         // die Zähne in ihrer Farbe; dann die Farbe auf dem Wachs: mit seinem Hell, Dunkel und Glanz, aber ohne seine Farbe
         danach:
@@ -9817,6 +9832,234 @@ function zaehneRechnen(): void {
   zaehneNetzVon = zaehneNetzJetzt ? (fern && tLage >= 0.5 ? fern.plaetze : plaetze) : [];
   zaehneVersion++;
 }
+// ---------- Wie im Spiel (Maul, Etappe 9: Backen) ----------
+//
+// Der Schalter „Wie im Spiel“ im Feinregler: Ozzy zeigt statt der Haut das gebackene Netz (`backen.ts`: höchstens `SPIEL_BUDGET`
+// Dreiecke für Haut, Tasche und Zähne), gestellt mit der Rechnung des Spiels (`spielLage`) für die Lage, die die Reihe der Posen
+// gerade zeigt. Gebacken wird, wenn die Form eine Weile steht, nach jedem Schritt neu; solange gezogen wird oder noch nicht gebacken
+// ist, zeigt Ozzy die Haut wie sonst. Die Zunge und die Bemalung sind noch nicht dabei (Scheibe 2).
+const SPIEL_BUDGET = 8000;
+/** so lange muss die Form stehen, bevor neu gebacken wird (ms): Ein Regler, der gedreht wird, backt nicht je Bild */
+const SPIEL_RUHE_MS = 220;
+const spielSchalter = $<HTMLInputElement>('spiel');
+let spielAn = ((): boolean => {
+  const wahl = params.get('spiel');
+  if (wahl !== null) return wahl === '1';
+  try {
+    return localStorage.getItem('ozzy.spiel') === '1';
+  } catch {
+    return false;
+  }
+})();
+spielSchalter.checked = spielAn;
+let spielBereit = false;
+void backenBereit.then(() => {
+  spielBereit = true;
+  anstossen();
+});
+type SpielNetze = { haut: HautNetz; zaehne: HautNetz | null; alle: HautNetz };
+type SpielStand = {
+  schl: string;
+  g: Gebacken;
+  /** so lange hat das Backen gedauert (ms) */
+  ms: number;
+  lage: { pos: Float32Array; nor: Float32Array };
+  netze: SpielNetze;
+  /** was zuletzt gezeigt wurde (je Stand neue Dinge: Wer sie zeichnet, erkennt den Wechsel an ihnen) und für welche Anteile */
+  gezeigt: SpielNetze | null;
+  anteile: string;
+  /** so lange hat die Rechnung des Spiels im letzten Bild gedauert, in dem sie lief (ms) */
+  rechnen: number;
+};
+let spielStand: SpielStand | null = null;
+let spielWarten: { schl: string; seit: number } | null = null;
+/** warum Ozzy das Spielnetz gerade nicht zeigt ('': Es zeigt es, oder der Schalter ist aus) */
+let spielGrund = '';
+
+/** eine Zahl über ein Feld von Lagen (jeder siebte Wert): Ändert sie sich, haben sich die Lagen geändert */
+function spielSumme(P: ArrayLike<number> | null | undefined): number {
+  if (!P) return 0;
+  let s = P.length;
+  for (let i = 0; i < P.length; i += 7) s = (s * 31 + P[i]!) % 1e9;
+  return s;
+}
+/** woran das gebackene Netz hängt: Lagen der Form und ihrer Posen, Winkel, Zähne (nicht daran, ob eine Pose gerade betreten ist) */
+function spielSchluessel(): string {
+  const g = werk.grund ? werk.grund.haut : werk.haut;
+  const posen = werk.posen.map((p) => `${p.kiefer},${p.schaedel},${werk.grund && p === werk.pose ? spielSumme(werk.haut.pos) : spielSumme(p.delta)}`).join(';');
+  return `${werk.zurueck.length}|${g.tri.length}|${spielSumme(g.pos)}|${posen}|${JSON.stringify(werk.G.maul?.zaehne ?? null)}|${JSON.stringify(werk.posen.map((p) => p.zaehne ?? null))}`;
+}
+function spielSetzen(an: boolean): void {
+  spielAn = an;
+  spielSchalter.checked = an;
+  try {
+    localStorage.setItem('ozzy.spiel', an ? '1' : '0');
+  } catch {
+    // ohne Speicher gilt es nur bis zum Neuladen
+  }
+  if (!an) {
+    spielStand = null;
+    spielWarten = null;
+    werk.G.meldung = 'Glatte Anzeige';
+  } else werk.G.meldung = flach > 0.5 ? 'Wie im Spiel gilt im Raum (Taste 0): Eingerastet zeigt Ozzy das Blatt mit den Linien' : 'Wie im Spiel: Ich backe, sobald die Form steht';
+  anstossen();
+}
+spielSchalter.addEventListener('change', () => spielSetzen(spielSchalter.checked));
+
+/** das Spielnetz backen und die Netze für die Anzeige anlegen; null: Es geht gerade nicht */
+function spielBacken(schl: string): SpielStand | null {
+  const bd = werkHaut.backDaten();
+  const daten = werk.spielDaten();
+  const an = werkHaut.netz;
+  if (!bd || !daten || !an) return null;
+  const t0 = performance.now();
+  const tasche = werk.maulTasche();
+  // die Zähne je Lage, wie die Anzeige sie baut (in Einheiten des Werks): ihre Plätze in der Ruhe der Lage, ihr Netz an der gezeigten Haut
+  const zahnLage = (z: werk.MaulZaehne, ruhe: Float64Array, haut: Float64Array, offenGrad: number): ZahnLage | null => {
+    const plaetze = zaehnePlanFuer({ zaehne: z, ruhe }).plaetze;
+    const auf = (offenGrad * Math.PI) / 180;
+    const netz = zaehneNetz(
+      plaetze,
+      haut,
+      1,
+      { x: 0, y: 0 },
+      (r) => 2 * r * Math.sin(auf / 2),
+      () => 1,
+    );
+    return netz ? { plaetze, netz } : null;
+  };
+  const zg = werk.zaehneVon(null);
+  let zaehne: { grund: ZahnLage; posen: ZahnLage[] } | null = null;
+  if (zg && daten.zu) {
+    const grund = zahnLage(zg, daten.grund, lageGezeigt(daten.zu), 0);
+    const posen = daten.posen.map((p) => zahnLage(werk.zaehneVon(p.wer) ?? zg, p.ruhe, lageGezeigt(p), p.wer.kiefer + p.wer.schaedel));
+    if (grund && posen.every((x): x is ZahnLage => x !== null)) zaehne = { grund, posen };
+  }
+  const g = spielformBacken({ index: bd.index, quelle: bd.quelle, normalen: bd.normalen, daten, innen: tasche ? tasche.innen : null, zaehne, budget: SPIEL_BUDGET });
+  const f = g.form;
+  const nH = f.punkteHaut;
+  const nZ = f.pos.length / 3 - nH;
+  // die Haut: Was die Anzeige je Punkt sonst noch trägt (Seite der Spiegelung, Lage im Muster), kommt vom gezeigten Punkt
+  const haut: HautNetz = {
+    pos: new Float32Array(3 * nH),
+    normal: new Float32Array(3 * nH),
+    index: f.index.slice(0, 3 * f.dreieckeHaut),
+    hoehe: new Float32Array(nH),
+    seite: new Float32Array(nH),
+    blatt: new Float32Array(2 * nH),
+    dehnung: new Float32Array(nH).fill(1),
+    sicht: new Float32Array(nH).fill(1),
+  };
+  for (let i = 0; i < nH; i++) {
+    const d = g.vonPunkt[i]!;
+    haut.hoehe[i] = an.hoehe[d]!;
+    haut.seite[i] = an.seite[d]!;
+    haut.sicht[i] = an.sicht[d]!;
+    haut.blatt[2 * i] = an.blatt[2 * d]!;
+    haut.blatt[2 * i + 1] = an.blatt[2 * d + 1]!;
+  }
+  let zn: HautNetz | null = null;
+  if (nZ > 0) {
+    const index = f.index.slice(3 * f.dreieckeHaut);
+    for (let i = 0; i < index.length; i++) index[i] = index[i]! - nH;
+    zn = { pos: new Float32Array(3 * nZ), normal: new Float32Array(3 * nZ), index, hoehe: new Float32Array(nZ).fill(0.3), seite: new Float32Array(nZ), blatt: new Float32Array(2 * nZ), dehnung: new Float32Array(nZ).fill(1), sicht: new Float32Array(nZ).fill(1) };
+  }
+  const alle = zn ? netzeVereinen([haut, zn]) : haut;
+  if (zn) alle.seite.set(haut.seite);
+  return { schl, g, ms: performance.now() - t0, lage: { pos: new Float32Array(f.pos.length), nor: new Float32Array(f.nor.length) }, netze: { haut, zaehne: zn, alle }, gezeigt: null, anteile: '', rechnen: 0 };
+}
+
+/** die Anteile der Posen, wie die Reihe sie gerade zeigt (die Rechnung des Spiels kennt nur sie; den Blick ins Maul gibt es dort nicht) */
+function spielAnteile(): number[] {
+  const A = werk.posen.map(() => 0);
+  if (!werk.grund) return A;
+  const i = werk.posen.indexOf(werk.pose);
+  const z = werk.poseZiel;
+  if (z) {
+    A[i] = 1 - z.t;
+    const j = werk.posen.indexOf(z.p);
+    if (j >= 0) A[j] = z.t;
+  } else A[i] = werk.poseAnteil;
+  return A;
+}
+
+/**
+ * Das Spielnetz für dieses Bild. `null`: Ozzy zeigt die Haut wie sonst (der Schalter ist aus, es wird gezogen, es gibt mehrere
+ * Objekte); `'warten'`: Es wird gleich gebacken, bis dahin die Haut (und weitere Bilder).
+ */
+function spielNetzJetzt(): SpielNetze | 'warten' | null {
+  spielGrund = '';
+  if (!spielAn) return null;
+  const nicht = werk.zug || werk.maulLauf ? 'es wird gezogen' : ruhende.length > 0 || verbundGezeigt ? 'mehrere Objekte' : werkHaut.spiegelbild ? 'eine freie Form mit Spiegelbild' : !werkHaut.netz ? 'noch keine Haut' : '';
+  if (nicht) {
+    spielGrund = nicht;
+    return null;
+  }
+  if (!spielBereit) {
+    spielGrund = 'der Ausdünner lädt';
+    return 'warten';
+  }
+  const schl = spielSchluessel();
+  if (!spielStand || spielStand.schl !== schl) {
+    const jetzt = performance.now();
+    if (!spielWarten || spielWarten.schl !== schl) spielWarten = { schl, seit: jetzt };
+    if (jetzt - spielWarten.seit < SPIEL_RUHE_MS || kieferZug || zahnZug || zungeZug) {
+      spielGrund = 'die Form steht noch nicht';
+      return 'warten';
+    }
+    spielWarten = null;
+    spielStand = spielBacken(schl);
+    if (!spielStand) {
+      spielGrund = 'das Backen gab nichts zurück';
+      return null;
+    }
+    const g = spielStand.g;
+    const zahl = (x: number): string => String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    werk.G.meldung = `Wie im Spiel: ${zahl(g.dreiecke)} Dreiecke${g.dreieckeZaehne ? ` (Haut ${zahl(g.dreiecke - g.dreieckeZaehne)}, Zähne ${zahl(g.dreieckeZaehne)})` : ''} statt ${zahl(g.dreieckeVorher)} · gebacken in ${(spielStand.ms / 1000).toFixed(2).replace('.', ',')} s${g.ohneZaehne ? ` · ohne Zähne: ${g.ohneZaehne}` : ''}`;
+  }
+  const st = spielStand;
+  const A = spielAnteile();
+  const a = `${A.join(',')}|${werkHaut.f}|${werkHaut.mitte.x}|${werkHaut.mitte.y}`;
+  if (a !== st.anteile || !st.gezeigt) {
+    const t0 = performance.now();
+    spielLage(st.g.form, A, st.lage);
+    const { pos, nor } = st.lage;
+    const f = werkHaut.f;
+    const mx = werkHaut.mitte.x;
+    const my = werkHaut.mitte.y;
+    const nH = st.g.form.punkteHaut;
+    const schreiben = (n: HautNetz, v0: number, blatt: boolean): void => {
+      const k = n.pos.length / 3;
+      for (let i = 0; i < k; i++) {
+        const q = 3 * (v0 + i);
+        n.pos[3 * i] = pos[q]! / f + mx;
+        n.pos[3 * i + 1] = pos[q + 1]! / f + my;
+        n.pos[3 * i + 2] = pos[q + 2]! / f;
+        n.normal[3 * i] = nor[q]!;
+        n.normal[3 * i + 1] = nor[q + 1]!;
+        n.normal[3 * i + 2] = nor[q + 2]!;
+        if (blatt) {
+          n.blatt[2 * i] = n.pos[3 * i]!;
+          n.blatt[2 * i + 1] = n.pos[3 * i + 1]!;
+        }
+      }
+    };
+    schreiben(st.netze.haut, 0, false);
+    if (st.netze.zaehne) {
+      schreiben(st.netze.zaehne, nH, true);
+      st.netze.alle.pos.set(st.netze.haut.pos);
+      st.netze.alle.pos.set(st.netze.zaehne.pos, 3 * nH);
+      st.netze.alle.normal.set(st.netze.haut.normal);
+      st.netze.alle.normal.set(st.netze.zaehne.normal, 3 * nH);
+    }
+    const haut = { ...st.netze.haut };
+    st.gezeigt = { haut, zaehne: st.netze.zaehne ? { ...st.netze.zaehne } : null, alle: st.netze.zaehne ? { ...st.netze.alle } : haut };
+    st.anteile = a;
+    st.rechnen = performance.now() - t0;
+  }
+  return st.gezeigt;
+}
+
 zaehneTropfen.addEventListener('click', () => {
   if (werk.zug || werk.maulLauf || !werk.maulLippe()) return;
   if (!werk.G.maul?.zaehne) {
@@ -11850,6 +12093,145 @@ const haken = {
         };
       })(),
     };
+  },
+  /**
+   * Maul, Etappe 9 (Backen): „Wie im Spiel“ an oder aus (ohne Angabe: nur lesen). Zurück: ob es an ist und in diesem Bild zeigt, und
+   * was gebacken ist (Dreiecke, Punkte, wie lange es gedauert hat, die Lippe).
+   */
+  spiel: (an?: boolean) => {
+    if (an !== undefined && an !== spielAn) spielSetzen(an);
+    const s = spielStand;
+    return {
+      an: spielAn,
+      bereit: spielBereit,
+      zeigt: spielZeigt,
+      grund: spielGrund,
+      gebacken: s
+        ? {
+            dreiecke: s.g.dreiecke,
+            dreieckeHaut: s.g.form.dreieckeHaut,
+            dreieckeZaehne: s.g.dreieckeZaehne,
+            dreieckeVorher: s.g.dreieckeVorher,
+            punkte: s.g.form.pos.length / 3,
+            punkteHaut: s.g.form.punkteHaut,
+            posen: s.g.form.posen.map((p) => p.name),
+            scharnier: s.g.form.scharnier,
+            fehler: s.g.fehler,
+            ms: s.ms,
+            rechnen: s.rechnen,
+            lippe: s.g.lippe,
+            ohneZaehne: s.g.ohneZaehne,
+            anteile: s.anteile.split('|')[0] ?? '',
+          }
+        : null,
+      meldung: werk.G.meldung,
+    };
+  },
+  /**
+   * Das gezeigte Spielnetz gegen die Anzeige des Editors in der Lage, die gerade steht (Einheiten des Werks). `gleich`: wie weit
+   * seine Punkte von den gezeigten Punkten der Haut und der Zähne liegen und um wie viel Grad seine Normalen abweichen (alle Punkte
+   * der Haut, und ohne die Lippen von außen). `nah` (mit `mitNah`): je Punkt der glatten Anzeige der Abstand zum nächsten Dreieck
+   * der gebackenen Haut. `lippe`: Paare der Lippen von außen, die in der Grundlage am selben Ort liegen, und wie weit ihre Lagen
+   * und Normalen dort auseinander sind. `seiten`: Dreiecke der Haut je Hälfte (der Ausdünner kennt den Spiegel nicht).
+   */
+  spielPruefen: (mitNah = false) => {
+    const st = spielStand;
+    const an = werkHaut.netz;
+    if (!st || !spielZeigt || !an) return null;
+    const f = werkHaut.f;
+    const mx = werkHaut.mitte.x;
+    const my = werkHaut.mitte.y;
+    const F = st.g.form;
+    const nH = F.punkteHaut;
+    const { pos, nor } = st.lage;
+    const aussen = new Set(st.g.lippenAussen);
+    let haut = 0;
+    let grad = 0;
+    let gradOhne = 0;
+    let gradAussen = 0;
+    for (let i = 0; i < nH; i++) {
+      const d = st.g.vonPunkt[i]!;
+      haut = Math.max(haut, Math.hypot(pos[3 * i]! - (an.pos[3 * d]! - mx) * f, pos[3 * i + 1]! - (an.pos[3 * d + 1]! - my) * f, pos[3 * i + 2]! - an.pos[3 * d + 2]! * f));
+      const c = nor[3 * i]! * an.normal[3 * d]! + nor[3 * i + 1]! * an.normal[3 * d + 1]! + nor[3 * i + 2]! * an.normal[3 * d + 2]!;
+      const w = (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
+      grad = Math.max(grad, w);
+      if (!aussen.has(i)) gradOhne = Math.max(gradOhne, w);
+      // (die Haut von außen, ohne Tasche und Lippe)
+      if (!st.g.innen[i]) gradAussen = Math.max(gradAussen, w);
+    }
+    let zaehne = -1;
+    const zn = zaehneNetzJetzt;
+    const nZ = F.pos.length / 3 - nH;
+    if (nZ > 0 && zn && zaehneNetzVon.length) {
+      zaehne = 0;
+      const jeZahn = zn.pos.length / 3 / zaehneNetzVon.length;
+      for (let j = 0; j < nZ; j++) {
+        const a = 3 * (st.g.vonZahn[2 * j]! * jeZahn + st.g.vonZahn[2 * j + 1]!);
+        const q = 3 * (nH + j);
+        zaehne = Math.max(zaehne, Math.hypot(pos[q]! - (zn.pos[a]! - mx) * f, pos[q + 1]! - (zn.pos[a + 1]! - my) * f, pos[q + 2]! - zn.pos[a + 2]! * f));
+      }
+    }
+    // die zwei Lippen an der Grundlage
+    const L = [...aussen];
+    let paare = 0;
+    let lageWeit = 0;
+    let normaleGrad = 0;
+    for (let i = 0; i < L.length; i++)
+      for (let j = i + 1; j < L.length; j++) {
+        const a = 3 * L[i]!;
+        const b = 3 * L[j]!;
+        const dd = Math.hypot(F.pos[a]! - F.pos[b]!, F.pos[a + 1]! - F.pos[b + 1]!, F.pos[a + 2]! - F.pos[b + 2]!);
+        if (dd > 1e-3) continue;
+        paare++;
+        lageWeit = Math.max(lageWeit, dd);
+        const c = F.nor[a]! * F.nor[b]! + F.nor[a + 1]! * F.nor[b + 1]! + F.nor[a + 2]! * F.nor[b + 2]!;
+        normaleGrad = Math.max(normaleGrad, (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI);
+      }
+    // die Hälften
+    let vorn = 0;
+    let hinten = 0;
+    for (let t = 0; t < 3 * F.dreieckeHaut; t += 3) {
+      const z = F.pos[3 * F.index[t]! + 2]! + F.pos[3 * F.index[t + 1]! + 2]! + F.pos[3 * F.index[t + 2]! + 2]!;
+      if (z > 1e-6) vorn++;
+      else if (z < -1e-6) hinten++;
+    }
+    // wie nah die glatte Anzeige an der gebackenen Haut liegt: außen, und in der Tasche des Mauls für sich (ein Punkt der Anzeige
+    // zählt zur Tasche, wenn sein nächstes Dreieck eine Wand der Tasche ist)
+    type Nah = { punkte: number; neunZehntel: number; mittel: number; max: number; wo: [number, number, number] };
+    let nah: { aussen: Nah; tasche: Nah | null } | null = null;
+    if (mitNah) {
+      const z = werkHaut.zeigeNetz ?? an;
+      const P = new Float32Array(z.pos.length);
+      for (let i = 0; i < P.length; i += 3) {
+        P[i] = (z.pos[i]! - mx) * f;
+        P[i + 1] = (z.pos[i + 1]! - my) * f;
+        P[i + 2] = z.pos[i + 2]! * f;
+      }
+      const welches = new Int32Array(P.length / 3);
+      const I = F.index.subarray(0, 3 * F.dreieckeHaut);
+      const d = abstaendeZumNetz(P, pos.subarray(0, 3 * nH), I, welches);
+      const gruppe = (tasche: boolean): Nah | null => {
+        const werte: number[] = [];
+        let max = -1;
+        let wo: [number, number, number] = [0, 0, 0];
+        for (let q = 0; q < d.length; q++) {
+          const t = welches[q]!;
+          const wand = t >= 0 && st.g.innen[I[3 * t]!]! > 0 && st.g.innen[I[3 * t + 1]!]! > 0 && st.g.innen[I[3 * t + 2]!]! > 0;
+          if (wand !== tasche) continue;
+          werte.push(d[q]!);
+          if (d[q]! > max) {
+            max = d[q]!;
+            wo = [P[3 * q]!, P[3 * q + 1]!, P[3 * q + 2]!];
+          }
+        }
+        if (!werte.length) return null;
+        werte.sort((a, b) => a - b);
+        return { punkte: werte.length, neunZehntel: werte[Math.floor(0.9 * (werte.length - 1))] ?? 0, mittel: werte.reduce((a, b) => a + b, 0) / werte.length, max: werte[werte.length - 1] ?? 0, wo };
+      };
+      const a = gruppe(false);
+      if (a) nah = { aussen: a, tasche: gruppe(true) };
+    }
+    return { gleich: { haut, zaehne, grad, gradOhne, gradAussen }, lippe: { aussen: L.length, paare, lageWeit, normaleGrad }, seiten: { vorn, hinten }, nah, anteile: st.anteile.split('|')[0] ?? '' };
   },
   /**
    * Zähne je Pose (Etappe 8, Scheibe 4): alle Punkte des gezeigten Netzes der Zähne in Einheiten des Werks (Zahn für Zahn

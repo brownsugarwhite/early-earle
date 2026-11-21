@@ -528,6 +528,21 @@ export class WerkHaut {
     return { punkte: v.plan.punkte(k), index: v.plan.index(k), stufe: k };
   }
 
+  /**
+   * Fürs Backen (Etappe 9): die Teilung der Anzeige (Dreiecke über gezeigte Punkte, je gezeigtem Punkt sein Rechenpunkt) und ein
+   * Rechner für die Normalen ihrer Rechenpunkte in einer beliebigen Lage derselben Haut (`lagen`: 3 je gezeigtem Punkt), beruhigt
+   * wie in der Anzeige. Der Rechner hat seinen eigenen Plan: Die Felder der Anzeige bleiben, wie sie sind. null: noch kein Netz.
+   */
+  backDaten(): { index: Uint32Array; quelle: Int32Array; normalen: (lagen: Float64Array) => Float32Array } | null {
+    const g = this.p;
+    if (!g || !this.netz) return null;
+    const N = g.quelle.length;
+    const fest = new Uint8Array(N);
+    for (let d = 0; d < N; d++) fest[d] = werk.anzeigeKante[d]! > 0 ? 1 : 0;
+    const plan = new GlattPlan(g.index, N, fest, g.kanten);
+    return { index: g.index, quelle: g.quelle, normalen: (lagen) => Float32Array.from(plan.rechnen(lagen, g.pfade, 0, GLATT_RUHE).nor) };
+  }
+
   /** die feinste Stufe des gezeigten Netzes mit höchstens so vielen Dreiecken (wenigstens das Netz der Rechnung selbst) */
   stufeMitHoechstens(dreiecke: number): number {
     const v = this.netzVon;
