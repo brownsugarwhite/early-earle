@@ -91,11 +91,77 @@ die Linse merkt sich je Teil ihre Perle (N8b); der Umriss der Zunge wölbt sich 
 **Geprüft am Ende:** Typen, Lint, 108 Tests; im Fenster die Proben des Mauls, der Farbe, des Sicherns, der Materialien, der
 Zähne, der Zunge und des Werks.
 
+## Block D: die Lippe als seine Linie (21.11.)
+
+Florian: „Lippe als Linie“. Vier Punkte der Liste (4, 5, 30, 31), eine Wurzel: Die Lippe soll die Linie bleiben, die er
+gezeichnet hat.
+
+### Was heute ist (gemessen am 21.11.)
+
+| Form | gezeichnet | Punkte der Lippe | Punkte der Linie im Maul (Mitte von Gaumen und Boden) |
+| --- | --- | --- | --- |
+| frisches Oval | 3 Anker | 17 | 11 |
+| „teat firefish“ | 5 Anker | 11 | 7 |
+
+Kein Punkt liegt an einem seiner Anker (bis 15 Einheiten daneben). Grund: Der Baustein legt den Pfad der Lippe mit „Punkte, wo
+nötig“ an (`griffeAnlegen` mit `PFAD_GENAU`). Auf dem groben Netz ist die Kette der Lippe in der Tiefe eckig (von Netzpunkt zu
+Netzpunkt gerade); kein glatter Pfad folgt ihr auf 0,3 genau, also kommen Punkte dazu, bis die Obergrenze erreicht ist. Dieselbe
+Antwort hat Florian am 13.11. schon einmal abgelehnt („keine Punkte von selbst“).
+
+### D1: die Punkte (Liste, Punkt 4)
+
+- Die Lippe trägt **seine Anker** (die in der Form liegen), den Mundwinkel, ihre zwei Enden am Umriss und die Kreuzungen mit
+  Linien der Form. Sonst nichts. Liegt ein Anker dichter als 0,6 Netzkanten an einer Kreuzung, steht die Kreuzung für ihn (zwei
+  Punkte dicht nebeneinander greifen sich schlecht; Falle vom 13.11.).
+- Die **Linie im Maul** (Mitte von Gaumen und Boden) ist seine gezeichnete Linie in der Mittelebene: Sie trägt dieselben Anker.
+- **Von der Seite liegt beides genau auf seiner Zeichnung:** Die Griffe kommen aus seinen Stücken (an einer Kreuzung geteilt wie
+  in Illustrator), ein geklickter Anker ist eine Ecke, ein gezogener glatt. Nur in der Tiefe wird angepasst (kleinste Quadrate an
+  die Kette auf der Haut). Das Stück vom Umriss zum ersten Anker behält am Umriss den Griff quer zur Mittelebene (dort läuft die
+  Lippe rund in ihre andere Hälfte).
+- Gebaut in `form/maulEcht.ts` (`maulSchneidenMit` bekommt die Zeichnung mit). Am Rechenkern (`packages/shape`) ändert sich
+  nichts. Formen, die schon ein Maul haben, bleiben, wie sie sind.
+
+### D2: die Farben (Punkt 30, zum Teil 31)
+
+Aus seinem Blatt 05 gemessen: Türkis `#00d3c5`, Rosa `#ff336c`, Blau `#0600f9`.
+
+- **Zu** (die Punkte gelten für beide Lippen): die Punkte türkis, die Linie in Tinte, der Mundwinkel schwarz. So steht es auf
+  dem Blatt (im Konzept stand verkürzt „zu türkis“).
+- **Offen** (Pose, Blick ins Maul) **oder getrennt:** die Oberlippe rosa, die Unterlippe blau, Linie und Punkte; der
+  Mundwinkel schwarz. Beim Öffnen gehen die Farben mit dem Winkel über.
+- Die zwei Tropfen der Kiefer und die Perlen der Reihen in der Linse nehmen dieselben drei Farben (bisher zwei geschätzte Töne).
+- Die Anzeige der Linien (`linien/fluessig.ts`) bekommt je Kapsel eine Farbnummer und je Bild eine kleine Palette. Ohne Palette
+  läuft der alte Zweig: Das Bild ohne Maul bleibt Bildpunkt für Bildpunkt gleich. `verhalten.ts` fragt den Raum nach der Farbe
+  einer Linie und eines Punkts (`Raum.farbe`), `werkBlatt` antwortet für die Lippe.
+- Punkt 31 („welche Lippe greifst du“): Mit den Farben sieht man es, sobald sich die Lippen trennen. Ein Zeichen am Zeiger
+  selbst gehört nicht zu diesem Block.
+
+### D3: der Anfang am Umriss (Punkt 5)
+
+- Beginnt P in der Seite **auf dem Umriss** (dort fängt P die Linie der Mitte, es beginnt eine Abzweigung) und endet die Linie
+  mit ↩ frei in der Form, wartet sie als Strich des Mauls mit dem Tropfen „Maul“, statt mit einer Fehlermeldung zu verschwinden.
+- Ein freier Strich, dessen Ende knapp innen am Umriss liegt (drei Netzkanten längs seiner Richtung), gilt wie einer, der im
+  Leeren endet: So weit verlängert der Baustein die Linie ohnehin nach vorn.
+
+### Kriterien
+
+- D1: frisches Oval: Lippe 5 Punkte statt 17 (zwei Enden, sein Anker auf beiden Lippen, der Mundwinkel), Linie im Maul 5 statt
+  11. Jeder Anker in der Form hat auf Lippe und Linie im Maul einen Punkt, in der Seite höchstens 0,05 Einheiten neben sich.
+  Der Pfad der Lippe liegt in der Seite höchstens 0,5 Einheiten neben der Zeichnung (0,1 Bildpunkte). Das Maul kommt zur Ruhe,
+  nichts faltet; alle Proben des Mauls, der Farbe, der Zähne, der Zunge und des Sicherns bestehen wie vorher.
+- D2: ein Bild ohne Maul gleicht dem von vorher Bildpunkt für Bildpunkt; mit Maul stehen in der Seite türkise Punkte auf der
+  Lippe, offen ist die obere Lippe rosa und die untere blau (in der Probe an Bildpunkten gemessen); die Zeit je Bild steigt
+  nicht messbar.
+- D3: eine Linie, auf dem Umriss begonnen und mit ↩ in der Form beendet, bekommt den Tropfen „Maul“; angetippt entsteht das Maul.
+
+### Nicht in diesem Block
+
+Die Linie von vorn und von oben, Freihand (Punkt 6), ein Maul, das den Umriss nicht erreicht, ein Zeichen am Zeiger (31), der
+Rechenkern.
+
 ## Was offen bleibt
 
-- **Block D, die Lippe als seine Linie** (4, 5, 30, 31): nicht begonnen. Er greift in den Baustein des Mauls
-  (`form/maulEcht.ts`: die Punkte der Lippe aus seinen Ankern) und in die Anzeige der Linien (`linien/fluessig.ts`: eine Tinte
-  je Linie; `raum.html` ist dort die genaue Vorlage). Das ist ein eigener Schritt und braucht sein Wort.
+- **Block D, die Lippe als seine Linie** (4, 5, 30, 31): siehe oben (in Arbeit seit dem 21.11.).
 - **Gruppe E, sein Auge.** Die Fragen, an denen der nächste Schritt nicht hängt, bleiben in der Liste. Die drei, die er beim
   Testen als Erstes sieht: Hohe Zähne heben eine lange Zunge weit (107); in der Pose bleibt die Form, nicht die Dehnung (111);
   die Werte der vier Vorlagen (93).
