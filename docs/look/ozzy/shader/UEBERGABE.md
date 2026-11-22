@@ -1,4 +1,4 @@
-# Übergabe: 94 Shader für Ozzy (21.11.2026, Runde 9)
+# Übergabe: 94 Shader für Ozzy (21.11.2026, Runde 9; Streifen 22.11.)
 
 Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 5),
 `docs/plans/2026-11-21-ozzy-shader-runde-6.md` (Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel),
@@ -25,6 +25,11 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
 - In Ozzy: Menü (Feinregler) → Knopf **Shader**, dann die Tafel unten rechts: elf Gruppen zum Auf- und Zuklappen, je Shader ein
   Knopf, darunter seine Zeile und seine Regler (Doppelklick setzt einen Regler zurück), oben **Bühne** (der Shader zeichnet seinen
   eigenen Grund). **⇧M** nächster Shader, **⌥⇧M** voriger. Adresse: `?shader=<name>` (z. B. `eineLinie`, `fell`).
+- **Streifen (22.11.):** alle Shader als schräge Streifen über der Form, zum Durchwischen: Knopf „Streifen“ in der Tafel, **⇧Y**,
+  oder `ozzy.html?streifen=1` (ohne `form` lädt die Adresse „strange bird“). Wischen mit Schwung, Trackpad mit zwei Fingern, ⌃ oder
+  Zusammenziehen ändert die Breite; ← → ein Streifen, ↑ ↓ Breite, Leertaste laufen lassen, Klick oder Tippen holt einen Streifen in
+  die Mitte, Esc oder × zurück (gewählt ist dann der Shader in der Mitte). Plan `docs/plans/2026-11-22-ozzy-shader-streifen.md`,
+  Bilder `docs/progress/ozzy/shader/2026-11-22-streifen*.jpg`. Probe: `__ozzy.streifen({ an, versatz, breite, messen, neu })`.
 - Bilder ohne Fenster: `node scripts/ozzy/shader-bilder.mjs <ordner> [name …]` aus `apps/editor` (startet für die Dauer des Laufs
   einen eigenen Vite auf 5219, falls dort keiner läuft; `NAME`, `ZOOM`, `GIER`, `NEIGUNG`, `WARTEN`, `BUEHNE=0`, `SEITE=1`, `EXTRA`,
   `REGLER='{"stil":1}'` setzt Regler; ein leeres `NAME=` lässt das Laden scheitern). Fell und Wolke brauchen `WARTEN=3500` (erst
@@ -73,6 +78,8 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
 - `daten.ts`: G-Puffer (Normale + Deckung, Lage + Tiefe), Rückseite, `G_LESEN`. `bildShader.ts`: ein Shader in einem Durchgang über
   dem G-Puffer (`bildVoreinstellung`), `WeicheMaske` (weichgezeichnete Deckung, `tWeich`).
 - `stroemung.ts`: 2D-Navier–Stokes (Stam). `linieSim.ts` + `linie.worker.ts`: die eine Linie.
+- `streifen.ts` (Rechnen in Bahnen, Takt, Übersetzen im Hintergrund, Schatten der Programme, Ton für Unfertiges, Speicher) und
+  `streifenBedienung.ts` (Ebene über allem, Wischen, Tasten, Namen): die Streifen. Einbau in `main.ts`: Suchwort `streifenStarten`.
 - `shaderHaut.ts`: wählt, führt die Zeit, legt das Bild über den Grund; `wahl.ts`: die Tafel (Gruppen `SHADER_GRUPPEN` in
   `kern.ts`). Einbau in `main.ts`: Suchwort `MATERIAL_SHADER`, Haken `__ozzy.shader(name, { buehne, regler, neu })`.
 - Seit Runde 6 unter `voreinstellungen/`: `schalen.ts` (der gemeinsame Lauf für alles, was über der Haut wächst), `fell.ts`,
@@ -219,3 +226,14 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
     (zu kurz). **Tempo:** Alles, was sich über die Breite eines Tropfens kaum ändert, je Bildpunkt einmal rechnen (Versatz der
     Lippen, Stärke der Lippen je Lage), ein Tropfen blendet mit ihr weich aus. Gemessen bei Zoom 4,5: 14 bis 24 ms je Bild (die
     Messungen streuen stark; Autolack im selben Lauf 14 bis 17 ms).
+36. **Streifen** (22.11.): Jeder Shader rechnet sein Bild für den ganzen Blick, in zwölf senkrechten Bahnen (Schere im Kern:
+    `ausschnitt`; sie gilt nur für Ziele in Fenstergröße, nicht für feste Größen und nicht für Paare einer Simulation). Das Wischen
+    setzt nur fertige Bilder zusammen (ein Durchgang, bis zu zwölf Bilder, harte geglättete Schnitte). Die Arbeit je Bild richtet
+    sich nach dem Abstand der Bilder. Die gemeinsamen Daten (Vorder- und Rückseite) rechnet der Ton einmal je Blick ganz, weil Bahnen
+    sie auch außerhalb ihrer Schere lesen. Ein fertiger Shader, der nicht läuft, gibt seinen Lauf frei und behält nur sein Bild.
+37. **Ziele je Shader benennen:** Ein Ziel, das nur bei Änderungen neu gerechnet wird (Muster je Ecke, Feld), darf nicht unter einem
+    Namen liegen, den ein anderer Shader auch benutzt (das Fell teilte „fell“: das Schaf trug in den Streifen das Leopardenmuster).
+    In den Streifen rechnen viele Shader im selben Kern.
+38. **Programme im Schatten:** Die Streifen bauen jeden Shader zur Probe, übersetzen seine Programme mit `compileAsync` (ohne zu
+    warten) und halten je Programm eine zweite Hülle. So bleibt ein Programm, wenn ein Lauf freigegeben wird; ein Neubau übersetzt
+    nichts. Programme, die ein Lauf erst beim Rechnen baut, kommen danach in den Schatten.

@@ -742,7 +742,7 @@ function haut(id: string, name: string, zeile: string, glsl: string, echtGrund: 
           vorher: (k: ShaderKern, w: ShaderWerte, u: Record<string, IUniform>) => {
             const g = w.regler.groesse ?? 1;
             const wunsch = { laenge: feld.laenge / g, breite: feld.breite / g };
-            const bild = schuppenFeld(k).bild(k, wunsch);
+            const bild = schuppenFeld(k, wunsch).bild(k, wunsch);
             u.tPhasen!.value = bild?.phasen ?? null;
             u.tGuete!.value = bild?.guete ?? null;
             u.uSchuppe!.value = wunsch.laenge;

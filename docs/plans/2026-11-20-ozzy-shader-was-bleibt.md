@@ -149,3 +149,9 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     zweite Textur des Ziels auf `FloatType` setzen, ohne `OES_texture_float_linear` mit `NearestFilter`, nur mit
     `EXT_color_buffer_float`) waren Ringe und körnige Lichter weg; Fels, Panot, Schlange, Comicdruck, Diskokugel und LEGO sahen
     unverändert aus, Konsole ohne Fehler. Nicht übernommen, weil das Tempo nicht gemessen ist (alle Shader lesen den Puffer).
+64. **Streifen, Takt:** im sichtbaren Fenster nicht gemessen (die Probe lief verdeckt). Hakt es beim Wischen, ist es am ehesten das
+    erste Rechnen nach einem Neubau: Die Arbeit auf der Grafikkarte teilt das Budget in Bahnen, die auf dem Prozessor beim Bau nicht.
+65. **Streifen, Schuppenfeld:** rechnet je Maß einmal rund 0,5 s im Hauptfaden (in Ruhe vorgewärmt; wer in den ersten Sekunden
+    schnell zu den Schlangen wischt, spürt es). Gehört in einen Worker.
+66. **Streifen auf iPhone und iPad:** nicht getestet (zwei Finger für die Breite, Tippen, Speicher).
+67. **Streifen ohne Bühne:** die Shader auf Ozzys Weiß; nicht angesehen.

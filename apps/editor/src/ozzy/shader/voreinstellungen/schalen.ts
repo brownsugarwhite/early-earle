@@ -266,7 +266,14 @@ export class SchalenLauf implements ShaderLauf {
   private lebend = false;
   private skala = 1;
 
-  constructor(k: ShaderKern, art: SchalenArt) {
+  /**
+   * Vorsilbe der Ziele: die Kennung des Shaders, nicht der Name der Art (22.11.). Fell, Schaf, Plüschtier, Leopard, Tiger und Giraffe
+   * teilen die Art „fell“; mit geteilten Zielen las in den Streifen das Schaf das Muster je Ecke des Leoparden (es wird nur bei
+   * Änderungen neu gerechnet).
+   */
+  private readonly ziel: string;
+  constructor(k: ShaderKern, art: SchalenArt, id = art.name) {
+    this.ziel = id;
     this.art = art;
     for (const r of art.regler) this.ru[`uR_${r.k}`] = { value: r.grund };
     for (const [n, v] of Object.entries(art.uniforms)) this.au[n] = { value: v };
@@ -363,7 +370,7 @@ export class SchalenLauf implements ShaderLauf {
     const anzahl = k.geo.getAttribute('position')!.count;
     const hoehe = Math.max(1, Math.ceil(anzahl / MUSTER_BREITE));
     const schluessel = `${k.netzStand}|${anzahl}|${this.art.musterSchluessel(w)}`;
-    const mz = k.ziel(`${this.art.name}:muster:${hoehe}`, { breite: MUSTER_BREITE, hoehe, art: 'half', filter: 'nearest' });
+    const mz = k.ziel(`${this.ziel}:muster:${hoehe}`, { breite: MUSTER_BREITE, hoehe, art: 'half', filter: 'nearest' });
     if (schluessel !== this.musterSchluessel || this.mu.tMuster!.value !== mz.texture) {
       this.mu.uMusterHoehe!.value = hoehe;
       this.punkte.setDrawRange(0, anzahl);
@@ -373,7 +380,7 @@ export class SchalenLauf implements ShaderLauf {
     }
     // in Bewegung in kleinerer Auflösung (die Kosten wachsen mit der Fläche), steht das Bild, voll. Deckt die Form mehr als ein
     // Drittel des Bilds (nah), sinkt die Auflösung in Stufen bis 50 % (Runde 7)
-    const name = `${this.art.name}:schalen`;
+    const name = `${this.ziel}:schalen`;
     const rPx = k.u.uMass.value * k.u.uRadius.value;
     const bildCss = (k.u.uAufl.value.x / k.u.uDpr.value) * (k.u.uAufl.value.y / k.u.uDpr.value);
     const flaeche = Math.min(1, (Math.PI * rPx * rPx) / Math.max(1, bildCss));
@@ -386,8 +393,8 @@ export class SchalenLauf implements ShaderLauf {
     const zu = this.zusammen.uniforms;
     zu.tSchalen!.value = ziel.textures[0];
     zu.tKennung!.value = ziel.textures[1];
-    zu.tWeich!.value = sw.weich ? this.weich.rechnen(k, ziel.textures[0]!, this.art.name, 0.25, 10) : ziel.textures[0];
-    const ende = k.ziel(`${this.art.name}:ende`, { art: 'byte' });
+    zu.tWeich!.value = sw.weich ? this.weich.rechnen(k, ziel.textures[0]!, this.ziel, 0.25, 10) : ziel.textures[0];
+    const ende = k.ziel(`${this.ziel}:ende`, { art: 'byte' });
     k.flaeche(this.zusammen, ende, [0, 0, 0, 0]);
     return ende.texture;
   }
@@ -414,5 +421,5 @@ export class SchalenLauf implements ShaderLauf {
 
 /** eine Voreinstellung auf den Schalen */
 export function schalenVoreinstellung(v: { id: string; name: string; gruppe: ShaderGruppe; zeile: string }, art: SchalenArt): Voreinstellung {
-  return { ...v, regler: art.regler, bauen: (k) => new SchalenLauf(k, art) };
+  return { ...v, regler: art.regler, bauen: (k) => new SchalenLauf(k, art, v.id) };
 }

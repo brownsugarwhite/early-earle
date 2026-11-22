@@ -37,6 +37,8 @@ import { GAST_MATERIALIEN, GastHaut, type GastMaterial } from './gast';
 import type { GruenHaut } from './gruen';
 import { FESTE_MATERIALIEN, FesteHaut, type FestesMaterial } from './material';
 import { ShaderHaut } from './shader/shaderHaut';
+import { ShaderStreifen } from './shader/streifen';
+import { StreifenBedienung } from './shader/streifenBedienung';
 import { ShaderWahl } from './shader/wahl';
 import { VOREINSTELLUNGEN } from './shader/voreinstellungen';
 import { WACHS_FARBTON_GRUND } from './wachs';
@@ -185,6 +187,8 @@ const feste = new FesteHaut(renderer);
 feste.wachsFarbton(wachsWerte.farbton);
 /** die Shader (20.11., `shader/`): 20 Voreinstellungen, gewählt in der Tafel `#shader-wahl` */
 const shaderHaut = new ShaderHaut(renderer);
+/** Streifen (22.11., `shader/streifen.ts`): alle Shader als schräge Streifen über der Form, zum Durchwischen (⇧Y, `?streifen=1`) */
+const streifen = new ShaderStreifen(renderer, VOREINSTELLUNGEN);
 const gast = new GastHaut(leinwandGast);
 const anzeige = new FluessigeAnzeige(leinwandLinien);
 const blatt = new Blatt(linienWerte, freihandWerte);
@@ -298,6 +302,12 @@ const farbeZeigen = (): boolean => farbeMoeglich() && !farbWerk.leer;
 let gastStand: { netz: unknown; version: number } | null = null;
 /** das Netz, das die Shader gerade zeigen */
 let shaderStand: { netz: unknown; version: number } | null = null;
+let streifenStand: { netz: unknown; version: number } | null = null;
+/** Streifen: an, die Form noch einzupassen, Start über die Adresse (wartet auf die Form), Blick und Material von vorher */
+let streifenAn = false;
+let streifenEinpassen = false;
+let streifenWartet = params.get('streifen') === '1';
+let streifenVorher: { zoom: number; schwenkX: number; schwenkY: number; material: Material | null } | null = null;
 /**
  * Das grüne Material: Sein Renderer (three/webgpu und das Earle-Material aus `@ee/render`) wird erst geladen, wenn es gewählt ist;
  * bis dahin kostet es Ozzy nichts.
@@ -1978,6 +1988,8 @@ function groesse(): void {
   haut.groesse(W, H, D);
   feste.groesse(W, H, D);
   shaderHaut.groesse(W, H, D);
+  streifen.groesse(W, H, D);
+  if (streifenAn) streifenEinpassen = true;
   gast.groesse(W, H, D);
   gruen?.groesse(W, H, D);
   anzeige.groesse(W * D, H * D);
@@ -4018,7 +4030,29 @@ function bild(dt: number): boolean {
       aktiv = true;
     }
   }
+  // Streifen (22.11.): Start über die Adresse, sobald die Form steht (Blick schräg von vorn wie die Bilder der Shader)
+  if (streifenWartet && zustand === 'ruhe' && !reihe && werkHaut.zeigeNetz) {
+    streifenWartet = false;
+    nutzer.gier = (-30 * Math.PI) / 180;
+    nutzer.neigung = (8 * Math.PI) / 180;
+    streifenStarten();
+  }
+  if (streifenAn && streifenBedienung.schritt(dt)) aktiv = true;
   kameraSetzen(zustand === 'blatt' ? null : mBuehne);
+  // Streifen: die Form so groß wie möglich ins Bild (beim Eintritt und nach jeder Größenänderung)
+  if (streifenAn && streifenEinpassen && zustand === 'ruhe' && vier < 1e-3) {
+    const n = zeigeNetzAlle();
+    if (n) {
+      // (der Maßstab folgt der Fenstergröße sonst noch eine Weile nach und machte die eingepasste Form wieder kleiner)
+      massstab.jetzt = massstab.ziel;
+      massstab.nachfuehren = false;
+      kameraSetzen(mBuehne);
+      for (let i = 0; i < 5 && streifenFormEinpassen(n); i++) kameraSetzen(mBuehne);
+      kameraSetzen(mBuehne);
+      streifenEinpassen = false;
+    }
+    aktiv = true;
+  }
   faltJetzt = zustand === 'blatt' ? null : faltRechnen();
   // A3: wie groß die Haut im Bild ist (Gerätepunkte je Einheit des Werks; in den Vier Ansichten das größte Feld): danach richten sich
   // die Stufen der glatten Anzeige. Passt ihre Zahl nicht mehr (Zoomen, Wechsel der Ansicht), wird in der Ruhe neu gerechnet.
@@ -4183,20 +4217,40 @@ function bild(dt: number): boolean {
     } else if (material === MATERIAL_SHADER) {
       // die Shader (20.11.): die glatte Anzeige wie bei Solid und Wachs, mit dem gewählten Shader; ein bewegter hält das Bild am Laufen
       gast.aus();
-      if (!shaderStand || shaderStand.netz !== zeigN || shaderStand.version !== werkHaut.version) {
-        shaderHaut.netzSetzen(zeigN, wicklungVon(zeigN));
-        shaderStand = { netz: zeigN, version: werkHaut.version };
+      if (streifenAn) {
+        // Streifen (22.11.): alle Shader nebeneinander, jeder mit seinem Bild für den ganzen Blick
+        if (!streifenStand || streifenStand.netz !== zeigN || streifenStand.version !== werkHaut.version) {
+          streifen.netzSetzen(zeigN, wicklungVon(zeigN));
+          streifenStand = { netz: zeigN, version: werkHaut.version };
+        }
+        if (!streifenEinpassen) {
+          const unruhig = streifen.zeichnen(kam.aktiv, {
+            schnitt: schnittJetzt,
+            spiegelSchnitt: spiegelSchnittJetzt(),
+            flach: dreieckeZeigen,
+            buehne: shaderWahl.buehne,
+            mass: lageRaum?.s ?? 1,
+            regler: (id) => shaderWahl.regler(id),
+          });
+          if (unruhig) aktiv = true;
+        }
+        streifenBedienung.zeigen();
+      } else {
+        if (!shaderStand || shaderStand.netz !== zeigN || shaderStand.version !== werkHaut.version) {
+          shaderHaut.netzSetzen(zeigN, wicklungVon(zeigN));
+          shaderStand = { netz: zeigN, version: werkHaut.version };
+        }
+        const unruhig = shaderHaut.zeichnen(kam.aktiv, shaderWahl.wahl, {
+          schnitt: schnittJetzt,
+          spiegelSchnitt: spiegelSchnittJetzt(),
+          flach: dreieckeZeigen,
+          deckung: (1 - 0.7 * roentgen) * (schnittJetzt ? 1 - glatt(flach) : 1),
+          buehne: shaderWahl.buehne,
+          regler: shaderWahl.regler(),
+          mass: lageRaum?.s ?? 1,
+        });
+        if (unruhig) aktiv = true;
       }
-      const unruhig = shaderHaut.zeichnen(kam.aktiv, shaderWahl.wahl, {
-        schnitt: schnittJetzt,
-        spiegelSchnitt: spiegelSchnittJetzt(),
-        flach: dreieckeZeigen,
-        deckung: (1 - 0.7 * roentgen) * (schnittJetzt ? 1 - glatt(flach) : 1),
-        buehne: shaderWahl.buehne,
-        regler: shaderWahl.regler(),
-        mass: lageRaum?.s ?? 1,
-      });
-      if (unruhig) aktiv = true;
     } else {
       gast.aus();
       // „Dreiecke zeigen“: das Netz der Rechnung, flach schattiert, statt der glatten Anzeige
@@ -7568,6 +7622,7 @@ window.addEventListener('keydown', (e) => {
   else if (zustand === 'blatt' && k === 'E') waehlenTaste('wuerfel');
   else if (zustand === 'blatt' && (k === 'v' || k === 'V' || k === 'a' || k === 'A')) waehlenTaste('auswahl');
   else if (k === 'M') shaderWeiter(e.altKey ? -1 : 1);
+  else if (k === 'Y') streifenStarten();
   else if (k === 'm') materialWeiter();
   else return;
   anstossen();
@@ -8620,6 +8675,87 @@ function shaderWeiter(schritt: number): void {
   werk.G.meldung = `Shader: ${ShaderHaut.finden(shaderWahl.wahl).name}`;
   anstossen();
 }
+/**
+ * Streifen (22.11., Plan `docs/plans/2026-11-22-ozzy-shader-streifen.md`): alle Shader als schräge Streifen über der Form, die Form
+ * so groß wie möglich, ohne Bedienung. Zurück (Esc, ×, ⇧Y) kommen Zoom, Schwenk und Material wieder; gewählt ist der Shader in der
+ * Mitte.
+ */
+const streifenBedienung = new StreifenBedienung(streifen, () => anstossen());
+streifenBedienung.beenden = () => streifenBeenden();
+streifen.aenderung = () => anstossen();
+shaderWahl.streifen = () => streifenStarten();
+function streifenStarten(): void {
+  if (streifenAn) return;
+  if (zustand !== 'ruhe' || !werkHaut.zeigeNetz) {
+    werk.G.meldung = 'Streifen: erst eine Form';
+    anstossen();
+    return;
+  }
+  if (vierZiel > 0.5) vierUmschalten(false);
+  streifenVorher = { zoom: nutzer.zoom, schwenkX: nutzer.schwenkX, schwenkY: nutzer.schwenkY, material };
+  if (material !== MATERIAL_SHADER) materialSetzen(MATERIAL_SHADER);
+  streifenAn = true;
+  streifenEinpassen = true;
+  streifenStand = null;
+  document.body.classList.add('streifen');
+  streifen.groesse(W, H, D);
+  streifen.an();
+  streifen.zentrieren(shaderWahl.wahl);
+  streifenBedienung.an();
+  anstossen();
+}
+function streifenBeenden(): void {
+  if (!streifenAn) return;
+  const mitte = streifen.mitte();
+  streifenAn = false;
+  streifenEinpassen = false;
+  document.body.classList.remove('streifen');
+  streifenBedienung.aus();
+  streifen.aus();
+  const v = streifenVorher;
+  streifenVorher = null;
+  shaderWahl.waehlen(mitte.id);
+  if (v) {
+    nutzer.zoom = v.zoom;
+    nutzer.schwenkX = v.schwenkX;
+    nutzer.schwenkY = v.schwenkY;
+    if (v.material !== material) materialSetzen(v.material);
+  }
+  werk.G.meldung = `Shader: ${mitte.name}`;
+  anstossen();
+}
+/** passt die Form einmal ein (Kasten im Bild, Rand 4 %); true: Es hat sich noch merklich etwas geändert */
+function streifenFormEinpassen(n: HautNetz): boolean {
+  const vp = vpJetzt();
+  const P = n.pos;
+  const q = new Vector3();
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < P.length; i += 3) {
+    q.set(P[i]!, P[i + 1]!, P[i + 2]!).applyMatrix4(vp);
+    const x = (q.x * 0.5 + 0.5) * W;
+    const y = (0.5 - q.y * 0.5) * H;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  if (!Number.isFinite(x0) || x1 - x0 < 1 || y1 - y0 < 1) return false;
+  const rand = 0.04;
+  const f = Math.min((W * (1 - 2 * rand)) / (x1 - x0), (H * (1 - 2 * rand)) / (y1 - y0));
+  const zoom = Math.max(0.3, Math.min(16, nutzer.zoom * f));
+  const g = zoom / nutzer.zoom;
+  const cx = W / 2 + nutzer.schwenkX;
+  const cy = H / 2 + nutzer.schwenkY;
+  const bx = (x0 + x1) / 2;
+  const by = (y0 + y1) / 2;
+  nutzer.zoom = zoom;
+  nutzer.schwenkX = -g * (bx - cx);
+  nutzer.schwenkY = -g * (by - cy);
+  return Math.abs(g - 1) > 0.002 || Math.abs(bx - W / 2) > 0.5 || Math.abs(by - H / 2) > 0.5;
+}
 function materialZeigen(): void {
   shaderWahl.sichtbar(material === MATERIAL_SHADER);
   [...fassungKnoepfe.children].forEach((b, i) =>
@@ -8954,7 +9090,7 @@ aufwaermen();
 void document.fonts?.ready.then(() => {
   anstossen();
   // ?form=<Name>: diese gesicherte Form gleich laden
-  const name = params.get('form');
+  const name = params.get('form') ?? (streifenWartet ? 'strange bird' : null);
   if (name) void formLaden(name).then((t) => console.info(`Ozzy: ${t}`));
 });
 
@@ -9339,6 +9475,18 @@ const haken = {
    * der Maus gedreht, läuft die Form je nach Takt des Loslassens verschieden weit nach; ein Bild soll jedes Mal gleich stehen. Der
    * Zoom darf hier über das hinaus, was das Mausrad erlaubt (Bilder aus der Nähe). Zurück: der Blick danach.
    */
+  /** Streifen (22.11.): der Stand für Proben; `an` schaltet, `versatz` und `breite` setzen die Lage */
+  streifen: (o?: { an?: boolean; versatz?: number; breite?: number; messen?: boolean; neu?: boolean }) => {
+    if (o?.messen !== undefined) streifen.messen = o.messen;
+    if (o?.messen === true) streifen.zeiten.clear();
+    if (o?.neu) streifen.alleNeu();
+    if (o?.an === true) streifenStarten();
+    if (o?.an === false) streifenBeenden();
+    if (o?.versatz !== undefined) streifen.versatz = o.versatz;
+    if (o?.breite !== undefined) streifen.breiteSetzen(o.breite);
+    anstossen();
+    return { an: streifenAn, versatz: streifen.versatz, breite: streifen.breite, mitte: streifen.mitte().id, uebersetzt: streifen.uebersetztZahl, ...streifen.mess, zeiten: Object.fromEntries(streifen.zeiten) };
+  },
   blickSetzen: (b: { gier?: number; neigung?: number; zoom?: number; schwenkX?: number; schwenkY?: number }): { gier: number; neigung: number; zoom: number; schwenkX: number; schwenkY: number } => {
     schwung = null;
     if (b.gier !== undefined) nutzer.gier = b.gier;

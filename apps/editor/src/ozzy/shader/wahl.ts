@@ -21,6 +21,8 @@ export class ShaderWahl {
   private g: Gemerkt;
   /** meldet jede Änderung (Ozzy zeichnet neu) */
   aenderung: () => void = () => {};
+  /** Knopf „Streifen“ (22.11.): alle Shader als Streifen über der Form */
+  streifen: () => void = () => {};
 
   constructor(el: HTMLElement, liste: Voreinstellung[], start: string | null) {
     this.el = el;
@@ -42,7 +44,15 @@ export class ShaderWahl {
       this.g.buehne = !this.g.buehne;
       this.zeigen();
     });
-    kopf.append(titel, this.buehneKnopf);
+    const streifenKnopf = document.createElement('button');
+    streifenKnopf.type = 'button';
+    streifenKnopf.textContent = 'Streifen';
+    streifenKnopf.title = 'Alle Shader als schräge Streifen über der Form, zum Durchwischen (⇧Y)';
+    streifenKnopf.addEventListener('click', () => this.streifen());
+    const knoepfe = document.createElement('span');
+    knoepfe.className = 'shader-kopf-knoepfe';
+    knoepfe.append(streifenKnopf, this.buehneKnopf);
+    kopf.append(titel, knoepfe);
     el.append(kopf);
     for (const gruppe of SHADER_GRUPPEN) {
       const teil = liste.filter((v) => v.gruppe === gruppe);

@@ -1338,3 +1338,122 @@ body.bild .shader-wahl {
   background: var(--tinte);
   transform: scale(calc(var(--gross) * var(--dehn-x)), calc(var(--gross) * var(--dehn-y)));
 }
+
+/* ---------- Streifen (22.11.): alle Shader als schräge Streifen über der Form (shader/streifen.ts) ---------- */
+.shader-kopf-knoepfe {
+  display: inline-flex;
+  gap: 4px;
+}
+body.streifen > :not(#buehne):not(#streifen-ebene):not(#info) {
+  display: none !important;
+}
+body.streifen #linien,
+body.streifen #gast,
+body.streifen #gast-earle,
+body.streifen #gruss {
+  display: none;
+}
+#streifen-ebene {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+#streifen-ebene:active {
+  cursor: grabbing;
+}
+#streifen-ebene[hidden] {
+  display: none;
+}
+.streifen-namen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.streifen-name {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 12px 5px;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--papier) 88%, transparent);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.14);
+  color: var(--tinte);
+  white-space: nowrap;
+  will-change: transform;
+  transition: opacity 300ms ease;
+}
+.streifen-name .name {
+  font-family: 'Lobster', Georgia, serif;
+  font-size: 15px;
+  line-height: 1.15;
+}
+.streifen-name .gruppe {
+  font-size: 9px;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--leise);
+}
+.streifen-name.schmal .gruppe {
+  display: none;
+}
+.streifen-name.laedt {
+  opacity: 0.62;
+}
+.streifen-hinweis,
+.streifen-fortschritt {
+  position: absolute;
+  left: 50%;
+  padding: 5px 13px 6px;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--papier) 86%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.streifen-hinweis {
+  top: calc(14px + env(safe-area-inset-top));
+  color: var(--tinte);
+  transition:
+    opacity 700ms ease,
+    transform 700ms var(--feder);
+}
+.streifen-hinweis.weg {
+  opacity: 0;
+  transform: translate(-50%, -10px);
+}
+.streifen-fortschritt {
+  top: calc(50px + env(safe-area-inset-top));
+  color: var(--leise);
+}
+.streifen-zu {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  width: 34px;
+  height: 34px;
+  padding: 0 0 2px;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--papier) 86%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--tinte);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}

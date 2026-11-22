@@ -469,13 +469,22 @@ export class SchuppenFeld {
   }
 }
 
-/** je Kern ein Feld (die Schlangen teilen es) */
-const felder = new WeakMap<ShaderKern, SchuppenFeld>();
-export function schuppenFeld(k: ShaderKern): SchuppenFeld {
-  let f = felder.get(k);
+/**
+ * je Kern und Maß der Schuppen ein Feld (Schlangen mit demselben Maß teilen es). Seit den Streifen (22.11.) je Maß ein eigenes: Dort
+ * rechnen mehrere Schlangen im selben Bild, und ein einziges Feld wurde für jede neu gerechnet (rund 0,5 s je Wechsel).
+ */
+const felder = new WeakMap<ShaderKern, Map<string, SchuppenFeld>>();
+export function schuppenFeld(k: ShaderKern, w?: FeldWunsch): SchuppenFeld {
+  let m = felder.get(k);
+  if (!m) {
+    m = new Map();
+    felder.set(k, m);
+  }
+  const s = w ? `${w.laenge.toFixed(4)}|${w.breite.toFixed(4)}` : '';
+  let f = m.get(s);
   if (!f) {
     f = new SchuppenFeld(k);
-    felder.set(k, f);
+    m.set(s, f);
   }
   return f;
 }

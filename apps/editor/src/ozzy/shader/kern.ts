@@ -151,7 +151,16 @@ export class ShaderKern {
   netzStand = 0;
   /** das Netz selbst (für Shader, die Punkte auf der Haut brauchen) */
   netzDaten: HautNetz | null = null;
+  /**
+   * Streifen (22.11.): nur dieser Kasten der Ziele in Fenstergröße wird gerechnet (Gerätepunkte des Fensters, Ursprung unten links;
+   * Ziele fester Größe und die Paare einer Simulation bleiben ganz). null: alles.
+   */
+  ausschnitt: { x0: number; y0: number; x1: number; y1: number } | null = null;
+  /** Streifen: hier landen die Namen der Ziele, die der laufende Shader anfasst, und die Programme, die er baut */
+  aufzeichnen: Set<string> | null = null;
+  sammeln: Material[] | null = null;
   private wicklung = 0;
+  private readonly namen = new Map<WebGLRenderTarget, string>();
   private readonly netzSzene = new Scene();
   private readonly netzMesh: Mesh;
   private readonly flaecheSzene = new Scene();
@@ -291,6 +300,7 @@ export class ShaderKern {
 
   /** ein Ziel (wird beim ersten Mal angelegt, folgt danach der Fenstergröße) */
   ziel(name: string, w: ZielWunsch = {}): WebGLRenderTarget {
+    this.aufzeichnen?.add(name);
     let z = this.ziele.get(name);
     if (z) return z;
     const [B, H] = this.zielGroesse(w);
@@ -309,6 +319,7 @@ export class ShaderKern {
     if (w.wiederholen) for (const t of z.textures) t.wrapS = t.wrapT = RepeatWrapping;
     this.ziele.set(name, z);
     this.wuensche.set(name, w);
+    this.namen.set(z, name);
     return z;
   }
 
@@ -338,16 +349,55 @@ export class ShaderKern {
       z.dispose();
       this.ziele.delete(name);
       this.wuensche.delete(name);
+      this.namen.delete(z);
     }
     const kern = this as unknown as { paare?: Map<string, unknown> };
     if (kern.paare) for (const n of [...kern.paare.keys()]) if (n.startsWith(vorsilbe)) kern.paare.delete(n);
+  }
+
+  /** ein Ziel nach seinem Namen freigeben (Streifen: ein Shader, der weit weg ist) */
+  zielFreigeben(name: string): void {
+    const z = this.ziele.get(name);
+    if (!z) return;
+    z.dispose();
+    this.ziele.delete(name);
+    this.wuensche.delete(name);
+    this.namen.delete(z);
+  }
+
+  /** der Name des Ziels, zu dem diese Textur gehört (oder null) */
+  zielVon(t: Texture): string | null {
+    for (const [z, name] of this.namen) if (z.textures.includes(t)) return name;
+    return null;
+  }
+
+  /** Streifen: die Schere für dieses Ziel stellen (vor `setRenderTarget`, das sie übernimmt) */
+  private schere(ziel: WebGLRenderTarget | null): void {
+    if (!ziel) return;
+    const a = this.ausschnitt;
+    const name = a ? this.namen.get(ziel) : undefined;
+    const w = name !== undefined ? this.wuensche.get(name) : undefined;
+    if (!a || !w || (w.breite && w.hoehe) || name!.includes('#')) {
+      ziel.scissorTest = false;
+      return;
+    }
+    const sx = ziel.width / this.b;
+    const sy = ziel.height / this.h;
+    // (in kleineren Zielen ein Rand von mindestens 24 ihrer Punkte: Weichzeichnen und Nachbarn lesen über den Kasten hinaus)
+    const r = sx < 0.99 ? 24 : 0;
+    const x0 = Math.max(0, Math.floor(a.x0 * sx) - r);
+    const y0 = Math.max(0, Math.floor(a.y0 * sy) - r);
+    const x1 = Math.min(ziel.width, Math.ceil(a.x1 * sx) + r);
+    const y1 = Math.min(ziel.height, Math.ceil(a.y1 * sy) + r);
+    ziel.scissor.set(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+    ziel.scissorTest = true;
   }
 
   // ---------- Programme ----------
 
   /** ein Programm über die Haut (Vertex aus `NETZ_VERTEX`); die gemeinsamen Werte sind schon darin */
   netzProgramm(fragment: string, o: { uniforms?: Record<string, IUniform>; seite?: Side; blending?: Blending; transparent?: boolean; tiefeSchreiben?: boolean; tiefeTesten?: boolean; vertex?: string } = {}): RawShaderMaterial {
-    return new RawShaderMaterial({
+    const m = new RawShaderMaterial({
       glslVersion: GLSL3,
       uniforms: { ...this.u, ...(o.uniforms ?? {}) },
       vertexShader: o.vertex ?? NETZ_VERTEX,
@@ -358,11 +408,13 @@ export class ShaderKern {
       depthWrite: o.tiefeSchreiben ?? true,
       depthTest: o.tiefeTesten ?? true,
     });
+    this.sammeln?.push(m);
+    return m;
   }
 
   /** ein Programm über die ganze Fläche (`FLAECHE_KOPF` wird vorangestellt) */
   flaecheProgramm(fragment: string, uniforms: Record<string, IUniform> = {}, o: { blending?: Blending; transparent?: boolean } = {}): RawShaderMaterial {
-    return new RawShaderMaterial({
+    const m = new RawShaderMaterial({
       glslVersion: GLSL3,
       uniforms: { ...this.u, ...uniforms },
       vertexShader: FLAECHE_VERTEX,
@@ -372,6 +424,8 @@ export class ShaderKern {
       blending: o.blending ?? NoBlending,
       transparent: o.transparent ?? false,
     });
+    this.sammeln?.push(m);
+    return m;
   }
 
   // ---------- Zeichnen ----------
@@ -379,6 +433,7 @@ export class ShaderKern {
   /** die Haut mit `material` in `ziel` (null: ins Fenster); `loeschen`: Farbe und Tiefe vorher leeren */
   netz(material: Material, ziel: WebGLRenderTarget | null, loeschen: [number, number, number, number] | null = [0, 0, 0, 0], kamera: Camera = this.kamera): void {
     const r = this.r;
+    this.schere(ziel);
     r.setRenderTarget(ziel);
     if (loeschen) {
       r.setClearColor(this.loeschFarbe.setRGB(loeschen[0], loeschen[1], loeschen[2]), loeschen[3]);
@@ -391,6 +446,7 @@ export class ShaderKern {
   /** ein Bild über die ganze Fläche von `ziel` */
   flaeche(material: Material, ziel: WebGLRenderTarget | null, loeschen: [number, number, number, number] | null = null): void {
     const r = this.r;
+    this.schere(ziel);
     r.setRenderTarget(ziel);
     if (loeschen) {
       r.setClearColor(this.loeschFarbe.setRGB(loeschen[0], loeschen[1], loeschen[2]), loeschen[3]);
@@ -403,6 +459,7 @@ export class ShaderKern {
   /** ein Ziel leeren */
   loeschen(ziel: WebGLRenderTarget, farbe: [number, number, number, number] = [0, 0, 0, 0]): void {
     const r = this.r;
+    this.schere(ziel);
     r.setRenderTarget(ziel);
     r.setClearColor(this.loeschFarbe.setRGB(farbe[0], farbe[1], farbe[2]), farbe[3]);
     r.clear(true, true, false);
@@ -411,6 +468,7 @@ export class ShaderKern {
   /** eine fremde Szene (Teilchen, Linien) in ein Ziel */
   szene(szene: Scene, kamera: Camera, ziel: WebGLRenderTarget | null, loeschen: [number, number, number, number] | null = null): void {
     const r = this.r;
+    this.schere(ziel);
     r.setRenderTarget(ziel);
     if (loeschen) {
       r.setClearColor(this.loeschFarbe.setRGB(loeschen[0], loeschen[1], loeschen[2]), loeschen[3]);
@@ -473,6 +531,7 @@ export class ShaderKern {
     for (const z of this.ziele.values()) z.dispose();
     this.ziele.clear();
     this.wuensche.clear();
+    this.namen.clear();
     this.geo.dispose();
     this.ende.dispose();
   }
