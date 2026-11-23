@@ -783,3 +783,7 @@ Fortschritt als Regler, Kamerafahrten, Scribble, Claude, Ozzy-Player im Spiel):
 Teil 9: Eine eigene Engine (Spline V2 auf demselben Fundament, eigener Bildaufbau auf three.js, Ziehen, Ruhe, Schlaf, Kanten aus den
 Linien, Licht zeichnen, Luft in Stufen, Looks als Rezept, Lesebilder für Claude, Korrektur zu Teil 2):
 [`2026-11-23-ozzy-suite-teil-9-engine.md`](2026-11-23-ozzy-suite-teil-9-engine.md).
+
+Teil 10: Landschaften und Häuserblöcke (Gelände aus Linien, Silhouette malen, Zeit und Wasser als Regler, Pflanzen nach Sätzen, Städte
+aus Straßen, Häuser mit Gedächtnis, Vorbilder und Claude):
+[`2026-11-23-ozzy-suite-teil-10-landschaften.md`](2026-11-23-ozzy-suite-teil-10-landschaften.md).

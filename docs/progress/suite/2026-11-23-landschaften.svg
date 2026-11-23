@@ -1,0 +1,276 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 1.8; stroke-dasharray: 6 5; stroke-linecap: round; stroke-linejoin: round; }
+      .block { fill: #e9dcc6; stroke: #b9a98a; stroke-width: 1.2; }
+      .haus { fill: #e9dcc6; stroke: #9a8d78; stroke-width: 1.2; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 600 11px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t4 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+    </style>
+    <g id="pfeil"><path class="thin" d="M -14 0 L 12 0 M 4 -6 L 13 0 L 4 6"/></g>
+    <g id="spitz"><path d="M 0 -26 L 9 0 L -9 0 Z"/></g>
+    <g id="etage">
+      <rect x="12" y="5" width="10" height="14" fill="#46525e"/>
+      <rect x="29" y="5" width="10" height="14" fill="#46525e"/>
+      <rect x="46" y="5" width="10" height="14" fill="#46525e"/>
+      <path d="M 8 21 L 60 21" stroke="#1b1b1b" stroke-width="1.2"/>
+    </g>
+    <g id="laden">
+      <rect x="8" y="6" width="22" height="24" fill="#5b6672"/>
+      <rect x="38" y="6" width="22" height="24" fill="#5b6672"/>
+    </g>
+    <clipPath id="feld1"><rect x="226" y="70" width="170" height="250" rx="8"/></clipPath>
+    <clipPath id="feld2"><rect x="24" y="212" width="372" height="120" rx="4"/></clipPath>
+    <clipPath id="mini3"><rect x="0" y="0" width="116" height="130" rx="6"/></clipPath>
+    <clipPath id="feld4a"><rect x="24" y="70" width="226" height="250" rx="8"/></clipPath>
+    <clipPath id="feld4b"><rect x="262" y="70" width="134" height="250" rx="8"/></clipPath>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Landschaften und Häuserblöcke</text>
+  <text x="40" y="106" class="sub">Gelände aus Linien, Zeit und Wasser als Regler, Städte aus Straßen · Vorschlag vom 23.11.2026 · nichts davon ist gebaut</text>
+
+  <!-- 1 Gelände aus Linien -->
+  <g transform="translate(40,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect x="24" y="70" width="150" height="250" rx="8" fill="#f6f3ec" stroke="#e4dfd6"/>
+    <path class="ink" d="M 36 128 C 64 98, 92 140, 122 106 C 138 90, 152 98, 164 92"/>
+    <g fill="#1b1b1b"><circle cx="36" cy="128" r="3.5"/><circle cx="122" cy="106" r="3.5"/><circle cx="164" cy="92" r="3.5"/></g>
+    <text class="t4" x="40" y="152">Kamm</text>
+    <path class="ink" d="M 36 214 C 70 202, 104 220, 140 206"/>
+    <path class="thin" style="stroke-width: 1.2" d="M 46 212 L 44 224 M 60 208 L 59 220 M 74 207 L 74 219 M 88 209 L 89 221 M 102 212 L 104 224 M 116 212 L 118 224 M 130 209 L 132 221"/>
+    <text class="t4" x="40" y="244">Kante</text>
+    <path d="M 156 168 C 128 190, 150 238, 112 262 C 84 280, 92 300, 70 314" fill="none" stroke="#3f7fb0" stroke-width="3" stroke-linecap="round"/>
+    <text class="t4" x="120" y="300">Fluss</text>
+    <use href="#pfeil" transform="translate(200,196)"/>
+    <g clip-path="url(#feld1)">
+      <rect x="226" y="70" width="170" height="250" fill="#f4ead8"/>
+      <path d="M 226 170 L 250 140 L 268 152 L 296 112 L 322 140 L 346 126 L 372 146 L 396 134 L 396 320 L 226 320 Z" fill="#c3c9bd"/>
+      <path d="M 296 112 L 322 140 L 314 180 L 286 172 Z" fill="#aab3a3"/>
+      <path d="M 346 126 L 372 146 L 366 182 L 344 174 Z" fill="#aab3a3"/>
+      <path class="thin" style="stroke-width: 1.2" d="M 226 170 L 250 140 L 268 152 L 296 112 L 322 140 L 346 126 L 372 146 L 396 134"/>
+      <path d="M 226 214 C 270 204, 330 210, 396 200 L 396 320 L 226 320 Z" fill="#b5c4a0"/>
+      <path d="M 226 214 C 270 204, 330 210, 396 200 L 396 226 C 330 236, 270 230, 226 240 Z" fill="#b9b4aa"/>
+      <path d="M 226 240 C 270 230, 330 236, 396 226 L 396 320 L 226 320 Z" fill="#9fb38e"/>
+      <path class="thin" style="stroke-width: 1.2" d="M 226 214 C 270 204, 330 210, 396 200"/>
+      <path d="M 340 202 C 334 206, 326 208, 318 210" fill="none" stroke="#3f7fb0" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 318 210 L 318 238" fill="none" stroke="#8fb8d0" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 318 238 C 300 256, 330 276, 296 296 C 276 308, 284 316, 270 324" fill="none" stroke="#3f7fb0" stroke-width="4" stroke-linecap="round"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(250,282) scale(1.1)"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(372,264)"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(354,304) scale(1.3)"/>
+      <use href="#spitz" fill="#6f8a62" transform="translate(246,214) scale(0.6)"/>
+      <use href="#spitz" fill="#6f8a62" transform="translate(382,204) scale(0.6)"/>
+    </g>
+    <rect x="226" y="70" width="170" height="250" rx="8" fill="none" stroke="#e4dfd6"/>
+    <text class="t4" x="99" y="340" text-anchor="middle">Linien in der Draufsicht</text>
+    <text class="t4" x="311" y="340" text-anchor="middle">Gelände</text>
+    <text class="t1" x="18" y="440">Gelände aus Linien</text>
+    <text class="t2" x="18" y="464">Kämme, Täler, Kanten und Flüsse sind Linien mit Höhe. Das</text>
+    <text class="t2" x="18" y="482">Gelände dazwischen rechnet Ozzy wie die Haut aus den Linien.</text>
+    <text class="t2" x="18" y="500">Der Regler Rundung macht aus einer Kante einen Hang.</text>
+  </g>
+
+  <!-- 2 Silhouette malen -->
+  <g transform="translate(485,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <text class="t4" x="24" y="54">deine Striche in der Spielkamera</text>
+    <rect x="24" y="64" width="372" height="120" rx="4" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.6"/>
+    <path d="M 26 120 C 80 96, 120 110, 170 92 C 220 76, 280 104, 394 90" fill="none" stroke="#b9c2c8" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M 26 146 C 90 126, 150 140, 220 124 C 280 112, 330 134, 394 126" fill="none" stroke="#8f9aa3" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M 26 170 C 100 156, 200 168, 300 152 C 340 146, 370 154, 394 152" fill="none" stroke="#4a525a" stroke-width="2.4" stroke-linecap="round"/>
+    <path class="thin" d="M 210 190 L 210 206 M 204 200 L 210 207 L 216 200"/>
+    <g clip-path="url(#feld2)">
+      <rect x="24" y="212" width="372" height="120" fill="#f4ead8"/>
+      <circle cx="92" cy="238" r="12" fill="#f7d9a3"/>
+      <path d="M 24 268 C 80 244, 120 258, 170 240 C 220 224, 280 252, 396 238 L 396 332 L 24 332 Z" fill="#cdd6d8"/>
+      <path d="M 24 294 C 90 274, 150 288, 220 272 C 280 260, 330 282, 396 274 L 396 332 L 24 332 Z" fill="#8ca788"/>
+      <use href="#spitz" fill="#7f9a7c" transform="translate(120,290) scale(0.9)"/>
+      <use href="#spitz" fill="#7f9a7c" transform="translate(250,272) scale(0.9)"/>
+      <path d="M 24 318 C 100 304, 200 316, 300 300 C 340 294, 370 302, 396 300 L 396 332 L 24 332 Z" fill="#4e6849"/>
+      <use href="#spitz" fill="#3f5a3a" transform="translate(80,314) scale(1.3)"/>
+      <use href="#spitz" fill="#3f5a3a" transform="translate(330,300) scale(1.2)"/>
+    </g>
+    <rect x="24" y="212" width="372" height="120" rx="4" fill="none" stroke="#1b1b1b" stroke-width="1.6"/>
+    <text class="t4" x="24" y="352">drei Staffeln im Raum, aus der Kamera deckungsgleich</text>
+    <text class="t1" x="18" y="440">Silhouette malen</text>
+    <text class="t2" x="18" y="464">Du malst in der Spielkamera, wie die Berge aussehen sollen:</text>
+    <text class="t2" x="18" y="482">vorn, Mitte, hinten. Ozzy stellt die Kämme so in den Raum,</text>
+    <text class="t2" x="18" y="500">dass die Kamera genau deine Striche sieht.</text>
+  </g>
+
+  <!-- 3 Zeit formt die Landschaft -->
+  <g transform="translate(930,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <g transform="translate(24,80)">
+      <g clip-path="url(#mini3)">
+        <rect width="116" height="130" fill="#f4ead8"/>
+        <path d="M 0 70 C 20 40, 34 30, 50 34 C 66 38, 74 60, 90 50 C 100 44, 108 40, 116 42 L 116 130 L 0 130 Z" fill="#b3b0a8"/>
+        <path d="M 30 44 L 24 96 M 52 36 L 58 104 M 90 52 L 84 108" fill="none" stroke="#8d8a83" stroke-width="1.5"/>
+        <path class="thin" d="M 0 70 C 20 40, 34 30, 50 34 C 66 38, 74 60, 90 50 C 100 44, 108 40, 116 42"/>
+      </g>
+    </g>
+    <g transform="translate(152,80)">
+      <g clip-path="url(#mini3)">
+        <rect width="116" height="130" fill="#f4ead8"/>
+        <path d="M 0 70 C 20 40, 34 30, 50 34 C 66 38, 74 60, 90 50 C 100 44, 108 40, 116 42 L 116 130 L 0 130 Z" fill="#b8bfa9"/>
+        <path d="M 44 130 C 52 104, 58 86, 62 66 C 68 86, 74 104, 82 130 Z" fill="#a1aa92"/>
+        <path d="M 62 70 C 60 92, 66 108, 62 130" fill="none" stroke="#3f7fb0" stroke-width="2.5"/>
+        <use href="#spitz" fill="#5f7f55" transform="translate(22,120) scale(0.6)"/>
+        <use href="#spitz" fill="#5f7f55" transform="translate(100,122) scale(0.6)"/>
+        <path class="thin" d="M 0 70 C 20 40, 34 30, 50 34 C 66 38, 74 60, 90 50 C 100 44, 108 40, 116 42"/>
+      </g>
+    </g>
+    <g transform="translate(280,80)">
+      <g clip-path="url(#mini3)">
+        <rect width="116" height="130" fill="#f4ead8"/>
+        <path d="M 0 70 C 20 40, 34 30, 50 34 C 66 38, 74 60, 90 50 C 100 44, 108 40, 116 42 L 116 130 L 0 130 Z" fill="#9fb38e"/>
+        <path d="M 34 130 C 46 104, 56 84, 62 66 C 70 84, 80 104, 92 130 Z" fill="#8ea67f"/>
+        <path d="M 62 70 C 60 90, 66 104, 62 116" fill="none" stroke="#3f7fb0" stroke-width="3"/>
+        <ellipse cx="62" cy="121" rx="20" ry="6" fill="#8fb8d0"/>
+        <use href="#spitz" fill="#4e6849" transform="translate(14,104) scale(0.7)"/>
+        <use href="#spitz" fill="#4e6849" transform="translate(26,114) scale(0.8)"/>
+        <use href="#spitz" fill="#4e6849" transform="translate(36,128) scale(0.8)"/>
+        <use href="#spitz" fill="#4e6849" transform="translate(20,94) scale(0.6)"/>
+        <use href="#spitz" fill="#4e6849" transform="translate(90,110) scale(0.7)"/>
+        <use href="#spitz" fill="#4e6849" transform="translate(104,120) scale(0.8)"/>
+        <use href="#spitz" fill="#4e6849" transform="translate(88,128) scale(0.7)"/>
+        <path class="thin" d="M 0 70 C 20 40, 34 30, 50 34 C 66 38, 74 60, 90 50 C 100 44, 108 40, 116 42"/>
+      </g>
+    </g>
+    <text class="t4" x="82" y="230" text-anchor="middle">jung</text>
+    <text class="t4" x="210" y="230" text-anchor="middle">älter</text>
+    <text class="t4" x="338" y="230" text-anchor="middle">alt</text>
+    <path class="grau" d="M 40 262 L 380 262 M 82 256 L 82 268 M 210 256 L 210 268"/>
+    <circle cx="338" cy="262" r="7" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.8"/>
+    <text class="t3" x="210" y="290" text-anchor="middle">Regler Zeit</text>
+    <text class="t4" x="210" y="310" text-anchor="middle">die gezeichnete Kammlinie bleibt in allen drei Bildern</text>
+    <text class="t1" x="18" y="440">Zeit formt die Landschaft</text>
+    <text class="t2" x="18" y="464">Ein Regler lässt Wasser und Wetter arbeiten: Täler graben sich,</text>
+    <text class="t2" x="18" y="482">Flüsse finden ihren Weg, Wald wächst. Deine Linien bleiben;</text>
+    <text class="t2" x="18" y="500">die Zeit formt nur, was dazwischen liegt.</text>
+  </g>
+
+  <!-- 4 Wasser hat immer recht -->
+  <g transform="translate(40,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <g clip-path="url(#feld4a)">
+      <rect x="24" y="70" width="226" height="250" fill="#f4ead8"/>
+      <path d="M 24 140 C 60 132, 100 142, 144 138 L 144 320 L 24 320 Z" fill="#a9b98f"/>
+      <path d="M 144 138 L 158 142 L 158 240 L 144 236 Z" fill="#b9b4aa"/>
+      <path d="M 144 236 L 158 240 C 190 244, 220 236, 250 240 L 250 320 L 144 320 Z" fill="#9fb38e"/>
+      <path d="M 28 152 C 60 164, 100 146, 148 150" fill="none" stroke="#3f7fb0" stroke-width="4" stroke-linecap="round"/>
+      <path d="M 151 150 L 153 244" fill="none" stroke="#8fb8d0" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="192" cy="258" rx="40" ry="11" fill="#8fb8d0"/>
+      <ellipse cx="156" cy="248" rx="10" ry="4" fill="#ffffff"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(44,140) scale(0.7)"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(118,138) scale(0.6)"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(236,250) scale(0.9)"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(70,240) scale(1.2)"/>
+    </g>
+    <rect x="24" y="70" width="226" height="250" rx="8" fill="none" stroke="#e4dfd6"/>
+    <g clip-path="url(#feld4b)">
+      <rect x="262" y="70" width="134" height="250" fill="#f4ead8"/>
+      <path d="M 262 262 C 290 222, 310 194, 330 196 C 350 198, 370 228, 396 262 L 396 320 L 262 320 Z" fill="#a9b98f"/>
+      <use href="#spitz" fill="#5f7f55" transform="translate(330,198) scale(0.8)"/>
+      <rect x="262" y="262" width="134" height="58" fill="#8fb8d0"/>
+      <path d="M 262 262 L 396 262" stroke="#3f7fb0" stroke-width="1.5"/>
+      <path class="ghost" d="M 262 230 L 396 230"/>
+      <text class="t4" x="268" y="224">höher</text>
+    </g>
+    <rect x="262" y="70" width="134" height="250" rx="8" fill="none" stroke="#e4dfd6"/>
+    <path class="grau" d="M 408 200 L 408 300"/>
+    <circle cx="408" cy="262" r="6" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.8"/>
+    <text class="t4" x="137" y="340" text-anchor="middle">fließt bergab, sammelt sich</text>
+    <text class="t4" x="329" y="340" text-anchor="middle">Meeresspiegel als Regler</text>
+    <text class="t1" x="18" y="440">Wasser hat immer recht</text>
+    <text class="t2" x="18" y="464">Ein Fluss fließt immer bergab, das Gelände gibt nach. Wo sich</text>
+    <text class="t2" x="18" y="482">Wasser sammelt, entsteht ein See, an Kanten ein Wasserfall.</text>
+    <text class="t2" x="18" y="500">Der Meeresspiegel ist ein Regler, und Inseln tauchen auf.</text>
+  </g>
+
+  <!-- 5 Straßen werden Blöcke -->
+  <g transform="translate(485,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect x="24" y="70" width="206" height="250" rx="8" fill="#f6f3ec" stroke="#e4dfd6"/>
+    <path class="grau" style="stroke-width: 1.2" d="M 94 74 L 94 316 M 160 74 L 160 316 M 28 142 L 226 142 M 28 208 L 226 208"/>
+    <polygon class="block" points="43,82 79,82 88,91 88,127 79,136 43,136 34,127 34,91"/>
+    <polygon class="block" points="109,82 145,82 154,91 154,127 145,136 109,136 100,127 100,91"/>
+    <polygon class="block" points="175,82 211,82 220,91 220,127 211,136 175,136 166,127 166,91"/>
+    <polygon class="block" points="43,148 79,148 88,157 88,193 79,202 43,202 34,193 34,157"/>
+    <polygon class="block" points="109,148 145,148 154,157 154,193 145,202 109,202 100,193 100,157"/>
+    <polygon class="block" points="175,148 211,148 220,157 220,193 211,202 175,202 166,193 166,157"/>
+    <polygon class="block" points="43,214 79,214 88,223 88,259 79,268 43,268 34,259 34,223"/>
+    <polygon class="block" points="109,214 145,214 154,223 154,259 145,268 109,268 100,259 100,223"/>
+    <polygon class="block" points="175,214 211,214 220,223 220,259 211,268 175,268 166,259 166,223"/>
+    <g fill="#cfe0b8">
+      <rect x="48" y="96" width="26" height="26" rx="3"/><rect x="114" y="96" width="26" height="26" rx="3"/><rect x="180" y="96" width="26" height="26" rx="3"/>
+      <rect x="48" y="162" width="26" height="26" rx="3"/><rect x="114" y="162" width="26" height="26" rx="3"/><rect x="180" y="162" width="26" height="26" rx="3"/>
+      <rect x="48" y="228" width="26" height="26" rx="3"/><rect x="114" y="228" width="26" height="26" rx="3"/><rect x="180" y="228" width="26" height="26" rx="3"/>
+    </g>
+    <g fill="#1b1b1b"><circle cx="94" cy="142" r="3"/><circle cx="160" cy="142" r="3"/><circle cx="94" cy="208" r="3"/><circle cx="160" cy="208" r="3"/></g>
+    <path class="grau" d="M 248 100 L 248 290"/>
+    <circle cx="248" cy="194" r="6" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.8"/>
+    <rect class="block" x="262" y="92" width="60" height="44"/>
+    <polygon class="block" points="272,172 312,172 322,182 322,206 312,216 272,216 262,206 262,182"/>
+    <rect class="block" x="262" y="252" width="60" height="44" rx="16"/>
+    <text class="t3" x="332" y="118">eckig</text>
+    <text class="t3" x="332" y="198">abgeschrägt</text>
+    <text class="t3" x="332" y="278">rund</text>
+    <text class="t4" x="127" y="340" text-anchor="middle">Straßen als Linien, Blöcke mit Hof</text>
+    <text class="t4" x="300" y="340" text-anchor="middle">Regler Rundung</text>
+    <text class="t1" x="18" y="440">Straßen werden Blöcke</text>
+    <text class="t2" x="18" y="464">Straßen sind Linien; jede Fläche zwischen ihnen wird ein Block</text>
+    <text class="t2" x="18" y="482">mit Hof. Der Regler Rundung macht die Ecken eckig, abgeschrägt</text>
+    <text class="t2" x="18" y="500">wie in Barcelona oder rund. Parzellen reihen sich am Rand.</text>
+  </g>
+
+  <!-- 6 Häuser mit Gedächtnis -->
+  <g transform="translate(930,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect class="ghost" x="24" y="114" width="68" height="26"/>
+    <rect class="ghost" x="96" y="140" width="68" height="26"/>
+    <rect class="ghost" x="256" y="114" width="68" height="26"/>
+    <rect class="ghost" x="328" y="140" width="68" height="26"/>
+    <rect class="haus" x="24" y="140" width="68" height="160"/>
+    <use href="#etage" transform="translate(24,140)"/><use href="#etage" transform="translate(24,166)"/><use href="#etage" transform="translate(24,192)"/><use href="#etage" transform="translate(24,218)"/><use href="#etage" transform="translate(24,244)"/>
+    <use href="#laden" transform="translate(24,270)"/>
+    <rect class="haus" x="96" y="166" width="68" height="134"/>
+    <use href="#etage" transform="translate(96,166)"/><use href="#etage" transform="translate(96,192)"/><use href="#etage" transform="translate(96,218)"/><use href="#etage" transform="translate(96,244)"/>
+    <use href="#laden" transform="translate(96,270)"/>
+    <path d="M 168 300 L 168 152 C 178 134, 192 144, 202 126 C 212 112, 224 136, 236 128 C 244 124, 250 138, 252 150 L 252 300 Z" fill="#f1e2c4" stroke="#9a8d78" stroke-width="1.2"/>
+    <g><circle cx="180" cy="150" r="3" fill="#3f7fb0"/><circle cx="192" cy="142" r="3" fill="#f0b429"/><circle cx="204" cy="132" r="3" fill="#d7332a"/><circle cx="218" cy="132" r="3" fill="#3f7fb0"/><circle cx="230" cy="136" r="3" fill="#f0b429"/><circle cx="242" cy="142" r="3" fill="#d7332a"/></g>
+    <g fill="#46525e">
+      <rect x="180" y="170" width="12" height="16" rx="6"/><rect x="204" y="170" width="12" height="16" rx="6"/><rect x="228" y="170" width="12" height="16" rx="6"/>
+      <rect x="180" y="196" width="12" height="16" rx="6"/><rect x="204" y="196" width="12" height="16" rx="6"/><rect x="228" y="196" width="12" height="16" rx="6"/>
+      <rect x="180" y="222" width="12" height="16" rx="6"/><rect x="204" y="222" width="12" height="16" rx="6"/><rect x="228" y="222" width="12" height="16" rx="6"/>
+      <rect x="180" y="248" width="12" height="16" rx="6"/><rect x="204" y="248" width="12" height="16" rx="6"/><rect x="228" y="248" width="12" height="16" rx="6"/>
+      <rect x="196" y="274" width="28" height="26" rx="12"/>
+    </g>
+    <path class="thin" style="stroke-width: 1.2" d="M 174 190 C 190 186, 200 194, 214 190 C 228 186, 238 194, 248 190 M 174 216 C 190 212, 200 220, 214 216 C 228 212, 238 220, 248 216 M 174 242 C 190 238, 200 246, 214 242 C 228 238, 238 246, 248 242"/>
+    <rect class="haus" x="256" y="140" width="68" height="160"/>
+    <use href="#etage" transform="translate(256,140)"/><use href="#etage" transform="translate(256,166)"/><use href="#etage" transform="translate(256,192)"/><use href="#etage" transform="translate(256,218)"/><use href="#etage" transform="translate(256,244)"/>
+    <use href="#laden" transform="translate(256,270)"/>
+    <rect class="haus" x="328" y="166" width="68" height="134"/>
+    <use href="#etage" transform="translate(328,166)"/><use href="#etage" transform="translate(328,192)"/><use href="#etage" transform="translate(328,218)"/><use href="#etage" transform="translate(328,244)"/>
+    <use href="#laden" transform="translate(328,270)"/>
+    <rect x="24" y="300" width="372" height="10" fill="#d8d2c7"/>
+    <path class="thin" d="M 24 300 L 396 300"/>
+    <rect x="204" y="98" width="12" height="10" rx="2" fill="#1b1b1b"/>
+    <path d="M 206 98 L 206 94 A 4 4 0 0 1 214 94 L 214 98" fill="none" stroke="#1b1b1b" stroke-width="1.6"/>
+    <text class="t4" x="210" y="82" text-anchor="middle">von Hand geformt: bleibt</text>
+    <path class="grau" d="M 60 334 L 360 334"/>
+    <circle cx="300" cy="334" r="7" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.8"/>
+    <text class="t4" x="210" y="358" text-anchor="middle">Regler Geschosse: +1 für alle anderen</text>
+    <text class="t1" x="18" y="440">Häuser mit Gedächtnis</text>
+    <text class="t2" x="18" y="464">Jede Parzelle bekommt ein Haus aus einem Rezept: Geschosse,</text>
+    <text class="t2" x="18" y="482">Fensterachsen, Dachprofil, Balkone. Was du von Hand formst,</text>
+    <text class="t2" x="18" y="500">bleibt, wenn sich das Rezept um dich herum ändert.</text>
+  </g>
+</svg>
