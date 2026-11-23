@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .wall { fill: #f3f1ec; stroke: #d5cfc4; stroke-width: 1.2; }
+      .floor { fill: #ece8e1; stroke: #d5cfc4; stroke-width: 1.2; }
+      .proj { fill: #d8d2c7; stroke: #1b1b1b; stroke-width: 1.3; stroke-opacity: 0.75; }
+      .base { fill: #f1efeb; stroke: #a7adb4; stroke-width: 2; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .dash { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-dasharray: 5 5; stroke-linecap: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; }
+      .dev { fill: #ffffff; stroke: #1b1b1b; stroke-width: 3; }
+      .scr { fill: #fbfaf7; stroke: #d9d4ca; stroke-width: 1.2; }
+      .finger { fill: #ecdccb; stroke: #b9a48f; stroke-width: 1.5; }
+      .t1 { font: 600 18px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 14px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 12px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+    </style>
+    <g id="blase">
+      <path class="base" d="M 186 228 C 178 196, 192 180, 200 184 C 208 190, 206 212, 204 226 Z"/>
+      <path class="base" d="M 214 226 C 212 212, 210 190, 218 184 C 226 180, 240 196, 230 228 Z"/>
+      <ellipse class="base" cx="208" cy="268" rx="64" ry="44"/>
+      <ellipse cx="188" cy="252" rx="20" ry="10" fill="#ffffff" opacity="0.85"/>
+    </g>
+    <g id="seite">
+      <ellipse cx="86" cy="190" rx="52" ry="30"/>
+      <ellipse cx="30" cy="184" rx="13" ry="10"/>
+      <path d="M 96 166 C 92 140, 104 128, 110 134 C 114 140, 110 156, 108 164 Z"/>
+    </g>
+    <g id="front">
+      <ellipse cx="86" cy="190" rx="50" ry="32"/>
+      <path d="M 66 166 C 60 138, 72 126, 78 130 C 84 136, 82 154, 80 164 Z"/>
+      <path d="M 92 164 C 90 154, 88 136, 94 130 C 100 126, 112 138, 106 166 Z"/>
+    </g>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Die Projektionsansicht</text>
+  <text x="40" y="106" class="sub">Behalten und ausbauen · Vorschlag vom 23.11.2026 · nichts davon ist gebaut</text>
+
+  <!-- 1 Heute -->
+  <g transform="translate(40,150)">
+    <rect class="tile" width="413" height="585" rx="18"/>
+    <polygon class="wall" points="206,40 206,250 46,330 46,120"/>
+    <polygon class="wall" points="206,40 366,120 366,330 206,250"/>
+    <polygon class="floor" points="206,250 366,330 206,410 46,330"/>
+    <ellipse class="proj" cx="206" cy="336" rx="74" ry="30" style="fill-opacity: 0.8"/>
+    <g class="proj" transform="matrix(-1,0.5,0,1,206,0)"><use href="#seite"/></g>
+    <g class="proj" transform="matrix(1,0.5,0,1,206,0)"><use href="#front"/></g>
+    <use href="#blase"/>
+    <text class="t1" x="18" y="455">Heute: die Projektionsecke</text>
+    <text class="t2" x="18" y="482">Die Blase in der Mitte zum Ziehen und Aufblasen,</text>
+    <text class="t2" x="18" y="502">die Kurven an den Projektionen auf den Wänden.</text>
+    <text class="t2" x="18" y="526">Schatten, Perspektive und Projektion zugleich: die</text>
+    <text class="t2" x="18" y="546">stärksten Hinweise für Lage und Ausrichtung</text>
+    <text class="t2" x="18" y="566">(Wanger, Ferwerda, Greenberg 1992).</text>
+  </g>
+
+  <!-- 2 Wand kommt zu dir -->
+  <g transform="translate(488,150)">
+    <rect class="tile" width="413" height="585" rx="18"/>
+    <g transform="translate(14,14) scale(0.32)" opacity="0.55">
+      <polygon class="wall" points="206,40 206,250 46,330 46,120"/>
+      <polygon class="wall" points="206,40 366,120 366,330 206,250" style="fill: #e3ddd2"/>
+      <polygon class="floor" points="206,250 366,330 206,410 46,330"/>
+    </g>
+    <path class="thin" d="M 128 70 C 190 34, 262 44, 300 92"/>
+    <path class="thin" d="M 290 84 L 301 93 L 288 97"/>
+    <rect class="wall" x="66" y="112" width="284" height="290" rx="6"/>
+    <path d="M 160 238 C 148 186, 170 160, 182 168 C 194 176, 190 214, 188 234 Z" fill="#d8d2c7" stroke="#1b1b1b" stroke-width="2.4"/>
+    <path d="M 232 234 C 230 214, 226 176, 238 168 C 250 160, 272 186, 260 238 Z" fill="#d8d2c7" stroke="#1b1b1b" stroke-width="2.4"/>
+    <ellipse cx="210" cy="292" rx="96" ry="64" fill="#d8d2c7" stroke="#1b1b1b" stroke-width="2.4"/>
+    <path class="thin" d="M 168 228 L 252 228"/>
+    <circle cx="168" cy="228" r="4" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+    <circle cx="252" cy="228" r="4" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+    <circle cx="210" cy="228" r="5" fill="#1b1b1b"/>
+    <circle cx="114" cy="292" r="5" fill="#1b1b1b"/>
+    <circle cx="306" cy="292" r="5" fill="#1b1b1b"/>
+    <circle cx="210" cy="356" r="5" fill="#1b1b1b"/>
+    <text class="t1" x="18" y="455">Wand kommt zu dir</text>
+    <text class="t2" x="18" y="482">Antippen und halten: Die Wand dreht sich zu dir,</text>
+    <text class="t2" x="18" y="502">du bearbeitest die Kurve gerade statt verkürzt.</text>
+    <text class="t2" x="18" y="522">Loslassen dreht zurück in die Ecke.</text>
+    <text class="t2" x="18" y="546">So bleibt man auch auf kleinen Bildschirmen genau.</text>
+  </g>
+
+  <!-- 3 iPhone -->
+  <g transform="translate(936,150)">
+    <rect class="tile" width="413" height="585" rx="18"/>
+    <rect class="dev" x="101" y="12" width="210" height="408" rx="32"/>
+    <rect class="scr" x="111" y="22" width="190" height="388" rx="24"/>
+    <g transform="translate(99,49) scale(0.52)">
+      <polygon class="wall" points="206,40 206,250 46,330 46,120" opacity="0.15"/>
+      <polygon class="wall" points="206,40 366,120 366,330 206,250"/>
+      <polygon class="floor" points="206,250 366,330 206,410 46,330"/>
+      <ellipse class="proj" cx="206" cy="336" rx="74" ry="30" style="fill-opacity: 0.8"/>
+      <g class="proj" transform="matrix(1,0.5,0,1,206,0)"><use href="#front"/></g>
+      <use href="#blase"/>
+      <path class="dash" d="M 250 244 L 250 344" style="stroke-width: 2.6"/>
+      <circle cx="250" cy="346" r="5" fill="none" stroke="#1b1b1b" stroke-width="2.4"/>
+    </g>
+    <path class="thin" d="M 241 300 C 238 260, 230 220, 229 182"/>
+    <path d="M 229 167 C 222 176, 222 183, 229 186 C 236 183, 236 176, 229 167 Z" fill="#1b1b1b"/>
+    <ellipse class="finger" cx="243" cy="324" rx="17" ry="23"/>
+    <circle cx="160" cy="374" r="16" fill="#ffffff" stroke="#a7adb4" stroke-width="1.6"/>
+    <ellipse cx="158" cy="375" rx="8" ry="5" fill="#a7adb4"/>
+    <circle cx="206" cy="374" r="16" fill="#ffffff" stroke="#a7adb4" stroke-width="1.6"/>
+    <circle cx="206" cy="375" r="6" fill="#a7adb4"/>
+    <circle cx="252" cy="374" r="16" fill="#ffffff" stroke="#a7adb4" stroke-width="1.6"/>
+    <ellipse cx="252" cy="376" rx="8" ry="6" fill="#a7adb4"/>
+    <text class="t1" x="18" y="455">iPhone: nur die Wand, die hilft</text>
+    <text class="t2" x="18" y="482">Der Boden immer, dazu die eine Wand, die zur</text>
+    <text class="t2" x="18" y="502">Zugrichtung passt. Eine Lotlinie zeigt die Höhe</text>
+    <text class="t2" x="18" y="522">des Punkts. Die übrigen Ansichten als Tropfen;</text>
+    <text class="t2" x="18" y="542">genau gearbeitet wird mit „Wand kommt zu dir“.</text>
+  </g>
+
+  <!-- 4 Ecke folgt der Auswahl -->
+  <g transform="translate(40,765)">
+    <rect class="tile" width="413" height="585" rx="18"/>
+    <polygon class="floor" points="206,170 386,260 206,350 26,260" style="opacity: 0.7"/>
+    <g opacity="0.55">
+      <polygon points="76,200 126,175 176,200 126,225" fill="#eeeae3" stroke="#cfc8bc" stroke-width="1.2"/>
+      <polygon points="76,200 126,225 126,285 76,260" fill="#e2ddd4" stroke="#cfc8bc" stroke-width="1.2"/>
+      <polygon points="126,225 176,200 176,260 126,285" fill="#d9d3c9" stroke="#cfc8bc" stroke-width="1.2"/>
+      <polygon points="76,200 126,150 176,200" fill="#e9e4dc" stroke="#cfc8bc" stroke-width="1.2"/>
+    </g>
+    <g transform="translate(156,92) scale(0.5)">
+      <polygon class="wall" points="206,40 206,250 46,330 46,120"/>
+      <polygon class="wall" points="206,40 366,120 366,330 206,250"/>
+      <polygon class="floor" points="206,250 366,330 206,410 46,330"/>
+      <ellipse class="proj" cx="206" cy="336" rx="74" ry="30" style="fill-opacity: 0.8"/>
+      <g class="proj" transform="matrix(-1,0.5,0,1,206,0)"><use href="#seite"/></g>
+      <g class="proj" transform="matrix(1,0.5,0,1,206,0)"><use href="#front"/></g>
+      <use href="#blase"/>
+    </g>
+    <text class="t3" x="92" y="318">Haus, ruht</text>
+    <text class="t3" x="232" y="318">gewählt</text>
+    <text class="t1" x="18" y="455">Ecke folgt der Auswahl</text>
+    <text class="t2" x="18" y="482">Bei vielen Objekten und in der Architektur</text>
+    <text class="t2" x="18" y="502">umschließt die Ecke nur, was gewählt ist; der Rest</text>
+    <text class="t2" x="18" y="522">bleibt still. Für ganze Gebäude die Vier Ansichten</text>
+    <text class="t2" x="18" y="542">als Grundriss, Ansichten und Schnitt.</text>
+  </g>
+
+  <!-- 5 Schnitt -->
+  <g transform="translate(488,765)">
+    <rect class="tile" width="413" height="585" rx="18"/>
+    <path class="base" d="M 260 155 A 130 85 0 1 0 260 305 Z"/>
+    <path class="ghost" d="M 260 155 A 130 85 0 0 1 260 305"/>
+    <ellipse cx="260" cy="230" rx="26" ry="75" fill="#efd9d2" stroke="#1b1b1b" stroke-width="2"/>
+    <path d="M 250 236 C 258 218, 272 220, 276 236 C 273 252, 259 254, 250 242 Z" fill="#c98f88" stroke="#1b1b1b" stroke-width="1.4"/>
+    <path class="dash" d="M 260 108 L 260 152 M 260 308 L 260 360"/>
+    <path d="M 260 86 C 252 96, 252 104, 260 108 C 268 104, 268 96, 260 86 Z" fill="#1b1b1b"/>
+    <text class="t1" x="18" y="455">Schnitt (neu)</text>
+    <text class="t2" x="18" y="482">Eine Ebene schneidet die Form auf, man arbeitet</text>
+    <text class="t2" x="18" y="502">innen: Maul, Zunge, Zähne. In der Architektur der</text>
+    <text class="t2" x="18" y="522">Schnitt durch das Haus. Den Tropfen ziehen</text>
+    <text class="t2" x="18" y="542">verschiebt die Ebene.</text>
+  </g>
+
+  <!-- 6 Drehteller und Spielkamera -->
+  <g transform="translate(936,765)">
+    <rect class="tile" width="413" height="585" rx="18"/>
+    <ellipse cx="200" cy="330" rx="122" ry="30" fill="#ece8e1" stroke="#cfc8bc" stroke-width="1.4"/>
+    <g transform="translate(-8,18)"><use href="#blase"/></g>
+    <path class="thin" d="M 92 350 C 140 384, 266 384, 312 348"/>
+    <path class="thin" d="M 300 346 L 313 347 L 307 359"/>
+    <rect x="292" y="70" width="58" height="38" rx="6" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+    <circle cx="321" cy="89" r="11" fill="none" stroke="#1b1b1b" stroke-width="2"/>
+    <path class="dash" d="M 300 108 L 236 220 M 330 108 L 262 226"/>
+    <text class="t3" x="290" y="62">Spielkamera</text>
+    <text class="t1" x="18" y="455">Drehteller und Spielkamera</text>
+    <text class="t2" x="18" y="482">Halten dreht die Form einmal langsam herum; so</text>
+    <text class="t2" x="18" y="502">prüft man das Volumen (Bewegung hilft der</text>
+    <text class="t2" x="18" y="522">Ausrichtung). Die Spielkamera zeigt die Form,</text>
+    <text class="t2" x="18" y="542">wie sie in early earle aussieht („Wie im Spiel“).</text>
+  </g>
+</svg>

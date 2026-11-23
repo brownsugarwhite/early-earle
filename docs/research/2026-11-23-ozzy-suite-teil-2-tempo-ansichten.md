@@ -228,6 +228,54 @@ eine Ebene, die die Form aufschneidet, damit man hineinsieht. Der Schnitt hilft 
 **Echte Lösung auf dem Handy?** Ja, wenn die Ansichten nicht alle gleichzeitig um Platz kämpfen. Auf dem iPhone sind sie Werkzeuge für
 den Moment (hinschauen, einrasten, messen), am Mac ein dauernder Arbeitsplatz. Für die KI bleiben sie auf jedem Gerät das Rückgrat.
 
+### 8.1 Nachtrag: die Projektionsansicht
+
+**Deine Frage (23.11.):** „Hältst du meine Projektionsansicht für sinnvoll oder würdest du auf andere Ansichten setzen?“ Gemeint ist der
+Raum: in der Mitte die Blase zum Ziehen, Aufblasen und Glätten, an den höchstens drei sichtbaren Wänden die Projektionen von Seite, Front
+und Top als weiche Schatten mit den Kurven. Dreht man zu einer Projektion, morpht die Blase zur Ansicht; Tab faltet die Ecke zum
+Kistennetz der Vier Ansichten auf (deine Beschreibung vom 15.11.).
+
+![Die Projektionsansicht](../progress/suite/2026-11-23-projektionsansicht.png)
+
+**Urteil: behalten und ausbauen, nicht ersetzen.** Sie ist eine der stärksten und eigenständigsten Ideen in Ozzy.
+
+**Warum:**
+
+1. **Fühlen und Messen in einem Bild.** Andere Programme trennen das in vier Fenster (Blender, Maya) oder zeigen nur eine Ansicht mit
+   Würfel (Fusion, Shapr3D, Nomad, Spline).
+2. **Die Forschung stützt sie.** Bei Wanger, Ferwerda und Greenberg (1992) verbesserten Schatten und Perspektive das Platzieren am
+   stärksten, Projektion ohne Perspektive und Bewegung das Ausrichten. Die Projektionsecke zeigt Schatten, Perspektive und Projektion
+   zugleich. Schatten als Griffe, die das Objekt nicht verdecken, hat „Interactive Shadows“ (Herndon u. a., 1992) schon vorgeschlagen;
+   in den großen Programmen hat sich das nicht durchgesetzt. Ozzy wäre das erste Werkzeug, das die Idee richtig ausbaut.
+3. **Sie passt zu deinem Denken:** Für einen Illustrator ist der Umriss die Wahrheit, und die Wände zeigen genau die Umrisse.
+4. **Übergänge statt Schnitte:** Der Morph zur Ansicht und das Auffalten zum Kistennetz halten die Orientierung.
+5. **Für die KI ideal:** feste Blickwinkel im selben Bild.
+
+**Schwächen:**
+
+1. **Verkürzung:** Kurven auf schräg gesehenen Wänden sind verzerrt und klein; genaues Arbeiten leidet, auf dem iPhone besonders.
+2. **Platz:** Drei Wände nehmen Fläche, die Blase wird kleiner.
+3. **Nur Umrisse:** Was innen liegt oder sich überdeckt (zwei Ohren hintereinander in der Seite, das Maul), zeigt die Wand schlecht.
+4. **Viele Objekte und Architektur:** Die Wände laufen voll.
+5. **Kosten:** Jede Wand ist ein weiterer Durchgang. Linien sind billig, weiche Schatten etwas teurer (auf dem iPhone messen).
+
+**Sechs Ergänzungen** (Tafel):
+
+1. **Wand kommt zu dir:** Antippen und halten dreht die Wand zu dir, loslassen dreht zurück. Das baut auf dem vorhandenen Morph zur
+   Ansicht auf und hebt die Verkürzung auf.
+2. **iPhone: nur die Wand, die hilft:** der Boden immer, dazu die eine Wand, die zur Zugrichtung passt, und eine Lotlinie vom gezogenen
+   Punkt zum Boden.
+3. **Ecke folgt der Auswahl:** Bei vielen Objekten umschließt die Ecke nur, was gewählt ist.
+4. **Schnitt (neu):** eine Ebene, die die Form aufschneidet; für Maul, Zunge und Zähne und für die Architektur.
+5. **Drehteller:** Halten dreht die Form einmal langsam herum, so prüft man das Volumen.
+6. **Spielkamera:** „Wie im Spiel“ auch als Blick der Kamera von early earle.
+
+**Nicht tun:** auf das übliche Vierfenster oder eine einzelne Ansicht mit Würfel umsteigen. Das haben alle. Ozzys Ecke ist besser und
+braucht nur Regeln je Gerät.
+
+**Probe (Vorschlag, ungetestet):** an einer deiner Formen zehn Korrekturen am Umriss, einmal an der schrägen Wand und einmal mit „Wand
+kommt zu dir“. Dein Auge entscheidet, dazu die Zeit je Korrektur.
+
 ## 9 Lebendig: woran man merkt, dass Ozzy anders arbeitet
 
 **Grundsatz: In Bewegung lebendig, in Ruhe genau.** Studio hat dasselbe Prinzip schon für die Figur: In Ruhe ist die Figur genau ihre
@@ -315,6 +363,9 @@ Die Entscheidung Web, gemeinsamer Kern oder nativ fällt nach der Tempo-Probe.
 
 **Haare in Echtzeit:** [Strähnenhaar in einem großen Spiel, Advances 2025](https://www.advances.realtimerendering.com/s2025/content/Strand%20Hair%20in%20IJGC%20-%20Final%20Slides%20(Post-Conference).pdf),
 [NVIDIA, Hair Course 2010](https://developer.download.nvidia.com/presentations/2010/SIGGRAPH/HairCourse_SIGGRAPH2010.pdf)
+
+**Projektionsansicht:** [Interactive Shadows (Herndon u. a., UIST 1992)](https://researchr.org/publication/HerndonZRCSD92),
+[Wanger, Ferwerda, Greenberg 1992](https://en-cg-web.coecis.cornell.edu/pubs/1992/WFG92.html)
 
 **Ohne Link:** Benko, Wilson, Baudisch: „Precise Selection Techniques for Multi-Touch Screens“ (CHI 2006); Apple, WWDC 2023: „Animate
 with springs“ (Federn mit Dauer und Federung); Manifold (Bibliothek für robuste Booleans, in Blender seit 4.5).
