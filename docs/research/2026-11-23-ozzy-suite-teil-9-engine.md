@@ -17,9 +17,10 @@ sein als Spline.“ Und vom 17.11.: „Die Performance muss immer top sein.“
    Metal-Player. Ein anderes Fundament macht Ozzy also nicht besser. Besser wird es durch das, was darauf läuft.
 2. **Empfehlung: eigener Bildaufbau auf three.js** (Weg B). Ozzy bestimmt, wie jedes Bild entsteht: Licht, Kanten, Looks, Takte,
    Lesebilder. three.js bleibt der Unterbau (WebGPU, WebGL2, TSL). Teile, die bremsen, ersetzen wir einzeln.
-3. **Nicht realistischer, sondern eigen.** Ozzy gewinnt mit einer Engine für Illustration: Kanten aus den Linien (glatt bei jedem
-   Zoom, als Vektorbild ausgebbar), Licht zum Zeichnen (die Schattengrenze ist eine Linie), Luft in Stufen wie im Siebdruck, Stile als
-   Teil des Bildes. Realismus bleibt ein Stil unter vielen („Kino“, wie beim T-Rex).
+3. **Wirklichkeit als Kern, Stil als Regler** (nach deinem Einwand, Abschnitt 16). Ozzy rechnet Licht und Werkstoffe physikalisch
+   richtig und weicht dann bewusst ab: Kanten aus den Linien (glatt bei jedem Zoom, als Vektorbild ausgebbar), Licht zum Zeichnen (die
+   Schattengrenze ist eine Linie), Luft in Stufen wie im Siebdruck, Stile als Teil des Bildes. Jede Abweichung ist ein Regler: bei 0
+   ist das Bild wirklich, bei 1 ganz Stil.
 4. **Tempo von Anfang an:** Ziehen, Ruhe, Schlaf; Flächen günstig, Kanten scharf; Looks als übersetzte Rezepte mit Platzhalter; ein
    Kostenbuch je Gerät.
 5. **Für Claude gebaut:** Lesebilder (Farbe, Teile, Tiefe, Licht, Kosten); gleiche Eingabe gibt gleiches Bild; Bildvergleich als
@@ -45,8 +46,8 @@ iPhone zu suchen, wäre der falsche Kampf.
 
 ## 2 Was „besser“ heißen soll
 
-1. **Dein Look statt Standard.** Die Engine ist für Illustration gebaut: Earle, Spider-Verse, Ghibli, Sin City, die Seifenhaut von
-   liquid drop. Realismus ist ein Stil darunter.
+1. **Wirklichkeit und dein Look.** Die Engine rechnet richtig und lässt jeden Stil davon abweichen: Earle, Spider-Verse, Ghibli, Sin
+   City, die Seifenhaut von liquid drop (Abschnitt 16).
 2. **Schärfer.** Kanten wie in einer Vektorgrafik, bei jedem Zoom.
 3. **Schneller, auch beim Formen.** Auf dem iPhone 16 flüssig beim Bearbeiten, nicht nur beim Abspielen; im Leerlauf keine Last.
 4. **Steuerbar.** Jede Entscheidung über den Look ist eine Linie oder ein Regler: Schattengrenze, Glanzlicht, Staffel, Stufen.
@@ -198,7 +199,7 @@ Stelle). Vorbilder aus der Forschung: Eisemann und andere 2008, Bénard und Hert
 
 1. **„Eigene Engine“ heißt hier eigener Bildaufbau, nicht eigenes Fundament.** Eine Engine von Grund auf kostet Jahre, und Spline nutzt
    dasselbe Fundament wie wir. Der Unterschied liegt darüber.
-2. **Den Wettlauf um Realismus nicht auf dem iPhone suchen.** Stil zuerst; Realismus als Stil, am Mac voll, am iPhone in Ruhe.
+2. **Realismus ja, aber am iPhone in Stufen:** am Mac voll, am iPhone in der Ruhe oder gebacken (Abschnitt 16).
 3. **WebGPU in der App ist offen.** Bekommt die App dauerhaft nur WebGL2, wird ein nativer Player wie bei Spline wahrscheinlicher
    (Weg D nur fürs Abspielen).
 4. **Schattenkanten bleiben eine Grenze.** Sie wirken nur vektorhaft, solange ein Schattentexel höchstens ein bis zwei Bildpunkte groß
@@ -225,10 +226,38 @@ Stelle). Vorbilder aus der Forschung: Eisemann und andere 2008, Bénard und Hert
 ## 15 Offene Entscheidungen (deine)
 
 1. Bauweise: eigener Bildaufbau auf three.js (Empfehlung), eine ganz eigene Engine auf WebGPU oder nativ?
-2. Stil zuerst (Empfehlung) oder Realismus wie bei Spline zuerst?
-3. Erste Engine-Probe: Kanten und Licht zeichnen an deiner Form (Empfehlung), davor die Zehn-Minuten-Frage auf deinem iPhone?
+2. Wirklichkeit als Kern und jeder Stil als Regler davon weg (Empfehlung seit deinem Einwand, Abschnitt 16)?
+3. Erste Engine-Probe: eine Form, ein Regler, von wirklich bis Earle (Empfehlung, Abschnitt 16), davor die Zehn-Minuten-Frage auf
+   deinem iPhone?
 
-## 16 Quellen
+## 16 Nachtrag: Realismus als Kern (dein Einwand, 23.11.)
+
+**Dein Wort:** „Wäre Realismus nicht ein gutes Ziel? Wenn es Realismus kann, dann kann es das andere auch.“
+
+**Antwort:** Als Fundament ja; das macht dieses Papier besser. Der Satz gilt aber nur, wenn der Stil von Anfang an eingebaut ist.
+
+- **Warum du recht hast:** Richtig gerechnetes Licht liefert jedem Stil die besten Zutaten: wo Licht fällt, wie stark Ecken
+  verdecken, was sich spiegelt, wie Licht vom Boden zurückfällt. Deine Grammatik braucht es: Stein und Metall fürs Eckige, die
+  Seifenhaut fürs Runde (ihr Schillern ist echte Physik einer dünnen Schicht). CAD und Architektur brauchen es. Im Shader-Strang hast
+  du die realistischen Häute gelobt. Und „in jeder Hinsicht besser als Spline“ geht nicht ohne.
+- **Wo der Satz nicht von selbst gilt:** Eine Engine, die nur auf Realismus gebaut ist, wehrt sich gegen bewusste Abweichung. HDR und
+  Tonemapping verschieben die Palettenfarben, deine Earle-Farben kämen nicht exakt heraus. Realismus glättet Kanten über mehrere Bilder
+  und macht sie weich. Das Spiel lässt die Sonne absichtlich überall gleich flach scheinen: physikalisch falsch und genau dein Look.
+  Guilty Gear Xrd (Unreal Engine 3) und Hi-Fi Rush (Unreal Engine 4) zeigen, dass es auf Engines für Realismus geht, aber nur mit tiefen
+  Eingriffen (eigene Schattierung, gebogene Normalen, eigene Linien).
+- **Neu: Wirklichkeit als Kern, Stil als Regler.** Der Kern rechnet physikalisch richtig: Werkstoffe mit echten Eigenschaften
+  (Rauheit, Metall, dünne Schicht für die Seifenhaut, Licht unter der Oberfläche für Knete, Wachs und Haut) und Licht mit Schatten,
+  Verdeckung, Spiegelung und Umgebungslicht. Der Stil übersetzt dieses Ergebnis, und jede Abweichung ist ein Regler von 0 (wirklich)
+  bis 1 (ganz Stil): Stufen, Palette (exakte Farben am Tonemapping vorbei), Kanten, gezeichnetes Licht, Staffeln, Druck. Ein
+  Gesamtregler „Stil“ führt von Kino (0) zu Earle (1), ohne hässlichen Zustand dazwischen.
+- **Tempo:** Stil aus vollem Realismus wird nicht billiger, sondern teurer. Deshalb ist jede Zutat der Wirklichkeit eine Stufe: direktes
+  Licht immer; Schatten, Verdeckung, Spiegelung und indirektes Licht je nach Gerät, Takt und Stil. Earle braucht kaum mehr als direktes
+  Licht und Schatten, Kino braucht alles. Am iPhone kommt das volle Kino in der Ruhe oder gebacken.
+- **Neue erste Probe: eine Form, ein Regler.** Bei 0 wirken Stein und Seifenhaut echt, bei 1 steht genau der Earle-Look des Spiels.
+  Kriterium: Bei 0 hältst du es für echt, bei 1 ist es deckungsgleich mit dem Spiel (Vergleichsbild, gleiche Ansicht), dazwischen
+  gibt es nichts Hässliches, und auf dem iPhone 16 läuft es in der Ruhe flüssig. Kanten aus den Linien und Licht zeichnen folgen danach.
+
+## 17 Quellen
 
 - Spline V2: [Changelog](https://updates.spline.design/changelog/introducing-spline-v2), [Blog](https://blog.spline.design/spline-v2),
   [AlternativeTo](https://alternativeto.net/news/2026/8/spline-v2-launches-with-rebuilt-3d-editor-ai-agents-webgpu-and-new-desktop-app/),
