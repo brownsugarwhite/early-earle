@@ -64,6 +64,21 @@ Rundung ist der Anteil dieser halben Dicke, der gerundet wird. Bei 0 bleiben sch
 zwei Enden desselben Reglers, und „im Anschluss rund oder eckig machen“ ist ein einziger Griff. Einzelne Kanten (K wie heute) und
 einzelne Nähte bekommen eigene Werte.
 
+**Rundung und Griffe (Nachtrag).** Deine Frage: „Wäre die durch den Rundungsregler erzeugte Kurve/Ecke auch mit den Bezierhandles zu
+bearbeiten?“ Ja, und das muss so sein; sonst wäre die Rundung eine versteckte Rechnung neben den Linien.
+
+- **Zwei Arten von Rundung, beide echte Linien.** Ecken im Umriss (in der Ebene der Linie) werden normale Punkte mit Griffen, wie die
+  Live-Ecken in Illustrator. Kanten des Körpers (zwischen Deckel und Wand) bekommen ein kleines Profil aus zwei Punkten mit Griffen,
+  sichtbar im Schnitt, an der Wand der Projektionsecke und in den flachen Ansichten.
+- **Der Regler bestimmt die Größe, die Griffe den Charakter:** Kreis (Griffe etwa 55 % des Radius), weiche Ecke wie bei Apple (längere
+  Griffe, ohne Sprung in der Krümmung), Fase (gerade) oder Hohlkehle (nach innen).
+- **Hand schlägt Regler:** Eine von Hand gezogene Ecke behält ihre Form, der Regler skaliert sie nur noch. Ein Tippen auf ihr Zeichen
+  stellt sie zurück auf „folgt dem Regler“.
+- **Ein Profil für alle Kanten oder je Kante:** Zuerst gilt eines für den ganzen Körper; einzelne Kanten dürfen abweichen.
+- **Für Metall und Autos** gibt es einen Schalter für die glattere Rundung, bei der Glanzlichter ohne Knick über die Kante laufen.
+- **Der knifflige Teil:** Wo zwei Kanten mit verschiedenen Profilen an einer Ecke zusammentreffen, muss Ozzy vermitteln (in CAD heißt
+  das Eckübergang). Das gehört in die Rundungs-Probe.
+
 **Was gleich bleibt, egal ob Haus, Auto oder Abstraktes:** dieselben Werkzeuge (P, ziehen, Lasso, G, S, R), dieselben Ansichten
 (Projektionsecke, Wand kommt zu dir, Vier Ansichten, Schnitt), dieselbe Bibliothek, dieselben Regler, dieselbe KI.
 
