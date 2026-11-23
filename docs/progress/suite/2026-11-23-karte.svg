@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .wall { fill: #f3f1ec; stroke: #d5cfc4; stroke-width: 1.2; }
+      .land { fill: #e7ecdd; stroke: #c9cfbe; stroke-width: 1.2; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .roh { fill: none; stroke: #9a9fa6; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; stroke-linejoin: round; }
+      .weg { fill: none; stroke: #efe3c8; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+      .wegrand { fill: none; stroke: #b9a98a; stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; }
+      .baum { fill: #5f7f55; }
+      .drop { fill: #1b1b1b; }
+      .box { fill: #faf8f4; stroke: #e4dfd6; stroke-width: 1.4; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 600 11px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t4 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .nr { font: 700 9px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+    </style>
+    <g id="ozzy">
+      <ellipse cx="-12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(22 -12 -3)"/>
+      <ellipse cx="12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(-22 12 -3)"/>
+      <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <ellipse cx="0" cy="4" rx="2.6" ry="1.8" fill="#1b1b1b"/>
+    </g>
+    <g id="pfeil"><path class="thin" d="M -14 0 L 12 0 M 4 -6 L 13 0 L 4 6"/></g>
+    <g id="tanne"><path d="M 0 -26 L 9 0 L -9 0 Z" class="baum"/><rect x="-1.5" y="0" width="3" height="5" fill="#7a6a55"/></g>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Karten für early earle</text>
+  <text x="40" y="106" class="sub">Dieselbe Grammatik: Weltform, Wege, Kartenpunkte, Kamerafahrten · Vorschlag vom 23.11.2026 · nichts davon ist gebaut</text>
+
+  <!-- 1 Ebene und Kugel -->
+  <g transform="translate(40,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect class="land" x="30" y="90" width="150" height="200" rx="10"/>
+    <path class="grau" style="stroke: #d7dccb" d="M 30 140 L 180 140 M 30 190 L 180 190 M 30 240 L 180 240 M 80 90 L 80 290 M 130 90 L 130 290"/>
+    <path class="wegrand" style="stroke-width: 9" d="M 70 280 C 120 250, 50 210, 100 180 C 150 150, 80 120, 120 100"/>
+    <path class="weg" style="stroke-width: 6" d="M 70 280 C 120 250, 50 210, 100 180 C 150 150, 80 120, 120 100"/>
+    <g fill="#1b1b1b"><circle cx="84" cy="262" r="4"/><circle cx="82" cy="222" r="4"/><circle cx="112" cy="176" r="4"/><circle cx="104" cy="132" r="4"/></g>
+    <text class="t4" x="105" y="316" text-anchor="middle">Ebene: die Daten</text>
+    <use href="#pfeil" transform="translate(212,190)"/>
+    <path class="land" d="M 236 300 L 236 210 A 160 160 0 0 1 396 210 L 396 300 Z"/>
+    <path class="wegrand" style="stroke-width: 9" d="M 316 300 C 340 270, 296 240, 320 214 C 334 196, 312 176, 320 156"/>
+    <path class="weg" style="stroke-width: 6" d="M 316 300 C 340 270, 296 240, 320 214 C 334 196, 312 176, 320 156"/>
+    <g fill="#1b1b1b"><circle cx="326" cy="280" r="4"/><circle cx="312" cy="244" r="3.4"/><circle cx="324" cy="204" r="2.8"/><circle cx="318" cy="170" r="2.2"/></g>
+    <use href="#tanne" transform="translate(262,266) scale(1)"/>
+    <use href="#tanne" transform="translate(372,262) scale(0.9)"/>
+    <use href="#tanne" transform="translate(276,206) rotate(-14) scale(0.6)"/>
+    <use href="#tanne" transform="translate(364,200) rotate(14) scale(0.55)"/>
+    <use href="#tanne" transform="translate(296,160) rotate(-8) scale(0.4)"/>
+    <text class="t4" x="316" y="316" text-anchor="middle">Kugel: die Anzeige</text>
+    <text class="t1" x="18" y="440">Ebene und Kugel</text>
+    <text class="t2" x="18" y="464">Die Welt ist eine endlose Ebene; gezeigt wird sie als Kugel</text>
+    <text class="t2" x="18" y="482">um den Blickpunkt, wie heute im Spiel. Antippen, Schatten</text>
+    <text class="t2" x="18" y="500">und Physik rechnen in der Ebene, darum trifft man immer.</text>
+  </g>
+
+  <!-- 2 Weltform als Linie -->
+  <g transform="translate(485,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect class="wall" x="24" y="60" width="372" height="270" rx="6"/>
+    <text class="t4" x="36" y="80">Seitenansicht der Weltform</text>
+    <path d="M 24 330 L 24 214 C 140 214, 240 220, 300 248 C 340 266, 372 296, 396 330 Z" fill="#e7ecdd"/>
+    <path class="ink" d="M 24 214 C 140 214, 240 220, 300 248 C 340 266, 372 296, 396 330"/>
+    <g fill="#1b1b1b"><circle cx="24" cy="214" r="4.5"/><circle cx="300" cy="248" r="4.5"/></g>
+    <path class="thin" d="M 256 228 L 344 268"/>
+    <circle cx="256" cy="228" r="3.5" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+    <circle cx="344" cy="268" r="3.5" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+    <use href="#tanne" transform="translate(80,214) scale(1.1)"/>
+    <use href="#tanne" transform="translate(150,215) scale(1.1)"/>
+    <use href="#tanne" transform="translate(230,222) rotate(10) scale(1.2)"/>
+    <use href="#tanne" transform="translate(310,254) rotate(26) scale(1.4)"/>
+    <use href="#tanne" transform="translate(368,296) rotate(42) scale(1.6)"/>
+    <path class="grau" d="M 240 100 L 240 140 M 340 100 L 340 160"/>
+    <path class="drop" d="M 240 140 C 234 148, 234 154, 240 157 C 246 154, 246 148, 240 140 Z"/>
+    <path class="drop" d="M 340 160 C 334 168, 334 174, 340 177 C 346 174, 346 168, 340 160 Z"/>
+    <text class="t4" x="240" y="96" text-anchor="middle">Krümmung</text>
+    <text class="t4" x="340" y="96" text-anchor="middle">Staffelung</text>
+    <text class="t1" x="18" y="440">Weltform als Linie</text>
+    <text class="t2" x="18" y="464">Wie stark sich die Welt wegbiegt, ist eine Linie in der Seiten-</text>
+    <text class="t2" x="18" y="482">ansicht, mit Punkten und Griffen. Dazu Regler für Krümmung und</text>
+    <text class="t2" x="18" y="500">Staffelung. Alles darf sich bewegen, etwa beim Hineinzoomen.</text>
+  </g>
+
+  <!-- 3 Weg aus einem Strich -->
+  <g transform="translate(930,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect class="land" x="24" y="70" width="150" height="250" rx="10"/>
+    <path class="roh" d="M 60 300 C 110 280, 40 250, 92 226 C 140 204, 50 176, 98 150 C 130 132, 80 110, 120 92"/>
+    <use href="#pfeil" transform="translate(200,196)"/>
+    <rect class="land" x="226" y="70" width="170" height="250" rx="10"/>
+    <path class="wegrand" d="M 262 300 C 312 280, 242 250, 294 226 C 342 204, 252 176, 300 150 C 332 132, 282 110, 322 92"/>
+    <path class="weg" d="M 262 300 C 312 280, 242 250, 294 226 C 342 204, 252 176, 300 150 C 332 132, 282 110, 322 92"/>
+    <g>
+      <circle cx="270" cy="296" r="9" fill="#1b1b1b"/><text class="nr" x="270" y="299" text-anchor="middle" style="fill: #ffffff">1</text>
+      <circle cx="286" cy="262" r="9" fill="#1b1b1b"/><text class="nr" x="286" y="265" text-anchor="middle" style="fill: #ffffff">2</text>
+      <circle cx="296" cy="226" r="13" fill="none" stroke="#f0b429" stroke-width="3"/>
+      <circle cx="296" cy="226" r="9" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/><text class="nr" x="296" y="229" text-anchor="middle">3</text>
+      <circle cx="292" cy="190" r="9" fill="#ffffff" stroke="#a7adb4" stroke-width="1.6"/><text class="nr" x="292" y="193" text-anchor="middle" style="fill: #a7adb4">4</text>
+      <circle cx="294" cy="154" r="9" fill="#ffffff" stroke="#a7adb4" stroke-width="1.6"/><text class="nr" x="294" y="157" text-anchor="middle" style="fill: #a7adb4">5</text>
+      <circle cx="300" cy="120" r="9" fill="#ffffff" stroke="#a7adb4" stroke-width="1.6"/><text class="nr" x="300" y="123" text-anchor="middle" style="fill: #a7adb4">6</text>
+    </g>
+    <use href="#tanne" transform="translate(350,250)"/>
+    <use href="#tanne" transform="translate(244,180) scale(0.9)"/>
+    <text class="t4" x="99" y="342" text-anchor="middle">ein Strich</text>
+    <text class="t4" x="311" y="342" text-anchor="middle">Weg mit Leveln in gleichen Abständen</text>
+    <text class="t1" x="18" y="440">Weg aus einem Strich</text>
+    <text class="t2" x="18" y="464">Ein Strich durch die Landschaft wird der Weg; die Level setzen</text>
+    <text class="t2" x="18" y="482">sich in gleichen Abständen darauf, als Reihe. Bezüge halten ihn</text>
+    <text class="t2" x="18" y="500">um Bäume herum und unter Brücken hindurch.</text>
+  </g>
+
+  <!-- 4 Kartenpunkte mit Leben -->
+  <g transform="translate(40,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <ellipse cx="210" cy="190" rx="70" ry="22" fill="#d8d2c7"/>
+    <ellipse cx="210" cy="180" rx="70" ry="22" fill="#efe3c8" stroke="#b9a98a" stroke-width="2"/>
+    <ellipse cx="210" cy="180" rx="84" ry="30" fill="none" stroke="#f0b429" stroke-width="3"/>
+    <path d="M 244 176 L 244 108" stroke="#1b1b1b" stroke-width="2"/>
+    <path d="M 244 108 L 276 118 L 244 130 Z" fill="#d7332a"/>
+    <text x="196" y="187" text-anchor="middle" style="font: 700 16px 'Helvetica Neue', Arial; fill: #1b1b1b">12</text>
+    <path class="grau" d="M 130 132 Q 140 122 150 132 M 296 146 Q 306 136 316 146"/>
+    <g>
+      <rect class="box" x="24" y="250" width="86" height="52" rx="8"/>
+      <circle cx="67" cy="270" r="9" fill="#ffffff" stroke="#a7adb4" stroke-width="1.6"/>
+      <text class="t4" x="67" y="296" text-anchor="middle">gesperrt</text>
+      <rect class="box" x="118" y="250" width="86" height="52" rx="8"/>
+      <circle cx="161" cy="270" r="9" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <text class="t4" x="161" y="296" text-anchor="middle">offen</text>
+      <rect class="box" x="212" y="250" width="86" height="52" rx="8" style="stroke: #1b1b1b"/>
+      <circle cx="255" cy="270" r="12" fill="none" stroke="#f0b429" stroke-width="3"/>
+      <circle cx="255" cy="270" r="8" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <text class="t4" x="255" y="296" text-anchor="middle">aktuell</text>
+      <rect class="box" x="306" y="250" width="90" height="52" rx="8"/>
+      <circle cx="331" cy="270" r="9" fill="#1b1b1b"/>
+      <text x="368" y="274" text-anchor="middle" style="font: 11px 'Helvetica Neue', Arial; fill: #f0b429">★★★</text>
+      <text class="t4" x="351" y="296" text-anchor="middle">geschafft</text>
+    </g>
+    <rect x="24" y="318" width="372" height="44" rx="10" fill="#f6f4ef" stroke="#e4dfd6"/>
+    <text class="t3" x="38" y="337">Sobald</text>
+    <text class="t4" x="86" y="337">geschafft: nächster Punkt öffnet sich,</text>
+    <text class="t4" x="86" y="353">Funken steigen auf, die Kamera fährt hin</text>
+    <text class="t1" x="18" y="440">Kartenpunkte mit Leben</text>
+    <text class="t2" x="18" y="464">Jeder Punkt hat Zustände wie Posen, Verhalten wie Hüpfen und</text>
+    <text class="t2" x="18" y="482">Glühen und Regeln als Sätze aus Studio. Kein Code: antippen,</text>
+    <text class="t2" x="18" y="500">Sätze bauen, fertig.</text>
+  </g>
+
+  <!-- 5 Kamerafahrten -->
+  <g transform="translate(485,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect class="land" x="24" y="60" width="372" height="270" rx="10"/>
+    <use href="#tanne" transform="translate(300,150) scale(1.6)"/>
+    <use href="#tanne" transform="translate(326,160) scale(1.2)"/>
+    <path class="thin" style="stroke-width: 2" d="M 60 300 C 120 300, 150 230, 200 210 C 240 194, 260 170, 270 140"/>
+    <g fill="#1b1b1b">
+      <circle cx="60" cy="300" r="3"/><circle cx="84" cy="298" r="3"/><circle cx="106" cy="292" r="3"/><circle cx="126" cy="282" r="3"/>
+      <circle cx="144" cy="266" r="3"/><circle cx="160" cy="250" r="3"/><circle cx="174" cy="236" r="3"/><circle cx="186" cy="225" r="3"/>
+      <circle cx="196" cy="217" r="3"/><circle cx="205" cy="211" r="3"/><circle cx="214" cy="206" r="3"/><circle cx="226" cy="199" r="3"/>
+      <circle cx="240" cy="190" r="3"/><circle cx="254" cy="176" r="3"/><circle cx="264" cy="158" r="3"/><circle cx="270" cy="140" r="3"/>
+    </g>
+    <rect x="36" y="286" width="30" height="20" rx="4" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+    <circle cx="51" cy="296" r="5" fill="none" stroke="#1b1b1b" stroke-width="1.6"/>
+    <path class="ghost" d="M 270 140 L 300 128"/>
+    <path class="drop" d="M 306 112 C 300 120, 300 126, 306 129 C 312 126, 312 120, 306 112 Z"/>
+    <text class="t4" x="318" y="112">Blickziel</text>
+    <text class="t4" x="214" y="236">Perlen dicht: langsam</text>
+    <rect x="352" y="252" width="22" height="38" rx="5" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+    <path class="grau" d="M 344 262 Q 338 271 344 280 M 382 262 Q 388 271 382 280"/>
+    <text class="t4" x="363" y="314" text-anchor="middle">vorspielen</text>
+    <text class="t1" x="18" y="440">Kamerafahrten</text>
+    <text class="t2" x="18" y="464">Eine Bahn zeichnen, ein Blickziel setzen, das Timing an der</text>
+    <text class="t2" x="18" y="482">Perlenschnur schieben, oder die Fahrt mit dem iPhone in der Hand</text>
+    <text class="t2" x="18" y="500">vorspielen. Regeln starten sie, etwa nach einem Level.</text>
+  </g>
+
+  <!-- 6 Eine Zone aus einem Bild -->
+  <g transform="translate(930,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect x="24" y="60" width="372" height="270" rx="6" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+    <g opacity="0.45">
+      <rect x="26" y="62" width="368" height="266" fill="#f4e6c9"/>
+      <path d="M 26 220 C 80 180, 150 190, 210 170 C 270 150, 330 170, 394 150 L 394 328 L 26 328 Z" fill="#a9b98f"/>
+      <path d="M 26 260 C 90 236, 170 250, 230 230 C 290 212, 350 230, 394 214 L 394 328 L 26 328 Z" fill="#7f9a6c"/>
+      <path d="M 26 300 C 110 284, 200 296, 280 280 C 330 270, 370 278, 394 272 L 394 328 L 26 328 Z" fill="#5f7f55"/>
+      <path d="M 90 230 L 104 176 L 118 230 Z M 300 214 L 316 150 L 332 214 Z M 340 270 L 352 230 L 364 270 Z" fill="#3f5f3a"/>
+    </g>
+    <path class="ghost" d="M 26 222 C 80 182, 150 192, 210 172 C 270 152, 330 172, 394 152"/>
+    <path class="ghost" d="M 92 230 L 104 178 L 116 230 M 302 214 L 316 152 L 330 214"/>
+    <path class="ghost" d="M 150 320 C 170 290, 200 280, 230 260 C 250 248, 270 246, 290 236"/>
+    <use href="#ozzy" transform="translate(370,92)"/>
+    <text class="t4" x="36" y="80">Earle-Bild als Vorbild in der Spielkamera</text>
+    <text class="t1" x="18" y="440">Eine Zone aus einem Bild</text>
+    <text class="t2" x="18" y="464">Ein Earle-Bild liegt durchscheinend in der Spielkamera. Claude</text>
+    <text class="t2" x="18" y="482">legt im Zweig Gelände, Bäume und Wege als Geister darüber; du</text>
+    <text class="t2" x="18" y="500">nimmst, was passt, und formst den Rest von Hand.</text>
+  </g>
+</svg>

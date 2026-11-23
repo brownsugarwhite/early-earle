@@ -775,3 +775,7 @@ Teil 6: Scribble-Erkennung als Herzstück (acht Schritte, Kontext, Treue, Geiste
 
 Teil 7: Claude von Anfang an (eine Befehlsschicht als Quelle, MCP-Server und eingebautes Claude, Scribble statt Prompt, Zauberhand im
 Zweig, Mac und Handy, Sicherheit): [`2026-11-23-ozzy-suite-teil-7-claude-mcp.md`](2026-11-23-ozzy-suite-teil-7-claude-mcp.md).
+
+Teil 8: Karten für early earle (Ebene und Kugel, Weltform als Linie, Verbieger, Weg aus einem Strich, Kartenpunkte mit Zuständen,
+Fortschritt als Regler, Kamerafahrten, Scribble, Claude, Ozzy-Player im Spiel):
+[`2026-11-23-ozzy-suite-teil-8-karte.md`](2026-11-23-ozzy-suite-teil-8-karte.md).
