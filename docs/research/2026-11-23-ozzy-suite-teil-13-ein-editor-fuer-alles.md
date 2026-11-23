@@ -122,12 +122,23 @@ entstehen, indem man die Rezepte mischt oder ein neues schreibt.
 
 ## 9 Deine Projekte als Treppe (zur Information, keine Entscheidung nötig)
 
-Jedes Projekt fügt dem Editor ein Stockwerk hinzu, und jedes ist ein echtes Ergebnis, kein Test:
+Jedes Projekt fügt dem Editor ein Stockwerk hinzu, und jedes ist ein echtes Ergebnis, kein Test.
 
-1. **Ozzy-Logo:** Kurven in 2D, dein Vektorstil, Animation.
-2. **Gassirunde:** Figuren und Physik in 2D, Regeln als Sätze, ein kleines Spiel.
-3. **Traumacoaster:** Level, Karte, Bahn als Spielwerkzeug, 2,5D, Earle × Rayman.
+**Nachtrag auf deine Frage „zuerst die Gassirunde?“ (23.11.):** Ja, aber nicht „alles“ (der Studio-Plan M0 bis M11 war auf 120 bis 200
+Arbeitstage geschätzt), sondern der dünnste vollständige Durchstich durch alle Schichten. Davor kommen zwei Schritte, damit die
+Gassirunde schon im gemeinsamen Editor entsteht und nicht als eigene 2D-App:
+
+0. **Ein Stamm:** die Stränge zusammenführen (Ozzy, Maul, Paint, Objekte, Shader, Studio), auf dein Wort.
+1. **Das Fundament:** Befehlsschicht, Szene als Text, ein Kurven-Kern für 2D und 3D, das Gerüst des Players, die Physik hinter dem
+   Weltadapter.
+2. **Ozzy-Logo und Gassirunde:** Ozzy als genaue Vektorfigur (das Logo kommt dabei mit), Gehen als Posen, eine 2D-Physikwelt (Box2D) mit
+   weicher Figur, ein paar Sätze, ein kurzer Level, spielbar auf dem iPhone. Fertig heißt: Alles darin entstand mit den Werkzeugen des
+   Editors.
+3. **Traumacoaster:** Level, Karte, die Bahn als Werkzeug im Spiel, 2,5D, Earle × Rayman.
 4. **early earle:** Formen in 3D, Gelände, die Kugelkarte, die 2048-Logik als Code-Baustein.
+
+Die 3D-Arbeit an Ozzy (Formen, Maul, Paint, Shader) geht dabei nicht verloren: Sie ist das spätere Stockwerk 4 und kommt über den Stamm
+ins Haus.
 
 ## 10 Quellen
 
