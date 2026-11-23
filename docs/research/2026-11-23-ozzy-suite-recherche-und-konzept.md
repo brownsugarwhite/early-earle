@@ -803,3 +803,6 @@ Deutung): [`2026-11-23-ozzy-suite-teil-13-ein-editor-fuer-alles.md`](2026-11-23-
 Teil 14: Welche Werkstoffe sinnvoll sind (dreizehn in vier Familien, acht für den Anfang, Werkstoffe beschreiben Merkmale und Stile
 übersetzen sie, Auflagen und Leuchten, die 94 Shader einsortiert):
 [`2026-11-23-ozzy-suite-teil-14-werkstoffe.md`](2026-11-23-ozzy-suite-teil-14-werkstoffe.md).
+
+Teil 15: Schaden und Zerstörung (was über GTA 6 bekannt ist, fünf Schichten großer Spiele, die Tricks dahinter, Schaden aus Werkstoff,
+Posen und Nähten in Ozzy): [`2026-11-23-ozzy-suite-teil-15-schaden.md`](2026-11-23-ozzy-suite-teil-15-schaden.md).
