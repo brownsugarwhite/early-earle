@@ -795,3 +795,7 @@ Werkstoff, Spielwiese, Nachschwingen, Hand schlägt Physik):
 Teil 12: Native App und eigene Engine, ehrlich eingestuft (Einstufung in Prozent, Vorbilder kleiner Teams, sechs Ansätze aus übersehenen
 Ideen, was nativ bringt und kostet, zwei Vorversuche):
 [`2026-11-23-ozzy-suite-teil-12-native-engine.md`](2026-11-23-ozzy-suite-teil-12-native-engine.md).
+
+Teil 13: Ein Editor für alle Projekte (Traumacoaster, early earle, Gassirunde, Ozzy-Logo; Editor und Engine in einem; gleich bedienbar;
+Spielmechanik aus Sätzen und Code-Bausteinen; sechs Stile aus denselben Bausteinen; Stil-Bibeln als Wächter; Realismus als eigene
+Deutung): [`2026-11-23-ozzy-suite-teil-13-ein-editor-fuer-alles.md`](2026-11-23-ozzy-suite-teil-13-ein-editor-fuer-alles.md).
