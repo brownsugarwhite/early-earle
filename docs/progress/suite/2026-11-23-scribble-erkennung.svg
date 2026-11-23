@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .base { fill: #f1efeb; stroke: #a7adb4; stroke-width: 2; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+      .roh { fill: none; stroke: #9a9fa6; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; stroke-linejoin: round; }
+      .drop { fill: #1b1b1b; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 600 12px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t4 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+    </style>
+    <g id="pfeil"><path class="thin" d="M -16 0 L 14 0 M 5 -7 L 15 0 L 5 7"/></g>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Vom Kritzel zur Form</text>
+  <text x="40" y="106" class="sub">Scribble-Erkennung als Herzstück · Vorschlag vom 23.11.2026 · nichts davon ist gebaut</text>
+
+  <!-- Ablauf -->
+  <rect class="tile" x="40" y="130" width="1310" height="140" rx="16"/>
+  <text class="t4" x="490" y="160" text-anchor="middle">auf dem Gerät, sofort</text>
+  <path class="grau" d="M 90 170 L 890 170 M 90 166 L 90 174 M 890 166 L 890 174"/>
+  <text class="t4" x="1160" y="160" text-anchor="middle">teils mit Claude, als Geister</text>
+  <path class="grau" style="stroke: #7f97b0" d="M 1070 170 L 1250 170 M 1070 166 L 1070 174 M 1250 166 L 1250 174"/>
+  <path class="grau" d="M 90 208 L 1250 208"/>
+  <g class="drop">
+    <path d="M 90 196 C 83 205, 83 212, 90 215 C 97 212, 97 205, 90 196 Z"/>
+    <path d="M 250 196 C 243 205, 243 212, 250 215 C 257 212, 257 205, 250 196 Z"/>
+    <path d="M 410 196 C 403 205, 403 212, 410 215 C 417 212, 417 205, 410 196 Z"/>
+    <path d="M 570 196 C 563 205, 563 212, 570 215 C 577 212, 577 205, 570 196 Z"/>
+    <path d="M 730 196 C 723 205, 723 212, 730 215 C 737 212, 737 205, 730 196 Z"/>
+    <path d="M 890 196 C 883 205, 883 212, 890 215 C 897 212, 897 205, 890 196 Z"/>
+  </g>
+  <path d="M 1070 196 C 1063 205, 1063 212, 1070 215 C 1077 212, 1077 205, 1070 196 Z" fill="#7f97b0"/>
+  <path d="M 1250 196 C 1243 205, 1243 212, 1250 215 C 1257 212, 1257 205, 1250 196 Z" fill="#7f97b0"/>
+  <text class="t3" x="90" y="240" text-anchor="middle">1 aufnehmen</text>
+  <text class="t4" x="90" y="256" text-anchor="middle">Druck, Tempo, Gerät</text>
+  <text class="t3" x="250" y="240" text-anchor="middle">2 beruhigen</text>
+  <text class="t4" x="250" y="256" text-anchor="middle">Zittern weg</text>
+  <text class="t3" x="410" y="240" text-anchor="middle">3 zusammenfassen</text>
+  <text class="t4" x="410" y="256" text-anchor="middle">viele Striche, eine Linie</text>
+  <text class="t3" x="570" y="240" text-anchor="middle">4 zerlegen</text>
+  <text class="t4" x="570" y="256" text-anchor="middle">Ecken und Bögen</text>
+  <text class="t3" x="730" y="240" text-anchor="middle">5 Grundformen</text>
+  <text class="t4" x="730" y="256" text-anchor="middle">Kreis, Gerade, Kurve</text>
+  <text class="t3" x="890" y="240" text-anchor="middle">6 Beziehungen</text>
+  <text class="t4" x="890" y="256" text-anchor="middle">Spiegel, gleich, parallel</text>
+  <text class="t3" x="1070" y="240" text-anchor="middle">7 Zeichen und Teile</text>
+  <text class="t4" x="1070" y="256" text-anchor="middle">Symbole, Kopf, Beine</text>
+  <text class="t3" x="1250" y="240" text-anchor="middle">8 deuten, verschönern</text>
+  <text class="t4" x="1250" y="256" text-anchor="middle">Sinn, Namen, Stilbuch</text>
+
+  <!-- 1 Wackliger Kreis -->
+  <g transform="translate(40,290)">
+    <rect class="tile" width="420" height="515" rx="16"/>
+    <path class="roh" d="M 112 128 C 126 126, 134 132, 146 134 C 160 140, 168 152, 170 166 C 176 180, 168 192, 174 206 C 172 224, 160 236, 150 246 C 136 258, 122 262, 106 262 C 92 262, 80 256, 70 246 C 56 236, 52 220, 50 206 C 46 190, 54 176, 58 164 C 66 148, 80 138, 96 132 C 102 130, 108 130, 116 134"/>
+    <use href="#pfeil" transform="translate(212,196)"/>
+    <circle class="ink" cx="314" cy="196" r="64"/>
+    <circle cx="314" cy="196" r="3" fill="#1b1b1b"/>
+    <text class="t4" x="112" y="300" text-anchor="middle">mit der Maus, gezittert</text>
+    <text class="t4" x="314" y="300" text-anchor="middle">Kreis mit Mitte und Maß</text>
+    <text class="t1" x="18" y="412">Wackliger Kreis</text>
+    <text class="t2" x="18" y="436">Zittern wird geglättet, ohne nachzuhinken. Ist der Strich</text>
+    <text class="t2" x="18" y="454">fast ein Kreis, wird er einer. Ein Tippen auf das Ergebnis</text>
+    <text class="t2" x="18" y="472">holt deinen Strich genau so zurück, wie du ihn gezogen hast.</text>
+  </g>
+
+  <!-- 2 Viele Striche, eine Linie -->
+  <g transform="translate(485,290)">
+    <rect class="tile" width="420" height="515" rx="16"/>
+    <path class="roh" style="opacity: 0.85" d="M 40 238 C 58 198, 88 184, 118 192 M 56 226 C 80 190, 112 182, 138 198 M 108 194 C 136 204, 156 228, 172 252 M 118 202 C 146 222, 164 242, 176 264 M 98 198 C 128 202, 150 226, 168 256"/>
+    <use href="#pfeil" transform="translate(212,226)"/>
+    <path class="ink" d="M 246 236 C 268 190, 314 178, 338 206 C 354 226, 366 246, 382 262"/>
+    <text class="t4" x="108" y="300" text-anchor="middle">fünf zögerliche Striche</text>
+    <text class="t4" x="314" y="300" text-anchor="middle">eine saubere Linie</text>
+    <text class="t1" x="18" y="412">Viele Striche, eine Linie</text>
+    <text class="t2" x="18" y="436">Wer mit kurzen, zögerlichen Strichen zeichnet, bekommt</text>
+    <text class="t2" x="18" y="454">eine saubere Linie: Ozzy fasst Striche zusammen, die</text>
+    <text class="t2" x="18" y="472">dieselbe Kante meinen. Nachzeichnen ersetzt, statt zu doppeln.</text>
+  </g>
+
+  <!-- 3 Ecken klicken -->
+  <g transform="translate(930,290)">
+    <rect class="tile" width="420" height="515" rx="16"/>
+    <path class="grau" style="stroke-dasharray: 4 4" d="M 52 252 L 70 160 L 128 128 L 180 168 L 172 252 Z"/>
+    <g fill="#1b1b1b"><circle cx="52" cy="252" r="4.5"/><circle cx="70" cy="160" r="4.5"/><circle cx="128" cy="128" r="4.5"/><circle cx="180" cy="168" r="4.5"/><circle cx="172" cy="252" r="4.5"/></g>
+    <use href="#pfeil" transform="translate(214,196)"/>
+    <path class="ink" d="M 262 246 C 248 210, 260 168, 288 150 C 310 136, 346 140, 366 166 C 384 192, 380 236, 360 248 C 332 264, 286 264, 262 246 Z"/>
+    <path class="thin" d="M 252 320 L 386 320"/>
+    <path class="drop" d="M 350 306 C 344 314, 344 320, 350 323 C 356 320, 356 314, 350 306 Z"/>
+    <text class="t4" x="252" y="342">eckig</text>
+    <text class="t4" x="386" y="342" text-anchor="end">rund</text>
+    <text class="t4" x="116" y="300" text-anchor="middle">Maus: nur die Ecken klicken</text>
+    <text class="t4" x="318" y="296" text-anchor="middle">Rundung macht es weich</text>
+    <text class="t1" x="18" y="412">Ecken klicken</text>
+    <text class="t2" x="18" y="436">Mit der Maus geht es oft leichter, nur die Ecken zu</text>
+    <text class="t2" x="18" y="454">klicken. Der Regler Rundung macht daraus eine weiche</text>
+    <text class="t2" x="18" y="472">Form; die Ecken bleiben Punkte mit Griffen.</text>
+  </g>
+
+  <!-- 4 Figur-Kritzel -->
+  <g transform="translate(40,825)">
+    <rect class="tile" width="420" height="515" rx="16"/>
+    <path class="roh" d="M 40 230 C 38 200, 80 186, 120 190 C 150 194, 162 220, 150 240 C 130 258, 70 260, 42 232 M 140 198 C 138 170, 170 160, 186 176 C 198 192, 186 212, 158 210 M 150 174 L 144 150 L 160 168 M 168 170 L 174 146 L 182 168 M 60 252 L 58 276 M 82 256 L 82 280 M 118 256 L 120 278 M 136 250 L 142 272"/>
+    <circle cx="172" cy="186" r="2.5" fill="#9a9fa6"/>
+    <use href="#pfeil" transform="translate(214,220)"/>
+    <ellipse class="base" cx="262" cy="258" rx="7" ry="11"/>
+    <ellipse class="base" cx="286" cy="261" rx="7" ry="11"/>
+    <ellipse class="base" cx="318" cy="261" rx="7" ry="11"/>
+    <ellipse class="base" cx="340" cy="257" rx="7" ry="11"/>
+    <ellipse class="base" cx="300" cy="228" rx="58" ry="30"/>
+    <path class="base" d="M 342 182 L 338 152 L 356 176 Z"/>
+    <path class="base" d="M 362 176 L 370 148 L 378 176 Z"/>
+    <circle class="base" cx="358" cy="198" r="24"/>
+    <circle cx="364" cy="194" r="3" fill="#1b1b1b"/>
+    <path class="grau" d="M 286 214 L 270 150 M 352 150 L 360 120 M 270 272 L 262 312"/>
+    <text class="t4" x="258" y="144">Körper</text>
+    <text class="t4" x="336" y="114">Ohren, ein Paar</text>
+    <text class="t4" x="232" y="326">Beine, zwei Paare</text>
+    <text class="t1" x="18" y="412">Figur-Kritzel</text>
+    <text class="t2" x="18" y="436">Ozzy erkennt Teile (Körper, Kopf, Ohren, Beine), Paare und</text>
+    <text class="t2" x="18" y="454">Spiegel, bläst Rundes auf und benennt alles. Bei Zweifeln</text>
+    <text class="t2" x="18" y="472">fragt er mit Geistern, nicht mit Text.</text>
+  </g>
+
+  <!-- 5 Der Ort entscheidet mit -->
+  <g transform="translate(485,825)">
+    <rect class="tile" width="420" height="515" rx="16"/>
+    <rect x="24" y="96" width="372" height="96" rx="10" fill="#f1ede6"/>
+    <path class="roh" d="M 44 150 C 64 120, 84 176, 104 146 C 122 120, 140 170, 164 140"/>
+    <use href="#pfeil" transform="translate(212,146)"/>
+    <path d="M 246 150 C 266 120, 286 176, 306 146 C 324 120, 342 170, 366 140" fill="none" stroke="#7fb3d5" stroke-width="14" stroke-linecap="round"/>
+    <path d="M 246 150 C 266 120, 286 176, 306 146 C 324 120, 342 170, 366 140" fill="none" stroke="#cfe5f2" stroke-width="3" stroke-linecap="round"/>
+    <text class="t4" x="210" y="214" text-anchor="middle">rund am Boden: ein Fluss</text>
+    <rect x="24" y="236" width="372" height="96" rx="10" fill="#f1ede6"/>
+    <path class="roh" d="M 44 300 L 80 262 L 112 300 L 146 264 L 166 288"/>
+    <use href="#pfeil" transform="translate(212,284)"/>
+    <path d="M 246 300 L 282 262 L 314 300 L 348 264 L 368 288" fill="none" stroke="#b8b2a7" stroke-width="14" stroke-linejoin="round" stroke-linecap="square"/>
+    <path d="M 246 293 L 282 255 L 314 293 L 348 257 L 368 281" fill="none" stroke="#e2ddd4" stroke-width="3" stroke-linejoin="round"/>
+    <text class="t4" x="210" y="354" text-anchor="middle">eckig am Boden: eine Mauer</text>
+    <text class="t1" x="18" y="412">Der Ort entscheidet mit</text>
+    <text class="t2" x="18" y="436">Derselbe Strich wird je nach Ort, Ansicht und Station etwas</text>
+    <text class="t2" x="18" y="454">anderes: am Boden rund ein Fluss, eckig eine Mauer; an der</text>
+    <text class="t2" x="18" y="472">Figur ein Teil; in einer Bewegung eine Bahn.</text>
+  </g>
+
+  <!-- 6 Unsicher: drei Geister -->
+  <g transform="translate(930,825)">
+    <rect class="tile" width="420" height="515" rx="16"/>
+    <circle class="base" cx="80" cy="240" r="36"/>
+    <path class="roh" d="M 66 214 L 80 168 L 98 214"/>
+    <use href="#pfeil" transform="translate(150,220)"/>
+    <circle class="base" cx="290" cy="244" r="52"/>
+    <path d="M 272 200 C 266 164, 284 144, 294 152 C 302 160, 298 184, 294 198 Z" fill="#f1efeb" stroke="#1b1b1b" stroke-width="2.2"/>
+    <path class="ghost" d="M 316 202 L 334 146 L 338 204"/>
+    <path class="ghost" d="M 248 206 C 236 182, 250 164, 246 146 C 262 162, 266 182, 262 206"/>
+    <path class="thin" d="M 236 324 Q 290 344 344 324 M 244 316 L 235 324 L 246 330 M 334 318 L 345 324 L 334 330"/>
+    <text class="t4" x="290" y="362" text-anchor="middle">wischen: nächste Deutung</text>
+    <text class="t4" x="294" y="132" text-anchor="middle">Ohr (sicher)</text>
+    <text class="t4" x="356" y="140">Horn</text>
+    <text class="t4" x="214" y="140">Flamme</text>
+    <text class="t1" x="18" y="412">Unsicher? Drei Geister</text>
+    <text class="t2" x="18" y="436">Das Wahrscheinlichste kommt sofort, zwei andere Deutungen</text>
+    <text class="t2" x="18" y="454">warten als Geister. Wischen wechselt, und Ozzy merkt sich,</text>
+    <text class="t2" x="18" y="472">wie du es meinst.</text>
+  </g>
+</svg>

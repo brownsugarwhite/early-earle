@@ -769,3 +769,6 @@ und Licht, Bewegung als Regler über die Zeit, volle Kontrolle:
 
 Teil 5: Studio erklärt (Funktionsweise, Werkzeuge, Stand) und wie es in Ozzy aufgeht:
 [`2026-11-23-ozzy-suite-teil-5-studio.md`](2026-11-23-ozzy-suite-teil-5-studio.md).
+
+Teil 6: Scribble-Erkennung als Herzstück (acht Schritte, Kontext, Treue, Geister, Lernen, Maus, Finger, Stift, erste Probe):
+[`2026-11-23-ozzy-suite-teil-6-scribble-erkennung.md`](2026-11-23-ozzy-suite-teil-6-scribble-erkennung.md).
