@@ -16,7 +16,7 @@ unabhängige Prüfung gibt, steht es dabei.
 
 **Inhalt:** 0 Kurzfassung · 1 Die Vision · 2 Was es schon gibt · 3 Was Ozzy mitbringt · 4 Leitideen · 5 Das Fundament · 6 Der Ablauf ·
 7 Deine Fragen, je mit Möglichkeiten · 8 Vier Gesamtbilder · 9 Aus meiner Sicht als KI · 10 Ideenspeicher · 11 Weg in kleinen Beweisen ·
-12 Offene Entscheidungen · 13 Quellen
+12 Offene Entscheidungen · 13 Quellen · 14 Nachtrag: Zeichnen statt Worte
 
 ---
 
@@ -35,15 +35,17 @@ unabhängige Prüfung gibt, steht es dabei.
 4. **Vorschlag fürs Fundament: fünf Bausteine, gleich in 2D und 3D:** Linien (Form), Looks (Aussehen), Regler (Werte, Posen, Zeit),
    Verhalten (was sich von selbst bewegt) und Bezüge (Genauigkeit). Alles, was man tun kann, ist ein Befehl auf diesen Bausteinen. Hand,
    KI und Rezepte benutzen dieselben Befehle.
-5. **Jeder Schritt geht auf vier Wegen:** mit der Hand, mit Worten, mit einem Vorbild (Foto, Skizze, vorgespielte Bewegung) und mit einem
-   Rezept (Schritte zum Folgen). Was die KI tut, ist ein normaler Schritt: sichtbar, zurücknehmbar, von Hand weiterzuführen.
+5. **Jeder Schritt geht auf vier Wegen:** mit der Hand, mit einem Scribble (man zeichnet, was man meint, statt es zu beschreiben), mit
+   einem Vorbild (Foto, vorgespielte Bewegung) und mit einem Rezept (Schritte zum Folgen). Worte sind nur ein freiwilliger Notausgang
+   (Nachtrag 23.11., Abschnitt 14). Was die KI tut, ist ein normaler Schritt: sichtbar, zurücknehmbar, von Hand weiterzuführen.
 6. **Deine Fragen, je ein Satz:** Genauigkeit „auf Abruf“ (Zögern rastet ein, schlauer Fang, weiche Bezüge). 2D und 3D als „Blatt und
    Raum“ in einem Dokument (Aufblasen hin, Abziehen zurück). Bewegung über Posenfeld, Verhalten, Vorspielen und eine Perlenschnur statt
    Zeitleiste. Looks als Proben auf der eigenen Form mit wenigen Reglern, Partikel als gezeichnete Ströme, das Tempo immer sichtbar. Klug
    wirkt es durch Geister-Vorschläge, Varianten, Zeigen und Sagen, einen sichtbaren KI-Zeiger, Wächter und ein Stilbuch.
 7. **Empfehlung:** zuerst die gemeinsame Grundlage (eine Textform der Szene und eine Befehlsschicht für Hand und KI) und daran ein kleiner
-   Beweis: Claude baut in Ozzy aus Worten eine Form, Schritt für Schritt sichtbar und zurücknehmbar. Danach Genauigkeit, dann das
-   Posenfeld. Vorher klären, ob die Stränge zu einem Stamm zusammengeführt werden.
+   Beweis: Ozzy versteht ein grobes Scribble und baut daraus eine Form aus benannten Teilen, Schritt für Schritt sichtbar und
+   zurücknehmbar (Abschnitt 14). Danach Genauigkeit, dann das Posenfeld. Vorher klären, ob die Stränge zu einem Stamm zusammengeführt
+   werden.
 
 ## 1 Die Vision, wie ich sie verstehe
 
@@ -220,7 +222,7 @@ gut: Dort ist der Regler bereits der Grundbaustein.
 3. **Tiefe auf Abruf.** Kein Programm für Anfänger und keins für Profis, sondern dieselben Werkzeuge in drei Tiefen: **Spielen** (Rezepte,
    Vorschläge, Varianten), **Gestalten** (alle Werkzeuge und Regler), **Bauen** (eigene Looks, eigene Verhalten, Code). Keine Modi, nur
    Linsen, die gelten, solange man hält (Studio-Recherche 12).
-4. **Vier Wege zu jedem Schritt:** Hand, Wort, Vorbild, Rezept (Abschnitt 6).
+4. **Vier Wege zu jedem Schritt:** Hand, Scribble, Vorbild, Rezept (Abschnitte 6 und 14); Worte nur als freiwilliger Notausgang.
 5. **Was die KI tut, ist ein normaler Schritt.** Man sieht sie arbeiten, kann jeden Schritt zurücknehmen und von Hand weitermachen. Sie
    liefert Linien, Regler und Looks, keine fertigen Bilder.
 6. **Verhalten vor Schlüsseln.** Was sich von selbst bewegen kann, bewegt sich von selbst (atmen, nachschwingen, gehen). Schlüssel nur
@@ -274,6 +276,9 @@ Zurücknehmen. Eine Textform (Arbeitstitel „Ozzy-Schrift“) schreibt das Doku
 | Beleben | Posenfeld, Vorspielen, Perlenschnur, Verhalten | „schleicht zum Napf und frisst gierig“ | sich selbst vor der Kamera vorspielen; die Stimme bewegt das Maul | „Fressen in fünf Schritten“ |
 | Inszenieren | Figuren auf die Bühne, Kamera vorspielen | „Nahaufnahme, wenn er rülpst“ | Storyboard-Skizze | „Kurzfilm in drei Einstellungen“ |
 | Ausgeben | „Wie im Spiel“, Backen | „fürs iPhone, 60 Bilder je Sekunde“ | – | „Ins Spiel bringen“ |
+
+**Nachtrag 23.11.:** Du willst zeichnen statt beschreiben. Die Spalte „Wort“ wird zur Spalte „Scribble“; Beispiele je Bereich in
+Abschnitt 14.4.
 
 **Drei Durchgänge** (ausgedacht, um den Ablauf zu prüfen):
 
@@ -364,7 +369,7 @@ Programm sind sofort da, kostenlos und ohne Netz. Die große KI (Claude) braucht
 | --- | --- | --- |
 | A | **Geister-Vorschläge:** Nach dem Aufblasen erscheinen durchscheinend mögliche nächste Teile (Ohren, Beine, Augen); Tab nimmt sie. Autovervollständigen für Formen. | Es denkt mit. |
 | B | **Teile erkennen und benennen:** Das Programm weiß, was Ohr, Schnauze und Bauch ist. | Man kann alles beim Namen nennen. |
-| C | **Zeigen und Sagen:** mit dem Stift auf das Ohr zeigen und sagen „so wie bei einem Fuchs“ (Put-That-There, 1980). | Die natürlichste Art, einen Wunsch zu sagen. |
+| C | **Zeigen und Zeichnen:** mit dem Stift das Ohr einkreisen und daneben ein Fuchsohr skizzieren oder ein Foto legen (Abschnitt 14); Sprechen nur für die, die wollen (Put-That-There, 1980). | Ein Wunsch ohne ein Wort. |
 | D | **KI-Zeiger:** Claude arbeitet sichtbar als zweiter Zeiger in der Szene, wie ein Kollege in Figma; jederzeit anzuhalten. | Vertrauen durch Zusehen. |
 | E | **Varianten-Zweige:** KI und Mensch probieren in Zweigen, nebeneinander vergleichbar, dann übernehmen. | Mut zum Ausprobieren. |
 | F | **Vormachen:** „Zeig mir, wie du das gemacht hast“: Die KI spielt ihre Schritte langsam mit den echten Werkzeugen ab. | Einsteiger lernen beim Zusehen. |
@@ -531,7 +536,7 @@ Jede Stufe nützt für sich und endet mit einer Probe an deinen Formen. Gebaut w
 | Stufe | Inhalt | Probe (Kriterium) |
 | --- | --- | --- |
 | 0 | **Ein Stamm:** die Stränge (Objekte, Paint, Maul, Shader) zusammenführen | alle vorhandenen Proben grün in einer Linie |
-| 1 | **Ozzy-Schrift, Befehlsschicht, MCP-Server auf dem Rechner** | Claude baut aus zehn kurzen Beschreibungen je eine Startform in Ozzy, jeder Schritt sichtbar und mit ⌘Z einzeln zurückzunehmen; du behältst mindestens 6 von 10 als Start |
+| 1 | **Scribble zu Form** (Nachtrag 23.11.), mit Ozzy-Schrift, Befehlsschicht und MCP-Server als Unterbau: Ozzy versteht ein grobes Scribble, teilt es in benannte Teile, bläst sie auf, spiegelt und verbindet sie; der Rotstift ändert eine fertige Form | Von zehn groben Scribbles behältst du mindestens sechs als Start; bei zehn Rotstift-Korrekturen an deinen Formen ist die richtige Deutung mindestens achtmal unter höchstens drei Geistern; jeder Schritt sichtbar und mit ⌘Z einzeln zurückzunehmen |
 | 2 | **Genauigkeit auf Abruf:** Zögern rastet ein, schlauer Fang, weiche Bezüge (gleich lang, symmetrisch, parallel, auf dem Boden) | An einer deiner Formen bleiben zwei Ohren gleich lang, während du frei formst, und du spürst keinen Zwang |
 | 3 | **Posenfeld und Verhalten-Tropfen in 3D** (mit den Posen von Maul und Fressen) | fünf Sekunden „hungrig, frisst, satt“ ohne Zeitleiste, live auf dem iPad |
 | 4 | **Vektor-Ausgabe und Abziehen** (3D zu 2D-Schlüsseln für Studio) | SVG der Vier Ansichten; Front und Seite einer Form als Studio-Schlüssel, von dir korrigiert, schneller als von null gezeichnet |
@@ -544,7 +549,7 @@ ob die KI in Ozzy brauchbar arbeitet.
 
 ## 12 Offene Entscheidungen (deine)
 
-1. **Mit welchem Beweis anfangen?** Stufe 1 (KI baut Formen), 2 (Genauigkeit), 3 (Posenfeld) oder 4 (2D-Brücke).
+1. **Mit welchem Beweis anfangen?** Stufe 1 (Scribble zu Form), 2 (Genauigkeit), 3 (Posenfeld) oder 4 (2D-Brücke).
 2. **Ein Stamm zuerst?** Die Stränge Objekte, Paint, Maul und Shader zusammenführen, bevor Neues kommt.
 3. **Für wen zuerst?** early earle selbst, Grafiker wie du, Einsteiger oder Indie-Spieleentwickler. Empfehlung: early earle, dann Grafiker.
 4. **Wo zuerst?** Web und iPad wie jetzt, dazu das Claude-Gespräch (MCP-App); eine native App später.
@@ -604,3 +609,148 @@ Design Galleries (Marks u. a., 1997); Put-That-There (Bolt, 1980); Spores Kreatu
 **Eigene Berichte:** `docs/research/2026-11-20-editor-recherche.md` (Zweig `claude/ozzy-animation-physics-294508`),
 `docs/research/2026-11-18-claude-in-ozzy.md` (Zweig `claude/ozzy-direct-integration-5cd812`), `docs/research/ki-3d-tools-2026-10.md`,
 `docs/research/2026-11-09-fibermesh-monstermash-richtung.md`, `docs/look/ozzy/UEBERGABE.md`.
+
+## 14 Nachtrag 23.11.: Zeichnen statt Worte
+
+**Dein Wort (23.11.):** „Was hältst du davon, weg vom textbasierten Prompting zu einem scribble-basierten Prompting zu gehen, wie wir es
+jetzt am Anfang schon haben? Man zeichnet, was man denkt. Ich bin kein Fan von Worten. Man zeichnet, was man denkt, anstatt es zu
+beschreiben.“
+
+### 14.1 Einschätzung
+
+Ich halte das für den richtigen Kern der Suite, nicht als Zusatz, sondern als ihre Hauptsprache. Worte bleiben ein Notausgang, den
+niemand benutzen muss.
+
+- **Für Form ist eine Zeichnung genauer als jedes Wort.** „Das Ohr etwas spitzer und nach hinten geneigt“ bleibt vage; ein Strich trägt
+  Form, Größe, Lage, Richtung und Schwung auf einmal.
+- **Die Forschung zeigt in dieselbe Richtung.** Zeichnen ist bei räumlichen Änderungen klarer und schneller und strengt weniger an; Text
+  bleibt bei Bedeutung und globalem Stil stark; in einer Studie vom Februar 2026 (30 Personen) schnitt die Mischung am besten ab. Ein
+  Tester von Googles Nano Banana schreibt, Zeichnen auf dem Foto funktioniere besser als Tippen.
+- **Es ist schon deine Arbeitsweise.** Du korrigierst mit Übermalungen und Bildschirmfotos. Bei Ozzy-Figur wurde aus deiner
+  Photoshop-Übermalung der Zwischenschlüssel für 67°, mit 99,7 % Übereinstimmung. Eine Beschreibung hätte das nicht geschafft.
+- **Es setzt fort, womit Ozzy beginnt.** Heute: „draw something“, und Ozzy bläst den Umriss auf. Morgen: „draw something“, und Ozzy
+  versteht, was du gezeichnet hast.
+- **Es ist für alle:** Kinder, Menschen jeder Sprache, alle, die nicht gern schreiben.
+- **Es grenzt ab.** Fast alle KI-Werkzeuge haben 2026 ein Textfeld als Mitte; bei Google und Adobe ist Zeichnen ein Zusatz, um Pixel zu
+  ändern.
+- **In Ozzy ist es für eine KI leichter als anderswo.** Ein Scribble ist dort schon Linie, also Daten mit Koordinaten, kein Foto einer
+  Skizze. Es liegt in einer bekannten Ansicht auf einer Form mit benannten Teilen, und die Seifenhaut macht aus einem groben Strich eine
+  runde Form. Wie gut ich Scribbles deute, ist ungetestet; das Kriterium steht in 14.8.
+
+**Wo Worte besser sind, ehrlich:** abstrakte Eigenschaften („niedlicher“), Vergleiche („wie ein Fuchs“), Namen von Materialien,
+Verneinungen („keine Outlines“), Regeln („wenn er satt ist, schläft er“). Abschnitt 14.5 zeigt, wie das auch ohne Worte geht.
+
+### 14.2 Was es schon gibt
+
+| Werkzeug | Was es tut | Was fehlt |
+| --- | --- | --- |
+| Google Nano Banana (Gemini-App) | auf ein Foto zeichnen (Kreise, Pfeile, Kritzel), Text freiwillig; das Bild wird geändert | Das Ergebnis sind Pixel. |
+| Adobe AI Markup (Firefly; Photoshop im Web als Beta seit April) | Striche, Auswahl und Text zusammen; das Ergebnis liegt auf einer eigenen Ebene | Pixel; der Text bleibt die Mitte. |
+| Vizcom | Skizze zu Rendering, dann zu einem drehbaren 3D-Modell und weiter in Autodesk Fusion | für Produktdesign; kein Formen aus Linien |
+| Meshy, Tripo | Skizze zu 3D-Netz; Teile werden nachträglich aus dem Netz geschnitten | ein Netz ohne Linien, Posen und Namen; ein Test fand, dass Meshys Bearbeitung Teile wie Hut oder Stiefel nicht erkennt |
+| tldraw | „Make Real“ (2023): eine skizzierte Oberfläche wird eine laufende Seite; seit März 2026 eine MCP-App, mit der Agenten auf der Fläche zeichnen; ein Versuch mit Agenten als kleinen Figuren auf der Fläche | Diagramme und Oberflächen, keine Figuren |
+| Sketch2Anim (SIGGRAPH 2025) | Storyboard-Skizzen zu 3D-Bewegung (Schlüsselposen, Bahnen); Speedlines fürs Timing sind als nächster Schritt geplant | Forschung; Menschen-Skelette |
+| Sketch2Arti (2026) | Striche legen fest, welche Teile eines Objekts sich wie bewegen | Forschung; CAD-Objekte |
+
+**Klassiker:** Sketchpad (Sutherland, 1963), das erste Zeichenprogramm, kannte schon Bezüge. Teddy (1999) und FiberMesh (2007) formen
+durch Drüberzeichnen. Bei Motion Doodles (Thorne, Burke, van de Panne, 2004) bestimmt die Form eines Kritzels die Bewegung: Bogen heißt
+Sprung, Schleife heißt Salto. Bei Line of Action (Guay, Cani, Ronfard, 2013) stellt ein Strich die ganze Pose, bei Space-time Sketching
+(Guay u. a., 2015) wird ein Strich zur Bewegung. SMACC (2025) steuert Bewegung mit Comic-Zeichen. Mort Walker hat den Comic-Zeichen in
+„The Lexicon of Comicana“ (1980) sogar Namen gegeben.
+
+**Folgerung:** Alle machen aus Scribbles Pixel, Netze oder Code. Niemand macht daraus bearbeitbare Linien, Teile, Posen und Verhalten
+einer Figur. Das ist dieselbe Lücke wie in Abschnitt 2.8, diesmal von der Eingabe her gesehen.
+
+### 14.3 Vier Grundregeln: Ort, Stift, Zeichen, Zeit
+
+Ein Scribble kann vieles heißen. Vier Dinge machen es eindeutig, ohne ein Wort:
+
+1. **Ort:** Auf dem Umriss heißt umformen. Innen heißt Einzelheit (Loop, Farbe, Auge). Außen und berührend heißt neues Teil. Im Leeren
+   heißt neue Form. Auf dem Boden heißt Weg. Um etwas herum heißt „das hier“.
+2. **Stift:** Die Tinte zeichnet die Sache selbst. **Der Rotstift** zeichnet eine Anweisung, wie die Korrektur eines Art Directors: Ozzy
+   liest die roten Striche, setzt sie um, und die rote Tinte verdunstet.
+3. **Zeichen:** Pfeile, Kreise, Kreuze, Gleichheitszeichen, Comic-Zeichen (14.4).
+4. **Zeit:** In eine laufende Bewegung zeichnen heißt vorspielen; in ein stehendes Bild zeichnen heißt formen.
+
+**Antwort als Bild:** Bleibt ein Scribble mehrdeutig, fragt Ozzy nicht mit Text, sondern zeigt zwei bis vier Deutungen als Geister. Tippen
+nimmt eine, ein neuer Strich verfeinert.
+
+### 14.4 Die Zeichensprache (Vorschlag)
+
+![Zeichensprache für Ozzy](../progress/suite/2026-11-23-zeichensprache.png)
+
+| Bereich | Man zeichnet | Ozzy macht |
+| --- | --- | --- |
+| Form | über den Umriss | Der Umriss folgt dem Strich. |
+| Form | eine geschlossene Form, die den Körper berührt | ein neues Teil, aufgeblasen, angesetzt und benannt; das Gegenstück auf der anderen Seite als Geist |
+| Form | ein grobes Bild mit inneren Strichen | Teile erkennen (Körper, Kopf, Ohren, Beine, Augen, Maul), je aufblasen und verbinden |
+| Form | durchkritzeln | entfernen |
+| Pose | ein Strich durch die Figur (Line of Action) | Die ganze Figur legt sich in den Schwung. |
+| Genauigkeit | „=“ zwischen zwei Teilen | gleich lang (weicher Bezug) |
+| Genauigkeit | „∥“, ein kleines Quadrat in der Ecke, eine gestrichelte Linie | parallel, rechtwinklig, Spiegelachse |
+| Bewegung | eine Bahn mit Bögen und Schleifen | gehen, springen, Salto (Motion Doodles) |
+| Bewegung | Speedlines; kleine Querstriche entlang der Bahn | schnell; der Abstand der Striche ist das Timing (die Perlenschnur, von Hand gezeichnet) |
+| Bewegung | Zickzack, Spirale | zittern, rollen |
+| Stimmung | Herzchen, Schweißtropfen, Zornesader, „Zzz“, Sterne um den Kopf, „!“ | verliebt, nervös, wütend, schläft, benommen, erschrickt: Pose, Verhalten und passende Ströme |
+| Look | drei Streifen oder ein paar Flecken auf die Haut | Das Muster breitet sich über die Form aus (Tiger, Leopard aus dem Shader-Strang), Breite und Abstand aus dem Strich. |
+| Look | Farbtupfer, Schraffur, ein Glanzpunkt | Palette, Fell oder Schatten, Glanz |
+| Ströme | Wellenlinien nach oben, fallende Tropfen, Zacken, Wölkchen | Dampf oder Geruch, Sabber, Funken, Staub |
+| Kamera | ein Rahmen; ein Pfeil am Rahmen; mehrere Rahmen nebeneinander | Ausschnitt; Kamerafahrt; Storyboard |
+| Fragen | „?“ neben etwas | Möglichkeiten als Geister |
+| Fragen | Haken, Kreuz | übernehmen, verwerfen |
+
+Die Comic-Zeichen sind der spielerischste Teil: Jedes Kind kennt sie, und sie passen genau zu Figuren mit Launen wie in early earle
+(„hungrig“, „satt“). Eigene Zeichen lassen sich beibringen: dreimal zeichnen, dann die gewünschte Wirkung antippen.
+
+### 14.5 Auch das Abstrakte ohne Worte
+
+| Wunsch | Ohne Worte |
+| --- | --- |
+| „niedlicher“, „böser“ | ein Bildregler, dessen Enden gezeichnete Beispiele sind; oder auf dem Gesicht die Augen größer zeichnen, und Ozzy verallgemeinert |
+| „wie ein Fuchs“ | ein Foto oder eine kleine Fuchsohr-Skizze daneben legen (Vorbild) |
+| Stil („Earle“, „keine Outlines“) | das Stilbuch als Pinnwand mit Bildern statt als Text |
+| Regeln („wenn er satt ist, schläft er“) | zwei Comic-Felder: satt, dann „Zzz“ |
+| Namen | Ozzy benennt die Teile selbst; man muss nie tippen. |
+| Auswahl | „mehr davon“: sechs Varianten, eine antippen |
+
+### 14.6 Technik in drei Stufen, ohne Warten
+
+1. **Geometrie, sofort und auf dem Gerät:** drüberzeichnen, glätten (wie QuickShape), einrasten. Keine KI nötig.
+2. **Zeichen erkennen, sofort und auf dem Gerät:** ein kleiner Erkenner für die Zeichensprache (etwa der $P-Erkenner von Vatavu, Anthony
+   und Wobbrock, 2012: klein, schnell, lernt aus wenigen Beispielen), dazu die Regeln aus Ort, Stift und Zeit.
+3. **Deuten, in Sekunden, mit Claude:** das Bild und die Striche als Koordinaten, dazu die Szene in der Ozzy-Schrift. Die Antwort sind
+   Befehle („Striche 3 bis 5: linkes Ohr“), die als Geist erscheinen.
+
+Stufe 1 und 2 antworten im selben Moment; die Deutung aus Stufe 3 kommt als Geist dazu, sobald sie fertig ist. Kosten entstehen nur in
+Stufe 3.
+
+### 14.7 Eine Idee dazu: Ozzy als Gesicht der KI
+
+Der KI-Zeiger (7.5 D) könnte Ozzy selbst sein, der schwarz-weiße Hund. Er sitzt am Rand, schaut auf deine roten Striche, legt den Kopf
+schief, wenn er unsicher ist (dann zeigt er die Geister), und zeichnet mit der Pfote. tldraw probiert Ähnliches mit kleinen Figuren auf
+der Fläche. Die Gefahr heißt Karl Klammer: Ozzy darf nie von sich aus dazwischenreden, reagiert nur auf den Rotstift und lässt sich
+wegschicken.
+
+### 14.8 Was sich im Papier ändert
+
+- **Die vier Wege heißen jetzt Hand, Scribble, Vorbild, Rezept.** Worte sind ein freiwilliger Notausgang für alle, die sprechen wollen;
+  nie nötig, kein Textfeld als Mitte.
+- **Das Stilbuch ist eine Pinnwand.**
+- **Stufe 1 heißt jetzt „Scribble zu Form“** (Abschnitt 11): Ozzy versteht ein grobes Scribble, teilt es in benannte Teile, bläst sie
+  auf, spiegelt und verbindet sie; der Rotstift ändert eine fertige Form. Ozzy-Schrift, Befehlsschicht und MCP-Server bleiben der
+  Unterbau.
+- **Probe (ungetestet, Kriterium vorher festgelegt):** Von zehn groben Scribbles behältst du mindestens sechs als Start. Bei zehn
+  Rotstift-Korrekturen an deinen Formen ist die richtige Deutung mindestens achtmal unter höchstens drei Geistern.
+
+### 14.9 Quellen zum Nachtrag
+
+- Nano Banana: [Tom's Guide, Test](https://www.tomsguide.com/ai/i-stopped-typing-prompts-drawing-on-my-photos-with-googles-nano-banana-blew-me-away), [Tom's Guide, Neuerung](https://www.tomsguide.com/ai/ai-image-video/nano-banana-now-lets-you-draw-prompts-directly-on-your-photos-sam-altman-is-going-to-hate-this)
+- Adobe AI Markup: [Firefly](https://helpx.adobe.com/firefly/web/edit-images/prompt-to-edit/use-ai-markup.html), [Photoshop im Web](https://helpx.adobe.com/lv/photoshop/web/edit-images/retouch/enhance-images-with-ai-markup.html)
+- Studie zu Text, Zeichnung und beidem (Februar 2026): [arXiv 2602.08830](https://arxiv.org/abs/2602.08830)
+- Vizcom: [Überblick](https://www.vizcom.com/overview), [Zeichnung zu 3D](https://vizcom.com/blog/how-to-turn-a-drawing-into-a-3d-model), [Autodesk Marketplace](https://marketplace.autodesk.com/apps/cbb206eb-b594-4cc1-9d87-9ed186bcdc55)
+- Meshy: [Skizze zu 3D](https://www.meshy.ai/3d-tools/sketch-to-3d-converter), [3D-Agent](https://all3dp.com/4/from-sketch-to-stl-how-meshy-3d-agent-turns-a-conversation-into-a-printable-model/), [Bearbeiten im Test](https://all3dp.com/4/meshys-new-ai-edit-tool-tested-fast-changes-frustrating-results/)
+- tldraw: [MCP-App](https://tldraw.dev/blog/tldraw-mcp-app), [KI auf der Fläche](https://tldraw.dev/docs/ai), [Make Real](https://gitnation.com/contents/make-real-tldraws-ai-adventure), [Agenten auf der Fläche](https://gitnation.com/contents/agents-on-the-canvas-with-tldraw)
+- Sketch2Anim: [Projektseite](https://zhongleilz.github.io/Sketch2Anim), [arXiv](https://arxiv.org/abs/2504.19189v1)
+- Sketch2Arti: [alphaXiv](https://www.alphaxiv.org/abs/2604.25781.md); SMACC: [Eurographics](https://diglib.eg.org/handle/10.2312/pg20251255)
+- Klassiker ohne Link: Sketchpad (1963), Teddy (1999), FiberMesh (2007), Motion Doodles (2004), Line of Action (2013), Space-time
+  Sketching (2015), $P-Erkenner (2012), The Lexicon of Comicana (1980).

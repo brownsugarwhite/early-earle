@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="-55 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .tag { font: 600 11px "Helvetica Neue", Arial, sans-serif; letter-spacing: 1.5px; fill: #8a8f96; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 14px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+      .red { fill: none; stroke: #d7332a; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+      .base { fill: #f1efeb; stroke: #a7adb4; stroke-width: 2; }
+      .baseline { fill: none; stroke: #a7adb4; stroke-width: 2; stroke-linecap: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 2.2; stroke-dasharray: 6 5; stroke-linecap: round; }
+      .hand { font-family: "Marker Felt", "Chalkboard SE", "Comic Sans MS", cursive; fill: #1b1b1b; }
+    </style>
+  </defs>
+  <rect x="-55" width="1390" height="1390" fill="#faf8f4"/>
+  <text x="20" y="62" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Zeichnen statt Worte</text>
+  <text x="20" y="98" class="sub">Zeichensprache für Ozzy · Vorschlag vom 23.11.2026 · nichts davon ist gebaut</text>
+  <text x="20" y="124" class="sub">Tinte zeichnet die Sache, der <tspan fill="#d7332a">Rotstift</tspan> eine Anweisung. Bleibt etwas mehrdeutig, zeigt Ozzy <tspan fill="#7f97b0">Geister</tspan> zur Wahl.</text>
+
+  <!-- Reihe 1: Form und Pose -->
+  <g transform="translate(20,150)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">FORM</text>
+    <ellipse class="base" cx="135" cy="100" rx="72" ry="44"/>
+    <path class="ink" d="M 181 66 C 241 58, 249 136, 181 134"/>
+    <text class="t1" x="16" y="190">über den Umriss zeichnen</text>
+    <text class="t2" x="16" y="212">Der Umriss folgt dem Strich.</text>
+  </g>
+  <g transform="translate(335,150)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">FORM</text>
+    <ellipse class="base" cx="148" cy="112" rx="70" ry="40"/>
+    <path class="ink" d="M 112 79 C 96 30, 138 24, 140 73"/>
+    <path class="ghost" d="M 184 79 C 200 30, 158 24, 156 73"/>
+    <text class="t1" x="16" y="190">eine Form am Körper</text>
+    <text class="t2" x="16" y="212">neues Teil, Gegenstück als Geist</text>
+  </g>
+  <g transform="translate(650,150)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">FORM</text>
+    <ellipse class="base" cx="110" cy="112" rx="62" ry="36"/>
+    <circle class="base" cx="190" cy="80" r="27"/>
+    <polyline class="ink" points="160,62 218,58 162,74 220,72 164,88 218,88 168,100 214,100"/>
+    <text class="t1" x="16" y="190">durchkritzeln</text>
+    <text class="t2" x="16" y="212">entfernen</text>
+  </g>
+  <g transform="translate(965,150)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">POSE</text>
+    <circle class="base" cx="68" cy="100" r="13"/>
+    <circle class="base" cx="122" cy="65" r="17"/>
+    <circle class="base" cx="186" cy="63" r="19"/>
+    <circle class="base" cx="238" cy="89" r="15"/>
+    <path class="ink" style="stroke-width: 4.5" d="M 40 150 C 70 50, 190 30, 255 105"/>
+    <text class="t1" x="16" y="190">ein Strich durch die Figur</text>
+    <text class="t2" x="16" y="212">Die Pose folgt dem Schwung.</text>
+  </g>
+
+  <!-- Reihe 2: Genauigkeit, Rotstift, Fragen -->
+  <g transform="translate(20,395)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">GENAUIGKEIT</text>
+    <path class="base" d="M 70 150 C 60 100, 92 52, 104 60 C 116 70, 112 120, 108 150 Z"/>
+    <path class="base" d="M 188 150 C 178 90, 210 36, 222 44 C 234 54, 230 110, 226 150 Z"/>
+    <path class="ink" d="M 132 96 L 162 94 M 133 110 L 163 108"/>
+    <text class="t1" x="16" y="190">„=“ zwischen zwei Teilen</text>
+    <text class="t2" x="16" y="212">gleich lang, als weicher Bezug</text>
+  </g>
+  <g transform="translate(335,395)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">GENAUIGKEIT</text>
+    <path class="baseline" d="M 60 150 L 130 48"/>
+    <path class="baseline" d="M 165 152 L 240 56"/>
+    <path class="ink" d="M 132 112 L 146 92 M 146 116 L 160 96"/>
+    <text class="t1" x="16" y="190">„//“ zwischen zwei Linien</text>
+    <text class="t2" x="16" y="212">parallel; ein Eckquadrat: rechtwinklig</text>
+  </g>
+  <g transform="translate(650,395)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">ROTSTIFT</text>
+    <ellipse class="base" cx="160" cy="132" rx="78" ry="30"/>
+    <path class="base" d="M 108 110 C 98 82, 112 66, 124 70 C 134 76, 132 96, 128 108 Z"/>
+    <ellipse class="red" cx="117" cy="88" rx="27" ry="31"/>
+    <path class="red" d="M 117 52 L 117 30 M 108 40 L 117 29 L 126 40"/>
+    <text class="t1" x="16" y="190">Rotstift</text>
+    <text class="t2" x="16" y="212">Anweisung; die Tinte verdunstet</text>
+  </g>
+  <g transform="translate(965,395)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">FRAGEN</text>
+    <ellipse class="base" cx="80" cy="105" rx="50" ry="32"/>
+    <text class="hand" x="136" y="108" style="font-size: 54px">?</text>
+    <ellipse class="ghost" cx="232" cy="58" rx="32" ry="17"/>
+    <path class="ghost" d="M 215 46 C 210 30, 226 28, 226 42"/>
+    <ellipse class="ghost" cx="240" cy="104" rx="34" ry="18"/>
+    <path class="ghost" d="M 222 92 C 214 68, 238 66, 234 89"/>
+    <ellipse class="ghost" cx="232" cy="148" rx="32" ry="17"/>
+    <path class="ghost" d="M 216 136 C 216 127, 227 127, 226 133"/>
+    <text class="t1" x="16" y="190">„?“ neben etwas</text>
+    <text class="t2" x="16" y="212">Möglichkeiten als Geister</text>
+  </g>
+
+  <!-- Reihe 3: Bewegung -->
+  <g transform="translate(20,640)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">BEWEGUNG</text>
+    <path class="baseline" d="M 16 152 L 279 152"/>
+    <path class="ink" d="M 24 146 L 62 146 Q 96 52 130 146 L 150 146 C 178 146, 200 70, 228 86 C 252 100, 232 128, 214 112 C 198 96, 226 66, 262 146"/>
+    <text class="t1" x="16" y="190">Bahn mit Bogen und Schleife</text>
+    <text class="t2" x="16" y="212">gehen, springen, Salto</text>
+  </g>
+  <g transform="translate(335,640)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">BEWEGUNG</text>
+    <circle class="base" cx="222" cy="86" r="27"/>
+    <path class="ink" d="M 64 70 L 178 70 M 92 87 L 186 87 M 56 104 L 178 104"/>
+    <path class="baseline" d="M 34 148 L 268 148"/>
+    <path class="ink" style="stroke-width: 2.6" d="M 40 140 L 40 156 M 48 140 L 48 156 M 58 140 L 58 156 M 72 140 L 72 156 M 92 140 L 92 156 M 118 140 L 118 156 M 150 140 L 150 156 M 190 140 L 190 156 M 238 140 L 238 156"/>
+    <text class="t1" x="16" y="190">Speedlines und Querstriche</text>
+    <text class="t2" x="16" y="212">Tempo; der Abstand ist das Timing</text>
+  </g>
+  <g transform="translate(650,640)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">BEWEGUNG</text>
+    <ellipse class="base" cx="148" cy="100" rx="56" ry="36"/>
+    <polyline class="ink" points="74,70 62,80 74,90 62,100 74,110 62,120"/>
+    <polyline class="ink" points="222,70 234,80 222,90 234,100 222,110 234,120"/>
+    <text class="t1" x="16" y="190">Zitterstriche</text>
+    <text class="t2" x="16" y="212">zittern, bibbern</text>
+  </g>
+  <g transform="translate(965,640)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">BEWEGUNG</text>
+    <path class="ink" d="M 148 96 C 148 86, 162 86, 162 96 C 162 110, 138 112, 134 96 C 130 76, 166 68, 176 90 C 188 116, 156 132, 134 126 C 104 118, 102 78, 124 62 C 140 50, 170 50, 186 62"/>
+    <path class="ink" d="M 181 51 L 186 62 L 174 61"/>
+    <text class="t1" x="16" y="190">Spirale</text>
+    <text class="t2" x="16" y="212">rollen, drehen</text>
+  </g>
+
+  <!-- Reihe 4: Stimmung (Comic-Zeichen) -->
+  <g transform="translate(20,885)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">STIMMUNG</text>
+    <circle class="base" cx="110" cy="112" r="40"/>
+    <path class="ink" d="M 196 70 C 196 60, 182 56, 180 66 C 178 76, 192 82, 196 92 C 200 82, 214 76, 212 66 C 210 56, 196 60, 196 70 Z"/>
+    <path class="ink" style="stroke-width: 3" d="M 236 101 C 236 95, 228 92, 227 98 C 226 104, 234 108, 236 113 C 238 108, 246 104, 245 98 C 244 92, 236 95, 236 101 Z"/>
+    <text class="t1" x="16" y="190">Herzchen</text>
+    <text class="t2" x="16" y="212">verliebt: Pose, Verhalten, Herzchen</text>
+  </g>
+  <g transform="translate(335,885)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">STIMMUNG</text>
+    <circle class="base" cx="118" cy="112" r="42"/>
+    <path class="ink" d="M 190 46 C 181 62, 179 72, 190 78 C 201 72, 199 62, 190 46 Z"/>
+    <path class="ink" style="stroke-width: 3" d="M 214 84 C 208 94, 207 100, 214 104 C 221 100, 220 94, 214 84 Z"/>
+    <text class="t1" x="16" y="190">Schweißtropfen</text>
+    <text class="t2" x="16" y="212">nervös</text>
+  </g>
+  <g transform="translate(650,885)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">STIMMUNG</text>
+    <circle class="base" cx="118" cy="112" r="42"/>
+    <path class="ink" style="stroke-width: 4" d="M 180 58 Q 190 58 190 46 M 202 46 Q 202 58 212 58 M 180 72 Q 190 72 190 84 M 202 84 Q 202 72 212 72"/>
+    <text class="t1" x="16" y="190">Zornesader</text>
+    <text class="t2" x="16" y="212">wütend</text>
+  </g>
+  <g transform="translate(965,885)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">STIMMUNG</text>
+    <circle class="base" cx="110" cy="116" r="40"/>
+    <path class="baseline" d="M 92 112 Q 100 119 108 112 M 118 112 Q 126 119 134 112"/>
+    <text class="hand" x="160" y="96" style="font-size: 34px">Z</text>
+    <text class="hand" x="194" y="68" style="font-size: 26px">z</text>
+    <text class="hand" x="220" y="46" style="font-size: 19px">z</text>
+    <text class="t1" x="16" y="190">„Zzz“</text>
+    <text class="t2" x="16" y="212">schläft</text>
+  </g>
+
+  <!-- Reihe 5: Look, Ströme, Kamera -->
+  <g transform="translate(20,1130)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">LOOK</text>
+    <ellipse class="base" cx="148" cy="100" rx="88" ry="48"/>
+    <path class="ink" d="M 86 66 Q 98 100 84 134 M 108 57 Q 121 100 106 143 M 130 53 Q 143 100 128 147"/>
+    <path class="ghost" d="M 156 53 Q 169 100 154 147 M 180 56 Q 192 100 178 144 M 204 64 Q 214 100 202 136"/>
+    <text class="t1" x="16" y="190">drei Streifen auf die Haut</text>
+    <text class="t2" x="16" y="212">Das Muster breitet sich aus.</text>
+  </g>
+  <g transform="translate(335,1130)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">STRÖME</text>
+    <path class="base" d="M 86 112 L 210 112 Q 202 152 148 152 Q 94 152 86 112 Z"/>
+    <path class="ink" d="M 118 100 C 106 86, 130 76, 118 60 C 108 46, 128 40, 120 26 M 148 100 C 136 86, 160 76, 148 60 C 138 46, 158 40, 150 26 M 178 100 C 166 86, 190 76, 178 60 C 168 46, 188 40, 180 26"/>
+    <text class="t1" x="16" y="190">Wellenlinien nach oben</text>
+    <text class="t2" x="16" y="212">Dampf, Geruch</text>
+  </g>
+  <g transform="translate(650,1130)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">STRÖME</text>
+    <ellipse class="base" cx="118" cy="70" rx="62" ry="34"/>
+    <path class="baseline" d="M 150 84 Q 166 90 176 80"/>
+    <path class="ink" d="M 168 96 C 163 104, 162 108, 168 112 C 174 108, 173 104, 168 96 Z M 174 120 C 169 128, 168 132, 174 136 C 180 132, 179 128, 174 120 Z M 166 144 C 161 152, 160 156, 166 160 C 172 156, 171 152, 166 144 Z"/>
+    <text class="t1" x="16" y="190">fallende Tropfen</text>
+    <text class="t2" x="16" y="212">Sabber</text>
+  </g>
+  <g transform="translate(965,1130)">
+    <rect class="tile" width="295" height="230" rx="18"/>
+    <text class="tag" x="16" y="26">KAMERA</text>
+    <circle class="base" cx="118" cy="104" r="24"/>
+    <rect class="ink" x="54" y="52" width="130" height="96" rx="6"/>
+    <path class="ink" d="M 196 100 L 262 100 M 250 88 L 263 100 L 250 112"/>
+    <text class="t1" x="16" y="190">Rahmen, Pfeil am Rahmen</text>
+    <text class="t2" x="16" y="212">Ausschnitt, Kamerafahrt</text>
+  </g>
+</svg>
