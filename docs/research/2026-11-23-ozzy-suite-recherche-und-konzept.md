@@ -16,7 +16,7 @@ unabhängige Prüfung gibt, steht es dabei.
 
 **Inhalt:** 0 Kurzfassung · 1 Die Vision · 2 Was es schon gibt · 3 Was Ozzy mitbringt · 4 Leitideen · 5 Das Fundament · 6 Der Ablauf ·
 7 Deine Fragen, je mit Möglichkeiten · 8 Vier Gesamtbilder · 9 Aus meiner Sicht als KI · 10 Ideenspeicher · 11 Weg in kleinen Beweisen ·
-12 Offene Entscheidungen · 13 Quellen · 14 Nachtrag: Zeichnen statt Worte
+12 Offene Entscheidungen · 13 Quellen · 14 Nachtrag: Zeichnen statt Worte · 15 Fortsetzung: Teil 2
 
 ---
 
@@ -754,3 +754,8 @@ wegschicken.
 - Sketch2Arti: [alphaXiv](https://www.alphaxiv.org/abs/2604.25781.md); SMACC: [Eurographics](https://diglib.eg.org/handle/10.2312/pg20251255)
 - Klassiker ohne Link: Sketchpad (1963), Teddy (1999), FiberMesh (2007), Motion Doodles (2004), Line of Action (2013), Space-time
   Sketching (2015), $P-Erkenner (2012), The Lexicon of Comicana (1980).
+
+## 15 Fortsetzung: Teil 2
+
+Tempo auf dem Handy, die Ansichten je Gerät, „in Bewegung lebendig, in Ruhe genau“, Werkstoffe sowie CAD und Architektur:
+[`2026-11-23-ozzy-suite-teil-2-tempo-ansichten.md`](2026-11-23-ozzy-suite-teil-2-tempo-ansichten.md).
