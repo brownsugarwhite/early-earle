@@ -104,6 +104,8 @@ nahe an der Grenze; auf dem iPhone brauchen wir eigene Regeln (Abschnitt 5).
 - **Haare:** In Splines Dokumentation habe ich keine Haar- oder Fell-Funktion gefunden. Realistische Haare aus einzelnen Strähnen sind
   selbst am Rechner teuer; ein großes Spiel zeigte 2025 Strähnenhaar auf starken Grafikkarten. Auf Handys arbeitet man mit Schalen (wie
   dein Fell) oder mit Haarkarten.
+  **Korrektur (Teil 9):** Spline V2 hat doch ein Haarsystem: Strähnen aus Kopfhaut-Formen oder jedem Netz, auf der Grafikkarte
+  simuliert, mit Licht, Schatten, Wind und Büscheln (Changelog vom 21.08.2026).
 - **Demos:** Werbevideos entstehen am Rechner. „Live bearbeitet“ heißt dort: am Mac oder PC mit starker Grafikkarte.
 
 **Was „besser als Spline“ heißen kann:**

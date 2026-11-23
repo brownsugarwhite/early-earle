@@ -779,3 +779,7 @@ Zweig, Mac und Handy, Sicherheit): [`2026-11-23-ozzy-suite-teil-7-claude-mcp.md`
 Teil 8: Karten für early earle (Ebene und Kugel, Weltform als Linie, Verbieger, Weg aus einem Strich, Kartenpunkte mit Zuständen,
 Fortschritt als Regler, Kamerafahrten, Scribble, Claude, Ozzy-Player im Spiel):
 [`2026-11-23-ozzy-suite-teil-8-karte.md`](2026-11-23-ozzy-suite-teil-8-karte.md).
+
+Teil 9: Eine eigene Engine (Spline V2 auf demselben Fundament, eigener Bildaufbau auf three.js, Ziehen, Ruhe, Schlaf, Kanten aus den
+Linien, Licht zeichnen, Luft in Stufen, Looks als Rezept, Lesebilder für Claude, Korrektur zu Teil 2):
+[`2026-11-23-ozzy-suite-teil-9-engine.md`](2026-11-23-ozzy-suite-teil-9-engine.md).

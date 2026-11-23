@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .trenn { fill: none; stroke: #d5cfc4; stroke-width: 1.2; stroke-dasharray: 3 4; }
+      .raster { fill: none; stroke: #e6e2da; stroke-width: 1; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; stroke-linejoin: round; }
+      .box { fill: #faf8f4; stroke: #e4dfd6; stroke-width: 1.4; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 600 11px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t4 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+    </style>
+    <g id="ozzy">
+      <ellipse cx="-12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(22 -12 -3)"/>
+      <ellipse cx="12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(-22 12 -3)"/>
+      <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <ellipse cx="0" cy="4" rx="2.6" ry="1.8" fill="#1b1b1b"/>
+    </g>
+    <g id="spitz"><path d="M 0 -26 L 9 0 L -9 0 Z"/></g>
+    <clipPath id="lupeL"><circle cx="112" cy="196" r="86"/></clipPath>
+    <clipPath id="lupeR"><circle cx="308" cy="196" r="86"/></clipPath>
+    <clipPath id="szene4"><rect x="24" y="60" width="296" height="270" rx="6"/></clipPath>
+    <clipPath id="mini"><rect x="0" y="0" width="170" height="120" rx="6"/></clipPath>
+    <linearGradient id="gFern" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9e0e1"/><stop offset="1" stop-color="#c2ccce"/></linearGradient>
+    <linearGradient id="gHinten" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8c8c1"/><stop offset="1" stop-color="#9bb0a8"/></linearGradient>
+    <linearGradient id="gMitte" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8ca788"/><stop offset="1" stop-color="#6f8a6c"/></linearGradient>
+    <linearGradient id="gVorn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b7755"/><stop offset="1" stop-color="#425c3e"/></linearGradient>
+    <linearGradient id="tiefeBoden" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfcfcf"/><stop offset="1" stop-color="#8a8a8a"/></linearGradient>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Eine Engine für Ozzy</text>
+  <text x="40" y="106" class="sub">Eigener Bildaufbau auf dem Fundament, das auch Spline V2 nutzt · Vorschlag vom 23.11.2026 · nichts davon ist gebaut</text>
+
+  <!-- 1 Ziehen, Ruhe, Schlaf -->
+  <g transform="translate(40,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <g transform="translate(94,92)">
+      <polygon points="-30,8 -22,-18 0,-28 24,-20 32,4 22,24 -4,30 -24,22" fill="#f3c9a0" stroke="#1b1b1b" stroke-width="1.5"/>
+      <path class="grau" d="M -50 -10 L -40 -10 M -54 2 L -42 2 M -50 14 L -40 14"/>
+    </g>
+    <g transform="translate(232,92)">
+      <circle r="30" fill="#f3c9a0"/>
+      <path d="M 0 -30 A 30 30 0 0 1 0 30 A 14 30 0 0 0 0 -30 Z" fill="#d9966a"/>
+      <circle r="30" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+    </g>
+    <g transform="translate(348,92)">
+      <circle r="22" fill="#1b1b1b"/>
+      <circle cx="10" cy="-7" r="19" fill="#ffffff"/>
+      <text class="t3" x="26" y="-10" style="font-size: 13px">z</text>
+      <text class="t3" x="36" y="-22" style="font-size: 10px">z</text>
+    </g>
+    <path class="trenn" d="M 164 150 L 164 300 M 300 150 L 300 300"/>
+    <path class="ghost" style="stroke-width: 1.5" d="M 24 172 L 396 172"/>
+    <text class="t4" x="392" y="164" text-anchor="end">Budget je Bild</text>
+    <path class="grau" d="M 24 290 L 396 290"/>
+    <path class="ink" d="M 24 192 L 164 192 C 186 192, 196 232, 218 242 C 240 252, 262 262, 300 290 L 396 290"/>
+    <text class="t4" x="28" y="210">Rechenlast</text>
+    <rect x="24" y="304" width="140" height="22" fill="#1b1b1b"/>
+    <rect x="164" y="304" width="136" height="22" fill="#a7adb4"/>
+    <rect x="300" y="304" width="96" height="22" fill="#f1efeb" stroke="#e4dfd6"/>
+    <text class="t3" x="94" y="319" text-anchor="middle" style="fill: #ffffff">Ziehen</text>
+    <text class="t3" x="232" y="319" text-anchor="middle">Ruhe</text>
+    <text class="t3" x="348" y="319" text-anchor="middle">Schlaf</text>
+    <text class="t4" x="94" y="346" text-anchor="middle">voller Takt</text>
+    <text class="t4" x="232" y="346" text-anchor="middle">wird genauer</text>
+    <text class="t4" x="348" y="346" text-anchor="middle">rechnet nichts</text>
+    <text class="t1" x="18" y="440">Ziehen, Ruhe, Schlaf</text>
+    <text class="t2" x="18" y="464">Beim Ziehen zählt nur der Takt. In Ruhe verfeinert sich das</text>
+    <text class="t2" x="18" y="482">Bild: Kanten glätten sich, Licht wird weich. Danach schläft</text>
+    <text class="t2" x="18" y="500">die Engine und rechnet nichts, bis du weitermachst.</text>
+  </g>
+
+  <!-- 2 Kanten aus den Linien -->
+  <g transform="translate(485,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <text class="t4" x="210" y="92" text-anchor="middle">achtfach vergrößert</text>
+    <g clip-path="url(#lupeL)">
+      <rect x="20" y="104" width="190" height="190" fill="#ffffff"/>
+      <path class="raster" d="M 20 114 H 204 M 20 126 H 204 M 20 138 H 204 M 20 150 H 204 M 20 162 H 204 M 20 174 H 204 M 20 186 H 204 M 20 198 H 204 M 20 210 H 204 M 20 222 H 204 M 20 234 H 204 M 20 246 H 204 M 20 258 H 204 M 20 270 H 204 M 20 282 H 204"/>
+      <path class="raster" d="M 24 104 V 290 M 36 104 V 290 M 48 104 V 290 M 60 104 V 290 M 72 104 V 290 M 84 104 V 290 M 96 104 V 290 M 108 104 V 290 M 120 104 V 290 M 132 104 V 290 M 144 104 V 290 M 156 104 V 290 M 168 104 V 290 M 180 104 V 290 M 192 104 V 290"/>
+      <path d="M 20 258 H 36 V 246 H 48 V 234 H 60 V 222 H 72 V 210 H 84 V 198 H 108 V 186 H 120 V 174 H 144 V 162 H 168 V 150 H 192 V 138 H 204 V 294 H 20 Z" fill="#f3c9a0"/>
+      <polyline points="20,266 70,214 120,176 176,146 204,137" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+      <g fill="#1b1b1b"><circle cx="70" cy="214" r="2.5"/><circle cx="120" cy="176" r="2.5"/><circle cx="176" cy="146" r="2.5"/></g>
+    </g>
+    <circle cx="112" cy="196" r="86" fill="none" stroke="#1b1b1b" stroke-width="2"/>
+    <g clip-path="url(#lupeR)">
+      <rect x="216" y="104" width="190" height="190" fill="#ffffff"/>
+      <path d="M 216 266 C 245 236, 270 210, 300 192 C 330 174, 365 150, 404 136 L 404 294 L 216 294 Z" fill="#f3c9a0"/>
+      <path class="thin" d="M 216 266 C 245 236, 270 210, 300 192 C 330 174, 365 150, 404 136"/>
+    </g>
+    <circle cx="308" cy="196" r="86" fill="none" stroke="#1b1b1b" stroke-width="2"/>
+    <path class="thin" d="M 270 210 L 330 174"/>
+    <circle cx="270" cy="210" r="3.5" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+    <circle cx="330" cy="174" r="3.5" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+    <circle cx="300" cy="192" r="4.5" fill="#1b1b1b"/>
+    <text class="t4" x="112" y="310" text-anchor="middle">Netz: Ecken und Treppen</text>
+    <text class="t4" x="308" y="310" text-anchor="middle">Linie: glatt bei jedem Zoom</text>
+    <text class="t1" x="18" y="440">Kanten aus den Linien</text>
+    <text class="t2" x="18" y="464">Silhouette und Lichtstufen kommen aus deinen Linien, nicht</text>
+    <text class="t2" x="18" y="482">aus Dreiecken. Sie bleiben bei jedem Zoom glatt und lassen</text>
+    <text class="t2" x="18" y="500">sich als Vektorbild ausgeben, bis nach Studio.</text>
+  </g>
+
+  <!-- 3 Licht zeichnen -->
+  <g transform="translate(930,140)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <g transform="translate(100,206)">
+      <circle r="62" fill="#f3c9a0"/>
+      <path d="M 0 -62 A 62 62 0 0 1 0 62 A 28 62 0 0 0 0 -62 Z" fill="#d9966a"/>
+      <circle r="62" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+    </g>
+    <text class="t4" x="100" y="300" text-anchor="middle">gerechnet</text>
+    <g transform="translate(298,206)">
+      <circle r="82" fill="#f3c9a0"/>
+      <path d="M 0 -82 A 82 82 0 0 1 0 82 C 0 60, 44 34, 20 6 C -2 -20, 36 -52, 0 -82 Z" fill="#d9966a"/>
+      <circle r="82" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+      <path d="M 0 -82 C 36 -52, -2 -20, 20 6 C 44 34, 0 60, 0 82" fill="none" stroke="#d7332a" stroke-width="2.2" stroke-linecap="round"/>
+      <path class="thin" d="M -2 -20 L 44 34"/>
+      <circle cx="-2" cy="-20" r="3.5" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+      <circle cx="44" cy="34" r="3.5" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+      <circle cx="20" cy="6" r="4.5" fill="#1b1b1b"/>
+      <circle cx="0" cy="-82" r="4" fill="#1b1b1b"/>
+      <circle cx="0" cy="82" r="4" fill="#1b1b1b"/>
+      <path d="M -44 -38 Q -36 -36 -34 -48 Q -32 -36 -22 -34 Q -32 -32 -34 -20 Q -36 -32 -44 -30 Z" fill="#ffffff" stroke="#7f97b0" stroke-width="1.2" stroke-dasharray="3 3"/>
+    </g>
+    <text class="t4" x="298" y="310" text-anchor="middle">gezeichnet</text>
+    <text class="t4" x="404" y="110" text-anchor="end" style="fill: #d7332a">Schattengrenze als Linie</text>
+    <text class="t4" x="186" y="96">Glanzlicht als Loop</text>
+    <path class="grau" style="stroke-width: 1" d="M 232 102 L 258 160"/>
+    <text class="t1" x="18" y="440">Licht zeichnen</text>
+    <text class="t2" x="18" y="464">Die Schattengrenze ist eine Linie mit Punkten und Griffen.</text>
+    <text class="t2" x="18" y="482">Ozzy biegt das Licht sanft, bis die Stufe ihr folgt.</text>
+    <text class="t2" x="18" y="500">Glanzlichter sind Loops, die du formst wie alles andere.</text>
+  </g>
+
+  <!-- 4 Luft in Stufen -->
+  <g transform="translate(40,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <g clip-path="url(#szene4)">
+      <rect x="24" y="60" width="296" height="270" fill="#f4ead8"/>
+      <circle cx="252" cy="112" r="20" fill="#f7d9a3"/>
+      <path d="M 24 190 C 70 170, 110 176, 150 166 C 200 154, 250 170, 320 160 L 320 330 L 24 330 Z" fill="url(#gFern)"/>
+      <use href="#spitz" fill="#cbd4d6" transform="translate(64,180) scale(0.5)"/>
+      <use href="#spitz" fill="#cbd4d6" transform="translate(124,172) scale(0.6)"/>
+      <use href="#spitz" fill="#cbd4d6" transform="translate(262,164) scale(0.5)"/>
+      <path d="M 24 222 C 80 204, 130 214, 180 200 C 230 188, 270 204, 320 196 L 320 330 L 24 330 Z" fill="url(#gHinten)"/>
+      <use href="#spitz" fill="#aabdb6" transform="translate(92,212) scale(0.8)"/>
+      <use href="#spitz" fill="#aabdb6" transform="translate(212,198) scale(0.8)"/>
+      <use href="#spitz" fill="#aabdb6" transform="translate(292,200) scale(0.7)"/>
+      <path d="M 24 258 C 90 238, 140 252, 200 238 C 250 228, 290 240, 320 236 L 320 330 L 24 330 Z" fill="url(#gMitte)"/>
+      <use href="#spitz" fill="#7f9a7c" transform="translate(60,252) scale(1.1)"/>
+      <use href="#spitz" fill="#7f9a7c" transform="translate(166,246) scale(1.2)"/>
+      <use href="#spitz" fill="#7f9a7c" transform="translate(268,234) scale(1.1)"/>
+      <path d="M 24 296 C 80 282, 150 294, 220 284 C 260 278, 300 286, 320 282 L 320 330 L 24 330 Z" fill="url(#gVorn)"/>
+      <use href="#spitz" fill="#4e6849" transform="translate(110,290) scale(1.8)"/>
+      <use href="#spitz" fill="#4e6849" transform="translate(284,284) scale(1.6)"/>
+    </g>
+    <rect x="334" y="160" width="12" height="12" rx="2" fill="#cdd6d8"/><text class="t4" x="352" y="170">fern</text>
+    <rect x="334" y="200" width="12" height="12" rx="2" fill="#a8bab3"/><text class="t4" x="352" y="210">hinten</text>
+    <rect x="334" y="240" width="12" height="12" rx="2" fill="#7d977a"/><text class="t4" x="352" y="250">Mitte</text>
+    <rect x="334" y="280" width="12" height="12" rx="2" fill="#4e6849"/><text class="t4" x="352" y="290">vorn</text>
+    <text class="t4" x="24" y="350">Stufen hart, Verlauf nur innerhalb einer Stufe</text>
+    <text class="t1" x="18" y="440">Luft in Stufen</text>
+    <text class="t2" x="18" y="464">Jede Form gehört zu einer Staffel: vorn, Mitte, hinten, fern.</text>
+    <text class="t2" x="18" y="482">Je weiter weg, desto heller und kühler, in harten Stufen wie</text>
+    <text class="t2" x="18" y="500">bei Earle. Ozzy ordnet nach Abstand, du stellst um.</text>
+  </g>
+
+  <!-- 5 Looks als Rezept -->
+  <g transform="translate(485,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <rect class="box" x="24" y="70" width="104" height="120" rx="10"/>
+    <rect class="box" x="158" y="70" width="104" height="120" rx="10"/>
+    <rect class="box" x="292" y="70" width="104" height="120" rx="10"/>
+    <text class="t4" x="76" y="90" text-anchor="middle">Werkstoff</text>
+    <text class="t4" x="210" y="90" text-anchor="middle">Stil</text>
+    <text class="t4" x="344" y="90" text-anchor="middle">Licht</text>
+    <polygon points="52,152 60,118 84,106 104,124 100,152" fill="#b9b4aa" stroke="#1b1b1b" stroke-width="1.5" stroke-linejoin="round"/>
+    <polygon points="84,106 104,124 100,152 80,134" fill="#9d978c"/>
+    <path class="thin" style="stroke-width: 1" d="M 84 106 L 80 134 L 100 152 M 80 134 L 52 152"/>
+    <path d="M 168 146 C 190 132, 214 138, 252 128 L 252 158 L 168 158 Z" fill="#a8bab3"/>
+    <path d="M 168 156 C 196 146, 222 152, 252 146 L 252 158 L 168 158 Z" fill="#4e6849"/>
+    <use href="#spitz" fill="#4e6849" transform="translate(232,150) scale(0.9)"/>
+    <path d="M 314 150 A 30 30 0 0 1 374 150 Z" fill="#f0b429"/>
+    <path class="thin" style="stroke: #f0b429" d="M 344 112 L 344 104 M 318 122 L 312 116 M 370 122 L 376 116"/>
+    <path class="thin" d="M 304 150 L 384 150"/>
+    <text class="t3" x="76" y="178" text-anchor="middle">Stein</text>
+    <text class="t3" x="210" y="178" text-anchor="middle">Earle</text>
+    <text class="t3" x="344" y="178" text-anchor="middle">Abend</text>
+    <text x="143" y="136" text-anchor="middle" style="font: 18px 'Helvetica Neue', Arial; fill: #8a8f96">×</text>
+    <text x="277" y="136" text-anchor="middle" style="font: 18px 'Helvetica Neue', Arial; fill: #8a8f96">×</text>
+    <path class="thin" d="M 210 198 L 210 220 M 204 213 L 210 220 L 216 213"/>
+    <path d="M 210 226 C 192 252, 184 268, 184 282 C 184 298, 196 310, 210 310 C 224 310, 236 298, 236 282 C 236 268, 228 252, 210 226 Z" fill="#1b1b1b"/>
+    <text class="t3" x="210" y="290" text-anchor="middle" style="fill: #ffffff; font-size: 9.5px">1 Shader</text>
+    <path class="ghost" d="M 100 236 C 84 258, 78 272, 78 284 C 78 298, 88 308, 100 308 C 112 308, 122 298, 122 284 C 122 272, 116 258, 100 236 Z"/>
+    <path class="ghost" style="stroke-width: 1.5" d="M 130 278 L 170 278"/>
+    <text class="t4" x="100" y="332" text-anchor="middle">Platzhalter,</text>
+    <text class="t4" x="100" y="346" text-anchor="middle">bis er fertig ist</text>
+    <path class="grau" d="M 322 220 L 322 252"/>
+    <path d="M 322 252 C 316 260, 316 266, 322 269 C 328 266, 328 260, 322 252 Z" fill="#1b1b1b"/>
+    <text class="t3" x="334" y="266">0,9 ms</text>
+    <text class="t4" x="322" y="300" text-anchor="middle">was er auf dem</text>
+    <text class="t4" x="322" y="314" text-anchor="middle">iPhone kostet</text>
+    <text class="t1" x="18" y="440">Looks als Rezept</text>
+    <text class="t2" x="18" y="464">Werkstoff, Stil und Licht ergeben einen Shader, der nur kann,</text>
+    <text class="t2" x="18" y="482">was er braucht. Bis er übersetzt ist, steht ein Platzhalter</text>
+    <text class="t2" x="18" y="500">da, nie ein Ruckler. Der Tropfen zeigt, was er kostet.</text>
+  </g>
+
+  <!-- 6 Lesebilder für Claude -->
+  <g transform="translate(930,760)">
+    <rect class="tile" width="420" height="590" rx="16"/>
+    <use href="#ozzy" transform="translate(386,34)"/>
+    <g transform="translate(24,60)">
+      <g clip-path="url(#mini)">
+        <rect width="170" height="120" fill="#f4ead8"/>
+        <path d="M 0 86 C 40 78, 120 82, 170 76 L 170 120 L 0 120 Z" fill="#a9b98f"/>
+        <path d="M 136 34 L 150 80 L 122 80 Z" fill="#5f7f55"/><rect x="134" y="80" width="4" height="8" fill="#7a6a55"/>
+        <ellipse cx="52" cy="56" rx="7" ry="12" fill="#d9966a" transform="rotate(-22 52 56)"/>
+        <ellipse cx="66" cy="78" rx="28" ry="22" fill="#f3c9a0"/>
+        <path d="M 66 56 A 28 22 0 0 1 66 100 A 12 22 0 0 0 66 56 Z" fill="#d9966a"/>
+        <circle cx="76" cy="72" r="2.5" fill="#1b1b1b"/>
+      </g>
+      <rect width="170" height="120" rx="6" fill="none" stroke="#e4dfd6"/>
+    </g>
+    <g transform="translate(226,60)">
+      <g clip-path="url(#mini)">
+        <rect width="170" height="120" fill="#ffffff"/>
+        <path d="M 0 86 C 40 78, 120 82, 170 76 L 170 120 L 0 120 Z" fill="#8ecae6"/>
+        <path d="M 136 34 L 150 80 L 122 80 Z" fill="#e76f51"/><rect x="134" y="80" width="4" height="8" fill="#e76f51"/>
+        <ellipse cx="52" cy="56" rx="7" ry="12" fill="#ffb703" transform="rotate(-22 52 56)"/>
+        <ellipse cx="66" cy="78" rx="28" ry="22" fill="#ffb703"/>
+      </g>
+      <rect width="170" height="120" rx="6" fill="none" stroke="#e4dfd6"/>
+    </g>
+    <g transform="translate(24,206)">
+      <g clip-path="url(#mini)">
+        <rect width="170" height="120" fill="#ededed"/>
+        <path d="M 0 86 C 40 78, 120 82, 170 76 L 170 120 L 0 120 Z" fill="url(#tiefeBoden)"/>
+        <path d="M 136 34 L 150 80 L 122 80 Z" fill="#a5a5a5"/><rect x="134" y="80" width="4" height="8" fill="#a5a5a5"/>
+        <ellipse cx="52" cy="56" rx="7" ry="12" fill="#6f6f6f" transform="rotate(-22 52 56)"/>
+        <ellipse cx="66" cy="78" rx="28" ry="22" fill="#6f6f6f"/>
+      </g>
+      <rect width="170" height="120" rx="6" fill="none" stroke="#e4dfd6"/>
+    </g>
+    <g transform="translate(226,206)">
+      <g clip-path="url(#mini)">
+        <rect width="170" height="120" fill="#23263a"/>
+        <path d="M 0 86 C 40 78, 120 82, 170 76 L 170 120 L 0 120 Z" fill="#33507a"/>
+        <path d="M 136 34 L 150 80 L 122 80 Z" fill="#f0b429"/><rect x="134" y="80" width="4" height="8" fill="#f0b429"/>
+        <ellipse cx="52" cy="56" rx="7" ry="12" fill="#d7332a" transform="rotate(-22 52 56)"/>
+        <ellipse cx="66" cy="78" rx="28" ry="22" fill="#d7332a"/>
+      </g>
+      <rect width="170" height="120" rx="6" fill="none" stroke="#e4dfd6"/>
+    </g>
+    <text class="t4" x="109" y="198" text-anchor="middle">Farbe</text>
+    <text class="t4" x="311" y="198" text-anchor="middle">Teile</text>
+    <text class="t4" x="109" y="344" text-anchor="middle">Tiefe</text>
+    <text class="t4" x="311" y="344" text-anchor="middle">Kosten: rot ist teuer</text>
+    <text class="t1" x="18" y="440">Lesebilder für Claude</text>
+    <text class="t2" x="18" y="464">Dieselbe Szene als Farbe, Teile, Tiefe und Kosten. So sieht</text>
+    <text class="t2" x="18" y="482">Claude, was wo ist und was es kostet, und prüft jede Änderung</text>
+    <text class="t2" x="18" y="500">am Bild, bevor du sie siehst.</text>
+  </g>
+</svg>
