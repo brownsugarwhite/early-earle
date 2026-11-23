@@ -791,3 +791,7 @@ aus Straßen, Häuser mit Gedächtnis, Vorbilder und Claude):
 Teil 11: Haare, Stoffe und Physik (Leitsträhnen als Linien, eine Wahrheit in drei Bildern, Stoff aus Schnittmustern, Physik aus dem
 Werkstoff, Spielwiese, Nachschwingen, Hand schlägt Physik):
 [`2026-11-23-ozzy-suite-teil-11-haare-stoffe-physik.md`](2026-11-23-ozzy-suite-teil-11-haare-stoffe-physik.md).
+
+Teil 12: Native App und eigene Engine, ehrlich eingestuft (Einstufung in Prozent, Vorbilder kleiner Teams, sechs Ansätze aus übersehenen
+Ideen, was nativ bringt und kostet, zwei Vorversuche):
+[`2026-11-23-ozzy-suite-teil-12-native-engine.md`](2026-11-23-ozzy-suite-teil-12-native-engine.md).
