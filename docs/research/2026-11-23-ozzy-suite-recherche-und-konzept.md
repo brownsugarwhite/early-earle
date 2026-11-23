@@ -787,3 +787,7 @@ Linien, Licht zeichnen, Luft in Stufen, Looks als Rezept, Lesebilder für Claude
 Teil 10: Landschaften und Häuserblöcke (Gelände aus Linien, Silhouette malen, Zeit und Wasser als Regler, Pflanzen nach Sätzen, Städte
 aus Straßen, Häuser mit Gedächtnis, Vorbilder und Claude):
 [`2026-11-23-ozzy-suite-teil-10-landschaften.md`](2026-11-23-ozzy-suite-teil-10-landschaften.md).
+
+Teil 11: Haare, Stoffe und Physik (Leitsträhnen als Linien, eine Wahrheit in drei Bildern, Stoff aus Schnittmustern, Physik aus dem
+Werkstoff, Spielwiese, Nachschwingen, Hand schlägt Physik):
+[`2026-11-23-ozzy-suite-teil-11-haare-stoffe-physik.md`](2026-11-23-ozzy-suite-teil-11-haare-stoffe-physik.md).
