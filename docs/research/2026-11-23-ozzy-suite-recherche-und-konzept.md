@@ -762,3 +762,7 @@ Tempo auf dem Handy, die Ansichten je Gerät, „in Bewegung lebendig, in Ruhe g
 
 Teil 3: Storyboard für eine Figur („Glimm“) und einen Häuserblock, die Leiter von 2 bis 2048, Vorbilder für den Tropfen am Faden,
 Sculpting mit Kurven: [`2026-11-23-ozzy-suite-teil-3-storyboard.md`](2026-11-23-ozzy-suite-teil-3-storyboard.md).
+
+Teil 4: Eine Grammatik für alles (Linie, Körper, Rundung, Verbindung), der Schnitt als Ansicht und Werkzeug, Werkstoff, Bemalung, Stil
+und Licht, Bewegung als Regler über die Zeit, volle Kontrolle:
+[`2026-11-23-ozzy-suite-teil-4-grammatik.md`](2026-11-23-ozzy-suite-teil-4-grammatik.md).
