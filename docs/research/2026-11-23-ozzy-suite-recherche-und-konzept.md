@@ -772,3 +772,6 @@ Teil 5: Studio erklärt (Funktionsweise, Werkzeuge, Stand) und wie es in Ozzy au
 
 Teil 6: Scribble-Erkennung als Herzstück (acht Schritte, Kontext, Treue, Geister, Lernen, Maus, Finger, Stift, erste Probe):
 [`2026-11-23-ozzy-suite-teil-6-scribble-erkennung.md`](2026-11-23-ozzy-suite-teil-6-scribble-erkennung.md).
+
+Teil 7: Claude von Anfang an (eine Befehlsschicht als Quelle, MCP-Server und eingebautes Claude, Scribble statt Prompt, Zauberhand im
+Zweig, Mac und Handy, Sicherheit): [`2026-11-23-ozzy-suite-teil-7-claude-mcp.md`](2026-11-23-ozzy-suite-teil-7-claude-mcp.md).

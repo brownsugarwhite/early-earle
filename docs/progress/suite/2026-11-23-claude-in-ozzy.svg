@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .box { fill: #faf8f4; stroke: #1b1b1b; stroke-width: 1.4; }
+      .kern { fill: #1b1b1b; }
+      .base { fill: #f1efeb; stroke: #a7adb4; stroke-width: 2; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .red { fill: none; stroke: #d7332a; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; stroke-linejoin: round; }
+      .dash { fill: none; stroke: #1b1b1b; stroke-width: 1.4; stroke-dasharray: 4 4; stroke-linecap: round; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 600 13px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t4 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .tw { font: 600 15px "Helvetica Neue", Arial, sans-serif; fill: #ffffff; }
+      .tw4 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #d9d4ca; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+    </style>
+    <g id="ozzy">
+      <ellipse cx="-12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(22 -12 -3)"/>
+      <ellipse cx="12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(-22 12 -3)"/>
+      <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <ellipse cx="0" cy="4" rx="2.6" ry="1.8" fill="#1b1b1b"/>
+    </g>
+    <g id="pfeil"><path class="thin" d="M -14 0 L 12 0 M 4 -6 L 13 0 L 4 6"/></g>
+    <g id="handy">
+      <rect x="-16" y="-28" width="32" height="56" rx="7" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <path d="M -5 22 L 5 22" stroke="#1b1b1b" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+    <g id="mac">
+      <rect x="-26" y="-20" width="52" height="34" rx="4" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <path d="M -32 18 L 32 18 L 28 23 L -28 23 Z" fill="#ffffff" stroke="#1b1b1b" stroke-width="2" stroke-linejoin="round"/>
+    </g>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Claude in Ozzy, von Anfang an</text>
+  <text x="40" y="106" class="sub">MCP und eingebautes Claude aus einer Quelle · Vorschlag vom 23.11.2026 · nichts davon ist gebaut</text>
+
+  <!-- 1 Eine Quelle für alles -->
+  <g transform="translate(40,140)">
+    <rect class="tile" width="640" height="600" rx="16"/>
+    <rect class="kern" x="210" y="190" width="220" height="96" rx="14"/>
+    <text class="tw" x="320" y="230" text-anchor="middle">Befehlsschicht</text>
+    <text class="tw4" x="320" y="252" text-anchor="middle">je Befehl: Name, Werte, Wirkung,</text>
+    <text class="tw4" x="320" y="268" text-anchor="middle">Rückgängig, Beispiel, Test</text>
+    <rect class="box" x="30" y="52" width="230" height="70" rx="12"/>
+    <text class="t3" x="145" y="82" text-anchor="middle">Hand</text>
+    <text class="t4" x="145" y="102" text-anchor="middle">Gesten, Werkzeuge, ⌘K</text>
+    <rect class="box" x="380" y="52" width="230" height="70" rx="12"/>
+    <text class="t3" x="495" y="82" text-anchor="middle">Werkzeuge für Claude</text>
+    <text class="t4" x="495" y="102" text-anchor="middle">MCP und eingebautes Claude</text>
+    <rect class="box" x="30" y="354" width="230" height="70" rx="12"/>
+    <text class="t3" x="145" y="384" text-anchor="middle">Doku und Neuigkeiten</text>
+    <text class="t4" x="145" y="404" text-anchor="middle">was es gibt, was neu ist</text>
+    <rect class="box" x="380" y="354" width="230" height="70" rx="12"/>
+    <text class="t3" x="495" y="384" text-anchor="middle">Claude-Probe</text>
+    <text class="t4" x="495" y="404" text-anchor="middle">Aufgaben, die gelingen müssen</text>
+    <path class="thin" d="M 240 190 L 180 126 M 400 190 L 460 126 M 240 286 L 180 350 M 400 286 L 460 350"/>
+    <path class="thin" d="M 186 136 L 179 125 L 191 128 M 454 136 L 461 125 L 449 128 M 186 340 L 179 351 L 191 348 M 454 340 L 461 351 L 449 348"/>
+    <text class="t1" x="24" y="486">Eine Quelle für alles</text>
+    <text class="t2" x="24" y="510">Jeder Befehl wird einmal beschrieben. Daraus entstehen die Gesten, die Werkzeuge</text>
+    <text class="t2" x="24" y="528">für Claude, die Doku und die Tests. Kommt ein Befehl dazu, kennt Claude ihn sofort;</text>
+    <text class="t2" x="24" y="546">eine Liste „neu“ sagt ihm, was sich geändert hat.</text>
+  </g>
+
+  <!-- 2 Scribble statt Prompt -->
+  <g transform="translate(710,140)">
+    <rect class="tile" width="640" height="600" rx="16"/>
+    <circle class="base" cx="80" cy="230" r="44"/>
+    <path class="red" d="M 62 196 C 58 170, 76 160, 86 168 C 98 178, 96 192, 92 200"/>
+    <path class="red" d="M 106 160 L 128 138 M 118 138 L 129 137 L 128 148"/>
+    <text class="t4" x="80" y="300" text-anchor="middle">du zeichnest</text>
+    <use href="#pfeil" transform="translate(152,230)"/>
+    <rect class="box" x="176" y="186" width="130" height="88" rx="12"/>
+    <text class="t3" x="241" y="222" text-anchor="middle">Ozzy</text>
+    <text class="t4" x="241" y="242" text-anchor="middle">Schritte 1 bis 7</text>
+    <text class="t4" x="241" y="258" text-anchor="middle">auf dem Gerät</text>
+    <use href="#pfeil" transform="translate(330,230)"/>
+    <rect class="box" x="354" y="186" width="130" height="88" rx="12" style="stroke: #7f97b0"/>
+    <use href="#ozzy" transform="translate(419,212)"/>
+    <text class="t4" x="419" y="246" text-anchor="middle">Bild, Striche,</text>
+    <text class="t4" x="419" y="262" text-anchor="middle">Kontext</text>
+    <use href="#pfeil" transform="translate(508,230)"/>
+    <circle class="base" cx="572" cy="240" r="34"/>
+    <path d="M 562 210 C 558 188, 570 176, 578 182 C 586 188, 582 202, 580 210 Z" fill="#f1efeb" stroke="#1b1b1b" stroke-width="2"/>
+    <path class="ghost" d="M 596 214 L 610 176 L 612 216"/>
+    <path class="ghost" d="M 544 216 C 534 198, 546 186, 542 172 C 556 186, 560 200, 556 216"/>
+    <text class="t4" x="572" y="300" text-anchor="middle">Befehle als Geister</text>
+    <rect x="176" y="340" width="308" height="60" rx="12" fill="#f6f4ef" stroke="#e4dfd6"/>
+    <text class="t4" x="330" y="366" text-anchor="middle">Sicher erkannt? Dann bleibt es auf dem Gerät, sofort.</text>
+    <text class="t4" x="330" y="384" text-anchor="middle">Unklar oder „mach es schöner“? Dann fragt Ozzy Claude.</text>
+    <text class="t1" x="24" y="486">Scribble statt Prompt</text>
+    <text class="t2" x="24" y="510">Ozzy schickt Claude das Bild der Ansicht, deine Striche als Punkte und seine eigenen</text>
+    <text class="t2" x="24" y="528">Deutungen. Claude antwortet mit Befehlen, die als Geister erscheinen. Kein Textfeld</text>
+    <text class="t2" x="24" y="546">nötig; sprechen oder schreiben darf man trotzdem.</text>
+  </g>
+
+  <!-- 3 Zauberhand im Zweig -->
+  <g transform="translate(40,770)">
+    <rect class="tile" width="640" height="590" rx="16"/>
+    <path class="ink" d="M 40 300 L 600 300"/>
+    <g fill="#1b1b1b"><circle cx="70" cy="300" r="6"/><circle cx="150" cy="300" r="6"/><circle cx="230" cy="300" r="6"/><circle cx="520" cy="300" r="6"/></g>
+    <text class="t4" x="70" y="326" text-anchor="middle">du</text>
+    <text class="t4" x="150" y="326" text-anchor="middle">du</text>
+    <text class="t4" x="230" y="326" text-anchor="middle">du</text>
+    <text class="t4" x="520" y="326" text-anchor="middle">übernommen</text>
+    <path class="ghost" style="stroke-dasharray: none; stroke: #7f97b0" d="M 230 300 C 260 220, 300 170, 350 160 L 470 160"/>
+    <use href="#ozzy" transform="translate(320,166) scale(0.8)"/>
+    <use href="#ozzy" transform="translate(380,160) scale(0.8)"/>
+    <use href="#ozzy" transform="translate(440,160) scale(0.8)"/>
+    <text class="t4" x="380" y="134" text-anchor="middle">Claude arbeitet im Zweig</text>
+    <ellipse class="ghost" cx="520" cy="160" rx="40" ry="24"/>
+    <text class="t4" x="520" y="164" text-anchor="middle">Geister</text>
+    <path class="dash" d="M 520 186 L 520 290"/>
+    <path class="ink" style="stroke-width: 2" d="M 540 236 L 548 246 L 564 226"/>
+    <rect x="130" y="368" width="200" height="44" rx="10" fill="#f6f4ef" stroke="#e4dfd6"/>
+    <path d="M 152 384 L 152 380 C 152 372, 166 372, 166 380 L 166 384" fill="none" stroke="#1b1b1b" stroke-width="1.8"/>
+    <rect x="148" y="384" width="22" height="16" rx="3" fill="#1b1b1b"/>
+    <text class="t4" x="180" y="395">deine Schlüssel: geschützt</text>
+    <text class="t4" x="360" y="395">Beispiele: Leiter füllen, Varianten,</text>
+    <text class="t4" x="360" y="411">Knochen, Bäume pflanzen, Falten beheben</text>
+    <text class="t1" x="24" y="486">Zauberhand im Zweig</text>
+    <text class="t2" x="24" y="510">Größere Aufgaben macht Claude in einem eigenen Zweig, nie in deiner Szene. Du siehst</text>
+    <text class="t2" x="24" y="528">Geister und übernimmst, was dir gefällt. Im Verlauf steht, wer was getan hat, und</text>
+    <text class="t2" x="24" y="546">deine Schlüssel kann Claude nicht überschreiben.</text>
+  </g>
+
+  <!-- 4 Am Mac und am Handy -->
+  <g transform="translate(710,770)">
+    <rect class="tile" width="640" height="590" rx="16"/>
+    <use href="#mac" transform="translate(70,90)"/>
+    <use href="#pfeil" transform="translate(130,92)"/>
+    <rect class="box" x="152" y="66" width="190" height="52" rx="10"/>
+    <text class="t3" x="247" y="90" text-anchor="middle">Claude Code, Desktop</text>
+    <text class="t4" x="247" y="107" text-anchor="middle">auch per Fernsteuerung</text>
+    <use href="#pfeil" transform="translate(366,92)"/>
+    <rect class="box" x="388" y="66" width="170" height="52" rx="10"/>
+    <text class="t3" x="473" y="90" text-anchor="middle">Ozzy-MCP</text>
+    <text class="t4" x="473" y="107" text-anchor="middle">auf dem Mac</text>
+    <text class="t3" x="600" y="96" text-anchor="middle" style="fill: #3f7f4f">jetzt</text>
+    <use href="#handy" transform="translate(70,220)"/>
+    <use href="#pfeil" transform="translate(130,220)"/>
+    <rect class="box" x="152" y="194" width="190" height="52" rx="10"/>
+    <text class="t3" x="247" y="218" text-anchor="middle">Ozzy im Browser</text>
+    <text class="t4" x="247" y="235" text-anchor="middle">mit eingebautem Claude</text>
+    <use href="#pfeil" transform="translate(366,220)"/>
+    <rect class="box" x="388" y="194" width="170" height="52" rx="10"/>
+    <text class="t3" x="473" y="218" text-anchor="middle">Schnittstelle</text>
+    <text class="t4" x="473" y="235" text-anchor="middle">Schlüssel bleibt am Mac</text>
+    <text class="t3" x="600" y="224" text-anchor="middle" style="fill: #b07a2a">bald</text>
+    <use href="#handy" transform="translate(70,350)"/>
+    <use href="#pfeil" transform="translate(130,350)"/>
+    <rect class="box" x="152" y="324" width="190" height="52" rx="10"/>
+    <text class="t3" x="247" y="348" text-anchor="middle">Claude-App</text>
+    <text class="t4" x="247" y="365" text-anchor="middle">Ozzy als lebendes Fenster</text>
+    <use href="#pfeil" transform="translate(366,350)"/>
+    <rect class="box" x="388" y="324" width="170" height="52" rx="10"/>
+    <text class="t3" x="473" y="348" text-anchor="middle">Ozzy-Server</text>
+    <text class="t4" x="473" y="365" text-anchor="middle">im Internet, mit Anmeldung</text>
+    <text class="t3" x="600" y="354" text-anchor="middle" style="fill: #8a8f96">später</text>
+    <text class="t1" x="24" y="486">Am Mac und am Handy</text>
+    <text class="t2" x="24" y="510">Am Mac verbindet sich Claude direkt mit Ozzy, auch wenn du Claude vom iPhone aus</text>
+    <text class="t2" x="24" y="528">fernsteuerst. In Ozzy auf dem iPhone deutet Claude deine Scribbles über die Schnittstelle.</text>
+    <text class="t2" x="24" y="546">Für die Claude-App muss Ozzy aus dem Internet erreichbar sein.</text>
+  </g>
+</svg>
