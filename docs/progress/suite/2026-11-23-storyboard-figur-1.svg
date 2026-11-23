@@ -1,0 +1,299 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .wall { fill: #f3f1ec; stroke: #d5cfc4; stroke-width: 1.2; }
+      .floor { fill: #ece8e1; stroke: #d5cfc4; stroke-width: 1.2; }
+      .base { fill: #f1efeb; stroke: #a7adb4; stroke-width: 2; vector-effect: non-scaling-stroke; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .red { fill: none; stroke: #d7332a; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .dash { fill: none; stroke: #1b1b1b; stroke-width: 1.4; stroke-dasharray: 4 4; stroke-linecap: round; }
+      .dev { fill: #ffffff; stroke: #1b1b1b; stroke-width: 2.6; }
+      .scr { fill: #fbfaf7; stroke: #d9d4ca; stroke-width: 1.2; }
+      .finger { fill: #ecdccb; stroke: #b9a48f; stroke-width: 1.5; }
+      .drop { fill: #1b1b1b; }
+      .lib { fill: #ffffff; stroke: #a7adb4; stroke-width: 1.5; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .lbl { font: 600 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; letter-spacing: 1.2px; }
+      .nr { font: 700 11px "Helvetica Neue", Arial, sans-serif; fill: #ffffff; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .punkt { fill: none; stroke: #c9c3b8; stroke-width: 1.4; }
+    </style>
+    <g id="glimm">
+      <path class="base" d="M -56 -6 C -80 -10, -96 -30, -88 -46 C -84 -52, -76 -50, -78 -44 C -82 -32, -72 -20, -54 6 Z"/>
+      <ellipse class="base" cx="-30" cy="36" rx="12" ry="10"/>
+      <ellipse class="base" cx="26" cy="36" rx="12" ry="10"/>
+      <ellipse class="base" cx="0" cy="0" rx="62" ry="40"/>
+      <circle class="base" cx="56" cy="-30" r="30"/>
+      <ellipse class="base" cx="84" cy="-22" rx="15" ry="11"/>
+      <circle cx="64" cy="-38" r="4" fill="#1b1b1b"/>
+    </g>
+    <path id="profil" vector-effect="non-scaling-stroke" d="M -86 -44 C -80 -52, -74 -48, -78 -40 C -80 -30, -70 -18, -58 -12 C -50 -34, -20 -42, 10 -40 C 22 -56, 40 -62, 60 -60 C 80 -58, 96 -42, 99 -26 C 100 -12, 90 -10, 80 -11 C 74 6, 62 26, 38 36 C 38 46, 16 48, 14 40 C 0 42, -14 42, -18 40 C -20 48, -42 48, -42 38 C -58 30, -64 18, -60 4 C -78 -4, -92 -24, -86 -44 Z"/>
+    <g id="ozzy">
+      <ellipse cx="-12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(22 -12 -3)"/>
+      <ellipse cx="12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(-22 12 -3)"/>
+      <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <ellipse cx="0" cy="4" rx="2.6" ry="1.8" fill="#1b1b1b"/>
+    </g>
+    <g id="ecke">
+      <polygon class="wall" points="206,40 206,250 46,330 46,120"/>
+      <polygon class="wall" points="206,40 366,120 366,330 206,250"/>
+      <polygon class="floor" points="206,250 366,330 206,410 46,330"/>
+    </g>
+    <g id="kopf">
+      <rect class="tile" width="420" height="390" rx="16"/>
+      <circle class="punkt" cx="318" cy="24" r="4.5"/>
+      <circle class="punkt" cx="334" cy="24" r="4.5"/>
+      <circle class="punkt" cx="350" cy="24" r="4.5"/>
+      <circle class="punkt" cx="366" cy="24" r="4.5"/>
+      <circle class="punkt" cx="382" cy="24" r="4.5"/>
+      <circle class="punkt" cx="398" cy="24" r="4.5"/>
+      <circle cx="24" cy="24" r="13" fill="#1b1b1b"/>
+    </g>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Storyboard: Glimm, Teil 1</text>
+  <text x="40" y="106" class="sub">Eine Figur für early earle, vom Strich zur Form · Punkte oben rechts: die sechs Stationen · nichts davon ist gebaut</text>
+
+  <!-- A1 -->
+  <g transform="translate(40,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A1</text>
+    <text class="lbl" x="44" y="28">ZEICHNEN</text>
+    <circle cx="318" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect class="dev" x="40" y="46" width="132" height="230" rx="20"/>
+    <rect class="scr" x="48" y="54" width="116" height="214" rx="14"/>
+    <circle cx="84" cy="74" r="7" fill="#ffffff" stroke="#a7adb4" stroke-width="1.4"/>
+    <circle cx="106" cy="74" r="7" fill="#1b1b1b"/>
+    <circle cx="128" cy="74" r="7" fill="#ffffff" stroke="#a7adb4" stroke-width="1.4"/>
+    <text x="106" y="106" text-anchor="middle" style="font: italic 14px Georgia, serif; fill: #8a8f96">draw something</text>
+    <path class="ink" d="M 80 220 C 66 196, 80 168, 104 166 C 110 148, 132 140, 146 152 C 156 162, 150 174, 140 178 C 150 194, 144 220, 122 228 C 106 234, 92 232, 86 228"/>
+    <ellipse class="finger" cx="90" cy="248" rx="11" ry="15"/>
+    <use href="#ozzy" transform="translate(146,252) scale(0.7)"/>
+    <path class="grau" d="M 137 74 L 196 74"/>
+    <text class="t3" x="200" y="78">Figur, Form oder Szene</text>
+    <rect x="196" y="134" width="200" height="78" rx="12" fill="#faf8f4" stroke="#e4dfd6"/>
+    <text class="t3" x="210" y="156">Rezept, wenn du willst</text>
+    <text class="t2" x="210" y="178" style="fill: #1b1b1b">Figur in zehn Schritten</text>
+    <path class="dash" d="M 212 196 L 380 196"/>
+    <circle cx="212" cy="196" r="4" fill="#1b1b1b"/>
+    <path class="grau" d="M 158 252 L 196 252"/>
+    <text class="t3" x="200" y="256">Ozzy wartet, still</text>
+    <text class="t1" x="18" y="308">Start: zeichnen statt tippen</text>
+    <text class="t2" x="18" y="330">„draw something“, wie ein neuer Chat. Ein Finger</text>
+    <text class="t2" x="18" y="348">zieht den Umriss. Oben die Wahl, unten Ozzy.</text>
+    <text class="t2" x="18" y="366">Wer geführt werden will, nimmt ein Rezept.</text>
+  </g>
+
+  <!-- A2 -->
+  <g transform="translate(485,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A2</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#ecke" transform="translate(98,22) scale(0.62)"/>
+    <ellipse cx="226" cy="233" rx="56" ry="17" fill="#d8d2c7" opacity="0.7"/>
+    <ellipse cx="226" cy="160" rx="80" ry="28" fill="none" stroke="#7f97b0" stroke-width="2" stroke-dasharray="6 5"/>
+    <use href="#glimm" transform="translate(226,180) scale(0.66)"/>
+    <path class="grau" d="M 300 152 Q 310 172 300 192 M 312 160 Q 318 172 312 184 M 152 152 Q 142 172 152 192"/>
+    <ellipse class="finger" cx="56" cy="250" rx="11" ry="15"/>
+    <path class="thin" d="M 56 230 L 56 164 M 48 174 L 56 162 L 64 174"/>
+    <text class="t3" x="34" y="152">wischen</text>
+    <text class="t1" x="18" y="308">Aufblasen</text>
+    <text class="t2" x="18" y="330">Nach oben wischen: Der Seifenring fährt zurück, der</text>
+    <text class="t2" x="18" y="348">Fahrtwind bläst die Haut wobbelig auf. Um die Form</text>
+    <text class="t2" x="18" y="366">baut sich die Ecke mit Boden und Wänden auf.</text>
+  </g>
+
+  <!-- A3 -->
+  <g transform="translate(930,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A3</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#glimm" transform="translate(176,176) scale(0.95)"/>
+    <path class="ghost" d="M 216 126 L 206 90 L 230 120"/>
+    <path class="ghost" d="M 238 120 L 246 86 L 254 124"/>
+    <path class="ghost" d="M 146 142 C 126 96, 186 80, 204 136"/>
+    <path class="ghost" d="M 108 160 L 96 152 L 110 148 L 102 136 L 116 140"/>
+    <use href="#ozzy" transform="translate(318,72) rotate(14)"/>
+    <circle class="grau" cx="206" cy="92" r="9"/>
+    <circle class="grau" cx="206" cy="92" r="15" opacity="0.6"/>
+    <ellipse class="finger" cx="192" cy="68" rx="10" ry="14" transform="rotate(-20 192 68)"/>
+    <circle class="lib" cx="384" cy="104" r="15"/>
+    <path d="M 378 112 L 384 92 L 390 112 Z" fill="#a7adb4"/>
+    <circle class="lib" cx="384" cy="144" r="15"/>
+    <circle cx="384" cy="144" r="6" fill="#a7adb4"/>
+    <circle cx="385" cy="144" r="2.5" fill="#1b1b1b"/>
+    <circle class="lib" cx="384" cy="184" r="15"/>
+    <path d="M 374 190 C 374 174, 392 170, 396 184" fill="none" stroke="#a7adb4" stroke-width="2.4"/>
+    <circle class="lib" cx="384" cy="224" r="15"/>
+    <path d="M 375 220 L 379 230 L 383 220 L 387 230 L 391 220" fill="none" stroke="#a7adb4" stroke-width="2"/>
+    <text class="t3" x="384" y="258" text-anchor="middle">Bibliothek</text>
+    <text class="t1" x="18" y="308">Geister schlagen Teile vor</text>
+    <text class="t2" x="18" y="330">Durchscheinend: Hörner, Flügel, Zacken. Antippen</text>
+    <text class="t2" x="18" y="348">nimmt einen Geist, wegwischen verwirft ihn. Rechts</text>
+    <text class="t2" x="18" y="366">die Bibliothek: Hörner, Augen, Flügel, Zähne.</text>
+  </g>
+
+  <!-- A4 -->
+  <g transform="translate(40,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A4</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#glimm" transform="translate(166,186) scale(0.9)"/>
+    <path d="M 206 138 C 200 112, 194 96, 188 84 C 206 92, 218 112, 222 134 Z" fill="#f1efeb" stroke="#1b1b1b" stroke-width="2" stroke-linejoin="round"/>
+    <path class="thin" d="M 202 140 Q 214 130 226 136"/>
+    <path class="ghost" d="M 228 134 C 234 112, 242 96, 250 86 C 252 104, 246 120, 240 138"/>
+    <path class="dash" d="M 370 226 C 350 150, 280 80, 212 88"/>
+    <circle class="lib" cx="384" cy="236" r="15"/>
+    <path d="M 378 244 L 384 224 L 390 244 Z" fill="#a7adb4"/>
+    <circle class="lib" cx="112" cy="76" r="11"/>
+    <path d="M 108 82 L 112 68 L 116 82 Z" fill="#a7adb4"/>
+    <circle class="lib" cx="142" cy="66" r="11"/>
+    <path d="M 136 72 C 138 62, 144 58, 148 60 C 146 66, 144 70, 146 74 Z" fill="#a7adb4"/>
+    <circle class="lib" cx="172" cy="60" r="11"/>
+    <path d="M 166 66 L 170 54 L 174 62 L 178 52 L 178 66 Z" fill="#a7adb4"/>
+    <path class="grau" d="M 100 98 Q 140 110 184 82"/>
+    <text class="t3" x="62" y="52">wischen ersetzt</text>
+    <text class="t1" x="18" y="308">Ansetzen und ersetzen</text>
+    <text class="t2" x="18" y="330">Ein Horn aus der Bibliothek auf den Kopf ziehen: Es</text>
+    <text class="t2" x="18" y="348">verschmilzt wie ein Tropfen, das Gegenstück kommt</text>
+    <text class="t2" x="18" y="366">als Geist. Über das Teil wischen tauscht es aus.</text>
+  </g>
+
+  <!-- A5 -->
+  <g transform="translate(485,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A5</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect class="dev" x="40" y="46" width="132" height="230" rx="20"/>
+    <rect class="scr" x="48" y="54" width="116" height="214" rx="14"/>
+    <rect class="wall" x="54" y="74" width="104" height="150" rx="4"/>
+    <use href="#profil" transform="translate(102,152) scale(0.5)" fill="#d8d2c7" stroke="#1b1b1b" stroke-width="1.8"/>
+    <circle cx="132" cy="122" r="3.2" fill="#1b1b1b"/>
+    <circle cx="107" cy="132" r="3.2" fill="#1b1b1b"/>
+    <circle cx="93" cy="172" r="3.2" fill="#1b1b1b"/>
+    <circle cx="72" cy="154" r="3.2" fill="#1b1b1b"/>
+    <path class="thin" d="M 142 232 C 144 200, 150 170, 151 147"/>
+    <path class="drop" d="M 151 128 C 145 136, 145 142, 151 145 C 157 142, 157 136, 151 128 Z"/>
+    <ellipse class="finger" cx="140" cy="250" rx="11" ry="15"/>
+    <use href="#ecke" transform="translate(222,48) scale(0.26)"/>
+    <polygon points="275.6,58.4 275.6,113 234,133.8 234,79.2" fill="#d8d2c7" opacity="0.8"/>
+    <path class="thin" d="M 236 128 C 212 150, 196 160, 180 168"/>
+    <path class="thin" d="M 186 160 L 179 169 L 190 171"/>
+    <path class="grau" d="M 154 250 L 196 250"/>
+    <text class="t3" x="200" y="246">Tropfen am Faden,</text>
+    <text class="t3" x="200" y="260">wie die Lupe von iOS</text>
+    <text class="t1" x="18" y="308">Wand kommt zu dir</text>
+    <text class="t2" x="18" y="330">Die Seitenwand halten: Sie dreht sich zu dir, das</text>
+    <text class="t2" x="18" y="348">Profil liegt gerade vor dir. Der Finger zieht am Tropfen,</text>
+    <text class="t2" x="18" y="366">der Punkt bleibt sichtbar. Loslassen dreht zurück.</text>
+  </g>
+
+  <!-- A6 -->
+  <g transform="translate(930,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A6</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#glimm" transform="translate(196,150) scale(1)"/>
+    <path d="M 140 168 C 160 222, 232 224, 252 168" fill="#f1efeb" stroke="#a7adb4" stroke-width="2"/>
+    <path class="ink" d="M 136 166 C 154 244, 238 246, 256 166"/>
+    <path class="grau" d="M 124 192 Q 116 206 124 220 M 112 198 Q 106 206 112 214"/>
+    <path class="thin" d="M 290 186 L 290 232 M 282 222 L 290 234 L 298 222"/>
+    <text class="t3" x="300" y="212">ziehen</text>
+    <ellipse class="finger" cx="196" cy="252" rx="11" ry="15"/>
+    <text class="t1" x="18" y="308">Ziehen fühlt sich lebendig an</text>
+    <text class="t2" x="18" y="330">Den Bauch nach unten ziehen: Die Linie folgt sofort,</text>
+    <text class="t2" x="18" y="348">die Haut schwingt nach wie ein Wasserballon und sitzt</text>
+    <text class="t2" x="18" y="366">in Ruhe genau. Das verdeckt auch die Rechenzeit.</text>
+  </g>
+
+  <!-- A7 -->
+  <g transform="translate(40,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A7</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#glimm" transform="translate(150,170) scale(0.95)"/>
+    <path class="thin" style="stroke-width: 1.2" d="M 118 142 q 6 7 12 0 M 130 142 q 6 7 12 0 M 142 142 q 6 7 12 0 M 154 142 q 6 7 12 0 M 166 142 q 6 7 12 0 M 112 153 q 6 7 12 0 M 124 153 q 6 7 12 0 M 136 153 q 6 7 12 0 M 148 153 q 6 7 12 0 M 160 153 q 6 7 12 0 M 172 153 q 6 7 12 0 M 118 164 q 6 7 12 0 M 130 164 q 6 7 12 0 M 142 164 q 6 7 12 0 M 154 164 q 6 7 12 0 M 166 164 q 6 7 12 0"/>
+    <circle cx="146" cy="152" r="24" fill="none" stroke="#1b1b1b" stroke-width="1.3" stroke-dasharray="3 3"/>
+    <text class="t3" x="262" y="66">großer Pinsel</text>
+    <rect x="262" y="74" width="140" height="30" rx="8" fill="#faf8f4" stroke="#1b1b1b" stroke-width="1.4"/>
+    <text class="t2" x="274" y="94" style="fill: #1b1b1b">Form → Kurven</text>
+    <text class="t3" x="262" y="130">kleiner Pinsel</text>
+    <rect x="262" y="138" width="140" height="30" rx="8" fill="#faf8f4" stroke="#1b1b1b" stroke-width="1.4"/>
+    <text class="t2" x="274" y="158" style="fill: #1b1b1b">Detail → Haut</text>
+    <text class="t3" x="262" y="202">Glätten</text>
+    <path class="thin" d="M 266 222 L 398 222"/>
+    <path class="drop" d="M 332 209 C 326 217, 326 224, 332 227 C 338 224, 338 217, 332 209 Z"/>
+    <text class="t3" x="262" y="244">Form</text>
+    <text class="t3" x="398" y="244" text-anchor="end">Detail</text>
+    <text class="t1" x="18" y="308">Sculpting mit Kurven</text>
+    <text class="t2" x="18" y="330">Große Züge gehen an die Kurven. Kleine Details wie</text>
+    <text class="t2" x="18" y="348">Schuppen entstehen nur auf der Haut und reiten mit.</text>
+    <text class="t2" x="18" y="366">Glätten wirkt auf beides, ein Regler verteilt es.</text>
+  </g>
+
+  <!-- A8 -->
+  <g transform="translate(485,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A8</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#glimm" transform="translate(224,178) scale(0.9)"/>
+    <ellipse class="red" cx="152" cy="152" rx="30" ry="32"/>
+    <path class="red" d="M 126 128 L 92 98 M 94 112 L 91 97 L 106 99"/>
+    <path class="ghost" d="M 168 168 C 128 160, 100 124, 110 98"/>
+    <path class="ghost" d="M 168 170 C 126 180, 76 164, 66 134"/>
+    <path class="ghost" d="M 168 166 C 136 150, 124 108, 146 88 C 154 82, 160 90, 154 96"/>
+    <use href="#ozzy" transform="translate(338,72)"/>
+    <path class="dash" style="stroke: #a7adb4" d="M 324 78 C 270 60, 190 64, 152 84"/>
+    <text class="t1" x="18" y="308">Rotstift, wenn du willst</text>
+    <text class="t2" x="18" y="330">Den Schwanz rot einkreisen, einen Pfeil ziehen: Ozzy</text>
+    <text class="t2" x="18" y="348">zeigt drei Deutungen als Geister, du tippst eine an.</text>
+    <text class="t2" x="18" y="366">Ein Weg unter mehreren; Hand und Wand gehen immer.</text>
+  </g>
+
+  <!-- A9 -->
+  <g transform="translate(930,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">A9</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect x="66" y="50" width="288" height="216" rx="6" fill="#fbfaf7" stroke="#d9d4ca" stroke-width="1.2"/>
+    <line x1="210" y1="50" x2="210" y2="266" stroke="#c9c3b8" stroke-width="1.2"/>
+    <line x1="66" y1="158" x2="354" y2="158" stroke="#c9c3b8" stroke-width="1.2"/>
+    <path class="drop" d="M 210 150 C 205 157, 205 163, 210 166 C 215 163, 215 157, 210 150 Z"/>
+    <text class="t3" x="74" y="66">Front</text>
+    <text class="t3" x="218" y="66">Seite</text>
+    <text class="t3" x="74" y="174">Raum</text>
+    <text class="t3" x="218" y="174">Top</text>
+    <ellipse class="base" cx="138" cy="126" rx="34" ry="24"/>
+    <circle class="base" cx="138" cy="96" r="20"/>
+    <circle cx="131" cy="94" r="2.4" fill="#1b1b1b"/>
+    <circle cx="145" cy="94" r="2.4" fill="#1b1b1b"/>
+    <use href="#glimm" transform="translate(278,116) scale(0.38)"/>
+    <ellipse cx="138" cy="242" rx="40" ry="8" fill="#e4dfd6"/>
+    <use href="#glimm" transform="translate(138,216) scale(0.36)"/>
+    <ellipse class="base" cx="232" cy="214" rx="9" ry="5"/>
+    <ellipse class="base" cx="272" cy="214" rx="36" ry="18"/>
+    <circle class="base" cx="306" cy="214" r="13"/>
+    <circle class="red" cx="306" cy="114" r="12"/>
+    <text x="322" y="104" style="font: 700 15px 'Helvetica Neue', Arial, sans-serif; fill: #d7332a">!</text>
+    <text class="t1" x="18" y="308">Prüfen in den Vier Ansichten</text>
+    <text class="t2" x="18" y="330">Weit herauszoomen faltet die Ecke zum Kistennetz</text>
+    <text class="t2" x="18" y="348">(am Mac Tab). Der Wächter kreist eine Falte am Kiefer</text>
+    <text class="t2" x="18" y="366">rot ein; antippen glättet sie.</text>
+  </g>
+</svg>

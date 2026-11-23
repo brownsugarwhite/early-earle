@@ -759,3 +759,6 @@ wegschicken.
 
 Tempo auf dem Handy, die Ansichten je Gerät, „in Bewegung lebendig, in Ruhe genau“, Werkstoffe sowie CAD und Architektur:
 [`2026-11-23-ozzy-suite-teil-2-tempo-ansichten.md`](2026-11-23-ozzy-suite-teil-2-tempo-ansichten.md).
+
+Teil 3: Storyboard für eine Figur („Glimm“) und einen Häuserblock, die Leiter von 2 bis 2048, Vorbilder für den Tropfen am Faden,
+Sculpting mit Kurven: [`2026-11-23-ozzy-suite-teil-3-storyboard.md`](2026-11-23-ozzy-suite-teil-3-storyboard.md).

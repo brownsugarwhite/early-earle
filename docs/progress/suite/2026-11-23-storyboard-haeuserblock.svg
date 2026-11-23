@@ -1,0 +1,388 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .base { fill: #f1efeb; stroke: #a7adb4; stroke-width: 2; vector-effect: non-scaling-stroke; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 1.8; stroke-dasharray: 5 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .fgeist { fill: none; stroke: #7f97b0; stroke-width: 1.5; stroke-dasharray: 4 3; stroke-linejoin: round; }
+      .dash { fill: none; stroke: #1b1b1b; stroke-width: 1.4; stroke-dasharray: 4 4; stroke-linecap: round; }
+      .dev { fill: #ffffff; stroke: #1b1b1b; stroke-width: 2.6; }
+      .scr { fill: #fbfaf7; stroke: #d9d4ca; stroke-width: 1.2; }
+      .finger { fill: #ecdccb; stroke: #b9a48f; stroke-width: 1.5; }
+      .drop { fill: #1b1b1b; }
+      .lib { fill: #ffffff; stroke: #a7adb4; stroke-width: 1.5; }
+      .stein { fill: #f1efeb; stroke: #8f969d; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+      .dach { fill: #d8d2c7; stroke: #8f969d; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+      .tuer { fill: #8f7a66; stroke: #6f5f50; stroke-width: 1; vector-effect: non-scaling-stroke; }
+      .fenster { fill: #bcd0dc; stroke: #8f969d; stroke-width: 1.2; }
+      .krone { stroke: #6f8f5a; stroke-width: 1.6; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .t4 { font: 10px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .lbl { font: 600 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; letter-spacing: 1.2px; }
+      .nr { font: 700 11px "Helvetica Neue", Arial, sans-serif; fill: #ffffff; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .punkt { fill: none; stroke: #c9c3b8; stroke-width: 1.4; }
+    </style>
+    <pattern id="comic" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#f2c94c"/><circle cx="3" cy="3" r="1.3" fill="#1b1b1b"/></pattern>
+    <pattern id="abend" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#e9a86c"/><rect y="5" width="10" height="5" fill="#c47f5a"/></pattern>
+    <pattern id="mosaik" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#f4efe6"/><rect x="1" y="1" width="4" height="4" fill="#3f7fbf"/><rect x="7" y="2" width="4" height="3" fill="#e2b33f"/><rect x="2" y="7" width="3" height="4" fill="#d1604f"/><rect x="7" y="7" width="4" height="4" fill="#5f9f6f"/></pattern>
+    <g id="haeuser">
+      <rect class="stein" x="0" y="-120" width="90" height="120"/>
+      <polygon class="dach" points="0,-120 45,-160 90,-120"/>
+      <rect class="stein" x="90" y="-150" width="100" height="150"/>
+      <rect class="dach" x="88" y="-156" width="104" height="8"/>
+      <rect class="stein" x="190" y="-100" width="80" height="100"/>
+      <polygon class="dach" points="190,-100 230,-136 270,-100"/>
+      <rect class="tuer" x="38" y="-34" width="14" height="34"/>
+      <rect class="tuer" x="132" y="-36" width="16" height="36"/>
+      <rect class="tuer" x="223" y="-30" width="14" height="30"/>
+    </g>
+    <g id="auto">
+      <path d="M 0 0 C 0 -12, 8 -20, 22 -22 L 40 -34 C 48 -38, 70 -38, 80 -30 L 92 -20 C 104 -18, 110 -12, 110 0 Z" fill="#e15d4f" stroke="#1b1b1b" stroke-width="1.6"/>
+      <path d="M 32 -22 L 43 -31 C 49 -34, 66 -34, 73 -28 L 79 -22 Z" fill="#cfe2ec" stroke="#1b1b1b" stroke-width="1"/>
+      <circle cx="24" cy="0" r="10" fill="#1b1b1b"/>
+      <circle cx="24" cy="0" r="4" fill="#ffffff"/>
+      <circle cx="88" cy="0" r="10" fill="#1b1b1b"/>
+      <circle cx="88" cy="0" r="4" fill="#ffffff"/>
+    </g>
+    <clipPath id="clipC8">
+      <rect transform="translate(50,240)" x="0" y="-120" width="90" height="120"/>
+      <polygon transform="translate(50,240)" points="0,-120 45,-160 90,-120"/>
+      <rect transform="translate(50,240)" x="90" y="-150" width="100" height="150"/>
+      <rect transform="translate(50,240)" x="190" y="-100" width="80" height="100"/>
+      <polygon transform="translate(50,240)" points="190,-100 230,-136 270,-100"/>
+    </clipPath>
+    <g id="ozzy">
+      <ellipse cx="-12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(22 -12 -3)"/>
+      <ellipse cx="12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(-22 12 -3)"/>
+      <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <ellipse cx="0" cy="4" rx="2.6" ry="1.8" fill="#1b1b1b"/>
+    </g>
+    <g id="kopf">
+      <rect class="tile" width="420" height="390" rx="16"/>
+      <circle class="punkt" cx="318" cy="24" r="4.5"/>
+      <circle class="punkt" cx="334" cy="24" r="4.5"/>
+      <circle class="punkt" cx="350" cy="24" r="4.5"/>
+      <circle class="punkt" cx="366" cy="24" r="4.5"/>
+      <circle class="punkt" cx="382" cy="24" r="4.5"/>
+      <circle class="punkt" cx="398" cy="24" r="4.5"/>
+      <circle cx="24" cy="24" r="13" fill="#1b1b1b"/>
+    </g>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Storyboard: ein Häuserblock</text>
+  <text x="40" y="106" class="sub">Drei Häuser, Bäume und Autos davor; dazu die Leiter von 2 bis 2048 für Häuser · nichts davon ist gebaut</text>
+
+  <!-- C1 -->
+  <g transform="translate(40,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C1</text>
+    <text class="lbl" x="44" y="28">ZEICHNEN</text>
+    <circle cx="318" cy="24" r="4.5" fill="#1b1b1b"/>
+    <path stroke="#eeeae3" stroke-width="1" d="M 40 90 L 40 270 M 60 90 L 60 270 M 80 90 L 80 270 M 100 90 L 100 270 M 120 90 L 120 270 M 140 90 L 140 270 M 160 90 L 160 270 M 180 90 L 180 270 M 200 90 L 200 270 M 220 90 L 220 270 M 240 90 L 240 270 M 260 90 L 260 270 M 280 90 L 280 270 M 300 90 L 300 270 M 320 90 L 320 270 M 340 90 L 340 270 M 360 90 L 360 270 M 40 90 L 360 90 M 40 110 L 360 110 M 40 130 L 360 130 M 40 150 L 360 150 M 40 170 L 360 170 M 40 190 L 360 190 M 40 210 L 360 210 M 40 230 L 360 230 M 40 250 L 360 250 M 40 270 L 360 270"/>
+    <rect x="40" y="214" width="320" height="40" fill="#e4dfd6"/>
+    <path d="M 40 234 L 360 234" stroke="#ffffff" stroke-width="2" stroke-dasharray="10 8"/>
+    <rect class="ink" x="80" y="110" width="240" height="80"/>
+    <path class="thin" d="M 160 110 L 160 190 M 250 110 L 250 190"/>
+    <g fill="#1b1b1b"><circle cx="80" cy="110" r="3"/><circle cx="320" cy="110" r="3"/><circle cx="320" cy="190" r="3"/><circle cx="80" cy="190" r="3"/></g>
+    <path class="thin" d="M 80 98 L 320 98 M 80 92 L 80 104 M 320 92 L 320 104"/>
+    <text class="t3" x="200" y="93" text-anchor="middle" style="fill: #1b1b1b">24,0 m</text>
+    <path class="thin" d="M 66 110 L 66 190 M 60 110 L 72 110 M 60 190 L 72 190"/>
+    <text class="t3" x="58" y="154" text-anchor="end" style="fill: #1b1b1b">8,0 m</text>
+    <ellipse class="finger" cx="334" cy="204" rx="10" ry="14"/>
+    <circle cx="262" cy="52" r="11" fill="#ffffff" stroke="#a7adb4" stroke-width="1.4"/>
+    <ellipse cx="259" cy="48" rx="4" ry="2.5" fill="#cfe2ec"/>
+    <circle cx="304" cy="52" r="11" fill="#e9c39a" opacity="0.6"/>
+    <circle cx="346" cy="52" r="11" fill="#b8b2a7" stroke="#1b1b1b" stroke-width="2"/>
+    <text class="t4" x="262" y="76" text-anchor="middle">Seifenhaut</text>
+    <text class="t4" x="304" y="76" text-anchor="middle">Knete</text>
+    <text class="t4" x="346" y="76" text-anchor="middle" style="fill: #1b1b1b; font-weight: 600">Stein</text>
+    <text class="t1" x="18" y="308">Grundriss in Stein</text>
+    <text class="t2" x="18" y="330">Szene wählen, Werkstoff Stein. Im Top zeichnest du den</text>
+    <text class="t2" x="18" y="348">Grundriss: Linien rasten ins Raster und aneinander, Maße</text>
+    <text class="t2" x="18" y="366">stehen an den Kanten. Drei Häuser, davor die Straße.</text>
+  </g>
+
+  <!-- C2 -->
+  <g transform="translate(485,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C2</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <polygon class="fgeist" points="170,150 315.4,234 279.1,255 133.6,171"/>
+    <g stroke="#8f969d" stroke-width="1.4" stroke-linejoin="round">
+      <polygon points="170,108 218.5,136 182.1,157 133.6,129" fill="#f7f5f1"/>
+      <polygon points="133.6,171 182.1,199 182.1,157 133.6,129" fill="#ebe7e0"/>
+      <polygon points="218.5,122 267,150 230.6,171 182.1,143" fill="#f7f5f1"/>
+      <polygon points="182.1,199 230.6,227 230.6,171 182.1,143" fill="#ebe7e0"/>
+      <polygon points="267,206 230.6,227 230.6,171 267,150" fill="#dcd6cc"/>
+      <polygon points="267,171 315.4,199 279.1,220 230.6,192" fill="#f7f5f1"/>
+      <polygon points="230.6,227 279.1,255 279.1,220 230.6,192" fill="#ebe7e0"/>
+      <polygon points="315.4,234 279.1,255 279.1,220 315.4,199" fill="#dcd6cc"/>
+    </g>
+    <path class="grau" d="M 160 98 Q 170 90 180 98 M 212 112 Q 222 104 232 112 M 266 160 Q 276 152 286 160"/>
+    <circle class="finger" cx="62" cy="238" r="11"/>
+    <circle class="finger" cx="88" cy="230" r="11"/>
+    <path class="thin" d="M 75 212 L 75 160 M 67 170 L 75 158 L 83 170"/>
+    <path class="grau" d="M 386 48 L 386 112"/>
+    <path class="drop" d="M 386 112 C 380 120, 380 126, 386 129 C 392 126, 392 120, 386 112 Z"/>
+    <text class="t4" x="376" y="50" text-anchor="end">Geschosse</text>
+    <text class="t3" x="398" y="126" style="fill: #1b1b1b">3</text>
+    <text class="t1" x="18" y="308">Hochziehen</text>
+    <text class="t2" x="18" y="330">Mit zwei Fingern nach oben: Die Wände wachsen federnd</text>
+    <text class="t2" x="18" y="348">aus dem Grundriss und stehen dann exakt. Ein Regler am</text>
+    <text class="t2" x="18" y="366">Faden setzt die Geschosse, je Haus oder für alle.</text>
+  </g>
+
+  <!-- C3 -->
+  <g transform="translate(930,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C3</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect x="40" y="250" width="320" height="20" fill="#e4dfd6"/>
+    <use href="#haeuser" transform="translate(60,250)"/>
+    <g class="fenster">
+      <rect x="72" y="148" width="14" height="20"/><rect x="96" y="148" width="14" height="20"/><rect x="120" y="148" width="14" height="20"/>
+      <rect x="72" y="184" width="14" height="20"/><rect x="96" y="184" width="14" height="20"/><rect x="120" y="184" width="14" height="20"/>
+      <rect x="160" y="116" width="14" height="20"/><rect x="184" y="116" width="14" height="20"/><rect x="208" y="116" width="14" height="20"/><rect x="232" y="116" width="14" height="20"/>
+      <rect x="160" y="152" width="14" height="20"/><rect x="184" y="152" width="14" height="20"/><rect x="208" y="152" width="14" height="20"/><rect x="232" y="152" width="14" height="20"/>
+      <rect x="160" y="188" width="14" height="20"/><rect x="184" y="188" width="14" height="20"/><rect x="208" y="188" width="14" height="20"/><rect x="232" y="188" width="14" height="20"/>
+    </g>
+    <g class="fgeist">
+      <rect x="262" y="166" width="14" height="20"/><rect x="288" y="166" width="14" height="20"/><rect x="312" y="166" width="14" height="20"/>
+      <rect x="262" y="200" width="14" height="20"/><rect x="312" y="200" width="14" height="20"/>
+    </g>
+    <circle class="lib" cx="390" cy="70" r="15"/>
+    <rect x="383" y="63" width="14" height="14" fill="#bcd0dc" stroke="#8f969d" stroke-width="1.2"/>
+    <path d="M 390 63 L 390 77 M 383 70 L 397 70" stroke="#8f969d" stroke-width="1"/>
+    <path class="dash" style="stroke: #a7adb4" d="M 376 74 C 300 52, 160 70, 84 144"/>
+    <circle class="lib" cx="390" cy="110" r="11"/>
+    <path d="M 384 118 L 384 108 C 384 100, 396 100, 396 108 L 396 118 Z" fill="#bcd0dc" stroke="#8f969d" stroke-width="1"/>
+    <circle class="lib" cx="390" cy="140" r="11"/>
+    <circle cx="390" cy="140" r="6" fill="#bcd0dc" stroke="#8f969d" stroke-width="1"/>
+    <text class="t4" x="404" y="164" text-anchor="end">wischen ersetzt</text>
+    <text class="t1" x="18" y="308">Fenster als Reihe</text>
+    <text class="t2" x="18" y="330">Ein Fenster aus der Bibliothek setzen, die Reihe füllt</text>
+    <text class="t2" x="18" y="348">die Fassade mit gleichen Abständen. Wischen tauscht den</text>
+    <text class="t2" x="18" y="366">Typ. 500 gleiche Fenster kosten fast so viel wie eins.</text>
+  </g>
+
+  <!-- C4 -->
+  <g transform="translate(40,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C4</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect x="20" y="236" width="236" height="16" fill="#e4dfd6"/>
+    <use href="#haeuser" transform="translate(30,236) scale(0.8)"/>
+    <path class="ghost" d="M 102 112 L 142 80 L 182 112"/>
+    <path class="ghost" d="M 132 112 L 132 72 L 152 72 L 152 112 M 128 72 L 142 56 L 156 72"/>
+    <circle class="lib" cx="220" cy="62" r="14"/>
+    <polygon points="211,68 220,57 229,68" fill="#a7adb4"/>
+    <path class="dash" style="stroke: #a7adb4" d="M 208 70 C 194 78, 182 88, 170 100"/>
+    <text class="t3" x="276" y="46">mehr davon</text>
+    <rect x="276" y="52" width="118" height="62" rx="8" fill="#f6efe2" stroke="#7f97b0" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <use href="#haeuser" transform="translate(288,110) scale(0.34)"/>
+    <rect x="276" y="124" width="118" height="62" rx="8" fill="#eef3f6" stroke="#7f97b0" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <use href="#haeuser" transform="translate(288,182) scale(0.34)"/>
+    <circle cx="298" cy="174" r="7" fill="#8fb07a"/>
+    <circle cx="384" cy="174" r="7" fill="#8fb07a"/>
+    <rect x="276" y="196" width="118" height="62" rx="8" fill="#f3eef6" stroke="#7f97b0" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <use href="#haeuser" transform="translate(288,254) scale(0.34)"/>
+    <rect x="288" y="213.2" width="30.6" height="40.8" fill="#f2b46a" opacity="0.45"/>
+    <rect x="352.6" y="220" width="27.2" height="34" fill="#bcd9e6" opacity="0.6"/>
+    <text class="t1" x="18" y="308">Dächer und Varianten</text>
+    <text class="t2" x="18" y="330">Dächer kommen aus der Bibliothek: Satteldach, Flachdach,</text>
+    <text class="t2" x="18" y="348">Türmchen. „Mehr davon“ zeigt Varianten des Blocks als</text>
+    <text class="t2" x="18" y="366">Geister; antippen übernimmt, jedes Detail bleibt deins.</text>
+  </g>
+
+  <!-- C5 -->
+  <g transform="translate(485,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C5</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect class="stein" x="110" y="60" width="200" height="196"/>
+    <g class="fenster">
+      <rect x="124" y="84" width="14" height="20"/><rect x="150" y="84" width="14" height="20"/><rect x="176" y="84" width="14" height="20"/>
+      <rect x="124" y="150" width="14" height="20"/><rect x="150" y="150" width="14" height="20"/><rect x="176" y="150" width="14" height="20"/>
+      <rect x="124" y="214" width="14" height="20"/><rect x="176" y="214" width="14" height="20"/>
+    </g>
+    <rect x="210" y="60" width="100" height="196" fill="#fbfaf7"/>
+    <path d="M 210 62 L 310 62 M 210 125 L 310 125 M 210 190 L 310 190 M 310 60 L 310 256" stroke="#1b1b1b" stroke-width="4"/>
+    <path class="thin" d="M 300 256 L 300 244 L 288 244 L 288 232 L 276 232 L 276 220 L 264 220 L 264 208 L 252 208 L 252 196 L 244 196 L 244 190"/>
+    <rect x="222" y="244" width="22" height="4" fill="#8f7a66"/>
+    <path d="M 225 248 L 225 256 M 241 248 L 241 256" stroke="#8f7a66" stroke-width="2"/>
+    <g transform="translate(268,183.3) scale(0.14)">
+      <path class="base" d="M -56 -6 C -80 -10, -96 -30, -88 -46 C -84 -52, -76 -50, -78 -44 C -82 -32, -72 -20, -54 6 Z"/>
+      <ellipse class="base" cx="-30" cy="36" rx="12" ry="10"/>
+      <ellipse class="base" cx="26" cy="36" rx="12" ry="10"/>
+      <ellipse class="base" cx="0" cy="0" rx="62" ry="40"/>
+      <circle class="base" cx="56" cy="-30" r="30"/>
+      <ellipse class="base" cx="84" cy="-22" rx="15" ry="11"/>
+    </g>
+    <path class="dash" d="M 210 44 L 210 272"/>
+    <path class="drop" d="M 210 30 C 204 38, 204 44, 210 47 C 216 44, 216 38, 210 30 Z"/>
+    <text class="t4" x="222" y="42">Schnitt</text>
+    <text class="t1" x="18" y="308">Schnitt</text>
+    <text class="t2" x="18" y="330">Die Ebene am Tropfen durch das Haus ziehen: rechts das</text>
+    <text class="t2" x="18" y="348">Innere mit Geschossen und Treppe, links die Fassade. Die</text>
+    <text class="t2" x="18" y="366">Ecke umschließt nur das gewählte Haus.</text>
+  </g>
+
+  <!-- C6 -->
+  <g transform="translate(930,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C6</text>
+    <text class="lbl" x="44" y="28">FORMEN</text>
+    <circle cx="334" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect class="dev" x="36" y="46" width="136" height="230" rx="20"/>
+    <rect class="scr" x="44" y="54" width="120" height="214" rx="14"/>
+    <use href="#haeuser" transform="translate(50,196) scale(0.4)"/>
+    <rect x="44" y="200" width="120" height="30" fill="#e4dfd6"/>
+    <path class="grau" d="M 44 200 L 164 200"/>
+    <path class="ink" style="stroke-width: 2" d="M 58 194 C 50 178, 72 170, 74 184 C 76 194, 62 196, 60 188 M 92 194 C 84 178, 106 170, 108 184 C 110 194, 96 196, 94 188 M 126 194 C 118 178, 140 170, 142 184 C 144 194, 130 196, 128 188"/>
+    <ellipse class="finger" cx="148" cy="246" rx="10" ry="14"/>
+    <path class="thin" d="M 182 170 L 206 170 M 198 164 L 207 170 L 198 176"/>
+    <path class="grau" d="M 214 230 L 404 230"/>
+    <rect x="247" y="200" width="6" height="30" fill="#8f7a66"/>
+    <circle class="krone" cx="250" cy="186" r="22" fill="#8fb07a"/>
+    <rect x="309" y="192" width="7" height="38" fill="#8f7a66"/>
+    <circle class="krone" cx="312" cy="168" r="30" fill="#7fa36b"/>
+    <rect x="369" y="206" width="6" height="24" fill="#8f7a66"/>
+    <circle class="krone" cx="372" cy="192" r="20" fill="#9bbf86"/>
+    <path class="grau" d="M 216 128 Q 232 118 248 128 M 228 140 Q 240 132 252 140"/>
+    <use href="#ozzy" transform="translate(388,80)"/>
+    <text class="t1" x="18" y="308">Kringel werden Bäume</text>
+    <text class="t2" x="18" y="330">Eine Reihe Kringel am Gehweg ziehen: Ozzy macht Bäume</text>
+    <text class="t2" x="18" y="348">daraus, jeder etwas anders, aus Knete statt Stein. Wind</text>
+    <text class="t2" x="18" y="366">ist ein Verhalten; sie wiegen sich.</text>
+  </g>
+
+  <!-- C7 -->
+  <g transform="translate(40,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C7</text>
+    <text class="lbl" x="44" y="28">BELEBEN</text>
+    <circle cx="366" cy="24" r="4.5" fill="#1b1b1b"/>
+    <g opacity="0.35"><use href="#haeuser" transform="translate(60,166) scale(0.7)"/></g>
+    <rect x="20" y="166" width="380" height="72" fill="#e4dfd6"/>
+    <path d="M 20 204 L 400 204" stroke="#ffffff" stroke-width="2" stroke-dasharray="12 9"/>
+    <path class="grau" d="M 20 172 L 400 172"/>
+    <use href="#auto" transform="translate(60,228)"/>
+    <path class="thin" d="M 22 196 L 50 196 M 14 208 L 52 208 M 26 220 L 54 220"/>
+    <path class="ink" style="stroke-width: 2" d="M 186 214 C 236 200, 300 224, 380 208"/>
+    <path class="ink" style="stroke-width: 2" d="M 368 202 L 381 208 L 370 216"/>
+    <ellipse class="finger" cx="384" cy="232" rx="10" ry="14"/>
+    <circle class="lib" cx="384" cy="70" r="15"/>
+    <rect x="374" y="66" width="20" height="7" rx="2" fill="#e15d4f"/>
+    <circle cx="378" cy="75" r="2.6" fill="#1b1b1b"/>
+    <circle cx="390" cy="75" r="2.6" fill="#1b1b1b"/>
+    <path class="dash" style="stroke: #a7adb4" d="M 370 80 C 300 92, 200 120, 124 186"/>
+    <text class="t1" x="18" y="308">Autos auf einer Bahn</text>
+    <text class="t2" x="18" y="330">Ein Auto aus der Bibliothek auf die Straße ziehen und mit</text>
+    <text class="t2" x="18" y="348">dem Finger eine Bahn zeichnen: Es fährt. Speedlines</text>
+    <text class="t2" x="18" y="366">machen es schneller; aus Knete federt es wie im Cartoon.</text>
+  </g>
+
+  <!-- C8 -->
+  <g transform="translate(485,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C8</text>
+    <text class="lbl" x="44" y="28">FÄRBEN</text>
+    <circle cx="350" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect x="30" y="240" width="360" height="20" fill="#e4dfd6"/>
+    <g clip-path="url(#clipC8)">
+      <g transform="rotate(-28 190 170)">
+        <rect x="10" y="-80" width="30" height="460" fill="url(#abend)"/>
+        <rect x="40" y="-80" width="30" height="460" fill="url(#comic)"/>
+        <rect x="70" y="-80" width="30" height="460" fill="url(#mosaik)"/>
+        <rect x="100" y="-80" width="30" height="460" fill="#f1efeb"/>
+        <rect x="130" y="-80" width="30" height="460" fill="url(#abend)"/>
+        <rect x="160" y="-80" width="30" height="460" fill="url(#comic)"/>
+        <rect x="190" y="-80" width="30" height="460" fill="url(#mosaik)"/>
+        <rect x="220" y="-80" width="30" height="460" fill="#f1efeb"/>
+        <rect x="250" y="-80" width="30" height="460" fill="url(#abend)"/>
+        <rect x="280" y="-80" width="30" height="460" fill="url(#comic)"/>
+        <rect x="310" y="-80" width="30" height="460" fill="url(#mosaik)"/>
+        <rect x="340" y="-80" width="30" height="460" fill="#f1efeb"/>
+      </g>
+    </g>
+    <g fill="none" stroke="#5f646b" stroke-width="1.6" stroke-linejoin="round">
+      <rect x="50" y="120" width="90" height="120"/>
+      <polygon points="50,120 95,80 140,120"/>
+      <rect x="140" y="90" width="100" height="150"/>
+      <rect x="240" y="140" width="80" height="100"/>
+      <polygon points="240,140 280,104 320,140"/>
+    </g>
+    <path class="grau" d="M 386 46 L 386 102"/>
+    <circle cx="386" cy="112" r="9" fill="#f0b429"/>
+    <text class="t4" x="376" y="50" text-anchor="end">Licht: Abend</text>
+    <circle cx="40" cy="62" r="11" fill="none" stroke="#e4dfd6" stroke-width="3"/>
+    <path d="M 40 51 A 11 11 0 1 1 29.6 65.6" fill="none" stroke="#1b1b1b" stroke-width="3"/>
+    <text class="t4" x="58" y="66">belichtet</text>
+    <text class="t1" x="18" y="308">Look und Licht</text>
+    <text class="t2" x="18" y="330">Deine Streifen über den ganzen Block: Earle am Abend,</text>
+    <text class="t2" x="18" y="348">Comicdruck, Trencadís. Ein Regler fürs Licht; steht alles</text>
+    <text class="t2" x="18" y="366">still, wird das Bild über Sekunden belichtet.</text>
+  </g>
+
+  <!-- C9 -->
+  <g transform="translate(930,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">C9</text>
+    <text class="lbl" x="44" y="28">AUSGEBEN</text>
+    <circle cx="398" cy="24" r="4.5" fill="#1b1b1b"/>
+    <path class="grau" d="M 18 128 L 402 128"/>
+    <path class="grau" d="M 18 236 L 402 236"/>
+    <polygon class="stein" points="32,128 44,104 56,128"/>
+    <g class="fgeist">
+      <rect x="98" y="110" width="20" height="18"/><path d="M 95 110 L 108 98 L 121 110"/>
+      <rect x="160" y="104" width="24" height="24"/><path d="M 157 104 L 172 90 L 187 104"/>
+      <rect x="222" y="96" width="28" height="32"/><path d="M 219 96 L 236 80 L 253 96"/>
+      <rect x="284" y="94" width="28" height="34"/><path d="M 281 94 L 298 78 L 315 94"/><circle cx="324" cy="114" r="8"/>
+      <rect x="346" y="92" width="18" height="36"/><rect x="364" y="92" width="18" height="36"/><path d="M 343 92 L 364 72 L 385 92"/>
+      <rect x="110" y="190" width="14" height="46"/><rect x="124" y="182" width="16" height="54"/><rect x="140" y="194" width="14" height="42"/>
+      <rect x="184" y="176" width="16" height="60"/><rect x="200" y="166" width="18" height="70"/><rect x="218" y="180" width="16" height="56"/>
+      <rect x="258" y="180" width="16" height="56"/><rect x="274" y="136" width="12" height="100"/><path d="M 274 136 L 280 120 L 286 136"/><rect x="286" y="172" width="18" height="64"/>
+    </g>
+    <rect class="stein" x="40" y="180" width="32" height="56"/>
+    <polygon class="dach" points="37,180 56,160 75,180"/>
+    <g class="fenster"><rect x="45" y="188" width="7" height="9"/><rect x="60" y="188" width="7" height="9"/><rect x="45" y="204" width="7" height="9"/><rect x="60" y="204" width="7" height="9"/></g>
+    <rect class="tuer" x="52" y="222" width="8" height="14"/>
+    <rect class="stein" x="328" y="160" width="14" height="76"/>
+    <rect class="stein" x="378" y="160" width="14" height="76"/>
+    <rect class="stein" x="336" y="186" width="48" height="50"/>
+    <rect class="stein" x="328" y="154" width="4" height="6"/><rect class="stein" x="336" y="154" width="4" height="6"/>
+    <rect class="stein" x="378" y="154" width="4" height="6"/><rect class="stein" x="386" y="154" width="4" height="6"/>
+    <rect class="stein" x="352" y="166" width="16" height="20"/>
+    <polygon class="dach" points="350,166 360,150 370,166"/>
+    <path d="M 360 150 L 360 138" stroke="#1b1b1b" stroke-width="1.2"/>
+    <path d="M 360 138 L 370 141.5 L 360 145 Z" fill="#d7332a"/>
+    <rect class="tuer" x="354" y="218" width="12" height="18"/>
+    <text class="t4" x="44" y="146" text-anchor="middle" style="fill: #1b1b1b; font-weight: 600">2</text>
+    <text class="t4" x="108" y="146" text-anchor="middle">4</text>
+    <text class="t4" x="172" y="146" text-anchor="middle">8</text>
+    <text class="t4" x="236" y="146" text-anchor="middle">16</text>
+    <text class="t4" x="300" y="146" text-anchor="middle">32</text>
+    <text class="t4" x="364" y="146" text-anchor="middle">64</text>
+    <text class="t4" x="56" y="254" text-anchor="middle" style="fill: #1b1b1b; font-weight: 600">128</text>
+    <text class="t4" x="132" y="254" text-anchor="middle">256</text>
+    <text class="t4" x="208" y="254" text-anchor="middle">512</text>
+    <text class="t4" x="284" y="254" text-anchor="middle">1024</text>
+    <text class="t4" x="360" y="254" text-anchor="middle" style="fill: #1b1b1b; font-weight: 600">2048</text>
+    <text class="t1" x="18" y="308">Dieselbe Leiter für Häuser</text>
+    <text class="t2" x="18" y="330">Zelt (2), Stadthaus (128) und Schloss (2048) von Hand,</text>
+    <text class="t2" x="18" y="348">die Stufen dazwischen als Geister. Geschosse, Fenster-</text>
+    <text class="t2" x="18" y="366">reihen und Dächer folgen Kurven über die Stufe.</text>
+  </g>
+</svg>

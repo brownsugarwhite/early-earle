@@ -1,0 +1,381 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1390" height="1390" viewBox="0 0 1390 1390">
+  <defs>
+    <style>
+      .tile { fill: #ffffff; stroke: #e4dfd6; stroke-width: 1.5; }
+      .base { fill: #f1efeb; stroke: #a7adb4; stroke-width: 2; vector-effect: non-scaling-stroke; }
+      .ink { fill: none; stroke: #1b1b1b; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .thin { fill: none; stroke: #1b1b1b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .grau { fill: none; stroke: #a7adb4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .dash { fill: none; stroke: #1b1b1b; stroke-width: 1.4; stroke-dasharray: 4 4; stroke-linecap: round; }
+      .ghost { fill: none; stroke: #7f97b0; stroke-width: 1.8; stroke-dasharray: 5 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+      .dev { fill: #ffffff; stroke: #1b1b1b; stroke-width: 2.6; }
+      .scr { fill: #fbfaf7; stroke: #d9d4ca; stroke-width: 1.2; }
+      .finger { fill: #ecdccb; stroke: #b9a48f; stroke-width: 1.5; }
+      .drop { fill: #1b1b1b; }
+      .lib { fill: #ffffff; stroke: #a7adb4; stroke-width: 1.5; }
+      .karte { fill: #faf8f4; stroke: #e4dfd6; stroke-width: 1.4; }
+      .t1 { font: 600 17px "Helvetica Neue", Arial, sans-serif; fill: #1b1b1b; }
+      .t2 { font: 13px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .t3 { font: 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .t4 { font: 10px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; }
+      .lbl { font: 600 11px "Helvetica Neue", Arial, sans-serif; fill: #8a8f96; letter-spacing: 1.2px; }
+      .nr { font: 700 11px "Helvetica Neue", Arial, sans-serif; fill: #ffffff; }
+      .sub { font: 17px "Helvetica Neue", Arial, sans-serif; fill: #5f646b; }
+      .punkt { fill: none; stroke: #c9c3b8; stroke-width: 1.4; }
+    </style>
+    <pattern id="glut" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#6e2016"/><circle cx="4" cy="4" r="2" fill="#f08a3e"/></pattern>
+    <pattern id="comic" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#f2c94c"/><circle cx="3" cy="3" r="1.3" fill="#1b1b1b"/></pattern>
+    <pattern id="earle" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#5f7f55"/><path d="M 0 8 L 8 0" stroke="#3f5f3a" stroke-width="2"/></pattern>
+    <pattern id="opal" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#bcd9e6"/><circle cx="3" cy="3" r="2" fill="#f3c6d9"/><circle cx="8" cy="7" r="1.5" fill="#d7f0d0"/></pattern>
+    <pattern id="manga" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#2b2b2b"/><path d="M 0 3 L 6 3" stroke="#ffffff" stroke-width="0.8"/></pattern>
+    <g id="glimm">
+      <path class="base" d="M -56 -6 C -80 -10, -96 -30, -88 -46 C -84 -52, -76 -50, -78 -44 C -82 -32, -72 -20, -54 6 Z"/>
+      <ellipse class="base" cx="-30" cy="36" rx="12" ry="10"/>
+      <ellipse class="base" cx="26" cy="36" rx="12" ry="10"/>
+      <ellipse class="base" cx="0" cy="0" rx="62" ry="40"/>
+      <circle class="base" cx="56" cy="-30" r="30"/>
+      <ellipse class="base" cx="84" cy="-22" rx="15" ry="11"/>
+      <circle cx="64" cy="-38" r="4" fill="#1b1b1b"/>
+    </g>
+    <path id="profil" vector-effect="non-scaling-stroke" d="M -86 -44 C -80 -52, -74 -48, -78 -40 C -80 -30, -70 -18, -58 -12 C -50 -34, -20 -42, 10 -40 C 22 -56, 40 -62, 60 -60 C 80 -58, 96 -42, 99 -26 C 100 -12, 90 -10, 80 -11 C 74 6, 62 26, 38 36 C 38 46, 16 48, 14 40 C 0 42, -14 42, -18 40 C -20 48, -42 48, -42 38 C -58 30, -64 18, -60 4 C -78 -4, -92 -24, -86 -44 Z"/>
+    <clipPath id="clipB1"><path transform="translate(102,164) scale(0.58)" d="M -86 -44 C -80 -52, -74 -48, -78 -40 C -80 -30, -70 -18, -58 -12 C -50 -34, -20 -42, 10 -40 C 22 -56, 40 -62, 60 -60 C 80 -58, 96 -42, 99 -26 C 100 -12, 90 -10, 80 -11 C 74 6, 62 26, 38 36 C 38 46, 16 48, 14 40 C 0 42, -14 42, -18 40 C -20 48, -42 48, -42 38 C -58 30, -64 18, -60 4 C -78 -4, -92 -24, -86 -44 Z"/></clipPath>
+    <g id="drache">
+      <path class="base" d="M -10 -36 C -40 -110, 40 -124, 34 -38 Z"/>
+      <use href="#glimm"/>
+      <path class="base" d="M 48 -56 L 40 -96 L 64 -60 Z"/>
+      <path class="base" d="M 62 -54 L 66 -92 L 76 -54 Z"/>
+    </g>
+    <g id="ozzy">
+      <ellipse cx="-12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(22 -12 -3)"/>
+      <ellipse cx="12" cy="-3" rx="6" ry="11" fill="#1b1b1b" transform="rotate(-22 12 -3)"/>
+      <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#1b1b1b"/>
+      <ellipse cx="0" cy="4" rx="2.6" ry="1.8" fill="#1b1b1b"/>
+    </g>
+    <g id="kopf">
+      <rect class="tile" width="420" height="390" rx="16"/>
+      <circle class="punkt" cx="318" cy="24" r="4.5"/>
+      <circle class="punkt" cx="334" cy="24" r="4.5"/>
+      <circle class="punkt" cx="350" cy="24" r="4.5"/>
+      <circle class="punkt" cx="366" cy="24" r="4.5"/>
+      <circle class="punkt" cx="382" cy="24" r="4.5"/>
+      <circle class="punkt" cx="398" cy="24" r="4.5"/>
+      <circle cx="24" cy="24" r="13" fill="#1b1b1b"/>
+    </g>
+  </defs>
+  <rect width="1390" height="1390" fill="#faf8f4"/>
+  <text x="40" y="70" style="font: italic 44px Lobster, Georgia, serif; fill: #1b1b1b">Storyboard: Glimm, Teil 2</text>
+  <text x="40" y="106" class="sub">Look, Maul, Posen, Bewegung und die Leiter von 2 bis 2048 · nichts davon ist gebaut</text>
+
+  <!-- B1 -->
+  <g transform="translate(40,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B1</text>
+    <text class="lbl" x="44" y="28">FÄRBEN</text>
+    <circle cx="350" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect class="dev" x="36" y="46" width="136" height="230" rx="20"/>
+    <rect class="scr" x="44" y="54" width="120" height="214" rx="14"/>
+    <g clip-path="url(#clipB1)">
+      <g transform="rotate(-28 102 164)">
+        <rect x="20" y="20" width="22" height="300" fill="url(#glut)"/>
+        <rect x="42" y="20" width="22" height="300" fill="url(#comic)"/>
+        <rect x="64" y="20" width="22" height="300" fill="url(#earle)"/>
+        <rect x="86" y="20" width="22" height="300" fill="url(#opal)"/>
+        <rect x="108" y="20" width="22" height="300" fill="url(#manga)"/>
+        <rect x="130" y="20" width="22" height="300" fill="#e9c39a"/>
+        <rect x="152" y="20" width="22" height="300" fill="url(#glut)"/>
+        <rect x="174" y="20" width="22" height="300" fill="url(#comic)"/>
+      </g>
+    </g>
+    <use href="#profil" transform="translate(102,164) scale(0.58)" fill="none" stroke="#1b1b1b" stroke-width="2"/>
+    <circle cx="139" cy="142" r="3.4" fill="#ffffff"/>
+    <circle cx="139.5" cy="142" r="1.8" fill="#1b1b1b"/>
+    <path class="thin" d="M 62 238 L 146 194 M 134 194 L 147 193 L 141 205"/>
+    <ellipse class="finger" cx="58" cy="252" rx="10" ry="14"/>
+    <text class="t3" x="250" y="54" text-anchor="middle">Glut</text>
+    <text class="t3" x="305" y="54" text-anchor="middle">Schiller</text>
+    <text class="t3" x="360" y="54" text-anchor="middle">Schuppen</text>
+    <path class="grau" d="M 250 62 L 250 140 M 305 62 L 305 110 M 360 62 L 360 160"/>
+    <path class="drop" d="M 250 140 C 243 150, 243 157, 250 158 C 257 157, 257 150, 250 140 Z"/>
+    <path class="drop" d="M 305 110 C 298 120, 298 127, 305 128 C 312 127, 312 120, 305 110 Z"/>
+    <path class="drop" d="M 360 160 C 353 170, 353 177, 360 178 C 367 177, 367 170, 360 160 Z"/>
+    <circle cx="236" cy="230" r="10" fill="url(#glut)" stroke="#1b1b1b" stroke-width="1.2"/>
+    <text class="t3" x="252" y="234">Look: Drache, Glut</text>
+    <text class="t1" x="18" y="308">Deine Streifen</text>
+    <text class="t2" x="18" y="330">Alle Looks liegen als schräge Streifen über der Figur.</text>
+    <text class="t2" x="18" y="348">Wischen schiebt sie weiter, antippen gibt der Figur den</text>
+    <text class="t2" x="18" y="366">Look. Danach drei bis sechs Regler als Tropfen am Faden.</text>
+  </g>
+
+  <!-- B2 -->
+  <g transform="translate(485,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B2</text>
+    <text class="lbl" x="44" y="28">FÄRBEN</text>
+    <circle cx="350" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#glimm" transform="translate(186,150) scale(1)"/>
+    <path d="M 140 162 C 160 190, 226 190, 246 160 C 228 172, 160 174, 140 162 Z" fill="#f2b46a" opacity="0.9"/>
+    <path class="ink" style="stroke-width: 2" d="M 140 162 C 160 190, 226 190, 246 160 M 140 162 C 160 174, 228 172, 246 160"/>
+    <circle class="grau" cx="194" cy="176" r="7"/>
+    <circle class="grau" cx="194" cy="176" r="12" opacity="0.6"/>
+    <ellipse cx="372" cy="96" rx="24" ry="10" fill="#f2b46a" stroke="#ffffff" stroke-width="2"/>
+    <ellipse cx="372" cy="122" rx="24" ry="10" fill="url(#glut)" stroke="#ffffff" stroke-width="2"/>
+    <ellipse cx="372" cy="148" rx="24" ry="10" fill="#d8d2c7" stroke="#ffffff" stroke-width="2"/>
+    <text class="t3" x="372" y="178" text-anchor="middle">Ebenen</text>
+    <circle cx="40" cy="250" r="8" fill="#f2b46a"/>
+    <circle cx="62" cy="250" r="8" fill="#6e2016"/>
+    <circle cx="84" cy="250" r="8" fill="#5f7f55"/>
+    <circle cx="106" cy="250" r="8" fill="#bcd9e6"/>
+    <text class="t3" x="124" y="254">Farbtropfen</text>
+    <text class="t1" x="18" y="308">Malen</text>
+    <text class="t2" x="18" y="330">Eine Farblinie um den Bauch, ein Tippen füllt, die Tinte</text>
+    <text class="t2" x="18" y="348">läuft ein. Ebenen liegen als Tropfen am Rand: Bemalung,</text>
+    <text class="t2" x="18" y="366">Glut und Haut bleiben getrennt bearbeitbar.</text>
+  </g>
+
+  <!-- B3 -->
+  <g transform="translate(930,140)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B3</text>
+    <text class="lbl" x="44" y="28">BELEBEN</text>
+    <circle cx="366" cy="24" r="4.5" fill="#1b1b1b"/>
+    <circle class="base" cx="176" cy="150" r="82"/>
+    <ellipse class="base" cx="262" cy="168" rx="46" ry="34"/>
+    <circle cx="196" cy="114" r="8" fill="#1b1b1b"/>
+    <path d="M 206 176 C 240 164, 292 168, 306 178 C 296 214, 244 226, 206 202 Z" fill="#5a2a2a" stroke="#1b1b1b" stroke-width="1.6"/>
+    <path d="M 226 172 l 5 11 l 5 -11 Z M 242 170 l 5 11 l 5 -11 Z M 258 170 l 5 11 l 5 -11 Z M 274 172 l 5 10 l 5 -10 Z" fill="#ffffff" stroke="#1b1b1b" stroke-width="0.9"/>
+    <ellipse cx="254" cy="206" rx="24" ry="8" fill="#d9777a"/>
+    <path class="drop" d="M 150 238 C 144 246, 144 252, 150 255 C 156 252, 156 246, 150 238 Z"/>
+    <text class="t3" x="162" y="252">Maul</text>
+    <path class="drop" d="M 372 52 C 366 60, 366 66, 372 69 C 378 66, 378 60, 372 52 Z"/>
+    <text class="t3" x="362" y="66" text-anchor="end">Fressen</text>
+    <circle class="lib" cx="384" cy="226" r="15"/>
+    <path d="M 375 222 L 379 232 L 383 222 L 387 232 L 391 222" fill="none" stroke="#a7adb4" stroke-width="2"/>
+    <path class="dash" style="stroke: #a7adb4" d="M 370 220 C 340 200, 320 190, 300 184"/>
+    <text class="t1" x="18" y="308">Maul</text>
+    <text class="t2" x="18" y="330">Einen Ring antippen, der Tropfen „Maul“ wächst: Das Maul</text>
+    <text class="t2" x="18" y="348">öffnet sich als echte Form. Zähne und Zunge kommen aus</text>
+    <text class="t2" x="18" y="366">der Bibliothek, oben erscheint die Pose „Fressen“.</text>
+  </g>
+
+  <!-- B4 -->
+  <g transform="translate(40,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B4</text>
+    <text class="lbl" x="44" y="28">BELEBEN</text>
+    <circle cx="366" cy="24" r="4.5" fill="#1b1b1b"/>
+    <use href="#profil" transform="translate(190,128) rotate(-8) scale(0.85)" fill="none" stroke="#7f97b0" stroke-width="2" stroke-dasharray="7 6"/>
+    <use href="#glimm" transform="translate(186,140) rotate(6) scale(0.85)"/>
+    <path class="ink" style="stroke-width: 2" d="M 262 62 C 255 74, 254 80, 262 84 C 270 80, 269 74, 262 62 Z"/>
+    <use href="#ozzy" transform="translate(340,72)"/>
+    <rect class="karte" x="24" y="206" width="58" height="46" rx="8"/>
+    <rect class="karte" x="98" y="206" width="58" height="46" rx="8" style="stroke: #1b1b1b; stroke-width: 2"/>
+    <rect class="karte" x="172" y="206" width="58" height="46" rx="8"/>
+    <rect class="karte" x="246" y="206" width="58" height="46" rx="8"/>
+    <rect class="karte" x="320" y="206" width="58" height="46" rx="8"/>
+    <use href="#glimm" transform="translate(53,231) scale(0.2)"/>
+    <use href="#glimm" transform="translate(127,231) rotate(8) scale(0.2)"/>
+    <use href="#glimm" transform="translate(201,231) rotate(-12) scale(0.2)"/>
+    <use href="#glimm" transform="translate(275,231) scale(0.22,0.2)"/>
+    <use href="#glimm" transform="translate(349,233) rotate(14) scale(0.2)"/>
+    <text class="t4" x="53" y="268" text-anchor="middle">Ruhe</text>
+    <text class="t4" x="127" y="268" text-anchor="middle">hungrig</text>
+    <text class="t4" x="201" y="268" text-anchor="middle">frisst</text>
+    <text class="t4" x="275" y="268" text-anchor="middle">satt</text>
+    <text class="t4" x="349" y="268" text-anchor="middle">müde</text>
+    <text class="t1" x="18" y="308">Posen</text>
+    <text class="t2" x="18" y="330">Posen liegen als Karten unten und werden mit denselben</text>
+    <text class="t2" x="18" y="348">Werkzeugen bearbeitet wie die Form. Ein Schweißtropfen</text>
+    <text class="t2" x="18" y="366">neben dem Kopf schlägt die Pose „nervös“ als Geist vor.</text>
+  </g>
+
+  <!-- B5 -->
+  <g transform="translate(485,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B5</text>
+    <text class="lbl" x="44" y="28">BELEBEN</text>
+    <circle cx="366" cy="24" r="4.5" fill="#1b1b1b"/>
+    <rect class="dev" x="36" y="46" width="136" height="230" rx="20"/>
+    <rect class="scr" x="44" y="54" width="120" height="214" rx="14"/>
+    <circle cx="150" cy="68" r="4" fill="#d7332a"/>
+    <circle class="lib" cx="74" cy="100" r="13"/>
+    <circle class="lib" cx="142" cy="100" r="13"/>
+    <circle class="lib" cx="142" cy="206" r="13"/>
+    <circle class="lib" cx="74" cy="206" r="13"/>
+    <use href="#glimm" transform="translate(74,101) scale(0.1)"/>
+    <use href="#glimm" transform="translate(142,101) rotate(-12) scale(0.1)"/>
+    <use href="#glimm" transform="translate(142,207) scale(0.11,0.1)"/>
+    <use href="#glimm" transform="translate(74,208) rotate(14) scale(0.1)"/>
+    <text class="t4" x="74" y="128" text-anchor="middle">hungrig</text>
+    <text class="t4" x="142" y="128" text-anchor="middle">frisst</text>
+    <text class="t4" x="142" y="234" text-anchor="middle">satt</text>
+    <text class="t4" x="74" y="234" text-anchor="middle">müde</text>
+    <path class="ink" style="stroke-width: 2" d="M 74 100 C 98 74, 122 80, 142 100 C 162 124, 160 172, 142 206"/>
+    <g fill="#1b1b1b">
+      <circle cx="80" cy="92" r="2.8"/><circle cx="90" cy="85" r="2.8"/><circle cx="101" cy="81" r="2.8"/>
+      <circle cx="112" cy="81" r="2.8"/><circle cx="122" cy="85" r="2.8"/><circle cx="130" cy="90" r="2.8"/>
+      <circle cx="135" cy="94" r="2.8"/><circle cx="138" cy="97" r="2.8"/><circle cx="141" cy="99.5" r="2.8"/>
+      <circle cx="147" cy="108" r="2.8"/><circle cx="152" cy="120" r="2.8"/><circle cx="155" cy="136" r="2.8"/>
+      <circle cx="154" cy="154" r="2.8"/><circle cx="151" cy="172" r="2.8"/><circle cx="147" cy="190" r="2.8"/>
+    </g>
+    <ellipse class="finger" cx="152" cy="252" rx="10" ry="14"/>
+    <path class="thin" d="M 214 150 L 404 150"/>
+    <g fill="#1b1b1b">
+      <circle cx="216" cy="150" r="3.2"/><circle cx="232" cy="150" r="3.2"/><circle cx="248" cy="150" r="3.2"/>
+      <circle cx="262" cy="150" r="3.2"/><circle cx="274" cy="150" r="3.2"/><circle cx="284" cy="150" r="3.2"/>
+      <circle cx="292" cy="150" r="3.2"/><circle cx="298" cy="150" r="3.2"/><circle cx="303" cy="150" r="3.2"/>
+      <circle cx="307" cy="150" r="3.2"/><circle cx="311" cy="150" r="3.2"/><circle cx="316" cy="150" r="3.2"/>
+      <circle cx="322" cy="150" r="3.2"/><circle cx="330" cy="150" r="3.2"/><circle cx="340" cy="150" r="3.2"/>
+      <circle cx="352" cy="150" r="3.2"/><circle cx="366" cy="150" r="3.2"/><circle cx="382" cy="150" r="3.2"/>
+      <circle cx="400" cy="150" r="3.2"/>
+    </g>
+    <path class="grau" d="M 300 126 L 304 142"/>
+    <text class="t3" x="262" y="120">eng heißt langsam</text>
+    <path class="grau" d="M 378 160 L 384 176"/>
+    <text class="t3" x="300" y="190">weit heißt schnell</text>
+    <text class="t3" x="214" y="232">Perlenschnur statt Kurveneditor</text>
+    <text class="t1" x="18" y="308">Bewegung durch das Posenfeld</text>
+    <text class="t2" x="18" y="330">Posen liegen als Tropfen auf einer Fläche; der Finger</text>
+    <text class="t2" x="18" y="348">zieht den Weg von „hungrig“ über „frisst“ nach „satt“.</text>
+    <text class="t2" x="18" y="366">Ozzy nimmt auf. Perlen enger heißt langsamer.</text>
+  </g>
+
+  <!-- B6 -->
+  <g transform="translate(930,552)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B6</text>
+    <text class="lbl" x="44" y="28">AUSGEBEN</text>
+    <circle cx="398" cy="24" r="4.5" fill="#1b1b1b"/>
+    <g fill="#ece8e1" stroke="#ffffff" stroke-width="3">
+      <polygon points="200,120 240,140 200,160 160,140"/>
+      <polygon points="240,140 280,160 240,180 200,160"/>
+      <polygon points="280,160 320,180 280,200 240,180"/>
+      <polygon points="160,140 200,160 160,180 120,160"/>
+      <polygon points="200,160 240,180 200,200 160,180"/>
+      <polygon points="240,180 280,200 240,220 200,200"/>
+      <polygon points="120,160 160,180 120,200 80,180"/>
+      <polygon points="160,180 200,200 160,220 120,200"/>
+      <polygon points="200,200 240,220 200,240 160,220"/>
+    </g>
+    <text class="t4" x="240" y="163" text-anchor="middle">64</text>
+    <text class="t4" x="160" y="203" text-anchor="middle">16</text>
+    <text class="t4" x="280" y="203" text-anchor="middle">8</text>
+    <use href="#glimm" transform="translate(200,166) scale(0.4)"/>
+    <path class="drop" d="M 318 112 C 312 120, 312 126, 318 129 C 324 126, 324 120, 318 112 Z"/>
+    <text class="t3" x="328" y="126">atmen</text>
+    <path class="drop" d="M 252 88 C 246 96, 246 102, 252 105 C 258 102, 258 96, 252 88 Z"/>
+    <text class="t3" x="262" y="102">blinzeln</text>
+    <rect x="34" y="52" width="52" height="34" rx="6" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+    <circle cx="60" cy="69" r="9" fill="none" stroke="#1b1b1b" stroke-width="2"/>
+    <path class="dash" style="stroke: #a7adb4" d="M 86 76 L 150 140 M 72 86 L 120 168"/>
+    <text class="t3" x="34" y="104">Spielkamera</text>
+    <path class="drop" d="M 236 246 C 230 254, 230 260, 236 263 C 242 260, 242 254, 236 246 Z"/>
+    <text class="t3" x="248" y="260">3,1 ms · 7 800 Dreiecke</text>
+    <text class="t1" x="18" y="308">Leben und Blick des Spiels</text>
+    <text class="t2" x="18" y="330">Atmen und Blinzeln als Tropfen auf den Körper legen. Die</text>
+    <text class="t2" x="18" y="348">Spielkamera zeigt Glimm auf dem Brett; „Wie im Spiel“</text>
+    <text class="t2" x="18" y="366">backt höchstens 8 000 Dreiecke; der Tropfen zeigt Kosten.</text>
+  </g>
+
+  <!-- B7 -->
+  <g transform="translate(40,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B7</text>
+    <text class="lbl" x="44" y="28">AUSGEBEN</text>
+    <circle cx="398" cy="24" r="4.5" fill="#1b1b1b"/>
+    <path class="grau" d="M 18 128 L 402 128"/>
+    <path class="grau" d="M 18 236 L 402 236"/>
+    <ellipse class="base" cx="44" cy="116" rx="9" ry="12"/>
+    <g fill="none" stroke="#7f97b0" stroke-width="1.8" stroke-dasharray="5 4">
+      <use href="#profil" transform="translate(108,123.2) scale(0.10)"/>
+      <use href="#profil" transform="translate(172,122.2) scale(0.12)"/>
+      <use href="#profil" transform="translate(236,121.3) scale(0.14)"/>
+      <use href="#profil" transform="translate(300,120.3) scale(0.16)"/>
+      <use href="#profil" transform="translate(364,119.4) scale(0.18)"/>
+      <use href="#profil" transform="translate(132,224) scale(0.25)"/>
+      <use href="#profil" transform="translate(208,222.6) scale(0.28)"/>
+      <use href="#profil" transform="translate(284,221.1) scale(0.31)"/>
+    </g>
+    <path class="ghost" transform="translate(208,222.6) scale(0.28)" d="M -10 -36 C -40 -110, 40 -124, 34 -38"/>
+    <path class="ghost" transform="translate(284,221.1) scale(0.31)" d="M -10 -36 C -40 -110, 40 -124, 34 -38"/>
+    <use href="#glimm" transform="translate(56,225.4) scale(0.22)"/>
+    <use href="#drache" transform="translate(360,219.7) scale(0.34)"/>
+    <text class="t4" x="44" y="146" text-anchor="middle" style="fill: #1b1b1b; font-weight: 600">2</text>
+    <text class="t4" x="108" y="146" text-anchor="middle">4</text>
+    <text class="t4" x="172" y="146" text-anchor="middle">8</text>
+    <text class="t4" x="236" y="146" text-anchor="middle">16</text>
+    <text class="t4" x="300" y="146" text-anchor="middle">32</text>
+    <text class="t4" x="364" y="146" text-anchor="middle">64</text>
+    <text class="t4" x="56" y="254" text-anchor="middle" style="fill: #1b1b1b; font-weight: 600">128</text>
+    <text class="t4" x="132" y="254" text-anchor="middle">256</text>
+    <text class="t4" x="208" y="254" text-anchor="middle">512</text>
+    <text class="t4" x="284" y="254" text-anchor="middle">1024</text>
+    <text class="t4" x="360" y="254" text-anchor="middle" style="fill: #1b1b1b; font-weight: 600">2048</text>
+    <text class="t1" x="18" y="308">Die Leiter: 2 bis 2048</text>
+    <text class="t2" x="18" y="330">Drei Stufen formst du von Hand: Ei, Glimm, Drache. Ozzy</text>
+    <text class="t2" x="18" y="348">füllt die übrigen als Geister, denn alle Stufen teilen</text>
+    <text class="t2" x="18" y="366">dieselben Linien. Jede bleibt bis zum Punkt bearbeitbar.</text>
+  </g>
+
+  <!-- B8 -->
+  <g transform="translate(485,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B8</text>
+    <text class="lbl" x="44" y="28">AUSGEBEN</text>
+    <circle cx="398" cy="24" r="4.5" fill="#1b1b1b"/>
+    <path class="grau" style="stroke-dasharray: 3 4" d="M 300 72 L 186 108 M 300 142 L 232 116 M 300 212 L 176 162 M 88 80 L 150 172"/>
+    <use href="#drache" transform="translate(178,192) scale(0.82)"/>
+    <g fill="#f08a3e" opacity="0.7">
+      <circle cx="150" cy="186" r="2.6"/><circle cx="168" cy="196" r="2.6"/><circle cx="190" cy="190" r="2.6"/><circle cx="206" cy="200" r="2.6"/>
+    </g>
+    <rect class="karte" x="300" y="52" width="64" height="38" rx="6"/>
+    <path class="grau" d="M 306 58 L 306 84 L 358 84"/>
+    <path class="thin" d="M 306 84 L 330 84 L 330 62 L 358 62"/>
+    <text class="t4" x="300" y="104">Flügel ab 64</text>
+    <rect class="karte" x="300" y="122" width="64" height="38" rx="6"/>
+    <path class="grau" d="M 306 128 L 306 154 L 358 154"/>
+    <path class="thin" d="M 306 154 L 358 132"/>
+    <text class="t4" x="300" y="174">Hörner stetig</text>
+    <rect class="karte" x="300" y="192" width="64" height="38" rx="6"/>
+    <path class="grau" d="M 306 198 L 306 224 L 358 224"/>
+    <path class="thin" d="M 306 224 L 316 224 L 316 202 L 358 202"/>
+    <text class="t4" x="300" y="244">Schuppen ab 16</text>
+    <rect class="karte" x="24" y="52" width="64" height="38" rx="6"/>
+    <path class="grau" d="M 30 58 L 30 84 L 82 84"/>
+    <path class="thin" d="M 30 84 C 50 84, 70 74, 82 60"/>
+    <text class="t4" x="24" y="104">Glut stärker</text>
+    <text class="t1" x="18" y="308">Was wann wächst</text>
+    <text class="t2" x="18" y="330">Je Teil eine kleine Kurve über die Stufen: Flügel ab 64,</text>
+    <text class="t2" x="18" y="348">Hörner stetig, Schuppen ab 16, Glut immer stärker. Ozzy</text>
+    <text class="t2" x="18" y="366">schlägt die Kurven vor, du ziehst sie wie jede Linie.</text>
+  </g>
+
+  <!-- B9 -->
+  <g transform="translate(930,964)">
+    <use href="#kopf"/>
+    <text class="nr" x="24" y="28" text-anchor="middle">B9</text>
+    <text class="lbl" x="44" y="28">AUSGEBEN</text>
+    <circle cx="398" cy="24" r="4.5" fill="#1b1b1b"/>
+    <path class="grau" d="M 18 206 L 402 206"/>
+    <use href="#glimm" transform="translate(62,186) scale(0.3)"/>
+    <use href="#glimm" transform="translate(148,186) scale(-0.3,0.3)"/>
+    <path class="thin" d="M 180 170 L 202 170 M 194 164 L 203 170 L 194 176"/>
+    <use href="#glimm" transform="translate(244,186) scale(0.3)"/>
+    <use href="#glimm" transform="translate(284,186) scale(-0.3,0.3)"/>
+    <g fill="#f0b429">
+      <path d="M 264 118 L 266 126 L 274 128 L 266 130 L 264 138 L 262 130 L 254 128 L 262 126 Z"/>
+      <path d="M 242 138 L 243.5 143 L 248 144.5 L 243.5 146 L 242 151 L 240.5 146 L 236 144.5 L 240.5 143 Z"/>
+      <path d="M 288 134 L 289.5 139 L 294 140.5 L 289.5 142 L 288 147 L 286.5 142 L 282 140.5 L 286.5 139 Z"/>
+    </g>
+    <path class="thin" d="M 312 170 L 332 170 M 324 164 L 333 170 L 324 176"/>
+    <use href="#glimm" transform="translate(372,182) scale(0.36)"/>
+    <text class="t3" x="106" y="228" text-anchor="middle">64 + 64</text>
+    <text class="t3" x="264" y="228" text-anchor="middle">verschmelzen</text>
+    <text class="t3" x="372" y="228" text-anchor="middle" style="fill: #1b1b1b">128</text>
+    <text class="t1" x="18" y="308">Verschmelzen im Spiel</text>
+    <text class="t2" x="18" y="330">Zwei 64er verschmelzen zum 128er. Weil alle Stufen</text>
+    <text class="t2" x="18" y="348">dieselben Linien haben, entsteht der Übergang von selbst:</text>
+    <text class="t2" x="18" y="366">Morph, Tropfen-Verschmelzung und Funken als Ströme.</text>
+  </g>
+</svg>
