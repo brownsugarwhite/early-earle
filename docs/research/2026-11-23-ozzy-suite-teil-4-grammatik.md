@@ -81,6 +81,24 @@ bearbeiten?“ Ja, und das muss so sein; sonst wäre die Rundung eine versteckte
 - **Der knifflige Teil:** Wo zwei Kanten mit verschiedenen Profilen an einer Ecke zusammentreffen, muss Ozzy vermitteln (in CAD heißt
   das Eckübergang). Das gehört in die Rundungs-Probe.
 
+**Kreuzungen und Richtung (Nachtrag).** Deine Frage: „Wie ist es bei Kreuzungspunkten? Wie unterscheidet der Regler die Richtung der
+Rundung, wenn eine Linie geknickt und andere rund sein sollen?“
+
+- **Der Regler rundet Kanten, nicht Punkte.** Eine Kante ist eine Linie mit K, wie heute. Gerundet wird immer quer zu ihr; die Kante
+  selbst bleibt in ihrer eigenen Richtung, wie sie ist.
+- **Eine gerundete Kante bekommt zwei Begleitlinien,** links und rechts im Abstand der Rundung; dazwischen liegt das Profil. Wo eine
+  andere Linie die Kante kreuzt, ist das Profil ein Stück dieser Linie mit zwei Punkten und Griffen. Deshalb gibt es keine Frage nach
+  der Richtung: Die Kante läuft längs, das Profil quer. Bei Rundung 0 fallen die Begleitlinien auf die Kante (scharf), bei 1 treffen sie
+  sich in der Mitte (rund). So arbeiten auch Unterteilungs-Modellierer mit Stützkanten; bei Ozzy sind es sichtbare Linien, die man
+  greifen kann.
+- **Knick je Richtung bleibt wie heute:** An einer Kreuzung hat jede Linie ihre eigene Richtung. Soll eine Linie geknickt bleiben und die
+  andere rund werden, bekommt die geknickte ein Schloss (sie bleibt scharf); die andere folgt dem Regler.
+- **Treffen mehrere Kanten in einem Punkt zusammen:** Sind sie gleich gerundet, entsteht eine weiche Ecke wie an einem Würfel mit
+  runden Kanten. Ist eine scharf und eine rund, läuft die Rundung in die scharfe Kante aus. Bei verschiedenen Größen braucht es den
+  Eckübergang aus der Rundungs-Probe.
+- **Beispiele:** Am Auto bleibt die Sicke längs der Seite scharf, die Dachkante wird rund. Am Haus bleiben die senkrechten Ecken scharf,
+  die Traufkante wird rund. Bei Glimm bleibt die Hornspitze in ihrer Längsrichtung geknickt, der Ring ums Horn ist rund.
+
 **Was gleich bleibt, egal ob Haus, Auto oder Abstraktes:** dieselben Werkzeuge (P, ziehen, Lasso, G, S, R), dieselben Ansichten
 (Projektionsecke, Wand kommt zu dir, Vier Ansichten, Schnitt), dieselbe Bibliothek, dieselben Regler, dieselbe KI.
 
