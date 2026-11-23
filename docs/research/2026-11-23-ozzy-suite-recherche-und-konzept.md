@@ -799,3 +799,7 @@ Ideen, was nativ bringt und kostet, zwei Vorversuche):
 Teil 13: Ein Editor für alle Projekte (Traumacoaster, early earle, Gassirunde, Ozzy-Logo; Editor und Engine in einem; gleich bedienbar;
 Spielmechanik aus Sätzen und Code-Bausteinen; sechs Stile aus denselben Bausteinen; Stil-Bibeln als Wächter; Realismus als eigene
 Deutung): [`2026-11-23-ozzy-suite-teil-13-ein-editor-fuer-alles.md`](2026-11-23-ozzy-suite-teil-13-ein-editor-fuer-alles.md).
+
+Teil 14: Welche Werkstoffe sinnvoll sind (dreizehn in vier Familien, acht für den Anfang, Werkstoffe beschreiben Merkmale und Stile
+übersetzen sie, Auflagen und Leuchten, die 94 Shader einsortiert):
+[`2026-11-23-ozzy-suite-teil-14-werkstoffe.md`](2026-11-23-ozzy-suite-teil-14-werkstoffe.md).
