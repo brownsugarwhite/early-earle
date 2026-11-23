@@ -72,8 +72,10 @@ bearbeiten?“ Ja, und das muss so sein; sonst wäre die Rundung eine versteckte
   sichtbar im Schnitt, an der Wand der Projektionsecke und in den flachen Ansichten.
 - **Der Regler bestimmt die Größe, die Griffe den Charakter:** Kreis (Griffe etwa 55 % des Radius), weiche Ecke wie bei Apple (längere
   Griffe, ohne Sprung in der Krümmung), Fase (gerade) oder Hohlkehle (nach innen).
-- **Hand schlägt Regler:** Eine von Hand gezogene Ecke behält ihre Form, der Regler skaliert sie nur noch. Ein Tippen auf ihr Zeichen
-  stellt sie zurück auf „folgt dem Regler“.
+- **Hand schlägt Regler, und der Regler bleibt wirksam:** Jede Ecke hat eine Größe (Regler mal eigener Faktor, Standard 1) und eine
+  Form (Standard Kreis). Die Griffe ändern Form und Faktor. Der Regler ändert danach weiter alle Größen zugleich und skaliert deine Form,
+  ohne sie zu überschreiben. Auch bei 0 bleibt sie gemerkt und kommt zurück, wenn der Regler wieder steigt. Ein Schloss nimmt eine Ecke
+  ganz aus dem Regler heraus (etwa für ein festes Maß); ein Tippen auf ihr Zeichen stellt sie zurück auf „folgt dem Regler“.
 - **Ein Profil für alle Kanten oder je Kante:** Zuerst gilt eines für den ganzen Körper; einzelne Kanten dürfen abweichen.
 - **Für Metall und Autos** gibt es einen Schalter für die glattere Rundung, bei der Glanzlichter ohne Knick über die Kante laufen.
 - **Der knifflige Teil:** Wo zwei Kanten mit verschiedenen Profilen an einer Ecke zusammentreffen, muss Ozzy vermitteln (in CAD heißt
