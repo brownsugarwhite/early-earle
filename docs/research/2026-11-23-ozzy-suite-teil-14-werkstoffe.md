@@ -114,7 +114,28 @@ der Shader klein und folgt deiner Regel aus dem Shader-Strang: lieber wenige Din
 - **Sonder-Werkstoffe für einzelne Dinge** (etwa eine Diskokugel als eigene Art): besser Varianten über Regler.
 - **Volle Brechung und echtes Wasser beim Ziehen auf dem iPhone:** zu teuer; das gibt es in der Ruhe (Teil 2 und 9).
 
-## 7 Quellen
+## 7 Nachtrag: Jeder Werkstoff kann jede Form haben (deine Frage, 23.11.)
+
+**Dein Wort:** „Jeder Werkstoff hat ganz unterschiedliche Eigenschaften und Physik, aber jeder Werkstoff sollte jede Form haben können,
+oder?“ **Antwort:** Ja. Die Form kommt aus den Linien, der Werkstoff ist eine Eigenschaft des Körpers; beide sind unabhängig. Dazu vier
+Feinheiten:
+
+1. **Der Werkstoff schlägt nur vor.** Aufblasen oder Ziehen und die Start-Rundung sind Vorgaben beim Anlegen, nie Grenzen. Ein eckiger
+   Körper aus Seifenhaut ist erlaubt.
+2. **Der Werkstoff deutet die Form auf seine Art:** als vollen Körper (Stein, Holz, Knete), als Hülle (Seifenhaut, ein Kissen aus Stoff),
+   als Fläche (Stoff, Papier) oder als Volumen (Feuer, Rauch, Wolke). Ein Hund aus Feuer ist dann eine Flamme in Hundeform, ein Hund aus
+   Stoff ein genähtes Kuscheltier.
+3. **In Bewegung darf der Werkstoff die Form ändern; ein Regler „Formtreue“ bestimmt, wie sehr.** Bei 1 bleibt deine Form immer
+   erhalten, auch ein Würfel aus Seifenhaut oder ein Hund aus Wasser (eine Wasserskulptur). Bei 0 entscheidet die Physik: Der
+   Seifenwürfel rundet sich, der Wasserhund zerfließt. In Ruhe gilt ohnehin, was du gezeichnet hast; die Linien sind Gesetz.
+4. **Gewicht und Bruch folgen aus Form und Werkstoff zusammen.** Ein großer Stein ist schwerer als ein kleiner, eine Hülle aus Seifenhaut
+   bleibt bei jeder Größe leicht; ein Regler überschreibt das Gewicht. Stein bricht entlang seiner Schichten, Glas zerspringt, Holz
+   splittert entlang der Maserung, und die folgt der Hauptlinie der Form.
+
+Eine Figur aus mehreren Werkstoffen bekommt je Körper einen (Körper aus Haut, Cape aus Stoff, Helm aus Metall); Übergänge innerhalb eines
+Körpers, etwa Stein, der zu Kristall wird, malt die Bemalung (Teil 4). In 2D gilt dasselbe.
+
+## 8 Quellen
 
 - Vorher: Teil 2 (Werkstoffe Seifenhaut, Knete, Stein), Teil 4 (Werkstoff je Körper, Stil je Szene, Bemalung), Teil 9 (Wirklichkeit
   als Kern, Looks als Rezept), Teil 11 (Physik aus dem Werkstoff), Teil 13 (sechs Stile aus sechs Bausteinen).
