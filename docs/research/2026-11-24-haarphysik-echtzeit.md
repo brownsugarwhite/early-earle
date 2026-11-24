@@ -59,3 +59,25 @@ Bekannte Lösungen: Unreal „Groom“, AMD TressFX, EA Frostbite (Strähnen).
   (geschätzt, in der Probe zu messen); die vielen sichtbaren Haare folgen im Vertex-Shader, das kann WebGL2.
 - **Empfehlung:** die Haarprobe jetzt in WebGL2. „Editor und Spiel auf einem Renderer“ als eigener Plan, mit kleinem Test vorab
   (ein Shader in TSL und eine Rechnung auf der Grafikkarte, über HTTPS auf dem iPhone).
+
+## Und wenn Ozzy später eine iPad-App wird? (Florian, 24.11.)
+
+- **Das Zertifikat ist nur fürs Testen** vom Mac über das WLAN nötig. In einer App liegt Ozzy in der App selbst; Nutzer installieren
+  nichts.
+- **Wege:**
+  1. **App-Hülle um denselben Code** (wie das Spiel mit Capacitor; im Innern ein WKWebView). `capacitor://localhost` gilt laut
+     Capacitor-Forum und WebKit-Fehlerberichten auf neuerem iOS als sicherer Kontext. WebGPU ist seit iOS/iPadOS 26 eingeschaltet; für
+     WKWebView sagte ein WebKit-Entwickler, es komme mit, sobald es in Safari eingeschaltet ist (nur indirekt belegt). Frühe
+     26er-Versionen hatten Fehler (behoben in 26.4), es gibt Berichte über Abstürze auf einem iPhone 15, auf dem iPad stabil. Also: am
+     Gerät prüfen (`window.isSecureContext`, `navigator.gpu`) und WebGL2 als Rückfall behalten.
+  2. **Web-App mit eigener Adresse** im Internet (echtes Zertifikat), „Zum Home-Bildschirm“: WebGPU wie in Safari, ohne App Store.
+  3. **Native App** (Swift, Metal): alles neu schreiben, für Ozzy nicht sinnvoll.
+- **App Store:** Apple verlangt mehr als eine verpackte Webseite; ein volles Werkzeug mit Stift und Dateien erfüllt das.
+- **Folge für den WebGPU-Test:** nicht nur Safari über HTTPS, sondern auch eine App-Hülle auf dem iPad prüfen.
+
+Quellen: [WebGPU-Stand je Browser](https://github.com/gpuweb/gpuweb/wiki/Implementation-Status),
+[Apple-Forum: WKWebView und WebGPU](https://developer.apple.com/forums/thread/770862),
+[WebKit 301627 (iOS 26.2)](https://bugs.webkit.org/show_bug.cgi?id=301627),
+[Apple-Forum: Absturz iPhone 15, iOS 26.4](https://developer.apple.com/forums/thread/822200),
+[Ionic-Forum: eigenes Schema auf iOS](https://forum.ionicframework.com/t/https-for-the-app-server-protocol-instead-of-capacitor-on-ios/200116),
+[WebKit 220184](https://bugs.webkit.org/show_bug.cgi?id=220184).
