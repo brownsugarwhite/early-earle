@@ -806,3 +806,7 @@ Teil 14: Welche Werkstoffe sinnvoll sind (dreizehn in vier Familien, acht für d
 
 Teil 15: Schaden und Zerstörung (was über GTA 6 bekannt ist, fünf Schichten großer Spiele, die Tricks dahinter, Schaden aus Werkstoff,
 Posen und Nähten in Ozzy): [`2026-11-23-ozzy-suite-teil-15-schaden.md`](2026-11-23-ozzy-suite-teil-15-schaden.md).
+
+Teil 16: Punkte nach Bedarf (der Bézier-Kreis nachgerechnet; deine Idee, dass Punkte und Loops nur für den Zug entstehen; Vorbilder
+FiberMesh, T-Splines, Welch und Witkin; wo die Form lebt, wenn der Punkt weg ist):
+[`2026-11-24-ozzy-suite-teil-16-punkte-nach-bedarf.md`](2026-11-24-ozzy-suite-teil-16-punkte-nach-bedarf.md).
