@@ -6,21 +6,44 @@ shadern exakt so hin?“
 Vorlagen (`docs/look/ozzy/shader/vorlagen/2026-11-24-fell-*.png|webp`): 01 grün (kurz, gekämmt mit Wirbel), 02 Giraffe (kurzer
 Plüsch mit Muster), 03 graubraun (Wildfell, mehrfarbig), 04 dunkelbraun lang (Stacheln in Büscheln, feine Haare am Umriss), 05 Katze,
 06 braun (Wirbel oben, weiche Spitzen), 07 Zottel (lange, hängende Strähnen), 08 weiß mit Locken, 09 lila (weich, wellig), 10 violett
-(lang, fließend, Farbverlauf), 11 türkis (dicht, wirr, leuchtend). Vergleich mit unserem Fell heute:
+(lang, fließend, Farbverlauf), 11 türkis (dicht, wirr, leuchtend), am Nachmittag dazu 12 grüner Ball (weich, feine Haare am Umriss). Vergleich mit unserem Fell heute:
 `docs/progress/ozzy/shader/2026-11-24-fell-vorlagen-und-heute.png`.
 
 ## Ehrliche Einschätzung
 
-- **Berichtigt (Florian: „bist du dir da sicher. die giraffe könnte ein shader sein“):** Nein, sicher war das nicht, und für die
-  Giraffe war es falsch. Einzeln angesehen (Lupe am Umriss):
-  - **Echtzeit-Fell aus Schalen**, wie unseres: **02 Giraffe** (am Umriss sieht man die geraden Kanten des Kugelnetzes, das Fell ist
-    nur auf die Fläche gezeichnet), **06 braun** (am Rand die verwischten Streifen gemischter Schalen), **03 graubraun** (Schalen
-    und Ränder, mit Treppen). Die sind mit unserer Technik erreichbar.
-  - **Einzelne Haare** (Strähnen; offline oder in Spiel-Engines, die Haare als Linien zeichnen): 01, 04, 05 Katze, 08, 09, 10, 11.
-    Am Umriss stehen feine einzelne Haare ab.
-  - **KI-Bild:** 07 (Zeichen von Craiyon).
-- Auch „in Echtzeit unmöglich“ war zu stark: Spiel-Engines zeichnen heute einzelne Haare in Echtzeit, nur nicht Hunderttausende im
-  Browser auf dem iPhone mit dem Licht eines Offline-Bilds.
+Zuerst pauschal geurteilt (alle offline oder KI, „ganz exakt: nein“). Auf Florians Fragen („bist du dir da sicher. die giraffe
+könnte ein shader sein“, dann mit vier Links „Schau dir auch meine restlichen referenzen nochmal an ob auch das echte shader sein
+könnten“) einzeln geprüft: vergrößert am Umriss, dazu die Quellen aus seinen Links (Bildgröße, Dateiname und Signatur stimmen überein).
+
+- **Sicher Echtzeit:**
+  - **02 Giraffe:** Schalen (am Umriss die geraden Kanten des Kugelnetzes, das Fell ist nur auf die Fläche gezeichnet).
+  - **03 graubraun:** Unity, jedes Haar ein schmales Blatt, das die Grafikkarte erzeugt (ein Gras-Shader; Y Hartzell, „Wolf Fur
+    Material (Game Art)“, https://ysidro.artstation.com/projects/1nx5vX).
+  - **04 dunkelbraun lang:** Unreal, laut Text mit Schalen gebaut (Maximiliaan Maene, „WIP- Realtime fur shader“,
+    https://maenemaximiliaan.artstation.com/projects/1n1q48; Datei `HighResScreenshot00001`, gleiche Größe 1414 × 1260). Die feinen
+    Haare am Umriss sind punktierte Linien durch die Schalen.
+  - **11 türkis:** Sketchfab, echte Haare als Dreiecke (636 890 Dreiecke in 32 Teilen), läuft im Browser („Furry Ball 2: Electric
+    Boogaloo (Real Fur Test)“,
+    https://sketchfab.com/3d-models/furry-ball-2-electric-boogaloo-real-fur-test-befd7100dc3441758fbcf3b37d66c335; im Browser
+    geöffnet, es läuft).
+- **Wahrscheinlich Echtzeit:** **06 braun** (gemischte Schalen am Rand); **09 lila** (Haarkarten: Streifen mit dem Bild vieler Haare,
+  wie in Spielen; am Umriss ausgefranste Streifen); **01 grün** (der Umriss ist fast glatt, obwohl die Haare auf der Fläche lang
+  sind; Schalen oder kurzes Fell, nicht sicher).
+- **Offline gerechnet:** **08 weiß mit Locken**, 3ds Max „Hair and Fur“ (Amir Cherni, „Fur Presets“,
+  https://www.artstation.com/artwork/nQ4lYo; gleiche Signatur unten rechts).
+- **Unklar, eher offline:** 05 Katze (feine helle Pünktchen wie beim Offline-Rechnen), 10 violett, 12 grüner Ball.
+- **KI-Bild:** 07 (Zeichen von Craiyon).
+- „In Echtzeit unmöglich“ war falsch: 04 zeigt lange, feine Haare aus Schalen, 11 echte Haare im Browser.
+
+## Was daraus folgt (24.11.)
+
+- **Schalen reichen weiter als gedacht:** 04 zeigt lange, feine Haare aus Schalen. Unsere können länger, dünner und dichter werden.
+- **Echte Haare gehen im Browser:** 11 zeichnet rund 640 000 Dreiecke Haar in Echtzeit (auf dem iPhone ungeprüft).
+- **Zwischenweg wie 03:** jedes Haar ein schmales Blatt, von der Grafikkarte vervielfacht (in WebGL2 als Instanzen).
+- **Schafwolle (08)** (Florian: „Vor allem die weiße schafswolle finde ich interessant“): offline gerechnet. In Echtzeit zu prüfen:
+  Locken aus Schalen (runde Büschel, deren Haare sich um die Achse des Büschels drehen, dunkle Lücken dazwischen) und wenige tausend
+  echte Flusen am Umriss. Kriterium: Locken mit dunklen Lücken, weiche Flusen am Umriss, cremiges Weiß, an der Kugel neben 08 in
+  gleicher Ansicht.
 
 ## Was unserem Fell fehlt (am Vergleichsblatt)
 
@@ -84,8 +107,8 @@ Tempo (Mac, „strange bird“, je Bild mit Warten auf die Grafikkarte, `scripts
 
 Offen: Am Vogel wird das Braun streifig (alle Maße hängen am Halbmesser der ganzen Form, an kleinen Teilen sind Haare und Strähnen
 darum groß); die Testkugel ist eine liegende Linse (die frische Form wird nie ganz rund; von oben gesehen in der Raumkiste nicht
-erreichbar, die Draufsicht zeigt im Shader nur das Blatt): Vergleich darum von schräg oben. **Nächster Schritt (auf sein Wort):** echte
-Haare für die Vorlagen mit einzelnen Haaren am Umriss, zuerst die Katze (05).
+erreichbar, die Draufsicht zeigt im Shader nur das Blatt): Vergleich darum von schräg oben. **Nächster Schritt (auf sein Wort):** siehe
+„Was daraus folgt“.
 
 Jeder Schritt wird an der Kugel neben seiner Vorlage gezeigt (`scripts/ozzy/shader-kugel.mjs`, Messung mit
 `scripts/ozzy/kugel-messen.mjs`). Sein Auge entscheidet.
