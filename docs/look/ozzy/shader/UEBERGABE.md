@@ -1,4 +1,4 @@
-# Übergabe: 96 Shader für Ozzy (21.11.2026, Runde 9; Streifen 22.11.; Fell nach Vorlagen 24.11.)
+# Übergabe: 97 Shader für Ozzy (21.11.2026, Runde 9; Streifen 22.11.; Fell nach Vorlagen 24.11.)
 
 Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 5),
 `docs/plans/2026-11-21-ozzy-shader-runde-6.md` (Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel),
@@ -41,7 +41,7 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
   <vorlage> <bild …>` (Farbe, Helligkeit, Rot zu Grün, senkrechte zu waagerechten Kanten, Kanten je Bildpunkt, Streuung; zählt Grün).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
-## Die 96, in elf Gruppen
+## Die 97, in elf Gruppen
 
 - **Spider-Verse (17):** Comicdruck, Aquarell, Indrajal, Punk-Collage, Marker 2099, Tintenfleck, Da Vinci, Glitch, Earth-42,
   Multiplane, Noir, Cartoon, Neunziger, Sienkiewicz, Venom-Blitz, Pixel, LEGO.
@@ -62,8 +62,9 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
   Nacht), Nachtschatten, Nachtschatten Alpha (`nachtschatten.ts`, Runde 9), Pfeilgiftfrosch (`frosch`), Chamäleon (`chamaeleon`,
   Regler Stimmung), Krake, Turing-Haut. Die Häute haben den Regler **Stil** (Echt, Anime, Manga, Spider-Verse, Earle); der T-Rex
   sieben Stile (Kino, Spider-Verse, Earle, Fossil, Spielzeug, Anime, Manga) und vier Färbungen (Erde, Wald, Asche, Glut).
-- **Fell & Flausch (8):** Fell (Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch; 20 Muster; sechs Felltypen), Giraffenfell und
-  Braunes Fell (`samtfell.ts`, 24.11., nach Florians Vorlagen 02 und 06), Schaf, Plüschtier, Wolke (Echt, Ghibli, Anime), Zuckerwatte,
+- **Fell & Flausch (9):** Fell (Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch; 20 Muster; sechs Felltypen), Giraffenfell und
+  Braunes Fell (`samtfell.ts`, 24.11., nach Florians Vorlagen 02 und 06), Schafwolle (`wolle.ts`, nach Vorlage 08, mit echten
+  Flusen), Schaf, Plüschtier, Wolke (Echt, Ghibli, Anime), Zuckerwatte,
   Pusteblume (Versuch).
 - **Effekte (8):** Eine Linie, Matrix 2.0 (`matrix`), Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
 
@@ -248,5 +249,10 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
     Die frische Form bleibt eine liegende Linse; senkrecht von oben lässt die Raumkiste nicht zu (bei Zoom über 2 ändert sich der
     erreichbare Winkel), die Draufsicht (Taste 7) zeigt im Shader nur das Blatt. Für Fell: `NEIGUNG=64 ZOOM=2.0`.
 38. **Tempo je Shader:** `scripts/ozzy/shader-tempo.mjs <id …>` zeichnet je Bild selbst und liest danach einen Bildpunkt zurück (so
-    zählt die Grafikkarte mit), an „strange bird“ im Blick der Bilder, „Stand“ und „bewegt“.
-
+    zählt die Grafikkarte mit), an „strange bird“ im Blick der Bilder, „Stand“ und „bewegt“.39. **Flusen** (24.11., `schalen.ts`): eine Art mit `durchsicht` kann `flusen` haben, echte Haare über den Schalen. Je Haar ein Band aus
+    Stücken, instanziert; die Wurzeln liegen auf der Haut (Dreiecke nach ihrer Fläche gewählt, mit festen Zufallszahlen, bei jeder
+    Änderung des Netzes neu gesetzt); die Art schreibt den Weg im Vertex und ruft `flusenBand` (Breite in Bildpunkten, unter 1,5
+    blasser statt dünner). Gezeichnet nach den Schalen, gemischt, ohne Tiefe zu schreiben.
+40. **Locken** (Schafwolle): die Kuppel aus dem Verhältnis der Abstände zur nächsten und zweitnächsten Mitte (runde Höhenlinien), nicht
+    aus dem Abstand zur Grenze (der gibt Kissen mit geraden Kanten); gesucht in einem gewellten Raum; Licht je Locke über eine nach
+    außen geneigte Normale („Bausch“). Die Neigung der Locken ist ein glattes Feld je Ecke (`eckMuster`), so kostet sie im Fragment nichts.

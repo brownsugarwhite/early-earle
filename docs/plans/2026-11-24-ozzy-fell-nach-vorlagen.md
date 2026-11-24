@@ -125,5 +125,21 @@ Ziel: Vorlage 08 (offline gerechnet) in Echtzeit, als eigener Shader „Schafwol
 Probe: Testkugel neben 08 (schräg von oben, `NEIGUNG=64 ZOOM=2.0`) und an „strange bird“, Tempo mit `shader-tempo.mjs`.
 **Kriterium:** Locken mit dunklen Lücken, weiche Flusen am Umriss, cremiges Weiß. Sein Auge entscheidet.
 
+**Stand (24.11. abends):** gebaut, `src/ozzy/shader/voreinstellungen/wolle.ts` („Schafwolle“), die Flusen allgemein in `schalen.ts`
+(`flusen` einer Art). Blatt `docs/progress/ozzy/shader/2026-11-24-schafwolle-probe.png` (Vorlage 08, Testkugel, „strange bird“).
+Was den Unterschied machte, in fünf Anläufen:
+
+1. Locken als Zellen im Raum mit der Kuppel aus dem Abstand zur Grenze gaben Kissen mit geraden Kanten (Pflaster). Das
+   **Verhältnis der Abstände** zur nächsten und zur zweitnächsten Mitte hat runde Höhenlinien; dazu wird die Locke in einem leicht
+   **gewellten Raum** gesucht: keine geraden Furchen mehr.
+2. Jede Locke ein **Bausch**: zu ihrem Rand neigt sich ihre Oberfläche fürs Licht nach außen (Licht auf der einen, Schatten auf der
+   anderen Seite). Erst damit wurden die Locken rund.
+3. **Kleiner und weicher:** Locken mit 0,075 des Halbmessers, ungleich lange Haare, durchscheinender je Schale.
+4. **Flusen** als echte Haare: 10 000 dünne, gewellte Bänder, am Umriss voll, vorn auf der Wolle blasser, in der Wolle unsichtbar.
+   Zu viele und zu lange Flusen gaben ein Netz aus Linien; zu stark gekräuselte sahen gekritzelt aus.
+
+Tempo (Mac, „strange bird“, `shader-tempo.mjs`): beim Drehen 18,6 ms je Bild (das Braune Fell 18,3, unser Fell bisher 15,9), im Stand
+44 ms. Offen: siehe „was bleibt“ Punkt 70.
+
 Jeder Schritt wird an der Kugel neben seiner Vorlage gezeigt (`scripts/ozzy/shader-kugel.mjs`, Messung mit
 `scripts/ozzy/kugel-messen.mjs`). Sein Auge entscheidet.

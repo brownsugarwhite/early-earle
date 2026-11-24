@@ -23,8 +23,8 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   **Etappe 1, erste Scheibe gebaut** (Offenes: `…-maul-was-bleibt.md`, Feinschliff am Ende):
   [`…-20-ozzy-maul-zaehne-zunge.md`](docs/plans/2026-11-20-ozzy-maul-zaehne-zunge.md); Studie `maul.html`.
   Einstieg: [`docs/look/ozzy/maul/UEBERGABE.md`](docs/look/ozzy/maul/UEBERGABE.md).
-- **Sitzung „Shader“ (20./21.11.):** Zweig `claude/ozzy-shader`, Fenster 5219, 96 Shader in elf Gruppen (Material „Shader“,
-  ⇧M; Runde 9 und Fell nach Florians Vorlagen, 24.11.: Giraffenfell, Braunes Fell). Einstieg:
+- **Sitzung „Shader“ (20./21.11.):** Zweig `claude/ozzy-shader`, Fenster 5219, 97 Shader in elf Gruppen (Material „Shader“,
+  ⇧M; Runde 9 und Fell nach Florians Vorlagen, 24.11.: Giraffe, Braun, Schafwolle). Einstieg:
   [`docs/look/ozzy/shader/UEBERGABE.md`](docs/look/ozzy/shader/UEBERGABE.md).
 - **Sitzung „Objekte, Spiegel und Nähte“ (18./19.11., ruht):** Zweig `claude/ozzy-donut-mirror-system-7a31b7`, Fenster 5211.
   Plan: [`…-18-ozzy-objekte-spiegel-naehte.md`](docs/plans/2026-11-18-ozzy-objekte-spiegel-naehte.md) (gebaut: Etappe 0

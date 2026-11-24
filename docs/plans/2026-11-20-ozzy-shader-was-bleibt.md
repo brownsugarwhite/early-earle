@@ -164,4 +164,7 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     und weniger Fülle als in der Vorlage; am Rand der Testform ein verwischter Ring (Ursache nicht geprüft); am Vogel streifig (Maße am
     Halbmesser der ganzen Form; an kleinen Teilen wären Maße je Teil besser); im Stand ein Bild von rund 56 ms (in Bewegung 18 ms).
 69. **Nicht gebaut** (Quelle und Technik je Vorlage im Plan, „Ehrliche Einschätzung“): Schafwolle 08 (Locken aus Schalen und echte
-    Flusen am Umriss), lange Schalen wie 04, Haare als Blätter wie 03, Haarkarten wie 09, echte Haare wie 11 und für 05, 10, 12; 01 grün.
+    Flusen am Umriss), lange Schalen wie 04, Haare als Blätter wie 03, Haarkarten wie 09, echte Haare wie 11 und für 05, 10, 12; 01 grün.70. **Schafwolle** (Probe, Blatt `2026-11-24-schafwolle-probe.png`): Die Vorlage ist noch weicher und bauschiger; in der Mitte des
+    Blicks zeichnen sich Furchen und gesprenkelte Kuppen ab (Enden der Haare); wo das Feld der Neigung auseinanderläuft, entsteht ein
+    Wirbel wie ein Nabel; die Locken hängen am Halbmesser der ganzen Form (an kleinen Teilen groß); beim Formen setzt jede Änderung des
+    Netzes die Flusen neu (am Vogel 238 000 Dreiecke je Änderung); im Stand 44 ms je Bild; iPhone ungeprüft.

@@ -15,10 +15,13 @@
  *   Güte.
  */
 import {
+  BufferAttribute,
   BufferGeometry,
   CustomBlending,
+  DoubleSide,
   FrontSide,
   GLSL3,
+  InstancedBufferAttribute,
   InstancedBufferGeometry,
   type IUniform,
   Matrix4,
@@ -203,6 +206,78 @@ ${RAUSCHEN}${FARBE}${DRUCK}${LICHT}${BUEHNEN}
 float deckungSchalen(vec2 uv) { return sqrt(clamp(texture(tSchalen, uv).a, 0.0, 1.0)); }
 `;
 
+/**
+ * Kopf der Flusen (Vertex, 24.11.): echte Haare über den Schalen, je Haar ein Band aus Stücken (position.x: 0 an der Wurzel … 1 an
+ * der Spitze, position.y: Seite −1 oder 1), je Haar Wurzel, Normale, Seite und vier Zufallszahlen (instanziert). Die Art setzt den
+ * Weg des Haars und ruft `flusenBand`.
+ */
+const FLUSEN_VERTEX_KOPF = /* glsl */ `
+precision highp float;
+uniform mat4 viewMatrix;
+uniform mat4 projectionMatrix;
+uniform vec3 uMitte;
+uniform float uRadius;
+uniform vec2 uAufl;
+uniform float uDpr;
+uniform float uSpiegel;
+uniform vec4 uSchnitt;
+uniform float uLaenge;
+uniform float uZeit;
+uniform float uOrtho;
+in vec3 position;
+in vec3 aWurzel;
+in vec3 aNormal;
+in vec4 aZufall;
+in float aSeite;
+out vec3 vWelt;
+out vec3 vT;
+out vec3 vN;
+out float vt;
+out float vQuer;
+out float vDeck;
+out vec4 vZufall;
+/** abgeschnitten wie die Haut (Spiegel, Einrasten), an der Wurzel */
+bool flusenGeschnitten() {
+  if (uSpiegel >= 0.0 && aSeite * aWurzel.z < -uSpiegel * abs(aSeite)) return true;
+  return dot(uSchnitt.xyz, aWurzel) < uSchnitt.w;
+}
+/**
+ * das Band um p, quer zum Weg im Bild (p2: der nächste Punkt), breite in Bildpunkten. Schmaler als 1,5 Bildpunkte wird es nicht
+ * gezeichnet, sondern blasser (vDeck): so flimmern dünne Haare nicht.
+ */
+void flusenBand(vec3 p, vec3 p2, float breite) {
+  vec4 c1 = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  vec4 c2 = projectionMatrix * viewMatrix * vec4(p2, 1.0);
+  vec2 d = (c2.xy / c2.w - c1.xy / c1.w) * uAufl;
+  d = dot(d, d) > 1e-10 ? normalize(d) : vec2(1.0, 0.0);
+  float zeichnen = max(breite, 1.5);
+  vDeck = breite / zeichnen;
+  c1.xy += vec2(-d.y, d.x) * position.y * zeichnen / uAufl * c1.w;
+  gl_Position = c1;
+}
+`;
+
+/** Kopf der Flusen (Fragment) */
+const FLUSEN_FRAGMENT_KOPF = /* glsl */ `
+precision highp float;
+uniform vec3 uKamPos;
+uniform float uOrtho;
+uniform mat4 uViewInv;
+uniform float uZeit;
+in vec3 vWelt;
+in vec3 vT;
+in vec3 vN;
+in float vt;
+in float vQuer;
+in float vDeck;
+in vec4 vZufall;
+layout(location = 0) out vec4 farbe;
+layout(location = 1) out vec4 kennung;
+${RAUSCHEN}${FARBE}${LICHT}
+vec3 zumAuge(vec3 p) { return uOrtho > 0.5 ? -normalize((uViewInv * vec4(0.0, 0.0, -1.0, 0.0)).xyz) : normalize(uKamPos - p); }
+vec3 ausSicht(vec3 d) { return normalize((uViewInv * vec4(d, 0.0)).xyz); }
+`;
+
 export type SchalenWerte = {
   /** Schalen bei voller Güte (in Bewegung weniger) */
   voll: number;
@@ -214,6 +289,20 @@ export type SchalenWerte = {
   werte?: Record<string, number>;
   /** die weiche Maske für Schatten auf der Bühne */
   weich?: boolean;
+  /** Zahl der Flusen bei voller Güte (in Bewegung die Hälfte); ohne Angabe alle Plätze */
+  flusen?: number;
+};
+
+/** echte Haare über den Schalen (Flusen; nur mit `durchsicht`): je Haar ein Band aus `stuecke` Stücken, instanziert */
+export type FlusenArt = {
+  /** so viele Plätze werden angelegt (höchste Zahl der Haare) */
+  hoechstens: number;
+  /** Stücke je Haar */
+  stuecke: number;
+  /** GLSL nach dem Kopf der Flusen (Vertex): eigene Konstanten und Funktionen, void main() (setzt den Weg, ruft flusenBand) */
+  vertex: string;
+  /** GLSL nach dem Kopf der Flusen (Fragment): void main() */
+  fragment: string;
 };
 
 export type SchalenArt = {
@@ -232,6 +321,8 @@ export type SchalenArt = {
   zusammen: string;
   /** durchscheinend gemischt statt deckend */
   durchsicht?: boolean;
+  /** echte Haare über den Schalen (nur mit `durchsicht`) */
+  flusen?: FlusenArt;
   werte: (w: ShaderWerte, k: ShaderKern) => SchalenWerte;
   /** bewegt sich die Art von selbst (Zeit)? */
   lebt?: (w: ShaderWerte) => boolean;
@@ -265,6 +356,13 @@ export class SchalenLauf implements ShaderLauf {
   private nachziehen = false;
   private lebend = false;
   private skala = 1;
+  /** Flusen: Bänder, Programm, Stand des Netzes ihrer Wurzeln, feste Wahl je Haar (Dreieck, zwei Gewichte), Flächen der Dreiecke */
+  private readonly flusenGeo = new InstancedBufferGeometry();
+  private readonly flusenMat: RawShaderMaterial | null;
+  private flusenStand = -1;
+  private flusenWahl: Float32Array | null = null;
+  private flaechen: Float64Array | null = null;
+  private flusenZahl = 0;
 
   /**
    * Vorsilbe der Ziele: die Kennung des Shaders, nicht der Name der Art (22.11.). Fell, Schaf, Plüschtier, Leopard, Tiger und Giraffe
@@ -308,6 +406,7 @@ export class SchalenLauf implements ShaderLauf {
     mesh.frustumCulled = false;
     mesh.renderOrder = 1;
     this.szene.add(mesh);
+    this.flusenMat = art.flusen && art.durchsicht ? this.flusenBauen(k, art.flusen, kopf, alle) : null;
     this.muster = new RawShaderMaterial({
       glslVersion: GLSL3,
       uniforms: { ...k.u, ...alle },
@@ -327,6 +426,104 @@ export class SchalenLauf implements ShaderLauf {
       tWeich: { value: null },
     });
     this.weich = new WeicheMaske(k);
+  }
+
+  /** die Bänder der Flusen: ein Haar als Streifen aus Stücken (je Stück zwei Dreiecke), dazu je Haar feste Zufallszahlen */
+  private flusenBauen(k: ShaderKern, f: FlusenArt, kopf: string, alle: Record<string, IUniform>): RawShaderMaterial {
+    const S = f.stuecke;
+    const basis = new Float32Array((S + 1) * 6);
+    const index: number[] = [];
+    for (let i = 0; i <= S; i++) {
+      basis.set([i / S, -1, 0, i / S, 1, 0], i * 6);
+      if (i < S) index.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2);
+    }
+    const g = this.flusenGeo;
+    g.setAttribute('position', new BufferAttribute(basis, 3));
+    g.setIndex(index);
+    const N = f.hoechstens;
+    g.setAttribute('aWurzel', new InstancedBufferAttribute(new Float32Array(N * 3), 3));
+    g.setAttribute('aNormal', new InstancedBufferAttribute(new Float32Array(N * 3), 3));
+    g.setAttribute('aSeite', new InstancedBufferAttribute(new Float32Array(N), 1));
+    // feste Zufallszahlen (bei jedem Start gleich): drei für den Platz auf der Haut, vier für das Haar
+    const wahl = new Float32Array(N * 3);
+    const zufall = new Float32Array(N * 4);
+    let s = 0x2f6b9a1d;
+    const z = (): number => {
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    for (let i = 0; i < wahl.length; i++) wahl[i] = z();
+    for (let i = 0; i < zufall.length; i++) zufall[i] = z();
+    g.setAttribute('aZufall', new InstancedBufferAttribute(zufall, 4));
+    g.instanceCount = 0;
+    this.flusenWahl = wahl;
+    const m = k.netzProgramm(`${FLUSEN_FRAGMENT_KOPF}\n${kopf}\n${f.fragment}`, {
+      vertex: `${FLUSEN_VERTEX_KOPF}\n${kopf}\n${f.vertex}`,
+      uniforms: alle,
+      seite: DoubleSide,
+      transparent: true,
+      tiefeSchreiben: false,
+    });
+    m.blending = CustomBlending;
+    m.blendSrc = OneFactor;
+    m.blendDst = OneMinusSrcAlphaFactor;
+    m.blendSrcAlpha = OneFactor;
+    m.blendDstAlpha = OneMinusSrcAlphaFactor;
+    const mesh = new Mesh(g, m);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 2;
+    this.szene.add(mesh);
+    return m;
+  }
+
+  /** die Wurzeln der Flusen auf die Haut: Dreiecke nach ihrer Fläche gewählt, im Dreieck gleichmäßig (bei jeder Änderung des Netzes) */
+  private flusenSetzen(k: ShaderKern): void {
+    const g = k.geo;
+    const idx = g.index?.array;
+    const wahl = this.flusenWahl;
+    if (!idx || !wahl) return;
+    const P = (g.getAttribute('position') as BufferAttribute).array as Float32Array;
+    const Nn = (g.getAttribute('normal') as BufferAttribute).array as Float32Array;
+    const Se = (g.getAttribute('aSeite') as BufferAttribute).array as Float32Array;
+    const T = Math.floor(idx.length / 3);
+    if (T === 0) return;
+    if (!this.flaechen || this.flaechen.length < T) this.flaechen = new Float64Array(T);
+    const F = this.flaechen;
+    let summe = 0;
+    for (let i = 0; i < T; i++) {
+      const a = idx[3 * i]! * 3, b = idx[3 * i + 1]! * 3, c = idx[3 * i + 2]! * 3;
+      const ux = P[b]! - P[a]!, uy = P[b + 1]! - P[a + 1]!, uz = P[b + 2]! - P[a + 2]!;
+      const vx = P[c]! - P[a]!, vy = P[c + 1]! - P[a + 1]!, vz = P[c + 2]! - P[a + 2]!;
+      const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      summe += Math.sqrt(cx * cx + cy * cy + cz * cz);
+      F[i] = summe;
+    }
+    const wu = this.flusenGeo.getAttribute('aWurzel') as InstancedBufferAttribute;
+    const no = this.flusenGeo.getAttribute('aNormal') as InstancedBufferAttribute;
+    const se = this.flusenGeo.getAttribute('aSeite') as InstancedBufferAttribute;
+    const W = wu.array as Float32Array, N = no.array as Float32Array, S = se.array as Float32Array;
+    for (let j = 0; j < S.length; j++) {
+      const r = wahl[3 * j]! * summe;
+      let lo = 0, hi = T - 1;
+      while (lo < hi) {
+        const m = (lo + hi) >> 1;
+        if (F[m]! < r) lo = m + 1;
+        else hi = m;
+      }
+      const ia = idx[3 * lo]!, ib = idx[3 * lo + 1]!, ic = idx[3 * lo + 2]!;
+      const w = Math.sqrt(wahl[3 * j + 1]!);
+      const u = 1 - w, v = w * (1 - wahl[3 * j + 2]!), x = w * wahl[3 * j + 2]!;
+      for (let e = 0; e < 3; e++) {
+        W[3 * j + e] = u * P[3 * ia + e]! + v * P[3 * ib + e]! + x * P[3 * ic + e]!;
+        N[3 * j + e] = u * Nn[3 * ia + e]! + v * Nn[3 * ib + e]! + x * Nn[3 * ic + e]!;
+      }
+      S[j] = Se[ia]!;
+    }
+    wu.needsUpdate = true;
+    no.needsUpdate = true;
+    se.needsUpdate = true;
   }
 
   /** das Netz des Kerns teilen (dieselben Puffer), sobald es sich ändert */
@@ -358,6 +555,16 @@ export class SchalenLauf implements ShaderLauf {
     this.stand = k.netzStand;
     this.n = bewegt ? Math.max(8, Math.round(sw.voll * 0.45)) : sw.voll;
     this.nachziehen = bewegt;
+    if (this.flusenMat && this.art.flusen) {
+      if (k.netzStand !== this.flusenStand) {
+        this.flusenSetzen(k);
+        this.flusenStand = k.netzStand;
+      }
+      const hoechstens = this.art.flusen.hoechstens;
+      const voll = Math.max(0, Math.min(hoechstens, Math.round(sw.flusen ?? hoechstens)));
+      this.flusenZahl = bewegt && !this.lebend ? Math.round(voll * 0.5) : voll;
+      this.flusenGeo.instanceCount = this.flusenZahl;
+    }
     const u = this.fu;
     u.uSchalen!.value = this.n;
     u.uLaenge!.value = sw.laenge;
@@ -404,10 +611,12 @@ export class SchalenLauf implements ShaderLauf {
   }
 
   info(): Record<string, number> {
-    return { schalen: this.n, skala: this.skala, ecken: this.punkte.getAttribute('position')?.count ?? 0, dreiecke: (this.geo.index?.count ?? 0) / 3 };
+    return { schalen: this.n, skala: this.skala, ecken: this.punkte.getAttribute('position')?.count ?? 0, dreiecke: (this.geo.index?.count ?? 0) / 3, flusen: this.flusenZahl };
   }
 
   freigeben(): void {
+    this.flusenMat?.dispose();
+    this.flusenGeo.dispose();
     this.muster.dispose();
     this.punkte.dispose();
     this.schalen.dispose();

@@ -50,6 +50,7 @@ import { FLOR_POP, PANOT, PERSIANA } from './barcelona';
 import { ARGON_BLAU, HALL_OF_FAME, NEON_ROT, NIETENLEDER } from './strasse';
 import { PLATANE } from './natur';
 import { BRAUNFELL, GIRAFFENFELL } from './samtfell';
+import { SCHAFWOLLE } from './wolle';
 import { NACHTSCHATTEN, NACHTSCHATTEN_ALPHA } from './nachtschatten';
 import { SIN_CITY_GELB, SIN_CITY_REGEN, SIN_CITY_ROT } from './sincity';
 import { ACHAT, GRANIT, JADE, LAPIS, MALACHIT, MARMOR, OBSIDIAN, SANDSTEIN } from './steine';
@@ -154,6 +155,7 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   FELL,
   GIRAFFENFELL,
   BRAUNFELL,
+  SCHAFWOLLE,
   SCHAF,
   PLUESCHTIER,
   WOLKE,
