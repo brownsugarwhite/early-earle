@@ -183,7 +183,48 @@ FiberMesh auch auf Bézier?“
 - **Der Unterschied zu deiner Idee:** Bei FiberMesh sind die Punkte auf den Kurven frei, aber die Kurven musst du selbst zeichnen. Bei dir
   entstehen auch die Kurven von selbst, genau dort, wo du greifst, und sie bringen die fehlende Richtung gleich mit.
 
-## 9 Quellen
+## 9 Nachtrag: Greifen ohne Zucken, Reichweite, Licht, Posen (24.11.)
+
+**1. Erneut greifen, ohne dass es zuckt.** Dein Wort: „deshalb meine anfängliche Frage mit den vier Punkten und dem Kreis“. Genau: Die
+Antwort von dort trägt hier.
+
+- **Einfügen ist exakt.** Liegen am Höcker schon unsichtbare Loops, setzt Ozzy die neue Kreuzung in sie hinein (de Casteljau); das ändert
+  die Form um nichts.
+- **Neu beschreiben ist fast exakt,** wenn die Stücke klein genug sind. Faustregel aus der Kreisrechnung: Stücke mit höchstens einer
+  Vierteldrehung, also vier Punkte je Kreis, liegen bei 500 px Radius 0,14 px daneben, sechs Punkte 0,01 px. Wo es genau sein muss, nimmt
+  Ozzy echte Kreise mit Gewichten.
+- **Der Rest verschwindet in der Bewegung:** Was an Unterschied bleibt, blendet Ozzy in den ersten Bildern des Zugs weich ein, während
+  deine Hand sich ohnehin bewegt.
+
+**2. Reichweite ohne eigenen Loop.** Dein Wort: Zieht man an der Kugel, wird sie logisch zum Tropfen, und die Reichweite läuft bis zum
+Äquator; setzt man den Äquator von Hand nicht in die Mitte, reicht der Zug bis zu dieser Linie, weil kein dritter Loop nötig ist.
+
+- **Einverstanden, und es lässt sich allgemein fassen:** Der dritte Loop liegt dort, wo sich die Haut von der Zugrichtung wegdreht. Bildlich:
+  Eine Lampe leuchtet aus der Zugrichtung auf die Form, und der beleuchtete Teil ist die Reichweite. An der Kugel ist die Lichtgrenze
+  genau der Äquator.
+- **Deine Linie hat Vorrang:** Liegt eine eigene Linie um den Griff, reicht der Zug bis zu ihr, auch wenn sie nicht in der Mitte liegt.
+- **Eine Stelle braucht noch eine Regel:** An langen Formen. Ziehst du eine Wurst seitlich, liegt die Lichtgrenze quer zur Wurst nach
+  einer Vierteldrehung, längs aber erst an ihren Enden; dann würde die ganze Seite mitgehen. Vorschlag: längs so weit wie quer, bis zu
+  deiner nächsten Linie. An runden Formen wie Kugel, Ei oder Kopf stellt sich die Frage nicht.
+
+**3. Die Reichweite als Licht.** Einverstanden. Mit der Lampe aus Punkt 2 ist das Licht nicht nur eine Anzeige, sondern die Regel selbst:
+Was hell wird, geht mit.
+
+**4. Posen an Stellen der Form statt an Punkten.** Kein grundsätzliches Problem, aber eine echte Umstellung:
+
+- **Heute** speichert eine Pose, wie weit sich Punkte der Linien verschieben (Pose als Versatz der Linien). Verschwinden Punkte, fehlt der
+  Pose der Halt.
+- **Künftig** wird eine Pose ein Feld auf der Form: an jeder Stelle der Grundform, wie weit sie sich verschiebt. Ebenso die Gewichte der
+  Knochen, die ohnehin gemalt werden. Ozzy wertet das Feld an den Punkten aus, die gerade da sind.
+- **Als Halt dienen deine eigenen Linien und die Grundform;** die unsichtbaren Hilfsloops müssen das nicht leisten.
+- **Das ist sogar robuster:** Morphs zwischen Formen mit verschieden vielen Punkten (Studio) und die Leiter von 2 bis 2048 werden
+  leichter, weil keine Punktnummern mehr zueinander passen müssen.
+- **Im Spiel ändert sich nichts:** Beim Backen werden die Punkte fest, und Blendshapes sind wie heute Verschiebungen je Punkt des
+  Spielnetzes.
+- **Der Preis:** Die Posen im Maul-Strang (vier Scheiben, Zähne je Pose) müssten auf Felder umziehen. Und wird die Grundform nachträglich
+  geändert, muss das Feld mitwandern; dafür gibt es bekannte Verfahren (etwa Deformation Transfer, Sumner und Popović 2004).
+
+## 10 Quellen
 
 - A. Nealen, T. Igarashi, O. Sorkine, M. Alexa, „FiberMesh: Designing Freeform Surfaces with 3D Curves“, SIGGRAPH 2007.
 - W. Welch, A. Witkin, „Free-Form Shape Design Using Triangulated Surfaces“, SIGGRAPH 1994.
