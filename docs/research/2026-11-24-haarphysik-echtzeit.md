@@ -44,3 +44,18 @@ Bekannte Lösungen: Unreal „Groom“, AMD TressFX, EA Frostbite (Strähnen).
 - **Probe (auf sein Wort):** langes Haar (etwa Vorlage 10, violett) mit rund 1 000 Leithaaren, die beim Bewegen der Form nachschwingen.
   Kriterium: von der Wurzel zur Spitze verzögert, ohne Zittern, auf dem Mac beim Bewegen höchstens rund 20 ms je Bild; Beweis als
   kurzer Film.
+
+## Warum nicht gleich WebGPU im Editor? (Florian, 24.11.)
+
+- **Geht, und hätte Vorteile:** Compute-Shader (Haare, Stoff, Partikel, vielleicht der Rechenkern) und derselbe Renderer wie das
+  Spiel (three.js WebGPU mit TSL): Shader aus Ozzy ließen sich im Spiel weiterverwenden.
+- **Aber ein eigener Umbau:** Ozzy zeichnet mit WebGL2 und eigenen GLSL-Programmen (allein `src/ozzy/shader/` hat rund 18 700 Zeilen,
+  97 Shader; dazu die Materialien des Editors). Der WebGPU-Renderer von three.js nimmt diese Programme nicht; alles müsste in TSL
+  oder WGSL neu geschrieben werden.
+- **iPad und iPhone:** WebGPU nur über HTTPS. Über die WLAN-Adresse (http) fällt Safari still auf WebGL2 zurück, und die iOS-App
+  bekommt vermutlich nur WebGL2 (`docs/FALLEN.md`). Was wir in WebGPU bauen, braucht auf seinen Geräten also einen WebGL2-Weg oder
+  einen Server mit HTTPS und einem Zertifikat, dem die Geräte vertrauen.
+- **Für die Haarprobe nicht nötig:** rund 1 000 Leithaare mit je 12 Punkten rechnet der Prozessor in wenigen Millisekunden
+  (geschätzt, in der Probe zu messen); die vielen sichtbaren Haare folgen im Vertex-Shader, das kann WebGL2.
+- **Empfehlung:** die Haarprobe jetzt in WebGL2. „Editor und Spiel auf einem Renderer“ als eigener Plan, mit kleinem Test vorab
+  (ein Shader in TSL und eine Rechnung auf der Grafikkarte, über HTTPS auf dem iPhone).
