@@ -140,7 +140,28 @@ Gassirunde schon im gemeinsamen Editor entsteht und nicht als eigene 2D-App:
 Die 3D-Arbeit an Ozzy (Formen, Maul, Paint, Shader) geht dabei nicht verloren: Sie ist das spätere Stockwerk 4 und kommt über den Stamm
 ins Haus.
 
-## 10 Quellen
+## 10 Nachtrag: Herzstück und Hülle (24.11.)
+
+**Dein Wort:** „Die Kurven- und Scribble-Erkennung und wie sich das Mesh beim Ziehen verhält, sind das Herzstück. Layout und Bearbeitung
+sollten unabhängig davon entwickelt werden können, aber die aktuellste Version sollte immer in Ozzy sein.“
+
+- **Das Herzstück (der Kern):** Linien und Kurven (Bézier und echte Kreise, Punkte genau einfügen und wieder wegnehmen), die
+  Scribble-Erkennung (Teil 6) und das Verhalten beim Ziehen: Punkte nach Bedarf, Reichweite bis zu den Nachbarn, das Licht als Anzeige,
+  die Haut aus den Linien (Teil 16). Nach außen hat der Kern genau eine Tür, die Befehlsschicht (Teil 7).
+- **Die Hülle:** Layout, Werkzeuge, Ansichten, Gesten, liquid drop. Sie spricht nur über die Befehlsschicht mit dem Kern. Deshalb lassen
+  sich beide getrennt entwickeln, und auch ein späterer Umzug des Kerns (etwa nach Rust, Teil 12) ließe die Hülle unverändert.
+- **Immer die neueste Fassung in Ozzy:**
+  - Der Kern ist ein eigenes Paket im selben Repo, kein eigener langlebiger Zweig. Jeder fertige Schritt kommt sofort in den Stamm, den Ozzy
+    benutzt.
+  - Für konzentrierte Arbeit hat der Kern ein kleines eigenes Prüffenster; dasselbe Ergebnis ist zugleich in Ozzy zu sehen.
+  - Während des Umbaus laufen alter und neuer Kern nebeneinander, mit einem Schalter in Ozzy. Der alte bleibt unangetastet, bis du
+    umschaltest.
+  - Bei jedem Schritt laufen die Tests des Kerns und eine kurze Probe in Ozzy; was Ozzy bricht, kommt nicht in den Stamm.
+- **Was dafür zuerst feststehen muss:** die Befehlsschicht und die Szene als Text, denn sie sind die Fuge zwischen Kern und Hülle. Und ein
+  Stamm: Heute liegen Ozzy, Maul, Paint, Objekte, Shader und Studio in getrennten Zweigen. „Immer in Ozzy“ setzt einen Stamm voraus, den
+  es noch nicht gibt; zusammengeführt wird nur auf dein Wort.
+
+## 11 Quellen
 
 - Traumacoaster: `README.md` und `docs/ART.md` (Stil-Bibel) im Nachbarordner `traumacoaster`.
 - Studio: Notizen zum Plan-Nachtrag (eine App und eine Engine; Physik hinter einem Weltadapter; Bitgleichheit nur fürs Spiel; Demo
