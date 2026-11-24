@@ -111,7 +111,27 @@ finden.
 - **Der Unterschied zu 11.10.:** Damals waren die automatischen Punkte sichtbare Punkte, um die du dich kümmern musstest. Hier sind
   Punkte gar keine Bedienelemente mehr.
 
-## 7 Quellen
+## 7 Meine Einschätzung: eleganter, besser, genauer? (24.11.)
+
+**Deine Frage:** „Hältst du das für einen eleganteren Weg, der hilft, das Mesh besser und genauer zu bearbeiten?“
+
+- **Eleganter: ja.** Eine Regel ersetzt viele, die wir einzeln gebaut haben: Punkt auf der Linie nur mit P, die Sperre gegen nahe Punkte
+  beim Doppelklick, die Zusatzpunkte aus „Punkte wo nötig“, das Einfügen am kleinen Detail, das am 08.11. nicht ging. Das ist die Art
+  Strukturänderung, die die Arbeitsregel meint („ab der dritten neuen Regel die Struktur prüfen“). Und sie passt zu deinem Denken: Du
+  greifst die Form, nicht Punkte. Deine Linien bleiben deine; Punkte und Hilfsloops werden Ozzys.
+- **Besser bearbeiten: ja, wahrscheinlich.** Man kann überall greifen und knicken, und Fehler aus schlecht liegenden Punkten (der Zipfel
+  vom 07.11.) fallen weg. Frei wie beim Sculpting, sauber wie bei Vektoren.
+- **Genauer: in zwei Bedeutungen verschieden.** Die Form zu treffen, die du meinst, wird genauer, weil die Kontrolle dort entsteht, wo du
+  greifst. Maße, genaue Kreise und Wiederholbarkeit werden nicht von selbst genauer, denn das Neusetzen arbeitet mit einer Toleranz.
+  Dafür bleiben Anker, die du bewusst setzt, und genaue Grundformen (rationale Kreise) für Logo und CAD.
+- **Der eigentliche Prüfstein ist die Vorhersagbarkeit, nicht die Mathematik.** Bei festen Punkten siehst du vorher, was ein Zug tut. Bei
+  Punkten nach Bedarf muss genauso klar sein, wie weit ein Zug wirkt und in welche Richtung die Hilfskreuzung läuft; sonst fühlt es sich
+  an, als mache das Netz, was es will. Deshalb gehört während des Zugs sichtbar dazu, wo die Kreuzung liegt und wie weit sie reicht, so
+  wie beim Donut der gezogene Punkt sichtbar blieb.
+- **Mein Urteil:** der elegantere Weg und eine echte Vereinfachung des Kerns, unter zwei Bedingungen: Das Neusetzen ändert die Form nicht
+  merklich, und jeder Zug ist vorhersagbar. Bewiesen ist davon noch nichts.
+
+## 8 Quellen
 
 - A. Nealen, T. Igarashi, O. Sorkine, M. Alexa, „FiberMesh: Designing Freeform Surfaces with 3D Curves“, SIGGRAPH 2007.
 - W. Welch, A. Witkin, „Free-Form Shape Design Using Triangulated Surfaces“, SIGGRAPH 1994.
