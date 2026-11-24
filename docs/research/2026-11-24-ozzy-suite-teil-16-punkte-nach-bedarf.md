@@ -77,7 +77,41 @@ du sie hingesetzt hast.
 5. **Der Rechenkern:** Das berührt den Kern „Kurven als Wahrheit“ und die Rechnung von Sitzung 4, die bisher unangetastet bleibt. Nur auf
    dein Wort.
 
-## 6 Quellen
+## 6 Nachtrag: deine Regel und was wir früher schon hatten (24.11.)
+
+**Dein Wort:** „Ich glaube, ich will die Punkte nicht direkt nach dem Zug aufräumen, sondern erst mit dem nächsten Zug neu setzen. Wir
+haben schon sehr viel ausprobiert. War eine Methode früher schon mal dabei, bevor wir uns für die jetzige Rechnung entschieden haben?“
+
+**Gesucht in:** Gedächtnis, `docs/verlauf/`, `docs/plans/`, `docs/research/` (auch die Gegenprüfung vom 10.11. mit der Liste aller
+Versuche), `docs/UEBERGABE.md` und den Commits aller Zweige.
+
+**Genau diese Methode war nicht dabei.** Fünf Verwandte schon:
+
+| Wann | Was | Wie es ausging |
+| --- | --- | --- |
+| 11.10. | Im ersten Editor setzten sich Punkte von selbst. | Du hast es abgelehnt: „Das mit den Punkten, die sich von selbst setzen, gefällt mir nicht … ich setze neue Punkte von Hand.“ Und: „Es reicht, wenn man mit 4 Punkten am Kreis anfängt, 12 sind zu viel.“ |
+| 16. und 20.10. | Kopplung zwischen den Ansichten (Liniennetz, Käfig-Zeit): Im Zug fügt Ozzy einen Punkt ein, nur wenn der Rest über 1 px liegt, höchstens zwei je Zug, ohne die Form zu ändern (Commit `d1103876`). | Dein Wort: „nur wenn wirklich notwendig“. Die Punkte blieben danach stehen. |
+| 05. bis 10.11. | Das dichte Netz verdichtet sich selbst (`9b996ee3`), auch live im Zug (`d088e839`), später nach dem Loslassen im Hintergrund (`d695c2b5`). Betraf die Dreiecke, nicht die Punkte der Linien. | Gemessen: Der Sprung nach dem Loslassen kam vom Verdichten danach. Am 09.11. sagtest du: „Ich dachte, wenn sich das Mesh beim Zug exakt immer neu aus den Linien entwickelt und live verdichtet, haben wir weder Ecken noch ein Springen.“ Fünf Anläufe, dann die Recherche zu FiberMesh und danach die heutige Rechnung. |
+| 07.11. | „Punkte wo nötig“ (`?punkte=noetig`, Commit `a0d2f959`): Neue Loops bekommen Zusatzpunkte, bis ihr Pfad die Form genau trifft (4/6/3 statt 3/4/3 Punkte). | So rund wie vorher, aber ein Zusatzpunkt landete 10 Einheiten neben einer späteren Kreuzung, und deren Zug machte einen Zipfel. Dein Urteil: „etwas besser“; die Entscheidung blieb offen. |
+| 13.11. | Donut, deine erste Fassung: „Der Punkt, den man über die Mitte zieht, soll nur während des Zuges noch sichtbar sein … Beim Loslassen verschwindet er.“ | Am selben Abend durch deine zweite Fassung ersetzt; seit dem 18.11. entsteht die Naht beim Loslassen von selbst (`62103f1d`). |
+
+Dazu gibt es seit dem 08.11. im Bleistift-Kern ein Verfahren, das eine Linie mit den wenigsten Ankern nachzieht
+(`packages/shape/src/zeichnen/anpassen.ts`, Commit `4628182e`). Es könnte beim nächsten Zug die kleinste tragende Menge an Punkten
+finden.
+
+**Was das für deine Regel heißt:**
+
+- **Sie passt zu dem, was wir gemessen haben.** Der Sprung nach dem Loslassen kam vom Aufräumen danach. Wer erst mit dem nächsten Zug
+  neu setzt, lässt die Form nach dem Loslassen in Ruhe, und Rückgängig bleibt einfach, weil sich zwischen zwei Zügen nichts ändert.
+- **Sie löst das Problem von „Punkte wo nötig“.** Der Zipfel kam von einem stehen gebliebenen Zusatzpunkt neben einer neuen Kreuzung.
+  Werden die Punkte mit jedem Zug neu gesetzt, bleibt kein alter Punkt an der falschen Stelle stehen.
+- **Die Bedingung:** Das Neusetzen zu Beginn des nächsten Zugs darf die Form nicht ändern, nur ihre Beschreibung. Einfügen geht genau;
+  Wegnehmen nur innerhalb einer Toleranz, die unter einem Bildpunkt bleibt, und am besten nur rund um den neuen Zug. Sonst zuckt die Form
+  genau in dem Moment, in dem du greifst.
+- **Der Unterschied zu 11.10.:** Damals waren die automatischen Punkte sichtbare Punkte, um die du dich kümmern musstest. Hier sind
+  Punkte gar keine Bedienelemente mehr.
+
+## 7 Quellen
 
 - A. Nealen, T. Igarashi, O. Sorkine, M. Alexa, „FiberMesh: Designing Freeform Surfaces with 3D Curves“, SIGGRAPH 2007.
 - W. Welch, A. Witkin, „Free-Form Shape Design Using Triangulated Surfaces“, SIGGRAPH 1994.
