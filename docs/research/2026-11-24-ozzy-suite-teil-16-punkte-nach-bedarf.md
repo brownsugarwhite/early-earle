@@ -131,7 +131,59 @@ finden.
 - **Mein Urteil:** der elegantere Weg und eine echte Vereinfachung des Kerns, unter zwei Bedingungen: Das Neusetzen ändert die Form nicht
   merklich, und jeder Zug ist vorhersagbar. Bewiesen ist davon noch nichts.
 
-## 8 Quellen
+## 8 Nachtrag: Kugel und Horn, und wie FiberMesh es macht (24.11.)
+
+**Dein Wort:** „Eine Kugel hätte dann quasi keine sichtbaren Loops oder Punkte. Wenn ich an einem Punkt ziehe, werden drei Edgeloops mit
+je vier Punkten gesetzt (also sechs Kreuzungen), man sieht aber nur den Punkt, an dem ich ziehe. … Wenn ich … einen kleinen Kreis setze
+und dann die Mitte des Kreises rausziehe, entstehen zwei Loops, die bis zur Kreiskante führen, und ich kann dort ein Horn herausziehen,
+ohne dass es sich aufbläst, oder? … Beim nächsten Zug kann ich ihn wieder einfahren, bis die Haut wieder glatt auf der Grundkugel ist?
+Erst wenn ich am Höcker selbst einen Loop erstelle, kann ich ihn nicht mehr zurücksetzen?“ Und: „Wie macht das FiberMesh? Beruht
+FiberMesh auch auf Bézier?“
+
+**So verstehe ich es:**
+
+- **Drei Loops, sechs Kreuzungen** sind wie die drei Großkreise einer Kugel: Zwei laufen durch den Punkt, an dem du ziehst, der dritte
+  umrundet ihn wie ein Äquator. Sichtbar ist nur dein Punkt.
+- **Ohne eigenen Loop** reicht ein Zug über die ganze Kugel, sie wird zum Ei oder Tropfen. Für eine kleine Beule braucht es eine
+  Reichweite: Sie wächst mit der Zugweite wie bei FiberMesh, oder du gibst sie über Druck oder einen Regler.
+- **Mit deinem kleinen Kreis** ist der Kreis die Grenze. Die zwei Hilfsloops laufen von der Mitte zur Kreiskante, und das Horn wächst nur
+  innerhalb. Die Reichweite bestimmst du dann durch Zeichnen statt durch einen Regler.
+- **Aufblasen: sehr wahrscheinlich weniger.** Die Recherche vom 09.11. hat die Wurzel gefunden: Eine Linie legt nur die Lage der Haut
+  fest, nicht ihre Richtung; erst wo sich zwei Linien kreuzen, ist die Richtung bestimmt. Deine Kreuzung entsteht genau an der Spitze, und
+  der Kreis hält den Fuß. Damit ist das Horn festgelegt. Bewiesen ist das nicht: Der Beweis „Linien mit Richtung“ vom 09.11. bestätigte,
+  dass Richtung die Form eindeutig macht, scheiterte aber an der Rechnung auf unserem Netz.
+- **Zurückschieben: ja.** Wichtig ist der Unterschied zwischen unsichtbar und weg. Nach dem Zug sind die Hilfsloops unsichtbar, aber sie
+  sind das Gedächtnis des Höckers. Beim nächsten Zug setzt Ozzy sie neu. Schiebst du den Höcker zurück, bis die Haut auf der Grundkugel
+  liegt, braucht die Form sie nicht mehr, und sie verschwinden wirklich. Ein kleines Einrasten kurz vor der Grundform hilft, genau
+  dorthin zu kommen.
+- **Ein eigener Loop auf dem Höcker:** Zurückschieben geht weiterhin, nur dein Loop bleibt, weil er deiner ist. Er liegt dann flach auf
+  der Kugel, bis du ihn löschst.
+- **Die Grundkugel kann exakt sein.** Ist die Grundform eine echte Kugel und keine Näherung aus Bézier-Stücken, beschreiben die Loops nur,
+  was du davon wegziehst. Bei Zug null ist sie wieder genau rund; das beantwortet nebenbei die Frage nach dem perfekten Kreis.
+
+**Haken, die bleiben:**
+
+- Greifst du den Höcker erneut, muss die neue Kreuzung die vorhandene Form genau übernehmen; sonst zuckt er beim Greifen.
+- Ohne eigenen Loop braucht es eine klare, vorhersagbare Reichweite.
+- Sichtbar ist nur ein Punkt; die Reichweite sollte trotzdem zu sehen sein, etwa als Licht auf der Haut (das gab es schon als Studie:
+  „Einfluss als Licht“, 12.11., Commit `ce41fec2`).
+- Posen und Morphs müssen an Stellen der Form hängen statt an Punkten.
+
+**Wie FiberMesh es macht** (Nealen und andere 2007; unsere Recherche vom 09.11.:
+`docs/research/2026-11-09-fibermesh-monstermash-richtung.md`):
+
+- **Keine Bézier-Kurven.** Die Kurven sind dichte Linienzüge aus vielen Punkten, die auf dem Netz liegen und Teil davon sind.
+- **Feste Punkte gibt es nicht.** Man zieht an jeder Stelle einer Kurve; wie weit die Verformung entlang der Kurve reicht, wächst mit der
+  Zugweite.
+- **Die Haut** ist die glatteste Fläche durch alle Kurven, in Runden gerechnet: erst die Krümmung glätten, dann die Lage dazu lösen (nach
+  eigener Angabe 5 bis 10 Runden). Kurven sind glatt oder scharf. Nach dem Loslassen wird neu vernetzt.
+- **Kurven zeichnet man selbst** auf die Fläche; gezogen wird an Kurven, nicht an beliebigen Stellen der Haut.
+- **Schwächen** laut unserer Recherche: ein Gedächtnis, das die Form vom Weg abhängig macht, Neuvernetzen nach dem Loslassen,
+  Abhängigkeit vom Netz, und ohne Richtung an den Kurven wird es instabil.
+- **Der Unterschied zu deiner Idee:** Bei FiberMesh sind die Punkte auf den Kurven frei, aber die Kurven musst du selbst zeichnen. Bei dir
+  entstehen auch die Kurven von selbst, genau dort, wo du greifst, und sie bringen die fehlende Richtung gleich mit.
+
+## 9 Quellen
 
 - A. Nealen, T. Igarashi, O. Sorkine, M. Alexa, „FiberMesh: Designing Freeform Surfaces with 3D Curves“, SIGGRAPH 2007.
 - W. Welch, A. Witkin, „Free-Form Shape Design Using Triangulated Surfaces“, SIGGRAPH 1994.
