@@ -241,7 +241,26 @@ bleiben, z. B. bei einem Bauch oder Hals. Bzw. was das angeht, bin ich noch nich
   Form sie braucht. Den Zug begrenzen die Form selbst (das Licht) und deine Linien, nicht die unsichtbaren Hilfsloops. So ist alles, was
   einen Zug begrenzt, für dich sichtbar.
 
-## 11 Quellen
+## 11 Nachtrag: deine Regel ersetzt meine Sonderregel (24.11.)
+
+**Dein Wort:** „Wenn es sich bei der langen Form nicht um eine verzogene Kugel, sondern um eine echte Wurstform handelt, muss sie ja schon
+zwei Loops an den Enden haben. Der Einflussbereich wäre dann ja begrenzt, oder? Bei einer langgezogenen Kugel geht die ganze Seite mit,
+wie bei Illustrator, wenn ich einen der vier Punkte ziehe. Das wäre dann ja das logisch erwartete Verhalten.“
+
+- **Ja, und damit ist meine Sonderregel aus Abschnitt 10 („längs so weit wie quer“, „wo du greifst, entscheidet“) überflüssig.** Deine
+  Regel ist einfacher und gilt überall: **Ein Zug reicht bis zu den Nachbarn, wie in Illustrator.**
+- **Echte Wurst:** Sie braucht die zwei Ringe, wo die Kappen beginnen. Sie sind die Nachbarn; der Zug in der Mitte nimmt das Stück
+  zwischen ihnen mit, die Kappen bleiben.
+- **Langgezogene Kugel:** Sie braucht keine Ringe. Die Nachbarn liegen eine Vierteldrehung weiter, also an den Enden, und die ganze Seite
+  geht mit, wie bei einer Ellipse in Illustrator, an der du einen der vier Punkte ziehst.
+- **Eine Beule mitten auf einer langen Seite:** erst einen kleinen Kreis setzen, wie beim Horn. Dann ist der Kreis der Nachbar.
+- **Korrektur zu Abschnitt 10:** Dort stand, nur deine Linien begrenzen einen Zug, nicht die unsichtbaren Hilfsloops. Für die Ringe an den
+  Kappen stimmt das nicht. Richtig ist: **Begrenzen tun deine Linien und die Loops, die die Form braucht, sichtbar oder nicht.** Sichtbar
+  wird die Grenze in jedem Fall durch das Licht.
+- **Die Lampe passt dazu:** An der langgezogenen Kugel beleuchtet sie die ganze Seite bis zu den Enden, an der Wurst endet der Zug an den
+  Ringen. Beide Sichtweisen kommen zum selben Ergebnis.
+
+## 12 Quellen
 
 - A. Nealen, T. Igarashi, O. Sorkine, M. Alexa, „FiberMesh: Designing Freeform Surfaces with 3D Curves“, SIGGRAPH 2007.
 - W. Welch, A. Witkin, „Free-Form Shape Design Using Triangulated Surfaces“, SIGGRAPH 1994.
