@@ -224,7 +224,24 @@ Was hell wird, geht mit.
 - **Der Preis:** Die Posen im Maul-Strang (vier Scheiben, Zähne je Pose) müssten auf Felder umziehen. Und wird die Grundform nachträglich
   geändert, muss das Feld mitwandern; dafür gibt es bekannte Verfahren (etwa Deformation Transfer, Sumner und Popović 2004).
 
-## 10 Quellen
+## 10 Nachtrag: die Wurst genauer (24.11.)
+
+**Dein Wort:** „Es gibt doch dann auch bei der Wurst bereits existierende Edgeloops. Loops, die wirklich zur Form beitragen, sollen ja
+bleiben, z. B. bei einem Bauch oder Hals. Bzw. was das angeht, bin ich noch nicht ganz sicher.“
+
+- **Du hast recht:** Wo Loops die Form tragen (Bauch, Hals, Taille), begrenzen sie den Zug, und die Frage stellt sich dort nicht.
+- **Die Lampe braucht dort nicht einmal einen Loop:** An einem Hals oder einer Taille dreht sich die Haut von der Lampe weg, also endet das
+  Licht dort von selbst. Die Reichweite folgt der Form.
+- **Die Frage stellt sich nur an einem langen, gleichmäßigen Stück:** einer geraden Wurst, einem Schwanz, einem Hals ohne Verengung. So ein
+  Stück braucht keinen Ring, um seine Form zu halten; also liegt dort keiner, und längs dreht sich die Haut nicht weg. Die Lampe würde die
+  ganze Seite beleuchten, und die ganze Seite ginge mit.
+- **Vorschlag: Wo du greifst, entscheidet.** Greifst du auf der Fläche, entsteht eine Beule, längs so lang wie quer breit, so wie an der
+  Kugel. Greifst du die Längslinie selbst, geht die ganze Seite mit.
+- **Welche Loops bleiben** (deine offene Frage), als Vorschlag: deine Linien immer und sichtbar; Ozzys Hilfsloops unsichtbar, solange die
+  Form sie braucht. Den Zug begrenzen die Form selbst (das Licht) und deine Linien, nicht die unsichtbaren Hilfsloops. So ist alles, was
+  einen Zug begrenzt, für dich sichtbar.
+
+## 11 Quellen
 
 - A. Nealen, T. Igarashi, O. Sorkine, M. Alexa, „FiberMesh: Designing Freeform Surfaces with 3D Curves“, SIGGRAPH 2007.
 - W. Welch, A. Witkin, „Free-Form Shape Design Using Triangulated Surfaces“, SIGGRAPH 1994.
