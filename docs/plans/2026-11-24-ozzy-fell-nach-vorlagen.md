@@ -110,5 +110,20 @@ darum groß); die Testkugel ist eine liegende Linse (die frische Form wird nie g
 erreichbar, die Draufsicht zeigt im Shader nur das Blatt): Vergleich darum von schräg oben. **Nächster Schritt (auf sein Wort):** siehe
 „Was daraus folgt“.
 
+## Etappe Schafwolle (24.11., Florian: „Schafwolle bauen“)
+
+Ziel: Vorlage 08 (offline gerechnet) in Echtzeit, als eigener Shader „Schafwolle“ in „Fell & Flausch“.
+
+1. **Locken aus Schalen** (gemischt wie das Samtfell): Locken als Zellen im Raum, jede eine Kuppel (Haare in der Mitte lang, am Rand
+   kurz: so entstehen die dunklen Lücken), die Haare drehen sich mit der Höhe um die Achse ihrer Locke und laufen zur Spitze
+   zusammen, jede Locke neigt sich in ihre eigene Richtung; jedes Haar leicht gewellt.
+2. **Echte Flusen:** dünne Haare als Bänder zum Betrachter (je Haar ein Dutzend Stücke, instanziert), Wurzeln gleichmäßig auf der
+   Haut (Dreiecke nach Fläche gewählt, bei jeder Änderung des Netzes neu gesetzt), länger als die Locken, gewellt, nach den Schalen
+   gemischt gezeichnet, in der Wolle ausgeblendet. Haare dünner als ein Bildpunkt werden blasser statt dünner.
+3. **Licht** wie die Vorlage: weich von oben links, Spitzen durchscheinend, kühle Aufhellung von rechts.
+
+Probe: Testkugel neben 08 (schräg von oben, `NEIGUNG=64 ZOOM=2.0`) und an „strange bird“, Tempo mit `shader-tempo.mjs`.
+**Kriterium:** Locken mit dunklen Lücken, weiche Flusen am Umriss, cremiges Weiß. Sein Auge entscheidet.
+
 Jeder Schritt wird an der Kugel neben seiner Vorlage gezeigt (`scripts/ozzy/shader-kugel.mjs`, Messung mit
 `scripts/ozzy/kugel-messen.mjs`). Sein Auge entscheidet.
