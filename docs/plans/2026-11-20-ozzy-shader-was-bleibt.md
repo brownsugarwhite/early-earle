@@ -159,8 +159,9 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
 **Fell nach Florians Vorlagen (24.11.; Plan `docs/plans/2026-11-24-ozzy-fell-nach-vorlagen.md`, Blatt
 `2026-11-24-fell-probe-schalen.png`):**
 
-68. **Giraffenfell und Braunes Fell** (Schalen, gemischt) stehen als Probe. Offen: Am Vogel wird das Braun streifig (Maße am
-    Halbmesser der ganzen Form; an kleinen Teilen wären Maße je Teil besser); die Adern der Giraffe könnten breiter sein; das Braun
-    kostet im Stand ein Bild von rund 56 ms (in Bewegung 18 ms).
+68. **Giraffenfell und Braunes Fell** (Schalen, gemischt) stehen als Probe. Offen, Giraffe: In der Vorlage sind die Flecken größer
+    und verlaufen weich, die hellen Adern sind breiter und unregelmäßiger; unsere Flecken sind scharf geschnitten. Braun: Haare kürzer
+    und weniger Fülle als in der Vorlage; am Rand der Testform ein verwischter Ring (Ursache nicht geprüft); am Vogel streifig (Maße am
+    Halbmesser der ganzen Form; an kleinen Teilen wären Maße je Teil besser); im Stand ein Bild von rund 56 ms (in Bewegung 18 ms).
 69. **Echte Haare** für die Vorlagen mit einzelnen Haaren am Umriss (05 Katze, 01, 04, 08 bis 11) nicht gebaut; 03 graubraun
     (Schalen) auch nicht.
