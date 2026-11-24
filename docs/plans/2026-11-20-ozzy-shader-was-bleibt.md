@@ -155,3 +155,12 @@ Alle 62 laufen ohne Fehler in der Konsole (Bilder: `docs/progress/ozzy/shader/20
     schnell zu den Schlangen wischt, spürt es). Gehört in einen Worker.
 66. **Streifen auf iPhone und iPad:** nicht getestet (zwei Finger für die Breite, Tippen, Speicher).
 67. **Streifen ohne Bühne:** die Shader auf Ozzys Weiß; nicht angesehen.
+
+**Fell nach Florians Vorlagen (24.11.; Plan `docs/plans/2026-11-24-ozzy-fell-nach-vorlagen.md`, Blatt
+`2026-11-24-fell-probe-schalen.png`):**
+
+68. **Giraffenfell und Braunes Fell** (Schalen, gemischt) stehen als Probe. Offen: Am Vogel wird das Braun streifig (Maße am
+    Halbmesser der ganzen Form; an kleinen Teilen wären Maße je Teil besser); die Adern der Giraffe könnten breiter sein; das Braun
+    kostet im Stand ein Bild von rund 56 ms (in Bewegung 18 ms).
+69. **Echte Haare** für die Vorlagen mit einzelnen Haaren am Umriss (05 Katze, 01, 04, 08 bis 11) nicht gebaut; 03 graubraun
+    (Schalen) auch nicht.

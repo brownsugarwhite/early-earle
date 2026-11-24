@@ -3,7 +3,9 @@
 // Läuft auf Port 5219 (Eintrag `ozzy-shader`); ist dort kein Server, startet das Skript für die Dauer des Laufs einen eigenen Vite.
 // Aufruf aus apps/editor:
 //   node scripts/ozzy/shader-kugel.mjs <ziel.png> <id>
-//   ZOOM=3.1 GIER=<Grad> NEIGUNG=<Grad> WARTEN=<ms> BUEHNE=0 REGLER='{"relief":1.2}' B=1000 DICHTE=1.8
+//   ZOOM=3.1 GIER=<Grad> NEIGUNG=<Grad> WARTEN=<ms> BUEHNE=0 REGLER='{"relief":1.2}' B=1000 DICHTE=1.8 RADIUS=115 (150: die flachere Linse
+//   der Tropfschleim-Bilder vom 21.11.). Die frische Form bleibt eine liegende Linse; senkrecht von oben geht nicht (die Raumkiste
+//   hält die Kamera, die Draufsicht zeigt im Shader nur das Blatt). Für Fell von schräg oben: NEIGUNG=64 ZOOM=2.0
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -33,10 +35,14 @@ if (!belegt) {
 process.env.OZZY_URL = `http://localhost:${PORT}/ozzy.html`;
 const { auf } = await import('../pruefen/ozzy-teile.mjs');
 const B = Number(process.env.B ?? 1000);
-const { browser, s, O, geladen, fehler } = await auf({ form: '', b: B, h: B, dichte: Number(process.env.DICHTE ?? 1.8), extra: `shader=${id}` });
+// (während des Aufblasens ein leichter Shader: Mit einem schweren laufen die Bilder langsam, das Aufblasen und die Fahrt der Kamera
+// sind dann bei der Aufnahme noch nicht fertig, und der Blick landet je nach Lauf woanders)
+const { browser, s, O, geladen, fehler } = await auf({ form: '', b: B, h: B, dichte: Number(process.env.DICHTE ?? 1.8), extra: 'shader=autolack' });
 try {
-  // ein Kreis, aufgeblasen: die Kugel
-  const [cx, cy, R, k] = [B / 2, B / 2, 150, 0.5523 * 150];
+  // ein Kreis, aufgeblasen. Halbmesser 115 = WERK_DICKE (main.ts), die größte halbe Dicke: Ein größerer Kreis gibt eine flachere
+  // Linse (bei 150 lag sie mit einer halben Dicke von 115 da). Auch mit 115 bleibt sie eine liegende Linse, keine Kugel.
+  const RK = Number(process.env.RADIUS ?? 115);
+  const [cx, cy, R, k] = [B / 2, B / 2, RK, 0.5523 * RK];
   await O('form', [
     { x: cx + R, y: cy, ein: [0, -k], aus: [0, k] },
     { x: cx, y: cy + R, ein: [k, 0], aus: [-k, 0] },
@@ -46,6 +52,8 @@ try {
   await s.waitForTimeout(300);
   await O('aufblasen');
   await geladen();
+  await s.waitForFunction(() => window.__ozzy.zustand() === 'ruhe', null, { timeout: 90000 });
+  await s.waitForTimeout(500);
   await s.mouse.move(5, 5);
   await O('blickSetzen', {
     gier: (Number(process.env.GIER ?? 0) * Math.PI) / 180,

@@ -1,4 +1,4 @@
-# Übergabe: 94 Shader für Ozzy (21.11.2026, Runde 9; Streifen 22.11.)
+# Übergabe: 96 Shader für Ozzy (21.11.2026, Runde 9; Streifen 22.11.; Fell nach Vorlagen 24.11.)
 
 Pläne: `docs/plans/2026-11-20-ozzy-shader.md` (Runde 1), `docs/plans/2026-11-20-ozzy-shader-runde-2.md` (Runde 2 bis 5),
 `docs/plans/2026-11-21-ozzy-shader-runde-6.md` (Runde 6: Fell, Flausch, Häute im Zeichenstil, Diskokugel),
@@ -41,7 +41,7 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
   <vorlage> <bild …>` (Farbe, Helligkeit, Rot zu Grün, senkrechte zu waagerechten Kanten, Kanten je Bildpunkt, Streuung; zählt Grün).
 - Labor für Eine Linie ohne Fenster: `npx vite-node scripts/ozzy/linie-labor.ts <ordner> [schritte …]`.
 
-## Die 94, in elf Gruppen
+## Die 96, in elf Gruppen
 
 - **Spider-Verse (17):** Comicdruck, Aquarell, Indrajal, Punk-Collage, Marker 2099, Tintenfleck, Da Vinci, Glitch, Earth-42,
   Multiplane, Noir, Cartoon, Neunziger, Sienkiewicz, Venom-Blitz, Pixel, LEGO.
@@ -62,8 +62,9 @@ Offenes: `docs/plans/2026-11-20-ozzy-shader-was-bleibt.md`. Bilder: `docs/progre
   Nacht), Nachtschatten, Nachtschatten Alpha (`nachtschatten.ts`, Runde 9), Pfeilgiftfrosch (`frosch`), Chamäleon (`chamaeleon`,
   Regler Stimmung), Krake, Turing-Haut. Die Häute haben den Regler **Stil** (Echt, Anime, Manga, Spider-Verse, Earle); der T-Rex
   sieben Stile (Kino, Spider-Verse, Earle, Fossil, Spielzeug, Anime, Manga) und vier Färbungen (Erde, Wald, Asche, Glut).
-- **Fell & Flausch (6):** Fell (Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch; 20 Muster; sechs Felltypen), Schaf,
-  Plüschtier, Wolke (Echt, Ghibli, Anime), Zuckerwatte, Pusteblume (Versuch).
+- **Fell & Flausch (8):** Fell (Stile Echt, Ghibli, Anime, Spider-Verse, Manga, Plüsch; 20 Muster; sechs Felltypen), Giraffenfell und
+  Braunes Fell (`samtfell.ts`, 24.11., nach Florians Vorlagen 02 und 06), Schaf, Plüschtier, Wolke (Echt, Ghibli, Anime), Zuckerwatte,
+  Pusteblume (Versuch).
 - **Effekte (8):** Eine Linie, Matrix 2.0 (`matrix`), Feuer, Tropfen, Rauch, Tinte, Staub, Ereignishorizont.
 
 Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
@@ -237,3 +238,15 @@ Was jeder tut, steht im Kopf seiner Datei (`voreinstellungen/`).
 38. **Programme im Schatten:** Die Streifen bauen jeden Shader zur Probe, übersetzen seine Programme mit `compileAsync` (ohne zu
     warten) und halten je Programm eine zweite Hülle. So bleibt ein Programm, wenn ein Lauf freigegeben wird; ein Neubau übersetzt
     nichts. Programme, die ein Lauf erst beim Rechnen baut, kommen danach in den Schatten.
+36. **Samtfell** (24.11., `samtfell.ts`; Plan `docs/plans/2026-11-24-ozzy-fell-nach-vorlagen.md`): Schalen **gemischt** (`durchsicht`:
+    die Haut deckend, dann die Schalen durchscheinend von innen nach außen), Haare mit weichem Querschnitt und weich ausblendender
+    Spitze, keine Büschel, flach im Strich. Hart an und aus über Deckung zu Abtastungen gibt bei solchem Fell scharfe Striche mit
+    Lücken und Körner am Umriss. Im Mischen die Höhe nicht zittern (`vH` statt `schalenHoehe()`). Farbe vormultipliziert ausgeben.
+37. **Vergleich an einer Kugel:** `scripts/ozzy/shader-kugel.mjs` legt jetzt einen Kreis mit Halbmesser 115 an und wartet, bis das
+    Aufblasen fertig ist (`zustand() === 'ruhe'`), bevor Blick und Shader gesetzt werden: Mit einem schweren Shader während des
+    Aufblasens laufen die Bilder langsam, die Fahrt der Kamera ist bei der Aufnahme nicht fertig, und der Blick landet je Lauf woanders.
+    Die frische Form bleibt eine liegende Linse; senkrecht von oben lässt die Raumkiste nicht zu (bei Zoom über 2 ändert sich der
+    erreichbare Winkel), die Draufsicht (Taste 7) zeigt im Shader nur das Blatt. Für Fell: `NEIGUNG=64 ZOOM=2.0`.
+38. **Tempo je Shader:** `scripts/ozzy/shader-tempo.mjs <id …>` zeichnet je Bild selbst und liest danach einen Bildpunkt zurück (so
+    zählt die Grafikkarte mit), an „strange bird“ im Blick der Bilder, „Stand“ und „bewegt“.
+

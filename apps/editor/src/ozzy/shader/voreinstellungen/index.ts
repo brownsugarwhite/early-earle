@@ -49,6 +49,7 @@ import { PEDRERA, TRENCADIS, TRENCADIS_VERSE } from './gaudi';
 import { FLOR_POP, PANOT, PERSIANA } from './barcelona';
 import { ARGON_BLAU, HALL_OF_FAME, NEON_ROT, NIETENLEDER } from './strasse';
 import { PLATANE } from './natur';
+import { BRAUNFELL, GIRAFFENFELL } from './samtfell';
 import { NACHTSCHATTEN, NACHTSCHATTEN_ALPHA } from './nachtschatten';
 import { SIN_CITY_GELB, SIN_CITY_REGEN, SIN_CITY_ROT } from './sincity';
 import { ACHAT, GRANIT, JADE, LAPIS, MALACHIT, MARMOR, OBSIDIAN, SANDSTEIN } from './steine';
@@ -151,6 +152,8 @@ export const VOREINSTELLUNGEN: Voreinstellung[] = [
   TURING,
   // Fell & Flausch
   FELL,
+  GIRAFFENFELL,
+  BRAUNFELL,
   SCHAF,
   PLUESCHTIER,
   WOLKE,
